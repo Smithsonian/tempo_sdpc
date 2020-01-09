@@ -25,7 +25,7 @@ parent_dir=$(dirname $run_dir)
 cd $work_dir
 
 # get input file names
-. ./files.lis
+. ./pge_input_basenames.lis
 rad_file=$RAD
 irr_file=$IRR
 cld_file=$CLD

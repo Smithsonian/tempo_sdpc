@@ -40,11 +40,11 @@ cd $tar_file_dir
 
 # 1. At this point, we're in a directory containing:
 #          * granule_ident.csv
-#          * files.lis, containing the file names:
+#          * pge_input_basenames.lis, containing the file names:
 #            - geolocated level 1 radiance file
 #            - level 1 irradiance file
 #            - level 2 cloud product
-#          * the files named in files.lis
+#          * the files named in pge_input_basenames.lis
 #
 #    The following environment variables are assumed to be set:
 #          * SDPC_ROOT, SDPC_RUN_DIR, SDPC_ARCHIVE_DIR
@@ -59,7 +59,7 @@ cd $tar_file_dir
 run_dir=$(pwd)
 
 # get input file names
-. ./files.lis
+. ./pge_input_basenames.lis
 rad_file=$RAD
 irr_file=$IRR
 cld_file=$CLD
@@ -73,13 +73,13 @@ init_product_dir()
   dir=$1
   /bin/mkdir -p $dir
   /bin/ln ./${rad_basename}.nc ./${irr_basename}.nc ./$cld_file $dir
-  /bin/cp granule_ident.csv files.lis ${rad_basename}.lis $dir
+  /bin/cp granule_ident.csv pge_input_basenames.lis ${rad_basename}.lis $dir
 }
 
 remove_redundant_files()
 {
    /bin/rm ${rad_basename}.nc ${irr_basename}.nc $cld_file
-   /bin/rm files.lis granule_ident.csv ${rad_basename}.lis
+   /bin/rm pge_input_basenames.lis granule_ident.csv ${rad_basename}.lis
 }
 
 jid_list=""

@@ -255,7 +255,7 @@ run_cloud()
 
 create_file_listing()
 {
-cat << EOF > files.lis
+cat << EOF > pge_input_basenames.lis
 RAD=${rad_basename}.nc
 IRR=${irr_basename}.nc
 CLD=${cld_basename}.nc

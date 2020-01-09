@@ -39,7 +39,7 @@ l2_repro_dir="$SDPC_RUN_DIR/L2/repro"
 etc_dir="$SDPC_ROOT/etc"
 
 # get input file names
-. ./files.lis
+. ./pge_input_basenames.lis
 rad_file=$RAD
 irr_file=$IRR
 cld_file=$CLD
@@ -101,7 +101,7 @@ case $mode in
     if test "$cleanup_dest_dir" != "$l2_out_dir" ; then
         tar_product_to_dest_dir "$cleanup_dest_dir"
     else
-        /bin/rm -f files.lis blocks ${rad_basename}.lis
+        /bin/rm -f pge_input_basenames.lis blocks ${rad_basename}.lis
         tar_product_to_dest_dir "$cleanup_dest_dir"
         tarfile_path="$l2_out_dir/$work_dir_tarfile"
         archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L2 $tarfile_path
