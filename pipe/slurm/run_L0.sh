@@ -55,7 +55,6 @@ file_list_file="$2"
 export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
-l0_out_dir="$SDPC_RUN_DIR/L0/out"
 l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
@@ -140,16 +139,12 @@ case "${granule_basename}" in
   *DRK* )
   output_file=$(mkgranule_name -L 1 -p DRK -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file ""
-  tar_out_dir="$l1_out_dir"
-  archive_level="L1"
   ;;
 
   *IRR* )
   output_file=$(mkgranule_name -L 1 -p IRR -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   run_wavecal $output_file "0-4"
-  tar_out_dir="$l1_out_dir"
-  archive_level="L1"
   ;;
 
   *RAD* )
@@ -157,9 +152,6 @@ case "${granule_basename}" in
   run_l0_ccd $output_file "-d $dark_file_path"
   # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file
-
-  tar_out_dir="$l1_out_dir"
-  archive_level="L1"
 
   # We'll need the metadata file again for post-INR processing,
   # so we'll optimistically put it in the L2 incoming cache
@@ -182,10 +174,10 @@ esac
 
 trap - EXIT
 
-if test x"$tar_out_dir" != x ; then
-   tar_product_to_dest_dir "$tar_out_dir"
-   tarfile_path="$tar_out_dir/${work_dir_tarfile}"
-   archive.sl --delete -a $SDPC_ARCHIVE_DIR -l $archive_level $tarfile_path
+if test x"$l1_out_dir" != x ; then
+   tar_product_to_dest_dir "$l1_out_dir"
+   tarfile_path="$l1_out_dir/${work_dir_tarfile}"
+   archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L1 $tarfile_path
 fi
 
 # Assume the initial L0 granule was archived when it was produced,
