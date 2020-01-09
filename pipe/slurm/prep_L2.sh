@@ -110,7 +110,7 @@ get_tiepoint_file()
    tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Internal.nc"
 
    if test -f "$tiepoint_path" ; then
-      tiepoint_file=$(printf "$lev1_file_fmt" tie)
+      tiepoint_file=$(printf "$lev1_file_fmt" INR)
       /bin/cp $tiepoint_path $tiepoint_file
       chmod u+w $tiepoint_file
    else
