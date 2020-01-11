@@ -66,7 +66,8 @@ make_iru_only_file_for_inr()
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
 
    # No delay is needed here (any IRU coverage padding extends to earlier times)
-   L1_inr_prep -v 1 -c ${etc_dir}/l1_inr_prep.cfg \
+   L1_inr_prep -v 1 --Version $SDPC_PROCESSING_VERSION \
+       --config ${etc_dir}/l1_inr_prep.cfg \
        --begin $tbeg --end $tend --epoch $epoch \
        --ephemeris ${ephem_file_path}
 
