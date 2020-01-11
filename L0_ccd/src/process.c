@@ -70,6 +70,17 @@ typedef struct
 Cal_Date_Type;
 
 static int Write_Nominal_Wavelength_Grid;
+static int _pProcessing_Version = 1;
+
+void process_set_version (int version)
+{
+   _pProcessing_Version = version;
+}
+
+int process_get_version (void)
+{
+   return _pProcessing_Version;
+}
 
 static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 {
@@ -405,7 +416,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
         return -1;
      }
 
-   if (0 != TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, 1 + strlen(product_type), product_type))
+   if (0 != TIO_label_product (ncid, product_type, process_get_version()))
      return -1;
 
    if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))
@@ -1021,6 +1032,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Solar_Geom_Type *sgt = NULL;
    int num_serial_active_full, num_parallel_active_full, flag_transients;
    int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
+   int processing_version;
    int status = -1;
 
    if (0 != gr->granule_type (gr, &exposure_type))
@@ -1073,11 +1085,15 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
      goto return_status;
 
    ncid_from = gr->granule_ncid (gr);
+   ncid_to = out->out_ncid (out);
+
+   processing_version = process_get_version();
+   if (0 != TIO_put_att (ncid_to, NC_GLOBAL, "processing_version", NC_INT, 1, &processing_version))
+     goto return_status;
 
    switch (exposure_type)
      {
       case EXPREC_TYPE_RAD:
-        ncid_to = out->out_ncid (out);
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
         if (0 != tio_copy_granule_flag_var (ncid_from, ncid_to))

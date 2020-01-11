@@ -29,6 +29,7 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -n | --num N           Process <= N exposure records \n");
    fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
+   fprintf (stderr, "   -V | --Version         Processing version number [default=%d]\n", process_get_version());
    fprintf (stderr, "   -h | --help            Print this usage message\n");
    exit (EXIT_SUCCESS);
 }
@@ -100,6 +101,7 @@ int main (int argc, char **argv)
         {"instr",   required_argument, 0, 'i'},
         {"output",  required_argument, 0, 'o'},
         {"num",     required_argument, 0, 'n'},
+        {"Version", required_argument, 0, 'V'},
         {"verbose", no_argument,       0, 'v'},
 	{"help",    no_argument,       0, 'h'},
         {0,0,0,0}
@@ -125,7 +127,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:V:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -159,6 +161,14 @@ int main (int argc, char **argv)
              if (1 != sscanf (optarg, "%u", &ctrl.limit_num_granules))
 	       usage();
              break;
+           case 'V':
+               {
+                  int version;
+                  if (1 != sscanf (optarg, "%d", &version))
+                    usage();
+                  process_set_version (version);
+               }
+                  break;
            case 'v':
              log_level++;
           }

@@ -12,6 +12,7 @@
 #include <tio_template.h>
 
 #include "config.h"
+#include "process.h"
 
 #define NUM_BANDS 2
 
@@ -395,7 +396,7 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
      }
 
    /* FIXME: set version numbers */
-   if (0 != tio_meta_set_standard (meta, out->file, shortname, 1, "0.1.0"))
+   if (0 != tio_meta_set_standard (meta, out->file, shortname, process_get_version(), "0.1.0"))
      goto return_status;
 
    if (0 != tio_meta_set_datetime_range (meta, ncid_from))
