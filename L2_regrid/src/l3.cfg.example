@@ -1,7 +1,4 @@
 # L2_regrid configuration file
-
-version = "1.0"
-
 #
 # min, delta in degrees
 #
@@ -14,7 +11,6 @@ data_products: {
    hcho:
    {
       name = "hcho";
-      processing_version = 1;
       filename_list = "l2_hcho.lst";
       longlat_group = {in = "/geolocation"; out = "/";};
       vars = (
@@ -38,7 +34,6 @@ data_products: {
    no2:
    {
       name = "no2";
-      processing_version = 1;
       filename_list = "l2_no2.lst";
       longlat_group = {in = "geolocation"; out = "/";};
       vars = (
@@ -62,7 +57,6 @@ data_products: {
    o3t:
    {
       name = "o3t";
-      processing_version = 1;
       filename_list = "l2_o3t.lst";
       longlat_group = {in = "geolocation"; out = "/";};
       vars = (

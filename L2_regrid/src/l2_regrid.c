@@ -359,7 +359,7 @@ static int init_product_type (const config_setting_t *setting,
    Product_Type *prod = NULL;
    config_setting_t *s, *vars, *longlat_group, *s_meta;
    const char *name, *in_grp, *out_grp, *list_file;
-   int i, num_vars, processing_version;
+   int i, num_vars;
 
    *prodp = NULL;
 
@@ -382,12 +382,6 @@ static int init_product_type (const config_setting_t *setting,
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_int (setting, "processing_version", &processing_version))
-     {
-        Tell_verror (TELL_INVALID_PARM_ERROR, "%s: accessing processing_version", __func__);
-        return -1;
-     }
-
    vars = config_setting_get_member (setting, "vars");
    if (NULL == vars)
      {
@@ -406,8 +400,6 @@ static int init_product_type (const config_setting_t *setting,
 
    if (NULL == (prod = new_product_type (num_vars)))
      return -1;
-
-   prod->processing_version = processing_version;
 
    if (0 != read_filename_list (list_file, &prod->__num_files, &prod->__filenames))
      {
@@ -783,6 +775,16 @@ free_and_return:
    return NULL;
 }
 
+static int read_processing_version (const char *file, int *processing_version)
+{
+   int ncid, status;
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+   status = TIO_get_att (ncid, NC_GLOBAL, "processing_version", NC_INT, processing_version);
+   TIO_close (ncid);
+   return status;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "L2_regrid";
@@ -877,6 +879,8 @@ int main (int argc, char **argv)
      {
         if ((expect_scan_ident != 0)
             && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name))))
+          goto return_status;
+        if (0 != read_processing_version (prod->input_files[0], &prod->processing_version))
           goto return_status;
         if (-1 == make_l3_product (prod, &dest, r, vb, lst))
           goto return_status;

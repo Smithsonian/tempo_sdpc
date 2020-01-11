@@ -451,6 +451,7 @@ int main (int argc, char **argv)
    for (granule = 0; granule < o.num_granules; granule++)
      {
         char outfile[BUFSIZE];
+        int processing_version = 1;
         int n, num_steps_left, num_steps_this_granule;
 
         num_steps_left = o.num_steps - granule * num_steps_per_granule;
@@ -473,6 +474,9 @@ int main (int argc, char **argv)
         if ((0 != tio_time_set_taix_epoch ("2000-01-01T00:00:00Z"))
             || (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL)))
           goto cleanup_and_exit;
+
+        status = nc_put_att_int (ncid, NC_GLOBAL, "processing_version", NC_INT, 1, &processing_version);
+        NC_CHECK_STATUS(status);
 
         status = nc_def_grp (ncid, "test_group", &grp);
         NC_CHECK_STATUS(status);
