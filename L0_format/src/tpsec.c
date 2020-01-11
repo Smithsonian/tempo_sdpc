@@ -136,7 +136,7 @@ static int new_outfile (Process_Method_Type *pmt,
    if (NULL == (pmt->out_basename = ioclib_strdup (basename)))
      return -1;
 
-   if ((0 != write_attr_global_product_type (pmt->ncid, TEMPO_PROD_TYPE_TPSEC))
+   if ((0 != TIO_label_product (pmt->ncid, TEMPO_PROD_TYPE_TPSEC, pmt->processing_version))
        || (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                               pmt->outfile_timestamp_start)))
      return -1;
