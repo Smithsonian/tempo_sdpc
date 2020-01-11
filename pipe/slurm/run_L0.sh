@@ -112,7 +112,7 @@ run_l0_ccd()
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
    srun --ntasks=1 --output=log_l0_ccd.txt \
-   L0_ccd -vv -i $arch_hk_dir \
+   L0_ccd -vv -i $arch_hk_dir --Version $SDPC_PROCESSING_VERSION \
           -o $output_file $dark_option \
           $granule_basename
 }
