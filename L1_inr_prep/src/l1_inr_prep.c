@@ -41,7 +41,6 @@ typedef struct
    char *tmp_path;
    char *final_path;
    char *target_dir;
-   int processing_version;
 }
 Rename_Path_Type;
 
@@ -51,6 +50,7 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -b | --begin <start-time>  start time (sec since epoch)\n");
    fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
+   fprintf (stderr, "   -V | --Version N           processing version for telemetry-only radiance file\n");
    fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
    fprintf (stderr, "   -p | --ephemeris FILE      ephemeris file\n");
    fprintf (stderr, "   -d | --delay SEC           delay start (to wait for all telemetry to arrive)\n");
@@ -177,7 +177,7 @@ return_status:
    return status;
 }
 
-static int rename_radiance_file (Rename_Path_Type *rpt)
+static int rename_radiance_file (Rename_Path_Type *rpt, int processing_version)
 {
    char basename[BASENAME_SIZE];
    int ncid, status = -1;
@@ -185,7 +185,7 @@ static int rename_radiance_file (Rename_Path_Type *rpt)
    if (0 != TIO_open (rpt->tmp_path, NC_NOWRITE, &ncid))
      return -1;
 
-   if (TIO_filename_from_granule (ncid, TEMPO_PROD_TYPE_RAD, 1, rpt->processing_version,
+   if (TIO_filename_from_granule (ncid, TEMPO_PROD_TYPE_RAD, 1, processing_version,
                                   basename, BASENAME_SIZE) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: generating filename", __func__);
@@ -241,14 +241,6 @@ static int read_rename_config (config_t *cfg, Rename_Path_Type *rpt)
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'target_dir' from param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &rpt->processing_version))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading 'processing_version' from param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -313,7 +305,8 @@ return_status:
 static int process_inputs (config_t *cfg,
                            const char *radiance_file,
                            double time_beg, double time_end,
-                           const char *ephemeris_file)
+                           const char *ephemeris_file,
+                           int processing_version)
 {
    Radiance_Type *r = NULL;
    Rename_Path_Type rpt = {0};
@@ -338,7 +331,7 @@ static int process_inputs (config_t *cfg,
         radiance_is_telemetry_only = 1;
         if (0 != read_rename_config (cfg, &rpt))
           goto return_status;
-        if (NULL == (r = radiance_create (rpt.tmp_path, rpt.processing_version)))
+        if (NULL == (r = radiance_create (rpt.tmp_path, processing_version)))
           goto return_status;
         logmsg_filename = rpt.tmp_path;
      }
@@ -377,7 +370,7 @@ static int process_inputs (config_t *cfg,
         /* close before renaming */
         radiance_close (r);
         r = NULL;
-        if (0 != rename_radiance_file (&rpt))
+        if (0 != rename_radiance_file (&rpt, processing_version))
           goto return_status;
         logmsg_filename = rpt.final_path;
      }
@@ -425,6 +418,7 @@ int main (int argc, char **argv)
         {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
         {"ephemeris", required_argument, 0, 'p'},
+        {"Version",   required_argument, 0, 'V'},
         {0,0,0,0}
      };
 
@@ -434,6 +428,7 @@ int main (int argc, char **argv)
    time_t delay_sec = 0;
    char *radiance_file = NULL;
    char *ephemeris_file = NULL;
+   int processing_version = 1;
    int print_usage = 0;
    int have_epoch = 0;
 
@@ -455,7 +450,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:d:e:E:p:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:d:e:E:p:v:V:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -509,6 +504,10 @@ int main (int argc, char **argv)
                     (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
                }
              break;
+           case 'V':
+             if (1 != sscanf (optarg, "%d", &processing_version))
+               goto return_status;
+             break;
           }
      }
 
@@ -553,7 +552,8 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, ephemeris_file))
+   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, ephemeris_file,
+                            processing_version))
      goto return_status;
 
    status = 0;

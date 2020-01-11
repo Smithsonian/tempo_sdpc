@@ -4,7 +4,6 @@
 #
 telemetry_only_config: {
   target_dir = "/vex/d0/tmp/inr_in";
-  processing_version = 1;
 };
 
 smc_config: {
