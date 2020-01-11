@@ -610,7 +610,8 @@ int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst)
         status = -1;
      }
 
-   free_granule_ident (item);
+   item->next = lst->granule_ident;
+   lst->granule_ident = item;
 
    return status;
 }
