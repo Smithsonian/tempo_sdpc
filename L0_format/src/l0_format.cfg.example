@@ -10,13 +10,11 @@ main: {
 };
 
 tpsec: {
-   processing_version = 1;
    output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
    outfile_deltat_sec = 300.0;
 };
 
 exprec: {
-   processing_version = 1;
    output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
    cache_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/cache";
    granule_size_default = 128;
@@ -24,13 +22,11 @@ exprec: {
 };
 
 smc: {
-   processing_version = 1;
    output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
    outfile_deltat_sec = 300.0;
 };
 
 iru: {
-   processing_version = 1;
    output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
    outfile_deltat_sec = 300.0;
    inr_update_interval = 360.0;

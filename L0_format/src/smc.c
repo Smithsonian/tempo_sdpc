@@ -423,8 +423,7 @@ static int parse_smc_params (config_t *cfg, Process_Method_Type *pmt)
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_int (s, "processing_version", &pmt->processing_version))
-       || (CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "outfile_deltat_sec", &pmt->outfile_deltat_sec))
       )
      {
@@ -433,6 +432,9 @@ static int parse_smc_params (config_t *cfg, Process_Method_Type *pmt)
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if ((pmt->processing_version = get_processing_version()) < 0)
+     return -1;
 
    if (NULL == (pmt->out_dirname = expand_string (out_dirname)))
      return -1;

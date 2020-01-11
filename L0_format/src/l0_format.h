@@ -59,6 +59,9 @@ extern int remove_file (const char *dirname, const char *basename);
  */
 extern char *expand_string (const char *s);
 
+/** Retrieve the processing version number */
+extern int get_processing_version (void);
+
 /** Set the TEMPO epoch, and make sure all files use the same epoch
  * @param[in] epoch   TEMPO epoch specification, expressed as the number
  *                    of elapsed seconds (UTC) since the Unix epoch

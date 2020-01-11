@@ -31,6 +31,8 @@ static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
 static double Cache_Start_Time = 0.0;
 
+static int Processing_Version = 1;
+
 static Process_Method_Type *Exprec_Process_Method;
 
 typedef struct
@@ -75,8 +77,14 @@ static void usage (void)
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
    fprintf (stderr, "                            e.g. --cache 'd710[1-4]'\n");
    fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
+   fprintf (stderr, "   -V | --Version N         Processing version number\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
+}
+
+int get_processing_version (void)
+{
+   return Processing_Version;
 }
 
 char *expand_string (const char *s)
@@ -1196,6 +1204,7 @@ int main (int argc, char **argv)
         {"empty",    no_argument,       0, 'e'},
         {"register", no_argument,       0, 'r'},
         {"verbose",  no_argument,       0, 'v'},
+        {"Version",  required_argument, 0, 'V'},
         {0,0,0,0}
      };
 
@@ -1204,7 +1213,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ha:c:erv", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:c:ervV:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1238,6 +1247,13 @@ int main (int argc, char **argv)
              break;
            case 'v':
              verbose++;
+             break;
+           case 'V':
+             if (1 != sscanf (optarg, "%d", &Processing_Version))
+               {
+                  fprintf (stderr, "*** Error parsing processing version: %s\n", optarg);
+                  goto return_status;
+               }
              break;
           }
      }
