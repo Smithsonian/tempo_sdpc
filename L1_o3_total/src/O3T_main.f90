@@ -158,12 +158,11 @@ PROGRAM O3T_mainNVAdj
   character (len=1024) :: nc_l2_filename
   character (len=32) :: arg, rad_shortname
   integer (kind=4) :: step_index
-  integer :: errstat, version, ext, iarg, orbit_number
+  integer :: errstat, version, ext, iarg, orbit_number, processing_version
   integer :: cloud_pressure_source, anomflg_3_ix_ilat
+  integer, parameter :: versionid_lun = 123456
   real (kind=4), parameter :: latmin=-90.0, latmax=90.0, &
        lonmin=-180.0, lonmax=180.0
-  ! FIXME processing_version should be an input parameter
-  integer, parameter :: processing_version = 1
 
   iarg = 0
   do
@@ -486,6 +485,12 @@ PROGRAM O3T_mainNVAdj
        status = L2_createFile( OMTO3_L2_LUN, OMTO3_fn )
 
   if (use_tio_out) then
+    !! Get the processing_version number from the PCF
+    msg(:) = ' '
+    status = pgs_pc_getconfigdata (versionid_lun, msg)
+    if (status == 0) then
+      read (msg,*)processing_version
+    endif
     !! Get the L2 file name from the PCF.
     version = 1
     status = PGS_PC_getreference (OMTO3_L2_LUN, version, OMTO3_fn)
@@ -1401,6 +1406,7 @@ PROGRAM O3T_mainNVAdj
                             OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
                             OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
     status = write_odl_metadata (UV_filename, nc_l2_filename, &
+                                 processing_version, &
                                  nXtrack_rad, nTimes_rad, &
                                  tempo_mcfLUN, LUNinputPointer(1:11), 11)
   endif
