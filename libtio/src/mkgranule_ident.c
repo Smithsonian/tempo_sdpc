@@ -101,7 +101,7 @@ int main (int argc, char **argv)
    char *output_file = NULL;
    char *radiance_file = NULL;
    int c, ncid, xtype;
-   int version = INT_MAX; /* version=1 default might cause trouble here */
+   int version = -1;
    size_t len;
 
    while ((c = getopt (argc, argv, "o:v:")) != -1)
@@ -152,7 +152,7 @@ int main (int argc, char **argv)
        || (-1 == _pTIO_read_granule_ident (ncid, &gid)))
      {
         (void) TIO_close (ncid);
-        return -1;
+        return 1;
      }
 
    memset (product_type, 0, MAX_PRODUCT_TYPE_LEN);
@@ -163,14 +163,26 @@ int main (int argc, char **argv)
         if (0 != TIO_get_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, product_type))
           {
              (void) TIO_close (ncid);
-             return -1;
+             return 1;
+          }
+     }
+
+   if (version < 0)
+     {
+        int status;
+        if (NC_NOERR != (status = nc_get_att_int (ncid, NC_GLOBAL, "processing_version", &version)))
+          {
+             tell_verror (TELL_IO_READ_ERROR, "reading global attribute processing_version (%s)",
+                          nc_strerror(status));
+             (void) TIO_close (ncid);
+             return 1;
           }
      }
 
    (void) TIO_close (ncid);
 
    if (0 != write_granule_ident_file (output_file, &gid, version, product_type))
-     return -1;
+     return 1;
 
    return 0;
 }

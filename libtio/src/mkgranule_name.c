@@ -25,7 +25,7 @@ int main (int argc, char **argv)
    char buf[BUFSIZE];
    char *prod_abbrev = NULL;
    char *radiance_file = NULL;
-   int c, n, ncid, level = 0, version = 1;
+   int c, n, ncid, level = 0, version = -1;
 
    while ((c = getopt (argc, argv, "p:L:v:")) != -1)
      {
@@ -77,6 +77,18 @@ int main (int argc, char **argv)
      {
 	(void) TIO_close(ncid);
 	return 1;
+     }
+
+   if (version < 0)
+     {
+        int status;
+        if (NC_NOERR != (status = nc_get_att_int (ncid, NC_GLOBAL, "processing_version", &version)))
+          {
+             tell_verror (TELL_IO_READ_ERROR, "reading global attribute processing_version (%s)",
+                          nc_strerror(status));
+             (void) TIO_close (ncid);
+             return 1;
+          }
      }
 
    buf[0] = 0;
