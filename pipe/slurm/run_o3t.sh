@@ -34,7 +34,7 @@ irr_basename=$(basename $irr_file .nc)
 
 # Define product file name template
 #
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc)
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s ${rad_basename}.nc)
 lev2_base_fmt=$(basename $lev2_file_fmt .nc)
 
 tar_product_to_dest_dir()
@@ -92,6 +92,7 @@ sed \
  -e s,@irradiance_file@,$irradiance_file,g \
  -e s,@cloud_file@,$cloud_file,g \
  -e s,@product_file@,$product_file,g \
+ -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
  $template_pcf > $pcf_file
 
 export PGSMSG="${SDPC_ROOT}/msgs"

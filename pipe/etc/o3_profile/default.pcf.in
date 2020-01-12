@@ -77,7 +77,7 @@
 400092|TEMPERATURESOURCE|"Climatology"
 400093|SNOWICESOURCE|"Climatology"
 400094|APRIORIOZONEPROFILESOURCE|"Climatology"
-123456|VERSIONID|3
+123456|VERSIONID|@versionid@
 10109|TransmitFlag; 1=transmit,0=disable|0
 10106|RemoteHost|sandcrab
 10107|RemotePath|/usr/kwan/test/PC/data

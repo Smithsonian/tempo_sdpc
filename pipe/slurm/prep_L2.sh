@@ -95,8 +95,8 @@ irr_basename=$(basename "$irr_file" .nc)
 
 # Define template product file name
 #
-lev1_file_fmt=$(mkgranule_name -L 1 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
+lev1_file_fmt=$(mkgranule_name -L 1 -p %s "${rad_basename}.nc")
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s "${rad_basename}.nc")
 lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
 cld_basename=$(printf "$lev2_base_fmt" CLDRR)
 cld_dir="CLDRR"
@@ -234,6 +234,7 @@ run_cloud()
       -e s,@irradiance_file@,$irradiance_file,g \
       -e s,@product_file@,$product_file,g \
       -e s,@etc_dir@,$etc_dir,g \
+      -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
       $template_pcf > $pcf_file
 
   export PGS_PC_INFO_FILE="$pcf_file"
@@ -299,7 +300,7 @@ fi
 
 get_tiepoint_file
 
-mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc
+mkgranule_ident -o granule_ident.csv ${rad_basename}.nc
 
 # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
 (get_metadata_file)

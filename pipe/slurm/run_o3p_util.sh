@@ -51,7 +51,7 @@ work_dir_tarfile="${rad_basename}.${work_dir}_${host_spec}.tar"
 
 # Define product file name template
 #
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc)
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s ${rad_basename}.nc)
 lev2_base_fmt=$(basename $lev2_file_fmt .nc)
 
 out_basename=$(printf "$lev2_base_fmt" O3PROF)
@@ -170,6 +170,7 @@ config_subdir()
     -e s,@product_file@,$product_file,g \
     -e s,@control_file@,$control_file_basename,g \
     -e s,@line_sample_extent@,-1\ -1\ $xt_beg\ $xt_end,g \
+    -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
     $template_pcf > $subdir_name/$pcf_file
 }
 

@@ -41,6 +41,9 @@ export SDPC_PIPE_NAME
 : "${SDPC_PROCESSING_VERSION:=1}"
 export SDPC_PROCESSING_VERSION
 
+: "${SDPC_LEVEL0_VERSION:=1}"
+export SDPC_LEVEL0_VERSION
+
 #---------------------------------
 #  Live processing directory paths
 #---------------------------------

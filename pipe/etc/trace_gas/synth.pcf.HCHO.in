@@ -363,7 +363,7 @@
 200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
 200200|OrbitNumber|08541
 200210|SwathName|"OMI Total Column Amount HCHO"
-200220|VERSIONID|3
+200220|VERSIONID|@versionid@
 #
 # -------------------
 # SAO PGE Name
