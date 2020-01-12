@@ -24,6 +24,7 @@ contains
   !
   !> @param[in] l1bfile    L1 radiance netCDF file name
   !> @param[in] outfilnm   L2 product netCDF file name
+  !> @param[in] versionid  processing version number
   !> @param[in] nXtrack    number of cross-track pixels
   !> @param[in] nLines     number of mirror steps
   !> @param[in] lun_input  list of LUNs for input files
@@ -35,14 +36,14 @@ contains
   ! Note: as yet, this is only a proof-of-concept test to ensure we can
   !       produce ASCII format ODL metadata when processing netCDF only.
   !-----------------------------------------------------------------------
-  function write_odl_metadata(l1bfile, outfilnm, nXtrack, nLines, &
+  function write_odl_metadata(l1bfile, outfilnm, versionid, nXtrack, nLines, &
        lun_input, ninp) result(errstat)
 
     implicit none
 
     !input variables
     character (len=*), intent(in) :: l1bfile, outfilnm
-    integer (kind=4), intent(in) :: nXtrack, nLines
+    integer (kind=4), intent(in) :: versionid, nXtrack, nLines
     integer (kind=4), intent(in) :: ninp
     integer (kind=4), intent(in), dimension(ninp) :: lun_input
     integer :: errstat
@@ -261,7 +262,7 @@ contains
                               bdry % centroid_lat, errstat)
     call md_write_inputs (ninp, InputPnt, errstat)
     call md_write_fixed (mdlist_filename, errstat)
-    call md_write_prodid (outfilnm,"(1)",errstat)
+    call md_write_prodid (outfilnm, versionid, errstat)
     call md_close (errstat)
 
     if (errstat /= 0) then

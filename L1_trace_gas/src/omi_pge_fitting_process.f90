@@ -133,7 +133,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN, nwavel_max
   USE OMSAO_indices_module,    ONLY: sao_molecule_names, max_rs_idx
   USE OMSAO_variables_module,  ONLY: &
-       l1b_rad_filename, &
+       l1b_rad_filename, ecs_version_id, &
        l2_filename, pixnum_lim, n_fitvar_rad,   &
        radfit_latrange,                &
        common_latrange,    &
@@ -229,7 +229,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
   type (fitting_statistics_type) :: fit_stats
   character (len=256) :: logmsg
-  integer, parameter :: processing_version = 1 ! FIXME - should be input
 
   ! ------------------
   ! External functions
@@ -372,7 +371,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        errstat)
   if (errstat /= 0) return
 
-  call label_output_file (upper_case(molname), processing_version, errstat)
+  call label_output_file (upper_case(molname), ecs_version_id, errstat)
   if (errstat /= 0) return
 
   ! FIXME: he5 output stuff to be removed once netcdf conversion is complete.
@@ -814,7 +813,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! available, whereas main retrieval seems to only ever have blocks
   if (yn_wrt_odl) then
     errstat = write_odl_metadata (l1b_rad_filename, l2_filename_netcdf, &
-         nxtrack_rad-1, ntimes_rad-1, lun_input, n_lun_inp)
+         ecs_version_id, nxtrack_rad-1, ntimes_rad-1, lun_input, n_lun_inp)
     if (errstat /= 0) then
       call tell_error(tell_io_write_error, "failed writing ODL metadata", &
            errstat)
