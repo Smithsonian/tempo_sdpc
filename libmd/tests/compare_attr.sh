@@ -16,7 +16,7 @@ polylon_in="10, 10, 10, 10, 6, 2, -2, -6, -10, -10, -10, -10"
 polyseq_in="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
 inputs_in="l1_radiance.nc, l1_irradiance.nc, lookup.txt, reference_table.nc, otherstuff.dat"
 local_gran_in=$ncfile
-local_vers_in="(1)"
+vers_in="1"
 colname_in=`awk -F\' '/collection_shortname/{print $2}' boilerplate.nml`
 colvers_in=`awk -F\' '/collection_version/{print $2}' boilerplate.nml`
 platform_in=`awk -F\' '/platform/{print $2}' boilerplate.nml`
@@ -34,7 +34,7 @@ polylon_out=`cat nc_header.txt | awk -F=\  '/:polygon_longitude/{print $2}' | se
 polyseq_out=`cat nc_header.txt | awk -F=\  '/:polygon_sequence/{print $2}' | sed s/\ \;//`
 inputs_out=`cat nc_header.txt | awk -F\" '/:input_files/{print $2}'`
 local_gran_out=`cat nc_header.txt | awk -F\" '/:local_granule_id/{print $2}'`
-local_vers_out=`cat nc_header.txt | awk -F\" '/:local_version_id/{print $2}'`
+vers_out=`cat nc_header.txt | awk -F\  '/:version_id/{print $3}'`
 colname_out=`cat nc_header.txt | awk -F\" '/:collection_shortname/{print $2}'`
 colvers_out=`cat nc_header.txt | awk -F\" '/:collection_version/{print $2}'`
 platform_out=`cat nc_header.txt | awk -F\" '/:platform/{print $2}'`
@@ -54,7 +54,7 @@ if [ "$polylon_out" != "$polylon_in" ] ; then exitstat=4 ; fi
 if [ "$polyseq_out" != "$polyseq_in" ] ; then exitstat=5 ; fi
 if [ "$inputs_out" != "$inputs_in" ] ; then exitstat=6 ; fi
 if [ "$local_gran_out" != "$local_gran_in" ] ; then exitstat=7 ; fi
-if [ "$local_vers_out" != "$local_vers_in" ] ; then exitstat=8 ; fi
+if [ "$vers_out" != "$vers_in" ] ; then exitstat=8 ; fi
 if [ "$colname_out" != "$colname_in" ] ; then exitstat=9 ; fi
 if [ "$colvers_out" != "$colvers_in" ] ; then exitstat=10 ; fi
 if [ "$platform_out" != "$platform_in" ] ; then exitstat=11 ; fi

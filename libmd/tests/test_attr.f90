@@ -8,8 +8,7 @@ program test_attr
   implicit none
 
   !Fixed inputs
-  integer (kind=4), parameter :: nxtrack=21, nstep=11, ninp=5
-  character (len=3), parameter :: version_str='(1)'
+  integer (kind=4), parameter :: nxtrack=21, nstep=11, ninp=5, version=1
   character (len=32), dimension(ninp) :: inputs
   character (len=16), parameter :: l2file='test_attr.nc', &
        nlfile='boilerplate.nml'
@@ -175,7 +174,7 @@ program test_attr
   call md_write_geo_bounds (bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
   call md_write_inputs (ninp, inputs, errstat)
   call md_write_fixed (nlfile,errstat)
-  call md_write_prodid (l2file,version_str,errstat)
+  call md_write_prodid (l2file,version,errstat)
   call md_close (errstat)
 
   if (errstat /= 0) then

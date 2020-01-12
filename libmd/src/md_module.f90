@@ -191,16 +191,17 @@ contains
   !-----------------------------------------------------------------------
   !
   !> @param[in]    filename product file name (used as unique identifier)
-  !> @param[in]    version_str  product version as a string
+  !> @param[in]    version product version number
   !> @param        errstat  error tracking code, non-zero indicates error
   !
   !> @author E. O'Sullivan  March 2018
   !-----------------------------------------------------------------------
-  subroutine md_write_prodid (filename, version_str, errstat)
+  subroutine md_write_prodid (filename, version, errstat)
 
     implicit none
 
-    character (len=*), intent(in) :: filename, version_str
+    character (len=*), intent(in) :: filename
+    integer (kind=4), intent(in) :: version
     integer (kind=4), intent(inout) :: errstat
 
     type (tiof_attlist_type) :: attlist
@@ -226,10 +227,8 @@ contains
 
     call tiof_attlist_append (attlist, errstat, "local_granule_id", &
          att_text=trim(adjustl(filename(j:))))
-    ! FIXME - not clear how local_version_id should be defined, may well
-    ! be a checksum or commit hash. For now just using a placeholder string
-    call tiof_attlist_append (attlist, errstat, "local_version_id", &
-         att_text=trim(adjustl(version_str)))
+    call tiof_attlist_append (attlist, errstat, "version_id", &
+         att_i4=[version])
     call tiof_attlist_append (attlist, errstat, "production_date_time", &
          att_text=prod_datetime)
 
