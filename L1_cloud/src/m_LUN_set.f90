@@ -21,10 +21,11 @@ module m_LUN_set
        instrumentname_lun = 200175, processlevel_lun = 200170, &
        processinghost_lun = 200115, authoraffiliation_lun = 200185, &
        authorname_lun = 200190, operationmode_lun = 200180, &
+       versionid_lun = 200205, &
        OrbNum_LUN = 200200, ReprAct_LUN = 200120, using_resid_lun=200300, &
        write_resid_lun=200301, write_obs_lun=200302, &
        no_ret_ps_lun=200304, no_ret_lun=200305, transient_chk=200306, &
-       wmin_LUN=200307, wmax_LUN=200308, do_o3_LUN=200309, ThreshOrbNum_LUN=200310 
+       wmin_LUN=200307, wmax_LUN=200308, do_o3_LUN=200309, ThreshOrbNum_LUN=200310
   integer, parameter :: test_solar_LUN = 200311, add_shift_LUN=200312
   integer, parameter :: using_spline_LUN = 200313
   integer, parameter :: mdlist_LUN=511002

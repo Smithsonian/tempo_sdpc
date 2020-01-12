@@ -47,7 +47,6 @@ program OMCLDRR
   !>@param filename_out_nc netCDF output filename
   !>@param filename_in_nc netCDF input filename
   character(len=255) :: logmsg
-  integer, parameter :: processing_version = 1  ! FIXME should be input param
   integer (kind=4) :: n, j, returnstatus, dummy_version
   integer (kind=4), parameter :: ninp=9 ! number of input files
   integer (kind=4), dimension(ninp) :: input_luns
@@ -310,7 +309,7 @@ program OMCLDRR
                                 bdry % centroid_lon, bdry % centroid_lat, errstat)
       call md_write_inputs (ninp, inputs, errstat)
       call md_write_fixed (md_namelist, errstat)
-      call md_write_prodid (filename_out_nc,"(1)",errstat)
+      call md_write_prodid (filename_out_nc, processing_version, errstat)
       call md_close (errstat)
 
       errstat = write_odl_metadata (filename_out_nc, bdry)

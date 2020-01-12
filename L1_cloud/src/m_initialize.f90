@@ -155,6 +155,13 @@ contains
              errstat)
       endif
 
+      returnstatus = pgs_pc_getconfigdata (versionid_lun, buf)
+      if (returnstatus == 0) then
+        read (buf,*)processing_version
+        write(logmsg,"(a,i2)")'processing_version = ',processing_version
+        call tell_log(1,logmsg)
+      endif
+
       version = 1
       returnstatus = pgs_pc_getreference(IRR1B_FILE,version,irrad_filename)
       if (returnstatus == 0) then

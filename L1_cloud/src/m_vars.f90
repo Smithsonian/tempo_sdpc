@@ -200,6 +200,7 @@ module m_vars
   integer :: nwave2 ! nuumber of wavelengths, used in read_ocean_table
   integer :: niter= 10 !6 ! max number of iterations in chi^2 fit
   INTEGER (KIND=4) :: version, status, ierr ! version is used in L1B access
+  integer :: processing_version ! defines VERSIONID of output L2 product
   ! status = result of PGS operations, ierr = result of SMF operations
   INTEGER (KIND=4) :: nTimes=-1, nXtrack, nWavel, nWavelCoef
   ! nTimes = number of pix along swath,    nXtranck = no. of pix across track
