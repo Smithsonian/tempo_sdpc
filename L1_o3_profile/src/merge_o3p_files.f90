@@ -25,7 +25,7 @@ program merge_o3p_files
   ! dimension indices
   integer (kind=4) :: min_step, max_step, min_xtrack, max_xtrack, &
        nstep_tot, nxtrack_tot, start_wstep, end_wstep, start_wxtrack, &
-       end_wxtrack
+       end_wxtrack, err, processing_version
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
   integer (kind=4), dimension(:), allocatable :: step_out
@@ -79,6 +79,12 @@ program merge_o3p_files
       if (naeros_wavs(n) > 0) aerosol = .true.
       call open_o3p(input_files(n), tio_l2in, errstat)
       call tiof_use_file_epoch (tio_l2in, errstat)
+      err = nf90_get_att (tio_l2in % fileid, nf90_global, "processing_version", processing_version)
+      if (err /= nf90_noerr) then
+        call tell_error (tell_io_read_error, &
+                         "failed reading global attribute processing_version", &
+                         errstat)
+      endif
       call tiof_push_group (tio_l2in, o3p_grp_support_data, errstat)
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_o3_avg_kernel, dummyid)
       if (status == nf90_noerr) ozwrtavgk = .true.

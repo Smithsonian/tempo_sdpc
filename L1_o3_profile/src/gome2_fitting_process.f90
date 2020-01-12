@@ -51,7 +51,6 @@ CONTAINS
     real (kind=dp), dimension(3, 2) :: dfitcol
     real (kind=dp)     :: fitcol_avg, rms_avg, dfitcol_avg, drel_fitcol_avg,rms
     logical            :: reduce_resolution_save
-    integer :: processing_version = 1
     !------------------------------------
     ! Error variables
     !------------------------------------

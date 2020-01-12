@@ -7,7 +7,7 @@ MODULE tmpo_pge_process
 
 CONTAINS
 
-  SUBROUTINE tmpo_fitting_process  ( message, pge_error_status )
+  SUBROUTINE tmpo_fitting_process  ( message, processing_version, pge_error_status )
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  only:num_wav_max, &
@@ -42,6 +42,7 @@ CONTAINS
     ! Input/Output variables
     ! ----------------------
     INTEGER, INTENT (OUT) :: pge_error_status
+    integer, intent(in) :: processing_version
     CHARACTER(LEN=100), INTENT(OUT) :: message
     ! -------------------------
     ! Local variables
@@ -56,7 +57,6 @@ CONTAINS
     REAL (kind=dp),DIMENSION(3, 2) :: dfitcol
     character (len=4) :: xtrack_step_env
     integer :: xtrack_step, xtrack_step_env_status, iostatus
-    INTEGER :: processing_version = 1 ! FIXME - should be input variable, not fixed value
     LOGICAL :: problems = .false.
     ! ------------------------------
     ! Name of this module/subroutine

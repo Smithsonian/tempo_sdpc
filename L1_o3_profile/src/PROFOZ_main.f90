@@ -1,5 +1,6 @@
 PROGRAM PROFOZ_main
 
+  USE PGS_PC_class, only : pgs_pc_getconfigdata
   USE OMSAO_indices_module, ONLY: omi_idx, tempo_idx, instrument_idx, gome2_idx
   USE OMSAO_precision_module
   USE OMSAO_errstat_module
@@ -21,7 +22,10 @@ PROGRAM PROFOZ_main
   ! -------------------------
   ! OMI L1B related variables
   ! -------------------------
-  INTEGER :: errstat, OMI_SMF_setmsg
+  INTEGER :: errstat, OMI_SMF_setmsg, status
+
+  integer, parameter :: versionid_lun = 123456
+  integer :: processing_version = 1 ! default value, over-ridden by VERSIONID from PCF file
 
   ! ---------------------------------------------------------------------------
   ! Some variables/parameters that are specific to the GOME way of doing things
@@ -58,7 +62,12 @@ PROGRAM PROFOZ_main
        WRITE(*,*) "Errors in read_reference_spectra"
        GOTO 666
   ENDIF
-   
+
+  status = pgs_pc_getconfigdata (versionid_lun, message)
+  if (status == 0) then
+    read (message, *)processing_version
+  endif
+
   ! ---------------------------------------------------------------------------
   ! Algorithm running
   ! ---------------------------------------------------------------------------
@@ -68,7 +77,7 @@ PROGRAM PROFOZ_main
   CASE ( gome2_idx)
     !CALL gome2_fitting_process  (message, pge_error_status)
   CASE (tempo_idx)
-    CALL tmpo_fitting_process (message, pge_error_status)
+    CALL tmpo_fitting_process (message, processing_version, pge_error_status)
   CASE DEFAULT
     pge_error_status = pge_errstat_error
   END SELECT

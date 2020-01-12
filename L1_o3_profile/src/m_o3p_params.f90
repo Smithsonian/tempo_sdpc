@@ -11,9 +11,6 @@ module m_o3p_params
        nfitvars, nfitwins, ngas, nnongas, nlayer, nlayerp1, nmax_wavs, &
        nnoise_elems, naeros_wavs
 
-  ! global attributes
-  integer (kind=4) :: processing_version = 1 ! FIXME - should be input param
-
   ! logical switches
   logical :: write_global_attr = .FALSE.
 
