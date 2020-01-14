@@ -707,6 +707,14 @@ static int mft_interp (Met_File_Type *mft, float lon_f, float lat_f, Met_Value_T
    int nx, ny, ix, iy, o;
    int status, num_pts = 1;
 
+   if ((0 == isfinite(lon_f))
+       || (0 == isfinite(lat_f))
+       || (fabs(lon_f) > 360.0)
+       || (fabs(lat_f) > 90.0))
+     {
+        return MFT_INTERP_DOMAIN_ERROR;
+     }
+
    if ((status = pj_transform (g->longlat, g->lcc, num_pts, 1, &x, &y, NULL)) != 0)
      {
         tell_verror (TELL_APPLICATION_ERROR,
