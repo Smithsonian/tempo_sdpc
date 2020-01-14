@@ -11,7 +11,6 @@
 #                rad_file = geolocated radiance file path
 #                irr_file = irradiance file path
 #                snow_file = path to NSIDC snow and ice cover data file
-#                met_file_path = path to file containing meteorological data
 #
 # 2. The first task is to finish processing of the geolocated radiance file
 #    by doing the following:
@@ -61,7 +60,6 @@ file_list_file="$2"
 #    rad_path
 #    irr_file
 #    snow_file
-#    met_file_path
 . "$file_list_file"
 
 # Setup paths to scripts, config files

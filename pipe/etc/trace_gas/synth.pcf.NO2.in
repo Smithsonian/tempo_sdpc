@@ -280,7 +280,8 @@
 ## 700270|OMI_GEOS-Chem_2x2p5_v4.he5|@refdata_dir@/trace_gas/data||||1
 700270|@clim_file@|@refdata_dir@/trace_gas/data||||1
 700280|OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5|@refdata_dir@/trace_gas/data||||1
-700290|@met_file@|@met_dir@||||1
+700290|@met_file1@|@met_dir1@||||1
+700291|@met_file2@|@met_dir2@||||1
 #
 # -----------------------------------------------------------------------
 # Prefitted output from other PGEs

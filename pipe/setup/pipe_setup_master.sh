@@ -24,7 +24,9 @@ inr_refdata.sh
 
 # FIXME - During operations, cron jobs will do this.
 #         For testing purposes, do it here.
-filedb -c $SDPC_ROOT/etc/filedb.cfg met --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg met:synth --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg met:hires --update
+filedb -c $SDPC_ROOT/etc/filedb.cfg met:lores --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --update
 

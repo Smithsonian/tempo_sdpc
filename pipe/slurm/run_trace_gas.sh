@@ -8,6 +8,10 @@ set -e
 set -u
 ulimit -s unlimited
 
+# If USE_FORECAST_MET_DATA is not set, define it to be OFF
+# To use forecast data, set it to anything else
+: "${USE_FORECAST_MET_DATA:=OFF}"
+
 # 1. Processing will run in the subdirectory provided on the command line,
 #    which already contains all necessary inputs.
 # 2. Processing ultimately stores all results in a tar file in an
@@ -94,12 +98,28 @@ start_month=$(grep tstart_month granule_ident.csv | cut -f2 -d,)
 start_month_name=${month_names[${start_month}]}
 clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
 
-# read file-list file to obtain definition for met_file_path variable
-met_file_path=$(grep met_file_path ${rad_basename}.lis | sed -e s,met_file_path=,,)
+set_met_file_path()
+{
+  varname=$1
+  met_file_path=$(grep ${varname} ${rad_basename}.lis | sed -e s,${varname}=,,)
+}
 
-# set meteorological data file:
-met_dir=$(dirname $met_file_path)
-met_file=$(basename $met_file_path)
+if test x"$USE_FORECAST_MET_DATA" = x"OFF" ; then
+      set_met_file_path "met_file_path_synth"
+      met_file1=$(basename $met_file_path)
+      met_dir1=$(dirname $met_file_path)
+
+      met_file2=""
+      met_dir2=""
+else
+      set_met_file_path "met_file_path_hires"
+      met_file1=$(basename $met_file_path)
+      met_dir1=$(dirname $met_file_path)
+
+      set_met_file_path "met_file_path_lores"
+      met_file2=$(basename $met_file_path)
+      met_dir2=$(dirname $met_file_path)
+fi
 
 # copy the control file template
 /bin/cp $template_ctrl $control_file
@@ -117,8 +137,10 @@ sed \
  -e s,@irradiance_file@,$irr_file,g \
  -e s,@cloud_file@,$cld_file,g \
  -e s,@clim_file@,$clim_file,g \
- -e s,@met_dir@,$met_dir,g \
- -e s,@met_file@,$met_file,g \
+ -e s,@met_dir1@,$met_dir1,g \
+ -e s,@met_file1@,$met_file1,g \
+ -e s,@met_dir2@,$met_dir2,g \
+ -e s,@met_file2@,$met_file2,g \
  -e s,@product_file@,$product_file,g \
  -e s,@refsec_rad_file@,$refsec_rad_file,g \
  -e s,@refsec_cld_file@,$refsec_cld_file,g \
