@@ -31,10 +31,13 @@ MODULE OMSAO_wfamf_module
   ! ---------
   INTEGER(KIND=i4), PARAMETER, public :: wfamf_table_lun = 700250
   INTEGER(KIND=i4), PARAMETER, public :: climatology_lun = 700270
-  integer(kind=i4), parameter, public :: meteorology_lun = 700290
   CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_wfamf_table_filename
   CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_climatology_filename
-  CHARACTER(LEN=MAX_STR_LEN), public  :: OMSAO_meteorology_filename
+  integer(kind=i4), parameter, public, dimension(*) :: &
+    meteorology_lun = (/700290, 700291/)
+  integer(kind=i4), parameter, public :: num_met_luns = size(meteorology_lun)
+  CHARACTER(LEN=MAX_STR_LEN), public, dimension(num_met_luns)  :: &
+    OMSAO_meteorology_filename
 
   ! -----------------------------
   ! Dimensions of the climatology
@@ -477,7 +480,11 @@ CONTAINS
         lon_f = lon(ixtrack,itimes)
         lat_f = lat(ixtrack,itimes)
 
-        if (lon_f == r4_missval .or. lat_f == r4_missval) cycle
+        if (lon_f == r4_missval .or. abs(lon_f) > 360.0 &
+            .or. lat_f == r4_missval .or. abs(lat_f) > 90.0) then
+          amfdiag(ixtrack,itimes) = omi_scattfail_amf
+          cycle
+        endif
 
         ! FIXME - this is just temporary
         cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
@@ -2735,6 +2742,7 @@ CONTAINS
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
       tropopause_pressure, lat, lon, amfdiag, errstat)
 
+    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char
     use ctrlvars, only: yn_stratrop
     use met_module
     use clim_module
@@ -2760,9 +2768,23 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx
+    INTEGER (KIND=i4) :: ixtrack, itimes, ilay, tropopause_idx, imet, status
     REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: pressure_grid, temperature_profile, alpha
     real (kind=r4), dimension(CmETA+1) :: eta_a, eta_b
+    real (kind=r4) :: lon_f, lat_f, ptrop
+    real (kind=r4), dimension(CmETA) :: isobar_f, temp_on_isobar_f
+    logical :: have_synthetic_met_data
+    character (len=256) :: errmsg
+
+    real (kind=r8), parameter :: amf_magic_temperature_bucsela = 220.0_r8
+
+    ! met_flags bit definitions:
+    ! bit 0 set => read surface pressure
+    ! bit 1 set => read tropopause pressure
+    ! bit 2 set => read temperature vs height
+    integer, parameter :: met_flags = 7
+
+    type (c_ptr) :: met
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2776,6 +2798,27 @@ CONTAINS
       if (errstat /= 0) return
       Ap(:) = real (eta_a(:), kind=r8)
       Bp(:) = real (eta_b(:), kind=r8)
+    endif
+
+    if (0 /= index (OMSAO_meteorology_filename(1), '.nc', .true.)) then
+      have_synthetic_met_data = .true.
+    else
+      have_synthetic_met_data = .false.
+      met = met_list_new (met_flags)
+      do imet=1, num_met_luns
+
+        if (0 /= index(OMSAO_meteorology_filename(imet), 'grib2', .true.)) then
+          status = met_list_add_file (met, trim(OMSAO_meteorology_filename(imet))//c_null_char)
+          if (status /= 0) then
+            call met_list_free (met)
+            call tell_error (tell_runtime_error, &
+                             "reading: "//trim(OMSAO_meteorology_filename(imet)), &
+                             errstat)
+            return
+          endif
+        endif
+
+      enddo
     endif
 
     ! ----------------------
@@ -2792,6 +2835,12 @@ CONTAINS
           CYCLE
         ENDIF
 
+        ! Skip points with invalid geolocation.
+        if (abs(lon(ixtrack,itimes)) > 360.0 .or. abs(lat(ixtrack,itimes)) > 90.0) then
+          saoamf(ixtrack,itimes) = r8_missval
+          cycle
+        endif
+
         ! ---------------------------------------------------
         ! Read tropopause pressure from met forecast file
         ! ---------------------------------------------------
@@ -2805,11 +2854,40 @@ CONTAINS
                    ( Ap(ilay+1) + surface_pressure(ixtrack,itimes) * Bp(ilay+1) )) / 2.0
            END DO
 
-           ! Read in tropopause pressure and temperature profile
-           call read_synth_met_data(trim(OMSAO_meteorology_filename), &
-                                    lat(ixtrack,itimes), lon(ixtrack,itimes), &
-                                    tropopause_pressure(ixtrack,itimes), errstat, &
-                                    pprof = pressure_grid, tprof = temperature_profile)
+           ! Get tropopause pressure and temperature profile
+           if (have_synthetic_met_data) then
+             call read_synth_met_data(trim(OMSAO_meteorology_filename(1)), &
+                                      lat(ixtrack,itimes), lon(ixtrack,itimes), &
+                                      tropopause_pressure(ixtrack,itimes), errstat, &
+                                      pprof = pressure_grid, tprof = temperature_profile)
+           else
+             lon_f = real (lon(ixtrack,itimes), kind=r4)
+             lat_f = real (lat(ixtrack,itimes), kind=r4)
+             isobar_f(1:CmETA) = real (pressure_grid(1:CmETA), kind=r4)
+
+             call met_list_interp_f (met, lon_f, lat_f, errstat, &
+                                     ptrop=ptrop, isobars=isobar_f, &
+                                     temp_on_isobar=temp_on_isobar_f)
+             if (errstat /= 0) then
+               write(errmsg, *)'interpolating forecast for lon=',lon_f,' lat=',lat_f
+               call tell_error (tell_runtime_error, errmsg, errstat)
+               call met_list_free (met)
+               return
+             endif
+
+             ! FIXME? Where the climatology pressure grid is not covered by the
+             ! forecast pressure grid, the interpolated temperature will be NaN.
+             ! For pressures with unknown temperature, we'll just assume the
+             ! magic/fiducial temperature.
+             do ilay = 1, CmETA
+               if (isnan(temp_on_isobar_f(ilay))) then
+                 temp_on_isobar_f(ilay) = real (amf_magic_temperature_bucsela, kind=r4)
+               endif
+             enddo
+
+             tropopause_pressure(ixtrack,itimes) = ptrop
+             temperature_profile(1:CmETA) = real (temp_on_isobar_f, kind=r8)
+           endif
 
            ! Set temperature profile constant and equal to 220K
            ! temperature_profile = 220.0_r8
@@ -2821,7 +2899,7 @@ CONTAINS
            ! DOI:10.5194/amt-6-2607-2013
            ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
            ! EJOS adding a test for zero in climatology to avoid NaN AMFs
-           alpha = 1.0_r8-0.003_r8*(temperature_profile-220.0_r8)
+           alpha = 1.0_r8-0.003_r8*(temperature_profile-amf_magic_temperature_bucsela)
            if (SUM(climatology(1:tropopause_idx,ixtrack,itimes)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
@@ -2848,6 +2926,8 @@ CONTAINS
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
+
+    call met_list_free (met)
 
   END SUBROUTINE compute_amf
 
