@@ -145,7 +145,7 @@ def process_file (conn, filename):
     basename = os.path.basename (filename)
     tok = basename.split('_')
 
-    dont_process = ["tie"]
+    dont_process = ["INR"]
     if (tok[1] in dont_process):
         return 0
 
