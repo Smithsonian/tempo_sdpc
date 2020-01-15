@@ -718,28 +718,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           }
      }
 
-#if 0 /* Obsolete for INRSW release 2.2, and later */
-   /* mirror_step_size */
-     {
-        static _pText_Attr_Type mirror_step_size_attrs[] =
-          {
-             {"units", "microradians"},
-             {"comment", "Nominal size of a mirror step from one scan position to the next."},
-             _pTEXT_ATTRS_END
-          };
-        float mirror_step_size = _pTIO_MIRROR_STEP_SIZE;
-
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_MIRROR_STEP_SIZE, NC_FLOAT, 0, NULL, mirror_step_size_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &mirror_step_size)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing mirror step size (%s)",
-                          __func__, nc_strerror(status));
-             return -1;
-          }
-     }
-#endif
-
    /* radiance */
      {
         static _pText_Attr_Type radiance_attrs[] =

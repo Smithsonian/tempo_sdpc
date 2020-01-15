@@ -16,7 +16,6 @@ extern "C" {
 
 #define _pTIO_PIXEL_SCALE_ROW       0.2   /* nm */
 #define _pTIO_PIXEL_SCALE_COLUMN   41.79  /* microradian */
-#define _pTIO_MIRROR_STEP_SIZE    114.0   /* microradian */
 
 /* nominal default values for template files */
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11

@@ -25,7 +25,6 @@ TEMPO_VAR_LATITUDE,"latitude"
 TEMPO_VAR_LATITUDE_BOUNDS,"latitude_bounds"
 TEMPO_VAR_LONGITUDE,"longitude"
 TEMPO_VAR_LONGITUDE_BOUNDS,"longitude_bounds"
-## TEMPO_VAR_MIRROR_STEP_SIZE,"mirror_step_size"  # obsolete for INRSW-r2.2 and later
 TEMPO_VAR_MOON_X,"moon_X"
 TEMPO_VAR_MOON_Y,"moon_Y"
 TEMPO_VAR_MOON_Z,"moon_Z"
