@@ -1,5 +1,8 @@
 #! /usr/bin/python
 
+# for eprint definition
+from __future__ import print_function
+
 import os, sys
 import time
 import sqlite3
@@ -7,10 +10,14 @@ from datetime import date
 from netCDF4 import Dataset as NetCDFFile
 import numpy as np
 
+# python3 will provide file= redirection to stderr
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 def get_db_path():
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     if (arch_dir == None):
-        printf ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
         sys.exit(1)
 
     db_dir = os.path.join (arch_dir, "registry")

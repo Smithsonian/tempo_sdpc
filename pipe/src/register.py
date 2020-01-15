@@ -1,5 +1,8 @@
 #! /usr/bin/python
 
+# for eprint definition
+from __future__ import print_function
+
 import os, sys
 import time
 import sqlite3
@@ -14,6 +17,10 @@ Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
 Coverage_Time_Attributes = ["time_coverage_start_since_epoch", "time_coverage_end_since_epoch"]
 Radiance_File_Attributes = Coverage_Time_Attributes \
                          + ["scan_num", "scan_type", "granule_num"]
+
+# python3 will provide file= redirection to stderr
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 class Table_Type:
 
@@ -86,7 +93,7 @@ def insert_radiance_entry (conn, table_name, entry):
             conn.commit()
             return 0
         except sqlite3.IntegrityError:
-            print ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+            eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
             return -1
 
 def insert_product_entry (conn, product_name, init_product_table, entry):
@@ -101,7 +108,7 @@ def insert_product_entry (conn, product_name, init_product_table, entry):
             conn.commit()
             return 0
         except sqlite3.IntegrityError:
-            print ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+            eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
             return -1
 
 def insert_radiance_product_entry (conn, product_name, entry):
@@ -155,7 +162,7 @@ def process_file (conn, filename):
     attr = nc.__dict__
 
     if not "time_coverage_start_since_epoch" in attr:
-        print ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
+        eprint ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
     if (product_name == 'RAD_L1'):
@@ -189,7 +196,7 @@ def process_file (conn, filename):
         status = insert_other_product_entry (conn, product_name, keys)
 
     if status < 0:
-        print('ERROR: processing file {}'.format(filename))
+        eprint('ERROR: processing file {}'.format(filename))
 
     return status
 
@@ -217,7 +224,7 @@ def register_files (db_path, filenames):
         if (os.path.islink(fn)):
             status = process_file (conn, fn)
             if (status != 0):
-                print('Error processing file: {}'.format(fn))
+                eprint('Error processing file: {}'.format(fn))
             os.remove(fn)
 
     conn.close()
@@ -226,7 +233,7 @@ def main():
 
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     if (arch_dir == None):
-        printf ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
         sys.exit(1)
 
     dir = os.path.join (arch_dir, 'registry/incoming')
