@@ -2742,7 +2742,7 @@ CONTAINS
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
       tropopause_pressure, lat, lon, amfdiag, errstat)
 
-    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char
+    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char, c_null_ptr
     use ctrlvars, only: yn_stratrop
     use met_module
     use clim_module
@@ -2784,7 +2784,7 @@ CONTAINS
     ! bit 2 set => read temperature vs height
     integer, parameter :: met_flags = 7
 
-    type (c_ptr) :: met
+    type (c_ptr) :: met = c_null_ptr
 
     ! ------------------------------
     ! Name of this module/subroutine
@@ -2927,7 +2927,9 @@ CONTAINS
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
 
-    call met_list_free (met)
+    if (.not.have_synthetic_met_data) then
+      call met_list_free (met)
+    endif
 
   END SUBROUTINE compute_amf
 
