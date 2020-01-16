@@ -2742,7 +2742,7 @@ CONTAINS
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
       tropopause_pressure, lat, lon, amfdiag, errstat)
 
-    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char, c_null_ptr
+    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char, c_null_ptr, c_associated
     use ctrlvars, only: yn_stratrop
     use met_module
     use clim_module
@@ -2802,9 +2802,15 @@ CONTAINS
 
     if (0 /= index (OMSAO_meteorology_filename(1), '.nc', .true.)) then
       have_synthetic_met_data = .true.
+      met = c_null_ptr
     else
       have_synthetic_met_data = .false.
       met = met_list_new (met_flags)
+      if (.not. c_associated(met)) then
+        call tell_error (tell_runtime_error, "met_list_new returned NULL", &
+                         errstat)
+        return
+      endif
       do imet=1, num_met_luns
 
         if (0 /= index(OMSAO_meteorology_filename(imet), 'grib2', .true.)) then
@@ -2927,7 +2933,7 @@ CONTAINS
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
 
-    if (.not.have_synthetic_met_data) then
+    if (c_associated(met)) then
       call met_list_free (met)
     endif
 
