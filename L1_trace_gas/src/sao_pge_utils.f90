@@ -57,7 +57,8 @@ CONTAINS
     ! * Divisible by 100: not a leap year
     ! * Divisible by 400: leap year
     ! ------------------------------------
-    IF ( MOD(year,4) == 0 .AND. ( MOD(year,100) /= 0 .OR. MOD(year,400) == 0 ) ) jday = jday+1
+    IF ( MOD(year,4) == 0 .AND. ( MOD(year,100) /= 0 .OR. MOD(year,400) == 0 )&
+         .and. month .gt. 2) jday = jday+1
 
     RETURN
   END FUNCTION day_of_year

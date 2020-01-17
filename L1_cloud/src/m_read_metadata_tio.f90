@@ -8,7 +8,7 @@ module m_read_metadata_tio
 
 contains
 
-  !> Get year, month, day and julian day of observation start
+  !> Get year, month, day of observation start
   !---------------------------------------------------------------------
   !
   !> @param[in] l1file L1 netCDF radiance file name

@@ -155,7 +155,7 @@ contains
     ! First find day of the year in a regular (non leap) year
     ! -------------------------------------------------------
     SELECT CASE ( month )
-    CASE ( 1 ) 
+    CASE ( 1 )
       jday = day
     CASE (2:12)
       jday = SUM ( days_per_month(1:month-1) ) + day
@@ -171,7 +171,7 @@ contains
     ! * Divisible by 400: leap year
     ! ------------------------------------
     IF ( MOD(year,4) == 0 .AND. ( MOD(year,100) /= 0 .OR. &
-         MOD(year,400) == 0 ) ) jday = jday+1
+         MOD(year,400) == 0 ) .and. month .gt. 2) jday = jday+1
 
     RETURN
   END FUNCTION day_of_year
