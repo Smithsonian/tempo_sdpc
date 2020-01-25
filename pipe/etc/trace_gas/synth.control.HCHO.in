@@ -15,7 +15,7 @@ hcho
 # will add several data fields on fitting correlations.
 # ============================================================
 Processing mode
-production
+diagnostic
 tempo
 
 General fitting parameters
