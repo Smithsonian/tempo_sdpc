@@ -119,33 +119,29 @@ private define get_tarfile_archive_subdir (tar_file)
    if (0 != remove (temp_granule_ident_file))
      throw ApplicationError, "*** Error removing $temp_granule_ident_file"$;
 
-   % Construct the archive subdirectory path:
-   variable subdir_seq = [g.processing_version];
-
-   switch (g.product_type)
-     {
-      case "DRK" or case "DRKL"
-          or case "IRR" or case "IRRL" or case "IRRR"
-          or case "RAD":
-        subdir_seq = [subdir_seq, g.product_type];
-     }
-
    variable sat_day = atof(g.sat_local_day_start);
-   subdir_seq = [subdir_seq, string(int(sat_day))];
+   variable sat_day_dir = "D" + string(int(sat_day));
 
-   % scan_num=0 means "unused"
-   if (atoi(g.scan_num) != 0)
+   % Construct the archive subdirectory path:
+   variable subdir_seq = ["V" + g.processing_version,
+                          g.product_type,
+                          sat_day_dir];
+
+   % Radiances will have assigned scan/granule number values,
+   % dark, and irradiance will not.
+   % If anything else comes through, the granule name should be
+   % unique for the given day.
+   if (is_substr(g.product_type, "RAD"))
      {
-        subdir_seq = [subdir_seq, g.scan_num];
+        subdir_seq = [subdir_seq,
+                      "S" + g.scan_num,
+                      "G" + g.granule_num];
+     }
+   else
+     {
+        subdir_seq = [subdir_seq, granule_name];
      }
 
-   % granule_num=0 means "unused"
-   if (atoi(g.granule_num) != 0)
-     {
-        subdir_seq = [subdir_seq, g.granule_num];
-     }
-
-   % FIXME: do we want leading zeros in directory names?
    variable dest_subdir = strjoin (subdir_seq, "/");
 
    return dest_subdir;

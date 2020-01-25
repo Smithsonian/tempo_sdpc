@@ -285,8 +285,8 @@ get_metadata_file()
    granule_ident=$(cat granule_ident.csv | tr ',' '=')
    eval "$granule_ident"
 
-   arch_type="$SDPC_ARCHIVE_DIR/L1/$processing_version/$product_type"
-   granule_arch_dir_path="${arch_type}/${sat_local_day_start}/${scan_num}/${granule_num}"
+   arch_type="$SDPC_ARCHIVE_DIR/L1/V$processing_version/$product_type"
+   granule_arch_dir_path="${arch_type}/D${sat_local_day_start}/S${scan_num}/G${granule_num}"
 
    /bin/cp $granule_arch_dir_path/${rad_basename}.nc.met .
 }

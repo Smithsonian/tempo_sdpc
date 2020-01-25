@@ -8,7 +8,7 @@ set -e
 #_src_dir="/data/tempo/sdpc/test_data/level0/2018jun29_fixup/incoming_newnames/telem"
 
 _src_dir="/data/tempo/sdpc/test_data/level0/2019jul21/v2/telem"
-_target_dir="$SDPC_ARCHIVE_DIR/L0/1/4944"
+_target_dir="$SDPC_ARCHIVE_DIR/L0/V${SDPC_PROCESSING_VERSION}/D4944"
 
 assert_dir_exists()
 {
@@ -29,11 +29,11 @@ done
 
 # another stupid hack (because the DRK and IRR files have the wrong times,
 # and the filenames don't match the 'time' array in the file either. Sigh).
-_target_dir="$SDPC_ARCHIVE_DIR/L0/1/7134/HK"
+_target_dir="$SDPC_ARCHIVE_DIR/L0/V${SDPC_PROCESSING_VERSION}/D7134/HK"
 mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T051005Z.nc
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T052010Z.nc
 
-_target_dir="$SDPC_ARCHIVE_DIR/L0/1/7135/HK"
+_target_dir="$SDPC_ARCHIVE_DIR/L0/V${SDPC_PROCESSING_VERSION}/D7135/HK"
 mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T081005Z.nc

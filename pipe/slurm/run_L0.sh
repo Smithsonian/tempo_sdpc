@@ -107,7 +107,7 @@ run_l0_ccd()
    # concept of operations has no CCD images of any kind being generated at local midnight.
 
    sat_day=$(grep sat_local_day_start granule_ident.csv | cut -d, -f2)
-   arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/$SDPC_LEVEL0_VERSION/${sat_day}/HK"
+   arch_hk_dir="$SDPC_ARCHIVE_DIR/L0/V$SDPC_LEVEL0_VERSION/D${sat_day}/HK"
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
