@@ -128,9 +128,9 @@ private define get_tarfile_archive_subdir (tar_file)
                           sat_day_dir];
 
    % Radiances will have assigned scan/granule number values,
-   % dark, and irradiance will not.
-   % If anything else comes through, the granule name should be
-   % unique for the given day.
+   % while dark, and irradiance will not.
+   % If anything else comes through, the UTC timestamp should
+   % ensure uniqueness within each product type.
    if (is_substr(g.product_type, "RAD"))
      {
         subdir_seq = [subdir_seq,
@@ -139,7 +139,9 @@ private define get_tarfile_archive_subdir (tar_file)
      }
    else
      {
-        subdir_seq = [subdir_seq, granule_name];
+        variable basename_fields = strtok (granule_name, "_");
+        variable timestamp_field = basename_fields[4];
+        subdir_seq = [subdir_seq, timestamp_field];
      }
 
    variable dest_subdir = strjoin (subdir_seq, "/");
