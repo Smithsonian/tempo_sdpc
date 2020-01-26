@@ -818,18 +818,18 @@ int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int s
    if (0 != tio_time_sat_local_day_number (sec_since_epoch, &sat_day))
      return -1;
 
-   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/V${version}/Ddddd/${file_type}
-    *   or ${SDPC_ARCHIVE_DIR}/L0/V${version}/Ddddd/${file_type}/Sddd
+   /* e.g. ${SDPC_ARCHIVE_DIR}/L0/Ddddd/${file_type}
+    *   or ${SDPC_ARCHIVE_DIR}/L0/Ddddd/${file_type}/Sddd
     */
    if (scan_num < 0)
      {
-        n = snprintf (buf, bufsize, "%s/L0/V%d/D%d/%s",
-                      root_path, processing_version, (int) sat_day, suffix);
+        n = snprintf (buf, bufsize, "%s/L0/D%d/%s",
+                      root_path, (int) sat_day, suffix);
      }
    else
      {
-        n = snprintf (buf, bufsize, "%s/L0/V%d/D%d/%s/S%d",
-                      root_path, processing_version, (int) sat_day, suffix, scan_num);
+        n = snprintf (buf, bufsize, "%s/L0/D%d/%s/S%d",
+                      root_path, (int) sat_day, suffix, scan_num);
      }
 
    if (n >= bufsize)

@@ -23,7 +23,7 @@ get_granule_arch_dir_path()
   #echo "$granule_ident"
   eval "$granule_ident"
 
-  arch_type="$SDPC_ARCHIVE_DIR/L2/V$processing_version/$product_type"
+  arch_type="$SDPC_ARCHIVE_DIR/L2/$product_type"
 
   granule_arch_dir_path="${arch_type}/D${sat_local_day_start}/S${scan_num}/G${granule_num}"
 

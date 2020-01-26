@@ -164,8 +164,7 @@ private define scan_subdir (g)
 {
    % Derive the destination archive directory from the contents of
    % the granule_ident CSV file.
-   variable subdir_seq = ["V" + string(g.processing_version),
-                          "D" + string(g.sat_local_day_start),
+   variable subdir_seq = ["D" + string(g.sat_local_day_start),
                           "S" + string(g.scan_num)];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
@@ -235,7 +234,7 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
    variable idents = array_map (Struct_Type, &read_ident_file, ident_files);
    variable l3_outfile_fmt = make_l3_filename_format (idents);
 
-   variable level3_root_dir = path_concat (archive_root_dir, "L3");
+   variable level3_root_dir = path_concat (archive_root_dir, "L3/RAD");
    variable output_dir = path_concat (level3_root_dir,
                                       scan_subdir(idents[0]));
 

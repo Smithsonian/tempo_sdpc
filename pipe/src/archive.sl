@@ -123,9 +123,7 @@ private define get_tarfile_archive_subdir (tar_file)
    variable sat_day_dir = "D" + string(int(sat_day));
 
    % Construct the archive subdirectory path:
-   variable subdir_seq = ["V" + g.processing_version,
-                          g.product_type,
-                          sat_day_dir];
+   variable subdir_seq = [g.product_type, sat_day_dir];
 
    % Radiances will have assigned scan/granule number values,
    % while dark, and irradiance will not.
