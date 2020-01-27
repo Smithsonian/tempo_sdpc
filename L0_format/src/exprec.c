@@ -409,7 +409,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
    if (0 != make_level0_archdir_path (&pmt->archdir_path, erec->image_start_time, scan_num_int,
-                                      pmt->processing_version, pmt->product_type))
+                                      pmt->product_type))
      return -1;
 
    if (-1 == make_level0_basename (basename, sizeof(basename), erec->image_start_time,

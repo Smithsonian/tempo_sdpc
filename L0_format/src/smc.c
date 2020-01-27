@@ -306,8 +306,7 @@ static int new_smc_outfile (Process_Method_Type *pmt,
 
    FREE(pmt->archdir_path);
    pmt->archdir_path = NULL;
-   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp, -1,
-                                      pmt->processing_version, TEMPO_PROD_TYPE_SMC))
+   if (0 != make_level0_archdir_path (&pmt->archdir_path, timestamp, -1, TEMPO_PROD_TYPE_SMC))
      return -1;
 
    if (0 != make_level0_basename (basename, sizeof(basename), timestamp,

@@ -795,7 +795,7 @@ int verify_epoch (time_t epoch)
 }
 
 int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int scan_num,
-                              int processing_version, const char *suffix)
+                              const char *suffix)
 {
    char buf[MAX_PATHLEN];
    size_t bufsize = sizeof(buf);
