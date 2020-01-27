@@ -74,6 +74,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
+   fprintf (stderr, "   -r | --register          Perform database registration of archived files\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
    fprintf (stderr, "                            e.g. --cache 'd710[1-4]'\n");
    fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
@@ -915,6 +916,8 @@ int create_hidden (const char *dirname, const char *basename, int *ncid)
    if (-1 == make_hidden_basename (basename, hidden_basename, MAX_BASENAME_SIZE))
      return -1;
 
+   tell_vinfo (0, "creating file %s/%s", dirname, hidden_basename);
+
    if ((NULL == (path = ioclib_pathconcat (dirname, hidden_basename)))
        || (-1 == TIO_create (path, NC_NETCDF4, ncid))
       )
@@ -1031,10 +1034,6 @@ static int perform_copy (const char *path, const char *copydir, const char *base
    char *copypath = NULL;
    int status = -1;
 
-   /* NULL means "don't copy" */
-   if (copydir == NULL)
-     return 0;
-
    if (0 != ioclib_mkdir (copydir, 0))
      return -1;
 
@@ -1056,7 +1055,7 @@ return_status:
    return status;
 }
 
-static int register_with_symlink (const char *copydir, const char *basename)
+static int register_with_symlink (const char *dir, const char *basename)
 {
    char *archived_path = NULL;
    char *registry_dir = NULL;
@@ -1071,7 +1070,7 @@ static int register_with_symlink (const char *copydir, const char *basename)
    if (Perform_Archive_Registration == 0)
      return 0;
 
-   if ((NULL == (archived_path = ioclib_pathconcat (copydir, basename)))
+   if ((NULL == (archived_path = ioclib_pathconcat (dir, basename)))
        || (NULL == (registry_dir = ioclib_pathconcat (root_path, "registry/incoming")))
        || (NULL == (symlink_path = ioclib_pathconcat (registry_dir, basename)))
       )
@@ -1098,21 +1097,16 @@ return_status:
    return status;
 }
 
-/* Close hidden file $dirname/.${basename}
- * and rename to $dirname/$basename.
- * Optionally, if copydir != NULL, put a copy in $copydir/$basename
- * before performing the rename.
- */
-int close_hidden (int ncid, const char *dirname, const char *basename,
-                  const char *copydir)
+int copy_hidden (const char *dirname, const char *basename, const char *copydir)
 {
    char hidden_basename[MAX_BASENAME_SIZE];
    char *oldpath = NULL;
    char *newpath = NULL;
    int status = -1;
 
-   if (-1 == TIO_close (ncid))
-     return -1;
+   /* copydir == NULL means "don't copy" */
+   if (copydir == NULL)
+     return 0;
 
    if (-1 == make_hidden_basename (basename, hidden_basename, MAX_BASENAME_SIZE))
      return -1;
@@ -1127,6 +1121,28 @@ int close_hidden (int ncid, const char *dirname, const char *basename,
    if (0 != register_with_symlink (copydir, basename))
      goto return_status;
 
+   status = 0;
+return_status:
+
+   FREE(oldpath);
+   FREE(newpath);
+   return status;
+}
+
+int rename_hidden (const char *dirname, const char *basename)
+{
+   char hidden_basename[MAX_BASENAME_SIZE];
+   char *oldpath = NULL;
+   char *newpath = NULL;
+   int status = -1;
+
+   if (-1 == make_hidden_basename (basename, hidden_basename, MAX_BASENAME_SIZE))
+     return -1;
+
+   if ((NULL == (oldpath = ioclib_pathconcat (dirname, hidden_basename)))
+       || (NULL == (newpath = ioclib_pathconcat (dirname, basename))))
+     goto return_status;
+
    if (-1 == ioclib_rename (oldpath, newpath))
      goto return_status;
 
@@ -1138,15 +1154,20 @@ return_status:
    return status;
 }
 
-int remove_file (const char *dirname, const char *basename)
+int remove_hidden (const char *dirname, const char *basename)
 {
+   char hidden_basename[MAX_BASENAME_SIZE];
    char *path = NULL;
    int status;
 
-   if (NULL == (path = ioclib_pathconcat (dirname, basename)))
+   if (-1 == make_hidden_basename (basename, hidden_basename, MAX_BASENAME_SIZE))
      return -1;
+
+   if (NULL == (path = ioclib_pathconcat (dirname, hidden_basename)))
+     return -1;
+
    status = ioclib_unlink (path);
-   ioclib_free (path);
+   FREE(path);
    return status;
 }
 

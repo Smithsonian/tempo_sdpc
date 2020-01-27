@@ -44,13 +44,6 @@
 
 #define L0_DEFAULT_OUTFILE_DURATION_SEC 300.0
 
-/** Remove a file
- * @param[in]  dirname   Directory path
- * @param[in]  basename  File name
- * @return 0 on success, -1 on error
- */
-extern int remove_file (const char *dirname, const char *basename);
-
 /** Perform shell variable expansion on a string
  * @param[in]  s  Input string
  * @return on success, an allocated string, NULL on error.
@@ -134,8 +127,7 @@ extern int make_level0_archdir_path (char **archdir_path, double sec_since_epoch
  */
 extern int create_hidden (const char *dirname, const char *basename, int *ncid);
 
-/** Close a hidden file, removing a "." prefix from the name, and optionally put a copy into a specified directory
- *  @param[in] ncid      netCDF file index of the hidden file.
+/** Copy a hidden file, removing a "." prefix from the name, and into a specified directory
  *  @param[in] dirname   Path to the target directory that contains the file.
  *  @param[in] basename  The file basename that will be prefixed by a "." to construct
  *                       the hidden file name.
@@ -145,7 +137,25 @@ extern int create_hidden (const char *dirname, const char *basename, int *ncid);
  *
  * On return, a "." prefix will be removed from the name of the file on disk.
  */
-extern int close_hidden (int ncid, const char *dirname, const char *basename, const char *copydir);
+extern int copy_hidden (const char *dirname, const char *basename, const char *copydir);
+
+/** Rename a hidden file, removing a "." prefix from the name
+ *  @param[in] dirname   Path to the target directory that contains the file.
+ *  @param[in] basename  The file basename that will be prefixed by a "." to construct
+ *                       the hidden file name.
+ *  @return 0 on success, -1 on error
+ *
+ * On return, a "." prefix will be removed from the name of the file on disk.
+ */
+extern int rename_hidden (const char *dirname, const char *basename);
+
+/** Remove a hidden file
+ *  @param[in] dirname   Path to the target directory that contains the file.
+ *  @param[in] basename  The file basename that will be prefixed by a "." to construct
+ *                       the hidden file name.
+ *  @return 0 on success, -1 on error
+ */
+extern int remove_hidden (const char *dirname, const char *basename);
 
 /** Write comment and units attributes to a specified netCDF file variable */
 extern int annotate_var (int grp, int varid, const char *descr, const char *units);

@@ -301,8 +301,41 @@ static int close_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
+
+        /* close the file */
+        if (0 != TIO_close (pmt->ncid))
           return -1;
+        pmt->ncid = INT_MAX;
+
+        if (pmt->archdir_path)
+          {
+             /* Put a copy in the archive */
+             if (0 != copy_hidden (pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
+               return -1;
+             switch (pmt->exprec_type)
+               {
+                default:
+                  /* Un-hide files of known type to enable further processing */
+                  if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
+                    return -1;
+                  tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
+                  break;
+
+                case IOCSDPC_EXPREC_TYPE_UNKNOWN:
+                  /* Files of unknown type will not be processed further,
+                   * so the archived copy is sufficient */
+                  if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
+                    return -1;
+                  break;
+               }
+          }
+        else
+          {
+             /* If we're not archiving, un-hide the original file */
+             if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
+               return -1;
+             tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
+          }
      }
    pmt->ncid = INT_MAX;
    if (pmt->enum_lookup)
@@ -415,8 +448,6 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (-1 == make_level0_basename (basename, sizeof(basename), erec->image_start_time,
                                    pmt->processing_version, pmt->product_type, identp))
      return -1;
-
-   tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
 
    if ((-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
        || (-1 == write_std_global_metadata (pmt->ncid, &erec->common_header)))

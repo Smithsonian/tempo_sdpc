@@ -77,13 +77,25 @@ static int close_outfile (Process_Method_Type *pmt)
         if (-1 == write_attr_global_timestamp (pmt->ncid, "time_coverage_end",
                                                pmt->outfile_timestamp_end))
           return -1;
-        if (-1 == close_hidden (pmt->ncid, pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
+
+        /* close the file */
+        if (0 != TIO_close (pmt->ncid))
           return -1;
+        pmt->ncid = INT_MAX;
+
         if (pmt->archdir_path)
           {
-             /* At this point, the output file is in the archive,
-              * and we don't need the original */
-             (void) remove_file (pmt->out_dirname, pmt->out_basename);
+             /* Put a copy in the archive and delete the original */
+             if (0 != copy_hidden (pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
+               return -1;
+             if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
+               return -1;
+          }
+        else
+          {
+             /* If we're not archiving, un-hide the original file */
+             if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
+               return -1;
           }
      }
    pmt->ncid = INT_MAX;
@@ -125,8 +137,6 @@ static int new_outfile (Process_Method_Type *pmt,
         if (-1 == close_outfile (pmt))
           return -1;
      }
-
-   tell_vinfo (0, "creating file %s/%s", pmt->out_dirname, basename);
 
    if ((-1 == create_hidden (pmt->out_dirname, basename, &pmt->ncid))
        || (-1 == write_std_global_metadata (pmt->ncid, chdr)))
