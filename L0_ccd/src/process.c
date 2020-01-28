@@ -1238,33 +1238,6 @@ static int ephem_close (Ephem_Type *eph)
    return error ? -1 : 0;
 }
 
-static char *expand_string (const char *s)
-{
-   wordexp_t we = {0};
-   char *s_exp = NULL;
-
-   memset ((char *)&we, 0, sizeof (wordexp_t));
-
-   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
-       || (we.we_wordc != 1))
-     {
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, s ? s : "(null)");
-        wordfree (&we);
-        return NULL;
-     }
-
-   s_exp = strdup (we.we_wordv[0]);
-   wordfree (&we);
-
-   if (NULL == s_exp)
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: strdup failed", __func__);
-     }
-
-   return s_exp;
-}
-
 static int ephem_open (config_t *cfg, Ephem_Type *eph)
 {
    config_setting_t *s;

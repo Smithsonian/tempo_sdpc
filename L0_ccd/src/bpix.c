@@ -137,7 +137,7 @@ Badpix_Map_Type *bpix_read (const char *file)
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
 
-   if (NULL == (path = expand_path (file)))
+   if (NULL == (path = expand_string (file)))
      return NULL;
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))

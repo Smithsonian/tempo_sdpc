@@ -248,22 +248,22 @@ int read_config_float_array (config_setting_t *s, const char *name,
    return 1;
 }
 
-char *expand_path (const char *path)
+char *expand_string (const char *s)
 {
    wordexp_t we;
-   char *path_exp = NULL;
+   char *s_exp = NULL;
 
    memset ((char *)&we, 0, sizeof(wordexp_t));
 
-   if ((0 != wordexp (path, &we, WRDE_NOCMD | WRDE_UNDEF))
+   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
        || (we.we_wordc != 1))
      {
         tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, path);
+                     "%s: expanding string: %s", __func__, s);
         goto return_error;
      }
 
-   if (NULL == (path_exp = strdup (we.we_wordv[0])))
+   if (NULL == (s_exp = strdup (we.we_wordv[0])))
      {
         tell_verror (TELL_MALLOC_ERROR,
                      "%s: strdup failed", __func__);
@@ -271,7 +271,7 @@ char *expand_path (const char *path)
 
 return_error:
    wordfree (&we);
-   return path_exp;
+   return s_exp;
 }
 
 char *path_concat (const char *dir, const char *basename)

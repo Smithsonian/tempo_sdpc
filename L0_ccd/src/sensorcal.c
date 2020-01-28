@@ -1186,7 +1186,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
         return NULL;
      }
 
-   if (NULL == (path = expand_path (sensorcal_file)))
+   if (NULL == (path = expand_string (sensorcal_file)))
      return NULL;
 
    if (NULL == (cal = (Calibration_Type *)MALLOC (sizeof *cal)))

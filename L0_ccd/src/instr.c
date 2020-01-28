@@ -346,10 +346,9 @@ return_status:
    return status;
 }
 
-static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *flt)
+static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const Instr_Filter_Type *flt)
 {
    IOCLib_Glob_Type *g = NULL;
-   Instr_Type *head = NULL;
    Instr_Type **tail = NULL;
    char *glob_path = NULL;
    unsigned int i;
@@ -399,8 +398,8 @@ static Instr_Type *read_instr_glob (const char *path, const Instr_Filter_Type *f
 
    if (head == NULL)
      {
-	tell_verror (TELL_RUNTIME_ERROR, "%s: no files match selection criteria: %s",
-                     __func__, glob_path);
+	tell_vwarn (0, "%s: no files match selection criteria: %s",
+                    __func__, glob_path);
      }
 
    status_flag = 0;
@@ -422,12 +421,85 @@ return_status:
    return head;
 }
 
+static char *make_hk_dir_path (int sat_day)
+{
+   char buf[256];
+   size_t bufsize = sizeof(buf);
+   int len;
+
+   /* Construct path to archive directory containing the telemetry point
+    * stream for this day.
+    */
+   len = snprintf (buf, bufsize, "$SDPC_ARCHIVE_DIR/L0/D%d/HK", sat_day);
+   if ((len < 0) || ((size_t) len >= bufsize))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: path exceeded buffer size", __func__);
+        return NULL;
+     }
+
+   return expand_string (buf);
+}
+
+static Instr_Type *read_instr_default_paths (const Instr_Filter_Type *flt)
+{
+   Instr_Type *instr = NULL;
+   char *dir = NULL;
+   double day_beg, day_end;
+   int iday_beg, iday_end;
+
+   if ((0 != tio_time_sat_local_day_number (flt->tstart, &day_beg))
+       ||(0 != tio_time_sat_local_day_number (flt->tend, &day_end)))
+     return NULL;
+
+   iday_beg = (int) day_beg;
+   iday_end = (int) day_end;
+
+   /* Observations occuring near local midnight may have instrument
+    * telemetry point files spread across two archive directories.
+    * Radiance observations near midnight should never happen (violates mission safety rules).
+    * Irradiance observations near midnight are possible, but unlikely.
+    * Dark observations near midnight are allowed and must be supported.
+    */
+
+   if ((iday_end < iday_beg)
+       || ((iday_end - iday_beg) > 1))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: invalid/unsupported observation interval: tstart=%f, tend=%f",
+                     __func__, flt->tstart, flt->tend);
+        return NULL;
+     }
+
+   if (NULL == (dir = make_hk_dir_path (iday_beg)))
+     return NULL;
+
+   /* NULL ok */
+   instr = read_instr_glob (instr, dir, flt);
+   FREE(dir);
+
+   if (iday_end > iday_beg)
+     {
+        if (NULL == (dir = make_hk_dir_path (iday_end)))
+          {
+             free_instr (instr);
+             return NULL;
+          }
+        /* NULL ok */
+        instr = read_instr_glob (instr, dir, flt);
+        FREE(dir);
+     }
+
+   return instr;
+}
+
 static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
 {
    struct stat st = {0};
 
    /* The input path may represent one of the following
     * alternatives:
+    * 0) path = NULL
+    *           => use the archive default
     * 1) path = '@LISTFILE'
     *           where LISTFILE is the path to a file containing
     *           a time-ordered list of filenames
@@ -437,6 +509,11 @@ static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
     * 3) path = 'FILENAME'
     *           where FILENAME is the path to a single file
     */
+
+   if (path == NULL)
+     {
+        return read_instr_default_paths (flt);
+     }
 
    if (*path == '@')
      {
@@ -453,7 +530,7 @@ static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
 
    if (S_ISDIR(st.st_mode))
      {
-        return read_instr_glob (path, flt);
+        return read_instr_glob (NULL, path, flt);
      }
 
    return read_instr1 (path);
@@ -467,23 +544,18 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
 
-   if (file == NULL)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: received file == NULL",
-                     __func__);
-        return NULL;
-     }
-
    flt.glob_basename = glob_basename;
    flt.tstart = tstart;
    flt.tend = tend;
 
    _pMeta_Ptr = meta;
 
-   if (NULL == (instr = read_instr (file, &flt)))
-     return NULL;
+   instr = read_instr (file, &flt);
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
+   if (instr)
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: succeeded", __func__);
+     }
 
    return instr;
 }

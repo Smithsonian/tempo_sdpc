@@ -5,7 +5,7 @@ extern int bsearch_f (float t, const float *x, int n);
 extern int bsearch_d (double t, const double *x, int n);
 extern double *alloc_doubles (int n);
 extern int find_x (double x, const double *a, int na);
-extern char *expand_path (const char *path);
+extern char *expand_string (const char *s);
 extern char *path_concat (const char *dir, const char *basename);
 
 #include <libconfig.h>

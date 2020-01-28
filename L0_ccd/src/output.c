@@ -456,7 +456,7 @@ static int read_params (Output_Type *out, config_t *cfg)
         return 0;
      }
 
-   if (NULL == (out->metadata_template_dir = expand_path (template_dir)))
+   if (NULL == (out->metadata_template_dir = expand_string (template_dir)))
      return -1;
 
    return 0;

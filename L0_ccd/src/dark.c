@@ -310,7 +310,7 @@ static int read_dc_params (config_t *cfg, Dark_Type *drk)
         return -1;
      }
 
-   if (NULL == (path = expand_path (sensorcal_file)))
+   if (NULL == (path = expand_string (sensorcal_file)))
      return -1;
 
    if (0 != read_Tfpa_coeffs (drk, path))

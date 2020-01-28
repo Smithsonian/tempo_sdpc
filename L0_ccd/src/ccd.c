@@ -1673,7 +1673,7 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
         return -1;
      }
 
-   if (NULL == (path = expand_path (cal_param_file)))
+   if (NULL == (path = expand_string (cal_param_file)))
      return -1;
 
    /* Letting each subroutine have the path makes it easier
