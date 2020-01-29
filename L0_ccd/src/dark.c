@@ -190,6 +190,8 @@ static int drk_open (Dark_Type *drk, const char *path)
    char product_type[TIO_MAX_SHORT_NAME_LEN];
    int ncid, status = -1;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
+
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      {
         tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading",
