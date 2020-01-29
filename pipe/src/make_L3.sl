@@ -261,6 +261,29 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
              perform_regridding (output_dir, cfg_case.config_file);
           }
      }
+
+   variable register_dir = "$SDPC_ARCHIVE_DIR/registry/incoming"$;
+   if (is_directory (register_dir))
+     {
+        % Register L3 products produced
+        foreach prod (products)
+          {
+             if (0 == assoc_key_exists (prod_files, prod))
+               continue;
+
+             l3_output_file = sprintf (l3_outfile_fmt, prod);
+             variable from_path = path_concat (output_dir, l3_output_file);
+
+             if (NULL == stat_file (from_path))
+               continue;
+
+             variable to_path = path_concat (register_dir, l3_output_file);
+             if (0 != symlink (from_path, to_path))
+               {
+                  throw IOError, "*** Error creating symbolic link from $from_path to $to_path"$;
+               }
+          }
+     }
 }
 
 define slsh_main()
