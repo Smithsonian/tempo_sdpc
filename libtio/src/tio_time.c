@@ -251,17 +251,20 @@ static int initialize (void)
 
 static int utc_to_tai (double utc_time, double *tai_time)
 {
-   Leap_Second_Table_Type *lstt;
+   Leap_Second_Table_Type *lstt = Leap_Second_Table;
    Leap_Second_Entry_Type *entries;
    double tai;
    unsigned int ilo, ihi;
+   int maybe_stale_table = 1;
 
-   lstt = Leap_Second_Table;
+refresh_table:
+
    if (lstt == NULL)
      {
         if (-1 == initialize ())
           return -1;
         lstt = Leap_Second_Table;
+        maybe_stale_table = 0;
      }
 
    entries = lstt->entries;
@@ -277,7 +280,18 @@ static int utc_to_tai (double utc_time, double *tai_time)
           tai = utc_time + entries[ihi-1].tai_utc_offset;
 
         if (utc_time >= lstt->expiration_time)
-          tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+          {
+             /* If we're in a long-running process, the table may have been updated.
+              * Try re-reading the table one time. */
+             if (maybe_stale_table)
+               {
+                  free_leap_second_table (lstt);
+                  lstt = NULL;
+                  Leap_Second_Table = NULL;
+                  goto refresh_table;
+               }
+             tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+          }
 
         *tai_time = tai;
         return 0;
@@ -302,16 +316,18 @@ static int utc_to_tai (double utc_time, double *tai_time)
 
 static int tai_to_utc (double tai, double *utc_time)
 {
-   Leap_Second_Table_Type *lstt;
+   Leap_Second_Table_Type *lstt = Leap_Second_Table;
    Leap_Second_Entry_Type *entries;
    unsigned int ilo, ihi;
+   int maybe_stale_table = 1;
 
-   lstt = Leap_Second_Table;
+refresh_table:
    if (lstt == NULL)
      {
         if (-1 == initialize ())
           return -1;
         lstt = Leap_Second_Table;
+        maybe_stale_table = 0;
      }
 
    entries = lstt->entries;
@@ -327,7 +343,18 @@ static int tai_to_utc (double tai, double *utc_time)
           *utc_time = tai - entries[ihi-1].tai_utc_offset;
 
         if (*utc_time >= lstt->expiration_time)
-          tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+          {
+             /* If we're in a long-running process, the table may have been updated.
+              * Try re-reading the table one time. */
+             if (maybe_stale_table)
+               {
+                  free_leap_second_table (lstt);
+                  lstt = NULL;
+                  Leap_Second_Table = NULL;
+                  goto refresh_table;
+               }
+             tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+          }
 
         return 0;
      }
