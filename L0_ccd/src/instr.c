@@ -306,7 +306,8 @@ enum
 {
    FILTER_ERROR = -1,
    FILTER_INCLUDES_FILE = 0,
-   FILTER_EXCLUDES_FILE = 1
+   FILTER_EXCLUDES_FILE = 1,
+   FILTER_HALTS_SEARCH = 2
 };
 
 static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file)
@@ -326,7 +327,7 @@ static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file)
 
    if (flt->tend < file_tstart)
      {
-        status = FILTER_EXCLUDES_FILE;
+        status = FILTER_HALTS_SEARCH;
         goto return_status;
      }
 
@@ -380,8 +381,10 @@ static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const In
 
         if (status < 0)
           goto return_status;
-        else if (status > 0)
+        else if (status == FILTER_EXCLUDES_FILE)
           continue;
+        else if (status == FILTER_HALTS_SEARCH)
+          break;
 
         if (NULL == (instr = read_instr1 (g->files[i])))
           goto return_status;
@@ -423,9 +426,17 @@ return_status:
 
 static char *make_hk_dir_path (int sat_day)
 {
-   char buf[256];
+   char buf[1024];
    size_t bufsize = sizeof(buf);
    int len;
+
+   /* If the environment variable is not set, look in the current directory */
+   if (NULL == getenv ("SDPC_ARCHIVE_DIR"))
+     {
+        if (NULL == getcwd (buf, bufsize))
+          return strdup (buf);
+        else return NULL;
+     }
 
    /* Construct path to archive directory containing the telemetry point
     * stream for this day.
@@ -499,7 +510,9 @@ static Instr_Type *read_instr (const char *path, const Instr_Filter_Type *flt)
    /* The input path may represent one of the following
     * alternatives:
     * 0) path = NULL
-    *           => use the archive default
+    *           => use the archive default, or, if SDPC_ARCHIVE_DIR
+    *              is not set, look in the current directory for
+    *              files matching the globbing expression
     * 1) path = '@LISTFILE'
     *           where LISTFILE is the path to a file containing
     *           a time-ordered list of filenames
