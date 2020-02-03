@@ -581,12 +581,12 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
 
    /* The following standard keyword values are set:
     * @verbatim
-    *   GRINGPOINTLONGITUDE     boundary polygon longitudes
-    *   GRINGPOINTLATITUDE      boundary polygon latitudes
-    *   GRINGPOINTSEQUENCENO    integer indices giving the sequence in which the
+    *   polygon_longitudes      boundary polygon longitudes
+    *   polygon_latitudes       boundary polygon latitudes
+    *   polygon_sequence        integer indices giving the sequence in which the
     *                           (lon,lat) points trace the boundary in CCW order
-    *   CENTROID_MEAN_LONGITUDE longitude of the polygon centroid
-    *   CENTROID_MEAN_LATITUDE  latitude of the polygon centroid
+    *   centroid_mean_longitude longitude of the polygon centroid
+    *   centroid_mean_latitude  latitude of the polygon centroid
     * @endverbatim
     */
 
@@ -598,11 +598,11 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
    centroid_lon = 0.5 * (dest->xmin + dest->xmax);
    centroid_lat = 0.5 * (dest->ymin + dest->ymax);
 
-   if ((0 != tio_meta_set (meta, "GRINGPOINTLONGITUDE", TIO_META_TYPE_FLOAT, 4, lon))
-       || (0 != tio_meta_set (meta, "GRINGPOINTLATITUDE",  TIO_META_TYPE_FLOAT, 4, lat))
-       || (0 != tio_meta_set (meta, "GRINGPOINTSEQUENCENO", TIO_META_TYPE_INT, 4, seq))
-       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LONGITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
-       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LATITUDE",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
+   if ((0 != tio_meta_set (meta, "polygon_longitudes", TIO_META_TYPE_FLOAT, 4, lon))
+       || (0 != tio_meta_set (meta, "polygon_latitudes",  TIO_META_TYPE_FLOAT, 4, lat))
+       || (0 != tio_meta_set (meta, "polygon_sequence", TIO_META_TYPE_INT, 4, seq))
+       || (0 != tio_meta_set (meta, "centroid_mean_longitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
+       || (0 != tio_meta_set (meta, "centroid_mean_latitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
      {
         return -1;
      }
@@ -639,7 +639,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
           {
              basename = p + 1;
           }
-        if (0 != tio_meta_append_string (meta, "INPUTPOINTER", basename))
+        if (0 != tio_meta_append_string (meta, "input_pointer", basename))
           return -1;
      }
 

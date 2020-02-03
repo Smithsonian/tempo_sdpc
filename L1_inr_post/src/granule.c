@@ -1224,7 +1224,7 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
    if (0 != write_geolocation (gt))
      goto free_and_return;
 
-   tio_meta_append_string (meta, "INPUTPOINTER", geoid_dem_path);
+   tio_meta_append_string (meta, "input_pointer", geoid_dem_path);
 
    status = 0;
 free_and_return:
@@ -1346,7 +1346,7 @@ static int maybe_init_metadata_keywords (int ncid, TIO_Meta_Type *meta)
      return 0;
 
    /* It's ok if the keyword doesn't exist */
-   (void) tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+   (void) tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
 
    return 0;
 }

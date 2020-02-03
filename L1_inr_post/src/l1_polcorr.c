@@ -147,7 +147,7 @@ static int meta_record_basename (TIO_Meta_Type *meta, const char *path)
      }
    else path_basename = path;
 
-   tio_meta_append_string (meta, "INPUTPOINTER", path_basename);
+   tio_meta_append_string (meta, "input_pointer", path_basename);
 
    return 0;
 }
@@ -168,7 +168,7 @@ static int update_radiance_metadata (const char *rad_file,
      goto return_status;
 
    /* It's ok if this keyword doesn't exist */
-   (void) tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+   (void) tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
 
    meta_record_basename (meta, qu_file);
    meta_record_basename (meta, lps_file);

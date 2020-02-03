@@ -410,12 +410,12 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
        || (out->exposure_type == EXPREC_TYPE_IRR_WRK)
        || (out->exposure_type == EXPREC_TYPE_IRR_REF))
      {
-        /* For radiance files, INPUTPOINTER gets expanded only in the
+        /* For radiance files, input_pointer gets expanded only in the
          * last processing step of Level 0-1, e.g. post-INR
-         * For irradiance files, INPUTPOINTER gets expanded after
+         * For irradiance files, input_pointer gets expanded after
          * wavelength calibration.
          */
-        tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+        tio_meta_set_noexpand (meta, "input_pointer", 1);
      }
 
    if ((out->metadata_template_dir != NULL)

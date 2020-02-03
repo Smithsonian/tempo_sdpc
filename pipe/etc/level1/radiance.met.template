@@ -6,7 +6,7 @@ GROUP                  = INVENTORYMETADATA
 
     OBJECT                 = LOCALGRANULEID
       NUM_VAL              = 1
-      VALUE                = ${LOCALGRANULEID}
+      VALUE                = ${local_granule_id}
     END_OBJECT             = LOCALGRANULEID
 
     OBJECT                 = LOCALVERSIONID
@@ -16,7 +16,7 @@ GROUP                  = INVENTORYMETADATA
 
     OBJECT                 = PRODUCTIONDATETIME
       NUM_VAL              = 1
-      VALUE                = ${PRODUCTIONDATETIME}
+      VALUE                = ${production_date_time}
     END_OBJECT             = PRODUCTIONDATETIME
 
   END_GROUP              = ECSDATAGRANULE
@@ -25,12 +25,12 @@ GROUP                  = INVENTORYMETADATA
 
     OBJECT                 = SHORTNAME
       NUM_VAL              = 1
-      VALUE                = ${SHORTNAME}
+      VALUE                = ${shortname}
     END_OBJECT             = SHORTNAME
 
     OBJECT                 = VERSIONID
       NUM_VAL              = 1
-      VALUE                = ${VERSIONID}
+      VALUE                = ${version_id}
     END_OBJECT             = VERSIONID
 
   END_GROUP              = COLLECTIONDESCRIPTIONCLASS
@@ -38,8 +38,8 @@ GROUP                  = INVENTORYMETADATA
   GROUP                  = INPUTGRANULE
 
     OBJECT                 = INPUTPOINTER
-      NUM_VAL              = ${#INPUTPOINTER}
-      VALUE                = ${INPUTPOINTER}
+      NUM_VAL              = ${#input_pointer}
+      VALUE                = ${input_pointer}
     END_OBJECT             = INPUTPOINTER
 
   END_GROUP              = INPUTGRANULE
@@ -57,21 +57,21 @@ GROUP                  = INVENTORYMETADATA
             CLASS                = "1"
 
             OBJECT                 = GRINGPOINTLONGITUDE
-              NUM_VAL              = ${#GRINGPOINTLONGITUDE}
+              NUM_VAL              = ${#polygon_longitudes}
               CLASS                = "1"
-              VALUE                = ${GRINGPOINTLONGITUDE}
+              VALUE                = ${polygon_longitudes}
             END_OBJECT             = GRINGPOINTLONGITUDE
 
             OBJECT                 = GRINGPOINTLATITUDE
-              NUM_VAL              = ${#GRINGPOINTLATITUDE}
+              NUM_VAL              = ${#polygon_latitudes}
               CLASS                = "1"
-              VALUE                = ${GRINGPOINTLATITUDE}
+              VALUE                = ${polygon_latitudes}
             END_OBJECT             = GRINGPOINTLATITUDE
 
             OBJECT                 = GRINGPOINTSEQUENCENO
-              NUM_VAL              = ${#GRINGPOINTSEQUENCENO}
+              NUM_VAL              = ${#polygon_sequence}
               CLASS                = "1"
-              VALUE                = ${GRINGPOINTSEQUENCENO}
+              VALUE                = ${polygon_sequence}
             END_OBJECT             = GRINGPOINTSEQUENCENO
 
           END_GROUP              = GRINGPOINT
@@ -99,22 +99,22 @@ GROUP                  = INVENTORYMETADATA
 
     OBJECT                 = RANGEENDINGDATE
       NUM_VAL              = 1
-      VALUE                = ${RANGEENDINGDATE}
+      VALUE                = ${end_date}
     END_OBJECT             = RANGEENDINGDATE
 
     OBJECT                 = RANGEENDINGTIME
       NUM_VAL              = 1
-      VALUE                = ${RANGEENDINGTIME}
+      VALUE                = ${end_time}
     END_OBJECT             = RANGEENDINGTIME
 
     OBJECT                 = RANGEBEGINNINGDATE
       NUM_VAL              = 1
-      VALUE                = ${RANGEBEGINNINGDATE}
+      VALUE                = ${begin_date}
     END_OBJECT             = RANGEBEGINNINGDATE
 
     OBJECT                 = RANGEBEGINNINGTIME
       NUM_VAL              = 1
-      VALUE                = ${RANGEBEGINNINGTIME}
+      VALUE                = ${begin_time}
     END_OBJECT             = RANGEBEGINNINGTIME
 
   END_GROUP              = RANGEDATETIME
@@ -123,7 +123,7 @@ GROUP                  = INVENTORYMETADATA
 
     OBJECT                 = PGEVERSION
       NUM_VAL              = 1
-      VALUE                = ${PGEVERSION}
+      VALUE                = ${pge_version}
     END_OBJECT             = PGEVERSION
 
   END_GROUP              = PGEVERSIONCLASS
@@ -145,7 +145,7 @@ GROUP                  = INVENTORYMETADATA
         OBJECT                 = PARAMETERVALUE
           NUM_VAL              = 1
           CLASS                = "1"
-          VALUE                = ${CENTROID_MEAN_LONGITUDE}
+          VALUE                = ${centroid_mean_longitude}
         END_OBJECT             = PARAMETERVALUE
 
       END_GROUP              = INFORMATIONCONTENT
@@ -167,7 +167,7 @@ GROUP                  = INVENTORYMETADATA
         OBJECT                 = PARAMETERVALUE
           NUM_VAL              = 1
           CLASS                = "2"
-          VALUE                = ${CENTROID_MEAN_LATITUDE}
+          VALUE                = ${centroid_mean_latitude}
         END_OBJECT             = PARAMETERVALUE
 
       END_GROUP              = INFORMATIONCONTENT

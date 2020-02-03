@@ -113,7 +113,7 @@ static int set_ground_pixel_quality_flags (Granule_Type *gt, TIO_Meta_Type *meta
         snow_file_basename++;
      }
    else snow_file_basename = snow_file;
-   tio_meta_append_string (meta, "INPUTPOINTER", snow_file_basename);
+   tio_meta_append_string (meta, "input_pointer", snow_file_basename);
 
    if (NULL == (land_cover = land_cover_init (cfg)))
      goto return_status;
@@ -298,7 +298,7 @@ int main (int argc, char **argv)
         if (status != 0)
           goto return_status;
 
-        (void) tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+        (void) tio_meta_set_noexpand (meta, "input_pointer", 1);
 
         if (0 != write_metadata (meta, input_file))
           goto return_status;

@@ -175,7 +175,7 @@ static int read_metadata (TIO_Meta_Type *meta, const char *file)
    tell_pop_queue(1);
    if (status == 0)
      {
-        status = tio_meta_ncinit (meta, grp, "INPUTPOINTER", TIO_META_TYPE_STRING);
+        status = tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
      }
 
    (void) TIO_close (ncid);
@@ -279,7 +279,7 @@ int main (int argc, char **argv)
 
    if (finalize_metadata == 0)
      {
-        tio_meta_set_noexpand (meta, "INPUTPOINTER", 1);
+        tio_meta_set_noexpand (meta, "input_pointer", 1);
      }
 
    /* If no template exists, a warning will be printed,
