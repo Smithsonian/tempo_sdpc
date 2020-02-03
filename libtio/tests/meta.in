@@ -21,7 +21,7 @@
 
     VALUE   =     ${STR_KEYWORD3}
 
-    LOCALGRANULEID =   ${LOCALGRANULEID}
-    VERSIONID      =   ${VERSIONID}
-    PGEVERSION     =   ${PGEVERSION}
-    SHORTNAME      =   ${SHORTNAME}
+    LOCALGRANULEID =   ${local_granule_id}
+    VERSIONID      =   ${version_id}
+    PGEVERSION     =   ${pge_version}
+    SHORTNAME      =   ${shortname}

@@ -653,12 +653,12 @@ extern int tio_meta_expand_file (const TIO_Meta_Type *meta, const char *infile,
  *                                 the data product
  * @return 0 on success, -1 on error
  *
- * The provided keyword values are substituted for the following standard keyword names:
+ * The provided keyword values are substituted for the following keyword names:
  * @verbatim
- * LOCALGRANULEID
- * SHORTNAME
- * VERSIOND
- * PGEVERSION
+ * local_granule_id
+ * shortname
+ * version_id
+ * pge_version
  * @endverbatim
  */
 extern int tio_meta_set_standard (TIO_Meta_Type *meta,
@@ -714,7 +714,7 @@ extern int tio_meta_set_datetime_range_scan (TIO_Meta_Type *meta, const TIO_Scan
  * @return 0 on success, -1 on error
  *
  * The current time (UTC) is used to assign a value to the standard keyword
- * @c PRODUCTIONDATETIME
+ * @c production_date_time
  */
 extern int tio_meta_set_datetime_production (TIO_Meta_Type *meta);
 
@@ -725,14 +725,14 @@ extern int tio_meta_set_datetime_production (TIO_Meta_Type *meta);
  *                   pixel coordinates
  * @return 0 on success, -1 on error
  *
- * The following standard keyword values are set:
+ * The following keyword values are set:
  * @verbatim
- *   GRINGPOINTLONGITUDE     boundary polygon longitudes
- *   GRINGPOINTLATITUDE      boundary polygon latitudes
- *   GRINGPOINTSEQUENCENO    integer indices giving the sequence in which the
+ *   polygon_longitudes      boundary polygon longitudes
+ *   polygon_latitudes       boundary polygon latitudes
+ *   polygon_sequence        integer indices giving the sequence in which the
  *                           (lon,lat) points trace the boundary in CCW order
- *   CENTROID_MEAN_LONGITUDE longitude of the polygon centroid
- *   CENTROID_MEAN_LATITUDE  latitude of the polygon centroid
+ *   centroid_mean_longitude longitude of the polygon centroid
+ *   centroid_mean_latitude  latitude of the polygon centroid
  * @endverbatim
  *
  * @see __tio_make_lev1_bounding_polygon

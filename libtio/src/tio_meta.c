@@ -36,7 +36,7 @@ struct TIO_Meta_Type
    int noexpand;
 };
 
-#define KEYNAME_VALID_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_."
+#define KEYNAME_VALID_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_."
 
 static void free_string_array (char **a, int na)
 {
@@ -1202,11 +1202,11 @@ int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int gr
         seq[i] = i+1;
      }
 
-   if ((0 != tio_meta_set (meta, "GRINGPOINTLONGITUDE", TIO_META_TYPE_FLOAT, num, lon))
-       || (0 != tio_meta_set (meta, "GRINGPOINTLATITUDE", TIO_META_TYPE_FLOAT, num, lat))
-       || (0 != tio_meta_set (meta, "GRINGPOINTSEQUENCENO", TIO_META_TYPE_INT, num, seq))
-       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LONGITUDE", TIO_META_TYPE_FLOAT, 1, &centroid_lon))
-       || (0 != tio_meta_set (meta, "CENTROID_MEAN_LATITUDE", TIO_META_TYPE_FLOAT, 1, &centroid_lat))
+   if ((0 != tio_meta_set (meta, "polygon_longitudes", TIO_META_TYPE_FLOAT, num, lon))
+       || (0 != tio_meta_set (meta, "polygon_latitudes", TIO_META_TYPE_FLOAT, num, lat))
+       || (0 != tio_meta_set (meta, "polygon_sequence", TIO_META_TYPE_INT, num, seq))
+       || (0 != tio_meta_set (meta, "centroid_mean_longitude", TIO_META_TYPE_FLOAT, 1, &centroid_lon))
+       || (0 != tio_meta_set (meta, "centroid_mean_latitude", TIO_META_TYPE_FLOAT, 1, &centroid_lat))
       )
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: setting boundary polygon metadata", __func__);
@@ -1235,14 +1235,14 @@ static int meta_set_datetime (TIO_Meta_Type *meta, const char *str, const char *
         return -1;
      }
 
-   if (((len = snprintf (date_key, MAX_DATETIME_KEYLEN, "%sDATE", key_prefix)) < 0)
+   if (((len = snprintf (date_key, MAX_DATETIME_KEYLEN, "%sdate", key_prefix)) < 0)
        || (len == MAX_DATETIME_KEYLEN))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: constructing date keyword", __func__);
         return -1;
      }
 
-   if (((len = snprintf (time_key, MAX_DATETIME_KEYLEN, "%sTIME", key_prefix)) < 0)
+   if (((len = snprintf (time_key, MAX_DATETIME_KEYLEN, "%stime", key_prefix)) < 0)
        || (len == MAX_DATETIME_KEYLEN))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: constructing time keyword", __func__);
@@ -1266,13 +1266,13 @@ int tio_meta_set_datetime_range (TIO_Meta_Type *meta, int ncid)
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start", NC_CHAR, str))
      return -1;
 
-   if (0 != meta_set_datetime (meta, str, "RANGEBEGINNING"))
+   if (0 != meta_set_datetime (meta, str, "begin_"))
      return -1;
 
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end", NC_CHAR, str))
      return -1;
 
-   if (0 != meta_set_datetime (meta, str, "RANGEENDING"))
+   if (0 != meta_set_datetime (meta, str, "end_"))
      return -1;
 
    return 0;
@@ -1307,10 +1307,10 @@ int tio_meta_set_datetime_range_scan (TIO_Meta_Type *meta, const TIO_Scan_Ident_
           }
      }
 
-   if (0 != meta_set_datetime (meta, beg->tstart_str, "RANGEBEGINNING"))
+   if (0 != meta_set_datetime (meta, beg->tstart_str, "begin_"))
      return -1;
 
-   if (0 != meta_set_datetime (meta, end->tend_str, "RANGEENDING"))
+   if (0 != meta_set_datetime (meta, end->tend_str, "end_"))
      return -1;
 
    return 0;
@@ -1333,7 +1333,7 @@ int tio_meta_set_datetime_production (TIO_Meta_Type *meta)
         return -1;
      }
 
-   if (0 != tio_meta_set (meta, "PRODUCTIONDATETIME", TIO_META_TYPE_STRING, 1, time_str))
+   if (0 != tio_meta_set (meta, "production_date_time", TIO_META_TYPE_STRING, 1, time_str))
      return -1;
 
    return 0;
@@ -1353,16 +1353,16 @@ int tio_meta_set_standard (TIO_Meta_Type *meta,
      }
    else basename = product_file_name;
 
-   if ((0 != tio_meta_set (meta, "LOCALGRANULEID", TIO_META_TYPE_STRING, 1, basename))
-       || (0 != tio_meta_set (meta, "VERSIONID", TIO_META_TYPE_INT, 1, &product_versionid))
-       || (0 != tio_meta_set (meta, "PGEVERSION", TIO_META_TYPE_STRING, 1, pge_version_string)))
+   if ((0 != tio_meta_set (meta, "local_granule_id", TIO_META_TYPE_STRING, 1, basename))
+       || (0 != tio_meta_set (meta, "version_id", TIO_META_TYPE_INT, 1, &product_versionid))
+       || (0 != tio_meta_set (meta, "pge_version", TIO_META_TYPE_STRING, 1, pge_version_string)))
      {
         return -1;
      }
 
    if (product_short_name != NULL)
      {
-        if (0 != tio_meta_set (meta, "SHORTNAME", TIO_META_TYPE_STRING, 1, product_short_name))
+        if (0 != tio_meta_set (meta, "shortname", TIO_META_TYPE_STRING, 1, product_short_name))
           return -1;
      }
 
