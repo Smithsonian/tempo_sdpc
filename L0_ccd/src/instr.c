@@ -441,7 +441,7 @@ static char *make_hk_dir_path (int sat_day)
    /* Construct path to archive directory containing the telemetry point
     * stream for this day.
     */
-   len = snprintf (buf, bufsize, "$SDPC_ARCHIVE_DIR/L0/D%d/HK", sat_day);
+   len = snprintf (buf, bufsize, "$SDPC_ARCHIVE_DIR/L0/D%05d/HK", sat_day);
    if ((len < 0) || ((size_t) len >= bufsize))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: path exceeded buffer size", __func__);

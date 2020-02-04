@@ -219,7 +219,7 @@ static int expand_glob_pattern (const char *file_glob_pattern,
    int n, len;
    char *pat;
 
-   if (NULL == strstr (file_glob_pattern, "%d"))
+   if (NULL == strstr (file_glob_pattern, "%"))
      {
         return wordexp (file_glob_pattern, we, WRDE_NOCMD | WRDE_UNDEF);
      }

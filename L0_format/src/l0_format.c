@@ -824,12 +824,12 @@ int make_level0_archdir_path (char **archdir_path, double sec_since_epoch, int s
     */
    if (scan_num < 0)
      {
-        n = snprintf (buf, bufsize, "%s/L0/D%d/%s",
+        n = snprintf (buf, bufsize, "%s/L0/D%05d/%s",
                       root_path, (int) sat_day, suffix);
      }
    else
      {
-        n = snprintf (buf, bufsize, "%s/L0/D%d/%s/S%d",
+        n = snprintf (buf, bufsize, "%s/L0/D%05d/%s/S%03d",
                       root_path, (int) sat_day, suffix, scan_num);
      }
 

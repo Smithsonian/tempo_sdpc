@@ -164,8 +164,8 @@ private define scan_subdir (g)
 {
    % Derive the destination archive directory from the contents of
    % the granule_ident CSV file.
-   variable subdir_seq = ["D" + string(g.sat_local_day_start),
-                          "S" + string(g.scan_num)];
+   variable subdir_seq = [sprintf("D%05d", g.sat_local_day_start),
+                          sprintf("S%03d", g.scan_num)];
    subdir_seq = array_map (String_Type, &string, subdir_seq);
    return strjoin (subdir_seq, "/");
 }

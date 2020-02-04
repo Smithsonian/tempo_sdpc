@@ -119,8 +119,7 @@ private define get_tarfile_archive_subdir (tar_file)
    if (0 != remove (temp_granule_ident_file))
      throw ApplicationError, "*** Error removing $temp_granule_ident_file"$;
 
-   variable sat_day = atof(g.sat_local_day_start);
-   variable sat_day_dir = "D" + string(int(sat_day));
+   variable sat_day_dir = sprintf ("D%05d", atoi(g.sat_local_day_start));
 
    % Construct the archive subdirectory path:
    variable subdir_seq = [g.product_type, sat_day_dir];
@@ -132,8 +131,8 @@ private define get_tarfile_archive_subdir (tar_file)
    if (is_substr(g.product_type, "RAD"))
      {
         subdir_seq = [subdir_seq,
-                      "S" + g.scan_num,
-                      "G" + g.granule_num];
+                      sprintf("S%03d", atoi(g.scan_num)),
+                      sprintf("G%02d", atoi(g.granule_num))];
      }
    else
      {

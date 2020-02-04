@@ -286,7 +286,8 @@ get_metadata_file()
    eval "$granule_ident"
 
    arch_type="$SDPC_ARCHIVE_DIR/L1/$product_type"
-   granule_arch_dir_path="${arch_type}/D${sat_local_day_start}/S${scan_num}/G${granule_num}"
+   granule_subdir=$(printf "D%05d/S%03d/G%02d" $sat_local_day_start $scan_num $granule_num)
+   granule_arch_dir_path="${arch_type}/${granule_subdir}"
 
    /bin/cp $granule_arch_dir_path/${rad_basename}.nc.met .
 }
