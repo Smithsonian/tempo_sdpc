@@ -173,7 +173,7 @@ private define scan_subdir (g)
 private define write_filename_list (output_dir, l3_output_file,
                                     prod, file_list)
 {
-   variable path = path_concat (output_dir, "l2_${prod}.lst"$);
+   variable path = path_concat (output_dir, "TEMPO_${prod}_L2.lis"$);
    assert_nonexistent (path);
 
    variable fp = fopen (path, "w");
