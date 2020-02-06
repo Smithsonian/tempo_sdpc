@@ -204,7 +204,7 @@ mkgranule_ident:
 
 ttime:
 	$(COMPILE_CMD) -o ttime $(INCS) ttime.c \
-	     $(TIO_LIBPATHS) -ltio -lm
+	     $(TIO_LIBPATHS) -ltio $(LIBS) -lm
 
 $(elfdir)/tio.o:	$(srcdir)/tio.c
 	git_commit="(unknown)" ; \
