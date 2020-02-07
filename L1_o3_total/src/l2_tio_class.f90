@@ -499,7 +499,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing zenith angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [0.0_8, 70.0_8], &
+                              valid_range = [0.0_8, 88.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &

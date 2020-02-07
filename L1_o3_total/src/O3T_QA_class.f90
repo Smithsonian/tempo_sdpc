@@ -213,7 +213,7 @@ CONTAINS
 
 
   FUNCTION O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg_3, &
-       algflg, L2param, descendQ, PclimQ, sza, gflg, iwlArray, &
+       algflg, L2param, descendQ, PclimQ, sza, vza, gflg, iwlArray, &
        earthRadQF, solarIrrQF) &
        RESULT( skipit )
 !  FUNCTION O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg, anomflg_3, &
@@ -232,7 +232,7 @@ CONTAINS
     INTEGER (KIND=4), INTENT(IN) :: anomflg_3 ! O3 derived flag
     TYPE (L2PARAM_T), INTENT(INOUT) :: L2param
     LOGICAL, INTENT(IN) :: descendQ, PclimQ
-    REAL (KIND=4), INTENT(IN)    :: sza
+    REAL (KIND=4), INTENT(IN)    :: sza, vza
     INTEGER (KIND=2), INTENT(IN) :: gflg
     INTEGER (KIND=4), DIMENSION(:), INTENT(IN) :: iwlArray
     INTEGER (KIND=4) :: nwl
@@ -282,7 +282,7 @@ CONTAINS
     IF( PclimQ )         QAflags = IBSET( QAflags, 7  )
     IF( IBITS( gflg, 6, 1 ) == 1 ) &
          QAflags = IBSET( QAflags, 8  )
-    IF( sza  >= 88.    ) QAflags = IBSET( QAflags, 9  )
+    IF( sza  >= 88.0 .or. vza >= 88.0) QAflags = IBSET( QAflags, 9  )
     IF( radMissing > 0 ) QAflags = IBSET( QAflags, 10 )
     IF( radError   > 0 ) QAflags = IBSET( QAflags, 11 )
     IF( radWarning > 0 ) QAflags = IBSET( QAflags, 12 )
@@ -303,7 +303,7 @@ CONTAINS
     IF( irrWarning > 0 ) L2param%NumberOfIrradianceWarning &
          = L2param%NumberOfIrradianceWarning + 1
 
-    IF( sza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 &
+    IF( sza >= 88.0 .OR. vza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 &
          .OR. irrMissing > 0 .OR. irrError > 0 ) THEN
       skipit = .TRUE.
       L2param%NumberOfSkippedSamples = L2param%NumberOfSkippedSamples + 1
