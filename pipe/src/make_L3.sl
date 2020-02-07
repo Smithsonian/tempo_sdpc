@@ -41,7 +41,7 @@ private define usage ()
 {
    variable argv0 = __argv[0];
    variable s =
-`Usage:  $argv0 [options] -p prod1,prod2,prod3 DIR1 [DIR2 DIR3 ...]
+`Usage:  $argv0 [options] SCAN_DIR1 [SCAN_DIR2 SCAN_DIR3 ...]
    Options:
          -a|--archive_root DIR
          -c|--clobber        If present, will overwrite pre-existing files
@@ -204,6 +204,8 @@ private define perform_regridding (output_dir, cfg_path)
 
 define process_scan_granules (scan_dir, archive_root_dir, products)
 {
+   if (products == NULL)
+     return;
    variable file, dir, prod, prod_files = Assoc_Type[];
    variable granule_dir_list = scan_dir + "/" + listdir (scan_dir);
    foreach prod (products)
@@ -286,24 +288,51 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
      }
 }
 
+define find_product_dirs (scan_dir)
+{
+   variable granule_dir_list = scan_dir + "/" + listdir (scan_dir);
+   variable granule_dir;
+
+   variable lst = {};
+
+   foreach granule_dir (granule_dir_list)
+     {
+        variable st = stat_file (granule_dir);
+        variable f;
+        if (0 == stat_is ("dir", st.st_mode))
+          continue;
+        variable files = glob ("${granule_dir}/*/TEMPO_*_L2_*_S???G??.nc"$);
+        if (length(files) == 0)
+          continue;
+        foreach f (files)
+          {
+             list_append (lst, path_basename (path_dirname (f)));
+          }
+     }
+
+   if (length(lst) == 0)
+     return NULL;
+
+   variable lst_arr = list_to_array (lst);
+
+   return lst_arr[unique(lst_arr)];
+}
+
 define slsh_main()
 {
    variable archive_root_dir = getenv ("SDPC_ARCHIVE_DIR");
    variable sdpc_root_dir = getenv ("SDPC_ROOT");
-   variable products = NULL;
+   variable cmdline_products = NULL;
 
    variable c = cmdopt_new (&error_routine);
    c.add ("h|help", &usage);
    c.add ("a|archive_root_dir", &archive_root_dir; type="string");
    c.add ("c|clobber", &Clobber_Output_Files; inc);
-   c.add ("p|products", &parse_string_option, &products; type="string");
+   c.add ("p|products", &parse_string_option, &cmdline_products; type="string");
    variable __i = c.process (__argv, 1);
 
    if (__argc - __i < 1)
      usage();
-
-   if (products == NULL)
-     throw ApplicationError, "*** Error: Level 2 product list not specified";
 
    if (archive_root_dir == NULL)
      throw ApplicationError,
@@ -313,9 +342,19 @@ define slsh_main()
      throw ApplicationError, "*** Error: SDPC_ROOT is not set";
 
    variable scan_dir, scan_dir_list = __argv[[__i:]];
+   variable products;
 
    foreach scan_dir (scan_dir_list)
      {
+        if (cmdline_products != NULL)
+          {
+             products = cmdline_products;
+          }
+        else
+          {
+             products = find_product_dirs (scan_dir);
+          }
+
         process_scan_granules (scan_dir, archive_root_dir, products);
      }
 }
