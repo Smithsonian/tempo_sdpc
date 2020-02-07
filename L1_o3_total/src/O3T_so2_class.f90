@@ -116,6 +116,21 @@ CONTAINS
         i_foo = MINLOC( ABS(wlen-wlep(di)) )
         iwl(di) = i_foo(1)
       ENDDO
+    CASE ('TM', 'tm' )  ! TEMPO
+      o3abs  = o3aep
+      so2abs = so2aep
+      iso2w  = iso2wep
+      soilim = soilimOM
+      IF( wlep(1) > MAXVAL( wlen ) .OR. &
+           wlep(4) < MINVAL( wlen ) ) THEN
+        call tell_error(tell_runtime_error, &
+             "O3_so2_setCoef: wlT_min too large", errstat)
+        RETURN
+      ENDIF
+      DO di = 1, 6
+        i_foo = MINLOC( ABS(wlen-wlep(di)) )
+        iwl(di) = i_foo(1)
+      ENDDO
     CASE DEFAULT
       errstat = -1
       RETURN

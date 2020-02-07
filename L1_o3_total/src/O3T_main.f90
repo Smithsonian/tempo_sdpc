@@ -153,7 +153,7 @@ PROGRAM O3T_mainNVAdj
   type (tio_cloud_type) :: cloud_blk
   logical :: use_he5_out = .false., use_tio_in = .true., use_tio_out = .true.
   logical :: have_omi_data = .true.
-  logical :: did_so2_setup = .false.
+  logical :: have_tempo_data = .false.
   logical :: write_odl = .false.
   character (len=1024) :: nc_l2_filename
   character (len=32) :: arg, rad_shortname
@@ -175,6 +175,7 @@ PROGRAM O3T_mainNVAdj
     else if (trim(arg) == "-nc_out") then
       use_tio_out = .false.
     else if (trim(arg) == "tempo") then
+      have_tempo_data = .true.
       have_omi_data = .false.
     else if (trim(arg) == "wrt_odl") then
       write_odl = .true.
@@ -467,18 +468,18 @@ PROGRAM O3T_mainNVAdj
     stop 1
   ENDIF
 
-  did_so2_setup = .false.
-  if (have_omi_data) then
-    !! setup coefficient for so2 index calculations
+  !! setup coefficient for so2 index calculations
+  if (have_tempo_data) then
+    satname = 'TM'
+  else
     satname = O3T_getSatName( rad_shortname, OMTO3_NVAL_LUN )
-    errstat = O3_so2_setCoef( satname, o3abs, so2abs, iso2w, wl_com, soilim )
-    IF( errstat /= 0 ) THEN
-      WRITE( msg,'(A)' ) "Set coefficient for SOI failed, "
-      call tell_error (tell_runtime_error, msg, errstat)
-      stop 1
-    ENDIF
-    did_so2_setup = .true.
   endif
+  errstat = O3_so2_setCoef( satname, o3abs, so2abs, iso2w, wl_com, soilim )
+  IF( errstat /= 0 ) THEN
+    WRITE( msg,'(A)' ) "Set coefficient for SOI failed, "
+    call tell_error (tell_runtime_error, msg, errstat)
+    stop 1
+  ENDIF
 
   !! Create the L2 output file
   if (use_he5_out) &
@@ -999,7 +1000,7 @@ PROGRAM O3T_mainNVAdj
            instid_rad /= 7 ) .OR. &
            O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg_3_ix_ilat, &
            algflg, L2_parameters(1), descendQ, PclimQ(iX), &
-           sza_p, geoflg(iX), iwlArray, &
+           sza_p, vza_p, geoflg(iX), iwlArray, &
            radQAflags_com(:,IX), irrQAflags_com(:,IX) )
 !           O3T_setQAflgsI( QAflags, radBadPixflgs, anomflg(iX), &
 !           anomflg_3_ix_ilat, algflg, L2_parameters(1), descendQ, PclimQ(iX), &
@@ -1184,7 +1185,7 @@ PROGRAM O3T_mainNVAdj
            / dndr(iwl_refl_h)
 
       ! calculate SO2 index
-      IF( pathl < 3.5 .and. did_so2_setup) THEN
+      IF( pathl < 3.5) THEN
         so2ind = O3_so2_index( wl_com, dndomega_t, res_stp3, &
              iso2w, o3abs, so2abs )
       ELSE
