@@ -377,6 +377,9 @@ static int cal_apply_btdf (const Calibration_Type *cal,
    if (enable_state_query_bool (ENABLE_BTDF) < 1)
      return 0;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "btdf solar angles: theta = %7.3f phi = %7.3f deg",
+              solar_theta_deg, solar_phi_deg);
+
    if (fabs (solar_theta_deg - BTDF_SOLAR_THETA_NOMINAL) > BTDF_SOLAR_THETA_WARN_DELTA)
      {
         tell_vlog (TELL_MSGTYPE_WARN, 0,

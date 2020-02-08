@@ -416,6 +416,10 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
         float diff0 = eoff0[i+4] - eoff0[i];
         float diff = eoff[i+4] - eoff[i];
         pct->phase_change[i] = (diff0 * diff < 0) ? 1 : 0;
+        tell_vlog (TELL_MSGTYPE_INFO, 2,
+                   "mean eoffsets, quad %d: o=%7.3f e=%7.3f  FPS test values:o=%7.3f e=%7.3f => %s",
+                   i, eoff[i], eoff[i+4], eoff0[i], eoff0[i+4],
+                   pct->phase_change[i] ? "parity changed" : "parity matches FPS test");
      }
 
    return configure_using_octant_phase (ccd);
@@ -939,6 +943,7 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
    Image_Pqf_Bitmap_Type *quad_pqf = NULL;
    Image_Pixel_Type *smear_corr = NULL;
    int s, sb0, se0, p, pb0, pe0;
+   double smear_corr_sum;
 
    if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, &pb0, &pe0))
      return -1;
@@ -957,6 +962,13 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
         FREE(smear_corr);
         return -1;
      }
+
+   smear_corr_sum = 0.0;
+   for (s = sb0; s < se0; s++)
+     {
+        smear_corr_sum += smear_corr[s];
+     }
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "quad mean smear correction: %f", smear_corr_sum/(se0-sb0));
 
    for (p = pb0; p < pe0; p++)
      {
