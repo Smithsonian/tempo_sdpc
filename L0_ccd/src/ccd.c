@@ -51,6 +51,7 @@ typedef struct
    float *gain_Tfpe_coeffs;   /* coefficients for gain variation w.r.t FPE temperature */
    int num_gain_tfpe_coeff;
    float gain_at_Tref;        /* [e-/DN] Pre-launch gain at reference FPE and FPA temperatures */
+   float gain_at_Tref_fpa;    /* gain from gain_Tfpa lookup table at Tref_fpa */
    float Tref_fpe;            /* Reference FPE temperature for gain */
    float Tref_fpa;            /* Reference FPA temperature for gain */
 }
@@ -695,7 +696,7 @@ static int gain_corr_Tfpa (const Gain_Param_Type *gpt, float fpa_temp, float *co
    if (0 != interpolate_gain_vs_Tfpa (gpt, fpa_temp, &gain_T))
      return -1;
 
-   *corr = gain_T / gpt->gain_at_Tref;
+   *corr = gain_T / gpt->gain_at_Tref_fpa;
 
    return 0;
 }
@@ -736,6 +737,10 @@ static int interpolate_gain (const Gain_Param_Type *gpt,
      return -1;
 
    *gain = gpt->gain_at_Tref * corr_fpa * corr_fpe;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 2,
+              "gain correction: corr_fpa(%7.2f C): %f corr_fpe(%7.2f C): %f => gain = %f e-/DN",
+              fpa_temp, corr_fpa, fpe_temp, corr_fpe, *gain);
 
    return 0;
 }
@@ -1391,7 +1396,7 @@ static int read_octant_gain (int ncid, int adc, int quad, Gain_Param_Type *gpt)
 {
    Gain_LUT_Type *glt = &gpt->gain_Tfpa;
    size_t num_gain_tfpa, num_gain_tfpe_coeff;
-   int start[3], count[3], dimid;
+   int start[3], count[3], dimid, n;
 
    if ((0 != TIO_inq_dim (ncid, "n_gain_Tfpa", &dimid, &num_gain_tfpa))
        || (0 != TIO_inq_dim (ncid, "n_gain_Tfpe_coeff", &dimid, &num_gain_tfpe_coeff)))
@@ -1429,6 +1434,15 @@ static int read_octant_gain (int ncid, int adc, int quad, Gain_Param_Type *gpt)
 
    if (0 != TIO_get_var_section (ncid, "ref_Tfpe_4gain", start, count, TIO_FLOAT, &gpt->Tref_fpe))
      return -1;
+
+   if ((n = bsearch_f (gpt->Tref_fpa, glt->temp, num_gain_tfpa)) < 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: FPA gain temperature is not in lookup table!", __func__);
+        return -1;
+     }
+
+   /* e.g. n=40 is the gain for the reference temperature -21 C */
+   gpt->gain_at_Tref_fpa = glt->gain[n];
 
    return 0;
 }
