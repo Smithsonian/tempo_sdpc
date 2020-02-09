@@ -573,18 +573,29 @@ static int correct_crosstalk_half (const CCD_Type *ccd, int which_half, const Im
                                    float *crosstalk_vector, Image_Type *img)
 {
    const Image_Subset_Type *half = &ccd->half[which_half];
-   const Image_Subset_Type *q0 = &ccd->quad[which_half*2];
-   const Image_Subset_Type *q1 = &ccd->quad[which_half*2 + 1];
+   const Image_Subset_Type *q0 = NULL;
+   const Image_Subset_Type *q1 = NULL;
    int s0, sb0, se0, s1, sb1, se1, p, pb, pe;
    float frac_to_lhs, frac_to_rhs;
+
+   if (which_half == 0)
+     {/* VIS */
+        q0 = &ccd->quad[0];  /* lhs -> A */
+        q1 = &ccd->quad[1];  /* rhs -> B */
+     }
+   else
+     {/* UV */
+        q0 = &ccd->quad[3];  /* lhs -> D */
+        q1 = &ccd->quad[2];  /* rhs -> C */
+     }
 
    pb = half->row_beg;
    pe = half->row_end;
 
-   sb0 = q0->row_beg;
-   se0 = q0->row_end;
-   sb1 = q1->row_beg;
-   se1 = q1->row_end;
+   sb0 = q0->col_beg;
+   se0 = q0->col_end;
+   sb1 = q1->col_beg;
+   se1 = q1->col_end;
 
    frac_to_rhs = crosstalk_vector[0];
    frac_to_lhs = crosstalk_vector[1];
