@@ -23,11 +23,10 @@ typedef struct
    double *lon_bounds;
    double *lat_bounds;
    int *step;
+   int *xtrack;
    int num_steps;
    int num_xtrack;
    int num_pixels;
-   int max_xtrack;
-   int max_step;
 }
 Source_Pixel_Vertices_Type;
 
@@ -81,39 +80,6 @@ free_and_return:
    return status ? -1 : 0;
 }
 
-static int record_max_xtrack (int ncid, int num_xtrack, int *max_xtrack)
-{
-   int i, mx, start[2], count[2];
-   int *xtrack = NULL;
-
-   if (NULL == (xtrack = (int *) MALLOC (num_xtrack * sizeof (int))))
-     {
-        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   start[0] = 0;
-   count[0] = num_xtrack;
-   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_XTRACK,
-                                  start, count, TIO_INT, xtrack))
-     {
-        FREE(xtrack);
-        return -1;
-     }
-
-   mx = 0;
-   for (i = 0; i < num_xtrack; i++)
-     {
-        if (xtrack[i] > mx)
-          mx = xtrack[i];
-     }
-   FREE(xtrack);
-
-   *max_xtrack = mx;
-
-   return 0;
-}
-
 static void free_spv_type (Source_Pixel_Vertices_Type *spv)
 {
    if (NULL == spv)
@@ -121,6 +87,7 @@ static void free_spv_type (Source_Pixel_Vertices_Type *spv)
    FREE(spv->lon_bounds);
    FREE(spv->lat_bounds);
    FREE(spv->step);
+   FREE(spv->xtrack);
    FREE(spv);
 }
 
@@ -138,10 +105,9 @@ static Source_Pixel_Vertices_Type *new_spv_type (int num_steps, int num_xtrack)
    memset ((char *)spv, 0, sizeof *spv);
    spv->num_steps = num_steps;
    spv->num_xtrack = num_xtrack;
-   spv->max_step = 0;
-   spv->max_xtrack = 0;
 
-   if (NULL == (spv->step = (int *) MALLOC (num_steps * sizeof (int))))
+   if ((NULL == (spv->step = (int *) MALLOC (num_steps * sizeof (int))))
+       || (NULL == (spv->xtrack = (int *) MALLOC (num_xtrack * sizeof (int)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_spv_type (spv);
@@ -201,13 +167,10 @@ read_pixel_vertices (const char *file, const char *lonlat_grp)
                                   start, count, TIO_INT, spv->step))
      goto free_and_return;
 
-   /* record max step, max xtrack in this granule */
-   for (i = 0; i < num_steps; i++)
-     {
-        if (spv->step[i] > spv->max_step)
-          spv->max_step = spv->step[i];
-     }
-   if (-1 == record_max_xtrack (ncid, num_xtrack, &spv->max_xtrack))
+   start[0] = 0;
+   count[0] = num_xtrack;
+   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_XTRACK,
+                                  start, count, TIO_INT, spv->xtrack))
      goto free_and_return;
 
    /* read lon/lat bounds arrays */
@@ -252,7 +215,7 @@ free_and_return:
 }
 
 /* Pack pixel vertices into pixel list structures */
-static Pixel_List_Type *make_pixel_list (Source_Pixel_Vertices_Type *spv)
+static Pixel_List_Type *make_pixel_list (Source_Pixel_Vertices_Type *spv, int xtrack_dimlen)
 {
    Pixel_List_Type *plt = NULL;
    int num_sides;
@@ -270,7 +233,8 @@ static Pixel_List_Type *make_pixel_list (Source_Pixel_Vertices_Type *spv)
      }
 
    if (-1 == Pixel_list_pack (plt, spv->lon_bounds, spv->lat_bounds,
-                              spv->num_pixels, 4, spv->step, spv->num_xtrack))
+                              spv->num_pixels, 4, spv->step, spv->xtrack, spv->num_xtrack,
+                              xtrack_dimlen))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: packing pixel list", __func__);
         goto free_and_return;
@@ -339,6 +303,77 @@ void Regrid_diagnostic_output (int b)
    _pDiagnostic_Output = b;
 }
 
+static int find_max_index (int ncid, const char *varname, size_t count_s, int *pmax)
+{
+   int *values = NULL;
+   int i, max, start = 0, count = count_s;
+
+   if (NULL == (values = (int *)MALLOC (count * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   if (0 != TIO_get_var_section (ncid, varname, &start, &count, TIO_INT, values))
+     {
+        FREE(values);
+        return -1;
+     }
+
+   max = 0;
+   for (i = 0; i < count; i++)
+     {
+        if (values[i] > max)
+          max = values[i];
+     }
+   FREE(values);
+
+   *pmax = max;
+   return 0;
+}
+
+static int find_target_grid_size (char **files, int num_files,
+                                  int *pmax_num_step, int *pmax_num_xtrack)
+{
+   int i, mx, ncid=0, max_step=0, max_xtrack=0;
+   int status = -1;
+
+   for (i = 0; i < num_files; i++)
+     {
+        TIO_Var_Info_Type vi = {0};
+
+        if (0 != TIO_open (files[i], NC_NOWRITE, &ncid))
+          return -1;
+
+        if (-1 == TIO_inq_var (ncid, TEMPO_DIM_XTRACK, &vi))
+          goto return_status;
+        if (0 != find_max_index (ncid, TEMPO_DIM_XTRACK, vi.dimlens[0], &mx))
+          goto return_status;
+        if (mx > max_xtrack)
+          max_xtrack = mx;
+
+        if (-1 == TIO_inq_var (ncid, TEMPO_DIM_STEP, &vi))
+          goto return_status;
+        if (0 != find_max_index (ncid, TEMPO_DIM_STEP, vi.dimlens[0], &mx))
+          goto return_status;
+        if (mx > max_step)
+          max_step = mx;
+
+        (void) TIO_close (ncid);
+        ncid = 0;
+     }
+
+   *pmax_num_step = max_step + 1;
+   *pmax_num_xtrack = max_xtrack + 1;
+
+   status = 0;
+return_status:
+   if ((status != 0) && (ncid != 0))
+     {
+        TIO_close (ncid);
+     }
+   return status;
+}
+
 static int
 find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
                          const char *lonlat_grp)
@@ -346,11 +381,15 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
    Source_Pixel_Vertices_Type *spv = NULL;
    Pixel_List_Type *src_area = NULL;
    Pixel_List_Type *src_lookup = NULL;
-   int i;
+   int i, max_num_step, max_num_xtrack;
 
    /* Loop over granule files, and accumulate contributions
     * to the pixel overlap array in each destination pixel.
     */
+
+   if (0 != find_target_grid_size (files, num_files, &max_num_step, &max_num_xtrack))
+     return -1;
+   Pixel_regrid_grow_srcdims (r, max_num_step, max_num_xtrack);
 
    for (i = 0; i < num_files; i++)
      {
@@ -363,7 +402,7 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
         /* lookup pixel list uses coordinates that simplify
          * determining which destination pixels overlap each source pixel */
         Pixel_list_free (src_lookup);
-        if (NULL == (src_lookup = make_pixel_list (spv)))
+        if (NULL == (src_lookup = make_pixel_list (spv, max_num_xtrack)))
           break;
 
         /* WARNING! coordinate projection is done in place, so after the call,
@@ -375,10 +414,8 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
          * for computing pixel overlap areas
          */
         Pixel_list_free (src_area);
-        if (NULL == (src_area = make_pixel_list (spv)))
+        if (NULL == (src_area = make_pixel_list (spv, max_num_xtrack)))
           break;
-
-        Pixel_regrid_grow_srcdims (r, spv->max_step, spv->max_xtrack);
 
         start_diagnostic_output (files[i]);
         num_overlaps = Pixel_find_overlaps (r, src_area, src_lookup);

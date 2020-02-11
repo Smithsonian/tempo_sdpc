@@ -319,15 +319,17 @@ int Pixel_list_set_vertices (Pixel_List_Type *lst, int pix, int n,
 int Pixel_list_pack (Pixel_List_Type *pixel_list,
                      double *xs, double *ys, int num_pixels,
                      int num_pixel_vertices,
-                     int *step, int num_xtrack)
+                     int *step, int *xtrack, int num_xtrack,
+                     int xtrack_dimlen)
 {
    int i;
 
    for (i = 0; i < num_pixels; i++)
      {
-        int pix_xtrack = i % num_xtrack;
-        int pix_step_index = i / num_xtrack;
-        int pix = pix_xtrack + step[pix_step_index] * num_xtrack;
+        int pix_xtrack = xtrack[i % num_xtrack];
+        int pix_step   =   step[i / num_xtrack];
+        /* pixel index in target full-scan array */
+        int pix = pix_xtrack + pix_step * xtrack_dimlen;
         double *x = xs + i * num_pixel_vertices;
         double *y = ys + i * num_pixel_vertices;
         int j;
@@ -626,10 +628,8 @@ void Pixel_close_regrid (Pixel_Regrid_Type *r)
 }
 
 void Pixel_regrid_grow_srcdims (Pixel_Regrid_Type *r,
-                                int src_max_step, int src_max_xtrack)
+                                int src_num_step, int src_num_xtrack)
 {
-   int src_num_step = src_max_step + 1;
-   int src_num_xtrack = src_max_xtrack + 1;
    if (src_num_step > r->num_src_step)
      r->num_src_step = src_num_step;
    if (src_num_xtrack > r->num_src_xtrack)

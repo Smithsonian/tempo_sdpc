@@ -122,7 +122,8 @@ extern int
 Pixel_list_pack (Pixel_List_Type *pixel_list,
                  double *xs, double *ys, int num_pixels,
                  int num_pixel_vertices,
-                 int *step, int num_xtrack);
+                 int *step, int *xtrack, int num_xtrack,
+                 int xtrack_dimlen);
 
 /** Use grid parameters to generate X,Y pixel corner arrays
  * @param[in]   g          A grid parameter structure

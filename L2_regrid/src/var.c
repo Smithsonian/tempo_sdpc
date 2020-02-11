@@ -256,21 +256,23 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
 {
    TIO_Var_Info_Type vi;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
-   int i, num_steps, num_pixels, num_values, bytes_per_value, in_type;
+   int i, num_steps, num_xtrack, num_pixels, num_values, bytes_per_value, in_type;
    size_t step_dimlen, xtrack_dimlen;
    int step_dimid, xtrack_dimid;
    int *step = NULL;
+   int *xtrack = NULL;
    unsigned char *var = NULL;
    int status = -1;
 
-   /* All granules are assumed to have the same xtrack dimension */
    if (0 != TIO_inq_dim (ncid, TEMPO_DIM_XTRACK, &xtrack_dimid, &xtrack_dimlen))
      return -1;
-   if (xtrack_dimlen != (size_t) vb->num_xtrack)
+   num_xtrack = xtrack_dimlen;
+
+   if (num_xtrack > vb->num_xtrack)
      {
         tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: unexpected xtrack dimension size = %ld (expected %d)",
-                     __func__, xtrack_dimlen, vb->num_xtrack);
+                     "%s: xtrack dimension size = %d exceeds expected maximum = %d",
+                     __func__, num_xtrack, vb->num_xtrack);
         return -1;
      }
 
@@ -281,7 +283,8 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
    num_steps = step_dimlen;
    vb->dimlens[0] = step_dimlen;
 
-   if (NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
+   if ((NULL == (step = (int *) MALLOC (num_steps * sizeof (int))))
+       || (NULL == (xtrack = (int *) MALLOC (num_xtrack * sizeof (int)))))
      {
         Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto cleanup_and_return;
@@ -291,6 +294,12 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
    count[0] = num_steps;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, step))
+     goto cleanup_and_return;
+
+   start[0] = 0;
+   count[0] = num_xtrack;
+   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_XTRACK,
+                                  start, count, TIO_INT, xtrack))
      goto cleanup_and_return;
 
    if (-1 == TIO_inq_var (var_grp, var_name, &vi))
@@ -321,7 +330,7 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
           goto cleanup_and_return;
      }
 
-   num_pixels = num_steps * vb->num_xtrack;
+   num_pixels = num_steps * num_xtrack;
 
    for (i = 0; i < vb->num_dims; i++)
      {
@@ -329,7 +338,7 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
      }
 
    count[0] = num_steps;
-   count[1] = vb->num_xtrack;
+   count[1] = num_xtrack;
    for (i = 2; i < vb->num_dims; i++)
      {
         count[i] = vb->dimlens[i];
@@ -352,9 +361,10 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
 
    for (i = 0; i < num_pixels; i++)
      {
-        int pix_xtrack = i % vb->num_xtrack;
-        int pix_step_index = i / vb->num_xtrack;
-        int pix = pix_xtrack + step[pix_step_index] * vb->num_xtrack;
+        int pix_xtrack = xtrack [i % num_xtrack];
+        int pix_step   =   step [i / num_xtrack];
+        /* pixel index in target full-scan array */
+        int pix = pix_xtrack + pix_step * vb->num_xtrack;
         int bpp = bytes_per_value * vb->num_values_per_pixel;
         memcpy (vb->src_values.uc + pix * bpp, var + i * bpp, bpp);
      }
@@ -362,6 +372,7 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
    status = 0;
 cleanup_and_return:
    FREE(step);
+   FREE(xtrack);
    FREE(var);
 
    return status;

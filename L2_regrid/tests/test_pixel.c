@@ -235,7 +235,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
      }
 
    /* Test Pixel_regrid_from_mesh */
-   Pixel_regrid_grow_srcdims (r, nx_src-1, ny_src-1);
+   Pixel_regrid_grow_srcdims (r, nx_src, ny_src);
    memset ((char *)src_values, 0, num_src * sizeof(double));
    if (0 != Pixel_regrid_from_mesh (r, NULL, fill_value, dest_values, src_values))
      goto return_status;
@@ -273,7 +273,7 @@ static int test_regrid (int nx_src, int ny_src, float bin_factor,
         goto return_status;
      }
 
-   Pixel_regrid_grow_srcdims (r, INT_MAX-1, INT_MAX-1);
+   Pixel_regrid_grow_srcdims (r, INT_MAX, INT_MAX);
    Pixel_regrid_get_srcdims (r, &new_num_step, &new_num_xtrack);
    if ((new_num_step != INT_MAX) || (new_num_xtrack != INT_MAX))
      {
