@@ -4,6 +4,7 @@ MODULE radiance_fit
   use OMSAO_parameters_module, only : nwavel_max
   use optimizer_interface_module
   use tell_module
+  use, intrinsic :: ieee_arithmetic, only : ieee_is_finite
 
   private
   public fit_radiance
@@ -294,6 +295,9 @@ CONTAINS
         ! This gives the same CHI**2 as the NR routines
         ! ---------------------------------------------
         chisquav = SUM  ( fitres(1:n_rad_wvl_loc)**2 )
+
+        if (.not.ieee_is_finite (rms) .or. rms > 1.e30) rms = r8_missval
+        if (.not.ieee_is_finite (chisquav) .or. chisquav > 1.e30) chisquav = r8_missval
       ELSE
         rms      = r8_missval
         chisquav = r8_missval
