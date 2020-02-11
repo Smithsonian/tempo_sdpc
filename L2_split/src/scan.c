@@ -35,6 +35,7 @@ struct Granule_Type
    double tend;
    int *data_quality_flag;
    int *steps;
+   int *xtrack;
    int num_xtrack;
    int num_steps;
 };
@@ -45,7 +46,7 @@ struct Scan_Type
    int num_granules;
    int min_step;
    int max_step;
-   int max_num_xtrack;
+   int max_xtrack;
 };
 
 typedef struct
@@ -61,6 +62,7 @@ static void granule_free (Granule_Type *gr)
 
    FREE(gr->file);
    FREE(gr->steps);
+   FREE(gr->xtrack);
    FREE(gr->lon_bounds);
    FREE(gr->lat_bounds);
    FREE(gr->slant_column);
@@ -103,7 +105,8 @@ static int granule_alloc_data_arrays (Granule_Type *gr)
    int num_pixels;
    size_t len_bounds, len_doubles;
 
-   if (NULL == (gr->steps = (int *)MALLOC (gr->num_steps * sizeof(int))))
+   if ((NULL == (gr->steps = (int *)MALLOC (gr->num_steps * sizeof(int))))
+       || (NULL == (gr->xtrack = (int *)MALLOC (gr->num_xtrack * sizeof(int)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
@@ -151,6 +154,12 @@ static int read_pixel_vertices (Granule_Type *gr, int ncid)
    count[0] = gr->num_steps;
    if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_STEP,
                                   start, count, TIO_INT, gr->steps))
+     return -1;
+
+   start[0] = 0;
+   count[0] = gr->num_xtrack;
+   if (-1 == TIO_get_var_section (ncid, TEMPO_DIM_XTRACK,
+                                  start, count, TIO_INT, gr->xtrack))
      return -1;
 
    /* read lon/lat bounds arrays */
@@ -600,7 +609,7 @@ Scan_Type *scan_read_granules (int num_files, char **files, config_t *cfg)
 
    st->min_step = 0;
    st->max_step = 0;
-   st->max_num_xtrack = 0;
+   st->max_xtrack = 0;
 
    for (i = 0; i < st->num_granules; i++)
      {
@@ -615,8 +624,11 @@ Scan_Type *scan_read_granules (int num_files, char **files, config_t *cfg)
         st->granules[i]  = gr;
 
         /* record scan dimensions */
-        if (gr->num_xtrack > st->max_num_xtrack)
-          st->max_num_xtrack = gr->num_xtrack;
+        for (j = 0; j < gr->num_xtrack; j++)
+          {
+             if (gr->xtrack[j] > st->max_xtrack)
+               st->max_xtrack = gr->xtrack[j];
+          }
         for (j = 0; j < gr->num_steps; j++)
           {
              if (gr->steps[j] > st->max_step)
@@ -670,8 +682,10 @@ static Pixel_List_Type *make_lonlat_pixel_list (const Granule_Type *gr)
         return NULL;
      }
 
+   /* Assume all granules have the same xtrack size so that xtrack_dimlen = gr->num_xtrack */
    if (-1 == Pixel_list_pack (lonlat, gr->lon_bounds, gr->lat_bounds,
-                              num_pixels, 4, gr->steps, gr->num_xtrack))
+                              num_pixels, 4, gr->steps, gr->xtrack, gr->num_xtrack,
+                              gr->num_xtrack))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: packing pixel list", __func__);
         Pixel_list_free (lonlat);
@@ -721,8 +735,10 @@ static Pixel_List_Type *make_eqarea_pixel_list (const Granule_Type *gr)
         goto free_and_return;
      }
 
+   /* Assume all granules have the same xtrack size so that xtrack_dimlen = gr->num_xtrack */
    if (-1 == Pixel_list_pack (eqarea, albers_x_bounds, albers_y_bounds,
-                              num_pixels, 4, gr->steps, gr->num_xtrack))
+                              num_pixels, 4, gr->steps, gr->xtrack, gr->num_xtrack,
+                              gr->num_xtrack))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: packing pixel list", __func__);
         goto free_and_return;
@@ -786,7 +802,7 @@ scan_init_regrid (const Scan_Type *st, const Pixel_Grid_Param_Type *mesh)
                      "%s: failed initializing regrid operation", __func__);
         goto free_and_return;
      }
-   Pixel_regrid_grow_srcdims (r, st->max_step, st->max_num_xtrack-1);
+   Pixel_regrid_grow_srcdims (r, st->max_step+1, st->max_xtrack+1);
 
    for (i = 0; i < st->num_granules; i++)
      {
