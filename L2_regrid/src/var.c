@@ -315,21 +315,6 @@ static int read_var_values1 (int ncid, int var_grp, Var_Value_Buffer_Type *vb,
         goto cleanup_and_return;
      }
 
-   /* Set a default fill-value then let any fill-value in the file
-    * override it.  If there's no fill-value in the file, the
-    * default value won't be over-written. */
-   value_default_fill (vb, vi.type);
-   if (vb->value_type == VALUE_IS_DOUBLE)
-     {
-        if (-1 == TIO_get_fill_value (var_grp, var_name, TIO_DOUBLE, &vb->fill_value.d))
-          goto cleanup_and_return;
-     }
-   else
-     {
-        if (-1 == TIO_inq_var_fill (var_grp, vi.varid, NULL, &vb->fill_value.d))
-          goto cleanup_and_return;
-     }
-
    num_pixels = num_steps * num_xtrack;
 
    for (i = 0; i < vb->num_dims; i++)
@@ -399,6 +384,49 @@ static int parse_var_path (char *var_path,
    return 0;
 }
 
+static void memset_dbl_fill (double *x, int n, double fill)
+{
+   int i;
+   for (i = 0; i < n; i++) x[i] = fill;
+}
+
+static int init_var_value_buffer (Var_Value_Buffer_Type *vb, int grp, const char *var_name)
+{
+   TIO_Var_Info_Type vi;
+
+   if (-1 == TIO_inq_var (grp, var_name, &vi))
+     return -1;
+
+   if (vi.ndims < 2)
+     {
+        tell_vwarn (0, "%s: cannot regrid variable with dimension %d (%s)",
+                    __func__, vi.ndims, var_name);
+        return 1;
+     }
+
+   if (-1 == maybe_realloc_value_buf (&vi, vb))
+     return -1;
+
+   /* Set a default fill-value then let any fill-value in the file
+    * override it.  If there's no fill-value in the file, the
+    * default value won't be over-written. */
+   value_default_fill (vb, vi.type);
+   if (vb->value_type == VALUE_IS_DOUBLE)
+     {
+        if (-1 == TIO_get_fill_value (grp, var_name, TIO_DOUBLE, &vb->fill_value.d))
+          return -1;
+        memset_dbl_fill (vb->src_values.d, vb->num_src_pixels, vb->fill_value.d);
+        memset_dbl_fill (vb->dest_values.d, vb->num_dest_pixels, vb->fill_value.d);
+     }
+   else
+     {
+        if (-1 == TIO_inq_var_fill (grp, vi.varid, NULL, &vb->fill_value.d))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int read_var_values (Var_Value_Buffer_Type *vb, const char *var_path,
                             char **files, int num_files)
 {
@@ -434,20 +462,7 @@ static int read_var_values (Var_Value_Buffer_Type *vb, const char *var_path,
 
         if (i == 0)
           {
-             TIO_Var_Info_Type vi;
-
-             if (-1 == TIO_inq_var (grp, var_name, &vi))
-               goto free_and_return;
-
-             if (vi.ndims < 2)
-               {
-                  tell_vwarn (0, "%s: cannot regrid variable with dimension %d (%s)",
-                              __func__, vi.ndims, var_name);
-                  status = 1;
-                  goto free_and_return;
-               }
-
-             if (-1 == maybe_realloc_value_buf (&vi, vb))
+             if ((status = init_var_value_buffer (vb, grp, var_name)) != 0)
                goto free_and_return;
           }
 
