@@ -25,13 +25,15 @@ static void usage (int argc, char **argv)
    (void) argc;
    fprintf (stderr, "Usage: %s [options] <radiance-file>\n", argv[0]);
    fprintf (stderr, "Options:\n");
+   fprintf (stderr, " -s             Print granule archive sub-directory path to stdout\n");
    fprintf (stderr, " -o <info-file> Output file name\n");
    fprintf (stderr, " -v <version>   Processing version number\n");
 }
 
 static int write_granule_ident_file (const char *file,
                                      _pTIO_Granule_Ident_Type *gid,
-                                     int version, const char *product_type)
+                                     int version, const char *product_type,
+                                     int print_granule_subdir)
 {
    struct tm tstart, tend;
    double flocal_tstart, flocal_tend;
@@ -91,6 +93,12 @@ static int write_granule_ident_file (const char *file,
         return -1;
      }
 
+   if (print_granule_subdir)
+     {
+        /* no newline! */
+        (void) fprintf (stdout, "D%05d/S%03d/G%02d", (int) flocal_tstart, gid->scan_num, gid->granule_num);
+     }
+
    return 0;
 }
 
@@ -102,12 +110,17 @@ int main (int argc, char **argv)
    char *radiance_file = NULL;
    int c, ncid, xtype;
    int version = -1;
+   int print_granule_subdir = 0;
    size_t len;
 
-   while ((c = getopt (argc, argv, "o:v:")) != -1)
+   while ((c = getopt (argc, argv, "so:v:")) != -1)
      {
         switch (c)
           {
+           case 's':
+             print_granule_subdir++;
+             break;
+
            case 'o':
              output_file = optarg;
              break;
@@ -181,7 +194,7 @@ int main (int argc, char **argv)
 
    (void) TIO_close (ncid);
 
-   if (0 != write_granule_ident_file (output_file, &gid, version, product_type))
+   if (0 != write_granule_ident_file (output_file, &gid, version, product_type, print_granule_subdir))
      return 1;
 
    return 0;
