@@ -2,7 +2,7 @@
 #SBATCH --output=/dev/null
 
 # Assume this script is started in a writeable directory
-# with the path to a tar file name provided
+# with the path to a tar file notice provided
 # on the command line.
 
 # exit on error
@@ -17,25 +17,27 @@ test -d $SDPC_RUN_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
-  echo "Usage: $0 <host-spec> <tar-file>"
+  echo "Usage: $0 <host-spec> <tar-file-notice>"
   exit 1
 fi
+
+# Setup paths to scripts, config files
+#
+export PATH="$SDPC_ROOT/bin:$PATH"
+etc_dir="$SDPC_ROOT/etc"
 
 # host_spec is a string of the form k:N indicating that
 # this is the kth host from a set of N
 host_spec="$1"
 this_host=$(echo $host_spec | cut -d- -f 1)
 
-# tarfile_path_alias will have the form $DIR/basename.tar_${k}
+# tar_file_notice_alias will have the form $DIR/basename.tar_${k}
 # where k indicates which host will be processing the file.
-tarfile_path_alias="$2"
-test -r $tarfile_path_alias || exit 1
-tarfile_dir=$(basename $tarfile_path_alias ".tar_${this_host}")
+tar_file_notice_alias="$2"
 
-# Setup paths to scripts, config files
-#
-export PATH="$SDPC_ROOT/bin:$PATH"
-etc_dir="$SDPC_ROOT/etc"
+# sourcing the tar file notice defines the variable tar_host and tar_host_file_path
+. $tar_file_notice_alias
+tarfile_dir=$(basename $tar_host_file_path ".tar_${this_host}")
 
 # Unpack the tar file, then move into the new directory.
 # Do this in a uniquely named subdirectory to avoid collisions
@@ -44,7 +46,18 @@ unique_subdir_name="${SLURM_JOB_ID}_$$"
 mkdir $unique_subdir_name
 cd $unique_subdir_name
 tar_unpack_dir=$(pwd)
-tar xf $tarfile_path_alias
+
+# Retrieve the tar file and unpack it.
+tar_file_basename=$(basename $tar_host_file_path)
+this_host=$(uname -n | cut -d. -f1)
+if test x"$tar_host" != x"$this_host" ; then
+   scp $tar_host:$tar_host_file_path .
+   tar xf $tar_file_basename
+   /bin/rm $tar_file_basename
+else
+   tar xf $tar_host_file_path
+fi
+
 cd $tarfile_dir
 
 # 1. At this point, we're in a directory containing:
@@ -149,5 +162,5 @@ if test X"$jid_list" != X ; then
    job_clean="L2-end:$SDPC_GRANULE_LABEL"
    sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
           --dependency=afterany:$jid_list \
-          run_L2_cleanup.sh ${tarfile_path_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
+          run_L2_cleanup.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
 fi

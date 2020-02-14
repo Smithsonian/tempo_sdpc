@@ -95,15 +95,21 @@ sbatch --wait --job-name=$job_prep_l2 --chdir $run_dir \
 log_message "finished batch prep_L2.sh: $SDPC_GRANULE_LABEL"
 
 # The --wait above ensures that we don't get to here until
-# this tar file has been created -- and there's no point in
+# this tar file notice has been created -- and there's no point in
 # proceeding further if we don't have it.
-tarfile_path="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
-if ! test -f "$tarfile_path" ; then
+tar_file_notice="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
+if ! test -f "$tar_file_notice" ; then
   error_exit "*** Error: prep_L2.sh failed: $rad_basename"
 fi
 
-# Since the tar file exists, we're confident that the final L1b radiance file
-# has been archived, so we can now delete the L1a radiance file that was
+# Sourcing the tar file notice defines the variables
+# tar_host = machine with tar file on local disk
+# tar_host_file_path = path to tar file on $tar_host
+# granule_arch_dir_path = path to L2 archive directory for this granule
+. $tar_file_notice
+
+# Since the tar file notice exists, we're confident that the final L1b radiance
+# file has been archived, so we can now delete the L1a radiance file that was
 # provided as input to INR:
 /bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
 
@@ -140,20 +146,15 @@ if test x"$have_o3p" != x ; then
   num_o3p_hosts=3;
   o3p_host_list=$(seq 0 $((num_o3p_hosts-1)))
 
-  # To perform the o3p merge later, we'll need to know archive path for
-  # this granule.  Create that path now, and save it:
-  o3p_target_arch_dir_path="$(run_o3p_merge.sh path $tarfile_path)"
-  if test x"$o3p_target_arch_dir_path" = x ; then
-     error_exit "*** Error: constructing target archive directory path for $tarfile_path"
-  fi
-
   for k in $o3p_host_list ; do
      # To enable parallel cleanup, make a per-host hard link to the tar file
      # (we can make these links now, only because prep_L2.sh ran with --wait)
-     tarfile_path_alias="${tarfile_path}_${k}"
-     if ! test -f $tarfile_path_alias ; then
-        ln $tarfile_path $tarfile_path_alias
-     fi
+     tar_host_file_path_alias="${tar_host_file_path}_${k}"
+     tar_file_notice_alias="${tar_file_notice}_${k}"
+     ssh $tar_host ln $tar_host_file_path $tar_host_file_path_alias
+     printf "tar_host=$tar_host\n" > $tar_file_notice_alias
+     printf "tar_host_file_path=$tar_host_file_path_alias\n" >> $tar_file_notice_alias
+     printf "granule_arch_dir_path=$granule_arch_dir_path\n" >> $tar_file_notice_alias
   done
 fi
 
@@ -167,10 +168,12 @@ if test x"$product_list_sans_o3p" != x ; then
   job_run_l2="L2:${SDPC_GRANULE_LABEL}"
   sbatch --job-name=$job_run_l2 \
          --chdir $run_dir \
-         run_L2.sh "$tarfile_path" "$product_list_sans_o3p"
+         run_L2.sh "$tar_file_notice" "$product_list_sans_o3p"
 else
-  # If o3p is the only product, we no longer need the primary tar file
-  /bin/rm $tarfile_path
+  # If o3p is the only product, we no longer need the primary tar file.
+  # Remove both the tar file notice, and the tar file itself.
+  ssh $tar_host /bin/rm -f $tar_host_file_path
+  /bin/rm -f $tar_file_notice
 fi
 
 if test x"$have_o3p" != x ; then
@@ -185,7 +188,7 @@ if test x"$have_o3p" != x ; then
 
   for k in $o3p_host_list ; do
      host_spec="${k}-${num_o3p_hosts}"
-     tarfile_path_alias="${tarfile_path}_${k}"
+     tar_file_notice_alias="${tar_file_notice}_${k}"
 
      log_message "start batch run_L2_o3p.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
      # Here, the --wait ensures that the tar file has been unpacked on each
@@ -197,12 +200,12 @@ if test x"$have_o3p" != x ; then
      sbatch --job-name="$job_o3p" \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$run_dir \
-            run_L2_o3p.sh "$host_spec" "$tarfile_path_alias"
+            run_L2_o3p.sh "$host_spec" "$tar_file_notice_alias"
   done
 
   log_message "start singleton-dependent batch run_o3p_merge.sh: $job_o3p"
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" \
-         run_o3p_merge.sh merge $o3p_target_arch_dir_path
+         run_o3p_merge.sh $granule_arch_dir_path
 fi

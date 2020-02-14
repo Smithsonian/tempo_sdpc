@@ -4,31 +4,13 @@
 set -e
 set -u
 
-if test $# -ne 2 ; then
-   echo "Usage: $0 path <L2-incoming-tar-file> OR"
-   echo "Usage: $0 merge <granule-arch-dir-path>"
+if test $# -ne 1 ; then
+   echo "Usage: $0 <granule-arch-dir-path>"
    exit 1
 fi
 
 #. ../ctrl/sdpc_setup.sh
 export PATH="$SDPC_ROOT/bin:$PATH"
-
-get_granule_arch_dir_path()
-{
-  tarfile_path="$1"
-  tarfile_basename=$(basename $tarfile_path .tar)
-
-  granule_ident=$(tar -x -f $tarfile_path --to-stdout $tarfile_basename/granule_ident.csv | tr ',' '=')
-
-  #echo "$granule_ident"
-  eval "$granule_ident"
-
-  arch_type="$SDPC_ARCHIVE_DIR/L2/$product_type"
-  granule_subdir=$(printf "D%05d/S%03d/G%02d" $sat_local_day_start $scan_num $granule_num)
-  granule_arch_dir_path="${arch_type}/${granule_subdir}"
-
-  printf "$granule_arch_dir_path"
-}
 
 perform_merge()
 {
@@ -72,19 +54,4 @@ EOF
   tar cf ${block_tarfile_name}.tar --remove-files --transform s,\^,${block_tarfile_name}/, block_*
 }
 
-mode="$1"
-
-case "$mode" in
-  path )
-   get_granule_arch_dir_path "$2"
-  ;;
-
-  merge )
-   perform_merge "$2"
-  ;;
-
-  * )
-  echo "*** Error: unrecognized mode = $mode"
-  exit 1
-  ;;
-esac
+perform_merge "$1"

@@ -3,7 +3,7 @@
 #SBATCH --output=/dev/null
 
 # Assume this script is started in a writeable directory
-# with the path to a tar file name provided
+# with the path to a tar file notice provided
 # on the command line.
 
 # exit on error
@@ -18,24 +18,39 @@ test -d $SDPC_RUN_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
-  echo "Usage: $0 <tar-file> <product-list>"
+  echo "Usage: $0 <tar-file-notice> <product-list>"
   exit 1
 fi
 
-tar_file="$1"
+tar_file_notice="$1"
 product_list_arg="$2"
 
-test -r $tar_file || exit 1
-tar_file_dir=$(basename $tar_file .tar)
+test -r $tar_file_notice || exit 1
 
 # Setup paths to scripts, config files
 #
 export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
-# unpack the tar file, then move into the new directory:
+# tar_file_notice is a short script that defines the variables
+# tar_host = machine with the tar file on its local disk
+# tar_host_file_path = path to the tar file on $tar_host
+. $tar_file_notice
+
+# Retrieve the tar file and unpack it:
+tar_file_basename=$(basename $tar_host_file_path)
+this_host=$(uname -n | cut -d. -f1)
+if test x"$tar_host" != x"$this_host" ; then
+   scp $tar_host:$tar_host_file_path .
+   tar xf $tar_file_basename
+   /bin/rm $tar_file_basename
+else
+   tar xf $tar_host_file_path
+fi
+
+# move into the directory from the unpacked tar file
 tar_unpack_dir=$(pwd)
-tar xf $tar_file
+tar_file_dir=$(basename $tar_file_basename .tar)
 cd $tar_file_dir
 
 # 1. At this point, we're in a directory containing:
@@ -132,5 +147,5 @@ if test X"$jid_list" != X ; then
    job_clean="L2-end:$SDPC_GRANULE_LABEL"
    sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
           --dependency=afterany:$jid_list \
-          run_L2_cleanup.sh $tar_file $tar_unpack_dir/$tar_file_dir
+          run_L2_cleanup.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
 fi

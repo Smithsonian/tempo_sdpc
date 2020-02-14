@@ -280,16 +280,23 @@ perform_cleanup()
    done
 }
 
-get_metadata_file()
+notify_granule_ready()
 {
-   granule_ident=$(cat granule_ident.csv | tr ',' '=')
-   eval "$granule_ident"
+  dir="$1"
 
-   arch_type="$SDPC_ARCHIVE_DIR/L1/$product_type"
-   granule_subdir=$(printf "D%05d/S%03d/G%02d" $sat_local_day_start $scan_num $granule_num)
-   granule_arch_dir_path="${arch_type}/${granule_subdir}"
+  tarfile_basename="${rad_basename}.tar"
+  this_hostname_sans_domain=$(uname -n | cut -d. -f1)
 
-   /bin/cp $granule_arch_dir_path/${rad_basename}.nc.met .
+  # To give notice that a granule is ready for level 1-2 processing,
+  # we store path information in an ascii file in $l2_incoming.
+  # The file is created as a hidden file, then renamed so that the file
+  # appears as an atomic change to the directory file listing.
+cat <<EOF > $dir/.$tarfile_basename
+tar_host="$this_hostname_sans_domain"
+tar_host_file_path="${l1_out_dir}/$tarfile_basename"
+granule_arch_dir_path="$SDPC_ARCHIVE_DIR/L2/RAD/$granule_subdir"
+EOF
+  /bin/mv "$dir/.$tarfile_basename" "$dir/$tarfile_basename"
 }
 
 if ! test -f "$irr_file" ; then
@@ -299,10 +306,10 @@ fi
 
 get_tiepoint_file
 
-mkgranule_ident -o granule_ident.csv ${rad_basename}.nc
+granule_subdir=$(mkgranule_ident -s -o granule_ident.csv ${rad_basename}.nc)
 
 # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
-(get_metadata_file)
+/bin/cp "$SDPC_ARCHIVE_DIR/L1/RAD/$granule_subdir/${rad_basename}.nc.met" .
 
 run_inr_post ${rad_basename}.nc
 
@@ -312,6 +319,7 @@ run_inr_post ${rad_basename}.nc
 create_file_listing
 
 trap - EXIT
-tar_granule_dir_to_dest "$l2_incoming"
+tar_granule_dir_to_dest "$l1_out_dir"
+notify_granule_ready "$l2_incoming"
 
 perform_cleanup
