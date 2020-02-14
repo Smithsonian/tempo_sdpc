@@ -13,7 +13,7 @@
 #    products are generated in parallel by running slurm batch
 #    jobs (run_L2.sh, run_L2_o3p.sh).
 #
-# On error, a tar file is stored in L2/repro
+# On error, a tar file is stored in L1/repro
 #
 #--------------------------------------------------------------------
 

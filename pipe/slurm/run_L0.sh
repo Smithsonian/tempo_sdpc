@@ -56,10 +56,7 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
 l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
-
-l1_out_dir="$SDPC_RUN_DIR/L1/out"
-
-l2_incoming_dir="$SDPC_RUN_DIR/L2/incoming"
+l0_out_dir="$SDPC_RUN_DIR/L0/out"
 
 inr_input_cache="$SDPC_RUN_DIR/L1/radiance_inr_staging"
 
@@ -159,9 +156,9 @@ esac
 
 trap - EXIT
 
-if test x"$l1_out_dir" != x ; then
-   tar_product_to_dest_dir "$l1_out_dir"
-   tarfile_path="$l1_out_dir/${work_dir_tarfile}"
+if test x"$l0_out_dir" != x ; then
+   tar_product_to_dest_dir "$l0_out_dir"
+   tarfile_path="$l0_out_dir/${work_dir_tarfile}"
    archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L1 $tarfile_path
 fi
 

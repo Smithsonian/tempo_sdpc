@@ -30,7 +30,7 @@
 # 5. When it's finished, the script cleans up after itself and
 #    should leave nothing behind.
 #
-# On error, a tar file is stored in the L2/repro directory.
+# On error, a tar file is stored in the L1/repro directory.
 #
 #---------------------------------------------------------------------
 
@@ -69,9 +69,9 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
+l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
 l2_incoming="$SDPC_RUN_DIR/L2/incoming"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
-l2_repro_dir="$SDPC_RUN_DIR/L2/repro"
 
 # Make a working directory with a local copy of the radiance file.
 rad_file_basename=$(basename "$rad_file" .nc)
@@ -129,7 +129,7 @@ tar_granule_dir_to_dest()
 
 finish()
 {
-   tar_granule_dir_to_dest "$l2_repro_dir"
+   tar_granule_dir_to_dest "$l1_repro_dir"
 }
 trap finish EXIT ERR
 
