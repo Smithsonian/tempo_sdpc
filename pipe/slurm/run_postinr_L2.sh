@@ -26,12 +26,12 @@ set -u
 # Note that the radiance file name be "hidden" (may begin with a ".").
 
 if test $# -ne 2 ; then
-  echo "Usage: $0 <rad-path> <run_dir>"
+  echo "Usage: $0 <rad-path> <l1_run_dir>"
   exit 1
 fi
 
 rad_path="$1"
-run_dir="$2"
+l1_run_dir="$2"
 
 PROGNAME="$(basename $0)"
 error_exit()
@@ -50,12 +50,14 @@ log_message()
 test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
+export PATH="$SDPC_ROOT/bin:$PATH"
+
 # SDPC_RUN_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used
 # in the processing directory path on the compute nodes.
 : "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set}"
 
-export PATH="$SDPC_ROOT/bin:$PATH"
+l2_run_dir="${SDPC_RUN_DIR}/L2"
 
 # Parse the path to the post-INR radiance file
 rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")
@@ -88,7 +90,7 @@ log_message "start batch prep_L2.sh: $SDPC_GRANULE_LABEL"
 
 # Run the post-INR pipeline to prepare for L2 product generation:
 job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
-sbatch --wait --job-name=$job_prep_l2 --chdir $run_dir \
+sbatch --wait --job-name=$job_prep_l2 --chdir $l1_run_dir \
         --nodes=1-1 --ntasks=8 \
         prep_L2.sh "${rad_basename}.nc" "$file_list_file"
 
@@ -167,7 +169,7 @@ if test x"$product_list_sans_o3p" != x ; then
   log_message "start batch run_L2.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
   job_run_l2="L2:${SDPC_GRANULE_LABEL}"
   sbatch --job-name=$job_run_l2 \
-         --chdir $run_dir \
+         --chdir $l2_run_dir \
          run_L2.sh "$tar_file_notice" "$product_list_sans_o3p"
 else
   # If o3p is the only product, we no longer need the primary tar file.
@@ -199,7 +201,7 @@ if test x"$have_o3p" != x ; then
      # the final data product file.
      sbatch --job-name="$job_o3p" \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
-            --chdir=$run_dir \
+            --chdir=$l2_run_dir \
             run_L2_o3p.sh "$host_spec" "$tar_file_notice_alias"
   done
 
