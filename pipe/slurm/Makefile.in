@@ -6,11 +6,11 @@ SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
 all:
 	@echo "targets: install"
 
-SCRIPT_FILES= run_postinr_L2.sh prep_L2.sh run_L2.sh run_L2_cleanup.sh \
-    run_trace_gas.sh run_o3t.sh \
-    run_L2_o3p.sh run_o3p_util.sh run_o3p_block.sh run_o3p_merge.sh \
-    run_L0_pre_inr.sh run_L0.sh wavecal_block.sh run_wavecal.sh \
-    run_wavecal_merge.sh
+SCRIPT_FILES= level1a.sh level1a_batch.sh \
+              level2.sh level2_prep.sh level2_batch.sh level2_finish.sh \
+              wavecal.sh wavecal_block.sh wavecal_merge.sh \
+              o3tot.sh tracegas.sh \
+              o3prof_batch.sh o3prof_block.sh o3prof_merge.sh o3prof_util.sh
 
 INSTALL = @INSTALL@
 MKINSDIR = ../../autoconf/mkinsdir.sh
