@@ -4,14 +4,14 @@
 #    of a newly completed geolocated radiance file in the INR
 #    output cache.
 #
-# 1. The script first runs a batch process (prep_L2.sh) on a compute
+# 1. The script first runs a batch process (level2_prep.sh) on a compute
 #    node to finish Level 1 processing (post-INR calculations,
 #    polarization correction, wavelength calibration), and generate
 #    the cloud product.
 #
 # 2. Once the cloud product is available, the remaining Level 2
 #    products are generated in parallel by running slurm batch
-#    jobs (run_L2.sh, run_L2_o3p.sh).
+#    jobs (level2_batch.sh, o3prof_batch.sh).
 #
 # On error, a tar file is stored in L1/repro
 #
@@ -86,22 +86,22 @@ met_file_path_hires=${met_file_path_hires}
 met_file_path_lores=${met_file_path_lores}
 EOF
 
-log_message "start batch prep_L2.sh: $SDPC_GRANULE_LABEL"
+log_message "start level2_prep.sh: $SDPC_GRANULE_LABEL"
 
 # Run the post-INR pipeline to prepare for L2 product generation:
 job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
 sbatch --wait --job-name=$job_prep_l2 --chdir $l1_run_dir \
         --nodes=1-1 --ntasks=8 \
-        prep_L2.sh "${rad_basename}.nc" "$file_list_file"
+        level2_prep.sh "${rad_basename}.nc" "$file_list_file"
 
-log_message "finished batch prep_L2.sh: $SDPC_GRANULE_LABEL"
+log_message "finished level2_prep.sh: $SDPC_GRANULE_LABEL"
 
 # The --wait above ensures that we don't get to here until
 # this tar file notice has been created -- and there's no point in
 # proceeding further if we don't have it.
 tar_file_notice="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
 if ! test -f "$tar_file_notice" ; then
-  error_exit "*** Error: prep_L2.sh failed: $rad_basename"
+  error_exit "*** Error: level2_prep.sh failed: $rad_basename"
 fi
 
 # Sourcing the tar file notice defines the variables
@@ -150,7 +150,7 @@ if test x"$have_o3p" != x ; then
 
   for k in $o3p_host_list ; do
      # To enable parallel cleanup, make a per-host hard link to the tar file
-     # (we can make these links now, only because prep_L2.sh ran with --wait)
+     # (we can make these links now, only because level2_prep.sh ran with --wait)
      tar_host_file_path_alias="${tar_host_file_path}_${k}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
      ssh $tar_host ln $tar_host_file_path $tar_host_file_path_alias
@@ -166,11 +166,11 @@ fi
 # cluster nodes are busy).
 
 if test x"$product_list_sans_o3p" != x ; then
-  log_message "start batch run_L2.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
+  log_message "start level2_batch.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
   job_run_l2="L2:${SDPC_GRANULE_LABEL}"
   sbatch --job-name=$job_run_l2 \
          --chdir $l2_run_dir \
-         run_L2.sh "$tar_file_notice" "$product_list_sans_o3p"
+         level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p"
 else
   # If o3p is the only product, we no longer need the primary tar file.
   # Remove both the tar file notice, and the tar file itself.
@@ -192,7 +192,7 @@ if test x"$have_o3p" != x ; then
      host_spec="${k}-${num_o3p_hosts}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
 
-     log_message "start batch run_L2_o3p.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
+     log_message "start o3prof_batch.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
      # Here, the --wait ensures that the tar file has been unpacked on each
      # compute host and all associated o3p batch jobs have been submitted
      # _before_ the singleton dependency cleanup batch job is submitted.
@@ -202,12 +202,12 @@ if test x"$have_o3p" != x ; then
      sbatch --job-name="$job_o3p" \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$l2_run_dir \
-            run_L2_o3p.sh "$host_spec" "$tar_file_notice_alias"
+            o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"
   done
 
-  log_message "start singleton-dependent batch run_o3p_merge.sh: $job_o3p"
+  log_message "start singleton-dependent batch o3prof_merge.sh: $job_o3p"
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" \
-         run_o3p_merge.sh $granule_arch_dir_path
+         o3prof_merge.sh $granule_arch_dir_path
 fi

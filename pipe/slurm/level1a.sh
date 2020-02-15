@@ -109,10 +109,10 @@ EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
 
-echo "start batch run_L0.sh: $SDPC_GRANULE_LABEL"
+echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
 # Run the pipeline:
 job_l0="L0:$SDPC_GRANULE_LABEL"
 sbatch --job-name=$job_l0 \
        --chdir $run_dir \
-       run_L0.sh "${granule_basename}.nc" "$file_list_file"
+       level1a_batch.sh "${granule_basename}.nc" "$file_list_file"

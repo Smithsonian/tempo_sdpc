@@ -111,21 +111,21 @@ update_job_list()
 do_HCHO()
 {
   job_hcho="hcho:${SDPC_GRANULE_LABEL}"
-  jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho run_trace_gas.sh HCHO)
+  jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho tracegas.sh HCHO)
   update_job_list $jid_hcho
 }
 
 do_NO2()
 {
   job_no2="no2:${SDPC_GRANULE_LABEL}"
-  jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 run_trace_gas.sh NO2)
+  jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 tracegas.sh NO2)
   update_job_list $jid_no2
 }
 
 do_O3TOT()
 {
   job_o3t="o3t:${SDPC_GRANULE_LABEL}"
-  jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t run_o3t.sh)
+  jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t o3tot.sh)
   update_job_list $jid_o3t
 }
 
@@ -147,5 +147,5 @@ if test X"$jid_list" != X ; then
    job_clean="L2-end:$SDPC_GRANULE_LABEL"
    sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
           --dependency=afterany:$jid_list \
-          run_L2_cleanup.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
+          level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
 fi

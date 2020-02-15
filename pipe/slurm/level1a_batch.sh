@@ -107,7 +107,7 @@ run_l0_ccd()
           $granule_basename
 }
 
-. $SDPC_ROOT/bin/run_wavecal.sh
+. $SDPC_ROOT/bin/wavecal.sh
 
 run_inr_prep()
 {

@@ -124,7 +124,7 @@ do_O3PROF()
    #  4. Update the master job dependency list.
 
    block_range_file="blocks"
-   run_o3p_util.sh init "$host_spec" "$block_range_file"
+   o3prof_util.sh init "$host_spec" "$block_range_file"
 
    block_range_path="${run_dir}/O3PROF/$block_range_file"
 
@@ -144,12 +144,12 @@ do_O3PROF()
    jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
                           --array="${array_bounds}" \
                           --job-name="$SLURM_JOB_NAME" \
-                          run_o3p_block.sh ${run_dir})
+                          o3prof_block.sh ${run_dir})
 
    jid_o3p_cleanup=$(sbatch -w $SLURMD_NODENAME --parsable \
                             --dependency=afterany:$jid_o3p_array \
                             --job-name="$SLURM_JOB_NAME" \
-                            run_o3p_util.sh cleanup "$host_spec")
+                            o3prof_util.sh cleanup "$host_spec")
    update_job_list $jid_o3p_cleanup
 }
 
@@ -162,5 +162,5 @@ if test X"$jid_list" != X ; then
    job_clean="L2-end:$SDPC_GRANULE_LABEL"
    sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
           --dependency=afterany:$jid_list \
-          run_L2_cleanup.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
+          level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
 fi

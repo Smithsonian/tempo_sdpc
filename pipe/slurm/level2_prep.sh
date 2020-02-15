@@ -164,7 +164,7 @@ tar_l1_radiance_to_dest()
               $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 }
 
-. $SDPC_ROOT/bin/run_wavecal.sh
+. $SDPC_ROOT/bin/wavecal.sh
 
 run_inr_post()
 {
