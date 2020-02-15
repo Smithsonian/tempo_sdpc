@@ -13,8 +13,8 @@
 400150|terrainPressure0303.he4|@refdata_dir@/data/V8ANC||||1
 400151|cloud_pressure.he4|@refdata_dir@/data/V8ANC||||1
 400152|v8snowice.he4|@refdata_dir@/data/V8ANC||||1
-400400|NVAL.SO2_w12_RRS.h5|@refdata_dir@/data/LUT||||1
-400401|DNDX.SO2_w12.h5|@refdata_dir@/data/LUT||||1
+400400|NVAL_TEMPO.h5|@refdata_dir@/data/LUT||||1
+400401|DNDX_TEMPO.h5|@refdata_dir@/data/LUT||||1
 #410100|OMTO3.MCF|@refdata_dir@/control||||1
 420002|SIMPLE.MCF|@etc_dir@/o3_total||||1
 420102|metadata.nml|@etc_dir@/o3_total||||1
