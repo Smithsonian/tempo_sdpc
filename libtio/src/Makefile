@@ -3,7 +3,7 @@
 include ../../Makefile.defines
 
 THIS_LIB = tio
-EXECUTABLES = mkgranule_name mkgranule_ident ttime
+EXECUTABLES = mkgranule_name mkgranule_ident level1_info ttime
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
@@ -198,8 +198,13 @@ mkgranule_name:
 	$(COMPILE_CMD) -o mkgranule_name $(INCS) mkgranule_name.c \
 	     $(TIO_LIBPATHS) -ltio $(LIBS)
 
+# FIXME? (2020 Feb) mkgranule_ident is currently not needed but I'm leaving it in place for now, just in case.
 mkgranule_ident:
 	$(COMPILE_CMD) -o mkgranule_ident $(INCS) mkgranule_ident.c \
+	     $(TIO_LIBPATHS) -ltio $(LIBS)
+
+level1_info:
+	$(COMPILE_CMD) -o level1_info $(INCS) level1_info.c \
 	     $(TIO_LIBPATHS) -ltio $(LIBS)
 
 ttime:
