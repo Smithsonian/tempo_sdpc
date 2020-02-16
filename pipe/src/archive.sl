@@ -245,6 +245,13 @@ define process_tar_file (tar_file, archive_incoming_dir,
         return -1;
      }
 
+   % This process is usually running on a compute node and the
+   % archive incoming directory is probably on a different host.
+   % Therefore, we copy the tar file to the remote archive incoming
+   % directory before unpacking it. Once unpacked, we delete the
+   % remote archive's copy of the tar file, and once all that has
+   % succeeded, we delete the local copy of the tar file.
+
    variable e, tar_file_cpy;
    try (e)
      {
