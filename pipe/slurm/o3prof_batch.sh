@@ -61,7 +61,7 @@ fi
 cd $tarfile_dir
 
 # 1. At this point, we're in a directory containing:
-#          * granule_ident.csv
+#          * archive_subdir
 #          * pge_input_basenames.lis, containing the file names:
 #            - geolocated level 1 radiance file
 #            - level 1 irradiance file
@@ -95,13 +95,13 @@ init_product_dir()
   dir=$1
   /bin/mkdir -p $dir
   /bin/ln ./${rad_basename}.nc ./${irr_basename}.nc ./$cld_file $dir
-  /bin/cp granule_ident.csv pge_input_basenames.lis ${rad_basename}.lis $dir
+  /bin/cp pge_input_basenames.lis ${rad_basename}.lis $dir
 }
 
 remove_redundant_files()
 {
    /bin/rm ${rad_basename}.nc ${irr_basename}.nc $cld_file
-   /bin/rm pge_input_basenames.lis granule_ident.csv ${rad_basename}.lis
+   /bin/rm pge_input_basenames.lis ${rad_basename}.lis
 }
 
 jid_list=""

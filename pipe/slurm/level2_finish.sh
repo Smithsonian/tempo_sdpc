@@ -25,8 +25,10 @@ else
 fi
 
 # When the pipeline completes, the processing directory should be empty.
-# Delete it, and then delete the original tar file notice:
-/bin/rm $tar_file_notice
+# except for the archive_subdir file.
+# Delete the processing directory, and the original tar file notice:
+/bin/rm -f $tar_file_notice
+/bin/rm -f $tar_dir/archive_subdir
 /bin/rmdir $tar_dir
 
 if test $# -eq 3 ; then

@@ -70,7 +70,7 @@ chmod u+w "$granule_basename"
 
 work_dir_tarfile="${work_dir}.tar"
 
-mkgranule_ident -o granule_ident.csv -v $SDPC_PROCESSING_VERSION $granule_basename
+level1_info --dir $granule_basename > archive_subdir
 
 run_dir=$(pwd)
 parent_dir=$(dirname "$run_dir")

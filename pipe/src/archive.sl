@@ -12,7 +12,7 @@ require ("pipeutil");
 
 private variable Delete_Tarfiles = 0;
 private variable Clobber_Output_Files = 0;
-private variable Granule_Ident_File = "granule_ident.csv";
+private variable Archive_Subdir_File = "archive_subdir";
 
 private variable Archive_Root_Dir;
 
@@ -83,7 +83,7 @@ define copy_file (file_path, dest_dir)
 
 private define get_tarfile_archive_subdir (tar_file)
 {
-   % Extract the ${Granule_Ident_File} file.
+   % Extract the archive_subdir file.
    %
    % To avoid granule-specific directory name collisions when
    % multiple processes simultaneously archive data products,
@@ -97,53 +97,31 @@ private define get_tarfile_archive_subdir (tar_file)
    variable name_fields = strtok (tar_file_basename, ".");
    variable granule_name = name_fields[0];
 
-   variable temp_granule_ident_file =
-     path_concat (dir, tar_file_basename + "_" + Granule_Ident_File);
+   variable temp_subdir_file = path_concat (dir, tar_file_basename
+                                            + "_" + Archive_Subdir_File);
 
    variable argv = ["tar", "-x", "-f", tar_file, "--to-stdout",
-                    path_concat (granule_name, Granule_Ident_File)];
-   variable s = new_process(argv; stdout=temp_granule_ident_file).wait();
+                    path_concat (granule_name, Archive_Subdir_File)];
+   variable s = new_process(argv; stdout=temp_subdir_file).wait();
    if (s.exit_status != 0)
      {
         throw ApplicationError,
-          "*** Error: extracting ${Granule_Ident_File} from tar archive: $tar_file"$;
+          "*** Error: extracting ${Archive_Subdir_File} from tar archive: $tar_file"$;
      }
 
-   % Determine the destination archive directory from the
-   % contents of the granule_ident CSV file.
-   variable _g = csv_readcol (temp_granule_ident_file);
-   variable g = @Struct_Type (_g.col1);
-   array_map (Void_Type, &set_struct_field, g, _g.col1, _g.col2);
+   variable fp = fopen (temp_subdir_file, "r");
+   if (fp == NULL)
+     throw IOError, "opening file $temp_subdir_file for reading"$;
+   variable archive_subdir;
+   if (fgets (&archive_subdir, fp) < 0)
+     throw IOError, "reading file $temp_subdir_file"$;
+   () = fclose (fp);
 
    % Now delete the temporary file
-   if (0 != remove (temp_granule_ident_file))
-     throw ApplicationError, "*** Error removing $temp_granule_ident_file"$;
+   if (0 != remove (temp_subdir_file))
+     throw ApplicationError, "*** Error removing $temp_subdir_file"$;
 
-   variable sat_day_dir = sprintf ("D%05d", atoi(g.sat_local_day_start));
-
-   % Construct the archive subdirectory path:
-   variable subdir_seq = [g.product_type, sat_day_dir];
-
-   % Radiances will have assigned scan/granule number values,
-   % while dark, and irradiance will not.
-   % If anything else comes through, the UTC timestamp should
-   % ensure uniqueness within each product type.
-   if (is_substr(g.product_type, "RAD"))
-     {
-        subdir_seq = [subdir_seq,
-                      sprintf("S%03d", atoi(g.scan_num)),
-                      sprintf("G%02d", atoi(g.granule_num))];
-     }
-   else
-     {
-        variable basename_fields = strtok (granule_name, "_");
-        variable timestamp_field = basename_fields[4];
-        subdir_seq = [subdir_seq, timestamp_field];
-     }
-
-   variable dest_subdir = strjoin (subdir_seq, "/");
-
-   return dest_subdir;
+   return archive_subdir;
 }
 
 define register_using_symlink (tar_file, archive_dest_subdir)
@@ -208,17 +186,16 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    return 0;
 }
 
-define unpack_and_archive (tar_file, archive_dest_dir)
+define unpack_and_archive (tar_file, archive_level_dir)
 {
    % The unpack and archive process involves the following steps:
-   %  1. Extract the ${Granule_Ident_File} file
-   %  2. Use ${Granule_Ident_File} to determine the destination directory
+   %  1. Extract the ${Archive_Subdir_File} file
+   %  2. Use ${Archive_Subdir_File} to define the destination sub-directory
    %  3. Unpack the contents in the appropriate destination
-   %     directory, avoiding file collisions and taking care
-   %     to ensure consistency between ${Granule_Ident_File} files.
+   %     directory, avoiding file collisions.
 
    variable subdir = get_tarfile_archive_subdir (tar_file);
-   variable archive_dest_subdir = path_concat (archive_dest_dir, subdir);
+   variable archive_dest_subdir = path_concat (archive_level_dir, subdir);
 
    % Create the destination directory
    if (0 != mkdir_p (archive_dest_subdir))
@@ -233,12 +210,9 @@ define unpack_and_archive (tar_file, archive_dest_dir)
         argv = [argv, "--keep-old-files"];
      }
 
-   if (NULL != stat_file (path_concat (archive_dest_subdir, Granule_Ident_File)))
-     {
-        argv = [argv, "--exclude=${Granule_Ident_File}"$];
-        % At this point, we could also check that the two
-        % ${Granule_Ident_File} files are identical...
-     }
+   %if (NULL != stat_file (path_concat (archive_dest_subdir, Archive_Subdir_File)))
+   argv = [argv, "--exclude=${Archive_Subdir_File}"$];
+
    argv = [argv, "-f", tar_file, "-C", archive_dest_subdir,
            "--strip-components=1"];
 
@@ -263,7 +237,7 @@ define unpack_and_archive (tar_file, archive_dest_dir)
 }
 
 define process_tar_file (tar_file, archive_incoming_dir,
-                         archive_dest_dir)
+                         archive_level_dir)
 {
    if (-1 == access (tar_file, F_OK | R_OK))
      {
@@ -275,7 +249,7 @@ define process_tar_file (tar_file, archive_incoming_dir,
    try (e)
      {
         tar_file_cpy = copy_file (tar_file, archive_incoming_dir);
-        () = unpack_and_archive (tar_file_cpy, archive_dest_dir);
+        () = unpack_and_archive (tar_file_cpy, archive_level_dir);
      }
    catch AnyError:
      {
@@ -333,16 +307,16 @@ define slsh_main ()
 
    % The tar file basename must be prefixed by the granule name.
    % The tar file must unpack into a directory with the granule
-   % name, and must contain the granule ident file at the top
+   % name, and must contain the archive_subdir file at the top
    % level:
-   %      $granule_name/${Granule_Ident_File}
+   %      $granule_name/${Archive_Subdir_File}
 
-   variable archive_dest_dir = path_concat (archive_root_dir, archive_level);
-   variable archive_incoming_dir = path_concat (archive_dest_dir, "incoming");
+   variable archive_level_dir = path_concat (archive_root_dir, archive_level);
+   variable archive_incoming_dir = path_concat (archive_level_dir, "incoming");
 
-   if (NULL == stat_file (archive_dest_dir))
+   if (NULL == stat_file (archive_level_dir))
      {
-        throw ApplicationError, "*** Error: cannot stat $archive_dest_dir"$;
+        throw ApplicationError, "*** Error: cannot stat $archive_level_dir"$;
      }
 
    variable path_list = __argv[[__i:]];
@@ -359,7 +333,7 @@ define slsh_main ()
    foreach tar_file (tar_file_list)
      {
         status = process_tar_file (tar_file, archive_incoming_dir,
-                                   archive_dest_dir);
+                                   archive_level_dir);
         if (status != 0) exit(1);
      }
 

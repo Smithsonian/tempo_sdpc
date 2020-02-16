@@ -80,101 +80,10 @@ private define is_directory (file)
    return stat_is ("dir", st.st_mode);
 }
 
-private define set_eval_struct_field (g, name, val)
-{
-   switch (name)
-     {
-      case "product_type":
-        set_struct_field (g, name, val);
-     }
-     {
-        % default:
-        set_struct_field (g, name, eval(val));
-     }
-}
-
-private define read_ident_file (csv_ident_file)
-{
-   variable _g = csv_readcol (csv_ident_file);
-   variable g = @Struct_Type (_g.col1);
-   array_map (Void_Type, &set_eval_struct_field, g, _g.col1, _g.col2);
-   return g;
-}
-
-private define get_ident_time_structs (ident)
-{
-   variable tm_start = struct
-     {
-        tm_year = ident.tstart_year - 1900,
-        tm_mon = ident.tstart_month - 1,
-        tm_mday = ident.tstart_mday,
-        tm_hour = ident.tstart_hour,
-        tm_min = ident.tstart_min,
-        tm_sec = ident.tstart_sec,
-        tm_wday = ident.tstart_wday,
-        tm_yday = ident.tstart_yday,
-        tm_isdst = 0
-     };
-   variable tm_end = struct
-     {
-        tm_year = ident.tend_year - 1900,
-        tm_mon = ident.tend_month - 1,
-        tm_mday = ident.tend_mday,
-        tm_hour = ident.tend_hour,
-        tm_min = ident.tend_min,
-        tm_sec = ident.tend_sec,
-        tm_wday = ident.tend_wday,
-        tm_yday = ident.tend_yday,
-        tm_isdst = 0
-     };
-
-   return tm_start, tm_end;
-}
-
-private define tstart_since_epoch (tm)
-{
-   return tm.time_coverage_start_since_epoch;
-}
-
-private define make_l3_filename_format (idents)
-{
-   variable tstart = array_map (Double_Type, &tstart_since_epoch, idents);
-   variable i = array_sort (tstart);
-
-   variable
-     beg = i[0],
-     end = i[-1];
-
-   variable tbeg;
-   (tbeg, ) = get_ident_time_structs (idents[beg]);
-   variable tstart_str = strftime ("%Y%m%dT%H%M%SZ", tbeg);
-
-   variable
-     scan_num = idents[beg].scan_num,
-     processing_version = idents[beg].processing_version;
-
-   variable filename_format =
-     sprintf ("TEMPO_%%s_L3_V%02d_%s_S%03d.nc",
-              processing_version, tstart_str, scan_num);
-
-   return filename_format;
-}
-
-private define scan_subdir (g)
-{
-   % Derive the destination archive directory from the contents of
-   % the granule_ident CSV file.
-   variable subdir_seq = [sprintf("D%05d", g.sat_local_day_start),
-                          sprintf("S%03d", g.scan_num)];
-   subdir_seq = array_map (String_Type, &string, subdir_seq);
-   return strjoin (subdir_seq, "/");
-}
-
 private define write_filename_list (output_dir, l3_output_file,
                                     prod, file_list)
 {
    variable path = path_concat (output_dir, "TEMPO_${prod}_L2.lis"$);
-   assert_nonexistent (path);
 
    variable fp = fopen (path, "w");
    if (fp == NULL)
@@ -200,6 +109,13 @@ private define perform_regridding (output_dir, cfg_path)
    variable s = new_process ([regrid_exec, cfg_path]; dir=output_dir).wait();
    if (s.exit_status != 0)
      throw ApplicationError, "*** Error: L2_regrid failed";
+}
+
+private define make_l3_filename (product_files)
+{
+   variable name = path_basename (product_files[0]);
+   variable tok = strchopr (name, 'G', 0);
+   return strreplace (tok[1], "_L2_", "_L3_") + ".nc";
 }
 
 define process_scan_granules (scan_dir, archive_root_dir, products)
@@ -231,28 +147,22 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
         prod_files[prod] = lst[i];
      }
 
-   variable ident_files = array_map (String_Type, &path_concat,
-                                     granule_dir_list, "granule_ident.csv");
-   variable idents = array_map (Struct_Type, &read_ident_file, ident_files);
-   variable l3_outfile_fmt = make_l3_filename_format (idents);
-
-   variable level3_root_dir = path_concat (archive_root_dir, "L3/RAD");
-   variable output_dir = path_concat (level3_root_dir,
-                                      scan_subdir(idents[0]));
+   variable output_dir = strtrans (scan_dir, "/L2/", "/L3/");
 
    if (0 != mkdir_p (output_dir))
      {
         throw ApplicationError, "*** Error creating directory $output_dir"$;
      }
 
+   variable l3_output_file;
+
    foreach prod (products)
      {
         if (0 == assoc_key_exists (prod_files, prod))
           continue;
-        variable l3_output_file = sprintf (l3_outfile_fmt, prod);
-        assert_nonexistent (l3_output_file);
-        write_filename_list (output_dir, l3_output_file,
-                             prod, prod_files[prod]);
+        l3_output_file = make_l3_filename (prod_files[prod]);
+        assert_nonexistent (path_concat (output_dir, l3_output_file));
+        write_filename_list (output_dir, l3_output_file, prod, prod_files[prod]);
      }
 
    variable cfg_case;
@@ -273,16 +183,19 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
              if (0 == assoc_key_exists (prod_files, prod))
                continue;
 
-             l3_output_file = sprintf (l3_outfile_fmt, prod);
-             variable from_path = path_concat (output_dir, l3_output_file);
+             l3_output_file = make_l3_filename (prod_files[prod]);
 
+             variable from_path = path_concat (output_dir, l3_output_file);
              if (NULL == stat_file (from_path))
                continue;
 
              variable to_path = path_concat (register_dir, l3_output_file);
-             if (0 != symlink (from_path, to_path))
+             if (NULL == stat_file (to_path))
                {
-                  throw IOError, "*** Error creating symbolic link from $from_path to $to_path"$;
+                  if (0 != symlink (from_path, to_path))
+                    {
+                       throw IOError, "*** Error creating symbolic link: $from_path to $to_path"$;
+                    }
                }
           }
      }

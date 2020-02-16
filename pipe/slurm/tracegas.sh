@@ -55,12 +55,27 @@ tar_product_to_dest_dir()
    work_dir_tarfile="${rad_basename}.${work_dir}.tar"
    granule_dir=$(basename $run_dir)
 
-   /bin/mkdir -p $dest_dir
-   /bin/mv $work_dir/granule_ident.csv .
+   # We want every product tar file to contain a copy of the archive_subdir file,
+   # and we want tar to delete all the files it collects.
+   # To avoid deleting the archive_subdir file we create a temporary directory,
+   # copy the archive_subdir file over there, and then create the tar file.
+
    cd $parent_dir
+   tmp_dir="$(mktemp -d tmp.XXXXXX)"
+   tmp_granule_dir="$tmp_dir/$granule_dir"
+   /bin/mkdir -p $tmp_granule_dir
+   /bin/cp $granule_dir/archive_subdir $tmp_granule_dir
+   /bin/mv $granule_dir/$work_dir $tmp_granule_dir
+
+   cd $tmp_dir
+
+   /bin/mkdir -p $dest_dir
    tar c --remove-files -f $dest_dir/.$work_dir_tarfile \
-         $granule_dir/granule_ident.csv $granule_dir/$work_dir
+         $granule_dir/archive_subdir $granule_dir/$work_dir
    /bin/mv $dest_dir/.$work_dir_tarfile $dest_dir/$work_dir_tarfile
+
+   cd $parent_dir
+   /bin/rmdir $tmp_granule_dir $tmp_dir
 }
 
 finish()
@@ -93,9 +108,7 @@ control_file="control_${molecule}.txt"
 this_pcf_file="${pcf_file}_${molecule}"
 
 # Select climatology file for the month the data was acquired
-declare -a month_names=(INVALID JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC)
-start_month=$(grep tstart_month granule_ident.csv | cut -f2 -d,)
-start_month_name=${month_names[${start_month}]}
+start_month_name=$(level1_info --month ${rad_basename}.nc)
 clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
 
 set_met_file_path()

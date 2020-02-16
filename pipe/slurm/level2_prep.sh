@@ -152,7 +152,7 @@ tar_l1_radiance_to_dest()
 
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
-       $granule_dir/granule_ident.csv \
+       $granule_dir/archive_subdir \
        $granule_dir/log_inr_post.txt $tiepoint_file \
        $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 
@@ -202,7 +202,7 @@ tar_l2_cloud_to_dest()
    cd $parent_dir
    tarfile_cld="${rad_basename}.cld.tar"
    tar cf $dest_dir/.${tarfile_cld} \
-          $granule_dir/granule_ident.csv $granule_dir/$cld_dir
+          $granule_dir/archive_subdir $granule_dir/$cld_dir
    /bin/mv $dest_dir/.${tarfile_cld} $dest_dir/${tarfile_cld}
 
    archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L2 $dest_dir/${tarfile_cld}
@@ -294,7 +294,7 @@ notify_granule_ready()
 cat <<EOF > $dir/.$tarfile_basename
 tar_host="$this_hostname_sans_domain"
 tar_host_file_path="${l1_out_dir}/$tarfile_basename"
-granule_arch_dir_path="$SDPC_ARCHIVE_DIR/L2/RAD/$granule_subdir"
+granule_arch_dir_path="$SDPC_ARCHIVE_DIR/L2/$granule_subdir"
 EOF
   /bin/mv "$dir/.$tarfile_basename" "$dir/$tarfile_basename"
 }
@@ -306,10 +306,11 @@ fi
 
 get_tiepoint_file
 
-granule_subdir=$(mkgranule_ident -s -o granule_ident.csv ${rad_basename}.nc)
+granule_subdir=$(level1_info --dir ${rad_basename}.nc)
+printf "$granule_subdir" > archive_subdir
 
 # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
-/bin/cp "$SDPC_ARCHIVE_DIR/L1/RAD/$granule_subdir/${rad_basename}.nc.met" .
+/bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
 
 run_inr_post ${rad_basename}.nc
 
