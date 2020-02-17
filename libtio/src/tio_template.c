@@ -17,6 +17,7 @@
 #include <netcdf.h>
 #include <tell.h>
 
+#include "config.h"
 #include "tio.h"
 #include "tio_template.h"
 #include "_tio.h"
@@ -25,7 +26,21 @@
 #define NODELIM_TIMESTAMP_FORMAT "%Y%m%dT%H%M%SZ"
 
 #define MAX_PATHLEN 1024
-static int SC_Timezone = INT_MAX;
+
+#ifndef SPACECRAFT_TIMEZONE
+# define SPACECRAFT_TIMEZONE (-6)
+#endif
+static int SC_Timezone = SPACECRAFT_TIMEZONE;
+/* SPACECRAFT_TIMEZONE defines the geostationary satellite's local time zone
+   offset from UTC. Its primary intended purpose is for computing the
+   satellite-local day number, sat_day.
+   For large offsets from UTC, archiving data products using sat_day is
+   more intuitive than using the UTC day number.
+   When archiving data products using sat_day, all data products from a
+   single satellite-local day naturally go into a single directory. In
+   contrast, archiving those same products using utc_day would split them
+   across two directories.
+ */
 
 /* This is only intended to be used internally, by this library!! */
 int _pTIO_set_sc_timezone (int sc_timezone)
@@ -39,60 +54,10 @@ int _pTIO_set_sc_timezone (int sc_timezone)
    return 0;
 }
 
-static int read_sc_timezone (void)
-{
-   FILE *fp;
-   const char *root_dir = NULL;
-   char path[MAX_PATHLEN];
-   int n;
-
-   if (NULL == (root_dir = getenv ("SDPC_ROOT")))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: SDPC_ROOT not set", __func__);
-        return -1;
-     }
-
-   n = snprintf (path, MAX_PATHLEN, "%s/etc/sc_timezone", root_dir);
-   if (n < 0 || n >= MAX_PATHLEN)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: error constructing path to sc_timezone file", __func__);
-        return -1;
-     }
-
-   if (NULL == (fp = fopen (path, "r")))
-     {
-        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, path);
-        return -1;
-     }
-   if (1 != fscanf (fp, "%d", &SC_Timezone))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading sc_timezone from %s", __func__, path);
-     }
-   (void) fclose (fp);
-
-   if (abs(SC_Timezone) > 12)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: sc_timezone=%d in %s", __func__, SC_Timezone, path);
-        return -1;
-     }
-
-   return 0;
-}
-
-static int init_sc_timezone (void)
-{
-   if (SC_Timezone != INT_MAX)
-     return 0;
-   return read_sc_timezone ();
-}
-
 int tio_time_sat_local_day_number (double taix, double *sat_day)
 {
    int year, month, day;
    double epoch_hour;
-
-   if (0 != init_sc_timezone ())
-     return -1;
 
    /* If the epoch is offset from midnight, we'll need to correct for that */
    if (0 != tio_time_taix_to_utc_caldate (0.0, &year, &month, &day, &epoch_hour))
@@ -109,8 +74,6 @@ int tio_time_sat_local_day_number (double taix, double *sat_day)
 
 int tio_time_sat_local_timezone (int *sc_timezone)
 {
-   if (0 != init_sc_timezone ())
-     return -1;
    *sc_timezone = SC_Timezone;
    return 0;
 }

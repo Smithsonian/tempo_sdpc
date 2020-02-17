@@ -228,6 +228,15 @@ if test X"$jh_imgcomp_enable" = X"yes" ; then
   echo 'Enable image compression on output'
 fi
 
+AC_ARG_WITH(sc-timezone,
+  [  --with-sc-timezone[=HH]   Set the host spacecraft time zone (integer hours relative to UTC)],
+  [jh_with_timezone=$withval],
+  [jh_with_timezone=no])
+if test "x$jh_with_timezone" != "xno"; then
+   AC_DEFINE_UNQUOTED(SPACECRAFT_TIMEZONE,[($jh_with_timezone)])
+   echo "Setting spacecraft time zone to $jh_with_timezone"
+fi
+
 JD_WITH_LIBRARY(slang)
 JD_SLANG_MODULE_INSTALL_DIR
 INSTALL_MODULE="\$(INSTALL_DATA)"

@@ -24,11 +24,8 @@ enum
 
 static void usage (void)
 {
-   int sc_timezone_default = 0;
-   if (NULL != getenv ("SDPC_ROOT"))
-     {
-        (void) tio_time_sat_local_timezone (&sc_timezone_default);
-     }
+   int sc_timezone_default;
+   (void) tio_time_sat_local_timezone (&sc_timezone_default);
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
    fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
@@ -362,13 +359,6 @@ int main (int argc, char **argv)
    if (sc_timezone != INT_MAX)
      {
         /* timezone set on command line */
-        if (0 != _pTIO_set_sc_timezone (sc_timezone))
-          goto error_return;
-     }
-   else if (NULL == getenv ("SDPC_ROOT"))
-     {
-        /* fall back to UTC */
-        sc_timezone = 0;
         if (0 != _pTIO_set_sc_timezone (sc_timezone))
           goto error_return;
      }

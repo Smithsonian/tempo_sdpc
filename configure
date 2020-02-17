@@ -716,7 +716,6 @@ infodir
 docdir
 oldincludedir
 includedir
-runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -758,6 +757,7 @@ with_tiff
 with_geotiff
 with_leapsec
 enable_imgcomp
+with_sc_timezone
 with_slang
 with_slanglib
 with_slanginc
@@ -809,7 +809,6 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
-runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE}'
@@ -1062,15 +1061,6 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
-  -runstatedir | --runstatedir | --runstatedi | --runstated \
-  | --runstate | --runstat | --runsta | --runst | --runs \
-  | --run | --ru | --r)
-    ac_prev=runstatedir ;;
-  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
-  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
-  | --run=* | --ru=* | --r=*)
-    runstatedir=$ac_optarg ;;
-
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1208,7 +1198,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir runstatedir
+		libdir localedir mandir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1361,7 +1351,6 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
-  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1415,6 +1404,7 @@ Optional Packages:
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
   --with-leapsec=FILE     Use this leap second file
+  --with-sc-timezone=HH   Set the host spacecraft time zone (integer hours relative to UTC)
   --with-slang=DIR      Use DIR/lib and DIR/include for slang
   --with-slanglib=DIR   slang library in DIR
   --with-slanginc=DIR   slang include files in DIR
@@ -2850,6 +2840,22 @@ if test X"$jh_imgcomp_enable" = X"yes" ; then
   $as_echo "#define ENABLE_IMAGE_COMPRESSION 1" >>confdefs.h
 
   echo 'Enable image compression on output'
+fi
+
+
+# Check whether --with-sc-timezone was given.
+if test "${with_sc_timezone+set}" = set; then :
+  withval=$with_sc_timezone; jh_with_timezone=$withval
+else
+  jh_with_timezone=no
+fi
+
+if test "x$jh_with_timezone" != "xno"; then
+   cat >>confdefs.h <<_ACEOF
+#define SPACECRAFT_TIMEZONE ($jh_with_timezone)
+_ACEOF
+
+   echo "Setting spacecraft time zone to $jh_with_timezone"
 fi
 
 

@@ -1,3 +1,6 @@
 
 /* Define this to enable image compression */
 #undef ENABLE_IMAGE_COMPRESSION
+
+/* Define this to set the spacecraft timezone (integer hours relative to UTC) */
+#undef SPACECRAFT_TIMEZONE
