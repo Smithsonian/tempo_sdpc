@@ -472,12 +472,6 @@ extern int tio_time_taix_to_yearday (double taix_time, int *year, int *yday);
  */
 extern int tio_time_sat_local_day_number (double taix, double *sat_day);
 
-/** Query the number of hours offset from UTC in the satellite local time zone
- * @param[out]  sc_timezone    The offset from UTC [hours]
- * @return 0 on success, -1 on error
- */
-extern int tio_time_sat_local_timezone (int *sc_timezone);
-
 /** Read one line from an ASCII text file
  * @param[out] linep   Pointer to an allocated string
  * @param[out] lenp    The length of the allocated string (NULL is ok)

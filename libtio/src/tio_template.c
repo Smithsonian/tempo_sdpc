@@ -54,6 +54,13 @@ int _pTIO_set_sc_timezone (int sc_timezone)
    return 0;
 }
 
+/* This is only intended to be used internally, by this library!! */
+int _pTIO_get_sc_timezone (int *sc_timezone)
+{
+   *sc_timezone = SC_Timezone;
+   return 0;
+}
+
 int tio_time_sat_local_day_number (double taix, double *sat_day)
 {
    int year, month, day;
@@ -69,12 +76,6 @@ int tio_time_sat_local_day_number (double taix, double *sat_day)
     */
    *sat_day = (taix + (SC_Timezone + epoch_hour) * 3600.0) / 86400.0;
 
-   return 0;
-}
-
-int tio_time_sat_local_timezone (int *sc_timezone)
-{
-   *sc_timezone = SC_Timezone;
    return 0;
 }
 

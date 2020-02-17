@@ -25,7 +25,7 @@ enum
 static void usage (void)
 {
    int sc_timezone_default;
-   (void) tio_time_sat_local_timezone (&sc_timezone_default);
+   (void) _pTIO_get_sc_timezone (&sc_timezone_default);
    fprintf (stderr, "Usage: ttime -s SECONDS\n");
    fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
@@ -362,7 +362,7 @@ int main (int argc, char **argv)
         if (0 != _pTIO_set_sc_timezone (sc_timezone))
           goto error_return;
      }
-   else if (0 != tio_time_sat_local_timezone (&sc_timezone))
+   else if (0 != _pTIO_get_sc_timezone (&sc_timezone))
      {
         goto error_return;
      }

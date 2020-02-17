@@ -37,9 +37,9 @@ static void usage (int argc, char **argv)
 
 static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char *product_type)
 {
-   double flocal_tstart;
+   double sat_day;
 
-   if (0 != tio_time_sat_local_day_number (gid->tstart, &flocal_tstart))
+   if (0 != tio_time_sat_local_day_number (gid->tstart, &sat_day))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: computing satellite-local day number", __func__);
         return -1;
@@ -49,8 +49,8 @@ static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char
     *    DRK, DRKL
     *    IRR, IRRL
     *    RAD, RADT
-    * "DRK" and "IRR" products are organized by day/tstart.
-    * "RAD" products are organized by day/scan/granule index.
+    * "DRK" and "IRR" products are organized by sat_day/tstart.
+    * "RAD" products are organized by sat_day/scan/granule index.
     */
 
    if (gid->granule_num > 0)
@@ -64,7 +64,7 @@ static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char
              return -1;
           }
         if (fprintf (stdout, "%s/D%05d/S%03d/G%02d", product_type,
-                     (int) flocal_tstart, gid->scan_num, gid->granule_num) < 0)
+                     (int) sat_day, gid->scan_num, gid->granule_num) < 0)
           return -1;
      }
    else  /* All other Level1 file types are organized by product_type/date/tstart */
@@ -75,7 +75,7 @@ static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char
           return -1;
 
         if (fprintf (stdout, "%s/D%05d/%s", product_type,
-                     (int) flocal_tstart, buf) < 0)
+                     (int) sat_day, buf) < 0)
           return -1;
      }
 
