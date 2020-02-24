@@ -39,7 +39,7 @@ typedef struct
    int num_wave;       /**< total number of wavelength points in measured spectrum */
    double *wave0;      /**< initial guess at wavelength grid for measured spectrum */
 
-   Shapefun_Type *shapefun;
+   Shapefun_Type *wavegrid_shapefun;    /**< shape function for computing the wavelength grid */
    double *pindex;          /**< pixel index array for measured spectrum */
    double *wave_params;     /**< wavelength grid parameters */
    size_t num_wave_params;  /**< number of wavelength grid parameters */
@@ -441,7 +441,7 @@ static void free_window (Window_Type *win)
    FREE(win->weight);
    FREE(win->residuals);
    FREE(win->wave_params);
-   free_shapefun_type (win->shapefun);
+   free_shapefun_type (win->wavegrid_shapefun);
 }
 
 static int alloc_window (Window_Type *win, int num_wave)
@@ -630,13 +630,13 @@ static int config_fit_window (config_setting_t *s, Window_Type *win)
         return -1;
      }
 
-   if (NULL == (win->shapefun = shapefun_create (method_name)))
+   if (NULL == (win->wavegrid_shapefun = shapefun_create (method_name)))
      return -1;
 
-   if (0 != config_shapefun_method (s, win->shapefun, NULL))
+   if (0 != config_shapefun_method (s, win->wavegrid_shapefun, NULL))
      return -1;
 
-   st = win->shapefun;
+   st = win->wavegrid_shapefun;
    win->num_wave_params = st->st_num_params (st);
    if (win->num_wave_params <= 0)
      {
@@ -884,7 +884,7 @@ static int init_window_reference_spectra (Wavecal_Type *wct, int xtrack)
 static int init_window_shapefun (Wavecal_Type *wct, const double *wave)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *shapefun = win->shapefun;
+   Shapefun_Type *shapefun = win->wavegrid_shapefun;
    Shapefun_Init_Type shapefun_init = {0};
 
    memcpy ((char *)win->wave0, (char *)wave, win->num_wave * sizeof(double));
@@ -1217,7 +1217,7 @@ static int combine_terms (Wavecal_Type *wct, double *model)
 static int forward_model (Wavecal_Type *wct, const double *params, double *model)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *wl = win->shapefun;
+   Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    Cspline_Type *cspline = irr->cspline;
    Term_Type *term;
@@ -1320,7 +1320,7 @@ static int mpfit_objective_function
 static int compute_rad_mean_ratio (Wavecal_Type *wct)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *wl = win->shapefun;
+   Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    double sum_irr, sum_rad;
    int i;
@@ -1375,7 +1375,7 @@ static int compute_rad_mean_ratio (Wavecal_Type *wct)
 static void estimate_midpoint_wavelength (Window_Type *win, const double *spec,
                                           double *wavelength_of_window_midpoint)
 {
-   Shapefun_Type *st = win->shapefun;
+   Shapefun_Type *st = win->wavegrid_shapefun;
    int num_spec = win->num_wave;
    double bin_width = win->delta_wavelength;
    double wavelength_of_window_minimum = win->feature_wavelength;
@@ -1437,7 +1437,7 @@ int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
    if (attr_narrow.num_series_coeff > 0)
      {
         const Window_Type *win = &wct->window;
-        const Shapefun_Type *wl = win->shapefun;
+        const Shapefun_Type *wl = win->wavegrid_shapefun;
         const double *tbl_narrow_band_nwave_params;
         double mid_pix, mid_wl_fit, mid_wl_tbl;
 
