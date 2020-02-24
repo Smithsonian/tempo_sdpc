@@ -98,7 +98,8 @@ $(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c
 
 WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
-     lsq.c interp_cheb.c interp_poly.c interp_cspline.c
+     lsq.c interp_cheb.c interp_poly.c interp_cspline.c \
+     slit_function_asg.c slit_function_apply.c
 WAVECAL_DRIVER_OFILES = $(patsubst %.c,%.o, $(WAVECAL_DRIVER_SRCFILES))
 WAVECAL_DRIVER_OBJS = $(patsubst %.o,$(objdir)/%.o, $(WAVECAL_DRIVER_OFILES))
 
@@ -136,3 +137,16 @@ $(objdir)/interp_poly.o:	$(srcdir)/interp_poly.c
 $(objdir)/interp_cheb.o:	$(srcdir)/interp_cheb.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/interp_cheb.c
 
+$(objdir)/slit_function_asg.o:	$(srcdir)/slit_function_asg.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/slit_function_asg.c
+
+$(objdir)/slit_function_apply.o:	$(srcdir)/slit_function_apply.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/slit_function_apply.c
+
+test_asg:	$(srcdir)/slit_function_asg.c
+	$(COMPILE_CMD) -o test_asg -DUNIT_TEST $(srcdir)/slit_function_asg.c $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+test_convolve:	$(srcdir)/slit_function_apply.c $(objdir)/slit_function_asg.o
+	$(COMPILE_CMD) -o test_convolve -DUNIT_TEST $(srcdir)/slit_function_apply.c \
+	    $(objdir)/slit_function_asg.o \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
