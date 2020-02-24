@@ -125,7 +125,7 @@ static int cached_params_differ (const double *p0, const double *p, int n, doubl
  * cache the slit function, and re-evaluate it only when any parameter change
  * exceeds some tolerance.
  */
-int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params,
+int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
                int num_waves, const double *spec_padded, double *spec_convolved,
                int compute_derivs, double *spec_derivs_convolved[SFT_NUM_PARAMS])
 {
@@ -147,7 +147,7 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params,
         double s, par[3];
         int j;
 
-        if (0 != sf_params (k-m, SFT_NUM_PARAMS, par))
+        if (0 != sf_params (k-m, SFT_NUM_PARAMS, par, cl))
           {
              tell_verror (TELL_RUNTIME_ERROR, "%s: retrieving parameters for wavelength index = %d",
                           __func__, k-m);
@@ -202,11 +202,11 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params,
 #include <gsl/gsl_randist.h>
 #include "slit_function_asg.h"
 
-static int set_params (int k, int num_pars, double *pars)
+static int get_params (int k, int num_pars, double *pars, void *cl)
 {
    double params0[SFT_NUM_PARAMS] = {0.25, 2.0, 0.0};
 
-   (void) k;
+   (void) k; (void) cl;
 
    if (num_pars != SFT_NUM_PARAMS)
      {
@@ -234,7 +234,7 @@ int main (void)
    int i, i0, m, len_tmp;
    int status = -1;
 
-   (void) set_params (0, SFT_NUM_PARAMS, pars);
+   (void) get_params (0, SFT_NUM_PARAMS, pars, NULL);
    num_sf = 12 * pars[0]/dx;
    num_waves = num_sf * 2;
 
@@ -274,7 +274,8 @@ int main (void)
    if (0 != sft_config (sft, asg_normed_plus_derivs, dx, param_step))
      goto return_status;
 
-   if (0 != sft_apply (sft, set_params, num_waves, spec_padded, spec_convolved, compute_derivs, spec_derivs_convolved))
+   if (0 != sft_apply (sft, get_params, NULL, num_waves, spec_padded,
+                       spec_convolved, compute_derivs, spec_derivs_convolved))
      goto return_status;
 
    /* In terms of our width parameter, w, the gaussian sigma = w/sqrt(2),

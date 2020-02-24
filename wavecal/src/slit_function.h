@@ -21,7 +21,7 @@ typedef int SFT_Eval_Type (const double *x, size_t nx, double *params,
 
 /** Function interface for retrieving wavelength[k] slit function parameters
  */
-typedef int SFT_Param_Type (int k, int num_pars, double *pars);
+typedef int SFT_Param_Type (int k, int num_pars, double *pars, void *cl);
 
 /** Free storage associated with \a Slit_Function_Type structure
  */
@@ -47,6 +47,7 @@ extern int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
  * @param[in] sft          Pointer to a \a Slit_Function_Type structure allocated by \a sft_new,
  *                         and configured by \a sft_config
  * @param[in] sf_params    Function to retrieve slit function parameters for each wavelength index
+ * @param[in] cl           Client data to pass to function \a sf_params
  * @param[in] num_waves    Number of wavelengths in the target spectrum
  * @param[in] spec_padded  Target spectrum with \a num_waves wavelengths, padded with \a num_sf/2
  *                         zeros at each end, so that the total array size is \a (num_waves+num_sf)
@@ -57,8 +58,8 @@ extern int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
  *                                     storage for output slit function parameter
  *                                     derivatives convolved with the target spectrum.
  */
-extern int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, int num_waves,
-                      const double *spec_padded, double *spec_convolved,
+extern int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
+                      int num_waves, const double *spec_padded, double *spec_convolved,
                       int compute_derivs, double *spec_derivs_convolved[SFT_NUM_PARAMS]);
 
 #endif
