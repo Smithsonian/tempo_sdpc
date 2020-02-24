@@ -13,8 +13,7 @@
 struct Slit_Function_Type
 {
    /* function to compute slit-function value and parameter derivatives */
-   int (*sf_eval)(const double *x, size_t nx, double *params,
-                  double *value, double *param_step, double *param_derivs[SFT_NUM_PARAMS]);
+   SFT_Eval_Type *sf_eval;
 
    double param_step[SFT_NUM_PARAMS];  /* delta step to use in compute derivs w.r.t. each parameter */
    double *params;                     /* parameter array [num_waves, k], param index k varies fastest */
@@ -45,11 +44,10 @@ void sft_free (Slit_Function_Type *sft)
    FREE(sft);
 }
 
-Slit_Function_Type *sft_init (double dx, size_t num_sf, size_t num_waves,
-                              double *params, double *param_step)
+Slit_Function_Type *sft_new (size_t num_sf, size_t num_waves)
 {
    Slit_Function_Type *sft = NULL;
-   int j, nj, m;
+   int i;
 
    if (NULL == (sft = (Slit_Function_Type *)MALLOC (sizeof *sft)))
      {
@@ -57,6 +55,9 @@ Slit_Function_Type *sft_init (double dx, size_t num_sf, size_t num_waves,
         return NULL;
      }
    memset ((char *)sft, 0, sizeof(*sft));
+
+   sft->num_sf = num_sf;
+   sft->num_waves = num_waves;
 
    if ((NULL == (sft->x = (double *)MALLOC (num_sf * sizeof(double))))
        || (NULL == (sft->sf = (double *)MALLOC (num_sf * sizeof(double)))))
@@ -66,42 +67,43 @@ Slit_Function_Type *sft_init (double dx, size_t num_sf, size_t num_waves,
         return NULL;
      }
 
-   /* Assume spectrum has padding of length, m=num_sf/2 at
-    * both ends, so the first real spectrum point is at spec[m],
-    * and we can access spec[num_waves + m - 1].
-    */
-
-   m = num_sf/2;
-   nj = num_sf;
-
-   /* x[j] = wavelength grid relative to the slit-function center */
-   for (j = 0; j < nj; j++)
-     {
-        sft->x[j] = (j-m)*dx;
-     }
-
+   memset ((char *)sft->x, 0, num_sf * sizeof(double));
    memset ((char *)sft->sf, 0, num_sf * sizeof(double));
-   memcpy ((char *)sft->param_step, (char *)param_step, SFT_NUM_PARAMS * sizeof(double));
 
-   for (j = 0; j < SFT_NUM_PARAMS; j++)
+   for (i = 0; i < SFT_NUM_PARAMS; i++)
      {
-        if (NULL == (sft->sf_derivs[j] = (double *)MALLOC (num_sf * sizeof(double))))
+        if (NULL == (sft->sf_derivs[i] = (double *)MALLOC (num_sf * sizeof(double))))
           {
              tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              sft_free (sft);
              return NULL;
           }
-        memset ((char *)sft->sf_derivs[j], 0, num_sf * sizeof(double));
+        memset ((char *)sft->sf_derivs[i], 0, num_sf * sizeof(double));
      }
 
+   return sft;
+}
+
+int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
+                double dx, double *param_step, double *params)
+{
+   int j, m;
+
+   sft->sf_eval = sf_eval;
    sft->dx = dx;
-   sft->num_sf = num_sf;
-   sft->num_waves = num_waves;
+
+   m = sft->num_sf/2;
+
+   /* x[j] = wavelength grid relative to the slit-function center */
+   for (j = 0; j < sft->num_sf; j++)
+     {
+        sft->x[j] = (j-m)*dx;
+     }
+
+   memcpy ((char *)sft->param_step, (char *)param_step, SFT_NUM_PARAMS * sizeof(double));
    sft->params = params;
 
-   sft->sf_eval = asg_normed_plus_derivs;
-
-   return sft;
+   return 0;
 }
 
 static int cached_params_differ (const double *p0, const double *p, int n, double tol)
@@ -130,6 +132,11 @@ int sft_apply (Slit_Function_Type *sft, const double *spec, double *spec_convolv
 {
    double prev_par[SFT_NUM_PARAMS];
    int k, m, nsf;
+
+   /* Assume spectrum has padding of length, m=num_sf/2 at
+    * both ends, so the first real spectrum point is at spec[m],
+    * and we can access spec[num_waves + m - 1].
+    */
 
    nsf = sft->num_sf;
    m   = nsf / 2;
@@ -249,7 +256,10 @@ int main (void)
         spec_padded[i0 + i] = gsl_ran_gaussian_pdf (x, params0[0]/sqrt(2));
      }
 
-   if (NULL == (sft = sft_init (dx, num_sf, num_waves, params, param_step)))
+   if (NULL == (sft = sft_new (num_sf, num_waves)))
+     goto return_status;
+
+   if (0 != sft_config (sft, asg_normed_plus_derivs, dx, param_step, params))
      goto return_status;
 
    if (0 != sft_apply (sft, spec_padded, spec_convolved, compute_derivs, spec_derivs_convolved))

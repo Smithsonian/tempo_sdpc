@@ -1219,7 +1219,6 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    Window_Type *win = &wct->window;
    Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
-   Cspline_Type *cspline = irr->cspline;
    Term_Type *term;
    const double *par;
 
@@ -1231,7 +1230,7 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    par += win->num_wave_params;
 
    /* evaluate the reference irradiance on the new wavelength grid */
-   if (cspline_eval (cspline, win->num_wave, win->wave0, wct->irr0))
+   if (cspline_eval (irr->cspline, win->num_wave, win->wave0, wct->irr0))
      return -1;
 
    /* evaluate all model terms on the new wavelength grid */
