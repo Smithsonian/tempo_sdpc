@@ -1092,12 +1092,11 @@ error_return:
    return NULL;
 }
 
-static int evaluate_term (Term_Type *term, Window_Type *win,
-                          double scale_factor,
-                          const double *params)
+static int evaluate_term (Term_Type *term, int num_wave, double *waves,
+                          double scale_factor, const double *params)
 {
    Refspec_Type *ref = &term->refspec;
-   size_t i, offset, n = win->num_wave;
+   size_t i, offset, n = num_wave;
    double *v = term->value;
 
    memset ((char *)v, 0, 2*n * sizeof(double));
@@ -1108,7 +1107,7 @@ static int evaluate_term (Term_Type *term, Window_Type *win,
      {
         Shapefun_Type *st = term->shapefun;
         offset = n;
-        if (st->st_eval (st, params, n, win->wave0, v))
+        if (st->st_eval (st, params, n, waves, v))
           return -1;
         if (st->st_apply_external_scaling)
           {
@@ -1119,7 +1118,7 @@ static int evaluate_term (Term_Type *term, Window_Type *win,
    if (ref->interp)
      {
         Interp_Type *it = ref->interp;
-        if (it->it_interp_eval (it, n, win->wave0, v + offset) < 0)
+        if (it->it_interp_eval (it, n, waves, v + offset) < 0)
           return -1;
         if (offset)
           {
@@ -1161,17 +1160,16 @@ int wavecal_query_term (const Wavecal_Type *wct, int nth,
    return 0;
 }
 
-static int combine_terms (Wavecal_Type *wct, double *model)
+static int combine_terms (Wavecal_Type *wct, int num_waves, double *model)
 {
-   Window_Type *win = &wct->window;
    int count[NUM_TERM_TYPES];
    size_t num_term_types = NUM_TERM_TYPES;
-   size_t i, n = win->num_wave;
+   size_t i, n = num_waves;
    double *ad1, *ad2, *i0, *lbe, *bl;
    Term_Type *t;
 
    /* sum over terms of each type */
-   zero_term_sums (wct->term_sums, num_term_types, win->num_wave);
+   zero_term_sums (wct->term_sums, num_term_types, num_waves);
    memset ((char *)count, 0, num_term_types * sizeof(int));
 
    for (t = wct->terms; t != NULL; t = t->next)
@@ -1237,13 +1235,13 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
    for (term = wct->terms; term != NULL; term = term->next)
      {
         double scale_factor = win->rad_mean_ratio;
-        if (evaluate_term (term, win, scale_factor, par) < 0)
+        if (evaluate_term (term, win->num_wave, win->wave0, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
      }
 
    /* combine terms to construct the updated model spectrum */
-   if (0 != combine_terms (wct, model))
+   if (0 != combine_terms (wct, win->num_wave, model))
      return -1;
 
    return 0;
