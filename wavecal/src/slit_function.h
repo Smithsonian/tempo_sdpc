@@ -52,14 +52,12 @@ extern int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
  * @param[in] spec_padded  Target spectrum with \a num_waves wavelengths, padded with \a num_sf/2
  *                         zeros at each end, so that the total array size is \a (num_waves+num_sf)
  * @param[out] spec_convolved  Output convolved spectrum of length \a num_waves
- * @param[in]  compute_derivs  Integer parameter.  When non-zero, the output will include slit
- *                             function parameter derivatives convolved with the target spectrum.
- * @param[out] spec_derivs_convolved   Array of pointers to arrays of length \a num_waves;
- *                                     storage for output slit function parameter
+ * @param[out] spec_derivs_convolved   (Optional) If non-NULL, this is an array of pointers to arrays
+ *                                     of length \a num_waves; storage for output slit function parameter
  *                                     derivatives convolved with the target spectrum.
  */
 extern int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
                       int num_waves, const double *spec_padded, double *spec_convolved,
-                      int compute_derivs, double *spec_derivs_convolved[SFT_NUM_PARAMS]);
+                      double *spec_derivs_convolved[SFT_NUM_PARAMS]);
 
 #endif

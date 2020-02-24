@@ -127,7 +127,7 @@ static int cached_params_differ (const double *p0, const double *p, int n, doubl
  */
 int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
                int num_waves, const double *spec_padded, double *spec_convolved,
-               int compute_derivs, double *spec_derivs_convolved[SFT_NUM_PARAMS])
+               double *spec_derivs_convolved[SFT_NUM_PARAMS])
 {
    double prev_par[SFT_NUM_PARAMS];
    int k, m, nsf;
@@ -171,7 +171,7 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
           }
         spec_convolved[k-m] = s * sft->dx;
 
-        if (compute_derivs)
+        if (spec_derivs_convolved)
           {
              int n;
              for (n = 0; n < SFT_NUM_PARAMS; n++)
@@ -229,7 +229,6 @@ int main (void)
    double *spec_derivs_convolved[3] = {NULL, NULL, NULL};
    double dx = 0.02;
    int num_sf, num_waves;
-   int compute_derivs = 1;
    size_t offset;
    int i, i0, m, len_tmp;
    int status = -1;
@@ -275,7 +274,7 @@ int main (void)
      goto return_status;
 
    if (0 != sft_apply (sft, get_params, NULL, num_waves, spec_padded,
-                       spec_convolved, compute_derivs, spec_derivs_convolved))
+                       spec_convolved, spec_derivs_convolved))
      goto return_status;
 
    /* In terms of our width parameter, w, the gaussian sigma = w/sqrt(2),
