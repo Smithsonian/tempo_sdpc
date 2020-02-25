@@ -555,7 +555,7 @@ CONTAINS
     CALL amf_calculation (                                            &
       pge_idx, nTimesRadRR, nXtrackRadRR, rt%latitude, rt%longitude, &
       rt%sza, rt%vza, rt%saa, rt%vaa, rt%time, mem_snow, mem_glint, &
-      omi_xtrpix_range_rr, yn_szoom_rs, rt%column_amount, &
+      omi_xtrpix_range_rr, rt%column_amount, &
       rt%column_uncertainty, mem_amf, rt%height, yn_write, locerrstat )
 
     ! --------------------------------------------------------

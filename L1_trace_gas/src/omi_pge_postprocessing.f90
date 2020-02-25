@@ -120,19 +120,11 @@ SUBROUTINE omi_pge_postprocess ( &
   ! -----------
   ! Compute AMF
   ! -----------
-  !!$  CALL amf_calculation (                             &
-  !!$       pge_idx, ntimes, nxtrack, lat, lon, sza, vza, &
-  !!$       snow_ice_flg, glint_flg, xtrange, is_szoom,   &
-  !!$       saocol, saodco, saoamf, locerrstat              )
-
-  ! ----------------
-  ! Comnpute AMF bis
-  ! ----------------
   do_write = .TRUE.
   call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation')
   CALL amf_calculation (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, time,  &
-    snow_ice_flg, glint_flg, xtrange, is_szoom,       &
+    snow_ice_flg, glint_flg, xtrange,       &
     saocol, saodco, saoamf, thg, do_write, &
     errstat              )
   if (errstat /= 0) return

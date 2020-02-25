@@ -147,7 +147,7 @@ CONTAINS
 
   SUBROUTINE amf_calculation (            &
       pge_idx, nt, nx, lat, lon, sza, vza, saa, vaa, time,  &
-      snow, glint, xtrange, do_szoom,        &
+      snow, glint, xtrange,    &
       saocol, saodco, saoamf, terrain_height,&
       do_write, errstat                                )
 
@@ -177,7 +177,6 @@ CONTAINS
          vza, saa, vaa, terrain_height
     REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
-    LOGICAL,           DIMENSION (     0:nt-1), INTENT (IN) :: do_szoom
     LOGICAL                                                 :: do_write
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
 
@@ -272,24 +271,16 @@ CONTAINS
           if (errstat /= 0) return
        endif
 
-       ! -----------------------------
-       ! Read the OMI L2 cloud product
-       ! -----------------------------
+       ! ---------------------
+       ! Read L2 cloud product
+       ! ---------------------
        cloud_file = voc_amf_filenames(voc_omicld_idx)
-       if (0 /= index (cloud_file, ".he5", .true.)) then
-          ! FIXME: amf_read_omiclouds to be removed
-          CALL amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
-       else if (0 /= index (cloud_file, ".nc", .true.)) then
-          call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
-       else
-          call tell_error (tell_runtime_error, "unexpected cloud file extension: "//trim(cloud_file), errstat)
-          return
-       endif
+       call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
+       call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
           return
        endif
-       call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
 
        ! Read cloud climatology
        call tell_log (1, 'amf_calculation: read cloud climatology')
@@ -1843,213 +1834,6 @@ CONTAINS
     errstat = hdferr
 
   END SUBROUTINE read_vlidort
-
-  SUBROUTINE amf_read_omiclouds ( nt, nx, do_szoom, l2cfr, l2ctp, errstat )
-
-    USE OMSAO_variables_module,  ONLY: voc_amf_filenames
-    USE OMSAO_indices_module,    ONLY: voc_omicld_idx
-    USE OMSAO_omidata_module,    ONLY: gzoom_spix, gzoom_epix, gzoom_npix
-    USE OMSAO_he5_module, ONLY: HE5_SWrdlattr, HE5_SWrdfld, HE5_SWinqdims, &
-      he5_init_input_file
-    USE OMSAO_errstat_module, only : pge_errstat_ok
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),           INTENT (IN) :: nt, nx
-    LOGICAL, DIMENSION (0:nt-1), INTENT (IN) :: do_szoom
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (OUT) :: l2cfr, l2ctp
-
-    ! ------------------
-    ! Modified variables
-    ! ------------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4)        :: it, nt_loc, nx_loc, locerrstat
-    REAL    (KIND=r4)        :: scale_cfr, offset_cfr, missval_cfr, scale_ctp, offset_ctp
-    !INTEGER (KIND=i2)       :: missval_ctp
-    real (kind=r4)           :: missval_ctp
-    CHARACTER (LEN=5)        :: addstr
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1) :: o4ctp
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: cfr, ctp
-    LOGICAL                  :: do_raman_clouds
-
-    ! ---------------------------------------
-    ! For accesing the file (local variables)
-    ! ---------------------------------------
-    CHARACTER (LEN=MAX_STR_LEN) :: omicloud_swath_name    = 'undefined'
-    INTEGER   (KIND=i4)      :: omicloud_swath_id      = -1
-    INTEGER   (KIND=i4)      :: omicloud_swath_file_id = -1
-
-    ! ----------------------------------------------
-    ! Names of various HE5 fields to read from files
-    ! ----------------------------------------------
-    !(1) OMI Cloud Fields
-    ! -------------------
-    CHARACTER (LEN=13), PARAMETER :: omicld_cfrac_field      = 'CloudFraction'
-    CHARACTER (LEN=13), PARAMETER :: omicld_cpres_field      = 'CloudPressure'
-
-    ! ----------------------
-    ! Name of the subroutine
-    ! ----------------------
-    !CHARACTER (LEN=22), PARAMETER :: modulename = 'amf_read_omiclouds'
-
-    locerrstat = pge_errstat_ok
-
-    ! -------------------------
-    ! Attach to OMI Cloud Swath
-    ! -------------------------
-    CALL he5_init_input_file ( &
-      voc_amf_filenames(voc_omicld_idx), omicloud_swath_name, &
-      omicloud_swath_id, omicloud_swath_file_id,              &
-      nt_loc, nx_loc, locerrstat )
-
-    ! ------------------------------------------------------------------------
-    ! Usually we would compare nx and nt here, but OMIL2 contains a
-    ! different value for nt (=1). Thus we skip the test.
-    ! ------------------------------------------------------------------------
-    IF ( locerrstat /= pge_errstat_ok ) THEN
-      call tell_error (tell_io_error, "amf_read_omiclouds:  reading cloud file"// &
-                       trim(voc_amf_filenames(voc_omicld_idx)), errstat)
-      RETURN
-    END IF
-
-    IF ( INDEX( voc_amf_filenames(voc_omicld_idx), 'CLDRR' ) /= 0 ) THEN
-      do_raman_clouds = .TRUE.
-      addstr          = "forO3"
-    ELSE
-      do_raman_clouds = .FALSE.
-      addstr          = ""
-    END IF
-
-    ! --------------------------------------------
-    ! Read scaling of cloud data fields (working?)
-    ! --------------------------------------------
-    scale_cfr = 1.0_r4 ; offset_cfr = 0.0_r4 ; missval_cfr = 0.0_r4
-    locerrstat = HE5_SWrdlattr ( omicloud_swath_id, omicld_cfrac_field//TRIM(ADJUSTL(addstr)), 'MissingValue', missval_cfr )
-
-    scale_ctp = 1.0_r4 ; offset_ctp = 0.0_r4 ; missval_ctp = 0.0_r4 ! 0
-    locerrstat = HE5_SWrdlattr ( omicloud_swath_id, omicld_cpres_field//TRIM(ADJUSTL(addstr)), 'MissingValue', missval_ctp )
-
-    ! -----------------------
-    ! Read current data block
-    ! -----------------------
-    he5_start_2d = (/ 0, 0 /) ; he5_stride_2d = (/ 1, 1 /) ; he5_edge_2d = (/ nx, nt /)
-
-    ! ----------------------------------------------------------------
-    ! Read cloud fraction and cloud top pressure, and check for error.
-    ! Eventually we may read the cloud uncertainties also, but for the
-    ! first version we stick with just the basic cloud products.
-    ! ----------------------------------------------------------------
-
-    ! ---------------------------------------------------------------------------
-    ! (1) Cloud Fraction is of type REAL*4 in both Raman and O2-O2 cloud products
-    ! ---------------------------------------------------------------------------
-    locerrstat = HE5_SWrdfld ( &
-      omicloud_swath_id, omicld_cfrac_field//TRIM(ADJUSTL(addstr)),   &
-      he5_start_2d, he5_stride_2d, he5_edge_2d, cfr(1:nx,0:nt-1) )
-    IF ( locerrstat /= pge_errstat_ok ) then
-      call tell_error (tell_io_read_error, "amf_read_omiclouds: reading cloud fraction", &
-                       errstat)
-      return
-    endif
-
-    ! ---------------------------------------------------------------
-    ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
-    ! ---------------------------------------------------------------
-    DO it = 0, nt-1
-      IF ( do_szoom(it) .AND. &
-        ALL ( cfr(gzoom_epix:nx,it) <= missval_cfr ) ) THEN
-        cfr(gzoom_spix:gzoom_epix,it) = cfr(1:gzoom_npix,it)
-        cfr(1:gzoom_spix-1,       it) = missval_cfr
-      END IF
-    END DO
-
-    ! -----------------------------------------------------------
-    ! Assign the cloud fraction array used in the AMF calculation
-    ! -----------------------------------------------------------
-    l2cfr = REAL(cfr, KIND=r8)
-    WHERE ( cfr > r4_missval )
-      l2cfr = l2cfr * scale_cfr + offset_cfr
-    END WHERE
-
-    ! ---------------------------------------------------------------------------
-    ! (2) Cloud Pressure of type REAL*4 in Raman but INT*2 in O2-O2
-    ! ---------------------------------------------------------------------------
-    IF ( do_raman_clouds ) THEN
-      locerrstat = HE5_SWrdfld ( &
-        omicloud_swath_id, omicld_cpres_field//TRIM(ADJUSTL(addstr)),   &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, ctp(1:nx,0:nt-1) )
-    ELSE
-      locerrstat = HE5_SWrdfld ( &
-        omicloud_swath_id, omicld_cpres_field,   &
-        he5_start_2d, he5_stride_2d, he5_edge_2d, o4ctp(1:nx,0:nt-1) )
-
-      ! -------------------------------------------
-      ! Temporary copy of O4CTP to an R4 type array
-      ! -------------------------------------------
-      ctp(1:nx,0:nt-1) = REAL ( o4ctp(1:nx,0:nt-1), KIND=r4 )
-    END IF
-
-    IF ( locerrstat /= pge_errstat_ok ) then
-      call tell_error (tell_io_read_error, "amf_read_omiclouds: reading cloud top pressure", &
-                       errstat)
-      return
-    endif
-
-    ! ---------------------------------------------------------------
-    ! Check for rebinned zoom data swath storage ("1-30" vs. "16-45")
-    ! ---------------------------------------------------------------
-    DO it = 0, nt-1
-      IF ( do_szoom(it) .AND. &
-        ALL ( ctp(gzoom_epix:nx,it) <= REAL(missval_ctp, KIND=r4) ) ) THEN
-        ctp(gzoom_spix:gzoom_epix,it)  = ctp(1:gzoom_npix,it)
-        ctp(1:gzoom_spix-1,       it)  = REAL(missval_ctp, KIND=r4)
-      END IF
-    END DO
-
-    ! ---------------------------------------------------------------
-    ! Assign the cloud top pressure array used in the AMF calculation
-    ! ---------------------------------------------------------------
-    l2ctp  = REAL(ctp, KIND=r8)
-    WHERE ( ctp > REAL(missval_ctp, KIND=r4) )
-      l2ctp = l2ctp * scale_ctp + offset_ctp
-    END WHERE
-
-    ! ------------------------------------------------
-    ! Force the cloud parameters into physical bounds.
-    ! But make sure not to remove MissingValues.
-    ! ------------------------------------------------
-    WHERE ( l2cfr > REAL(missval_cfr, KIND=r8) .AND. l2cfr < 0.0_r8 )
-      l2cfr = 0.0_r8
-    ENDWHERE
-    WHERE ( l2cfr > 1.0_r8 )
-      l2cfr = 1.0_r8
-    ENDWHERE
-    WHERE ( l2ctp > REAL(missval_ctp, KIND=r8) .AND. l2ctp < 0.0_r8 )
-      l2ctp = 0.0_r8
-    ENDWHERE
-
-    ! ------------------------------------------------------
-    ! Replace cloud missing values by SAO PGE missing values
-    ! ------------------------------------------------------
-    WHERE ( l2cfr <= REAL(missval_cfr, KIND=r8) )
-      l2cfr = r8_missval
-    ENDWHERE
-    WHERE ( l2ctp <= REAL(missval_ctp, KIND=r8) )
-      l2ctp = r8_missval
-    ENDWHERE
-
-    RETURN
-  END SUBROUTINE amf_read_omiclouds
 
   SUBROUTINE amf_diagnostic (cct, nt, nx, time, lat, lon, &
                              sza, vza, snow, glint, xtrange, &
