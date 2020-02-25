@@ -67,7 +67,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     pge_hcho_idx, pge_gly_idx,                &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
     destriping_str, scpline_str, nrmline_str, comline_str, o3amf_str, maxgoodcol_str,   &
-    comm_idx, procmode_diag, solmonthave_str, wfmod_amf_str,             &
+    comm_idx, procmode_diag, solmonthave_str, amf_str,             &
     newshift_str, refseccor_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
@@ -90,7 +90,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   USE OMSAO_casestring_module, ONLY: lower_case
   USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
   USE OMSAO_wfamf_module, ONLY: &
-    yn_amf_wfmod, amf_wfmod_idx, amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, &
+    amf_alb_lnd, amf_alb_sno, amf_wvl, &
     amf_alb_cld, amf_max_sza
   USE sao_pge_utils, ONLY: skip_to_filemark
 
@@ -503,19 +503,18 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Position cursor to read WFmodified AMF logical
   ! ---------------------------------------------------------
   REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, wfmod_amf_str, tmpchar, file_read_stat )
+  CALL skip_to_filemark ( fit_ctrl_unit, amf_str, tmpchar, file_read_stat )
   if (file_read_stat /= 0) then
     call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(wfmod_amf_str), errstat)
+                     trim(amf_str), errstat)
     return
   endif
   !CALL error_check ( &
   !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
   !  modulename//f_sep//wfmod_amf_str, vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) yn_amf_wfmod, amf_wfmod_idx
+  READ (fit_ctrl_unit, *) amf_wvl, amf_max_sza
   READ (fit_ctrl_unit, *) amf_alb_lnd, amf_alb_sno, amf_alb_cld
-  IF ( .NOT. yn_amf_wfmod ) READ (fit_ctrl_unit, *) amf_wvl, amf_wvl2, amf_max_sza
 
   ! ---------------------------------------------------------
   ! Position cursor to read O3 AMF correction logical

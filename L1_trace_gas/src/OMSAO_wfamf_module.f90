@@ -45,12 +45,10 @@ MODULE OMSAO_wfamf_module
   INTEGER (KIND=i4) :: Cmlat, Cmlon, CmHRS
   INTEGER (KIND=i4), public :: CmETA
 
-  ! ====================================================================
-  ! Wavelength dependent AMF factor specific variables
-  ! ====================================================================
-  LOGICAL, public       :: yn_amf_wfmod
-  INTEGER, public       :: amf_wfmod_idx
-  REAL(KIND=r8), public :: amf_alb_lnd, amf_alb_sno, amf_wvl, amf_wvl2, amf_alb_cld, amf_max_sza
+  ! =============================
+  ! AMF factor specific variables
+  ! =============================
+  REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld, amf_max_sza
 
   ! ---------------------------------
   ! GMAO GEOS-5 hybrid grid Ap and Bp
@@ -1010,7 +1008,6 @@ CONTAINS
     INTEGER (KIND=i4), DIMENSION(2) :: lon_idx, lat_idx
     REAL (KIND=r4) :: scale_factor, offset
     REAL (KIND=r8) :: lonp, latp
-    REAL (KIND=r8), DIMENSION(1) :: midwvl
 
     ! ------------------------
     ! Error handling variables
@@ -1088,7 +1085,6 @@ CONTAINS
     ! -----------------------------------------------
     ! Select the wavelenghts; finding array positions
     ! -----------------------------------------------
-    midwvl(1) = REAL((amf_wvl + amf_wvl2) / 2.0_r8,KIND=r8)
     minwvl = MINLOC(OMLER_wvl, 1, OMLER_wvl .GE. REAL(winwav_min,KIND=r4))
     maxwvl = MAXLOC(OMLER_wvl, 1, OMLER_wvl .LE. REAL(winwav_max,KIND=r4))
     OMnwvl = maxwvl-minwvl+1
@@ -1144,16 +1140,15 @@ CONTAINS
       REAL(scale_factor, KIND = r8)*      &
       REAL(OMLER_monthly_albedo, KIND=r8)
 
-    ! ----------------------------------------------------------------
-    ! Interpolate for each pixel to one single wavelenght, just at the
-    ! mid point of the fitting window: midwvl.
-    ! ----------------------------------------------------------------
+    ! ------------------------------------------------
+    ! Interpolate for each pixel to amf_wvl wavelenght
+    ! ------------------------------------------------
     DO ilon = 1, OMLER_n_longitudes
       DO ilat = 1, OMLER_n_latitudes
         CALL ezspline_1d_interpolation ( &
           OMnwvl, REAL(OMLER_wvl(minwvl:maxwvl), KIND=r8), &
           OMLER_wvl_albedo(ilon,ilat,1:OMnwvl,1), &
-          one, midwvl, OMLER_albedo(ilon,ilat), locerrstat )
+          one, [amf_wvl], OMLER_albedo(ilon,ilat), locerrstat )
       END DO
     END DO
 
@@ -1884,23 +1879,6 @@ CONTAINS
     ! WHERE statement over "1:nx,0:nt-1" would be more efficient but
     ! would also overwrite missing values with real diagnostic flags.
     ! ----------------------------------------------------------------
-
-    ! -------------------------------------------------------------------
-    ! If the file privided for Scattering weights has no information with
-    ! in the fitting window, then nothing is to be done here.
-    ! The geometric AMFs flag will remain in amfdiag and no further calcu
-    ! lation will be performed inside the calculate_amf and calculate_sca
-    ! subroutines.
-    ! -------------------------------------------------------------------
-    ! ----------------------------------------------------------
-    ! Check that the value in amf_wvl is within the range of the
-    ! suplied scattering weights file.
-    ! ----------------------------------------------------------
-    IF ((amf_wvl  .LT. MINVAL(lut_wav) ) .OR. &
-        (amf_wvl2 .GT. MAXVAL(lut_wav) ) ) THEN
-      RETURN
-    END IF
-
     DO it = 0, nt-1
       spix = xtrange(it,1) ; epix = xtrange(it,2)
 
@@ -2007,7 +1985,7 @@ CONTAINS
     ! ---------------
     real (kind=r4), dimension(CmETA+1) :: eta_a, eta_b
     INTEGER (KIND=i4) :: ialb, ictp, ilay, isrf, isza, ivza, itime, ixtrack, &
-         iwavs, iwavf, nsza, nvza, nalb, ncld_alb, nsrf, nctp, nwav, status
+        nsza, nvza, nalb, ncld_alb, nsrf, nctp, status
     character (len=72) :: logmsg
 
     ! LUT ozone profile variables
@@ -2035,15 +2013,6 @@ CONTAINS
     INTEGER (KIND=i4) :: locerrstat
 
     REAL (kind=8), PARAMETER :: d2r = 3.141592653589793d0/180.0  !! JED fix
-
-    ! -----------------------------------
-    ! Find look up table wavelength index
-    ! No interpolation, closest available
-    ! is selected.
-    ! -----------------------------------
-    iwavs = MINLOC(ABS(lut_wav - REAL(amf_wvl,  KIND = r4) ),1)
-    iwavf = MINLOC(ABS(lut_wav - REAL(amf_wvl2, KIND = r4) ),1)
-    nwav = iwavf - iwavs + 1
 
     write(logmsg, '(a)')'Computing scattering weights...'
     call tell_log (1, logmsg)

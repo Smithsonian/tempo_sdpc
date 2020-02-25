@@ -456,7 +456,7 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=26), PARAMETER :: maxgoodcol_str  = 'Maximum Good Column Amount'
   CHARACTER (LEN=22), PARAMETER :: nrmline_str     = 'Spectrum normalization'
   CHARACTER (LEN=37), PARAMETER :: o3amf_str       = 'Correct O3 AMF Wavelength Dependence?'
-  CHARACTER (LEN=37), PARAMETER :: wfmod_amf_str   = 'Use weighting-function modified AMFs?'
+  CHARACTER (LEN=24), PARAMETER :: amf_str         = 'AMF calculation settings'
   CHARACTER (LEN=15), PARAMETER :: procline_str    = 'Processing mode'
   CHARACTER (LEN=31), PARAMETER :: racline_str     = 'Radiance calibration parameters'
   CHARACTER (LEN=27), PARAMETER :: rafline_str     = 'Radiance fitting parameters'
