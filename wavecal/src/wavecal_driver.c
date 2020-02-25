@@ -578,7 +578,13 @@ int main (int argc, char **argv)
    if (0 == access (config_file, F_OK | R_OK))
      {
         if (0 == config_read_file (&cfg, config_file))
-          goto return_status;
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "Reading %s:%d - %s",
+                          config_error_file(&cfg),
+                          config_error_line(&cfg), config_error_text(&cfg));
+             goto return_status;
+          }
      }
 
    for (;;)
@@ -602,7 +608,13 @@ int main (int argc, char **argv)
               * Subsequent command-line args will override
               * any corresponding config file values */
              if (0 == config_read_file (&cfg, config_file))
-               goto return_status;
+               {
+                  tell_verror (TELL_INVALID_PARM_ERROR,
+                               "Reading %s:%d - %s",
+                               config_error_file(&cfg),
+                               config_error_line(&cfg), config_error_text(&cfg));
+                  goto return_status;
+               }
              break;
            case 'd':
              debug++;
