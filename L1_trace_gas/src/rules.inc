@@ -351,7 +351,6 @@ $(ODIR)/OMSAO_variables_module.o: $(SDIR)/OMSAO_variables_module.f90 \
 $(ODIR)/OMSAO_wfamf_module.o: $(SDIR)/OMSAO_wfamf_module.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/ezspline_interpolation.o \
-  $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_indices_module.o \
