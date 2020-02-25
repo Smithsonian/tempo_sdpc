@@ -194,6 +194,7 @@ CONTAINS
        ! -------------------------
        ! Compute the geometric AMF
        ! -------------------------
+       call tell_log (1, 'amf_calculation: compute geometric amf')
        CALL compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
 
        ! -------------------------------------------------------
@@ -206,12 +207,14 @@ CONTAINS
        ! ----------------------------------------------------
        ! Read OMLER albedo database stored in variable albedo
        ! ----------------------------------------------------
+       call tell_log (1, 'amf_calculation: read albedo')
        CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, errstat)
 
        ! ---------------------------------------
        ! Write the albedo to the output file he5
        ! ---------------------------------------
        IF (do_write) then
+          call tell_log (1, 'amf_calculation: write albedo to L2 file')
           call write_albedo (albedo, nx, nt, errstat)
           if (errstat /= 0) return
        endif
@@ -220,7 +223,7 @@ CONTAINS
        ! Read L2 cloud product
        ! ---------------------
        cloud_file = voc_amf_filenames(voc_omicld_idx)
-       call tell_log (1, 'Read cloud-top pressure, cloud fraction from: '//trim(cloud_file))
+       call tell_log (1, 'amf_calculation: read cloud-top pressure, cloud fraction from '//trim(cloud_file))
        call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
@@ -235,12 +238,19 @@ CONTAINS
        ! ------------------------------------------------
        ! Read climatology and interpolate to lon/lat/time
        ! ------------------------------------------------
+       call tell_log (1, 'amf_calculation: read gas profile climatology')
        CALL get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
             cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, 'reading gas profile climatology', errstat)
+          return
+       endif
+
        ! -------------------------------------
        ! Write the climatology to the he5 file
        ! -------------------------------------
        IF (do_write) then
+          call tell_log (1, 'amf_calculation: write gas profile climatology to L2 file')
           call write_gas_profile (climatology, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
        endif
@@ -250,8 +260,10 @@ CONTAINS
        ! (Input is read only on the first pass.  Subsequent passes use
        ! cached values)
        ! ------------------------------------------------------------------
+       call tell_log (1, 'amf_calculation: read scattering weights LUT')
        CALL read_vlidort (errstat)
        if (errstat /= 0) then
+          call tell_error (tell_io_read_error, 'reading scattering weights LUT', errstat) 
           call vlidort_deallocate(errstat)
           return
        endif
@@ -260,6 +272,7 @@ CONTAINS
        ! amfdiag is used to keep track of the pixels were enough information is
        ! available to carry on the AMFs calculation.
        ! ----------------------------------------------------------------------
+       call tell_log (1, 'amf_calculation: set final amf_diagnostic flags')
        CALL amf_diagnostic (cct, nt, nx, time, lat, lon, &
             sza, vza, snow, glint, xtrange, &
             l2cfr, l2ctp, &
@@ -272,7 +285,8 @@ CONTAINS
        ! --------------------------------------------------------
        ! Compute Scattering weights in the look up table grid but
        ! with the correct albedo. amfdiag is used to skip pixel
-       ! ---------------------------------------------------------
+       ! --------------------------------------------------------
+       call tell_log (1, 'amf_calculation: compute scattering weights')
        CALL compute_scatt (cpt, cct, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
             lat, lon, amfdiag, scattw)
@@ -281,6 +295,7 @@ CONTAINS
        ! Work out the AMF using the scattering weights and the climatology
        ! Work out Averaging Kernels
        ! -----------------------------------------------------------------
+       call tell_log (1, 'amf_calculation: compute amfs')
        CALL compute_amf (cpt,  nt, nx, CmETA, climatology, &
                          scattw, saoamf, stratospheric_amf, tropospheric_amf, &
                          surface_pressure, tropopause_pressure, lat, lon, amfdiag, &
@@ -290,8 +305,12 @@ CONTAINS
        ! Write out scattering weights, altitude grid and averaging kernels
        ! -----------------------------------------------------------------
        IF (do_write) then
+          call tell_log (1, 'amf_calculation: write scattering weights to L2 file')
           call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
-          if (errstat /= 0) return
+          if (errstat /= 0) then
+             call tell_error (tell_io_read_error, 'writting scattering weights to L2 file', errstat)
+             return
+          endif
        endif
 
     END IF
@@ -309,6 +328,7 @@ CONTAINS
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
     IF (do_write) then
+      call tell_log (1, 'amf_calculation: write amf correction to L2 file')
       nz = clim_pres_nz (cpt)
       allocate (eta_a(nz), eta_b(nz))
       call clim_pres_eta (cpt, eta_a, eta_b, errstat)
@@ -327,7 +347,10 @@ CONTAINS
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, errstat)
-      if (errstat /= 0) return
+      if (errstat /= 0) then
+         call tell_error (tell_io_read_error, 'writting amf correction to L2 file', errstat)
+         return
+      endif
     endif
 
   END SUBROUTINE amf_calculation
