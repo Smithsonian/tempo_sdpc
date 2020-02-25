@@ -1699,7 +1699,7 @@ static int mpfit_objective_function
 
    (void) n;
 
-   if (1) write_params (stderr, x, n);
+   if (0) write_params (stderr, x, n);
 
    if (p->wct->sf_ctrl.mode == SF_MODE_NONE)
      {
@@ -1715,6 +1715,22 @@ static int mpfit_objective_function
    for (i = 0; i < m; i++)
      {
         fvec[i] = (model[i] - spec[i]) * weight[i];
+     }
+
+   if (dvec)
+     {
+        int k;
+        for (k = 0; k < n; k++)
+          {
+             double *dvec_k = dvec[k];
+             if (dvec_k != NULL)
+               {
+                  for (i = 0; i < m; i++)
+                    {
+                       dvec_k[i] *= weight[i];
+                    }
+               }
+          }
      }
 
    if (0) write_statistic (stderr, fvec, m);
@@ -1938,7 +1954,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
           goto return_error;
 
         /* When fitting the slit function, the objective function
-         * will compute parameter derivatives for the slit function parameters */
+         * may compute parameter derivatives for the slit function parameters */
         if (wct->sf_ctrl.mode == SF_MODE_FIT)
           {
              int k, k0;
@@ -1953,11 +1969,14 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
              /* For now, the slit function parameters are at the end of the full parameter array. */
              k0 = num - SFT_NUM_PARAMS;
 
+             /* freeze the asymmetry parameter at zero (FIXME?) */
+             param_ctrl[k0 + 2].fixed = 1;
+
              for (k = 0; k < SFT_NUM_PARAMS; k++)
                {
                   param_ctrl[k0 + k].side = 3;
+                  /* param_ctrl[k0 + k].deriv_debug = 1; */
                }
-             param_ctrl[k0 + 2].fixed = 1;   /* FIXME: keep asymmetry fixed for now */
           }
      }
 
