@@ -9,6 +9,8 @@
 #include <tell.h>
 #include <tio.h>
 #include <gsl/gsl_errno.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_interp.h>
 #include <mpfit.h>
 
 #include "config.h"
@@ -17,6 +19,8 @@
 #include "interp.h"
 #include "shapefun.h"
 #include "wavecal.h"
+#include "slit_function.h"
+#include "slit_function_asg.h"
 
 #define NCID_UNINITIALIZED -1
 
@@ -33,11 +37,40 @@ enum
 
 #define NUM_TERM_TYPES 5
 
+enum
+{
+   SF_MODE_NONE,
+   SF_MODE_APPLY,
+   SF_MODE_FIT
+};
+
 typedef struct
 {
-   int xtrack;         /**< cross-track index to be fitted */
-   int num_wave;       /**< total number of wavelength points in measured spectrum */
-   double *wave0;      /**< initial guess at wavelength grid for measured spectrum */
+   const char *file;
+   double initial_params[SFT_NUM_PARAMS];
+   double param_step[SFT_NUM_PARAMS];
+   int num_params;
+   int num_pad_half_widths;
+   int mode;
+}
+SF_Control_Type;
+
+typedef struct
+{
+   double *model_padded;
+   double *model_convolved;
+   double *derivs_convolved[SFT_NUM_PARAMS];
+   int num_alloc;
+   int num_waves;
+   int num_pad;      /* number of wavelengths zero-padding on one end */
+}
+SF_Convolution_Type;
+
+typedef struct
+{
+   int xtrack;      /**< cross-track index to be fitted */
+   int num_wave;    /**< total number of wavelength points in measured spectrum */
+   double *wave0;   /**< initial guess at wavelength grid for measured spectrum */
 
    Shapefun_Type *wavegrid_shapefun;    /**< shape function for computing the wavelength grid */
    double *pindex;          /**< pixel index array for measured spectrum */
@@ -54,6 +87,8 @@ typedef struct
    double *spec_scaled;     /**< spectrum to calibrate, scaled by a constant */
    double *weight;          /**< weight for each spectrum pixel */
    double *residuals;       /**< weighted fit residual, (model - spec_scaled)*weight */
+
+   SF_Convolution_Type *sfct;   /**< extra storage to perform the slit-function convolution */
 }
 Window_Type;
 
@@ -96,6 +131,7 @@ typedef struct
    double *irradiance;               /**< reference irradiance values */
    double *wavelen;                  /**< reference irradiance wavelength grid */
    size_t num_wavelen;               /**< number of wavelength points in grid */
+   double delta_wavelength;          /**< reference irradiance wavelength grid spacing */
 }
 Reference_Irr_Type;
 
@@ -113,10 +149,12 @@ struct Wavecal_Type
    Reference_Irr_Type irr;      /**< reference irradiance */
    Window_Type window;          /**< fit window */
    Fit_Control_Type fit_ctrl;   /**< optimization control parameters */
+   Slit_Function_Type *sft;     /**< slit function object */
    Term_Type *terms;            /**< terms in the model being fitted */
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
+   SF_Control_Type sf_ctrl;
 };
 
 static void free_file_type (File_Type *file)
@@ -229,6 +267,85 @@ static void tell_config_error (config_setting_t *s, const char *func)
                 func, config_setting_name(s),
                 config_setting_source_file(s),
                 config_setting_source_line(s));
+}
+
+typedef struct
+{
+   const char *mode_name;
+   int mode_index;
+}
+SF_Mode_Table_Entry;
+static SF_Mode_Table_Entry SF_Mode_Table[] =
+{
+   {"none",  SF_MODE_NONE},
+   {"apply", SF_MODE_APPLY},
+   {"fit",   SF_MODE_FIT},
+   {NULL, -1}
+};
+
+static int config_slit_function (config_setting_t *s, SF_Control_Type *sf_ctrl)
+{
+   SF_Mode_Table_Entry *m = NULL;
+   const char *mode;
+   double *tmp = NULL;
+   size_t ns;
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "mode", &mode))
+     return -1;
+
+   for (m = SF_Mode_Table; m->mode_name != NULL; m++)
+     {
+        if (0 == strcmp (m->mode_name, mode))
+          {
+             sf_ctrl->mode = m->mode_index;
+             break;
+          }
+     }
+   if (m->mode_name == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported slit function model: %s",
+                     __func__, mode);
+        return -1;
+     }
+
+   /* FIXME */
+   sf_ctrl->file = NULL;
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_isrf_half_widths", &sf_ctrl->num_pad_half_widths))
+     return -1;
+
+   /* initial parameter values */
+   if (read_config_float_array (s, "params", &tmp, &ns) != 1)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error reading slit function params array from %s",
+                     __func__, config_setting_source_file(s));
+        return -1;
+     }
+   if (ns != SFT_NUM_PARAMS)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported slit function parameterization)", __func__);
+        return -1;
+     }
+   sf_ctrl->num_params = ns;
+   memcpy ((char *)sf_ctrl->initial_params, (char *)tmp, ns * sizeof(double));
+   FREE(tmp);
+
+   /* param step sizes for numerical derivative calculation */
+   if (read_config_float_array (s, "param_step", &tmp, &ns) != 1)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error reading slit function param_step array from %s",
+                     __func__, config_setting_source_file(s));
+        return -1;
+     }
+   if (ns != SFT_NUM_PARAMS)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported slit function parameterization", __func__);
+        return -1;
+     }
+   memcpy ((char *)sf_ctrl->param_step, (char *)tmp, ns * sizeof(double));
+   FREE(tmp);
+
+   return 0;
 }
 
 static int config_interp_method (config_setting_t *s, Interp_Type *it)
@@ -430,6 +547,65 @@ return_error:
    return NULL;
 }
 
+static void free_sf_convolution_type (SF_Convolution_Type *sfct)
+{
+   int i;
+   if (NULL == sfct)
+     return;
+   FREE(sfct->model_padded);
+   FREE(sfct->model_convolved);
+   if (sfct->derivs_convolved)
+     {
+        for (i = 0; i < SFT_NUM_PARAMS; i++)
+          {
+             FREE(sfct->derivs_convolved[i]);
+          }
+     }
+
+   FREE(sfct);
+}
+
+static SF_Convolution_Type *alloc_sf_convolution_type (int num_waves, int num_pad)
+{
+   SF_Convolution_Type *sfct = NULL;
+   size_t len = num_waves + 2*num_pad;
+   int i;
+
+   if (NULL == (sfct = (SF_Convolution_Type *)MALLOC (sizeof *sfct)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   sfct->num_waves = num_waves;
+   sfct->num_pad = num_pad;
+   sfct->num_alloc = len;
+
+   if ((NULL == (sfct->model_padded = (double *)MALLOC (len * sizeof(double))))
+       || (NULL == (sfct->model_convolved = (double *)MALLOC (len * sizeof(double)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_sf_convolution_type (sfct);
+        return NULL;
+     }
+
+   for (i = 0; i < SFT_NUM_PARAMS; i++)
+     {
+        if ((NULL == (sfct->derivs_convolved[i] = (double *)MALLOC (len * sizeof(double)))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             free_sf_convolution_type (sfct);
+             return NULL;
+          }
+        memset ((char *)sfct->derivs_convolved[i], 0, len * sizeof(double));
+     }
+
+   memset ((char *)sfct->model_padded, 0, len * sizeof(double));
+   memset ((char *)sfct->model_convolved, 0, len * sizeof(double));
+
+   return sfct;
+}
+
 static void free_window (Window_Type *win)
 {
    if (win == NULL)
@@ -442,19 +618,26 @@ static void free_window (Window_Type *win)
    FREE(win->residuals);
    FREE(win->wave_params);
    free_shapefun_type (win->wavegrid_shapefun);
+   free_sf_convolution_type (win->sfct);
 }
 
-static int alloc_window (Window_Type *win, int num_wave)
+static int alloc_window (Window_Type *win, int num_data_waves, int num_model_waves, int num_pad)
 {
-   win->num_wave = num_wave;
+   win->num_wave = num_data_waves;
 
-   if ((NULL == (win->wave0 = alloc_doubles (num_wave)))
-       || (NULL == (win->pindex = alloc_doubles (num_wave)))
-       || (NULL == (win->model = alloc_doubles (num_wave)))
-       || (NULL == (win->spec_scaled = alloc_doubles (num_wave)))
-       || (NULL == (win->weight = alloc_doubles (num_wave)))
-       || (NULL == (win->residuals = alloc_doubles (num_wave))))
+   if ((NULL == (win->wave0 = alloc_doubles (num_data_waves)))
+       || (NULL == (win->pindex = alloc_doubles (num_data_waves)))
+       || (NULL == (win->model = alloc_doubles (num_data_waves)))
+       || (NULL == (win->spec_scaled = alloc_doubles (num_data_waves)))
+       || (NULL == (win->weight = alloc_doubles (num_data_waves)))
+       || (NULL == (win->residuals = alloc_doubles (num_data_waves))))
      return -1;
+
+   if (num_pad)
+     {
+        if (NULL == (win->sfct = alloc_sf_convolution_type (num_model_waves, num_pad)))
+          return -1;
+     }
 
    return 0;
 }
@@ -531,6 +714,7 @@ static void free_wavecal (Wavecal_Type *wct)
    free_terms (wct->terms);
    free_term_sums (wct->term_sums, num_term_types);
    free_window (&wct->window);
+   sft_free (wct->sft);
    FREE(wct->irr0);
    FREE(wct);
 }
@@ -540,7 +724,7 @@ void wavecal_close (Wavecal_Type *wct)
    free_wavecal (wct);
 }
 
-static Wavecal_Type *alloc_wavecal (int num_wave)
+static Wavecal_Type *alloc_wavecal (int num_data_waves, int num_model_waves, int num_pad)
 {
    Wavecal_Type *wct = NULL;
    size_t num_term_types = NUM_TERM_TYPES;
@@ -552,22 +736,31 @@ static Wavecal_Type *alloc_wavecal (int num_wave)
      }
    memset ((char *)wct, 0, sizeof *wct);
 
-   if (NULL == (wct->irr0 = alloc_doubles (num_wave)))
+   if (NULL == (wct->irr0 = alloc_doubles (num_data_waves)))
      {
         free_wavecal (wct);
         return NULL;
      }
 
-   if (0 != alloc_term_sums (wct->term_sums, num_term_types, num_wave))
+   if (0 != alloc_term_sums (wct->term_sums, num_term_types, num_model_waves))
      {
         free_wavecal (wct);
         return NULL;
      }
 
-   if (0 != alloc_window (&wct->window, num_wave))
+   if (0 != alloc_window (&wct->window, num_data_waves, num_model_waves, num_pad))
      {
         free_wavecal (wct);
         return NULL;
+     }
+
+   if (num_pad)
+     {
+        if (NULL == (wct->sft = sft_new (num_pad * 2)))
+          {
+             free_wavecal (wct);
+             return NULL;
+          }
      }
 
    /* default this parameter to irradiance calibration case */
@@ -605,7 +798,9 @@ static int config_model_components (Wavecal_Type *wct, config_setting_t *s)
 static int config_irr_reference (config_setting_t *s, Reference_Irr_Type *irr)
 {
    File_Type *file = &irr->file;
+   TIO_Var_Info_Type info = {0};
    config_setting_t *ss;
+   int start=0, count=1;
 
    if (NULL == (ss = config_setting_get_member (s, "data")))
      return -1;
@@ -615,6 +810,13 @@ static int config_irr_reference (config_setting_t *s, Reference_Irr_Type *irr)
    if (0 != TIO_open (file->path, NC_NOWRITE, &irr->ncid))
      return -1;
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file->path);
+
+   if (0 != TIO_inq_var (irr->ncid, file->name_y, &info))
+     return -1;
+   irr->num_wavelen = (info.ndims == 1) ? info.dimlens[0] : info.dimlens[1];
+
+   if (0 != TIO_get_var_section (irr->ncid, "dWavelength", &start, &count, TIO_DOUBLE, &irr->delta_wavelength))
+     return -1;
 
    return 0;
 }
@@ -729,6 +931,8 @@ static int Num_Warnings = 3;
 static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
 {
    File_Type *file = &irr->file;
+   double dx0;
+   size_t i;
 
    xtrack = 0;
    if (Num_Warnings > 0)
@@ -760,12 +964,27 @@ static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
      {
         double *irr_i = irr->irradiance;
         double scale = file->scale_factor;
-        size_t i;
         for (i = 0; i < irr->num_wavelen; i++)
           {
              irr_i[i] *= scale;
           }
      }
+
+   /* Check for uniform grid spacing */
+   dx0 = irr->wavelen[1] - irr->wavelen[0];
+   for (i = 2; i < irr->num_wavelen; i++)
+     {
+        double dx = irr->wavelen[i] - irr->wavelen[i-1];
+        /* FIXME - fix reference data to enforce tighter tolerances!? */
+        if (gsl_fcmp (dx, dx0, 1.e-2) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: reference irradiance has variable grid spacing: dx0=%e dx[%ld]=%e",
+                          __func__, dx0, i, dx);
+             return -1;
+          }
+     }
+   irr->delta_wavelength = dx0;
 
    return 0;
 }
@@ -918,6 +1137,12 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
           }
      }
 
+   /* put slit function parameters at the very end */
+   if (wct->sf_ctrl.mode == SF_MODE_FIT)
+     {
+        num += SFT_NUM_PARAMS;
+     }
+
    /* allocate storage and copy initial values */
    if (NULL == (params = alloc_doubles (num)))
      return -1;
@@ -934,6 +1159,12 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
                      term->num_params * sizeof(double));
              pnext += term->num_params;
           }
+     }
+
+   if (wct->sf_ctrl.mode == SF_MODE_FIT)
+     {
+        /* set initial slit-function parameters  */
+        memcpy ((char *)pnext, (char *)wct->sf_ctrl.initial_params, SFT_NUM_PARAMS * sizeof(double));
      }
 
    *pnum = num;
@@ -990,14 +1221,18 @@ int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *
 }
 
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
-                            int max_num_wave, int is_irradiance)
+                            int max_num_data_waves, int is_irradiance)
 {
    Wavecal_Type *wct = NULL;
    Window_Type *win = NULL;
    Feature_Window_Type fwin = {0};
-   config_setting_t *s, *s_band;
-   double *pindex = NULL;
-   int i;
+   SF_Control_Type sf_ctrl = {0};
+   Reference_Irr_Type ref_irr = {0};
+   config_setting_t *s, *s_band, *s_irr, *s_slit;
+   config_setting_t *s_rad = NULL;
+   int i, num_data_waves, num_model_waves, num_pad;
+
+   /* Locate the configuration parameters for this spectral band, and target spectrum type */
 
    if (NULL == (s_band = config_lookup (cfg, cfg_name)))
      {
@@ -1007,29 +1242,118 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         return NULL;
      }
 
+   if (NULL == (s_irr = config_setting_get_member (s_band, "wavecal_irradiance")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing wavecal_irradiance in param file: %s",
+                     __func__, config_error_file (cfg));
+        goto error_return;
+     }
+
+   if (is_irradiance)
+     {
+        s_slit = config_setting_get_member (s_irr, "slit_function");  /* NULL is ok */
+     }
+   else
+     {
+        if (NULL == (s_rad = config_setting_get_member (s_band, "wavecal_radiance")))
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "%s: accessing wavecal_radiance in param file: %s",
+                          __func__, config_error_file (cfg));
+             goto error_return;
+          }
+        s_slit = config_setting_get_member (s_rad, "slit_function");  /* NULL is ok */
+     }
+
+   /* We always use a reference irradiance spectrum */
+   if (0 != config_irr_reference (s_irr, &ref_irr))
+     goto error_return;
+
    /* For irradiances, always operate on the entire spectrum */
    if (is_irradiance
        || (0 != read_feature_window (s_band, &fwin)))
      {
-        fwin.num_pix = max_num_wave;
+        fwin.num_pix = max_num_data_waves;
         fwin.start_pix = 0;
         fwin.delta_wavelength = 0.0;
         fwin.feature_wavelength = 0.0;
      }
 
-   if (((fwin.num_pix <= 0) || (fwin.num_pix > max_num_wave))
-       || ((fwin.start_pix < 0) || (fwin.start_pix >= max_num_wave)))
+   if (((fwin.num_pix <= 0) || (fwin.num_pix > max_num_data_waves))
+       || ((fwin.start_pix < 0) || (fwin.start_pix >= max_num_data_waves)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: invalid wavelength calibration window size: max_num_wave=%d num_pix=%d start_pix=%d",
-                     __func__, max_num_wave, fwin.num_pix, fwin.start_pix);
+                     "%s: invalid wavelength calibration window size: max_num_data_waves=%d num_pix=%d start_pix=%d",
+                     __func__, max_num_data_waves, fwin.num_pix, fwin.start_pix);
         return NULL;
      }
 
-   if (NULL == (wct = alloc_wavecal (fwin.num_pix)))
+   /* The slit function is optional */
+   if (s_slit)
+     {
+        if (0 != config_slit_function (s_slit, &sf_ctrl))
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "%s: reading slit_function setting in %s",
+                          __func__, config_setting_source_file (s_slit));
+             goto error_return;
+          }
+     }
+   else sf_ctrl.mode = SF_MODE_NONE;
+
+   /* The slit function mode and the fit window size together determine
+    * the size of the arrays used to compute model components.
+    */
+
+   num_data_waves = fwin.num_pix;
+
+   if (sf_ctrl.mode == SF_MODE_NONE)
+     {
+        num_pad = 0;
+        num_model_waves = fwin.num_pix;
+     }
+   else
+     {
+        double hw1e = sf_ctrl.initial_params[0]; /* half-width [nm] at 1/e */
+
+        num_pad = (sf_ctrl.num_pad_half_widths
+                   * (hw1e / ref_irr.delta_wavelength));
+
+        num_model_waves = ref_irr.num_wavelen;
+     }
+
+   /* Allocate the wavecal structure for this configuration */
+
+   if (NULL == (wct = alloc_wavecal (num_data_waves, num_model_waves, num_pad)))
      goto error_return;
 
    wct->is_irradiance = is_irradiance;
+
+   wct->irr = ref_irr;       /* struct copy */
+   wct->sf_ctrl = sf_ctrl;   /* struct copy */
+
+   if (s_rad)
+     {
+        if (0 != config_model_components (wct, s_rad))
+          goto error_return;
+
+        if (0 != alloc_term_storage (wct->terms, num_model_waves))
+          goto error_return;
+     }
+
+   if (0 != config_fit_window (is_irradiance ? s_irr : s_rad, &wct->window))
+     goto error_return;
+
+   win = &wct->window;
+   win->start_pix = fwin.start_pix;
+   win->delta_wavelength = fwin.delta_wavelength;
+   win->feature_wavelength = fwin.feature_wavelength;
+
+   for (i = 0; i < fwin.num_pix; i++)
+     {
+        win->pindex[i] = (double)(i + fwin.start_pix);
+     }
 
    if (NULL == (s = config_lookup (cfg, "wavecal_control")))
      {
@@ -1041,49 +1365,6 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
 
    if (0 != config_control (s, wct))
      goto error_return;
-
-   if (NULL == (s = config_setting_get_member (s_band, "wavecal_irradiance")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing wavecal_irradiance in param file: %s",
-                     __func__, config_error_file (cfg));
-        goto error_return;
-     }
-
-   if (0 != config_fit_window (s, &wct->window))
-     goto error_return;
-
-   win = &wct->window;
-   win->start_pix = fwin.start_pix;
-   win->delta_wavelength = fwin.delta_wavelength;
-   win->feature_wavelength = fwin.feature_wavelength;
-
-   if (0 != config_irr_reference (s, &wct->irr))
-     goto error_return;
-
-   if (is_irradiance == 0)
-     {
-        if (NULL == (s = config_setting_get_member (s_band, "wavecal_radiance")))
-          {
-             tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: accessing wavecal_radiance in param file: %s",
-                          __func__, config_error_file (cfg));
-             goto error_return;
-          }
-
-        if (0 != config_model_components (wct, s))
-          goto error_return;
-
-        if (0 != alloc_term_storage (wct->terms, fwin.num_pix))
-          goto error_return;
-     }
-
-   pindex = wct->window.pindex;
-
-   for (i = 0; i < fwin.num_pix; i++)
-     {
-        pindex[i] = (double)(i + fwin.start_pix);
-     }
 
    return wct;
 
@@ -1160,12 +1441,12 @@ int wavecal_query_term (const Wavecal_Type *wct, int nth,
    return 0;
 }
 
-static int combine_terms (Wavecal_Type *wct, int num_waves, double *model)
+static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *model)
 {
    int count[NUM_TERM_TYPES];
    size_t num_term_types = NUM_TERM_TYPES;
    size_t i, n = num_waves;
-   double *ad1, *ad2, *i0, *lbe, *bl;
+   double *ad1, *ad2, *lbe, *bl;
    Term_Type *t;
 
    /* sum over terms of each type */
@@ -1185,7 +1466,6 @@ static int combine_terms (Wavecal_Type *wct, int num_waves, double *model)
 
    /* model = sc*(i0 + ad1)*exp(-lbe) + bl + ad2 */
 
-   i0  = wct->irr0;
    ad1 = wct->term_sums[TERM_TYPE_AD1];
    ad2 = wct->term_sums[TERM_TYPE_AD2];
    lbe = wct->term_sums[TERM_TYPE_LBE];
@@ -1212,13 +1492,15 @@ static int combine_terms (Wavecal_Type *wct, int num_waves, double *model)
    return 0;
 }
 
-static int forward_model (Wavecal_Type *wct, const double *params, double *model)
+static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
 {
    Window_Type *win = &wct->window;
    Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    Term_Type *term;
    const double *par;
+
+   (void) derivs;
 
    par = params;
 
@@ -1241,8 +1523,126 @@ static int forward_model (Wavecal_Type *wct, const double *params, double *model
      }
 
    /* combine terms to construct the updated model spectrum */
-   if (0 != combine_terms (wct, win->num_wave, model))
+   if (0 != combine_terms (wct, wct->irr0, win->num_wave, model))
      return -1;
+
+   return 0;
+}
+
+static int interp_array (const double *xa, const double *ya, size_t na, const double *x, double *y, size_t n)
+{
+   gsl_interp *interp = NULL;
+   gsl_interp_accel *accel = NULL;
+   size_t i;
+   int status = -1;
+
+   if ((NULL == (accel = gsl_interp_accel_alloc ()))
+       || (NULL == (interp = gsl_interp_alloc (gsl_interp_linear, na))))
+     goto free_and_return;
+   if (0 != gsl_interp_init (interp, xa, ya, na))
+     goto free_and_return;
+
+   for (i = 0; i < n; i++)
+     {
+        y[i] = gsl_interp_eval (interp, xa, ya, x[i], accel);
+     }
+
+   status = 0;
+free_and_return:
+   gsl_interp_free (interp);
+   gsl_interp_accel_free (accel);
+
+   return status;
+}
+
+static int interpolate_sf_convolved (double *wavelen, Window_Type *win, SF_Convolution_Type *sfct,
+                                     double *model, double **derivs)
+{
+   int i;
+
+   if (0 != interp_array (wavelen, sfct->model_convolved, sfct->num_waves, win->wave0, model, win->num_wave))
+     return -1;
+
+   if (derivs == NULL)
+     return 0;
+
+   for (i = 0; i < SFT_NUM_PARAMS; i++)
+     {
+        if (derivs[i] == NULL)
+          continue;
+        if (0 != interp_array (wavelen, sfct->derivs_convolved[i], sfct->num_waves, win->wave0, derivs[i], win->num_wave))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int get_sf_params (int k, int num_pars, double *pars, void *cl)
+{
+   double *the_params = (double *)cl;
+   (void) k;
+   memcpy ((char *)pars, (char *)the_params, num_pars * sizeof(double));
+   return 0;
+}
+
+static int convolve_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
+{
+   Window_Type *win = &wct->window;
+   Shapefun_Type *wl = win->wavegrid_shapefun;
+   Reference_Irr_Type *irr = &wct->irr;
+   SF_Convolution_Type *sfct = win->sfct;
+   Term_Type *term;
+   const double *par;
+   double sf_params[SFT_NUM_PARAMS];
+   int status, use_derivs=0, index_slit_param0;
+
+   par = params;
+
+   /* skip wavelength grid parameters */
+   par += win->num_wave_params;
+
+   /* Construct the model on the high-resolution reference irradiance wavelength grid */
+   for (term = wct->terms; term != NULL; term = term->next)
+     {
+        double scale_factor = win->rad_mean_ratio;
+        if (evaluate_term (term, irr->num_wavelen, irr->wavelen, scale_factor, par) < 0)
+          return -1;
+        par += term->num_params;
+     }
+
+   /* combine terms to construct the updated model spectrum */
+   if (0 != combine_terms (wct, irr->irradiance, irr->num_wavelen, sfct->model_padded + sfct->num_pad))
+     return -1;
+
+   if (wct->sf_ctrl.mode == SF_MODE_FIT)
+     {
+        /* When fitting the slit function parameters are at the end of the array. */
+        if (derivs) use_derivs++;
+        index_slit_param0 = par - params;
+        memcpy ((char *)sf_params, (char *)par, SFT_NUM_PARAMS * sizeof(double));
+     }
+   else
+     {
+        /* FIXME */
+        memcpy ((char *)sf_params, (char *)wct->sf_ctrl.initial_params, SFT_NUM_PARAMS * sizeof(double));
+     }
+
+   /* Convolve the model with the slit-function. */
+   status = sft_apply (wct->sft, get_sf_params, sf_params, sfct->num_waves, sfct->model_padded,
+                       sfct->model_convolved,
+                       use_derivs ? sfct->derivs_convolved : NULL);
+   if (status) return -1;
+
+   /* compute wavelength as a function of pixel index
+    * (wavelength grid parameters are at the front of the full param array) */
+   if (wl->st_eval (wl, params, win->num_wave, win->pindex, win->wave0) < 0)
+     return -1;
+
+   /* Interpolate the convolved model and derivatives onto the parametrized wavelength grid
+    * (sfct->hr_model_convolved -> model) */
+   status = interpolate_sf_convolved (irr->wavelen, win, sfct, model,
+                                      use_derivs ? &derivs[index_slit_param0] : NULL);
+   if (status) return -1;
 
    return 0;
 }
@@ -1297,12 +1697,20 @@ static int mpfit_objective_function
    double *model = p->model;
    int i;
 
-   (void) n; (void) dvec;
+   (void) n;
 
-   if (0) write_params (stderr, x, n);
+   if (1) write_params (stderr, x, n);
 
-   if (forward_model (p->wct, x, model) < 0)
-     return -1;
+   if (p->wct->sf_ctrl.mode == SF_MODE_NONE)
+     {
+        if (pre_convolved_forward_model (p->wct, x, model, dvec) < 0)
+          return -1;
+     }
+   else
+     {
+        if (convolve_forward_model (p->wct, x, model, dvec) < 0)
+          return -1;
+     }
 
    for (i = 0; i < m; i++)
      {
@@ -1461,6 +1869,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    Mpfit_Interface_Type mp = {0};
    struct mp_config_struct fit_config = {0};
    struct mp_result_struct fit_result = {0};
+   struct mp_par_struct *param_ctrl = NULL;
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
    Window_Type *win = &wct->window;
    double fill_value = config->fill_value;
@@ -1522,6 +1931,36 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    if (0 != compute_rad_mean_ratio (wct))
      goto return_error;
 
+   /* If we're using the slit-function, configure it here */
+   if (wct->sft)
+     {
+        if (0 != sft_config (wct->sft, asg_normed_plus_derivs, wct->irr.delta_wavelength, wct->sf_ctrl.param_step))
+          goto return_error;
+
+        /* When fitting the slit function, the objective function
+         * will compute parameter derivatives for the slit function parameters */
+        if (wct->sf_ctrl.mode == SF_MODE_FIT)
+          {
+             int k, k0;
+
+             if (NULL == (param_ctrl = (struct mp_par_struct *)MALLOC (num * sizeof (*param_ctrl))))
+               {
+                  tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+                  goto return_error;
+               }
+             memset ((char *)param_ctrl, 0, num * sizeof(*param_ctrl));
+
+             /* For now, the slit function parameters are at the end of the full parameter array. */
+             k0 = num - SFT_NUM_PARAMS;
+
+             for (k = 0; k < SFT_NUM_PARAMS; k++)
+               {
+                  param_ctrl[k0 + k].side = 3;
+               }
+             param_ctrl[k0 + 2].fixed = 1;   /* FIXME: keep asymmetry fixed for now */
+          }
+     }
+
    mp.wct = wct;
    mp.spec = win->spec_scaled;
    mp.weight = win->weight;
@@ -1542,7 +1981,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    if (0) write_params (stderr, params, num_params);
 
    mp_status = mpfit (&mpfit_objective_function, num_residuals,
-                      num_params, params, NULL, &fit_config, &mp, &fit_result);
+                      num_params, params, param_ctrl, &fit_config, &mp, &fit_result);
 
    /* making sure the model is evaluated at best-fit */
    if (0 != mpfit_objective_function (num_residuals, num_params,
@@ -1579,6 +2018,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
 
 return_error:
    FREE(params);
+   FREE(param_ctrl);
 
    return status;
 }
