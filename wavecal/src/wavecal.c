@@ -1320,6 +1320,8 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
         num_pad = (sf_ctrl.num_pad_half_widths
                    * (hw1e / ref_irr.delta_wavelength));
 
+        /* We'll allocate the maximum size, but probably use
+         * only the relevant subset. */
         num_model_waves = ref_irr.num_wavelen;
      }
 
@@ -1555,12 +1557,13 @@ free_and_return:
    return status;
 }
 
-static int interpolate_sf_convolved (double *wavelen, Window_Type *win, SF_Convolution_Type *sfct,
+static int interpolate_sf_convolved (double *wavelen, int num_wavelen,
+                                     Window_Type *win, SF_Convolution_Type *sfct,
                                      double *model, double **derivs)
 {
    int i;
 
-   if (0 != interp_array (wavelen, sfct->model_convolved, sfct->num_waves, win->wave0, model, win->num_wave))
+   if (0 != interp_array (wavelen, sfct->model_convolved, num_wavelen, win->wave0, model, win->num_wave))
      return -1;
 
    if (derivs == NULL)
@@ -1570,7 +1573,7 @@ static int interpolate_sf_convolved (double *wavelen, Window_Type *win, SF_Convo
      {
         if (derivs[i] == NULL)
           continue;
-        if (0 != interp_array (wavelen, sfct->derivs_convolved[i], sfct->num_waves, win->wave0, derivs[i], win->num_wave))
+        if (0 != interp_array (wavelen, sfct->derivs_convolved[i], num_wavelen, win->wave0, derivs[i], win->num_wave))
           return -1;
      }
 
@@ -1593,10 +1596,30 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    SF_Convolution_Type *sfct = win->sfct;
    Term_Type *term;
    const double *par;
+   double *irr_wavelen = NULL;
+   double *irr_value = NULL;
    double sf_params[SFT_NUM_PARAMS];
-   int status, use_derivs=0, index_slit_param0;
+   double delta_wave_pad, irr_wave_beg, irr_wave_end;
+   int index_irr_beg, index_irr_end, num_irr_waves;
+   int status, index_slit_param0;
+   int use_derivs=0;
 
    par = params;
+
+   /* compute wavelength as a function of pixel index
+    * (wavelength grid parameters are at the front of the full param array) */
+   if (wl->st_eval (wl, params, win->num_wave, win->pindex, win->wave0) < 0)
+     return -1;
+
+   /* Select the relevant subset of the reference irradiance wavelength grid */
+   delta_wave_pad = win->sfct->num_pad * irr->delta_wavelength;
+   irr_wave_beg = win->wave0[0] - delta_wave_pad;
+   irr_wave_end = win->wave0[win->num_wave-1] + delta_wave_pad;
+   index_irr_beg = bsearch_d (irr_wave_beg, irr->wavelen, irr->num_wavelen);
+   index_irr_end = bsearch_d (irr_wave_end, irr->wavelen, irr->num_wavelen);
+   num_irr_waves = index_irr_end - index_irr_beg + 1;
+   irr_wavelen = irr->wavelen + index_irr_beg;
+   irr_value  = irr->irradiance + index_irr_beg;
 
    /* skip wavelength grid parameters */
    par += win->num_wave_params;
@@ -1605,13 +1628,13 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    for (term = wct->terms; term != NULL; term = term->next)
      {
         double scale_factor = win->rad_mean_ratio;
-        if (evaluate_term (term, irr->num_wavelen, irr->wavelen, scale_factor, par) < 0)
+        if (evaluate_term (term, num_irr_waves, irr_wavelen, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
      }
 
    /* combine terms to construct the updated model spectrum */
-   if (0 != combine_terms (wct, irr->irradiance, irr->num_wavelen, sfct->model_padded + sfct->num_pad))
+   if (0 != combine_terms (wct, irr_value, num_irr_waves, sfct->model_padded + sfct->num_pad))
      return -1;
 
    if (wct->sf_ctrl.mode == SF_MODE_FIT)
@@ -1633,14 +1656,9 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
                        use_derivs ? sfct->derivs_convolved : NULL);
    if (status) return -1;
 
-   /* compute wavelength as a function of pixel index
-    * (wavelength grid parameters are at the front of the full param array) */
-   if (wl->st_eval (wl, params, win->num_wave, win->pindex, win->wave0) < 0)
-     return -1;
-
    /* Interpolate the convolved model and derivatives onto the parametrized wavelength grid
     * (sfct->hr_model_convolved -> model) */
-   status = interpolate_sf_convolved (irr->wavelen, win, sfct, model,
+   status = interpolate_sf_convolved (irr_wavelen, num_irr_waves, win, sfct, model,
                                       use_derivs ? &derivs[index_slit_param0] : NULL);
    if (status) return -1;
 
