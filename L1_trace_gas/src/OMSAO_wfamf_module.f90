@@ -212,11 +212,13 @@ CONTAINS
        ! -------------------------------------------------------
        saoamf = amfgeo
 
-       ! ----------------------------------------------------
-       ! Read OMLER albedo database stored in variable albedo
-       ! ----------------------------------------------------
-       call tell_log (1, 'amf_calculation: read albedo')
-       CALL omi_omler_albedo ( lat, lon, albedo, nt, nx, xtrange, errstat)
+       ! --------------------------------------------------------------
+       ! Read and interpolate albedo database. If no albedo information
+       ! set amfdiag bit 2. Set amfdiag bit 3 for glint.
+       ! ------------------------------------------------------------
+       call tell_log (1, 'amf_calculation: read and prepare albedo')
+       call read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
+            albedo, errstat)
 
        ! ---------------------------------------
        ! Write the albedo to the output file he5
@@ -417,167 +419,43 @@ CONTAINS
   end subroutine compute_geometric_amf
 
 
-  subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                                   xtrange, errstat, amfdiag)
-    use clim_module
-    use omsao_omidata_module, only: omi_scattfail_amf
-    use omsao_indices_module, only: sao_molecule_names
-    implicit none
-
-    type (clim_pres_type), intent(inout) :: cpt
-    integer (kind=i4), intent(in) :: pge_idx
-    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
-    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
-    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
-    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
-    real (kind=r8), dimension (0:nt-1), intent (in) :: time
-    integer (kind=i4), intent (in) :: nt, nx
-    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
-    integer (kind=i4), intent (inout) :: errstat
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
-
-    type (clim_pres_bounds_type) :: bounds
-    type (clim_species_type) :: cst
-    integer :: year(2), month(2), day(2)
-    integer :: nz, nlayers, spix, epix, itimes, ixtrack
-    real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end
-    real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
-    real (kind=r4) :: hour_f, lon_f, lat_f
-    character (len=6) :: clim_db_molecule_name
-
-    if (errstat /= 0) return
-
-    t_beg = minval(time, time /= r8_missval)
-    t_end = maxval(time, time /= r8_missval)
-
-    if (t_end - t_beg > 86400.0) then
-      call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
-      return
-    endif
-
-    call tio_f_taix_time_to_utc_caldate (t_beg, year(1), month(1), day(1), hour_beg)
-    call tio_f_taix_time_to_utc_caldate (t_end, year(2), month(2), day(2), hour_end)
-
-    bounds % hour_beg = real (hour_beg, kind=r4)
-    bounds % hour_end = real (hour_end, kind=r4)
-    bounds % lon_min = minval(lon, lon /= r4_missval)
-    bounds % lon_max = maxval(lon, lon /= r4_missval)
-    bounds % lat_min = minval(lat, lat /= r4_missval)
-    bounds % lat_max = maxval(lat, lat /= r4_missval)
-
-    call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
-    if (errstat /= 0) return
-
-    nz = clim_pres_nz (cpt)
-    nlayers = nz - 1
-    allocate (pres(nz), vmr(nlayers), partial_column(nlayers))
-
-    clim_db_molecule_name = sao_molecule_names(pge_idx)
-
-    ! We can't agree on how to spell the names of molecules.
-    if (clim_db_molecule_name == 'HCHO') then
-      clim_db_molecule_name = 'CH2O  '
-    endif
-
-    call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
-    if (errstat /= 0) return
-
-    do itimes = 0, nt-1
-
-      if (time(itimes) == r8_missval) then
-        amfdiag(:,itimes) = omi_scattfail_amf
-        cycle
-      endif
-
-      call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
-      hour_f = real (hour, kind=r4)
-
-      spix = xtrange(itimes,1)
-      epix = xtrange(itimes,2)
-
-      do ixtrack = spix, epix
-
-        lon_f = lon(ixtrack,itimes)
-        lat_f = lat(ixtrack,itimes)
-
-        if (lon_f == r4_missval .or. abs(lon_f) > 360.0 &
-            .or. lat_f == r4_missval .or. abs(lat_f) > 90.0) then
-          amfdiag(ixtrack,itimes) = omi_scattfail_amf
-          cycle
-        endif
-
-        ! FIXME - this is just temporary
-        cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
-        cli_idx_ozo_pro(ixtrack,itimes,1:2) = 1
-
-        call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
-        call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
-        call clim_partial_column (pres, vmr, partial_column, errstat)
-        if (errstat /= 0) return
-
-        where (partial_column < 0.0_r8)
-          partial_column = 0.0_r8
-        end where
-        climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
-      enddo
-    enddo
-  end subroutine
-
-  subroutine get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                                   xtrange, errstat, amfdiag)
-    use clim_module
-    implicit none
-    type (clim_pres_type), intent(inout) :: cpt
-    integer (kind=i4), intent(in) :: pge_idx
-    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
-    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
-    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
-    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
-    real (kind=r8), dimension (0:nt-1), intent (in) :: time
-    integer (kind=i4), intent (in) :: nt, nx
-    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
-    integer (kind=i4), intent (inout) :: errstat
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
-
-    call clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                               cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                               xtrange, errstat, amfdiag)
-  end subroutine
-
-  SUBROUTINE omi_omler_albedo( lat, lon, albedo, nt, nx, xtrange, &
-      errstat)
+  subroutine read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
+            albedo, errstat)
 
     ! ==================================================================
     ! This subroutine reads the OMLER albedo data base for the month of
     ! the orbit to processed. Then it interpolates the values for each
     ! one of the pixels of the orbit to be analyzed
     ! ==================================================================
-    USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
-    USE OMSAO_variables_module, ONLY: OMSAO_OMLER_filename, &
+    use OMSAO_linterpolation_module, only: lininterpol, GetNode
+    use OMSAO_variables_module, only: OMSAO_OMLER_filename, &
       winwav_min, winwav_max
-    USE ezspline_interpolation, ONLY: ezspline_1d_interpolation, &
+    use ezspline_interpolation, only: ezspline_1d_interpolation, &
       ezspline_2d_interpolation
-    USE OMSAO_errstat_module, only : he5_stat_fail, pge_errstat_ok
-    USE OMSAO_he5_module, ONLY: HE5_GDOPEN, HE5_GDattach, HE5_GDRDFLD, &
+    use OMSAO_errstat_module, only : he5_stat_fail, pge_errstat_ok
+    use OMSAO_he5_module, only: HE5_GDOPEN, HE5_GDattach, HE5_GDRDFLD, &
          HE5_GDRDLATTR, HE5_GDDETACH, HE5_GDclose, he5f_acc_rdonly, &
          granule_month
 
-    IMPLICIT NONE
+    implicit none
 
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon
-    INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
+    integer (kind=i4), intent (in) :: nt, nx
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (in) :: glint
 
     ! ------------------
     ! Modified variables
     ! ------------------
-    INTEGER (KIND=i4),                         INTENT (INOUT) :: errstat
-    REAL    (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT (INOUT) :: albedo
+    integer (kind=i4), intent (inout) :: errstat
+    real (kind=r8), dimension (1:nx,0:nt-1), intent (inout) :: albedo
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
 
     ! ------------------------------------------------------------------
     ! Local variables, the variables to hold the OMLER data are going to
@@ -600,7 +478,7 @@ CONTAINS
     CHARACTER (LEN=MAX_STR_LEN) :: grid_file
     INTEGER (KIND=i4), PARAMETER :: OMLER_n_latitudes = 360, &
       OMLER_n_longitudes = 720, OMLER_n_wavelenghts =  23, one = 1
-    INTEGER (KIND=i4) :: itimes, ixtrack, spix, epix, ilon, ilat, nlon, &
+    INTEGER (KIND=i4) :: itimes, ixtrack, ilon, ilat, nlon, &
       nlat, OMnwvl, grid_id, grid_file_id, month, minwvl, maxwvl
     INTEGER (KIND=i4), DIMENSION(2) :: lon_idx, lat_idx
     REAL (KIND=r4) :: scale_factor, offset
@@ -733,9 +611,9 @@ CONTAINS
       return
     END IF
 
-    OMLER_wvl_albedo = REAL(offset, KIND = r8) +          &
-      REAL(scale_factor, KIND = r8)*      &
-      REAL(OMLER_monthly_albedo, KIND=r8)
+    OMLER_wvl_albedo = real(offset, KIND = r8) +          &
+      real(scale_factor, KIND = r8)*      &
+      real(OMLER_monthly_albedo, KIND=r8)
 
     ! ------------------------------------------------
     ! Interpolate for each pixel to amf_wvl wavelenght
@@ -752,24 +630,27 @@ CONTAINS
     ! --------------------------------------------------
     ! Interpolate to the lat and longitude of each pixel
     ! --------------------------------------------------
-    DO itimes = 0, nt-1
+    do itimes = 0, nt-1
+       do ixtrack = 1, nx
 
-       spix = xtrange(itimes,1); epix = xtrange(itimes,2)
-       DO ixtrack = spix, epix
+          ! --------------------------------------------
+          ! If for a given pixel there is no geolocation
+          ! information skip it.
+          ! --------------------------------------------
+          if ( btest(amfdiag(ixtrack,itimes),0) ) cycle
 
-          lonp = REAL(lon(ixtrack,itimes), KIND=r8)
-          latp = REAL(lat(ixtrack,itimes), KIND=r8)
+          ! Convert longitude/latitude to real 8 for interpolation
+          lonp = real(lon(ixtrack,itimes), kind=r8)
+          latp = real(lat(ixtrack,itimes), kind=r8)
 
-          ! Only work out surface reflectance if we have geolocation information
-          IF ( (lon(ixtrack,itimes) /= r4_missval) .AND. (lat(ixtrack,itimes) /= r4_missval) ) THEN
-             ! Be sure that lonp and latp are within surface albedo boundaries
-             IF (lonp .LT. MINVAL(OMLER_longitude)) lonp = REAL(MINVAL(OMLER_longitude),KIND=r8)
-             IF (lonp .GT. MAXVAL(OMLER_longitude)) lonp = REAL(MAXVAL(OMLER_longitude),KIND=r8)
-             IF (latp .LT. MINVAL(OMLER_latitude))  latp = REAL(MINVAL(OMLER_latitude),KIND=r8)
-             IF (latp .GT. MAXVAL(OMLER_latitude))  latp = REAL(MAXVAL(OMLER_latitude),KIND=r8)
-          ELSE
-             CYCLE
-          END IF
+          ! Only work out surface reflectance if the albedo database contains information for
+          ! that pixel. The interpolation method will have to change if we move to a higher
+          ! resolution database
+          if ( lonp < minval(OMLER_longitude) .or. lonp > maxval(OMLER_longitude) .or. &
+               latp < minval(OMLER_latitude) .or. latp > maxval(OMLER_latitude) ) then
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),2)
+             cycle
+          end if
 
           ! -----------------------------------------
           ! Locate two closest indices to lon and lat
@@ -816,8 +697,8 @@ CONTAINS
           ENDIF
 
           albedo(ixtrack,itimes) = linInterpol(nlon,nlat,&
-               REAL(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
-               REAL(OMLER_latitude(lat_idx(1):lat_idx(2)),KIND=r8), &
+               real(OMLER_longitude(lon_idx(1):lon_idx(2)),KIND=r8), &
+               real(OMLER_latitude(lat_idx(1):lat_idx(2)),KIND=r8), &
                OMLER_albedo(lon_idx(1):lon_idx(2),lat_idx(1):lat_idx(2)), &
                lonp, latp, status=locerrstat)
           if (locerrstat /= 0) then
@@ -825,9 +706,8 @@ CONTAINS
                   "omi_omler_albedo: lon/lat interpolation failed", errstat)
              return
           endif
-
-       END DO
-    END DO
+       end do
+    end do
 
     ! --------------------
     ! Deallocate variables
@@ -839,10 +719,147 @@ CONTAINS
             "omi_omler_albedo: deallocate failed", errstat)
        return
     endif
+    
+    ! ---------------------------
+    ! Set amfdiag bit 3 for glint
+    ! ---------------------------
+    where (glint(1:nx,0:nt-1) /= 0)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),3)
+    end where
 
-    errstat = MAX(errstat, locerrstat)
+    errstat = max(errstat, locerrstat)
 
-  END SUBROUTINE omi_omler_albedo
+  end subroutine read_albedo
+
+
+  subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                   xtrange, errstat, amfdiag)
+    use clim_module
+    use omsao_omidata_module, only: omi_scattfail_amf
+    use omsao_indices_module, only: sao_molecule_names
+    implicit none
+
+    type (clim_pres_type), intent(inout) :: cpt
+    integer (kind=i4), intent(in) :: pge_idx
+    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
+    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
+    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    integer (kind=i4), intent (in) :: nt, nx
+    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
+    integer (kind=i4), intent (inout) :: errstat
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    type (clim_pres_bounds_type) :: bounds
+    type (clim_species_type) :: cst
+    integer :: year(2), month(2), day(2)
+    integer :: nz, nlayers, spix, epix, itimes, ixtrack
+    real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end
+    real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
+    real (kind=r4) :: hour_f, lon_f, lat_f
+    character (len=6) :: clim_db_molecule_name
+
+    if (errstat /= 0) return
+
+    t_beg = minval(time, time /= r8_missval)
+    t_end = maxval(time, time /= r8_missval)
+
+    if (t_end - t_beg > 86400.0) then
+      call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
+      return
+    endif
+
+    call tio_f_taix_time_to_utc_caldate (t_beg, year(1), month(1), day(1), hour_beg)
+    call tio_f_taix_time_to_utc_caldate (t_end, year(2), month(2), day(2), hour_end)
+
+    bounds % hour_beg = real (hour_beg, kind=r4)
+    bounds % hour_end = real (hour_end, kind=r4)
+    bounds % lon_min = minval(lon, lon /= r4_missval)
+    bounds % lon_max = maxval(lon, lon /= r4_missval)
+    bounds % lat_min = minval(lat, lat /= r4_missval)
+    bounds % lat_max = maxval(lat, lat /= r4_missval)
+
+    call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
+    if (errstat /= 0) return
+
+    nz = clim_pres_nz (cpt)
+    nlayers = nz - 1
+    allocate (pres(nz), vmr(nlayers), partial_column(nlayers))
+
+    clim_db_molecule_name = sao_molecule_names(pge_idx)
+
+    ! We can't agree on how to spell the names of molecules.
+    if (clim_db_molecule_name == 'HCHO') then
+      clim_db_molecule_name = 'CH2O  '
+    endif
+
+    call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
+    if (errstat /= 0) return
+
+    do itimes = 0, nt-1
+
+      if (time(itimes) == r8_missval) then
+        amfdiag(:,itimes) = omi_scattfail_amf
+        cycle
+      endif
+
+      call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
+      hour_f = real (hour, kind=r4)
+
+      spix = xtrange(itimes,1)
+      epix = xtrange(itimes,2)
+
+      do ixtrack = spix, epix
+
+        lon_f = lon(ixtrack,itimes)
+        lat_f = lat(ixtrack,itimes)
+
+        if (lon_f == r4_missval .or. abs(lon_f) > 360.0 &
+            .or. lat_f == r4_missval .or. abs(lat_f) > 90.0) then
+          amfdiag(ixtrack,itimes) = omi_scattfail_amf
+          cycle
+        endif
+
+        ! FIXME - this is just temporary
+        cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
+        cli_idx_ozo_pro(ixtrack,itimes,1:2) = 1
+
+        call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
+        call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+        call clim_partial_column (pres, vmr, partial_column, errstat)
+        if (errstat /= 0) return
+
+        where (partial_column < 0.0_r8)
+          partial_column = 0.0_r8
+        end where
+        climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
+      enddo
+    enddo
+  end subroutine
+
+  subroutine get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                   xtrange, errstat, amfdiag)
+    use clim_module
+    implicit none
+    type (clim_pres_type), intent(inout) :: cpt
+    integer (kind=i4), intent(in) :: pge_idx
+    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
+    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
+    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    integer (kind=i4), intent (in) :: nt, nx
+    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
+    integer (kind=i4), intent (inout) :: errstat
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    call clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+                               cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                               xtrange, errstat, amfdiag)
+  end subroutine
 
   SUBROUTINE vlidort_deallocate (errstat)
     implicit none
