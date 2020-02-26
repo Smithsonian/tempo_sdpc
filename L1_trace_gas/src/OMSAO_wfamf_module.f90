@@ -136,7 +136,6 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                :: locerrstat, itt, spixx, epixx
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), target :: amfdiag
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
@@ -156,6 +155,9 @@ CONTAINS
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
 
+    ! bitwise like amf calculation flags
+    integer (kind=i2), dimension (1:nx,0:nt-1), target :: amfdiag
+
     if (errstat /= 0) return
     locerrstat  = pge_errstat_ok
 
@@ -169,7 +171,7 @@ CONTAINS
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
-    amfdiag      = i2_missval
+    amfdiag      = 0
     surface_pressure = r4_missval
     IF (yn_stratrop) then
        tropopause_pressure = r4_missval
@@ -191,11 +193,17 @@ CONTAINS
 
     ELSE
 
+       ! -----------------
+       ! Geolocation check
+       ! -----------------
+       call tell_log (1, 'amf_calculation: check geolocation information')
+       call check_geolocation ( nt, nx, lat, lon, sza, vza, amfdiag )
+      
        ! -------------------------
        ! Compute the geometric AMF
        ! -------------------------
        call tell_log (1, 'amf_calculation: compute geometric amf')
-       CALL compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
+       CALL compute_geometric_amf ( nt, nx, sza, vza, amfgeo, amfdiag )
 
        ! -------------------------------------------------------
        ! Initialize molecular AMF with geometric AMF. Subsequent
@@ -354,6 +362,60 @@ CONTAINS
     endif
 
   END SUBROUTINE amf_calculation
+
+  subroutine check_geolocation ( nt, nx, lat, lon, sza, vza, amfdiag )
+    implicit none
+    integer (kind=i4), intent (in) :: nt, nx
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: sza, vza
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    ! Check that a complete set of geolocation information is available to
+    ! complete the AMF calculation. SZA and VZA have to be between 0 and 90
+    ! and latitude and longitude have to be not equal to r4_missval
+    ! Pixels without complete geolocation information get amfdiag bit 0 set
+    where ( &
+         sza(1:nx,0:nt-1) == r4_missval .or. &
+         sza(1:nx,0:nt-1) < 0.0_r4 .or. &
+         sza(1:nx,0:nt-1) > 90.0_r4 .or. &
+         vza(1:nx,0:nt-1) == r4_missval .or. &
+         vza(1:nx,0:nt-1) < 0.0_r4 .or. &
+         vza(1:nx,0:nt-1) > 90.0_r4 .or. &
+         lat(1:nx,0:nt-1) == r4_missval .or. &
+         lon(1:nx,0:nt-1) == r4_missval )
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),0)
+    end where
+  end subroutine check_geolocation
+
+  subroutine compute_geometric_amf ( nt, nx, sza, vza, amfgeo, amfdiag )
+    use OMSAO_parameters_module, only: deg2rad
+
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    integer (kind=i4),                         intent (IN) :: nx, nt
+    real    (kind=r4), dimension (nx,0:nt-1),  intent (IN) :: sza, vza
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    real (kind=r8), dimension (1:nx,0:nt-1), intent (OUT) :: amfgeo
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
+
+    ! ---------------------------------------------------
+    ! Compute geometric AMF and set diagnostic flag bit 1
+    ! ---------------------------------------------------
+    where (.not. btest(amfdiag(1:nx,0:nt-1),0))
+       amfgeo(1:nx,0:nt-1) = &
+            1.0_r8 / cos ( real(sza(1:nx,0:nt-1),KIND=r8)*deg2rad ) + &
+            1.0_r8 / cos ( real(vza(1:nx,0:nt-1),KIND=r8)*deg2rad )
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),1)
+    end where
+    return
+  end subroutine compute_geometric_amf
+
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                    cli_idx_ozo_pro, lat, lon, time, nt, nx, &
@@ -836,60 +898,6 @@ CONTAINS
 
   END SUBROUTINE vlidort_allocate
 
-  SUBROUTINE compute_geometric_wfamf ( nt, nx, sza, vza, xtrange, amfgeo, amfdiag )
-
-    USE OMSAO_parameters_module, ONLY: deg2rad
-    USE OMSAO_omidata_module,    ONLY: omi_geo_amf, omi_oobview_amf
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4),                         INTENT (IN) :: nx, nt
-    REAL    (KIND=r4), DIMENSION (nx,0:nt-1),  INTENT (IN) :: sza, vza
-    INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2), INTENT (IN) :: xtrange
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (OUT) :: amfgeo
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (OUT) :: amfdiag
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4) :: it, spix, epix
-
-    ! ---------------------------------------------
-    ! Compute geometric AMF and set diagnostic flag
-    ! ---------------------------------------------
-    ! ----------------------------------------------------------------
-    ! Checking is done within a loop over NT to assure that we have
-    ! "missing" values in all the right places. A single comprehensive
-    ! WHERE statement over "1:nx,0:nt-1" would be more efficient but
-    ! would also overwrite missing values with OMI_OOBVIEW_AMF.
-    ! ----------------------------------------------------------------
-    DO it = 0, nt-1
-      spix = xtrange(it,1) ; epix = xtrange(it,2)
-      WHERE ( &
-          sza(spix:epix,it) /= r4_missval .AND. &
-          sza(spix:epix,it) >=     0.0_r4 .AND. &
-          sza(spix:epix,it) <     90.0_r4 .AND. &
-          vza(spix:epix,it) /= r4_missval .AND. &
-          vza(spix:epix,it) >=     0.0_r4 .AND. &
-          vza(spix:epix,it) <     90.0_r4         )
-        amfgeo(spix:epix,it) = &
-          1.0_r8 / COS ( REAL(sza(spix:epix,it),KIND=r8)*deg2rad ) + &
-          1.0_r8 / COS ( REAL(vza(spix:epix,it),KIND=r8)*deg2rad )
-        amfdiag(spix:epix,it) = omi_geo_amf
-      ELSEWHERE
-        amfdiag(spix:epix,it) = omi_oobview_amf
-      ENDWHERE
-    END DO
-
-    RETURN
-  END SUBROUTINE compute_geometric_wfamf
 
   SUBROUTINE read_vlidort (errstat)
 
