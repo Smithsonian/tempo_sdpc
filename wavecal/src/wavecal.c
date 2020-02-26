@@ -769,7 +769,21 @@ static Wavecal_Type *alloc_wavecal (int num_data_waves, int num_model_waves, int
    return wct;
 }
 
-static int config_model_components (Wavecal_Type *wct, config_setting_t *s)
+static int string_is_list_member (const char *name, char **list)
+{
+   char *memb;
+   if (list == NULL)
+     return 0;
+   for (memb = *list; memb != NULL; memb++)
+     {
+        if (0 == strcmp (name, memb))
+          return 1;
+     }
+   return 0;
+}
+
+static int config_model_components (Wavecal_Type *wct, config_setting_t *s,
+                                    char **excluded_setting_names)
 {
    Term_Type *term;
    config_setting_t *ss;
@@ -785,6 +799,8 @@ static int config_model_components (Wavecal_Type *wct, config_setting_t *s)
 
         name = config_setting_name (ss);
         if (name[0] == '*') continue;
+        if (string_is_list_member (name, excluded_setting_names))
+          continue;
 
         if (NULL == (term = term_open (ss)))
           return -1;
@@ -1223,6 +1239,7 @@ int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *
 Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                             int max_num_data_waves, int is_irradiance)
 {
+   char *slit_function_setting = "slit_function";
    Wavecal_Type *wct = NULL;
    Window_Type *win = NULL;
    Feature_Window_Type fwin = {0};
@@ -1252,7 +1269,7 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
 
    if (is_irradiance)
      {
-        s_slit = config_setting_get_member (s_irr, "slit_function");  /* NULL is ok */
+        s_slit = config_setting_get_member (s_irr, slit_function_setting);  /* NULL is ok */
      }
    else
      {
@@ -1263,7 +1280,7 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
                           __func__, config_error_file (cfg));
              goto error_return;
           }
-        s_slit = config_setting_get_member (s_rad, "slit_function");  /* NULL is ok */
+        s_slit = config_setting_get_member (s_rad, slit_function_setting);  /* NULL is ok */
      }
 
    /* We always use a reference irradiance spectrum */
@@ -1337,14 +1354,15 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
 
    if (s_rad)
      {
-        if (0 != config_model_components (wct, s_rad))
+        char *excluded_names[] = {slit_function_setting, NULL};
+        if (0 != config_model_components (wct, s_rad, excluded_names))
           goto error_return;
 
         if (0 != alloc_term_storage (wct->terms, num_model_waves))
           goto error_return;
      }
 
-   if (0 != config_fit_window (is_irradiance ? s_irr : s_rad, &wct->window))
+   if (0 != config_fit_window (s_irr, &wct->window))
      goto error_return;
 
    win = &wct->window;
