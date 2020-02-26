@@ -14,15 +14,17 @@ struct Slit_Function_Type
    SFT_Eval_Type *sf_eval;
    /**< function to compute slit-function value and parameter derivatives */
 
-   double param_step[SFT_NUM_PARAMS];
+   double param_step[SFT_MAX_NUM_PARAMS];
    /**< delta step to use in compute derivs w.r.t. each parameter */
+
+   int num_params;  /**< number of slit-function parameters */
 
    int num_sf;    /**< number of equally spaced points at which slit-function will be evaluated */
    double dx;     /**< spacing of slit-function eval points */
    double *x;     /**< slit-function eval points */
    double *sf;    /**< slit-function values */
 
-   double *sf_derivs[SFT_NUM_PARAMS];
+   double *sf_derivs[SFT_MAX_NUM_PARAMS];
    /**< slit-function derivative w.r.t. each parameter */
 };
 
@@ -35,7 +37,7 @@ void sft_free (Slit_Function_Type *sft)
 
    FREE(sft->x);
    FREE(sft->sf);
-   for (i = 0; i < SFT_NUM_PARAMS; i++)
+   for (i = 0; i < sft->num_params; i++)
      {
         FREE(sft->sf_derivs[i]);
         sft->sf_derivs[i] = NULL;
@@ -43,10 +45,18 @@ void sft_free (Slit_Function_Type *sft)
    FREE(sft);
 }
 
-Slit_Function_Type *sft_new (int num_sf)
+Slit_Function_Type *sft_new (int num_sf, int num_params)
 {
    Slit_Function_Type *sft = NULL;
    int i;
+
+   if (num_params > SFT_MAX_NUM_PARAMS)
+     {
+        tell_verror (TELL_UNSUPPORTED_ERROR,
+                     "%s: too many slit function parameters (limit = %d)",
+                     __func__, SFT_MAX_NUM_PARAMS);
+        return NULL;
+     }
 
    if (NULL == (sft = (Slit_Function_Type *)MALLOC (sizeof *sft)))
      {
@@ -56,6 +66,7 @@ Slit_Function_Type *sft_new (int num_sf)
    memset ((char *)sft, 0, sizeof(*sft));
 
    sft->num_sf = num_sf;
+   sft->num_params = num_params;
 
    if ((NULL == (sft->x = (double *)MALLOC (num_sf * sizeof(double))))
        || (NULL == (sft->sf = (double *)MALLOC (num_sf * sizeof(double)))))
@@ -68,7 +79,7 @@ Slit_Function_Type *sft_new (int num_sf)
    memset ((char *)sft->x, 0, num_sf * sizeof(double));
    memset ((char *)sft->sf, 0, num_sf * sizeof(double));
 
-   for (i = 0; i < SFT_NUM_PARAMS; i++)
+   for (i = 0; i < sft->num_params; i++)
      {
         if (NULL == (sft->sf_derivs[i] = (double *)MALLOC (num_sf * sizeof(double))))
           {
@@ -99,7 +110,7 @@ int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
         sft->x[j] = (j-m)*dx;
      }
 
-   memcpy ((char *)sft->param_step, (char *)param_step, SFT_NUM_PARAMS * sizeof(double));
+   memcpy ((char *)sft->param_step, (char *)param_step, sft->num_params * sizeof(double));
 
    return 0;
 }
@@ -127,9 +138,9 @@ static int cached_params_differ (const double *p0, const double *p, int n, doubl
  */
 int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
                int num_waves, const double *spec_padded, double *spec_convolved,
-               double *spec_derivs_convolved[SFT_NUM_PARAMS])
+               double **spec_derivs_convolved)
 {
-   double prev_par[SFT_NUM_PARAMS];
+   double prev_par[SFT_MAX_NUM_PARAMS];
    int k, m, nsf;
 
    /* Assume spec_padded has padding of length, m=num_sf/2 at
@@ -140,26 +151,26 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
    nsf = sft->num_sf;
    m   = nsf / 2;
 
-   memset ((char *)prev_par, 0, SFT_NUM_PARAMS * sizeof(double));
+   memset ((char *)prev_par, 0, sft->num_params * sizeof(double));
 
    for (k = m; k < num_waves + m; k++)
      {
         double s, par[3];
         int j;
 
-        if (0 != sf_params (k-m, SFT_NUM_PARAMS, par, cl))
+        if (0 != sf_params (k-m, sft->num_params, par, cl))
           {
              tell_verror (TELL_RUNTIME_ERROR, "%s: retrieving parameters for wavelength index = %d",
                           __func__, k-m);
              return -1;
           }
 
-        if (cached_params_differ (par, prev_par, SFT_NUM_PARAMS, DBL_EPSILON))
+        if (cached_params_differ (par, prev_par, sft->num_params, DBL_EPSILON))
           {
              if (0 != sft->sf_eval (sft->x, sft->num_sf, par, sft->sf, sft->param_step, sft->sf_derivs))
                return -1;
 
-             memcpy ((char *)prev_par, (char *)par, SFT_NUM_PARAMS * sizeof(double));
+             memcpy ((char *)prev_par, (char *)par, sft->num_params * sizeof(double));
           }
 
         /* Evaluate convolution integral using trapezoid rule
@@ -174,7 +185,7 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
         if (spec_derivs_convolved)
           {
              int n;
-             for (n = 0; n < SFT_NUM_PARAMS; n++)
+             for (n = 0; n < sft->num_params; n++)
                {
                   double *deriv = sft->sf_derivs[n];
                   double *deriv_convolved = spec_derivs_convolved[n];
@@ -204,14 +215,15 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
 
 static int get_params (int k, int num_pars, double *pars, void *cl)
 {
-   double params0[SFT_NUM_PARAMS] = {0.25, 2.0, 0.0};
+   double params0[] = {0.25, 2.0, 0.0};
+   int num_params0 = sizeof(params0)/sizeof(params0[0]);
 
    (void) k; (void) cl;
 
-   if (num_pars != SFT_NUM_PARAMS)
+   if (num_pars != num_params0)
      {
         fprintf (stderr, "%s: unexpected number of parameters requested (num_pars=%d, expected %d)\n",
-                 __func__, num_pars, SFT_NUM_PARAMS);
+                 __func__, num_pars, num_params0);
         return -1;
      }
    memcpy ((char *)pars, (char *)params0, 3 * sizeof(double));
@@ -221,19 +233,20 @@ static int get_params (int k, int num_pars, double *pars, void *cl)
 int main (void)
 {
    Slit_Function_Type *sft = NULL;
-   double param_step[SFT_NUM_PARAMS] = {1.e-4, 1.e-4, 1.e-4};
+   double param_step[] = {1.e-4, 1.e-4, 1.e-4};
    double pars[3];
    double *tmp = NULL;
    double *spec_padded = NULL;
    double *spec_convolved = NULL;
    double *spec_derivs_convolved[3] = {NULL, NULL, NULL};
    double dx = 0.02;
+   int num_params = sizeof(param_step)/sizeof(param_step[0]);
    int num_sf, num_waves;
    size_t offset;
    int i, i0, m, len_tmp;
    int status = -1;
 
-   (void) get_params (0, SFT_NUM_PARAMS, pars, NULL);
+   (void) get_params (0, num_params, pars, NULL);
    num_sf = 12 * pars[0]/dx;
    num_waves = num_sf * 2;
 
@@ -252,7 +265,7 @@ int main (void)
    spec_convolved = tmp + offset;
    offset += num_waves;
 
-   for (i = 0; i < SFT_NUM_PARAMS; i++)
+   for (i = 0; i < num_params; i++)
      {
         spec_derivs_convolved[i] = tmp + offset;
         offset += num_waves;
@@ -267,7 +280,7 @@ int main (void)
         spec_padded[i0 + i] = gsl_ran_gaussian_pdf (x, pars[0]/sqrt(2));
      }
 
-   if (NULL == (sft = sft_new (num_sf)))
+   if (NULL == (sft = sft_new (num_sf, num_params)))
      goto return_status;
 
    if (0 != sft_config (sft, asg_normed_plus_derivs, dx, param_step))

@@ -9,7 +9,9 @@
  * response function (ISRF).
  */
 
-#define SFT_NUM_PARAMS (3)
+#ifndef SFT_MAX_NUM_PARAMS
+# define SFT_MAX_NUM_PARAMS (3)
+#endif
 
 typedef struct Slit_Function_Type Slit_Function_Type;
 
@@ -17,7 +19,7 @@ typedef struct Slit_Function_Type Slit_Function_Type;
  */
 typedef int SFT_Eval_Type (const double *x, size_t nx, double *params,
                            double *value, double *param_step,
-                           double *param_derivs[SFT_NUM_PARAMS]);
+                           double *param_derivs[SFT_MAX_NUM_PARAMS]);
 
 /** Function interface for retrieving wavelength[k] slit function parameters
  */
@@ -29,8 +31,9 @@ extern void sft_free (Slit_Function_Type *);
 
 /** Allocate a new \a Slit_Function_Type structure
  * @param[in]  num_sf      Number of wavelength points in the computed slit function shape.
+ * @param[in]  num_params  Number of slit function parameters.
  */
-extern Slit_Function_Type *sft_new (int num_sf);
+extern Slit_Function_Type *sft_new (int num_sf, int num_params);
 
 /** Configure \a Slit_Function_Type structure
  * @param[in]  sft         Pointer to a \a Slit_Function_Type structure allocated by \a sft_new
@@ -58,6 +61,6 @@ extern int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
  */
 extern int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
                       int num_waves, const double *spec_padded, double *spec_convolved,
-                      double *spec_derivs_convolved[SFT_NUM_PARAMS]);
+                      double *spec_derivs_convolved[SFT_MAX_NUM_PARAMS]);
 
 #endif
