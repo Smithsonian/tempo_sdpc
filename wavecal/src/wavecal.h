@@ -33,6 +33,14 @@ typedef struct
    size_t num_wave_params;
    /**< number of wavelength grid parameters */
 
+   const double *sf_params;
+   /**< pointer to array of slit function parameters.
+    * Storage for this array is managed internally and
+    * must not be freed by the calling program.
+    */
+   size_t num_sf_params;
+   /**< number of slit function parameters */
+
    const double *model;        /**< best fit model */
    const double *spec_scaled;  /**< scaled spectrum that was fitted */
    const double *weight;       /**< weight of each data point (1/err) */
@@ -77,6 +85,12 @@ extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
  * @return the number of wavelength parameters on success, -1 on error.
  */
 extern int wavecal_num_wave_params (const Wavecal_Type *wct);
+
+/** Query the number of slit function parameters
+ * @param  wct   Pointer to \a Wavecal_Type object initialized by \a wavecal_open
+ * @return the number of slit function parameters on success, -1 on error.
+ */
+extern int wavecal_num_sf_params (const Wavecal_Type *wct);
 
 /** Query the fit window offset and width
  * @param  wct        Pointer to \a Wavecal_Type object initialized by \a wavecal_open

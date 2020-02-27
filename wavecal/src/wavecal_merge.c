@@ -29,14 +29,19 @@ static void usage (void)
 static int perform_merge (int ncid_target, const char *file)
 {
    const char *params_varname = TEMPO_VAR_WAVECAL_PARAM;
+   const char *sf_params_varname = TEMPO_VAR_SLITFUN_PARAM;
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
    int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;
    int step_dimlen_src, step_dimid, xtrack_dimid, dest_varid;
+   int have_sf;
    int start[3], count[3];
    size_t step_dimlen, xtrack_dimlen, xtrack_dimlen_src;
-   size_t params_dimlen_src, len_params, len_slab, i;
+   size_t params_dimlen_src, len_params, len_slab;
+   size_t sf_params_dimlen_src, len_sf_params, len_sf_slab;
+   size_t i;
    float *wavecal_params = NULL;
+   float *sf_params = NULL;
    int *mirror_step = NULL;
    int status = -1;
 
@@ -53,6 +58,19 @@ static int perform_merge (int ncid_target, const char *file)
 
    xtrack_dimlen_src = info.dimlens[1];
    params_dimlen_src = info.dimlens[2];
+
+   if (0 == tio_inq_varid (ncid_src, sf_params_varname, &have_sf))
+     {
+        TIO_Var_Info_Type sf_info = {0};
+        if (0 != TIO_inq_var (ncid_src, sf_params_varname, &sf_info))
+          goto close_and_return;
+        sf_params_dimlen_src = sf_info.dimlens[2];
+     }
+   else
+     {
+        have_sf = 0;
+        sf_params_dimlen_src = 0;
+     }
 
    if (0 != TIO_inq_dim (ncid_target, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
      {
@@ -93,6 +111,16 @@ static int perform_merge (int ncid_target, const char *file)
         goto close_and_return;
      }
 
+   if (have_sf)
+     {
+        len_sf_params = step_dimlen_src * xtrack_dimlen_src * sf_params_dimlen_src;
+        if (NULL == (sf_params = MALLOC (len_sf_params * sizeof(float))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto close_and_return;
+          }
+     }
+
    start[0] = 0;
    start[1] = 0;
    start[2] = 0;
@@ -111,6 +139,20 @@ static int perform_merge (int ncid_target, const char *file)
        || (0 != TIO_get_att (ncid_src, varid, "start_spectral_channel", NC_INT, &start_pix))
        || (0 != TIO_get_att (ncid_src, varid, "num_spectral_channels", NC_INT, &num_pix)))
      goto close_and_return;
+
+   if (have_sf)
+     {
+        start[0] = 0;
+        start[1] = 0;
+        start[2] = 0;
+        count[0] = info.dimlens[0];
+        count[1] = xtrack_dimlen_src;
+        count[2] = sf_params_dimlen_src;
+
+        if (0 != TIO_get_var_section (ncid_src, sf_params_varname, start, count,
+                                      TIO_FLOAT, sf_params))
+          goto close_and_return;
+     }
 
    /* write params, creating target variable if necessary */
 
@@ -136,7 +178,27 @@ static int perform_merge (int ncid_target, const char *file)
           goto close_and_return;
      }
 
+   if ((have_sf != 0)
+       && (0 != tio_inq_varid (grp_target, sf_params_varname, &dest_varid)))
+     {
+        const char *sf_params_dimname = TEMPO_DIM_SLITFUN_PARAM;
+        size_t sf_params_dimlen;
+        int sf_params_dimid, sf_params_dimid_list[3];
+        if (0 != TIO_inq_dim (grp_target, sf_params_dimname, &sf_params_dimid, &sf_params_dimlen))
+          {
+             if (0 != TIO_def_dim (grp_target, sf_params_dimname, sf_params_dimlen_src, &sf_params_dimid))
+               goto close_and_return;
+          }
+        sf_params_dimid_list[0] = step_dimid;
+        sf_params_dimid_list[1] = xtrack_dimid;
+        sf_params_dimid_list[2] = sf_params_dimid;
+
+        if (0 != TIO_def_var (grp_target, sf_params_varname, TIO_FLOAT, 3, sf_params_dimid_list, &dest_varid))
+          goto close_and_return;
+     }
+
    len_slab = xtrack_dimlen_src * params_dimlen_src;
+   len_sf_slab = xtrack_dimlen_src * sf_params_dimlen_src;
 
    for (i = 0; i < info.dimlens[0]; i++)
      {
@@ -152,12 +214,22 @@ static int perform_merge (int ncid_target, const char *file)
         if (0 != TIO_put_var_section (grp_target, params_varname, start, count,
                                       TIO_FLOAT, param_slab_i))
           goto close_and_return;
+
+        if (have_sf)
+          {
+             float *sf_param_slab_i = sf_params + i * len_sf_slab;
+             count[2] = sf_params_dimlen_src;
+             if (0 != TIO_put_var_section (grp_target, sf_params_varname, start, count,
+                                           TIO_FLOAT, sf_param_slab_i))
+               goto close_and_return;
+          }
      }
 
    status = 0;
 close_and_return:
    TIO_close(ncid_src);
    FREE(wavecal_params);
+   FREE(sf_params);
    FREE(mirror_step);
 
    return status;

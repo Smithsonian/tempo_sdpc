@@ -60,6 +60,7 @@ typedef struct
    double *model_padded;
    double *model_convolved;
    double *derivs_convolved[SFT_MAX_NUM_PARAMS];
+   double *params;
    int num_params;
    int num_alloc;
    int num_waves;
@@ -547,6 +548,7 @@ static void free_sf_convolution_type (SF_Convolution_Type *sfct)
      return;
    FREE(sfct->model_padded);
    FREE(sfct->model_convolved);
+   FREE(sfct->params);
    if (sfct->derivs_convolved)
      {
         for (i = 0; i < sfct->num_params; i++)
@@ -576,7 +578,8 @@ static SF_Convolution_Type *alloc_sf_convolution_type (int num_waves, int num_pa
    sfct->num_params = num_params;
 
    if ((NULL == (sfct->model_padded = (double *)MALLOC (len * sizeof(double))))
-       || (NULL == (sfct->model_convolved = (double *)MALLOC (len * sizeof(double)))))
+       || (NULL == (sfct->model_convolved = (double *)MALLOC (len * sizeof(double))))
+       || (NULL == (sfct->params = (double *)MALLOC (num_params * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_sf_convolution_type (sfct);
@@ -1229,6 +1232,13 @@ int wavecal_num_wave_params (const Wavecal_Type *wct)
    if (wct == NULL)
      return -1;
    return wct->window.num_wave_params;
+}
+
+int wavecal_num_sf_params (const Wavecal_Type *wct)
+{
+   if (wct == NULL)
+     return -1;
+   return wct->sf_ctrl.num_params;
 }
 
 int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
@@ -2058,6 +2068,19 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
                 win->num_wave_params * sizeof(double));
         result->wave_params = win->wave_params;
         result->num_wave_params = win->num_wave_params;
+        if (win->sfct)
+          {
+             SF_Convolution_Type *sfct = win->sfct;
+             double *sf_params = params + (num_params - sfct->num_params);
+             memcpy ((char *)sfct->params, (char *)sf_params, sfct->num_params * sizeof(double));
+             result->sf_params = sfct->params;
+             result->num_sf_params = sfct->num_params;
+          }
+        else
+          {
+             result->sf_params = NULL;
+             result->num_sf_params = 0;
+          }
         result->wave = win->wave0;
         result->model = win->model;
         result->spec_scaled = win->spec_scaled;

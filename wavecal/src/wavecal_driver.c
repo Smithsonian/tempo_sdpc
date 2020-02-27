@@ -356,10 +356,13 @@ static int write_fit_details (FILE *fp, int xtrack,
 static int create_result_file (const char *path, const char *group_name,
                                size_t beg_step, size_t end_step, size_t step_dimlen,
                                size_t num_xtrack,
-                               int start_pix, int num_pix, int num_coefs)
+                               int start_pix, int num_pix, int num_coefs,
+                               int num_sf_params)
 {
-   int ncid, varid, param_dimids[3], start, count;
+   int ncid, varid, start, count;
+   int dimids_wavecal_params[3], dimids_sf_params[3];
    size_t params_dimlen = num_coefs;
+   size_t dimlen_sf_params = num_sf_params;
    size_t i, num_steps = end_step - beg_step;
    int max_num_steps = step_dimlen;
    int *steps = NULL;
@@ -372,23 +375,36 @@ static int create_result_file (const char *path, const char *group_name,
        || (0 != TIO_put_att (ncid, NC_GLOBAL, "mirror_step_dimlen", TIO_INT, 1, &max_num_steps)))
      goto close_and_return;
 
-   if ((0 != TIO_def_dim (ncid, TEMPO_DIM_STEP, num_steps, &param_dimids[0]))
-       || (0 != TIO_def_dim (ncid, TEMPO_DIM_XTRACK, num_xtrack, &param_dimids[1]))
-       || (0 != TIO_def_dim (ncid, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &param_dimids[2])))
+   if ((0 != TIO_def_dim (ncid, TEMPO_DIM_STEP, num_steps, &dimids_wavecal_params[0]))
+       || (0 != TIO_def_dim (ncid, TEMPO_DIM_XTRACK, num_xtrack, &dimids_wavecal_params[1]))
+       || (0 != TIO_def_dim (ncid, TEMPO_DIM_WAVECAL_PARAM, params_dimlen, &dimids_wavecal_params[2])))
      goto close_and_return;
 
-   if (0 != TIO_def_var (ncid, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT, 3, param_dimids, &varid))
+   /* wavecal parameters */
+   if (0 != TIO_def_var (ncid, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT, 3, dimids_wavecal_params, &varid))
      goto close_and_return;
    if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
        ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
        ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
      goto close_and_return;
 
-   if (0 != TIO_def_var (ncid, "bestnorm", TIO_FLOAT, 2, param_dimids, &varid))
+   if (0 != TIO_def_var (ncid, "bestnorm", TIO_FLOAT, 2, dimids_wavecal_params, &varid))
      goto close_and_return;
 
-   if (0 != TIO_def_var (ncid, TEMPO_DIM_STEP, TIO_INT, 1, &param_dimids[0], &varid))
+   if (0 != TIO_def_var (ncid, TEMPO_DIM_STEP, TIO_INT, 1, &dimids_wavecal_params[0], &varid))
      goto close_and_return;
+
+   /* slit-function parameters */
+   if (num_sf_params)
+     {
+        dimids_sf_params[0] = dimids_wavecal_params[0];
+        dimids_sf_params[1] = dimids_wavecal_params[1];
+        if (0 != TIO_def_dim (ncid, TEMPO_DIM_SLITFUN_PARAM, dimlen_sf_params, &dimids_sf_params[2]))
+          goto close_and_return;
+
+        if (0 != TIO_def_var (ncid, TEMPO_VAR_SLITFUN_PARAM, TIO_FLOAT, 3, dimids_sf_params, &varid))
+          goto close_and_return;
+     }
 
    if (NULL == (steps = (int *)MALLOC (num_steps * sizeof(int))))
      {
@@ -439,6 +455,14 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
         if (0 != TIO_put_var_section (ncid, "bestnorm", start, count, TIO_DOUBLE,
                                     &wavecal_result->bestnorm))
           return -1;
+
+        if (wavecal_result->sf_params)
+          {
+             count[2] = wavecal_result->num_sf_params;
+             if (0 != TIO_put_var_section (ncid, TEMPO_VAR_SLITFUN_PARAM, start, count, TIO_DOUBLE,
+                                           wavecal_result->sf_params))
+               return -1;
+          }
      }
 
    return 0;
@@ -547,7 +571,7 @@ int main (int argc, char **argv)
    int debug = 0;
    int apply_shift_adjust = 0;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
-   int num_wave_params, start_pix, num_pix, grp_meta;
+   int num_wave_params, num_sf_params, start_pix, num_pix, grp_meta;
    int num_final_coeff, final_start_pix, final_num_pix;
    int fit_status_code;
    static struct option long_options[] =
@@ -789,6 +813,8 @@ int main (int argc, char **argv)
         end_step = step+1;
      }
 
+   num_sf_params = wavecal_num_sf_params (wct);
+
    /* Allocate space to store the fitted Chebyshev series
     * coefficients which represent the wavelength grid
     * within a single spectrum's fit window */
@@ -858,7 +884,8 @@ int main (int argc, char **argv)
    /* Create a netcdf output file to hold the wavelength grid coefficients */
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen, xtrack_dimlen,
-                                     final_start_pix, final_num_pix, num_final_coeff);
+                                     final_start_pix, final_num_pix, num_final_coeff,
+                                     num_sf_params);
    if (ncid_result <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",
