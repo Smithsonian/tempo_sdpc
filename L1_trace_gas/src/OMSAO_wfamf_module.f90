@@ -251,9 +251,16 @@ CONTAINS
        endif
 
        ! Read cloud climatology
-       call tell_log (1, 'amf_calculation: read cloud climatology')
+       call tell_log (1, 'amf_calculation: initialize cloud climatology')
        call clim_cloud_init (cct, errstat)
        if (errstat /= 0) return
+
+       ! ---------------------------------------------------
+       ! Use cloud climatology if needed and set cloud flags
+       ! ---------------------------------------------------              
+       call tell_log (1, 'amf_calculation: read cloud climatology')
+       call read_cloud_climatology (nt, nx, lat, lon, time, cct, &
+            l2cfr, l2ctp, amfdiag, errstat)
 
        ! ------------------------------------------------
        ! Read climatology and interpolate to lon/lat/time
@@ -750,7 +757,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     integer (kind=i4), intent (in) :: nt, nx
-    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (IN) :: snow
+    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (in) :: snow
 
     ! ------------------
     ! Modified variables
@@ -760,7 +767,7 @@ CONTAINS
     ! ----------------
     ! Output variables
     ! ----------------
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     ! Local variables
     integer (kind=i4) :: ix, it
@@ -789,6 +796,62 @@ CONTAINS
 
   end subroutine snow_correction
 
+  subroutine read_cloud_climatology (nt, nx, lat, lon, time, cct, &
+       l2cfr, l2ctp, amfdiag, errstat)
+    use clim_module
+    implicit none
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    integer (kind=i4), intent (in) :: nt, nx
+    real (kind=r8), dimension (1:nx,0:nt-1), intent (in) :: l2cfr
+    real (KIND=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    type (clim_cloud_type), intent(in) :: cct
+    ! ------------------
+    ! Modified variables
+    ! ------------------
+    integer (kind=i4), intent (inout) :: errstat
+    ! -----------------
+    ! Ouptput variables
+    ! -----------------
+    real (kind=r8), dimension (1:nx,0:nt-1), intent(out) :: l2ctp
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+
+    ! Local variables
+    real (kind=r8), parameter :: minctp = 25 ! hPa
+    integer :: year, month, day
+    integer (kind=i4) :: ix, it
+    real (kind=r8) :: hour
+    real (kind=r4) :: ctp
+    ! ---------------------------------------------------------------
+    ! Check if we have cloud information from satellite retrievals.
+    ! If pressure is incomplete (or below 10 hPa assuming no clouds
+    ! exist above that pressure then correct/complete information
+    ! with cloud climatology.
+    ! ---------------------------------------------------------------
+    where ( l2cfr(1:nx,0:nt-1) < 0.0_r8 )
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),5)
+    elsewhere ( l2cfr(1:nx,0:nt-1) > 0.0_r8 .and. l2ctp(1:nx,0:nt-1) < minctp)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),6)
+    endwhere
+    do ix=1,nx
+       do it=0,nt-1
+          if ( btest(amfdiag(ix,it),6) .and. (.not. btest(amfdiag(ix,it),0) ) ) then
+             call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
+             call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp, errstat)
+             if (errstat /= 0) then
+                call tell_error (tell_io_read_error, 'reading cloud pressure climatology', errstat)
+                return
+             end if
+             l2ctp(ix,it) = real(ctp,kind=r8)
+          else
+             cycle
+          endif
+       end do
+    end do
+  end subroutine read_cloud_climatology
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                    cli_idx_ozo_pro, lat, lon, time, nt, nx, &
