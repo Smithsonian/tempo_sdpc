@@ -50,7 +50,7 @@ Slit_Function_Type *sft_new (int num_sf, int num_params)
    Slit_Function_Type *sft = NULL;
    int i;
 
-   if (num_params > SFT_MAX_NUM_PARAMS)
+   if ((num_params < 0) || (num_params > SFT_MAX_NUM_PARAMS))
      {
         tell_verror (TELL_UNSUPPORTED_ERROR,
                      "%s: too many slit function parameters (limit = %d)",
@@ -110,7 +110,10 @@ int sft_config (Slit_Function_Type *sft, SFT_Eval_Type *sf_eval,
         sft->x[j] = (j-m)*dx;
      }
 
-   memcpy ((char *)sft->param_step, (char *)param_step, sft->num_params * sizeof(double));
+   if (param_step)
+     {
+        memcpy ((char *)sft->param_step, (char *)param_step, sft->num_params * sizeof(double));
+     }
 
    return 0;
 }
@@ -213,12 +216,12 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
 #include <gsl/gsl_randist.h>
 #include "slit_function_asg.h"
 
-static int get_params (int k, int num_pars, double *pars, void *cl)
+static int get_params (int wave_index, int num_pars, double *pars, void *cl)
 {
    double params0[] = {0.25, 2.0, 0.0};
    int num_params0 = sizeof(params0)/sizeof(params0[0]);
 
-   (void) k; (void) cl;
+   (void) wave_index; (void) cl;
 
    if (num_pars != num_params0)
      {

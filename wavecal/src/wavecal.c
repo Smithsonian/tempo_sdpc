@@ -21,6 +21,7 @@
 #include "wavecal.h"
 #include "slit_function.h"
 #include "slit_function_asg.h"
+#include "slit_function_table.h"
 
 #define NCID_UNINITIALIZED -1
 
@@ -46,9 +47,10 @@ enum
 
 typedef struct
 {
-   const char *file;
-   double *initial_params;
-   double *param_step;
+   char *sf_path;           /**< slit function lookup table */
+   char *cal_path;          /**< calibration file containing wavelength grid for slit function table */
+   double *initial_params;  /**< initial slit function parameter values for fit. (optional - null is ok) */
+   double *param_step;      /**< slit function parameter step values for numerical derivatives when fitting. (optional - null is ok) */
    int num_params;
    int num_pad_half_widths;
    int mode;
@@ -60,10 +62,10 @@ typedef struct
    double *model_padded;
    double *model_convolved;
    double *derivs_convolved[SFT_MAX_NUM_PARAMS];
-   double *params;
+   double *params;   /* storage for fitted slit function parameter result */
    int num_params;
-   int num_alloc;
-   int num_waves;
+   int num_alloc;    /* allocated size of model_padded/model_convolved arrays */
+   int num_waves;    /* number of wavelengths in the unpadded model */
    int num_pad;      /* number of wavelengths zero-padding on one end */
 }
 SF_Convolution_Type;
@@ -152,11 +154,13 @@ struct Wavecal_Type
    Window_Type window;          /**< fit window */
    Fit_Control_Type fit_ctrl;   /**< optimization control parameters */
    Slit_Function_Type *sft;     /**< slit function object */
+   SF_Table_Type *sf_table;     /**< slit function lookup table (optional) */
    Term_Type *terms;            /**< terms in the model being fitted */
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
    SF_Control_Type sf_ctrl;
+   int xtrack;               /* slit function lookup table requires xtrack index */
 };
 
 static void free_file_type (File_Type *file)
@@ -289,7 +293,9 @@ static int config_slit_function (config_setting_t *s, SF_Control_Type *sf_ctrl)
 {
    SF_Mode_Table_Entry *m = NULL;
    const char *mode;
-   size_t ns;
+   const char *path;
+   int num_params;
+   size_t ns = 0;
 
    if (CONFIG_TRUE != config_setting_lookup_string (s, "mode", &mode))
      return -1;
@@ -309,30 +315,62 @@ static int config_slit_function (config_setting_t *s, SF_Control_Type *sf_ctrl)
         return -1;
      }
 
-   /* FIXME */
-   sf_ctrl->file = NULL;
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "sf_path", &path))
+     {
+        sf_ctrl->sf_path = NULL;
+        sf_ctrl->cal_path = NULL;
+     }
+   else
+     {
+        if (NULL == (sf_ctrl->sf_path = expand_path (path)))
+          return -1;
+
+        if (CONFIG_TRUE != config_setting_lookup_string (s, "cal_path", &path))
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR,
+                          "%s: reading config setting 'cal_path' (%s:%d)",
+                          __func__, config_setting_source_file (s),
+                          config_setting_source_line (s));
+             return -1;
+          }
+        if (NULL == (sf_ctrl->cal_path = expand_path (path)))
+          return -1;
+     }
 
    if (CONFIG_TRUE != config_setting_lookup_int (s, "num_isrf_half_widths", &sf_ctrl->num_pad_half_widths))
      return -1;
 
-   /* initial parameter values */
-   if (read_config_float_array (s, "params", &sf_ctrl->initial_params, &ns) != 1)
+   /* When the SF is a lookup table, the params and param_step arrays are irrelevant,
+    * but we still need to know how many parameters are in the table before we actually
+    * read the table (because it's convenient to pre-allocate some structures and working
+    * space before we actually read the SF parameter table) */
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_params", &num_params))
+     return -1;
+   sf_ctrl->num_params = num_params;
+
+   /* initial parameter values (FIXME - make this optional?) */
+   if (read_config_float_array (s, "params", &sf_ctrl->initial_params, &ns) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: error reading slit function params array from %s",
                      __func__, config_setting_source_file(s));
         return -1;
      }
-   sf_ctrl->num_params = ns;
+   if ((ns > 0) && (ns != (size_t) sf_ctrl->num_params))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: inconsistent array size: params (in %s)",
+                     __func__, config_setting_source_file (s));
+        return -1;
+     }
 
    /* param step sizes for numerical derivative calculation */
-   if (read_config_float_array (s, "param_step", &sf_ctrl->param_step, &ns) != 1)
+   if (read_config_float_array (s, "param_step", &sf_ctrl->param_step, &ns) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: error reading slit function param_step array from %s",
                      __func__, config_setting_source_file(s));
         return -1;
      }
 
-   if (ns != (size_t) sf_ctrl->num_params)
+   if ((ns > 0) && (ns != (size_t) sf_ctrl->num_params))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: inconsistent array size: param_step (in %s)",
                      __func__, config_setting_source_file (s));
@@ -572,7 +610,7 @@ static SF_Convolution_Type *alloc_sf_convolution_type (int num_waves, int num_pa
         return NULL;
      }
 
-   sfct->num_waves = num_waves;
+   sfct->num_waves = 0;
    sfct->num_pad = num_pad;
    sfct->num_alloc = len;
    sfct->num_params = num_params;
@@ -709,6 +747,8 @@ static void free_sf_ctrl (SF_Control_Type *sf_ctrl)
      return;
    FREE(sf_ctrl->initial_params);
    FREE(sf_ctrl->param_step);
+   FREE(sf_ctrl->sf_path);
+   FREE(sf_ctrl->cal_path);
 }
 
 static void free_wavecal (Wavecal_Type *wct)
@@ -722,6 +762,11 @@ static void free_wavecal (Wavecal_Type *wct)
    free_window (&wct->window);
    sft_free (wct->sft);
    free_sf_ctrl (&wct->sf_ctrl);
+   if (wct->sf_table)
+     {
+        SF_Table_Type *stt = wct->sf_table;
+        stt->stt_close (stt);
+   }
    FREE(wct->irr0);
    FREE(wct);
 }
@@ -779,12 +824,12 @@ static Wavecal_Type *alloc_wavecal (int num_data_waves, int num_model_waves,
 
 static int string_is_list_member (const char *name, char **list)
 {
-   char *memb;
+   char **memb;
    if (list == NULL)
      return 0;
-   for (memb = *list; memb != NULL; memb++)
+   for (memb = list; (memb != NULL) && (*memb != NULL); memb++)
      {
-        if (0 == strcmp (name, memb))
+        if (0 == strcmp (name, *memb))
           return 1;
      }
    return 0;
@@ -1185,7 +1230,8 @@ static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
           }
      }
 
-   if (wct->sf_ctrl.mode == SF_MODE_FIT)
+   if ((wct->sf_ctrl.mode == SF_MODE_FIT)
+       && (wct->sf_ctrl.initial_params != NULL))
      {
         /* set initial slit-function parameters  */
         memcpy ((char *)pnext, (char *)wct->sf_ctrl.initial_params,
@@ -1348,8 +1394,13 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
      }
    else
      {
-        double hw1e = sf_ctrl.initial_params[0]; /* half-width [nm] at 1/e */
-
+        /* Scale the number of padding points with the wavelength spacing in the
+         * reference irradiance spectrum, and the anticipated width of the slit-function
+         * (half-width at 1/e in nm).
+         * For this purpose, we allow for a relatively large hw1e which will yield
+         * a generous amount of padding.
+         */
+        double hw1e = 0.5;
         num_pad = (sf_ctrl.num_pad_half_widths
                    * (hw1e / ref_irr.delta_wavelength));
 
@@ -1368,6 +1419,13 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
 
    wct->irr = ref_irr;       /* struct copy */
    wct->sf_ctrl = sf_ctrl;   /* struct copy */
+
+   if (sf_ctrl.sf_path)
+     {
+        /* FIXME - add this to the metadata! */
+        if (NULL == (wct->sf_table = sf_table_open (sf_ctrl.sf_path, sf_ctrl.cal_path, cfg_name)))
+          goto error_return;
+     }
 
    if (s_rad)
      {
@@ -1615,12 +1673,34 @@ static int interpolate_sf_convolved (double *wavelen, int num_wavelen,
    return 0;
 }
 
-static int get_sf_params (int k, int num_pars, double *pars, void *cl)
+typedef struct
 {
-   double *the_params = (double *)cl;
-   (void) k;
-   memcpy ((char *)pars, (char *)the_params, num_pars * sizeof(double));
-   return 0;
+   double params[SFT_MAX_NUM_PARAMS];
+   SF_Table_Type *sf_table;
+   const double *waves;
+   int num_waves;
+   int xtrack;
+   int mode;
+}
+SF_Param_Lookup_Type;
+
+static int get_sf_params (int wave_index, int num_pars, double *pars, void *cl)
+{
+   SF_Param_Lookup_Type *lt = (SF_Param_Lookup_Type *)cl;
+   SF_Table_Type *stt = lt->sf_table;
+   int status;
+
+   if ((stt != NULL) && (lt->mode == SF_MODE_APPLY))
+     {
+        status = stt->stt_get_params (stt, lt->xtrack, lt->waves[wave_index], pars);
+     }
+   else
+     {
+        memcpy ((char *)pars, (char *)lt->params, num_pars * sizeof(double));
+        status = 0;
+     }
+
+   return status;
 }
 
 static int convolve_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
@@ -1630,11 +1710,10 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    Reference_Irr_Type *irr = &wct->irr;
    SF_Convolution_Type *sfct = win->sfct;
    Term_Type *term;
+   SF_Param_Lookup_Type sf_lookup = {0};
    const double *par;
    double *irr_wavelen = NULL;
    double *irr_value = NULL;
-   double sf_params[SFT_MAX_NUM_PARAMS];
-   double delta_wave_pad, irr_wave_beg, irr_wave_end;
    int index_irr_beg, index_irr_end, num_irr_waves;
    int status, index_slit_param0;
    int use_derivs=0;
@@ -1647,14 +1726,20 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
      return -1;
 
    /* Select the relevant subset of the reference irradiance wavelength grid */
-   delta_wave_pad = win->sfct->num_pad * irr->delta_wavelength;
-   irr_wave_beg = win->wave0[0] - delta_wave_pad;
-   irr_wave_end = win->wave0[win->num_wave-1] + delta_wave_pad;
-   index_irr_beg = bsearch_d (irr_wave_beg, irr->wavelen, irr->num_wavelen);
-   index_irr_end = bsearch_d (irr_wave_end, irr->wavelen, irr->num_wavelen);
+   index_irr_beg = bsearch_d (win->wave0[0], irr->wavelen, irr->num_wavelen);
+   index_irr_end = bsearch_d (win->wave0[win->num_wave-1], irr->wavelen, irr->num_wavelen);
+
+   /* include padding */
+   index_irr_beg -= sfct->num_pad;
+   index_irr_end += sfct->num_pad;
+
+   /* define irradiance subset pointers */
    num_irr_waves = index_irr_end - index_irr_beg + 1;
    irr_wavelen = irr->wavelen + index_irr_beg;
    irr_value  = irr->irradiance + index_irr_beg;
+
+   /* set the number of wavelengths in the unpadded model */
+   sfct->num_waves = num_irr_waves;
 
    /* skip wavelength grid parameters */
    par += win->num_wave_params;
@@ -1668,26 +1753,35 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
         par += term->num_params;
      }
 
-   /* combine terms to construct the updated model spectrum */
+   /* Combine terms to construct the updated model spectrum.
+    * After the call, the array sfct->model_padded looks like this:
+    * [<num_pad zeros>|<num_irr_waves model values>|<num_pad zeros><more zeros>]
+    */
    if (0 != combine_terms (wct, irr_value, num_irr_waves, sfct->model_padded + sfct->num_pad))
      return -1;
+
+   /* slit-function parameter lookup needs some context and reference data */
+   sf_lookup.mode = wct->sf_ctrl.mode;
+   sf_lookup.xtrack = wct->xtrack;
+   sf_lookup.sf_table = wct->sf_table;
+   sf_lookup.waves = irr_wavelen;
+   sf_lookup.num_waves = sfct->num_waves;
 
    if (wct->sf_ctrl.mode == SF_MODE_FIT)
      {
         /* When fitting the slit function parameters are at the end of the array. */
         if (derivs) use_derivs++;
         index_slit_param0 = par - params;
-        memcpy ((char *)sf_params, (char *)par, wct->sf_ctrl.num_params * sizeof(double));
+        memcpy ((char *)sf_lookup.params, (char *)par, wct->sf_ctrl.num_params * sizeof(double));
      }
-   else
+   else if (wct->sf_ctrl.initial_params)
      {
-        /* FIXME */
-        memcpy ((char *)sf_params, (char *)wct->sf_ctrl.initial_params,
+        memcpy ((char *)sf_lookup.params, (char *)wct->sf_ctrl.initial_params,
                 wct->sf_ctrl.num_params * sizeof(double));
      }
 
    /* Convolve the model with the slit-function. */
-   status = sft_apply (wct->sft, get_sf_params, sf_params, sfct->num_waves, sfct->model_padded,
+   status = sft_apply (wct->sft, get_sf_params, &sf_lookup, sfct->num_waves, sfct->model_padded,
                        sfct->model_convolved,
                        use_derivs ? sfct->derivs_convolved : NULL);
    if (status) return -1;
@@ -2007,6 +2101,9 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         if (0 != sft_config (wct->sft, asg_normed_plus_derivs, wct->irr.delta_wavelength, wct->sf_ctrl.param_step))
           goto return_error;
 
+        /* slit-function lookup tables may require this */
+        wct->xtrack = xtrack;
+
         /* When fitting the slit function, the objective function
          * may compute parameter derivatives for the slit function parameters */
         if (wct->sf_ctrl.mode == SF_MODE_FIT)
@@ -2022,10 +2119,10 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
 
              /* For now, the slit function parameters are at the end of the full parameter array. */
              k0 = num - wct->sf_ctrl.num_params;
-
-             /* freeze the asymmetry parameter at zero (FIXME?) */
+#if 0
+             /* freeze the asymmetry parameter at zero (FIXME - control this from config file?) */
              param_ctrl[k0 + 2].fixed = 1;
-
+#endif
              for (k = 0; k < wct->sf_ctrl.num_params; k++)
                {
                   param_ctrl[k0 + k].side = 3;
@@ -2068,7 +2165,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
                 win->num_wave_params * sizeof(double));
         result->wave_params = win->wave_params;
         result->num_wave_params = win->num_wave_params;
-        if (win->sfct)
+        if (wct->sf_ctrl.mode == SF_MODE_FIT)
           {
              SF_Convolution_Type *sfct = win->sfct;
              double *sf_params = params + (num_params - sfct->num_params);

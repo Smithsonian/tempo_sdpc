@@ -23,7 +23,7 @@ typedef int SFT_Eval_Type (const double *x, size_t nx, double *params,
 
 /** Function interface for retrieving wavelength[k] slit function parameters
  */
-typedef int SFT_Param_Type (int k, int num_pars, double *pars, void *cl);
+typedef int SFT_Param_Type (int wave_index, int num_pars, double *pars, void *cl);
 
 /** Free storage associated with \a Slit_Function_Type structure
  */

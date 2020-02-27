@@ -40,7 +40,9 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 
 all:	 $(objdir) $(objdir)/wavecal_driver $(objdir)/wavecal_merge
 
-tests:	$(objdir) $(objdir)/test_interp
+TEST_EXECS = test_asg test_convolve test_table # test_interp
+
+tests:	$(objdir) $(TEST_EXECS)
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -71,7 +73,7 @@ install:	install-executables
 # --------------------------------------------------------------------------
 
 clean:
-	-$(RM) -f .##* $(objdir)/*
+	-$(RM) -f .##* $(objdir)/* $(TEST_EXECS)
 distclean: clean
 	-$(RM) -rf $(objdir)
 
@@ -83,8 +85,8 @@ TEST_INTERP_OFILES = test_interp.o lsq.o interp.o \
               interp_cheb.o interp_poly.o interp_cspline.o
 TEST_INTERP_OBJS = $(patsubst %.o,$(objdir)/%.o, $(TEST_INTERP_OFILES))
 
-$(objdir)/test_interp:	$(TEST_INTERP_OBJS)
-	$(COMPILE_CMD) -o $(objdir)/test_interp $(TEST_INTERP_OBJS) \
+test_interp:	$(TEST_INTERP_OBJS)
+	$(COMPILE_CMD) -o test_interp $(TEST_INTERP_OBJS) \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/test_interp.o:	$(srcdir)/test_interp.c
@@ -99,7 +101,7 @@ $(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
 
 WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
      lsq.c interp_cheb.c interp_poly.c interp_cspline.c \
-     slit_function_asg.c slit_function_apply.c
+     slit_function_asg.c slit_function_apply.c slit_function_table.c
 WAVECAL_DRIVER_OFILES = $(patsubst %.c,%.o, $(WAVECAL_DRIVER_SRCFILES))
 WAVECAL_DRIVER_OBJS = $(patsubst %.o,$(objdir)/%.o, $(WAVECAL_DRIVER_OFILES))
 
@@ -143,10 +145,18 @@ $(objdir)/slit_function_asg.o:	$(srcdir)/slit_function_asg.c
 $(objdir)/slit_function_apply.o:	$(srcdir)/slit_function_apply.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/slit_function_apply.c
 
+$(objdir)/slit_function_table.o:	$(srcdir)/slit_function_table.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/slit_function_table.c
+
 test_asg:	$(srcdir)/slit_function_asg.c
 	$(COMPILE_CMD) -o test_asg -DUNIT_TEST $(srcdir)/slit_function_asg.c $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 test_convolve:	$(srcdir)/slit_function_apply.c $(objdir)/slit_function_asg.o
 	$(COMPILE_CMD) -o test_convolve -DUNIT_TEST $(srcdir)/slit_function_apply.c \
 	    $(objdir)/slit_function_asg.o \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+test_table:	$(srcdir)/slit_function_table.c $(objdir)/util.o
+	$(COMPILE_CMD) -o test_table -DUNIT_TEST $(srcdir)/slit_function_table.c \
+	    $(objdir)/util.o \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
