@@ -219,6 +219,16 @@ CONTAINS
        call tell_log (1, 'amf_calculation: read and prepare albedo')
        call read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
             albedo, errstat)
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "reading albedo", errstat)
+          return
+       endif
+
+       ! -------------------------------
+       ! Apply snow correction to albedo
+       ! -------------------------------
+       call tell_log (1, 'amf_calculation: snow correction')
+       call snow_correction ( nt, nx, snow, albedo, amfdiag )
 
        ! ---------------------------------------
        ! Write the albedo to the output file he5
@@ -417,7 +427,6 @@ CONTAINS
     end where
     return
   end subroutine compute_geometric_amf
-
 
   subroutine read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
             albedo, errstat)
@@ -730,6 +739,55 @@ CONTAINS
     errstat = max(errstat, locerrstat)
 
   end subroutine read_albedo
+
+  subroutine snow_correction ( nt, nx, snow, albedo, amfdiag )
+
+    use OMSAO_omidata_module, only: &
+         NISE_snowfree, NISE_permice
+
+    implicit none
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    integer (kind=i4), intent (in) :: nt, nx
+    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (IN) :: snow
+
+    ! ------------------
+    ! Modified variables
+    ! ------------------
+    real (kind=r8), dimension (1:nx,0:nt-1), intent (inout) :: albedo
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
+
+    ! Local variables
+    integer (kind=i4) :: ix, it
+    real (kind=r8) :: frc
+
+    ! This are the values we are using for the correction:
+    ! snowfree =   0, all snow = 100, permanent ice = 101, dry snow = 103
+    ! ocean    = 104, suspect  = 125, error         = 127
+    ! However, it may be worth to update to more recent NISE products or IMS.
+    ! High temporal resolution GLER or BRDF products may provide better reflectance
+    ! estimates that the current amf_alb_sno constant value currently applied.
+    ! The correction uses independent pixel approximation for partially covered
+    ! snow pixels and leaves un-altered the albedo for pixels identified as
+    ! permanent_ice
+    do ix = 1, nx
+       do it = 0, nt-1
+          if (snow(ix,it) == NISE_snowfree .or. snow (ix,it) >= NISE_permice) then
+             cycle
+          else if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
+             frc = real(snow(ix,it),kind=r8)/100.0_r8
+             albedo(ix,it) = (1.0_r8-frc) * albedo (ix,it) + frc * amf_alb_sno
+             amfdiag(ix,it) = ibset(amfdiag(ix,it),4)
+          end if
+       end do
+    end do
+
+  end subroutine snow_correction
 
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
