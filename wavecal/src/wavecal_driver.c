@@ -746,6 +746,18 @@ int main (int argc, char **argv)
    xtrack_dimlen = spectrum_info.dimlens[1];
    channel_dimlen = spectrum_info.dimlens[2];
 
+   /* If too many blocks are requested, ignore the excess */
+   if ((use_blocking != 0) &&
+       (num_blocks > (int) step_dimlen))
+     {
+        if (this_block > (int) step_dimlen)
+          {
+             status = EXIT_SUCCESS;
+             goto return_status;
+          }
+        num_blocks = step_dimlen;
+     }
+
    if (alloc_spectrum (&spec, channel_dimlen))
      goto return_status;
 
