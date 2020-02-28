@@ -52,7 +52,7 @@ static int update_cached_asg_norm (double *params, double *norm)
    int status, compute_norm = 0;
    double a, b, epsabs, epsrel, abserr, w;
 
-   if (gsl_isnan (nc->norm))
+   if (nc->work == NULL)
      {
         compute_norm++;
         /* Allocate global work space on the first call,
