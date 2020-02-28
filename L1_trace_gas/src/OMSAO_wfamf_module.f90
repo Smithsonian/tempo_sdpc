@@ -267,7 +267,7 @@ CONTAINS
        ! ------------------------------------------------
        call tell_log (1, 'amf_calculation: read gas profile climatology')
        CALL get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-            cli_idx_ozo_pro, lat, lon, time, nt, nx, xtrange, errstat, amfdiag)
+            cli_idx_ozo_pro, lat, lon, time, nt, nx, errstat, amfdiag)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, 'reading gas profile climatology', errstat)
           return
@@ -284,7 +284,7 @@ CONTAINS
 
        ! ------------------------------------------------------------------
        ! Read VLIDORT look up table. Variables are declared at module level
-       ! (Input is read only on the first pass.  Subsequent passes use
+       ! (Input is read only on the first pass. Subsequent passes use
        ! cached values)
        ! ------------------------------------------------------------------
        call tell_log (1, 'amf_calculation: read scattering weights LUT')
@@ -855,9 +855,8 @@ CONTAINS
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                    cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                                   xtrange, errstat, amfdiag)
+                                   errstat, amfdiag)
     use clim_module
-    use omsao_omidata_module, only: omi_scattfail_amf
     use omsao_indices_module, only: sao_molecule_names
     implicit none
 
@@ -869,14 +868,13 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
-    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
     integer (kind=i4), intent (inout) :: errstat
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     type (clim_pres_bounds_type) :: bounds
     type (clim_species_type) :: cst
     integer :: year(2), month(2), day(2)
-    integer :: nz, nlayers, spix, epix, itimes, ixtrack
+    integer :: nz, nlayers, itimes, ixtrack
     real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
     real (kind=r4) :: hour_f, lon_f, lat_f
@@ -917,52 +915,68 @@ CONTAINS
     endif
 
     call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
-    if (errstat /= 0) return
-
+    if (errstat /= 0) then
+       call tell_error ( tell_io_read_error, "libclim_climatology: initializing "//trim(clim_db_molecule_name), errstat)
+       return
+    end if
+    ! FIXME. Instead of using fix values for cli_wgh_ozo_pro and
+    ! cli_idx_ozo_pro we can use the lat/lon and ozone total column
+    ! to decide at runtime. However, that requires to have O3 clima
+    ! tologies not available now
+!!$    call clim_species_init (cst_o3, cpt, 'O3', errstat)
+!!$    if (errstat /= 0) then
+!!$       call tell_error ( tell_io_read_error, "libclim_climatology: initializing O3", errstat)
+!!$    end if
+    
     do itimes = 0, nt-1
+       do ixtrack = 1, nx
+          ! Skip this pixel if geolocation information is not available
+          if (btest(amfdiag(ixtrack,itimes),0)) cycle
 
-      if (time(itimes) == r8_missval) then
-        amfdiag(:,itimes) = omi_scattfail_amf
-        cycle
-      endif
+          ! Work out hour of interest
+          call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
+          hour_f = real (hour, kind=r4)
+          
+          lon_f = lon(ixtrack,itimes)
+          lat_f = lat(ixtrack,itimes)
 
-      call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
-      hour_f = real (hour, kind=r4)
-
-      spix = xtrange(itimes,1)
-      epix = xtrange(itimes,2)
-
-      do ixtrack = spix, epix
-
-        lon_f = lon(ixtrack,itimes)
-        lat_f = lat(ixtrack,itimes)
-
-        if (lon_f == r4_missval .or. abs(lon_f) > 360.0 &
-            .or. lat_f == r4_missval .or. abs(lat_f) > 90.0) then
-          amfdiag(ixtrack,itimes) = omi_scattfail_amf
-          cycle
-        endif
-
-        ! FIXME - this is just temporary
-        cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
-        cli_idx_ozo_pro(ixtrack,itimes,1:2) = 1
-
-        call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
-        call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
-        call clim_partial_column (pres, vmr, partial_column, errstat)
-        if (errstat /= 0) return
-
-        where (partial_column < 0.0_r8)
-          partial_column = 0.0_r8
-        end where
-        climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
-      enddo
+          ! FIXME - this is just temporary
+          cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
+          cli_idx_ozo_pro(ixtrack,itimes,1:2) = 8
+          ! Get pressure grid
+          call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating pressure", errstat)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             cycle
+          end if
+          ! Get vmr profile
+          call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             cycle
+          end if
+          ! Compute partical columns
+          call clim_partial_column (pres, vmr, partial_column, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating partiacl column", errstat)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             cycle
+          end if
+          ! Fix non-physical partial columns
+          where (partial_column < 0.0_r8)
+             partial_column = 0.0_r8
+          end where
+          ! Assign climatology values
+          climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
+       enddo
     enddo
-  end subroutine
+  end subroutine clim_get_climatology
 
   subroutine get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                    cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                                   xtrange, errstat, amfdiag)
+                                   errstat, amfdiag)
     use clim_module
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
@@ -973,13 +987,12 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
-    integer (kind=i4), dimension (0:nt-1,1:2),  intent (in) :: xtrange
     integer (kind=i4), intent (inout) :: errstat
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     call clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
                                cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                               xtrange, errstat, amfdiag)
+                               errstat, amfdiag)
   end subroutine
 
   SUBROUTINE vlidort_deallocate (errstat)
@@ -1042,9 +1055,6 @@ CONTAINS
     ! ====================================================
     ! This subroutine reads in the VLIDORT calculations to
     ! compute the Scattering Weights.
-    ! It should check if the fitting window is included in
-    ! the file, if not a warning should be printed and all
-    ! the AMF diagnostic set to non computed.
     ! ====================================================
 
     USE HDF5, ONLY: HID_T, SIZE_T, h5dopen_f, h5dget_space_f, &
