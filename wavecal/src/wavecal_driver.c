@@ -773,7 +773,7 @@ int main (int argc, char **argv)
           goto return_status;
      }
 
-   if (NULL == (wct = wavecal_open (&cfg, group_name, spec.n, is_irradiance)))
+   if (NULL == (wct = wavecal_open (&cfg, group_name, meta, spec.n, is_irradiance)))
      goto return_status;
 
    if (params_outfile)
@@ -907,8 +907,6 @@ int main (int argc, char **argv)
 
    if (0 != TIO_def_grp (ncid_result, "metadata", &grp_meta))
      goto return_status;
-   if (0 != tio_meta_write_ncattr (meta, grp_meta))
-     goto return_status;
 
    for (step = beg_step; step < end_step; step++)
      {
@@ -967,6 +965,9 @@ int main (int argc, char **argv)
                }
           }
      }
+
+   if (0 != tio_meta_write_ncattr (meta, grp_meta))
+     goto return_status;
 
    status = EXIT_SUCCESS;
 return_status:

@@ -2,6 +2,7 @@
 #define __WAVECAL_INCLUDE__ 1
 
 #include <libconfig.h>
+#include <tio.h>
 #include "wavecal_adj.h"
 
 /** @file wavecal.h
@@ -77,7 +78,7 @@ extern void wavecal_close (Wavecal_Type *wct);
  *                       1 means irradiance, 0 means radiance.
  * @return A valid \a Wavecal_Type pointer on success, NULL on error.
  */
-extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
+extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *meta,
                                    int max_num_wave, int is_irradiance);
 
 /** Query the number of wavelength parameters

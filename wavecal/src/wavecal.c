@@ -153,13 +153,16 @@ struct Wavecal_Type
    Reference_Irr_Type irr;      /**< reference irradiance */
    Window_Type window;          /**< fit window */
    Fit_Control_Type fit_ctrl;   /**< optimization control parameters */
+   TIO_Meta_Type *meta;         /**< metadata recording object */
+
    Slit_Function_Type *sft;     /**< slit function object */
    SF_Table_Type *sf_table;     /**< slit function lookup table (optional) */
+   SF_Control_Type sf_ctrl;
+
    Term_Type *terms;            /**< terms in the model being fitted */
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
    double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
-   SF_Control_Type sf_ctrl;
    int xtrack;               /* slit function lookup table requires xtrack index */
 };
 
@@ -997,7 +1000,7 @@ error_return:
 /* FIXME - this is only temporary! */
 static int Num_Warnings = 3;
 
-static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
+static int read_irr_reference (Reference_Irr_Type *irr, TIO_Meta_Type *meta, int xtrack)
 {
    File_Type *file = &irr->file;
    double dx0;
@@ -1010,6 +1013,9 @@ static int read_irr_reference (Reference_Irr_Type *irr, int xtrack)
                  xtrack);
         Num_Warnings--;
      }
+
+   if (0 != meta_record_basename (meta, file->path))
+     return -1;
 
    /* FIXME better to allocate a buffer once, and re-use it */
    FREE(irr->wavelen);
@@ -1128,7 +1134,7 @@ error_return:
    return status;
 }
 
-static int read_rad_reference (Term_Type *terms, int xtrack)
+static int read_rad_reference (Term_Type *terms, TIO_Meta_Type *meta, int xtrack)
 {
    Term_Type *term;
 
@@ -1143,6 +1149,9 @@ static int read_rad_reference (Term_Type *terms, int xtrack)
         if (0 != interp_filepar_init (term->refspec.interp,
                                       &term->refspec.file, xtrack))
           return -1;
+
+        if (0 != meta_record_basename (meta, term->refspec.file.path))
+          return -1;
      }
 
    return 0;
@@ -1155,10 +1164,10 @@ static int init_window_reference_spectra (Wavecal_Type *wct, int xtrack)
 
    win->xtrack = xtrack;
 
-   if (0 != read_rad_reference (wct->terms, xtrack))
+   if (0 != read_rad_reference (wct->terms, wct->meta, xtrack))
      return -1;
 
-   if (0 != read_irr_reference (&wct->irr, xtrack))
+   if (0 != read_irr_reference (&wct->irr, wct->meta, xtrack))
      return -1;
 
    cspline_free (irr->cspline); /* FIXME - preallocate this */
@@ -1298,7 +1307,7 @@ int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *
    return 0;
 }
 
-Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
+Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *meta,
                             int max_num_data_waves, int is_irradiance)
 {
    char *slit_function_setting = "slit_function";
@@ -1420,10 +1429,14 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name,
    wct->irr = ref_irr;       /* struct copy */
    wct->sf_ctrl = sf_ctrl;   /* struct copy */
 
+   wct->meta = meta;
+
    if (sf_ctrl.sf_path)
      {
-        /* FIXME - add this to the metadata! */
         if (NULL == (wct->sf_table = sf_table_open (sf_ctrl.sf_path, sf_ctrl.cal_path, cfg_name)))
+          goto error_return;
+        if ((0 != meta_record_basename (meta, sf_ctrl.sf_path))
+            || (0 != meta_record_basename (meta, sf_ctrl.cal_path)))
           goto error_return;
      }
 
