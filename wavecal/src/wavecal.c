@@ -1642,7 +1642,7 @@ static int interp_array (const double *xa, const double *ya, size_t na, const do
    gsl_interp *interp = NULL;
    gsl_interp_accel *accel = NULL;
    size_t i;
-   int status = -1;
+   int nan, status = -1;
 
    if ((NULL == (accel = gsl_interp_accel_alloc ()))
        || (NULL == (interp = gsl_interp_alloc (gsl_interp_linear, na))))
@@ -1650,9 +1650,16 @@ static int interp_array (const double *xa, const double *ya, size_t na, const do
    if (0 != gsl_interp_init (interp, xa, ya, na))
      goto free_and_return;
 
+   nan = 0;
    for (i = 0; i < n; i++)
      {
         y[i] = gsl_interp_eval (interp, xa, ya, x[i], accel);
+        if (gsl_isnan(y[i])) nan++;
+     }
+   if (nan)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: interpolation yielded %d NaNs", __func__, nan);
+        goto free_and_return;
      }
 
    status = 0;
@@ -1741,8 +1748,9 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    /* Select the relevant subset of the reference irradiance wavelength grid */
    index_irr_beg = bsearch_d (win->wave0[0], irr->wavelen, irr->num_wavelen);
    index_irr_end = bsearch_d (win->wave0[win->num_wave-1], irr->wavelen, irr->num_wavelen);
+   index_irr_end++;
 
-   /* include padding */
+   /* evaluate the irradiance spectrum a bit beyond the required wavelength range */
    index_irr_beg -= sfct->num_pad;
    index_irr_end += sfct->num_pad;
 
@@ -1767,7 +1775,7 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
      }
 
    /* Combine terms to construct the updated model spectrum.
-    * After the call, the array sfct->model_padded looks like this:
+    * After the call, the zero-padded array sfct->model_padded looks like this:
     * [<num_pad zeros>|<num_irr_waves model values>|<num_pad zeros><more zeros>]
     */
    if (0 != combine_terms (wct, irr_value, num_irr_waves, sfct->model_padded + sfct->num_pad))
