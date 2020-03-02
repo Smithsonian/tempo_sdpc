@@ -161,9 +161,9 @@ struct Wavecal_Type
 
    Term_Type *terms;            /**< terms in the model being fitted */
    double *term_sums[NUM_TERM_TYPES];   /**< sum over terms within each term type */
-   double *irr0;      /**< reference irradiance interpolated onto target spectrum wavelength grid */
+   double *irr0;                /**< reference irradiance interpolated onto target spectrum wavelength grid */
    int is_irradiance;
-   int xtrack;               /* slit function lookup table requires xtrack index */
+   int xtrack;                  /**< slit function lookup table requires xtrack index */
 };
 
 static void free_file_type (File_Type *file)
@@ -1269,15 +1269,25 @@ static int read_feature_window (config_setting_t *s_band, Feature_Window_Type *f
    memset ((char *)fwin, 0, sizeof *fwin);
 
    if (NULL == (s = config_setting_get_member (s_band, "feature_window")))
-     return -1;
+     return 1;
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "num_pix_fit", &fwin->num_pix))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "start_pix", &fwin->start_pix)))
-     return -1;
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading feature_window in param file, %s:%d",
+                     __func__, config_setting_source_file (s), config_setting_source_line (s));
+          return -1;
+     }
 
    if ((CONFIG_TRUE != config_setting_lookup_float (s, "delta_wavelength", &fwin->delta_wavelength))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "fid_wavelength", &fwin->feature_wavelength)))
-     return -1;
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading feature_window in param file, %s:%d",
+                     __func__, config_setting_source_file (s), config_setting_source_line (s));
+          return -1;
+     }
 
    return 0;
 }
@@ -1320,6 +1330,12 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
    config_setting_t *s_rad = NULL;
    int i, num_data_waves, num_model_waves, num_pad;
 
+   /* By default, operate on the entire spectrum. */
+   fwin.num_pix = max_num_data_waves;
+   fwin.start_pix = 0;
+   fwin.delta_wavelength = 0.0;
+   fwin.feature_wavelength = 0.0;
+
    /* Locate the configuration parameters for this spectral band, and target spectrum type */
 
    if (NULL == (s_band = config_lookup (cfg, cfg_name)))
@@ -1341,6 +1357,9 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
    if (is_irradiance)
      {
         s_slit = config_setting_get_member (s_irr, slit_function_setting);  /* NULL is ok */
+
+        /* For irradiance, use the default feature window and
+         * operate on the entire spectrum */
      }
    else
      {
@@ -1352,20 +1371,11 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
              goto error_return;
           }
         s_slit = config_setting_get_member (s_rad, slit_function_setting);  /* NULL is ok */
-     }
 
-   /* We always use a reference irradiance spectrum */
-   if (0 != config_irr_reference (s_irr, &ref_irr))
-     goto error_return;
-
-   /* For irradiances, always operate on the entire spectrum */
-   if (is_irradiance
-       || (0 != read_feature_window (s_band, &fwin)))
-     {
-        fwin.num_pix = max_num_data_waves;
-        fwin.start_pix = 0;
-        fwin.delta_wavelength = 0.0;
-        fwin.feature_wavelength = 0.0;
+        /* For radiance, use the feature window if specified.
+         * Otherwise, default to the operating on the entire spectrum */
+        if (read_feature_window (s_band, &fwin) < 0)
+          goto error_return;
      }
 
    if (((fwin.num_pix <= 0) || (fwin.num_pix > max_num_data_waves))
@@ -1376,6 +1386,10 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
                      __func__, max_num_data_waves, fwin.num_pix, fwin.start_pix);
         return NULL;
      }
+
+   /* We always use a reference irradiance spectrum */
+   if (0 != config_irr_reference (s_irr, &ref_irr))
+     goto error_return;
 
    /* The slit function is optional */
    if (s_slit)
@@ -1425,11 +1439,9 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
      goto error_return;
 
    wct->is_irradiance = is_irradiance;
-
+   wct->meta = meta;
    wct->irr = ref_irr;       /* struct copy */
    wct->sf_ctrl = sf_ctrl;   /* struct copy */
-
-   wct->meta = meta;
 
    if (sf_ctrl.sf_path)
      {
@@ -1915,9 +1927,6 @@ static int compute_rad_mean_ratio (Wavecal_Type *wct)
    double sum_irr, sum_rad;
    int i;
 
-   if (wct->is_irradiance)
-     return 0;
-
    /* compute wavelength as a function of pixel index */
    if (wl->st_eval (wl, win->wave_params, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
@@ -2046,6 +2055,54 @@ int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
    return wadj_final_coeff (wadj, xtrack, narrow_band_mid_wl_shift, final_wave_params);
 }
 
+static int init_slit_function (Wavecal_Type *wct, int xtrack, size_t num,
+                               struct mp_par_struct **p_param_ctrl)
+{
+   struct mp_par_struct *param_ctrl = NULL;
+   int k, k0;
+
+   if (wct->sft == NULL)
+     return 0;
+
+   if (0 != sft_config (wct->sft, asg_normed_plus_derivs, wct->irr.delta_wavelength,
+                        wct->sf_ctrl.param_step))
+     {
+        return -1;
+     }
+
+   /* slit-function lookup tables may require this */
+   wct->xtrack = xtrack;
+
+   if (wct->sf_ctrl.mode != SF_MODE_FIT)
+     return 0;
+
+   /* When fitting the slit function, the objective function
+    * may compute parameter derivatives for the slit function
+    * parameters. */
+   if (NULL == (param_ctrl = (struct mp_par_struct *)MALLOC (num * sizeof (*param_ctrl))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)param_ctrl, 0, num * sizeof(*param_ctrl));
+
+   /* Assume the slit function parameters are at the end of the full parameter array. */
+   k0 = num - wct->sf_ctrl.num_params;
+#if 0
+   /* freeze the asymmetry parameter at zero (FIXME - control this from config file?) */
+   param_ctrl[k0 + 2].fixed = 1;
+#endif
+   for (k = 0; k < wct->sf_ctrl.num_params; k++)
+     {
+        param_ctrl[k0 + k].side = 3;
+        /* param_ctrl[k0 + k].deriv_debug = 1; */
+     }
+
+   *p_param_ctrl = param_ctrl;
+
+   return 0;
+}
+
 int wavecal_fit (Wavecal_Type *wct, int xtrack,
                  const double *p_wave, const double *p_spec, const double *p_specerr,
                  const unsigned int *p_pixel_quality_flag, const Wavecal_Config_Type *config,
@@ -2113,44 +2170,15 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
 
    estimate_midpoint_wavelength (win, spec_scaled, &params[0]);
 
-   if (0 != compute_rad_mean_ratio (wct))
-     goto return_error;
-
-   /* If we're using the slit-function, configure it here */
-   if (wct->sft)
+   if (wct->is_irradiance == 0)
      {
-        if (0 != sft_config (wct->sft, asg_normed_plus_derivs, wct->irr.delta_wavelength, wct->sf_ctrl.param_step))
+        if (0 != compute_rad_mean_ratio (wct))
           goto return_error;
-
-        /* slit-function lookup tables may require this */
-        wct->xtrack = xtrack;
-
-        /* When fitting the slit function, the objective function
-         * may compute parameter derivatives for the slit function parameters */
-        if (wct->sf_ctrl.mode == SF_MODE_FIT)
-          {
-             int k, k0;
-
-             if (NULL == (param_ctrl = (struct mp_par_struct *)MALLOC (num * sizeof (*param_ctrl))))
-               {
-                  tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-                  goto return_error;
-               }
-             memset ((char *)param_ctrl, 0, num * sizeof(*param_ctrl));
-
-             /* For now, the slit function parameters are at the end of the full parameter array. */
-             k0 = num - wct->sf_ctrl.num_params;
-#if 0
-             /* freeze the asymmetry parameter at zero (FIXME - control this from config file?) */
-             param_ctrl[k0 + 2].fixed = 1;
-#endif
-             for (k = 0; k < wct->sf_ctrl.num_params; k++)
-               {
-                  param_ctrl[k0 + k].side = 3;
-                  /* param_ctrl[k0 + k].deriv_debug = 1; */
-               }
-          }
      }
+
+   /* If we're using the slit-function, initialize it here */
+   if (0 != init_slit_function (wct, xtrack, num, &param_ctrl))
+     goto return_error;
 
    mp.wct = wct;
    mp.spec = win->spec_scaled;
