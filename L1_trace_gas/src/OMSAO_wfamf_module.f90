@@ -298,7 +298,7 @@ CONTAINS
        call tell_log (1, 'amf_calculation: compute scattering weights')
        CALL compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-            lat, lon, amfdiag, scattw)
+            lat, lon, xtrange, amfdiag, scattw)
 
        ! -----------------------------------------------------------------
        ! Work out the AMF using the scattering weights and the climatology
@@ -1251,7 +1251,7 @@ CONTAINS
 
   SUBROUTINE compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
                             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-                            lat, lon, amfdiag, scattw)
+                            lat, lon, xtrange, amfdiag, scattw)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -1270,6 +1270,7 @@ CONTAINS
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,1:2), INTENT (IN) :: cli_idx_ozo_pro
+    integer (KIND=i4), dimension (0:nt-1,1:2),  intent (IN) :: xtrange
 
     ! ------------------
     ! Modified variables
@@ -1331,7 +1332,8 @@ CONTAINS
           ! albedo, and cloud information. 
           if ( btest(amfdiag(ixtrack,itime),0) .or. &
                btest(amfdiag(ixtrack,itime),2) .or. &
-               btest(amfdiag(ixtrack,itime),5) ) then
+               btest(amfdiag(ixtrack,itime),5) .or. &
+               ixtrack < xtrange(itime,1) .or. ixtrack > xtrange(itime,2) ) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
              cycle
           end if
