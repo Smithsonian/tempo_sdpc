@@ -41,7 +41,7 @@ MODULE OMSAO_wfamf_module
   ! =============================
   ! AMF factor specific variables
   ! =============================
-  REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld, amf_max_sza
+  REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld
 
   ! ------------------------------
   ! Vlidort lookup table variables
@@ -135,7 +135,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                                :: locerrstat, itt, spixx, epixx
+    INTEGER (KIND=i4)                                :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
