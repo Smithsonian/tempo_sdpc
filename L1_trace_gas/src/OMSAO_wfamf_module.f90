@@ -185,19 +185,15 @@ CONTAINS
     ! akernels and climatology set to missval
     ! -----------------------------------------
     IF (amf_wvl .LT. 0.0) THEN
-
-       DO itt = 0, nt-1
-          spixx = xtrange(itt,1) ; epixx = xtrange(itt,2)
-          saoamf(spixx:epixx,itt) = 1.0_r8
-       END DO
-
+       saoamf = 1.0_r8
+       amfdiag=ibset(amfdiag,0)
     ELSE
 
        ! -----------------
        ! Geolocation check
        ! -----------------
        call tell_log (1, 'amf_calculation: check geolocation information')
-       call check_geolocation ( nt, nx, lat, lon, sza, vza, amfdiag )
+       call check_geolocation ( nt, nx, lat, lon, sza, vza, terrain_height, amfdiag )
       
        ! -------------------------
        ! Compute the geometric AMF
@@ -295,26 +291,12 @@ CONTAINS
           return
        endif
 
-       ! ----------------------------------------------------------------------
-       ! amfdiag is used to keep track of the pixels were enough information is
-       ! available to carry on the AMFs calculation.
-       ! ----------------------------------------------------------------------
-       call tell_log (1, 'amf_calculation: set final amf_diagnostic flags')
-       CALL amf_diagnostic (cct, nt, nx, time, lat, lon, &
-            sza, vza, snow, glint, xtrange, &
-            l2cfr, l2ctp, &
-            amfdiag  )
-
-       WHERE ((saocol <= r8_missval).or.(saodco<=r8_missval))
-          amfdiag = i2_missval
-       END WHERE
-
        ! --------------------------------------------------------
        ! Compute Scattering weights in the look up table grid but
        ! with the correct albedo. amfdiag is used to skip pixel
        ! --------------------------------------------------------
        call tell_log (1, 'amf_calculation: compute scattering weights')
-       CALL compute_scatt (cpt, cct, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
+       CALL compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
             lat, lon, amfdiag, scattw)
 
@@ -382,17 +364,20 @@ CONTAINS
 
   END SUBROUTINE amf_calculation
 
-  subroutine check_geolocation ( nt, nx, lat, lon, sza, vza, amfdiag )
+  subroutine check_geolocation ( nt, nx, lat, lon, sza, vza, terrain_height, amfdiag )
     implicit none
     integer (kind=i4), intent (in) :: nt, nx
-    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon, terrain_height
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: sza, vza
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
+    real (kind=r4), parameter :: terrain_height_missval=-32737.0
 
     ! Check that a complete set of geolocation information is available to
     ! complete the AMF calculation. SZA and VZA have to be between 0 and 90
     ! and latitude and longitude have to be not equal to r4_missval
     ! Pixels without complete geolocation information get amfdiag bit 0 set
+    ! FIXME, some pixels have no terrain height information. Those are given
+    ! the value -32767. Will be good to know 
     where ( &
          sza(1:nx,0:nt-1) == r4_missval .or. &
          sza(1:nx,0:nt-1) < 0.0_r4 .or. &
@@ -401,7 +386,8 @@ CONTAINS
          vza(1:nx,0:nt-1) < 0.0_r4 .or. &
          vza(1:nx,0:nt-1) > 90.0_r4 .or. &
          lat(1:nx,0:nt-1) == r4_missval .or. &
-         lon(1:nx,0:nt-1) == r4_missval )
+         lon(1:nx,0:nt-1) == r4_missval .or. &
+         terrain_height(1:nx,0:nt-1) == terrain_height_missval )
        amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),0)
     end where
   end subroutine check_geolocation
@@ -648,12 +634,6 @@ CONTAINS
     ! --------------------------------------------------
     do itimes = 0, nt-1
        do ixtrack = 1, nx
-
-          ! --------------------------------------------
-          ! If for a given pixel there is no geolocation
-          ! information skip it.
-          ! --------------------------------------------
-          if ( btest(amfdiag(ixtrack,itimes),0) ) cycle
 
           ! Convert longitude/latitude to real 8 for interpolation
           lonp = real(lon(ixtrack,itimes), kind=r8)
@@ -931,7 +911,10 @@ CONTAINS
     do itimes = 0, nt-1
        do ixtrack = 1, nx
           ! Skip this pixel if geolocation information is not available
-          if (btest(amfdiag(ixtrack,itimes),0)) cycle
+          if (btest(amfdiag(ixtrack,itimes),0)) then
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             cycle
+          end if
 
           ! Work out hour of interest
           call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
@@ -1266,129 +1249,10 @@ CONTAINS
 
   END SUBROUTINE read_vlidort
 
-  SUBROUTINE amf_diagnostic (cct, nt, nx, time, lat, lon, &
-                             sza, vza, snow, glint, xtrange, &
-                             l2cfr, l2ctp, amfdiag )
-
-    USE OMSAO_omidata_module, ONLY: omi_geo_amf, omi_cld_addmiss, &
-         omi_ooblut_amf, omi_glint_add, omi_bigsza_amf
-    !USE OMSAO_errstat_module
-    use clim_module
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    type (clim_cloud_type), intent(in) :: cct
-    INTEGER (KIND=i4),                          INTENT (IN) :: nt, nx
-    REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, lat, lon
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
-    INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
-
-    ! ----------------
-    ! Modified variabe
-    ! ----------------
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: amfdiag
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2cfr, l2ctp
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4) :: ix, it, spix, epix
-
-    integer :: year, month, day, errstat
-    real (kind=r8) :: hour
-    real (kind=r4) :: ctp_f
-
-    ! -------------------------------------------------------------------
-    ! AMFDIAG has already been set to "geometric" AMF where SZA and VZA
-    ! information was available, and "missing"/"out of bounds" otherwise.
-    ! Here we need to check for cloud information as well as for snow
-    ! and glint.
-    ! -------------------------------------------------------------------
-
-    ! ----------------------------------------------------------------
-    ! Checking is done within a loop over NT to assure that we have
-    ! "missing" values in all the right places. A single comprehensive
-    ! WHERE statement over "1:nx,0:nt-1" would be more efficient but
-    ! would also overwrite missing values with real diagnostic flags.
-    ! ----------------------------------------------------------------
-    DO it = 0, nt-1
-      spix = xtrange(it,1) ; epix = xtrange(it,2)
-
-      ! ----------------------------------
-      ! Check for ice/snow/ocean flag
-      ! ----------------------------------
-      WHERE ( &
-           amfdiag(spix:epix,it) >= omi_geo_amf .AND. &
-           snow(spix:epix,it) >= 0_i2         )
-         amfdiag(spix:epix,it) = snow(spix:epix,it)
-      END WHERE
-
-      ! ---------------------------
-      ! Check for glint possibility
-      ! ---------------------------
-      WHERE (                                    &
-           amfdiag  (spix:epix,it) >= 0_i2 .AND. &
-           glint(spix:epix,it) > 0_i2           )
-         amfdiag(spix:epix,it) = amfdiag(spix:epix,it) + omi_glint_add
-      END WHERE
-
-      ! ---------------------------------------
-      ! Check if we have cloud information from
-      ! satellite retrievals. If not complete
-      ! with cloud climatology.
-      ! ---------------------------------------
-       IF ( ( ANY( l2cfr(spix:epix,it) < 0.0_r8 ) ) .OR. &
-            ( ANY( l2ctp(spix:epix,it) < 0.0_r8 ) ) ) THEN
-         call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
-         do ix = spix, epix
-           IF ((l2cfr(ix,it) < 0.0_r8 .or. l2ctp(ix,it) < 0.0_r8) .and. amfdiag(ix,it) >= 0_i2) THEN
-             errstat = 0
-             call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp_f, errstat)
-             if (errstat /= 0) return
-             l2ctp(ix,it) = real(ctp_f, r8)
-             l2cfr(ix,it) = 0.0_r8
-             amfdiag(ix,it) = omi_cld_addmiss + amfdiag(ix,it)
-           endif
-         enddo
-       END IF
-
-      ! --------------------------------------------------
-      ! Angles above the top value set on the control file
-      ! are calculated "using this maximum value".
-      ! --------------------------------------------------
-      WHERE ( &
-          ( sza(spix:epix,it) >= amf_max_sza) .AND. &
-          ( amfdiag(spix:epix,it) >= 0_i2 ) )
-        amfdiag(spix:epix,it) = omi_bigsza_amf + amfdiag(spix:epix,it)
-      END WHERE
-
-      ! ----------------------------------------------------------
-      ! Out-of-Bound SZA,VZA,and cloud pressure (but not missing!)
-      ! ----------------------------------------------------------
-      WHERE( ( sza(spix:epix,it)   < MINVAL(lut_sza) ) .OR. &
-             ( sza(spix:epix,it)   > MAXVAL(lut_sza) ) .OR. &
-             ( vza(spix:epix,it)   < MINVAL(lut_vza) ) .OR. &
-             ( vza(spix:epix,it)   > MAXVAL(lut_vza) ) .OR. &
-             ( l2ctp(spix:epix,it) < MINVAL(lut_srf) ) .OR. &
-             ( l2ctp(spix:epix,it) > MAXVAL(lut_srf) ) .AND. &
-             ( amfdiag(spix:epix,it) >= 0_i2 ) )
-         amfdiag(spix:epix,it) = omi_ooblut_amf + amfdiag(spix:epix,it)
-      END WHERE
-
-    END DO
-
-    RETURN
-  END SUBROUTINE amf_diagnostic
-
-  SUBROUTINE compute_scatt (cpt, cct, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
+  SUBROUTINE compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
                             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
                             lat, lon, amfdiag, scattw)
 
-    use OMSAO_omidata_module, only: omi_scattfail_amf
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
     use sao_pge_utils, only: calc_relaz_angle
@@ -1400,9 +1264,7 @@ CONTAINS
     ! Input variables
     ! ---------------
     type (clim_pres_type), intent(in) :: cpt
-    type (clim_cloud_type), intent(in) :: cct
     INTEGER (KIND=i4), INTENT (IN) :: nt, nx
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (inout) :: amfdiag
     REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: sza, vza, saa, vaa, terrain_height, lat, lon
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: albedo, l2cfr
@@ -1415,6 +1277,11 @@ CONTAINS
     REAL (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1), INTENT (INOUT) :: scattw
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: surface_pressure
+
+    ! ----------------
+    ! output variables
+    ! ----------------
+    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     ! ---------------
     ! Local variables
@@ -1440,11 +1307,6 @@ CONTAINS
          local_cfr, local_raa, out_pre_lay
     real (kind=4) :: local_saa, local_vaa
 
-    !
-    real (kind=r8) :: hour
-    real (kind=4) :: lon_f, lat_f, ctp_f
-    integer :: year, month, day
-
     ! Error variables
     INTEGER (KIND=i4) :: locerrstat
 
@@ -1465,8 +1327,14 @@ CONTAINS
        ! Loop over xtrack positions
        ! --------------------------
        DO ixtrack = 1, nx
-
-          IF (amfdiag(ixtrack,itime) .LT. 0) CYCLE
+          ! Only calculate scattering weights if we have geolocation,
+          ! albedo, and cloud information. 
+          if ( btest(amfdiag(ixtrack,itime),0) .or. &
+               btest(amfdiag(ixtrack,itime),2) .or. &
+               btest(amfdiag(ixtrack,itime),5) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+             cycle
+          end if
 
           ! ----------------------------------------------
           ! If this point is reached then scattw should be
@@ -1488,18 +1356,6 @@ CONTAINS
           local_srf = REAL(terrain_height(ixtrack,itime), KIND = r8)
           local_ozo_wgh(1:2) = cli_wgh_ozo_pro(ixtrack,itime,1:2)
           local_ozo_idx(1:2) = cli_idx_ozo_pro(ixtrack,itime,1:2)
-          if (any(local_ozo_idx(1:2) < 1)) cycle
-          ! ----------------------------------------------
-          ! If sza > amf_max_sza set it for calculation to
-          ! amf_max_sza
-          ! ----------------------------------------------
-          IF (local_sza .GT. amf_max_sza) local_sza = amf_max_sza
-          !------------------------------------------------------
-          ! We also need to check vza for values >max(vza_lut)
-          ! or else flag pixel as bad and move on...
-          ! -----------------------------------------------------
-          ! reset value is arbitrary, but approved by Gonzalo
-          IF (local_vza .GT. maxval(lut_vza)) local_vza = maxval(lut_vza)-0.1
 
           ! ----------------------
           ! Relative azimuth angle
@@ -1513,34 +1369,36 @@ CONTAINS
           ! ----------------------------------------------
           local_srf = 1013.0_r8 * (10.0_r8 ** (local_srf / 1000.0_r8 / (-16.0_r8)))
 
-          ! ------------------------------------------------------
-          ! Bringing it to the lowest available pressure if needed
-          ! ------------------------------------------------------
-          IF (local_srf .GT. 1030.0) local_srf = 1030.0_r8
-          ! Save it in ouptut variable
-          surface_pressure(ixtrack,itime) = REAL(local_srf, KIND=r4)
+          ! FIXME???
+          ! Make sure surface and local
+          ! pressures are within LUT limits
+          if ( local_srf > maxval(lut_srf) ) then
+             local_srf = maxval(lut_srf)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),8)
+          else if (local_srf < minval(lut_srf) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),8)
+             local_srf = minval(lut_srf)
+          end if
+          if ( local_ctp > maxval(lut_srf) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             local_ctp = maxval(lut_srf)
+          else if (local_ctp < minval(lut_srf) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             local_ctp = minval(lut_srf)
+          end if             
 
-          ! ---------------------------------------------------------------------------
-          ! If cloud pressure is greater than surface pressure (cloud below surface!!!)
-          ! then use climatology to correct cloud pressure.
-          ! ---------------------------------------------------------------------------
-          IF (local_ctp .GT. local_srf) THEN
-            call tio_f_taix_time_to_utc_caldate (time(itime), year, month, day, hour)
-            lon_f = lon(ixtrack, itime)
-            lat_f = lat(ixtrack, itime)
-            locerrstat = 0
-            call clim_cloud (cct, month, day, lon_f, lat_f, ctp_f, locerrstat)
-            if (locerrstat /= 0) return
-            if (ctp_f > local_srf) ctp_f = real (local_srf, kind=r4)
-            local_ctp = ctp_f
-            l2ctp(ixtrack, itime) = ctp_f
-          END IF
+          ! FIXME!!! Assign surface pressure values. They should be comming from the climatology
+          surface_pressure(ixtrack,itime) = real(local_srf,kind=r4)
 
-          ! -----------------------------------------------------------------
-          ! If cloud pressure is lower than the minimum available in LUT then
-          ! force it to match the lowest available pressure
-          ! -----------------------------------------------------------------
-          IF (local_ctp .LT. MINVAL(lut_srf)) local_ctp = REAL(MINVAL(lut_srf),KIND=r8)
+          ! -----------------------------------------------
+          ! Don't compute scattering weight if local_sza or
+          ! local_vza, local_srf or local_cld  are outside
+          ! LUT limits
+          ! -----------------------------------------------
+          if ( local_sza > maxval(lut_sza) .or. local_vza > maxval(lut_vza) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+             cycle
+          end if
 
           ! ----------
           ! Find nodes
@@ -1740,7 +1598,7 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_clear, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-            amfdiag(ixtrack,itime) = omi_scattfail_amf
+            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
             write(logmsg, '(a55,i4,i4)') &
                  "compute_scatt: Radiance_clr interpol failed at ", &
                  ixtrack,itime
@@ -1753,7 +1611,7 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_cloud, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-            amfdiag(ixtrack,itime) = omi_scattfail_amf
+            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
             write(logmsg, '(a55,i4,i4)') &
                  "compute_scatt: Radiance_cld interpol failed at ", &
                  ixtrack,itime
@@ -1771,12 +1629,12 @@ CONTAINS
                      Sca_5D_clear(isrf,ilay,1:nalb,1:nvza,1:nsza), &
                      local_alb, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                  amfdiag(ixtrack,itime) = omi_scattfail_amf
-                  write(logmsg, '(a55,i4,i4)') &
-                       "compute_scatt: Sca_2D interpol failed at ", &
-                       ixtrack,itime
-                  call tell_log (1,logmsg)
-                  goto 999
+                   amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+                   write(logmsg, '(a55,i4,i4)') &
+                        "compute_scatt: Sca_2D interpol failed at ", &
+                        ixtrack,itime
+                   call tell_log (1,logmsg)
+                   goto 999
                 END IF
              END DO
           END DO
@@ -1801,7 +1659,7 @@ CONTAINS
              Sca_1D(ilay) = linInterpol(nsrf, REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
                   Sca_2D(1:nsrf,ilay), REAL(local_srf,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: Sca_1D interpol failed at ", &
                     ixtrack,itime
@@ -1820,7 +1678,7 @@ CONTAINS
                      Sca_5D_cloud(ictp,ilay,1:ncld_alb,1:nvza,1:nsza), &
                      amf_alb_cld, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                  amfdiag(ixtrack,itime) = omi_scattfail_amf
+                  amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
                   write(logmsg, '(a55,i4,i4)') &
                        "compute_scatt: Sca_2D_cloud interpol failed at ", &
                        ixtrack,itime
@@ -1850,7 +1708,7 @@ CONTAINS
              Sca_1D_cloud(ilay) = linInterpol(nctp, REAL(lut_srf(idx_ctp(1):idx_ctp(2)),KIND=8), &
                   Sca_2D_cloud(1:nctp,ilay), REAL(local_ctp,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: Sca_1D_cloud interpol failed at ", &
                     ixtrack,itime
@@ -1893,7 +1751,7 @@ CONTAINS
              scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
                   Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = omi_scattfail_amf
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: output press grid interpol failed at ", &
                     ixtrack,itime
@@ -1941,7 +1799,7 @@ CONTAINS
     type (clim_pres_type), intent(in) :: cpt
     INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
     REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(IN) :: climatology, scattw
-    INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: amfdiag
+    INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(out) :: amfdiag
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: surface_pressure
     real (kind=r4), dimension(1:nx,0:nt-1), intent(in) :: lat, lon
 
@@ -2016,19 +1874,11 @@ CONTAINS
     DO itimes  = 0, nt-1 ! Swath lines loop
       DO ixtrack = 1, nx ! Xtrack pixel loop
 
-        ! ------------------------------------------------
-        ! Set all amf with amfdiag < 0 to r8_missval
-        ! ------------------------------------------------
-        IF ( amfdiag(ixtrack,itimes) .LT. 0 ) THEN
-          saoamf(ixtrack,itimes) = r8_missval
-          CYCLE
-        ENDIF
-
-        ! Skip points with invalid geolocation.
-        if (abs(lon(ixtrack,itimes)) > 360.0 .or. abs(lat(ixtrack,itimes)) > 90.0) then
-          saoamf(ixtrack,itimes) = r8_missval
-          cycle
-        endif
+        ! -------------------------------------------
+        ! We can only calculate AMFs if we have both,
+        ! scattering weights and gas climatology
+        ! -------------------------------------------
+        IF ( btest(amfdiag(ixtrack,itimes),7) .or. btest(amfdiag(ixtrack,itimes),10) ) cycle
 
         ! ---------------------------------------------------
         ! Read tropopause pressure from met forecast file
@@ -2080,9 +1930,6 @@ CONTAINS
              temperature_profile(1:CmETA) = real (temp_on_isobar_f, kind=r8)
            endif
 
-           ! Set temperature profile constant and equal to 220K
-           ! temperature_profile = 220.0_r8
-
            ! Find which layer is closer to the tropopause.
            tropopause_idx = MINLOC(ABS(pressure_grid-REAL(tropopause_pressure(ixtrack,itimes),KIND=r4)),1)
 
@@ -2114,6 +1961,11 @@ CONTAINS
         saoamf(ixtrack,itimes) = SUM(scattw(1:CmETA,ixtrack, itimes) * &
              climatology(1:CmETA,ixtrack,itimes))     / &
              SUM(climatology(1:CmETA,ixtrack,itimes))
+
+        ! --------------------------------------------------------------------
+        ! Unset amfdiag pixel 1 to indicate molecular instead of geometric amf
+        ! --------------------------------------------------------------------
+        amfdiag(ixtrack,itimes) = ibclr(amfdiag(ixtrack,itimes),1)
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
