@@ -29,7 +29,6 @@ General fitting parameters
  1.0E-04       # absolute    convergence constant  (EPSABS = mach. prec.)
  1.0E-04       # parameter   convergence constant  (EPSX   = SQRT(mach. prec.))
 
-
 # ========================================================================
 # Selection of Solar Composite Spectrum
 # (1) Logical for Yes/No Solar Composite spectrum
@@ -87,7 +86,6 @@ Fitting Residual Constraints
 -4   -1      # Radiance Reference
 -3   -2      # Radiance Fit
 
-
 # ========================================================================
 # Setting for the Radiance Reference/Wavelength Calibration line.
 # (1) Logical for Yes/No Radiance Reference
@@ -101,7 +99,6 @@ Radiance reference setting
 F
 T 0
 -30.0 +30.0
-
 
 # ========================================================================
 # Setting for the fitting wavelength window
@@ -119,35 +116,23 @@ UV1   # JCH use UV1 for tempo file format
 424.0 426.0 450.0 452.0 0.0 0.0
 
 # ------------------------------------------------------------------------
-# Weighting-function modified Air Mass Factors
+# Air Mass Factor calculation
 #
-# 1st line: Logical ("T"/"F") followed by "1/2/3" where
-#           1 = Stratospheric AMF
-#           2 = Stratospheric and Tropospheric AMF
-#           3 = Tropospheric AMF
-#           Not applicable to HCHO. Just left here to back compliance with
-#           the BrO development
-# 2nd line: Three albedos, the first for land and ocean, the
-#           second for snow surfaces and the third for clouds
-#           (Note that at present the albedo is not interpolated for the 
-#           wavelenght dependent AMFs; the closest match
-#           is being used instead.)
-# 3rd line: Only read if "1st line" is "F"; 
-#           wavelengths for AMF table look-up.
-#              If only one wavelength to be used set both to same value
-#              Averaged for Scattering weights
-#           NOTE: WVL <= 0 will sets AMFs to 1.0 ("slant columns")
-#           Third number indicating maximun SZA for AMFs calculations
-#              SZA above it will be given that SZA for the AMF interpolation
-# ---------------------------------------------------------------
-Use weighting-function modified AMFs?
-F 1
-0.10 0.85 0.80
-440.0 440.0 70.0
+# 1st line: amf_wvl, amf_max_sza
+#     Wavelength of AMF calculation (amf_wvl): wavelength for calculation,
+#         if not available in scattering weights LUT will find the closest
+#
+# 2nd line: Three albedos: the first for land and ocean (amf_alb_lnd), the
+#           second for snow surfaces (amf_alb_sno) and the third for
+#           clouds (amf_alb_cld)
+# ------------------------------------------------------------------------
+AMF calculation settings
+440.0
+0.10 0.50 0.80
 
 # ------------------------------------------------------------------------
 # Setting for the solar calibration parameters
-# 
+#
 #   INT ... maximum number of iterations for wvl.cal. (<0: default)
 #   bl0 ... baseline 0th order
 #   bl1 ... baseline 1st order
@@ -176,7 +161,7 @@ bl2   0.0001   -1.0e+30   1.0e+30
 bl3  -5.0E-05  -1.0e+30   1.0e+30
 bl4   0         0         0       0.0001   -1.0e+30   1.0e+30
 bl5   0         0         0       0.0001   -1.0e+30   1.0e+30
-sc0   1.0       1.0       1.0    
+sc0   1.0       1.0       1.0
 sc1  -0.0050   -1.0e+30   1.0e+30
 sc2  -0.0003   -1.0e+30   1.0e+30
 sc3  -8.0E-05  -1.0e+30   1.0e+30
@@ -187,7 +172,7 @@ hwe   0.3       0.0       3.0     # Gaussian HW@1/e
 asy   0.0       0.0       0.0     # Gaussian asymmetry
 sgk   2.0       2.0       2.0     # Super-Gaussian shape factor
 shi   0.05     -0.1       0.1
-squ   0         0         0    
+squ   0         0         0
 eoi   0         0         0        # end of input
 
 Radiance calibration parameters
@@ -203,7 +188,7 @@ bl2    0.0001    -1.0e+30    1.0e+30
 bl3    0.0001    -1.0e+30    1.0e+30
 bl4    0          0          0       0.0001    -1.0e+30    1.0e+30
 bl5    0          0          0       0.0001    -1.0e+30    1.0e+30
-sc0    1.0        1.0        1.0    
+sc0    1.0        1.0        1.0
 sc1    0.001    -1.0e+30    1.0e+30
 sc2    5.0E-05   -1.0e+30    1.0e+30
 sc3    5.0E-05   -1.0e+30    1.0e+30
@@ -234,7 +219,7 @@ eoi    0          0          0  # end of input
 #
 # EXCEPTION: Ozone for BrO and HCHO (and SO2) is fitted with a polynomial
 #            wavelength contribution that uses the three parameters in a
-#            different manner, namely to correct for the wavelength 
+#            different manner, namely to correct for the wavelength
 #            dependence of the AMF.
 #
 #            This requires "Correct O3 AMF Wavelength Dependence?" to be
@@ -278,19 +263,19 @@ bro
 lbe    0         0          0 5.0E-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 oclo
-lbe    0         0          0 1.0E-03   -1.0e+30   1.0e+30  
+lbe    0         0          0 1.0E-03   -1.0e+30   1.0e+30
 eoi    0         0          0
 hcho
 lbe    0         0          0 1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 h2o
-lbe    1.0e-03  -1.0e+30    1.0e+30  
+lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 lqh2o
 lbe    0         0          0
 eoi    0         0          0
 glyox
-lbe    1.0e-03  -1.0e+30    1.0e+30  
+lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 io
 lbe    0         0          0
