@@ -1822,6 +1822,7 @@ CONTAINS
     real (kind=r4), dimension(CmETA) :: isobar_f, temp_on_isobar_f
     logical :: have_synthetic_met_data
     character (len=256) :: errmsg
+    type (synth_met_type) :: smt
 
     real (kind=r8), parameter :: amf_magic_temperature_bucsela = 220.0_r8
 
@@ -1846,6 +1847,12 @@ CONTAINS
     if (0 /= index (OMSAO_meteorology_filename(1), '.nc', .true.)) then
       have_synthetic_met_data = .true.
       met = c_null_ptr
+      call open_synth_met_data (smt, trim(OMSAO_meteorology_filename(1)), errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_runtime_error, "error opening synthetic met data", &
+                         errstat)
+        return
+      endif
     else
       have_synthetic_met_data = .false.
       met = met_list_new (met_flags)
@@ -1899,7 +1906,7 @@ CONTAINS
 
            ! Get tropopause pressure and temperature profile
            if (have_synthetic_met_data) then
-             call read_synth_met_data(trim(OMSAO_meteorology_filename(1)), &
+             call read_synth_met_data(smt, &
                                       lat(ixtrack,itimes), lon(ixtrack,itimes), &
                                       tropopause_pressure(ixtrack,itimes), errstat, &
                                       pprof = pressure_grid, tprof = temperature_profile)
@@ -1974,6 +1981,8 @@ CONTAINS
 
     if (c_associated(met)) then
       call met_list_free (met)
+    else if (have_synthetic_met_data) then
+      call close_synth_met_data (smt, errstat)
     endif
 
   END SUBROUTINE compute_amf
