@@ -13,6 +13,7 @@ program test_met
   integer, parameter :: nlev = 72
   real (kind=8), dimension(nlev) :: tprof
   integer :: i, status, errstat
+  type (synth_met_type) :: smt
 
   character (kind=c_char, len=1024) :: argbuf
 
@@ -62,8 +63,10 @@ program test_met
 
   inquire (file=ncfile, exist=ncfile_exists)
   if (ncfile_exists) then
-    call read_synth_met_data (ncfile, lat, lon, ptrop, errstat, &
+    call open_synth_met_data (smt, ncfile, errstat)
+    call read_synth_met_data (smt, lat, lon, ptrop, errstat, &
                               psurf, tprof)
+    call close_synth_met_data (smt, errstat)
     write(*,'(f8.1)')psurf
     write(*,'(f8.1)')ptrop
     write(*,'(f8.1)')tprof

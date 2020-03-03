@@ -2,10 +2,19 @@
 module met_module
   use, intrinsic :: iso_c_binding, only: c_float, c_int, c_ptr
   use tell_module
+  use tio_module
   use eccodes
   implicit none
 
-  public met_list_interp_f, read_synth_met_data
+  public met_list_interp_f
+  public open_synth_met_data, close_synth_met_data, read_synth_met_data
+
+  type, public :: synth_met_type
+    private
+    real (kind=4), dimension(:,:), allocatable :: longrid, latgrid
+    integer (kind=4) :: nlon, nlat
+    type (tiof_file_type) :: metobj
+  end type
 
   !> Fortran interface for C struct \a Met_Value_Type
   type, bind(c), public :: met_value_type
@@ -111,10 +120,89 @@ contains
 
   end subroutine
 
+  subroutine open_synth_met_data (smt, metfile, errstat)
+    use netcdf, only : nf90_nowrite
+    character (len=*), intent(in) :: metfile
+    type (synth_met_type), intent(inout) :: smt
+    integer, intent(inout) :: errstat
+
+    integer :: nlat, nlon
+
+    if (errstat /= 0) return
+
+    !open the file
+    call tiof_open (metfile, smt % metobj, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+           "read_synth_met_data: failed to open synth meteorology file", &
+           errstat)
+      return
+    endif
+
+    !determine dimensions of meteorology grid
+    call tiof_inq_dimlen (smt % metobj, "x", nlon, errstat)
+    call tiof_inq_dimlen (smt % metobj, "y", nlat, errstat)
+
+    if (errstat /= 0) then
+      call tell_error(tell_io_error, &
+           "read_synth_met_data: failed to read dimensions", errstat)
+      return
+    endif
+
+    smt % nlon = nlon
+    smt % nlat = nlat
+
+    !allocate arrays where necessary
+    allocate(smt % longrid(0:nlon-1,0:nlat-1), &
+             smt % latgrid(0:nlon-1,0:nlat-1), &
+             stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "read_synth_met_data: failed to allocate arrays", errstat)
+      return
+    endif
+
+    !read in lat, lon values
+    call tiof_get2d_r4(smt % metobj, "lon", [0,0], [nlat,nlon], &
+                       smt % longrid(0:nlon-1,0:nlat-1), errstat)
+    call tiof_get2d_r4(smt % metobj, "lat", [0,0], [nlat,nlon], &
+                       smt % latgrid(0:nlon-1,0:nlat-1), errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_io_error, &
+           "read_synth_met_data: failed to read lon, lat positions", errstat)
+      return
+    endif
+
+  end subroutine
+
+  subroutine close_synth_met_data (smt, errstat)
+    type (synth_met_type), intent(inout) :: smt
+    integer, intent(inout) :: errstat
+
+    !close the file
+    call tiof_close (smt % metobj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+           "read_synth_met_data: failed to close synth meteorology file", &
+           errstat)
+      return
+    endif
+
+    !deallocate arrays
+    if (allocated(smt % longrid)) deallocate(smt % longrid, stat=errstat)
+    if (allocated(smt % latgrid)) deallocate(smt % latgrid, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error(tell_malloc_error, &
+           "read_synth_met_data: failed to deallocate arrays", errstat)
+      return
+    endif
+
+  end subroutine
+
   !> read parameters from synthetic meteorology file
   !--------------------------------------------------------------------------
   !
-  !> @param[in]  metfile  filename of netcdf synthetic meteorology file
+  !> @param[in]  smt      Instance of synth_met_type from open_synth_met_data()
   !> @param[in]  lat      latitude of target pixel
   !> @param[in]  lon      longitude of target pixel
   !> @param[out] troppres tropopause pressure value (hPa)
@@ -128,17 +216,17 @@ contains
   !
   !> @author     E. O'Sullivan Jan 2018
   !--------------------------------------------------------------------------
-  subroutine read_synth_met_data (metfile, lat, lon, troppres, errstat, &
+  subroutine read_synth_met_data (smt, lat, lon, troppres, errstat, &
                                   surfpres, tprof, pprof)
-    use netcdf, only : nf90_nowrite
     use tio_module
     implicit none
+
+    type (synth_met_type), intent(inout) :: smt
 
     ! number of pressure levels (fixed)
     integer(kind=c_int) , parameter :: nlev=72
 
     !Input variables
-    character (len=*), intent(in) :: metfile
     real (kind=4), intent(in) :: lon, lat
 
     !Output variables
@@ -150,74 +238,32 @@ contains
 
     !local variables
     integer (kind=c_int) :: nprof
-    integer(kind=4) :: nlon, nlat, err
+    integer(kind=4) :: err
     integer(kind=4), dimension(2) :: lonlatidx
-    real(kind=4), dimension(:,:), allocatable :: longrid, latgrid
     real(kind=4), dimension(1,1) :: tmp_surfpres, tmp_troppres
     real(kind=4), dimension(1,1,nlev) :: tmp_tprof, tmp_pprof
     real(kind=8), dimension(nlev) :: tlev_d, plev_d
 
-    type (tiof_file_type) :: metobj
-
     if (errstat /= 0) return
 
-    !open the file
-    call tiof_open (metfile, metobj, nf90_nowrite, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_open_error, &
-           "read_synth_met_data: failed to open synth meteorology file", &
-           errstat)
-      return
-    endif
-
-    !determine dimensions of meteorology grid
-    call tiof_inq_dimlen (metobj, "x", nlon, errstat)
-    call tiof_inq_dimlen (metobj, "y", nlat, errstat)
-
-    if (errstat /= 0) then
-      call tell_error(tell_io_error, &
-           "read_synth_met_data: failed to read dimensions", errstat)
-      return
-    endif
-
-    !allocate arrays where necessary
-    allocate(longrid(0:nlon-1,0:nlat-1), latgrid(0:nlon-1,0:nlat-1), &
-         stat=errstat)
-    if (errstat /= 0) then
-      call tell_error(tell_malloc_error, &
-           "read_synth_met_data: failed to allocate arrays", errstat)
-      return
-    endif
-
-    !read in lat, lon values
-    call tiof_get2d_r4(metobj, "lon", [0,0], [nlat,nlon], &
-         longrid(0:nlon-1,0:nlat-1), errstat)
-    call tiof_get2d_r4(metobj, "lat", [0,0], [nlat,nlon], &
-         latgrid(0:nlon-1,0:nlat-1), errstat)
-    if (errstat /= 0) then
-      call tell_error(tell_io_error, &
-           "read_synth_met_data: failed to read lon, lat positions", errstat)
-      return
-    endif
-
     !determine the nearest location to the target lon, lat
-    lonlatidx = minloc(abs(latgrid-lat)+abs(longrid-lon))
+    lonlatidx = minloc(abs(smt % latgrid-lat)+abs(smt % longrid-lon))
     !correct each index by -1 since we are using 0-indexed arrays
     lonlatidx = lonlatidx-1
 
     !read in values to be output, convert pressures from Pa to hPa
-    call tiof_get2d_r4(metobj, "TROPPB", [lonlatidx(2),lonlatidx(1)], [1,1], &
+    call tiof_get2d_r4(smt % metobj, "TROPPB", [lonlatidx(2),lonlatidx(1)], [1,1], &
          tmp_troppres, errstat)
     troppres = real(tmp_troppres(1,1)/100.0d0, kind=4)
     if (present(surfpres)) then
-      call tiof_get2d_r4(metobj, "PS", [lonlatidx(2),lonlatidx(1)], [1,1], &
+      call tiof_get2d_r4(smt % metobj, "PS", [lonlatidx(2),lonlatidx(1)], [1,1], &
            tmp_surfpres, errstat)
       surfpres = real(tmp_surfpres(1,1)/100.0d0, kind=4)
     endif
 
     if (present(tprof)) then
       ! read the temperature profile
-      call tiof_get3d_r4(metobj, "T", [0,lonlatidx(2),lonlatidx(1)], &
+      call tiof_get3d_r4(smt % metobj, "T", [0,lonlatidx(2),lonlatidx(1)], &
                          [nlev,1,1], tmp_tprof, errstat)
       if (errstat /= 0) then
         call tell_error(tell_io_error, &
@@ -230,7 +276,7 @@ contains
         ! temperatures onto that pressure grid.
         ! Read the pressure grid, and interpolate on arrays of doubles
         ! because the interpolation routine wants doubles.
-        call tiof_get3d_r4(metobj, "PL", [0,lonlatidx(2),lonlatidx(1)], &
+        call tiof_get3d_r4(smt % metobj, "PL", [0,lonlatidx(2),lonlatidx(1)], &
                            [nlev,1,1], tmp_pprof, errstat)
         if (errstat /= 0) then
           call tell_error(tell_io_error, &
@@ -262,24 +308,6 @@ contains
         endif
         tprof(:) = real(tmp_tprof(1,1,nlev:1:-1), kind=8)
       endif
-    endif
-
-    !close the file
-    call tiof_close (metobj, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_error, &
-           "read_synth_met_data: failed to close synth meteorology file", &
-           errstat)
-      return
-    endif
-
-    !deallocate arrays
-    if (allocated(longrid)) deallocate(longrid, stat=errstat)
-    if (allocated(latgrid)) deallocate(latgrid, stat=errstat)
-    if (errstat /= 0) then
-      call tell_error(tell_malloc_error, &
-           "read_synth_met_data: failed to deallocate arrays", errstat)
-      return
     endif
 
   end subroutine read_synth_met_data
