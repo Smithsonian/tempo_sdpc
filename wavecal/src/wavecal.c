@@ -1266,8 +1266,6 @@ static int read_feature_window (config_setting_t *s_band, Feature_Window_Type *f
 {
    config_setting_t *s;
 
-   memset ((char *)fwin, 0, sizeof *fwin);
-
    if (NULL == (s = config_setting_get_member (s_band, "feature_window")))
      return 1;
 
