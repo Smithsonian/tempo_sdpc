@@ -135,7 +135,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                                :: locerrstat, ix, itt
+    INTEGER (KIND=i4)                                :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
@@ -803,7 +803,6 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     ! Local variables
-    real (kind=r8), parameter :: minctp = 25, maxctp=1300.0 ! hPa
     integer :: year, month, day
     integer (kind=i4) :: ix, it
     real (kind=r8) :: hour
@@ -1375,6 +1374,13 @@ CONTAINS
           ! ----------------------------------------------
           local_srf = 1013.0_r8 * (10.0_r8 ** (local_srf / 1000.0_r8 / (-16.0_r8)))
 
+
+          ! Make sure that clouds are above or at the surface
+          if ( local_ctp > local_srf ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             local_ctp = local_srf
+             l2ctp(ixtrack,itime) = local_ctp
+          end if
           ! FIXME???
           ! Make sure surface and local
           ! pressures are within LUT limits
@@ -1388,9 +1394,11 @@ CONTAINS
           if ( local_ctp > maxval(lut_srf) ) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
              local_ctp = maxval(lut_srf)
+             l2ctp(ixtrack,itime) = local_ctp
           else if (local_ctp < minval(lut_srf) ) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
              local_ctp = minval(lut_srf)
+             l2ctp(ixtrack,itime) = local_ctp
           end if             
 
           ! FIXME!!! Assign surface pressure values. They should be comming from the climatology
