@@ -135,7 +135,7 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)                                :: locerrstat
+    INTEGER (KIND=i4)                                :: locerrstat, ix, itt
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
@@ -208,6 +208,19 @@ CONTAINS
        ! -------------------------------------------------------
        saoamf = amfgeo
 
+       ! ------------------------------------------------------------------
+       ! Read VLIDORT look up table. Variables are declared at module level
+       ! (Input is read only on the first pass. Subsequent passes use
+       ! cached values)
+       ! ------------------------------------------------------------------
+       call tell_log (1, 'amf_calculation: read scattering weights LUT')
+       CALL read_vlidort (errstat)
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, 'reading scattering weights LUT', errstat) 
+          call vlidort_deallocate(errstat)
+          return
+       endif
+
        ! --------------------------------------------------------------
        ! Read and interpolate albedo database. If no albedo information
        ! set amfdiag bit 2. Set amfdiag bit 3 for glint.
@@ -246,11 +259,14 @@ CONTAINS
           return
        endif
 
+
        ! Read cloud climatology
        call tell_log (1, 'amf_calculation: initialize cloud climatology')
        call clim_cloud_init (cct, errstat)
-       if (errstat /= 0) return
-
+       if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "reading cloud pressure climatology", errstat)
+          return
+       end if
        ! ---------------------------------------------------
        ! Use cloud climatology if needed and set cloud flags
        ! ---------------------------------------------------              
@@ -276,19 +292,6 @@ CONTAINS
           call tell_log (1, 'amf_calculation: write gas profile climatology to L2 file')
           call write_gas_profile (climatology, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
-       endif
-
-       ! ------------------------------------------------------------------
-       ! Read VLIDORT look up table. Variables are declared at module level
-       ! (Input is read only on the first pass. Subsequent passes use
-       ! cached values)
-       ! ------------------------------------------------------------------
-       call tell_log (1, 'amf_calculation: read scattering weights LUT')
-       CALL read_vlidort (errstat)
-       if (errstat /= 0) then
-          call tell_error (tell_io_read_error, 'reading scattering weights LUT', errstat) 
-          call vlidort_deallocate(errstat)
-          return
        endif
 
        ! --------------------------------------------------------
@@ -360,7 +363,7 @@ CONTAINS
          call tell_error (tell_io_read_error, 'writting amf correction to L2 file', errstat)
          return
       endif
-    endif
+   endif
 
   END SUBROUTINE amf_calculation
 
@@ -800,32 +803,33 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     ! Local variables
-    real (kind=r8), parameter :: minctp = 25 ! hPa
+    real (kind=r8), parameter :: minctp = 25, maxctp=1300.0 ! hPa
     integer :: year, month, day
     integer (kind=i4) :: ix, it
     real (kind=r8) :: hour
-    real (kind=r4) :: ctp
+    real (kind=r4) :: pressure
     ! ---------------------------------------------------------------
     ! Check if we have cloud information from satellite retrievals.
     ! If pressure is incomplete (or below 10 hPa assuming no clouds
     ! exist above that pressure then correct/complete information
     ! with cloud climatology.
     ! ---------------------------------------------------------------
-    where ( l2cfr(1:nx,0:nt-1) < 0.0_r8 )
+    where ( l2cfr(1:nx,0:nt-1) < 0.0_r8 .or. l2cfr(1:nx,0:nt-1) > 1.0_r8 )
        amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),5)
-    elsewhere ( l2cfr(1:nx,0:nt-1) > 0.0_r8 .and. l2ctp(1:nx,0:nt-1) < minctp)
+    elsewhere ( l2ctp(1:nx,0:nt-1) < real(minval(lut_srf),kind=r8) .or. &
+         l2ctp(1:nx,0:nt-1) > real(maxval(lut_srf),kind=r8) )
        amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),6)
     endwhere
     do ix=1,nx
        do it=0,nt-1
-          if ( btest(amfdiag(ix,it),6) .and. (.not. btest(amfdiag(ix,it),0) ) ) then
+          if ( btest(amfdiag(ix,it),6) ) then
              call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
-             call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), ctp, errstat)
+             call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
              if (errstat /= 0) then
                 call tell_error (tell_io_read_error, 'reading cloud pressure climatology', errstat)
                 return
              end if
-             l2ctp(ix,it) = real(ctp,kind=r8)
+             l2ctp(ix,it) = real(pressure,kind=r8)
           else
              cycle
           endif
@@ -1394,8 +1398,7 @@ CONTAINS
 
           ! -----------------------------------------------
           ! Don't compute scattering weight if local_sza or
-          ! local_vza, local_srf or local_cld  are outside
-          ! LUT limits
+          ! local_vza are outside LUT limits
           ! -----------------------------------------------
           if ( local_sza > maxval(lut_sza) .or. local_vza > maxval(lut_vza) ) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
