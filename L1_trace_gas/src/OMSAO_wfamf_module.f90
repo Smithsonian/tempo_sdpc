@@ -44,6 +44,13 @@ MODULE OMSAO_wfamf_module
   REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld
 
   ! ------------------------------
+  ! amfdiag bit meaning parameters
+  ! ------------------------------
+  integer(kind=i2), parameter :: yn_amf_geo=0, yn_glint=1, yn_snow=2, &
+       yn_cld_cli=3, yn_adj_srf_pre=4, yn_adj_cld_pre=5, yn_albedo=11, yn_cld=12, &
+       yn_gas_cli=13, yn_sca=14, yn_amf_cor=15 
+
+  ! ------------------------------
   ! Vlidort lookup table variables
   ! ------------------------------
   ! --------------
@@ -186,7 +193,7 @@ CONTAINS
     ! -----------------------------------------
     IF (amf_wvl .LT. 0.0) THEN
        saoamf = 1.0_r8
-       amfdiag=ibset(amfdiag,0)
+       amfdiag=ibset(amfdiag,yn_amf_cor)
     ELSE
 
        ! -----------------
@@ -391,7 +398,7 @@ CONTAINS
          lat(1:nx,0:nt-1) == r4_missval .or. &
          lon(1:nx,0:nt-1) == r4_missval .or. &
          terrain_height(1:nx,0:nt-1) == terrain_height_missval )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),0)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_amf_cor)
     end where
   end subroutine check_geolocation
 
@@ -415,11 +422,11 @@ CONTAINS
     ! ---------------------------------------------------
     ! Compute geometric AMF and set diagnostic flag bit 1
     ! ---------------------------------------------------
-    where (.not. btest(amfdiag(1:nx,0:nt-1),0))
+    where (.not. btest(amfdiag(1:nx,0:nt-1),yn_amf_cor))
        amfgeo(1:nx,0:nt-1) = &
             1.0_r8 / cos ( real(sza(1:nx,0:nt-1),KIND=r8)*deg2rad ) + &
             1.0_r8 / cos ( real(vza(1:nx,0:nt-1),KIND=r8)*deg2rad )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),1)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_amf_geo)
     end where
     return
   end subroutine compute_geometric_amf
@@ -647,7 +654,7 @@ CONTAINS
           ! resolution database
           if ( lonp < minval(OMLER_longitude) .or. lonp > maxval(OMLER_longitude) .or. &
                latp < minval(OMLER_latitude) .or. latp > maxval(OMLER_latitude) ) then
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),2)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_albedo)
              cycle
           end if
 
@@ -723,7 +730,7 @@ CONTAINS
     ! Set amfdiag bit 3 for glint
     ! ---------------------------
     where (glint(1:nx,0:nt-1) /= 0)
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),3)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_glint)
     end where
 
     errstat = max(errstat, locerrstat)
@@ -772,7 +779,7 @@ CONTAINS
           else if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
              frc = real(snow(ix,it),kind=r8)/100.0_r8
              albedo(ix,it) = (1.0_r8-frc) * albedo (ix,it) + frc * amf_alb_sno
-             amfdiag(ix,it) = ibset(amfdiag(ix,it),4)
+             amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_snow)
           end if
        end do
     end do
@@ -814,14 +821,14 @@ CONTAINS
     ! with cloud climatology.
     ! ---------------------------------------------------------------
     where ( l2cfr(1:nx,0:nt-1) < 0.0_r8 .or. l2cfr(1:nx,0:nt-1) > 1.0_r8 )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),5)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_cld)
     elsewhere ( l2ctp(1:nx,0:nt-1) < real(minval(lut_srf),kind=r8) .or. &
          l2ctp(1:nx,0:nt-1) > real(maxval(lut_srf),kind=r8) )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),6)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_cld_cli)
     endwhere
     do ix=1,nx
        do it=0,nt-1
-          if ( btest(amfdiag(ix,it),6) ) then
+          if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
              call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
              if (errstat /= 0) then
@@ -914,8 +921,8 @@ CONTAINS
     do itimes = 0, nt-1
        do ixtrack = 1, nx
           ! Skip this pixel if geolocation information is not available
-          if (btest(amfdiag(ixtrack,itimes),0)) then
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+          if (btest(amfdiag(ixtrack,itimes),yn_amf_cor)) then
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
              cycle
           end if
 
@@ -933,21 +940,21 @@ CONTAINS
           call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating pressure", errstat)
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
              cycle
           end if
           ! Get vmr profile
           call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
              cycle
           end if
           ! Compute partical columns
           call clim_partial_column (pres, vmr, partial_column, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating partiacl column", errstat)
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),7)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
              cycle
           end if
           ! Fix non-physical partial columns
@@ -1322,7 +1329,7 @@ CONTAINS
     locerrstat = 0
     call clim_pres_eta (cpt, eta_a, eta_b, locerrstat)
     if (locerrstat /= 0) return
-
+  
     ! ---------------
     ! Loop over lines
     ! ---------------
@@ -1333,11 +1340,11 @@ CONTAINS
        DO ixtrack = 1, nx
           ! Only calculate scattering weights if we have geolocation,
           ! albedo, and cloud information. 
-          if ( btest(amfdiag(ixtrack,itime),0) .or. &
-               btest(amfdiag(ixtrack,itime),2) .or. &
-               btest(amfdiag(ixtrack,itime),5) .or. &
+          if ( btest(amfdiag(ixtrack,itime),yn_amf_cor) .or. &
+               btest(amfdiag(ixtrack,itime),yn_albedo) .or. &
+               btest(amfdiag(ixtrack,itime),yn_cld) .or. &
                ixtrack < xtrange(itime,1) .or. ixtrack > xtrange(itime,2) ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
              cycle
           end if
 
@@ -1377,7 +1384,7 @@ CONTAINS
 
           ! Make sure that clouds are above or at the surface
           if ( local_ctp > local_srf ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_cld_pre)
              local_ctp = local_srf
              l2ctp(ixtrack,itime) = local_ctp
           end if
@@ -1386,17 +1393,17 @@ CONTAINS
           ! pressures are within LUT limits
           if ( local_srf > maxval(lut_srf) ) then
              local_srf = maxval(lut_srf)
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),8)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_srf_pre)
           else if (local_srf < minval(lut_srf) ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),8)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_srf_pre)
              local_srf = minval(lut_srf)
           end if
           if ( local_ctp > maxval(lut_srf) ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_cld_pre)
              local_ctp = maxval(lut_srf)
              l2ctp(ixtrack,itime) = local_ctp
           else if (local_ctp < minval(lut_srf) ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),9)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_cld_pre)
              local_ctp = minval(lut_srf)
              l2ctp(ixtrack,itime) = local_ctp
           end if             
@@ -1409,7 +1416,7 @@ CONTAINS
           ! local_vza are outside LUT limits
           ! -----------------------------------------------
           if ( local_sza > maxval(lut_sza) .or. local_vza > maxval(lut_vza) ) then
-             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
              cycle
           end if
 
@@ -1611,7 +1618,7 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_clear, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
             write(logmsg, '(a55,i4,i4)') &
                  "compute_scatt: Radiance_clr interpol failed at ", &
                  ixtrack,itime
@@ -1624,7 +1631,7 @@ CONTAINS
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
                Rad_3D_cloud, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
-            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+            amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
             write(logmsg, '(a55,i4,i4)') &
                  "compute_scatt: Radiance_cld interpol failed at ", &
                  ixtrack,itime
@@ -1642,7 +1649,7 @@ CONTAINS
                      Sca_5D_clear(isrf,ilay,1:nalb,1:nvza,1:nsza), &
                      local_alb, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                   amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+                   amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                    write(logmsg, '(a55,i4,i4)') &
                         "compute_scatt: Sca_2D interpol failed at ", &
                         ixtrack,itime
@@ -1672,7 +1679,7 @@ CONTAINS
              Sca_1D(ilay) = linInterpol(nsrf, REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
                   Sca_2D(1:nsrf,ilay), REAL(local_srf,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: Sca_1D interpol failed at ", &
                     ixtrack,itime
@@ -1691,7 +1698,7 @@ CONTAINS
                      Sca_5D_cloud(ictp,ilay,1:ncld_alb,1:nvza,1:nsza), &
                      amf_alb_cld, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                 IF ( status /= 0 ) THEN
-                  amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+                  amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                   write(logmsg, '(a55,i4,i4)') &
                        "compute_scatt: Sca_2D_cloud interpol failed at ", &
                        ixtrack,itime
@@ -1721,7 +1728,7 @@ CONTAINS
              Sca_1D_cloud(ilay) = linInterpol(nctp, REAL(lut_srf(idx_ctp(1):idx_ctp(2)),KIND=8), &
                   Sca_2D_cloud(1:nctp,ilay), REAL(local_ctp,KIND=8), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: Sca_1D_cloud interpol failed at ", &
                     ixtrack,itime
@@ -1764,7 +1771,7 @@ CONTAINS
              scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
                   Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
-               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),10)
+               amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                write(logmsg, '(a55,i4,i4)') &
                     "compute_scatt: output press grid interpol failed at ", &
                     ixtrack,itime
@@ -1898,7 +1905,7 @@ CONTAINS
         ! We can only calculate AMFs if we have both,
         ! scattering weights and gas climatology
         ! -------------------------------------------
-        IF ( btest(amfdiag(ixtrack,itimes),7) .or. btest(amfdiag(ixtrack,itimes),10) ) cycle
+        IF ( btest(amfdiag(ixtrack,itimes),yn_gas_cli) .or. btest(amfdiag(ixtrack,itimes),yn_sca) ) cycle
 
         ! ---------------------------------------------------
         ! Read tropopause pressure from met forecast file
@@ -1985,7 +1992,7 @@ CONTAINS
         ! --------------------------------------------------------------------
         ! Unset amfdiag pixel 1 to indicate molecular instead of geometric amf
         ! --------------------------------------------------------------------
-        amfdiag(ixtrack,itimes) = ibclr(amfdiag(ixtrack,itimes),1)
+        amfdiag(ixtrack,itimes) = ibclr(amfdiag(ixtrack,itimes),yn_amf_geo)
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
