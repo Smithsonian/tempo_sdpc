@@ -27,7 +27,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: &
       r4_missval, downweight, normweight, nlines_max
     USE OMSAO_indices_module,    ONLY: &
-      qual_flag_mis, qual_flag_bad, qual_flag_err
+      qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, &
       ctrl_fit_winexc_lim, radiance_reference_lnums, radref_latrange, &
       Radiance_Paras_Type
@@ -196,7 +196,11 @@ CONTAINS
     omi_radref_sza = 0.0_r4 ; omi_radref_vza = 0.0_r4
     n_rad_wvl_max = 0
 
-    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+    bad_qflg_mask = 0
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_mis)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_bad)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_err)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_sat)
 
     DO iline = radiance_reference_lnums(1), radiance_reference_lnums(2), nlines_max
 
@@ -856,7 +860,7 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
-      qual_flag_mis, qual_flag_bad, qual_flag_err
+      qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
     use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_solar_comp
     USE OMSAO_solcomp_module,       ONLY: solarcomp_pars
@@ -966,7 +970,12 @@ CONTAINS
     ! Find the pixel quality flags.
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+    bad_qflg_mask = 0
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_mis)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_bad)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_err)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_sat)
+
     WHERE (iand (omi_rad_qflg(1:n_adj), bad_qflg_mask) /= 0)
       adj_wgts(1:n_adj) = downweight
       adj_spec(1:n_adj) = 0.0_r8

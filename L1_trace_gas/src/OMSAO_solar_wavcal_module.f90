@@ -17,7 +17,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY: downweight, normweight, r4_missval
     USE OMSAO_indices_module,         ONLY: &
-      qual_flag_mis, qual_flag_bad, qual_flag_err
+      qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     use ctrlvars, only: yn_spectrum_norm
     !USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
@@ -117,7 +117,12 @@ CONTAINS
     ! as of 13 September 2004 and thus not used yet; tpk note to himself)
     ! Choice of flags is based on the recommendations of the L1b README.
     ! --------------------------------------------------------------------
-    bad_qflg_mask = ior(qual_flag_mis, ior (qual_flag_bad, qual_flag_err))
+    bad_qflg_mask = 0
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_mis)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_bad)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_err)
+    bad_qflg_mask = ior(bad_qflg_mask, qual_flag_sat)
+
     where (iand (irr%qflags(1:num_irr_wvl, xtpix), bad_qflg_mask) /= 0)
       adj_wgts(1:num_irr_wvl) = downweight
       adj_spec(1:num_irr_wvl) = 0.0_r8
