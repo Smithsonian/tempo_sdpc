@@ -1154,12 +1154,11 @@ static int ccd_mean_storage_region_dark (const CCD_Type *ccd,
    return 0;
 }
 
-static int map_active_pixels (const CCD_Type *ccd, int elem_size,
+static int map_active_pixels (const CCD_Object_Type *obj, int elem_size,
                               char *active, int active_num_cols,
                               char *padded, int padded_num_cols,
                               int (*process_row)(void *, void *, size_t, int))
 {
-   const CCD_Object_Type *obj = &ccd->obj;
    int padded_top_offset, padded_bottom_offset, padded_quad_row_offset;
    int padded_offset, active_offset;
    int num_active_rows, p;
@@ -1219,10 +1218,8 @@ static int copy_active_from_padded (void *p_active, void *p_padded, size_t num_e
    return 0;
 };
 
-static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd,
-                                           const Image_Type *img)
+static Image_Type *copy_active_pixels (const CCD_Object_Type *obj, const Image_Type *img)
 {
-   const CCD_Object_Type *obj = &ccd->obj;
    int image_type, num_active_rows, num_active_cols;
    Image_Type *aimg = NULL;
 
@@ -1241,16 +1238,28 @@ static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd,
      return NULL;
    image_set_type (aimg, IMAGE_TYPE_ACTIVE);
 
-   (void) map_active_pixels (ccd, sizeof(*img->pixels),
+   (void) map_active_pixels (obj, sizeof(*img->pixels),
                              (char *)aimg->pixels, aimg->num_cols,
                              (char *)img->pixels, img->num_cols,
                              copy_active_from_padded);
-   (void) map_active_pixels (ccd, sizeof(*img->pixel_quality_flags),
+   (void) map_active_pixels (obj, sizeof(*img->pixel_quality_flags),
                              (char *)aimg->pixel_quality_flags, aimg->num_cols,
                              (char *)img->pixel_quality_flags, img->num_cols,
                              copy_active_from_padded);
 
    return aimg;
+}
+
+static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd, const Image_Type *img)
+{
+   const CCD_Object_Type *obj = &ccd->obj;
+   return copy_active_pixels (obj, img);
+}
+
+static Image_Type *clt_copy_active_pixels (const CCD_Linearity_Type *clt, const Image_Type *img)
+{
+   const CCD_Object_Type *obj = &clt->obj;
+   return copy_active_pixels (obj, img);
 }
 
 static void ccd_active_image_dims (const CCD_Type *ccd,
@@ -1312,7 +1321,7 @@ static int ccd_apply_pixel_quality_flags (const CCD_Type *ccd, Image_Type *img,
         return -1;
      }
 
-   return map_active_pixels (ccd, sizeof(Image_Pqf_Bitmap_Type),
+   return map_active_pixels (&ccd->obj, sizeof(Image_Pqf_Bitmap_Type),
                              (char *)flags, num_cols,
                              (char *)img->pixel_quality_flags, img->num_cols,
                              apply_active_flag_array_to_padded);
@@ -1878,7 +1887,7 @@ error_return:
    return NULL;
 }
 
-static void ccd_linearity_delete (CCD_Linearity_Type *clt)
+static void clt_delete (CCD_Linearity_Type *clt)
 {
    if (clt == NULL)
      return;
@@ -1898,11 +1907,15 @@ CCD_Linearity_Type *ccd_linearity_init (void)
    memset ((char *)clt, 0, sizeof *clt);
 
    if (0 != init_ccd_object (&clt->obj))
-     goto error_return;
+     {
+        clt_delete (clt);
+        return NULL;
+     }
 
-   clt->clt_delete = ccd_linearity_delete;
+   clt->clt_delete = clt_delete;
    clt->clt_correct_coadd = clt_correct_coadd;
    clt->clt_correct_offset = clt_correct_offset;
+   clt->clt_copy_active_pixels = clt_copy_active_pixels;
 
    /* FIXME? We could read this from the config file, but if the algorithm
     * doesn't actually check the saturation flags it doesn't matter.
@@ -1910,8 +1923,4 @@ CCD_Linearity_Type *ccd_linearity_init (void)
    clt->saturation_fudge_factor = 0.99;
 
    return clt;
-
-error_return:
-   ccd_linearity_delete (clt);
-   return NULL;
 }
