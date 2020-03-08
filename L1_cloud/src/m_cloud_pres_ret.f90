@@ -123,6 +123,7 @@ contains
 
     !local vraiables
     character (len=128) :: logmsg
+    integer :: polyfit_status
 
     if (errstat /= 0) return
 
@@ -504,7 +505,15 @@ contains
 
         !construct first guess
         !=====================
-        res3(1:nterms+1)=poly_fit(wavesd,y_obs,nterms)   
+        !res3(1:nterms+1)=poly_fit(wavesd,y_obs,nterms)
+        polyfit_status = 0
+        call poly_fit (wavesd, y_obs, nterms, res3(1:nterms+1), polyfit_status)
+        if (polyfit_status /= 0) then
+          qc(ip,iLine)=IBSET(qc(ip,iLine),4)
+          cloud_pres(ip,iLine) = fill_value
+          cld_pres2(ip,iLine) = fill_value
+          cycle
+        endif
         if (shift) then
           x(nst-1,1)=0.01 ! wavelength shift
           if (squeeze)   then
@@ -551,9 +560,10 @@ contains
 
         !iteration loop
         !==============
-        do while ( iter < niters .and. diff_chi > diff_chi_max .and. .not. &
+        iteration_loop: &
+          do while ( iter < niters .and. diff_chi > diff_chi_max .and. .not. &
              (btest(qc(ip,iLine),0) .or. btest(qc(ip,iLine),4) &
-             .or. btest(qc(ip,iLine),bad_obs_flag)) ) 
+             .or. btest(qc(ip,iLine),bad_obs_flag)) )
 
           !bracket the cloud pressure between min and max
           !==============================================
@@ -848,7 +858,15 @@ contains
 
           !fit polynomial to computed radiance and subtract 
           !------------------------------------------------
-          res=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)   
+          !res=poly_fit(wavesd,rad_tot,nterms,yfit=ycalc)
+          call poly_fit (wavesd,rad_tot,nterms,res,polyfit_status,yfit=ycalc)
+          if (polyfit_status /= 0) then
+            qc(ip,iLine)=IBSET(qc(ip,iLine),4)
+            diff_chi = 0.0
+            cloud_pres(ip,iLine) = fill_value
+            cld_pres2(ip,iLine) = fill_value
+            exit iteration_loop
+          endif
           y_calc_sh=x(nst-1-nsh,1)+x(nst-2-nsh,1)*wavesd
           do ntm=2,nterms
             y_calc_sh=y_calc_sh+x(nst-1-nsh-ntm,1)*wavesp(ntm-1,:)
@@ -981,7 +999,7 @@ contains
           !=================
 !          if (iprt >= 3) call print_ret()
 
-        enddo    ! iter loop
+        enddo iteration_loop    ! iter loop
 
         !print out retrieval error covariance
         !====================================

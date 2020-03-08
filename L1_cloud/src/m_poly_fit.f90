@@ -104,8 +104,8 @@ contains
   !                   made output arguments obsolete.
   !-
 
-  function poly_fit( x, y, ndegree, &   
-       yfit, measure_errors ) result(res)   
+  subroutine poly_fit( x, y, ndegree, res, errstat, &
+       yfit,  measure_errors )
 
 !    use m_invert
     use m_invert2
@@ -116,18 +116,19 @@ contains
 
     integer, intent(in) :: ndegree
     real (KIND=8), intent(in), dimension(:) :: x,y
+    real (KIND=8), intent(out), dimension(ndegree+1) :: res
+    integer, intent(inout) :: errstat
     real (KIND=8), intent(out), dimension(:), optional :: yfit
     real (KIND=8), intent(in), dimension(:), optional :: measure_errors
     real (KIND=8), dimension(size(x)) :: sdev, sdev2
     real (KIND=8), dimension(0:ndegree,0:ndegree) :: covar
     real (KIND=8), dimension(0:ndegree) :: b
     real (KIND=8), dimension(size(x)) :: z, wy
-    real (KIND=8), dimension(ndegree+1) :: res
     real (KIND=8) :: sum1
-    integer :: status
-    integer :: errstat = 1
     integer :: n,m,p,k,j
     logical :: no_weight
+
+    if (errstat /= 0) return
 
     n = size(x)   
     if(n /= size(y)) then 
@@ -167,7 +168,8 @@ contains
     enddo    ! end of p loop, construction of covar and b
 
 
-    covar = invert2(covar,status)   
+    covar = invert2(covar, errstat)
+    if (errstat /= 0) return
 
     !endif  
 
@@ -181,6 +183,6 @@ contains
       enddo
     endif
 
-  end function poly_fit
+  end subroutine poly_fit
 
 end module m_poly_fit
