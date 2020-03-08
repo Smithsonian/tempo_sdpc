@@ -170,7 +170,7 @@ module tio_module
     tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
-    tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
+    tiof_attlist_append, tiof_attlist_free, tiof_def_atts, tiof_copy_attr, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
@@ -1111,6 +1111,41 @@ contains
     enddo
 
   end subroutine tiof_def_atts
+
+  subroutine tiof_copy_attr (from_obj, from_var, to_obj, to_var, att_name_array, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: from_obj
+    character (len=*),     intent(in) :: from_var
+    type (tiof_file_type), intent(in) :: to_obj
+    character (len=*),     intent(in) :: to_var
+    character (len=*), dimension(:), intent(in) :: att_name_array
+    integer, intent(inout) :: errstat
+
+    integer :: i, from_varid, to_varid, status
+
+    if (errstat /= 0) return
+
+    status = nf90_inq_varid (from_obj % groupid, trim(from_var), from_varid)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, "getting varid for "//trim(from_var), errstat)
+      return
+    endif
+    status = nf90_inq_varid (to_obj % groupid, trim(to_var), to_varid)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, "getting varid for "//trim(to_var), errstat)
+      return
+    endif
+
+    do i = 1,size(att_name_array)
+      status = nf90_copy_att (from_obj % groupid, from_varid, trim(att_name_array(i)), &
+                              to_obj % groupid, to_varid)
+      if (status /= nf90_noerr) then
+        call tell_error (tell_io_error, "copying attribute "//trim(att_name_array(i)), errstat)
+        return
+      endif
+    enddo
+
+  end subroutine tiof_copy_attr
 
   !> Append a new variable object to a variable list
   !! @param[inout] list  Variable list object, \a type(tiof_varlist_type)

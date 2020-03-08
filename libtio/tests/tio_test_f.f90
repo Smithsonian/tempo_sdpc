@@ -85,6 +85,11 @@ program tio_test
     stop 3
   endif
 
+  call test_attr_copy (obj, errstat)
+  if (errstat /= 0) then
+    stop 2
+  endif
+
   call test_granule_ident (obj, errstat)
   if (errstat /= 0) then
     stop 2
@@ -529,7 +534,7 @@ contains
   subroutine test_granule_ident (obj, errstat)
     use iso_c_binding, only : c_null_char
     implicit none
-    type (tiof_file_type), intent(in) :: obj
+    type (tiof_file_type), intent(inout) :: obj
     integer, intent(inout) :: errstat
 
     type (tiof_file_type) :: obj_to
@@ -589,6 +594,48 @@ contains
     call execute_command_line ('/bin/rm '//namebuf)
 
   end subroutine test_granule_ident
+
+  subroutine test_attr_copy (obj, errstat)
+    use iso_c_binding, only : c_null_char
+    implicit none
+    type (tiof_file_type), intent(inout) :: obj
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type) :: obj_to
+    type (tiof_varlist_type) :: varlist
+    character (len=*), parameter :: temp_filename = 'attr_copy_target.nc'
+
+    call tiof_create (obj_to, temp_filename, nf90_clobber, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: creating output file, errstat=',errstat
+      return
+    endif
+
+    call tiof_varlist_append (varlist, errstat, "var", nf90_int)
+    call tiof_def_vars (obj_to, varlist, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: defining variable var: errstat=',errstat
+      return
+    endif
+
+    errstat = nf90_sync (obj_to % fileid)
+
+    call tiof_push_group (obj, "band_290_490_nm", errstat)
+    call tiof_copy_attr (obj, "ground_pixel_quality_flag", obj_to, "var", &
+                         (/"comment      ", &
+                          "flag_meanings", &
+                          "flag_values  "/), errstat)
+    call tiof_pop_group (obj, errstat)
+    if (errstat /= 0) then
+      write(*,*)'*** Error: copying ground_pixel_quality_flag attributes, errstat=',errstat
+      return
+    endif
+
+    call tiof_varlist_free (varlist)
+
+    call execute_command_line ('/bin/rm '//temp_filename)
+
+  end subroutine test_attr_copy
 
   subroutine write_arrays ()
     integer :: i,j,k=1
