@@ -25,7 +25,7 @@ module output_tools
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
     write_radiance_wavecal_diagnostics, copy_pixel_corners, &
-    copy_metadata, label_output_file, &
+    copy_metadata, copy_gpqf_attributes, label_output_file, &
     read_geofields, read_column_results, read_cloud_params
 
   type (tiof_file_type), private, save, target :: primary_output_file
@@ -221,9 +221,12 @@ contains
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_amf_diag, errstat, "flag_meanings", &
-                              att_text = "cloud pressure extrapolation, snow correction, glint")
-    call tiof_attlist_append (att_amf_diag, errstat, "flag_values", &
-                              att_i4 = [0,1,2])
+                              att_text = "geometric AMF, glint, snow correction, "// &
+                              "no cloud pressure, adjusted surface pressure, "// &
+                              "adjusted cloud pressure, no albedo, no cloud fraction, "// &
+                              "no gas climatology, no scattering weights, AMF disabled")
+    call tiof_attlist_append (att_amf_diag, errstat, "flag_masks", &
+                              att_i4 = [1, 2, 4, 8, 16, 32, 2048, 4096, 8192, 16384, 32768])
     ! append amf variables
     chunksizes(1) = dimsizes_levels_xtrack_step(1)            ! level dimension
     chunksizes(2) = min(dimsizes_levels_xtrack_step(2), 128)  ! xtrack dimension
@@ -282,7 +285,6 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" air mass factor diagnostic flag ", &
-                              valid_range = [0.0_r8, 2.0_r8], &
                               fillvalue = -1.0_r8, &
                               attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
@@ -836,6 +838,12 @@ contains
                               fillvalue = fill_short, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_gpqf, &
+                              nf90_int, &
+                              dimids = dimids_xtrack_step, &
+                              long_name = "ground pixel quality flag", &
+                              attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_surface_pressure, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -1173,6 +1181,8 @@ contains
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
+    call tiof_put2d_i4 (obj, tg_var_gpqf, [iline,0], [nblock,nxtrack], &
+                        input_vars % ground_pixel_quality_flag (1:nxtrack, 0:nblock-1), errstat)
     call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
@@ -1774,6 +1784,42 @@ contains
                        errstat)
     endif
   end subroutine copy_metadata
+
+  subroutine copy_gpqf_attributes (l1bfile, rad_group, errstat)
+    implicit none
+    character (len=*), intent(in) :: l1bfile
+    character (len=*), intent(in) :: rad_group
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l1b
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_open (l1bfile, l1b, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, "copy_gpqf_attributes: opening file "//trim(l1bfile), &
+                       errstat)
+      return
+    endif
+
+    call tiof_push_group (l1b, rad_group, errstat)
+
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_copy_attr (l1b, tg_var_gpqf, obj, tg_var_gpqf, &
+                         (/"comment      ", &
+                          "flag_meanings", &
+                          "flag_values  "/), errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_close (l1b, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, &
+                       "copy_gpqf_attributes: copying attributes", errstat)
+      return
+    endif
+
+  end subroutine copy_gpqf_attributes
 
   subroutine label_output_file (label, processing_version, errstat)
     implicit none
