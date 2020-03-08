@@ -83,7 +83,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd      )     :: cntr8
     integer :: locerrstat
     INTEGER (KIND=i4) :: ntrr, nxrr, nwrr
-    integer (kind=i2) :: bad_qflg_mask
+    integer (kind=i4) :: bad_qflg_mask
     real (kind=r8) :: sum_cntr8
     character (len=128) :: logmsg
 
@@ -897,7 +897,7 @@ CONTAINS
       i, imin1, imax1, imin2, imax2, j1, j2 ! locerrstat,
     LOGICAL                                               :: have_good_window
     REAL    (KIND=r8), DIMENSION (n_adj)           :: weightsum
-    integer (kind=i2) :: bad_qflg_mask
+    integer (kind=i4) :: bad_qflg_mask
 
     !locerrstat = pge_errstat_ok
     do_skip_pix = .FALSE.

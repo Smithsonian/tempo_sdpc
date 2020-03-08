@@ -53,7 +53,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (irr%nwaves(xtpix))           :: weightsum
     REAL    (KIND=r8)                                       :: sol_spec_avg, asum, ssum
     INTEGER (KIND=i4) :: num_irr_wvl
-    integer (kind=i2) :: bad_qflg_mask
+    integer (kind=i4) :: bad_qflg_mask
 
     ! ----------------------------------------------
     ! Variables for separating the good from the bad
