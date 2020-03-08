@@ -231,4 +231,18 @@ extern CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta);
  */
 extern int __ccd_set_smear_corr_method (CCD_Type *ccd, const char *name);
 
+typedef struct CCD_Linearity_Type CCD_Linearity_Type;
+
+struct CCD_Linearity_Type
+{
+   void (*clt_delete)(CCD_Linearity_Type *);
+   int (*clt_correct_coadd)(const CCD_Linearity_Type *, int, Image_Type *);
+   int (*clt_correct_offset)(const CCD_Linearity_Type *, Image_Type *);
+#ifdef CCD_LINEARITY_TYPE_PRIVATE_DATA
+   CCD_LINEARITY_TYPE_PRIVATE_DATA
+#endif
+};
+
+extern CCD_Linearity_Type *ccd_linearity_init (void);
+
 #endif

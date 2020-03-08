@@ -99,6 +99,10 @@ typedef int Smear_Corr_Method_Type
 (const CCD_Object_Type *, const Image_Subset_Type *,
     int, int, const void *, const Image_Type *, Image_Pixel_Type *);
 
+#define CCD_LINEARITY_TYPE_PRIVATE_DATA \
+   CCD_Object_Type obj; \
+   float saturation_fudge_factor;
+
 #define CCD_TYPE_PRIVATE_DATA \
    CCD_Object_Type obj; \
    float saturation_fudge_factor; \
@@ -362,10 +366,9 @@ static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
    return 0;
 }
 
-static int compute_mean_eoffsets (CCD_Type *ccd, const Image_Type *img)
+static int compute_mean_eoffsets (const CCD_Object_Type *obj, const Image_Type *img,
+                                  float mean_eoffsets[NUM_OCTANTS])
 {
-   Phase_Change_Type *pct = &ccd->pct;
-   CCD_Object_Type *obj = &ccd->obj;
    int num_skip = 8;
    int num_selected = 10;
    int i;
@@ -373,12 +376,12 @@ static int compute_mean_eoffsets (CCD_Type *ccd, const Image_Type *img)
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         double mean_eoffset;
-        if (0 != mean_serial_trailing_oct (&ccd->obj, &obj->oct[i], img,
+        if (0 != mean_serial_trailing_oct (obj, &obj->oct[i], img,
                                            num_skip, num_selected, &mean_eoffset))
           {
              return -1;
           }
-        pct->mean_eoffset[i] = mean_eoffset;
+        mean_eoffsets[i] = mean_eoffset;
      }
 
    return 0;
@@ -419,7 +422,7 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
    float *eoff = pct->mean_eoffset;
    int i;
 
-   if (0 != compute_mean_eoffsets (ccd, img))
+   if (0 != compute_mean_eoffsets (&ccd->obj, img, pct->mean_eoffset))
      return -1;
 
    /* (ccd->phase_change[i] != 0) means yes, the odd/even state
@@ -440,13 +443,13 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
    return configure_using_octant_phase (ccd);
 }
 
-static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *img)
+static int perform_coadd_correction (const CCD_Object_Type *obj, int num_coadds,
+                                     float saturation_fudge_factor, Image_Type *img)
 {
-   const CCD_Object_Type *obj = &ccd->obj;
    int saturation_level_coadded = (1 << obj->num_coadd_bits) - 1;
-   float saturation_threshold_coadded = ccd->saturation_fudge_factor * saturation_level_coadded;
+   float saturation_threshold_coadded = saturation_fudge_factor * saturation_level_coadded;
    int saturation_level_readout = (1 << obj->num_readout_bits) - 1;
-   float saturation_threshold_readout = ccd->saturation_fudge_factor * saturation_level_readout;
+   float saturation_threshold_readout = saturation_fudge_factor * saturation_level_readout;
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags;
    int i, num_pixels = img->num_rows * img->num_cols;
@@ -468,8 +471,19 @@ static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *i
    return 0;
 }
 
-static int correct_offset_oct (float mean_eoffset,
-                               const Image_Subset_Type *oct,
+static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *img)
+{
+   const CCD_Object_Type *obj = &ccd->obj;
+   return perform_coadd_correction (obj, num_coadds, ccd->saturation_fudge_factor, img);
+}
+
+static int clt_correct_coadd (const CCD_Linearity_Type *clt, int num_coadds, Image_Type *img)
+{
+   const CCD_Object_Type *obj = &clt->obj;
+   return perform_coadd_correction (obj, num_coadds, clt->saturation_fudge_factor, img);
+}
+
+static int correct_offset_oct (float mean_eoffset, const Image_Subset_Type *oct,
                                Image_Type *img)
 {
    int s, sb0, se0, p, pb0, pe0;
@@ -501,19 +515,35 @@ static int correct_offset_oct (float mean_eoffset,
    return 0;
 }
 
-static int ccd_correct_offset (const CCD_Type *ccd, Image_Type *img)
+/* This is also called "bias correction" */
+static int perform_offset_correction (const CCD_Object_Type *obj,
+                                      const float mean_eoffsets[NUM_OCTANTS],
+                                      Image_Type *img)
 {
-   const Phase_Change_Type *pct = &ccd->pct;
-   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
-        if (-1 == correct_offset_oct (pct->mean_eoffset[i], &obj->oct[i], img))
+        if (-1 == correct_offset_oct (mean_eoffsets[i], &obj->oct[i], img))
           return -1;
      }
 
    return 0;
+}
+
+static int ccd_correct_offset (const CCD_Type *ccd, Image_Type *img)
+{
+   const Phase_Change_Type *pct = &ccd->pct;
+   /* Assume mean_eoffsets were computed before calling this. */
+   return perform_offset_correction (&ccd->obj, pct->mean_eoffset, img);
+}
+
+static int clt_correct_offset (const CCD_Linearity_Type *clt, Image_Type *img)
+{
+   float mean_eoffsets[NUM_OCTANTS];
+   if (0 != compute_mean_eoffsets (&clt->obj, img, mean_eoffsets))
+     return -1;
+   return perform_offset_correction (&clt->obj, mean_eoffsets, img);
 }
 
 static int correct_nonlinearity_oct (const Octant_Response_Type *oct_resp,
@@ -1845,5 +1875,43 @@ CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta)
 
 error_return:
    ccd_delete (ccd);
+   return NULL;
+}
+
+static void ccd_linearity_delete (CCD_Linearity_Type *clt)
+{
+   if (clt == NULL)
+     return;
+   free_ccd_object (&clt->obj);
+   FREE(clt);
+}
+
+CCD_Linearity_Type *ccd_linearity_init (void)
+{
+   CCD_Linearity_Type *clt = NULL;
+
+   if (NULL == (clt = (CCD_Linearity_Type *)MALLOC (sizeof *clt)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)clt, 0, sizeof *clt);
+
+   if (0 != init_ccd_object (&clt->obj))
+     goto error_return;
+
+   clt->clt_delete = ccd_linearity_delete;
+   clt->clt_correct_coadd = clt_correct_coadd;
+   clt->clt_correct_offset = clt_correct_offset;
+
+   /* FIXME? We could read this from the config file, but if the algorithm
+    * doesn't actually check the saturation flags it doesn't matter.
+    */
+   clt->saturation_fudge_factor = 0.99;
+
+   return clt;
+
+error_return:
+   ccd_linearity_delete (clt);
    return NULL;
 }
