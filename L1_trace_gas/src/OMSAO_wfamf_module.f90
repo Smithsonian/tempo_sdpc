@@ -1924,10 +1924,16 @@ CONTAINS
 
            ! Get tropopause pressure and temperature profile
            if (have_synthetic_met_data) then
-             call read_synth_met_data(smt, &
-                                      lat(ixtrack,itimes), lon(ixtrack,itimes), &
+             call read_synth_met_data(smt, lat(ixtrack,itimes), lon(ixtrack,itimes), &
                                       tropopause_pressure(ixtrack,itimes), errstat, &
                                       pprof = pressure_grid, tprof = temperature_profile)
+             ! If any pressure grid values are out of range, the interpolated temperature
+             ! will be NaN.  Replace such temperatures with the magic buscela temp.
+             do ilay=1,CmETA
+               if (isnan(temperature_profile(ilay))) then
+                 temperature_profile(ilay) = amf_magic_temperature_bucsela
+               endif
+             enddo
            else
              lon_f = real (lon(ixtrack,itimes), kind=r4)
              lat_f = real (lat(ixtrack,itimes), kind=r4)
