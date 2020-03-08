@@ -34,8 +34,13 @@ typedef struct
    /* pixel values */
    int num_readout_bits;        /* number of bits per pixel in CCD readout */
    int num_coadd_bits;          /* number of bits per pixel in coadded image */
+
+   Image_Subset_Type *psubsets; /* Allocated array to describe halves, quadrants, octants */
+   Image_Subset_Type *half;     /* Pointer to half[0:1] within psubsets */
+   Image_Subset_Type *quad;     /* Pointer to quad[0:3] within psubsets */
+   Image_Subset_Type *oct;      /* Pointer to  oct[0:7] within psubsets */
 }
-CCD_Param_Type;
+CCD_Object_Type;
 
 typedef struct
 {
@@ -91,15 +96,11 @@ typedef struct
 Phase_Change_Type;
 
 typedef int Smear_Corr_Method_Type
-(const CCD_Param_Type *, const Image_Subset_Type *,
+(const CCD_Object_Type *, const Image_Subset_Type *,
     int, int, const void *, const Image_Type *, Image_Pixel_Type *);
 
 #define CCD_TYPE_PRIVATE_DATA \
-   CCD_Param_Type params; \
-   Image_Subset_Type *psubsets; \
-   Image_Subset_Type *half; \
-   Image_Subset_Type *quad; \
-   Image_Subset_Type *oct; \
+   CCD_Object_Type obj; \
    float saturation_fudge_factor; \
    Response_Info_Type resp_info; \
    Phase_Change_Type pct; \
@@ -156,6 +157,11 @@ static void free_prnu (PRNU_Type *prnu)
    FREE(prnu->value);
 }
 
+static void free_ccd_object (CCD_Object_Type *obj)
+{
+   FREE(obj->psubsets);
+}
+
 static void ccd_delete (CCD_Type *ccd)
 {
    int i;
@@ -168,61 +174,57 @@ static void ccd_delete (CCD_Type *ccd)
      }
 
    free_prnu (&ccd->resp_info.prnu);
-
-   FREE(ccd->psubsets);
+   free_ccd_object (&ccd->obj);
    FREE(ccd);
 }
 
-static int init_ccd_params (CCD_Type *ccd)
+static int init_ccd_object_dimensions (CCD_Object_Type *obj)
 {
-   CCD_Param_Type *p = &ccd->params;
-
    /* Parallel readout (spectral) dimension
     * 1046 "rows" or "lines" per quadrant */
-   p->num_parallel_active = 1028;   /* number of active lines (including 4 for alignment) */
-   p->num_parallel_oclock = 16;     /* number of rows overclocked for smear correction */
-   p->num_parallel_sdc = 2;         /* number of storage region dark current readout rows */
+   obj->num_parallel_active = 1028;   /* number of active lines (including 4 for alignment) */
+   obj->num_parallel_oclock = 16;     /* number of rows overclocked for smear correction */
+   obj->num_parallel_sdc = 2;         /* number of storage region dark current readout rows */
 
    /* serial readout (spatial) dimension
     * 1056 "columns" or pixels per line */
-   p->num_serial_active = 1024;     /* number of active pixels */
-   p->num_serial_leading = 10;      /* number of leading buffer pixels */
-   p->num_serial_trailing = 22;     /* number of trailing buffer pixels */
+   obj->num_serial_active = 1024;     /* number of active pixels */
+   obj->num_serial_leading = 10;      /* number of leading buffer pixels */
+   obj->num_serial_trailing = 22;     /* number of trailing buffer pixels */
 
    /* Total number of pixels within a Level 0 image frame:
     * (2092 rows=lines) x (2112 columns) */
-   p->num_parallel = 2 * (p->num_parallel_active + p->num_parallel_oclock
-                          + p->num_parallel_sdc);
-   p->num_serial = 2 * (p->num_serial_active
-                        + p->num_serial_leading + p->num_serial_trailing);
+   obj->num_parallel = 2 * (obj->num_parallel_active + obj->num_parallel_oclock
+                          + obj->num_parallel_sdc);
+   obj->num_serial = 2 * (obj->num_serial_active
+                        + obj->num_serial_leading + obj->num_serial_trailing);
 
-   p->num_readout_bits = 14;
+   obj->num_readout_bits = 14;
    /* number of bits per pixel in CCD readout */
 
-   p->num_coadd_bits = 20;
+   obj->num_coadd_bits = 20;
    /* number of bits per pixel in co-added image */
 
    return 0;
 }
 
-static int init_image_subsets (CCD_Type *ccd)
+static int init_ccd_object_layout (CCD_Object_Type *obj)
 {
-   CCD_Param_Type *p = &ccd->params;
    int nr, nc, hr, hc;
 
    /* Do this only once, because the image size is invariant. */
-   if (ccd->psubsets != NULL)
+   if (obj->psubsets != NULL)
      return 0;
 
-   if (NULL == (ccd->psubsets = image_new_subsets (2+4+8)))
+   if (NULL == (obj->psubsets = image_new_subsets (2+4+8)))
      return -1;
 
-   ccd->half = ccd->psubsets;
-   ccd->quad = ccd->half + 2;
-   ccd->oct  = ccd->quad + 4;
+   obj->half = obj->psubsets;
+   obj->quad = obj->half + 2;
+   obj->oct  = obj->quad + 4;
 
-   nr = p->num_parallel;
-   nc = p->num_serial;
+   nr = obj->num_parallel;
+   nc = obj->num_serial;
    hr = nr/2;
    hc = nc/2;
 
@@ -268,28 +270,39 @@ static int init_image_subsets (CCD_Type *ccd)
     * We organize the image octant-subset arrays accordingly.
     */
 
-   image_set_subset (&ccd->half[0],  0, hr, -1,    0, nc  , +1); /* VIS */
-   image_set_subset (&ccd->half[1], hr, nr, +1,    0, nc  , +1); /* UV */
+   image_set_subset (&obj->half[0],  0, hr, -1,    0, nc  , +1); /* VIS */
+   image_set_subset (&obj->half[1], hr, nr, +1,    0, nc  , +1); /* UV */
 
-   image_set_subset (&ccd->quad[0],  0, hr, -1,    0, hc  , -1); /* VIS-A */
-   image_set_subset (&ccd->quad[1],  0, hr, -1,   hc, nc  , +1); /* VIS-B */
-   image_set_subset (&ccd->quad[2], hr, nr, +1,   hc, nc  , +1); /* UV-C */
-   image_set_subset (&ccd->quad[3], hr, nr, +1,    0, hc  , -1); /* UV-D */
+   image_set_subset (&obj->quad[0],  0, hr, -1,    0, hc  , -1); /* VIS-A */
+   image_set_subset (&obj->quad[1],  0, hr, -1,   hc, nc  , +1); /* VIS-B */
+   image_set_subset (&obj->quad[2], hr, nr, +1,   hc, nc  , +1); /* UV-C */
+   image_set_subset (&obj->quad[3], hr, nr, +1,    0, hc  , -1); /* UV-D */
 
-   image_set_subset (&ccd->oct[0],   0, hr, -1,    1, hc  , -2); /* VIS-Ao */
-   image_set_subset (&ccd->oct[1],   0, hr, -1, hc+1, nc  , +2); /* VIS-Bo */
-   image_set_subset (&ccd->oct[2],  hr, nr, +1, hc+1, nc  , +2); /* UV-Co */
-   image_set_subset (&ccd->oct[3],  hr, nr, +1,    1, hc  , -2); /* UV-Do */
+   image_set_subset (&obj->oct[0],   0, hr, -1,    1, hc  , -2); /* VIS-Ao */
+   image_set_subset (&obj->oct[1],   0, hr, -1, hc+1, nc  , +2); /* VIS-Bo */
+   image_set_subset (&obj->oct[2],  hr, nr, +1, hc+1, nc  , +2); /* UV-Co */
+   image_set_subset (&obj->oct[3],  hr, nr, +1,    1, hc  , -2); /* UV-Do */
 
-   image_set_subset (&ccd->oct[4],   0, hr, -1,    0, hc-1, -2); /* VIS-Ae */
-   image_set_subset (&ccd->oct[5],   0, hr, -1, hc  , nc-1, +2); /* VIS-Be */
-   image_set_subset (&ccd->oct[6],  hr, nr, +1, hc  , nc-1, +2); /* UV-Ce */
-   image_set_subset (&ccd->oct[7],  hr, nr, +1,    0, hc-1, -2); /* UV-De */
+   image_set_subset (&obj->oct[4],   0, hr, -1,    0, hc-1, -2); /* VIS-Ae */
+   image_set_subset (&obj->oct[5],   0, hr, -1, hc  , nc-1, +2); /* VIS-Be */
+   image_set_subset (&obj->oct[6],  hr, nr, +1, hc  , nc-1, +2); /* UV-Ce */
+   image_set_subset (&obj->oct[7],  hr, nr, +1,    0, hc-1, -2); /* UV-De */
 
    return 0;
 }
 
-static int mean_serial_trailing_oct (const CCD_Param_Type *ccdp,
+static int init_ccd_object (CCD_Object_Type *obj)
+{
+   if (0 != init_ccd_object_dimensions (obj))
+     return -1;
+
+   if (0 != init_ccd_object_layout (obj))
+     return -1;
+
+   return 0;
+}
+
+static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
                                      const Image_Subset_Type *oct,
                                      const Image_Type *img,
                                      int num_skip, int num_selected,
@@ -318,14 +331,14 @@ static int mean_serial_trailing_oct (const CCD_Param_Type *ccdp,
    if (oct->col_step > 0)
      {/* B, C */
         sb = (oct->col_beg
-              + ccdp->num_serial_trailing
+              + obj->num_serial_trailing
               - num_skip
               - num_selected);
      }
    else
      {/* A, D */
         sb = (oct->col_end
-              - ccdp->num_serial_trailing - 1
+              - obj->num_serial_trailing - 1
               + num_skip);
      }
    se = sb + num_selected;
@@ -352,6 +365,7 @@ static int mean_serial_trailing_oct (const CCD_Param_Type *ccdp,
 static int compute_mean_eoffsets (CCD_Type *ccd, const Image_Type *img)
 {
    Phase_Change_Type *pct = &ccd->pct;
+   CCD_Object_Type *obj = &ccd->obj;
    int num_skip = 8;
    int num_selected = 10;
    int i;
@@ -359,7 +373,7 @@ static int compute_mean_eoffsets (CCD_Type *ccd, const Image_Type *img)
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         double mean_eoffset;
-        if (0 != mean_serial_trailing_oct (&ccd->params, &ccd->oct[i], img,
+        if (0 != mean_serial_trailing_oct (&ccd->obj, &obj->oct[i], img,
                                            num_skip, num_selected, &mean_eoffset))
           {
              return -1;
@@ -428,10 +442,10 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
 
 static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *img)
 {
-   const CCD_Param_Type *ccdp = &ccd->params;
-   int saturation_level_coadded = (1 << ccdp->num_coadd_bits) - 1;
+   const CCD_Object_Type *obj = &ccd->obj;
+   int saturation_level_coadded = (1 << obj->num_coadd_bits) - 1;
    float saturation_threshold_coadded = ccd->saturation_fudge_factor * saturation_level_coadded;
-   int saturation_level_readout = (1 << ccdp->num_readout_bits) - 1;
+   int saturation_level_readout = (1 << obj->num_readout_bits) - 1;
    float saturation_threshold_readout = ccd->saturation_fudge_factor * saturation_level_readout;
    Image_Pixel_Type *pixels = img->pixels;
    Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags;
@@ -490,11 +504,12 @@ static int correct_offset_oct (float mean_eoffset,
 static int ccd_correct_offset (const CCD_Type *ccd, Image_Type *img)
 {
    const Phase_Change_Type *pct = &ccd->pct;
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
-        if (-1 == correct_offset_oct (pct->mean_eoffset[i], &ccd->oct[i], img))
+        if (-1 == correct_offset_oct (pct->mean_eoffset[i], &obj->oct[i], img))
           return -1;
      }
 
@@ -554,6 +569,7 @@ static int correct_nonlinearity_oct (const Octant_Response_Type *oct_resp,
 
 static int ccd_correct_nonlinearity (const CCD_Type *ccd, Image_Type *img)
 {
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    if (enable_state_query_bool (ENABLE_NONLINEARITY) < 1)
@@ -562,7 +578,7 @@ static int ccd_correct_nonlinearity (const CCD_Type *ccd, Image_Type *img)
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         int k = ccd->oct_resp_index[i];
-        if (-1 == correct_nonlinearity_oct (&ccd->oct_resp_data[k], &ccd->oct[i], img))
+        if (-1 == correct_nonlinearity_oct (&ccd->oct_resp_data[k], &obj->oct[i], img))
           return -1;
      }
 
@@ -572,7 +588,8 @@ static int ccd_correct_nonlinearity (const CCD_Type *ccd, Image_Type *img)
 static int correct_crosstalk_half (const CCD_Type *ccd, int which_half, const Image_Type *img0,
                                    float *crosstalk_vector, Image_Type *img)
 {
-   const Image_Subset_Type *half = &ccd->half[which_half];
+   const CCD_Object_Type *obj = &ccd->obj;
+   const Image_Subset_Type *half = &obj->half[which_half];
    const Image_Subset_Type *q0 = NULL;
    const Image_Subset_Type *q1 = NULL;
    int s0, sb0, se0, s1, sb1, se1, p, pb, pe;
@@ -580,13 +597,13 @@ static int correct_crosstalk_half (const CCD_Type *ccd, int which_half, const Im
 
    if (which_half == 0)
      {/* VIS */
-        q0 = &ccd->quad[0];  /* lhs -> A */
-        q1 = &ccd->quad[1];  /* rhs -> B */
+        q0 = &obj->quad[0];  /* lhs -> A */
+        q1 = &obj->quad[1];  /* rhs -> B */
      }
    else
      {/* UV */
-        q0 = &ccd->quad[3];  /* lhs -> D */
-        q1 = &ccd->quad[2];  /* rhs -> C */
+        q0 = &obj->quad[3];  /* lhs -> D */
+        q1 = &obj->quad[2];  /* rhs -> C */
      }
 
    pb = half->row_beg;
@@ -802,12 +819,13 @@ static int correct_gain_oct (const Octant_Response_Type *oct_resp,
 static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
                              float fpa_temp, float fpe_temp)
 {
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         int k = ccd->oct_resp_index[i];
-        if (-1 == correct_gain_oct (&ccd->oct_resp_data[k], &ccd->oct[i], img,
+        if (-1 == correct_gain_oct (&ccd->oct_resp_data[k], &obj->oct[i], img,
                                     fpa_temp, fpe_temp, ccd->saturation_fudge_factor))
           {
              return -1;
@@ -817,7 +835,7 @@ static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
    return 0;
 }
 
-static int smear_corr_region (const CCD_Param_Type *ccdp,
+static int smear_corr_region (const CCD_Object_Type *obj,
                               const Image_Subset_Type *quad,
                               int *sb0p, int *se0p, int *pb0p, int *pe0p)
 {
@@ -831,24 +849,24 @@ static int smear_corr_region (const CCD_Param_Type *ccdp,
    se0 = quad->col_end;
    if (quad->col_step < 0)
      {
-        sb0 += ccdp->num_serial_leading;
-        se0 -= ccdp->num_serial_trailing;
+        sb0 += obj->num_serial_leading;
+        se0 -= obj->num_serial_trailing;
      }
    else
      {
-        sb0 += ccdp->num_serial_trailing;
-        se0 -= ccdp->num_serial_leading;
+        sb0 += obj->num_serial_trailing;
+        se0 -= obj->num_serial_leading;
      }
 
    if (quad->row_step < 0)
      {
-        pb0 = quad->row_beg + ccdp->num_parallel_sdc;
-        pe0 = quad->row_end - ccdp->num_parallel_oclock;
+        pb0 = quad->row_beg + obj->num_parallel_sdc;
+        pe0 = quad->row_end - obj->num_parallel_oclock;
      }
    else
      {
-        pb0 = quad->row_beg + ccdp->num_parallel_oclock;
-        pe0 = quad->row_end - ccdp->num_parallel_sdc;
+        pb0 = quad->row_beg + obj->num_parallel_oclock;
+        pe0 = quad->row_end - obj->num_parallel_sdc;
      }
 
    if (sb0p) *sb0p = sb0;
@@ -859,7 +877,7 @@ static int smear_corr_region (const CCD_Param_Type *ccdp,
    return 0;
 }
 
-static int smear_correction_using_oclocks (const CCD_Param_Type *ccdp,
+static int smear_correction_using_oclocks (const CCD_Object_Type *obj,
                                            const Image_Subset_Type *quad,
                                            int sb0, int se0,
                                            const void *client_data,
@@ -877,12 +895,12 @@ static int smear_correction_using_oclocks (const CCD_Param_Type *ccdp,
     * parallel readout rows [pb, pe). */
    if (quad->row_step < 0)
      {
-        pb = quad->row_end-1 - ccdp->num_parallel_oclock + num_skip;
+        pb = quad->row_end-1 - obj->num_parallel_oclock + num_skip;
         pe = pb + num_include;
      }
    else
      {
-        pe = quad->row_beg + ccdp->num_parallel_oclock - num_skip;
+        pe = quad->row_beg + obj->num_parallel_oclock - num_skip;
         pb = pe - num_include;
      }
 
@@ -907,7 +925,7 @@ static int smear_correction_using_oclocks (const CCD_Param_Type *ccdp,
    return 0;
 }
 
-static int smear_correction_using_timing (const CCD_Param_Type *ccdp,
+static int smear_correction_using_timing (const CCD_Object_Type *obj,
                                           const Image_Subset_Type *quad,
                                           int sb0, int se0,
                                           const void *client_data,
@@ -929,7 +947,7 @@ static int smear_correction_using_timing (const CCD_Param_Type *ccdp,
 
    smear_fraction = *(double *)client_data;
 
-   if (-1 == smear_corr_region (ccdp, quad, NULL, NULL, &pb0, &pe0))
+   if (-1 == smear_corr_region (obj, quad, NULL, NULL, &pb0, &pe0))
      return -1;
 
    for (s = sb0; s < se0; s++)
@@ -950,7 +968,7 @@ static int smear_correction_using_timing (const CCD_Param_Type *ccdp,
    return 0;
 }
 
-static int correct_smear_quad (const CCD_Param_Type *ccdp,
+static int correct_smear_quad (const CCD_Object_Type *obj,
                                const Image_Subset_Type *quad,
                                Smear_Corr_Method_Type *calc_correction,
                                const void *client_data, Image_Type *img)
@@ -961,7 +979,7 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
    int s, sb0, se0, p, pb0, pe0;
    double smear_corr_sum;
 
-   if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, &pb0, &pe0))
+   if (-1 == smear_corr_region (obj, quad, &sb0, &se0, &pb0, &pe0))
      return -1;
 
    if (0) fprintf (stderr, "apply smear correction:  sb0=%4d se0=%4d pb0=%4d pe0=%4d\n",
@@ -973,7 +991,7 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
         return -1;
      }
 
-   if (-1 == (*calc_correction)(ccdp, quad, sb0, se0, client_data, img, smear_corr))
+   if (-1 == (*calc_correction)(obj, quad, sb0, se0, client_data, img, smear_corr))
      {
         FREE(smear_corr);
         return -1;
@@ -1010,6 +1028,7 @@ static int correct_smear_quad (const CCD_Param_Type *ccdp,
 static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
                               Image_Type *img)
 {
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    if (ccd->ccd_smear_correction_method == NULL)
@@ -1017,7 +1036,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
 
    for (i = 0; i < NUM_QUAD; i++)
      {
-        if (-1 == correct_smear_quad (&ccd->params, &ccd->quad[i],
+        if (-1 == correct_smear_quad (&ccd->obj, &obj->quad[i],
                                       ccd->ccd_smear_correction_method,
                                       client_data, img))
           return -1;
@@ -1026,7 +1045,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
    return 0;
 }
 
-static int mean_sdc_quad (const CCD_Param_Type *ccdp,
+static int mean_sdc_quad (const CCD_Object_Type *obj,
                           const Image_Subset_Type *quad,
                           const Image_Type *img,
                           int num_dg_rows, int num_tg_rows,
@@ -1043,7 +1062,7 @@ static int mean_sdc_quad (const CCD_Param_Type *ccdp,
         return 0;
      }
 
-   if (-1 == smear_corr_region (ccdp, quad, &sb0, &se0, NULL, NULL))
+   if (-1 == smear_corr_region (obj, quad, &sb0, &se0, NULL, NULL))
      return -1;
 
    /* The row nearest the readout contains the sum
@@ -1092,11 +1111,12 @@ static int ccd_mean_storage_region_dark (const CCD_Type *ccd,
                                          int num_dg_rows, int num_tg_rows,
                                          float *mean_sdc)
 {
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    for (i = 0; i < NUM_QUAD; i++)
      {
-        if (-1 == mean_sdc_quad (&ccd->params, &ccd->quad[i], img, num_dg_rows, num_tg_rows,
+        if (-1 == mean_sdc_quad (&ccd->obj, &obj->quad[i], img, num_dg_rows, num_tg_rows,
                                  &mean_sdc[i]))
           return -1;
      }
@@ -1109,21 +1129,21 @@ static int map_active_pixels (const CCD_Type *ccd, int elem_size,
                               char *padded, int padded_num_cols,
                               int (*process_row)(void *, void *, size_t, int))
 {
-   const CCD_Param_Type *ccdp = &ccd->params;
+   const CCD_Object_Type *obj = &ccd->obj;
    int padded_top_offset, padded_bottom_offset, padded_quad_row_offset;
    int padded_offset, active_offset;
    int num_active_rows, p;
    size_t num_serial_active;
 
-   num_active_rows = 2 * ccdp->num_parallel_active;
+   num_active_rows = 2 * obj->num_parallel_active;
 
-   padded_top_offset = (ccdp->num_parallel_sdc * padded_num_cols
-                        + ccdp->num_serial_leading);
+   padded_top_offset = (obj->num_parallel_sdc * padded_num_cols
+                        + obj->num_serial_leading);
    padded_bottom_offset = (padded_top_offset
-                           + 2 * ccdp->num_parallel_oclock * padded_num_cols);
-   padded_quad_row_offset = (ccdp->num_serial_active
-                             + 2 * ccdp->num_serial_trailing);
-   num_serial_active = ccdp->num_serial_active;
+                           + 2 * obj->num_parallel_oclock * padded_num_cols);
+   padded_quad_row_offset = (obj->num_serial_active
+                             + 2 * obj->num_serial_trailing);
+   num_serial_active = obj->num_serial_active;
 
    /* top half */
    for (p = 0; p < num_active_rows/2; p++)
@@ -1136,7 +1156,7 @@ static int map_active_pixels (const CCD_Type *ccd, int elem_size,
                          num_serial_active, elem_size)) return -1;
         /* right quad */
         padded_offset += padded_quad_row_offset;
-        active_offset += ccdp->num_serial_active;
+        active_offset += obj->num_serial_active;
         if (process_row (active + active_offset * elem_size,
                          padded + padded_offset * elem_size,
                          num_serial_active, elem_size)) return -1;
@@ -1153,7 +1173,7 @@ static int map_active_pixels (const CCD_Type *ccd, int elem_size,
                          num_serial_active, elem_size)) return -1;
         /* right quad */
         padded_offset += padded_quad_row_offset;
-        active_offset += ccdp->num_serial_active;
+        active_offset += obj->num_serial_active;
         if (process_row (active + active_offset * elem_size,
                          padded + padded_offset * elem_size,
                          num_serial_active, elem_size)) return -1;
@@ -1172,7 +1192,7 @@ static int copy_active_from_padded (void *p_active, void *p_padded, size_t num_e
 static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd,
                                            const Image_Type *img)
 {
-   const CCD_Param_Type *ccdp = &ccd->params;
+   const CCD_Object_Type *obj = &ccd->obj;
    int image_type, num_active_rows, num_active_cols;
    Image_Type *aimg = NULL;
 
@@ -1184,8 +1204,8 @@ static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd,
         return NULL;
      }
 
-   num_active_rows = 2 * ccdp->num_parallel_active;
-   num_active_cols = 2 * ccdp->num_serial_active;
+   num_active_rows = 2 * obj->num_parallel_active;
+   num_active_cols = 2 * obj->num_serial_active;
 
    if (NULL == (aimg = image_new (num_active_rows, num_active_cols)))
      return NULL;
@@ -1207,13 +1227,13 @@ static void ccd_active_image_dims (const CCD_Type *ccd,
                                    int *num_parallel_active_full,
                                    int *num_serial_active_full)
 {
-   const CCD_Param_Type *ccdp = &ccd->params;
+   const CCD_Object_Type *obj = &ccd->obj;
 
    if (num_parallel_active_full)
-     *num_parallel_active_full = 2*ccdp->num_parallel_active;
+     *num_parallel_active_full = 2*obj->num_parallel_active;
 
    if (num_serial_active_full)
-     *num_serial_active_full = 2*ccdp->num_serial_active;
+     *num_serial_active_full = 2*obj->num_serial_active;
 }
 
 static int apply_active_flag_array_to_padded (void *p_active, void *p_padded,
@@ -1273,7 +1293,7 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
                                  int sb, int se, int sstep)
 {
    const Response_Info_Type *rit = &ccd->resp_info;
-   int num_xfer_smear = ccd->params.num_parallel_oclock;
+   int num_xfer_smear = ccd->obj.num_parallel_oclock;
    float sdc_scaled, sdc_factor;
    int p, s, num_xfer_p;
 
@@ -1810,10 +1830,7 @@ CCD_Type *ccd_init (config_t *cfg, TIO_Meta_Type *meta)
    if (NULL == (ccd = ccd_create ()))
      return NULL;
 
-   if (0 != init_ccd_params (ccd))
-     goto error_return;
-
-   if (0 != init_image_subsets (ccd))
+   if (0 != init_ccd_object (&ccd->obj))
      goto error_return;
 
    if (0 != init_ccd_cal_params (cfg, ccd, meta))
