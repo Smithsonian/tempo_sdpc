@@ -8,6 +8,7 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <gsl/gsl_rng.h>
 
 #include "config.h"
 #include "util.h"
@@ -41,6 +42,14 @@ typedef struct
    Image_Subset_Type *oct;      /* Pointer to  oct[0:7] within psubsets */
 }
 CCD_Object_Type;
+
+struct CCD_Select_Type
+{
+   Image_Pixel_Type *pixels;
+   double *prob;
+   size_t num_pixels;
+   gsl_rng *rng;
+};
 
 typedef struct
 {
@@ -304,6 +313,170 @@ static int init_ccd_object (CCD_Object_Type *obj)
      return -1;
 
    return 0;
+}
+
+static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Subset_Type *oct,
+                                     const Image_Type *img, CCD_Select_Type *sel)
+{
+   Image_Pixel_Type *pixels = sel->pixels;
+   int s, sb, se, p, pb, pe;
+   size_t  num_selected, num_pixels;
+   double p_accept;
+
+   /* - From the active pixels in this octant, select N pixels at random
+    * - Exclude the top 20% and bottom 20% of pixel values
+    * - Compute the mean of the remaining pixels.
+    */
+
+   if (oct->col_step > 0)
+     {/* B, C */
+        sb = oct->col_beg + obj->num_serial_trailing;
+        se = oct->col_end - obj->num_serial_leading;
+     }
+   else
+     {/* A, D */
+        sb = oct->col_beg + obj->num_serial_leading;
+        se = oct->col_end - obj->num_serial_trailing;
+     }
+   if (oct->row_step > 0)
+     {/* D, C */
+        pb = oct->row_beg + obj->num_parallel_oclock;
+        pe = oct->row_end - obj->num_parallel_sdc;
+     }
+   else
+     {/* A, B */
+        pb = oct->row_beg + obj->num_parallel_sdc;
+        pe = oct->row_end - obj->num_parallel_oclock;
+     }
+
+   /* Probability of randomly selecting sel->num_pixels
+    * from this octant in a single pass
+    */
+   num_pixels = (img->num_rows/2) * (img->num_cols/2) / 2;
+   p_accept = ((double) sel->num_pixels) / num_pixels;
+   num_selected = 0;
+
+   while (num_selected < sel->num_pixels)
+     {
+        for (p = pb; p < pe; p += 1)
+          {
+             Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+             for (s = sb; s < se; s += 2)
+               {
+                  if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+                    continue;
+                  if (gsl_rng_uniform_pos (sel->rng) < p_accept)
+                    {
+                       pixels[num_selected++] = oct_pixels[s];
+                       if (num_selected == sel->num_pixels)
+                         goto return_status;
+                    }
+               }
+          }
+     }
+
+return_status:
+   return 0;
+}
+
+static int compare_pixel_values (const void *va, const void *vb)
+{
+   Image_Pixel_Type a = *(Image_Pixel_Type *)va;
+   Image_Pixel_Type b = *(Image_Pixel_Type *)vb;
+   if (a < b) return -1;
+   else if (a > b) return +1;
+   else return 0;
+}
+
+/* This is used to derive the linearity correction */
+static int trimmed_sample_mean_oct (const CCD_Object_Type *obj, const Image_Subset_Type *oct,
+                                    const Image_Type *img, CCD_Select_Type *sel,
+                                    double *octant_mean)
+{
+   Image_Pixel_Type *pixels = sel->pixels;
+   size_t i, n, num_trim;
+   double sum;
+
+   if (0 != select_random_sample_oct (obj, oct, img, sel))
+     return -1;
+
+   qsort (pixels, sel->num_pixels, sizeof (*pixels), compare_pixel_values);
+
+   num_trim = sel->num_pixels / 5;
+
+   pixels += num_trim;
+   n = sel->num_pixels - 2 * num_trim;
+
+   sum = 0.0;
+
+   for (i = 0; i < n; i++)
+     {
+        sum += pixels[i];
+     }
+
+   *octant_mean = sum / n;
+
+   return 0;
+}
+
+static int trimmed_sample_mean (const CCD_Object_Type *obj, const Image_Type *img,
+                                CCD_Select_Type *sel, double octant_means[NUM_OCTANTS])
+{
+   int i;
+
+   for (i = 0; i < NUM_OCTANTS; i++)
+     {
+        if (0 != trimmed_sample_mean_oct (obj, &obj->oct[i], img, sel, &octant_means[i]))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int clt_trimmed_sample_mean (const CCD_Linearity_Type *clt, const Image_Type *img,
+                                    CCD_Select_Type *sel, double octant_means[NUM_OCTANTS])
+{
+   return trimmed_sample_mean (&clt->obj, img, sel, octant_means);
+}
+
+void clt_select_free (CCD_Select_Type *sel)
+{
+   if (sel == NULL)
+     return;
+   FREE(sel->pixels);
+   gsl_rng_free (sel->rng);
+   FREE(sel);
+}
+
+CCD_Select_Type *clt_select_alloc (size_t num_pixels)
+{
+   CCD_Select_Type *sel = NULL;
+
+   if (NULL == (sel = (CCD_Select_Type *)MALLOC (sizeof *sel)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)sel, 0, sizeof (*sel));
+
+   sel->num_pixels = num_pixels;
+
+   if (NULL == (sel->pixels = (Image_Pixel_Type *)MALLOC (num_pixels * sizeof(Image_Pixel_Type))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        clt_select_free (sel);
+        return NULL;
+     }
+
+   if (NULL == (sel->rng = gsl_rng_alloc (gsl_rng_taus)))
+     {
+        clt_select_free (sel);
+        return NULL;
+     }
+
+   gsl_rng_set (sel->rng, 0);
+
+   return sel;
 }
 
 static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
@@ -1256,12 +1429,6 @@ static Image_Type *ccd_copy_active_pixels (const CCD_Type *ccd, const Image_Type
    return copy_active_pixels (obj, img);
 }
 
-static Image_Type *clt_copy_active_pixels (const CCD_Linearity_Type *clt, const Image_Type *img)
-{
-   const CCD_Object_Type *obj = &clt->obj;
-   return copy_active_pixels (obj, img);
-}
-
 static void ccd_active_image_dims (const CCD_Type *ccd,
                                    int *num_parallel_active_full,
                                    int *num_serial_active_full)
@@ -1915,7 +2082,7 @@ CCD_Linearity_Type *ccd_linearity_init (void)
    clt->clt_delete = clt_delete;
    clt->clt_correct_coadd = clt_correct_coadd;
    clt->clt_correct_offset = clt_correct_offset;
-   clt->clt_copy_active_pixels = clt_copy_active_pixels;
+   clt->clt_trimmed_sample_mean = clt_trimmed_sample_mean;
 
    /* FIXME? We could read this from the config file, but if the algorithm
     * doesn't actually check the saturation flags it doesn't matter.
