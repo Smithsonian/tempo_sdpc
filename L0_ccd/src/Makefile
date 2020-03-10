@@ -46,11 +46,16 @@ OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES)) \
            $(patsubst %.o,$(objdir)/%.o, $(BORROWED_OFILES))
 
+LINEARITY_OFILES = l0_linearity.o linearity.o image.o ccd.o granule.o util.o
+LINEARITY_OBJS = $(patsubst %.o,$(objdir)/%.o, $(LINEARITY_OFILES))
+
+EXECUTABLES = $(objdir)/$(THIS_MODULE) $(objdir)/L0_linearity
+
 # --------------------------------------------------------------------------
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+all:	 $(objdir) $(EXECUTABLES)
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -71,7 +76,9 @@ libdir = $(prefix)/lib
 install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
-	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
+	for pgm in $(EXECUTABLES) ; do \
+	    $(INSTALL_PROGRAM) $$pgm $(bindir)/ ; \
+	done
 
 install:	install-executables
 
@@ -90,6 +97,10 @@ distclean: clean
 
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+$(objdir)/L0_linearity:	$(LINEARITY_OBJS)
+	$(COMPILE_CMD) -o $(objdir)/L0_linearity $(LINEARITY_OBJS) \
 	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 plan_srcdir = $(config_dir)/plan/src
@@ -133,3 +144,8 @@ $(objdir)/util.o:	$(srcdir)/util.c
 $(objdir)/solar.o:	$(plan_srcdir)/solar.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) -I$(plan_srcdir) $(plan_srcdir)/solar.c
 
+$(objdir)/l0_linearity.o:	$(srcdir)/l0_linearity.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l0_linearity.c
+
+$(objdir)/linearity.o:	$(srcdir)/linearity.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/linearity.c
