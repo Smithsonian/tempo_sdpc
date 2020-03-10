@@ -117,11 +117,13 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
    int allocated_exprec = 0;
    int start[3], count[3];
 
-   if (pexprec == NULL)
+   if ((pexprec == NULL)
+       || ((pexprec != NULL) && (*pexprec == NULL)))
      {
         if (NULL == (exprec = new_exprec (g->num_rows, g->num_cols)))
           return NULL;
         allocated_exprec = 1;
+        *pexprec = exprec;
      }
    else exprec = *pexprec;
 
