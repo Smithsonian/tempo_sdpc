@@ -104,14 +104,67 @@ static void write_indexed_img (int i, const char *prefix, const Image_Type *img)
    image_write_raw (img, buf);
 }
 
+static double *_pSort_Doubles;
+static int index_sort_doubles (const void *va, const void *vb)
+{
+   int ia = *(const int *)va;
+   int ib = *(const int *)vb;
+   double a = _pSort_Doubles[ia];
+   double b = _pSort_Doubles[ib];
+   if (a < b) return -1;
+   else if (a > b) return +1;
+   else return 0;
+}
+
+static int *determine_sweep_order (const Granule_Type *gr, int num_exprecs)
+{
+   double *exposure_per_frame = NULL;
+   int *sweep_order = NULL;
+   int i, status = -1;
+
+   if ((NULL == (exposure_per_frame = (double *)MALLOC (num_exprecs * sizeof(double))))
+       || (NULL == (sweep_order = (int *)MALLOC (num_exprecs * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto free_and_return;
+     }
+
+   if (0 != gr->granule_get_exposure_per_frame (gr, exposure_per_frame))
+     goto free_and_return;
+
+   for (i = 0; i < num_exprecs; i++)
+     {
+        sweep_order[i] = i;
+     }
+
+   _pSort_Doubles = exposure_per_frame;
+   qsort ((void *)sweep_order, (size_t) num_exprecs, sizeof(int), index_sort_doubles);
+   _pSort_Doubles = NULL;
+
+   status = 0;
+free_and_return:
+   FREE(exposure_per_frame);
+   if (status)
+     {
+        FREE(sweep_order);
+        sweep_order = NULL;
+     }
+
+   return sweep_order;
+}
+
 static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type *tt)
 {
    Granule_Exprec_Type *exprec = NULL;
    CCD_Select_Type *sel = NULL;
    size_t num_sample = NUM_PIXEL_SAMPLES;
+   int *sweep_order = NULL;
    int i, o, num_exprecs;
 
    num_exprecs = gr->granule_num_exprecs(gr);
+
+   if (NULL == (sweep_order = determine_sweep_order (gr, num_exprecs)))
+     goto return_status;
 
    if (NULL == (sel = clt_select_alloc (clt, num_sample)))
      goto return_status;
@@ -120,7 +173,7 @@ static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type
      {
         double octant_means[NUM_OCTANTS];
 
-        if (NULL == gr->granule_read_exprec_by_index (gr, i, &exprec))
+        if (NULL == gr->granule_read_exprec_by_index (gr, sweep_order[i], &exprec))
           goto return_status;
 
         if (0 != clt->clt_correct_coadd (clt, exprec->num_coadds, exprec->img))
@@ -147,6 +200,7 @@ static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type
      }
 
 return_status:
+   FREE(sweep_order);
    gr->granule_free_exprec (exprec);
    clt_select_free (sel);
 
