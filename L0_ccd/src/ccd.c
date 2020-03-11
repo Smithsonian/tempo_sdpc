@@ -479,17 +479,17 @@ CCD_Select_Type *clt_select_alloc (const CCD_Linearity_Type *clt, size_t num_pix
     * for each image, then we would re-introduce noise associated with
     * pixel-to-pixel variations.  By using the same set of pixels with
     * every image, we avoid that source of noise.
-    * Be careful to generate the random column coordinate (s) so that it
-    * will be in range whether it's used as an even offset or an odd offset.
+    * Column offset must be an even number, since it will be used to
+    * offset to either all even or all odd columns, and we want to be
+    * sure that it's always in-range.
     */
 
    for (n = 0; n < num_pixels; n++)
      {
-        sel->row_offset[n] = gsl_rng_uniform_int (rng, pmax);      /* p = parallel */
-        sel->col_offset[n] = gsl_rng_uniform_int (rng, smax - 1);  /* s = serial */
+        sel->row_offset[n] = gsl_rng_uniform_int (rng, pmax);
+        sel->col_offset[n] = gsl_rng_uniform_int (rng, smax/2 - 1) * 2;
      }
 
-finish:
    gsl_rng_free (rng);
 
    return sel;
