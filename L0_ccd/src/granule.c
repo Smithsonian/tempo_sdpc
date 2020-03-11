@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <libconfig.h>
 #include <netcdf.h>
@@ -101,6 +102,35 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
      {
         tell_vwarn (0, "%s: %d pixels had invalid quality byte values (flagged as bad pixels)",
                     __func__, num_invalid_quality_byte);
+     }
+
+   return 0;
+}
+
+/* Caller should allocate storage space before the call */
+static int granule_get_exposure_per_frame (const Granule_Type *g, double *exposure_per_frame)
+{
+   double nan_value = nan("");
+   int i;
+
+   if (exposure_per_frame == NULL)
+     return -1;
+
+   for (i = 0; i < g->num_exprecs; i++)
+     {
+        double exposure_time;
+        int count=1, num_coadds;
+
+        if ((0 != TIO_get_var_section (g->ncid, "exposure_time", &i, &count, TIO_DOUBLE, &exposure_time))
+            || (0 != TIO_get_var_section (g->ncid, "num_coadds", &i, &count, TIO_INT, &num_coadds)))
+          {
+             tell_verror (TELL_IO_READ_ERROR, "%s: reading exposure_time, num_coadds (i=%d)", __func__, i);
+             return -1;
+          }
+        if ((num_coadds > 0) && (exposure_time != TIO_FILL_DOUBLE))
+          exposure_per_frame[i] = exposure_time / num_coadds;
+        else
+          exposure_per_frame[i] = nan_value;
      }
 
    return 0;
@@ -228,6 +258,7 @@ static Granule_Type *new_granule (void)
    g->granule_close = granule_close;
    g->granule_num_exprecs = granule_num_exprecs;
    g->granule_read_exprec_by_index = granule_read_exprec_by_index;
+   g->granule_get_exposure_per_frame = granule_get_exposure_per_frame;
    g->granule_free_exprec = granule_free_exprec;
    g->granule_type = granule_type;
    g->granule_ncid = granule_get_ncid;

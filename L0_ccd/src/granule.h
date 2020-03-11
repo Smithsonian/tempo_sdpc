@@ -102,6 +102,13 @@ struct Granule_Type
     */
    Granule_Exprec_Type *(*granule_read_exprec_by_index) (const Granule_Type *, int, Granule_Exprec_Type **);
 
+   /** Get the exposure time per frame for every exposure record
+    * @param  Granule_Type       non-NULL pointer to a Granule_Type object
+    * @param  exposure_per_frame non-NULL pointer to storage for num_exprecs doubles
+    * @return the file descriptor on success, or -1 on error
+    */
+   int (*granule_get_exposure_per_frame) (const Granule_Type *g, double *exposure_per_frame);
+
    /** Return the netCDF file descriptor for a Granule_Type object
     * @param  Granule_Type *  non-NULL pointer to a Granule_Type object
     * @return the file descriptor on success, or -1 on error
