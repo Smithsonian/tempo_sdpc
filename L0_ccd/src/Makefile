@@ -61,7 +61,7 @@ $(objdir):
 	-mkdir -p $(objdir)
 
 tags:
-	ctags $(patsubst %.o,%.c,$(OFILES))
+	ctags $(patsubst %.o,%.c,$(OFILES) $(LINEARITY_OFILES))
 
 .PHONY: clean distclean all install check tags
 

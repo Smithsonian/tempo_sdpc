@@ -25,7 +25,7 @@
 
 #define NUM_READOUT_SIGNALS (1<<14)   /* assuming a 14-bit pixel at read-out */
 
-#define SATURATION_FUDGE_FACTOR      (0.99)
+#define SATURATION_FUDGE_FACTOR      (0.9)
 #define READOUT_SATURATION_THRESHOLD ((NUM_READOUT_SIGNALS-1)*SATURATION_FUDGE_FACTOR)
 
 #define NUM_PIXEL_SAMPLES (10000)
@@ -96,6 +96,14 @@ static int alloc_trend (int num_times, Trend_Type *tt)
    return 0;
 }
 
+static void write_indexed_img (int i, const char *prefix, const Image_Type *img)
+{
+   char buf[256];
+   if (i != 15) return;
+   (void) snprintf (buf, sizeof(buf), "%s.%d", prefix, i);
+   image_write_raw (img, buf);
+}
+
 static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type *tt)
 {
    Granule_Exprec_Type *exprec = NULL;
@@ -119,11 +127,15 @@ static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type
           goto return_status;
         tt->exposure_time_per_frame[i] = exprec->exposure_time / exprec->num_coadds;
 
-        fprintf (stderr, "exposure record %3d/%d: %8.3f sec/frame\n",
-                 i, num_exprecs, tt->exposure_time_per_frame[i]);
+        fprintf (stderr, "exposure record %3d/%d: %8.3f msec/frame\n",
+                 i, num_exprecs, 1.e3 * tt->exposure_time_per_frame[i]);
+
+        if (0) write_indexed_img (i, "uncorrected", exprec->img);
 
         if (0 != clt->clt_correct_offset (clt, exprec->img))
           goto return_status;
+
+        if (0) write_indexed_img (i, "corrected", exprec->img);
 
         if (0 != clt->clt_trimmed_sample_mean (clt, exprec->img, sel, octant_means))
           goto return_status;
@@ -140,6 +152,32 @@ return_status:
 
    return 0;
 
+}
+
+static int write_fit (int octant, size_t num_times, double *exposure_time,
+                      double *means_oct, double *nonlin_frac, double c0, double c1)
+{
+   FILE *fp = NULL;
+   char buf[1024];
+   size_t k;
+
+   snprintf (buf, sizeof(buf), "octant_%d.dat", octant);
+
+   if (NULL == (fp = fopen (buf, "w")))
+     {
+        fprintf (stderr, "*** Error: opening %s for writing\n", buf);
+        return -1;
+     }
+
+   fprintf (fp, "# c0 = %14.6f  c1 = %14.6f\n", c0, c1);
+   for (k = 0; k < num_times; k++)
+     {
+        double linear_signal_k = c0 + c1 * exposure_time[k];
+        fprintf (fp, "%10.3f %10.3f %12.4e %10.3f\n",
+                 exposure_time[k] * 1.e3, means_oct[k], nonlin_frac[k], linear_signal_k);
+     }
+
+   return fclose (fp);
 }
 
 static int fit_trends (Trend_Type *tt)
@@ -179,6 +217,8 @@ static int fit_trends (Trend_Type *tt)
              double linear_signal_k = c0 + c1 * tt->exposure_time_per_frame[k];
              nonlin_frac[k] = (linear_signal_k - means_oct[k]) / READOUT_SATURATION_THRESHOLD;
           }
+
+        if (0) write_fit (o, tt->num_times, tt->exposure_time_per_frame, means_oct, nonlin_frac, c0, c1);
      }
 
    return 0;
@@ -337,7 +377,7 @@ static int create_lookup_tables (const Trend_Type *tt, TIO_Meta_Type *meta,
      {
         double *octant_means = tt->octant_means[o];
         double *nonlin_frac = tt->nonlin_frac[o];
-        size_t k, sig, num_times;
+        size_t k, i, num_times;
 
         for (k = tt->num_times-1; k > 0; k--)
           {
@@ -353,8 +393,9 @@ static int create_lookup_tables (const Trend_Type *tt, TIO_Meta_Type *meta,
         if (0 != gsl_interp_init (interp, octant_means, nonlin_frac, num_times))
           goto return_status;
 
-        for (sig = 0; sig < num_signals; sig++)
+        for (i = 0; i < num_signals; i++)
           {
+             int sig = i + 1;
              double f;
              if (sig < octant_means[0])
                {
@@ -368,15 +409,10 @@ static int create_lookup_tables (const Trend_Type *tt, TIO_Meta_Type *meta,
                {
                   double d_sig = sig;
                   f = gsl_interp_eval (interp, octant_means, nonlin_frac, d_sig, acc);
-                  if (isnan(f))
-                    {
-                       fprintf (stderr, "*** gsl_interp_eval returned NaN: o=%d sig=%ld\n", o, sig);
-                       f = 0.0;
-                    }
                }
-             lin.nonlin_frac[sig] = f;
-             lin.signal_input[sig] = sig;
-             lin.signal_output[sig] = sig * (1.0 + f);
+             lin.nonlin_frac[i] = f;
+             lin.signal_input[i] = sig;
+             lin.signal_output[i] = sig * (1.0 + f);
           }
 
         if (0 != gsl_interp_accel_reset (acc))

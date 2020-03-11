@@ -315,12 +315,12 @@ static int init_ccd_object (CCD_Object_Type *obj)
    return 0;
 }
 
-static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Subset_Type *oct,
-                                     const Image_Type *img, CCD_Select_Type *sel)
+static int select_random_sample_active_oct (const CCD_Object_Type *obj, const Image_Subset_Type *oct,
+                                            const Image_Type *img, CCD_Select_Type *sel)
 {
    Image_Pixel_Type *pixels = sel->pixels;
    int s, sb, se, p, pb, pe;
-   size_t  num_selected, num_pixels;
+   size_t  num_selected, num_pixels, num_trials;
    double p_accept;
 
    /* - From the active pixels in this octant, select N pixels at random
@@ -348,6 +348,7 @@ static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Sub
         pb = oct->row_beg + obj->num_parallel_sdc;
         pe = oct->row_end - obj->num_parallel_oclock;
      }
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: s=%4d:%4d  p=%4d:%4d", __func__, sb, se, pb, pe);
 
    /* Probability of randomly selecting sel->num_pixels
     * from this octant in a single pass
@@ -355,6 +356,7 @@ static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Sub
    num_pixels = (img->num_rows/2) * (img->num_cols/2) / 2;
    p_accept = ((double) sel->num_pixels) / num_pixels;
    num_selected = 0;
+   num_trials = 0;
 
    while (num_selected < sel->num_pixels)
      {
@@ -365,6 +367,7 @@ static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Sub
                {
                   if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                     continue;
+                  num_trials++;
                   if (gsl_rng_uniform_pos (sel->rng) < p_accept)
                     {
                        pixels[num_selected++] = oct_pixels[s];
@@ -376,6 +379,7 @@ static int select_random_sample_oct (const CCD_Object_Type *obj, const Image_Sub
      }
 
 return_status:
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: num_trials=%ld  num_selected=%ld", __func__, num_trials, num_selected);
    return 0;
 }
 
@@ -393,28 +397,33 @@ static int trimmed_sample_mean_oct (const CCD_Object_Type *obj, const Image_Subs
                                     const Image_Type *img, CCD_Select_Type *sel,
                                     double *octant_mean)
 {
-   Image_Pixel_Type *pixels = sel->pixels;
-   size_t i, n, num_trim;
+   Image_Pixel_Type *pixels = NULL;
+   size_t i, num, num_trim_lo, num_trim_hi;
    double sum;
 
-   if (0 != select_random_sample_oct (obj, oct, img, sel))
+   if (0 != select_random_sample_active_oct (obj, oct, img, sel))
      return -1;
 
-   qsort (pixels, sel->num_pixels, sizeof (*pixels), compare_pixel_values);
+   pixels = sel->pixels;
+   num    = sel->num_pixels;
 
-   num_trim = sel->num_pixels / 5;
+   qsort (pixels, num, sizeof (*pixels), compare_pixel_values);
 
-   pixels += num_trim;
-   n = sel->num_pixels - 2 * num_trim;
+   /* Nischal's prototype trims asymmetrically */
+   num_trim_lo = 0.3 * num;
+   num_trim_hi = 0.1 * num;
+
+   pixels += num_trim_lo;
+   num    -= num_trim_lo + num_trim_hi;
 
    sum = 0.0;
 
-   for (i = 0; i < n; i++)
+   for (i = 0; i < num; i++)
      {
         sum += pixels[i];
      }
 
-   *octant_mean = sum / n;
+   *octant_mean = sum / num;
 
    return 0;
 }
@@ -426,6 +435,7 @@ static int trimmed_sample_mean (const CCD_Object_Type *obj, const Image_Type *im
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: oct=%d", __func__, i);
         if (0 != trimmed_sample_mean_oct (obj, &obj->oct[i], img, sel, &octant_means[i]))
           return -1;
      }
@@ -468,7 +478,7 @@ CCD_Select_Type *clt_select_alloc (size_t num_pixels)
         return NULL;
      }
 
-   if (NULL == (sel->rng = gsl_rng_alloc (gsl_rng_taus)))
+   if (NULL == (sel->rng = gsl_rng_alloc (gsl_rng_ranlux)))  /* gsl_rng_taus */
      {
         clt_select_free (sel);
         return NULL;
@@ -477,6 +487,80 @@ CCD_Select_Type *clt_select_alloc (size_t num_pixels)
    gsl_rng_set (sel->rng, 0);
 
    return sel;
+}
+
+/* This is mainly used for linearity correction */
+static int correct_byrow_mean_serial_trailing_oct (const CCD_Object_Type *obj,
+                                                   const Image_Subset_Type *oct,
+                                                   Image_Type *img,
+                                                   int num_skip, int num_selected)
+{
+   int s, sb_trail, se_trail, p, pb, pe;
+
+   /* Consider the trailing serial pixels in quadrant A that reads
+    * out toward the left.
+    * This is a lovely diagram of those num_serial_trailing pixels:
+    *    <--- readout ...aaaSSSSSSSSiiiiiiiiiiUUUU
+    * 'a' represents the last few photo-active pixels.
+    * 'S' represents the first num_skip pixels (not included in avg)
+    * 'i' represents the next num_selected pixels that will be included
+    *     in the average,
+    * 'U' represents any remaining unused serial trailing pixels.
+    */
+
+   if ((oct == NULL) || (img == NULL))
+     return -1;
+
+   pb = oct->row_beg;
+   pe = oct->row_end;
+
+   if (oct->col_step > 0)
+     {/* B, C */
+        sb_trail = (oct->col_beg
+                    + obj->num_serial_trailing
+                    - num_skip
+                    - num_selected);
+     }
+   else
+     {/* A, D */
+        sb_trail = (oct->col_end
+                    - obj->num_serial_trailing - 1
+                    + num_skip);
+     }
+   se_trail = sb_trail + num_selected;
+
+   for (p = pb; p < pe; p += 1)
+     {
+        Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
+        double mean_trail_p, sum_trail_p = 0.0;
+        int num_trail_p = 0;
+
+        for (s = sb_trail; s < se_trail; s += 2)
+          {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             sum_trail_p += oct_pixels[s];
+             num_trail_p += 1;
+          }
+
+        if (num_trail_p == 0)
+          continue;
+        mean_trail_p = sum_trail_p / num_trail_p;
+
+        for (s = oct->col_beg; s < oct->col_end; s += 2)
+          {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             oct_pixels[s] -= mean_trail_p;
+             if (oct_pixels[s] < 0)
+               {
+                  pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
+               }
+          }
+     }
+
+   return 0;
 }
 
 static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
@@ -713,10 +797,18 @@ static int ccd_correct_offset (const CCD_Type *ccd, Image_Type *img)
 
 static int clt_correct_offset (const CCD_Linearity_Type *clt, Image_Type *img)
 {
-   float mean_eoffsets[NUM_OCTANTS];
-   if (0 != compute_mean_eoffsets (&clt->obj, img, mean_eoffsets))
-     return -1;
-   return perform_offset_correction (&clt->obj, mean_eoffsets, img);
+   const CCD_Object_Type *obj = &clt->obj;
+   int num_skip = 8;
+   int num_selected = obj->num_serial_trailing - num_skip;
+   int i;
+
+   for (i = 0; i < NUM_OCTANTS; i++)
+     {
+        if (-1 == correct_byrow_mean_serial_trailing_oct (obj, &obj->oct[i], img, num_skip, num_selected))
+          return -1;
+     }
+
+   return 0;
 }
 
 static int correct_nonlinearity_oct (const Octant_Response_Type *oct_resp,
