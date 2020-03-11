@@ -48,7 +48,8 @@ struct CCD_Select_Type
    Image_Pixel_Type *pixels;
    double *prob;
    size_t num_pixels;
-   gsl_rng *rng;
+   int *row_offset;
+   int *col_offset;
 };
 
 typedef struct
@@ -319,67 +320,39 @@ static int select_random_sample_active_oct (const CCD_Object_Type *obj, const Im
                                             const Image_Type *img, CCD_Select_Type *sel)
 {
    Image_Pixel_Type *pixels = sel->pixels;
-   int s, sb, se, p, pb, pe;
-   size_t  num_selected, num_pixels, num_trials;
-   double p_accept;
-
-   /* - From the active pixels in this octant, select N pixels at random
-    * - Exclude the top 20% and bottom 20% of pixel values
-    * - Compute the mean of the remaining pixels.
-    */
+   int *row_offset = sel->row_offset;
+   int *col_offset = sel->col_offset;
+   int sb, pb;
+   size_t i;
 
    if (oct->col_step > 0)
      {/* B, C */
         sb = oct->col_beg + obj->num_serial_trailing;
-        se = oct->col_end - obj->num_serial_leading;
      }
    else
      {/* A, D */
         sb = oct->col_beg + obj->num_serial_leading;
-        se = oct->col_end - obj->num_serial_trailing;
      }
    if (oct->row_step > 0)
      {/* D, C */
         pb = oct->row_beg + obj->num_parallel_oclock;
-        pe = oct->row_end - obj->num_parallel_sdc;
      }
    else
      {/* A, B */
         pb = oct->row_beg + obj->num_parallel_sdc;
-        pe = oct->row_end - obj->num_parallel_oclock;
      }
-   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: s=%4d:%4d  p=%4d:%4d", __func__, sb, se, pb, pe);
 
-   /* Probability of randomly selecting sel->num_pixels
-    * from this octant in a single pass
-    */
-   num_pixels = (img->num_rows/2) * (img->num_cols/2) / 2;
-   p_accept = ((double) sel->num_pixels) / num_pixels;
-   num_selected = 0;
-   num_trials = 0;
-
-   while (num_selected < sel->num_pixels)
+   for (i = 0; i < sel->num_pixels; i++)
      {
-        for (p = pb; p < pe; p += 1)
-          {
-             Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
-             for (s = sb; s < se; s += 2)
-               {
-                  if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
-                    continue;
-                  num_trials++;
-                  if (gsl_rng_uniform_pos (sel->rng) < p_accept)
-                    {
-                       pixels[num_selected++] = oct_pixels[s];
-                       if (num_selected == sel->num_pixels)
-                         goto return_status;
-                    }
-               }
-          }
+        Image_Pixel_Type *oct_pixels;
+        int p = pb + row_offset[i];
+        int s = sb + col_offset[i];
+        oct_pixels = img->pixels + p * img->num_cols;
+        if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+          continue;
+        pixels[i] = oct_pixels[s];
      }
 
-return_status:
-   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: num_trials=%ld  num_selected=%ld", __func__, num_trials, num_selected);
    return 0;
 }
 
@@ -454,13 +427,19 @@ void clt_select_free (CCD_Select_Type *sel)
    if (sel == NULL)
      return;
    FREE(sel->pixels);
-   gsl_rng_free (sel->rng);
+   FREE(sel->row_offset);
+   FREE(sel->col_offset);
    FREE(sel);
 }
 
-CCD_Select_Type *clt_select_alloc (size_t num_pixels)
+CCD_Select_Type *clt_select_alloc (const CCD_Linearity_Type *clt, size_t num_pixels)
 {
+   const CCD_Object_Type *obj = &clt->obj;
    CCD_Select_Type *sel = NULL;
+   gsl_rng *rng = NULL;
+   unsigned long pmax = obj->num_parallel_active;
+   unsigned long smax = obj->num_serial_active;
+   size_t n;
 
    if (NULL == (sel = (CCD_Select_Type *)MALLOC (sizeof *sel)))
      {
@@ -478,13 +457,40 @@ CCD_Select_Type *clt_select_alloc (size_t num_pixels)
         return NULL;
      }
 
-   if (NULL == (sel->rng = gsl_rng_alloc (gsl_rng_ranlux)))  /* gsl_rng_taus */
+   if ((NULL == (sel->row_offset = (int *)MALLOC (num_pixels * sizeof(int))))
+       ||(NULL == (sel->col_offset = (int *)MALLOC (num_pixels * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        clt_select_free (sel);
+        return NULL;
+     }
+
+   if (NULL == (rng = gsl_rng_alloc (gsl_rng_ranlux)))
      {
         clt_select_free (sel);
         return NULL;
      }
 
-   gsl_rng_set (sel->rng, 0);
+   gsl_rng_set (rng, 0);
+
+   /* Select a random sample of pixels to use when computing the mean pixel value
+    * in each image. Note that we'll use the SAME set of pixels to compute the
+    * mean for every image/exposure time.  If we used a different set of pixels
+    * for each image, then we would re-introduce noise associated with
+    * pixel-to-pixel variations.  By using the same set of pixels with
+    * every image, we avoid that source of noise.
+    * Be careful to generate the random column coordinate (s) so that it
+    * will be in range whether it's used as an even offset or an odd offset.
+    */
+
+   for (n = 0; n < num_pixels; n++)
+     {
+        sel->row_offset[n] = gsl_rng_uniform_int (rng, pmax);      /* p = parallel */
+        sel->col_offset[n] = gsl_rng_uniform_int (rng, smax - 1);  /* s = serial */
+     }
+
+finish:
+   gsl_rng_free (rng);
 
    return sel;
 }

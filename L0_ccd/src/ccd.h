@@ -246,7 +246,7 @@ struct CCD_Linearity_Type
 #endif
 };
 
-extern CCD_Select_Type *clt_select_alloc (size_t num_pixels);
+extern CCD_Select_Type *clt_select_alloc (const CCD_Linearity_Type *clt, size_t num_pixels);
 extern void clt_select_free (CCD_Select_Type *sel);
 
 extern CCD_Linearity_Type *ccd_linearity_init (void);

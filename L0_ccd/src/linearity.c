@@ -113,7 +113,7 @@ static int measure_trends (Granule_Type *gr, CCD_Linearity_Type *clt, Trend_Type
 
    num_exprecs = gr->granule_num_exprecs(gr);
 
-   if (NULL == (sel = clt_select_alloc (num_sample)))
+   if (NULL == (sel = clt_select_alloc (clt, num_sample)))
      goto return_status;
 
    for (i = 0; i < num_exprecs; i++)
