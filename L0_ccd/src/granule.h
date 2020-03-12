@@ -25,9 +25,6 @@ enum
    EXPREC_TYPE_UNKNOWN = -1   /**< unknown */
 };
 
-#define EXPREC_TYPE_IS_LINEARITY(type) \
-   (((type) == EXPREC_TYPE_LIN_DARK) || ((type) == EXPREC_TYPE_LIN_IRR))
-
 #define EXPREC_TYPE_IS_DARK(type) \
    (((type) == EXPREC_TYPE_DARK) || ((type) == EXPREC_TYPE_LIN_DARK))
 

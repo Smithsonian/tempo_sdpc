@@ -216,11 +216,13 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if (0) (void) image_write_raw (exprec->img, "offset");
 
-   if (0 == EXPREC_TYPE_IS_LINEARITY(exprec->exposure_type))
-     {
-        if (-1 == ccd->ccd_correct_nonlinearity (ccd, exprec->img))
-          return -1;
-     }
+   /* It's not expected that data from a linearity sweep will be processed
+    * to Level 1, but if it is, then we'll treat it exactly the same
+    * as any other dark or irradiance measurement.
+    */
+
+   if (-1 == ccd->ccd_correct_nonlinearity (ccd, exprec->img))
+     return -1;
 
    if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
@@ -1321,16 +1323,20 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    if (0 != gr->granule_type (gr, &exposure_type))
      goto return_status;
 
+   /* It's not expected that data from a linearity sweep will be processed
+    * to Level 1, but if it is, then we'll treat it exactly the same
+    * as any other dark or irradiance measurement */
+
    switch (exposure_type)
      {
       case EXPREC_TYPE_DARK:
       case EXPREC_TYPE_LIN_DARK:
-      case EXPREC_TYPE_LIN_IRR:   /* Yes, LIN_IRR belongs here. */
         status = derive_current (cfg, ctrl, &pct, gr, meta);
         break;
 
       case EXPREC_TYPE_IRR_WRK:
       case EXPREC_TYPE_IRR_REF:
+      case EXPREC_TYPE_LIN_IRR:
       case EXPREC_TYPE_RAD:
         /* For irradiances, we'll need to compute the solar illumination geometry.
          * For radiances, we'll compute the earth-sun distance.
