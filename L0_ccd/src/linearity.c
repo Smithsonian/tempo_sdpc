@@ -449,7 +449,7 @@ static int create_lookup_tables (const Trend_Type *tt, TIO_Meta_Type *meta,
 
         for (i = 0; i < num_signals; i++)
           {
-             int sig = i + 1;
+             int sig = i;
              double f;
              if (sig < octant_means[0])
                {
