@@ -312,18 +312,24 @@ static int close_outfile (Process_Method_Type *pmt)
              /* Put a copy in the archive */
              if (0 != copy_hidden (pmt->out_dirname, pmt->out_basename, pmt->archdir_path))
                return -1;
+             tell_vinfo (0, "archived %s/%s", pmt->archdir_path, pmt->out_basename);
+
              switch (pmt->exprec_type)
                {
                 default:
-                  /* Un-hide files of known type to enable further processing */
+                  /* Un-hide files of known type that require further processing */
                   if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
                     return -1;
                   tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
                   break;
 
+                  /* The following file types receive no further autonomous processing */
+                case IOCSDPC_EXPREC_TYPE_LIN_IRR:
+                  /* FALLTHROUGH */
+                case IOCSDPC_EXPREC_TYPE_LIN_DARK:
+                  /* FALLTHROUGH */
                 case IOCSDPC_EXPREC_TYPE_UNKNOWN:
-                  /* Files of unknown type will not be processed further,
-                   * so the archived copy is sufficient */
+                  /* FALLTHROUGH */
                   if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
                     return -1;
                   break;
