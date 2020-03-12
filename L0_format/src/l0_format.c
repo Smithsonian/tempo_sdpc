@@ -12,6 +12,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -25,6 +26,14 @@
 #include <tio_template.h>
 
 #include "l0_format.h"
+
+#ifndef PROCESSED_FILE_LOG_BASENAME
+# define PROCESSED_FILE_LOG_BASENAME "l0_format_input.log"
+#endif
+
+#ifndef PROCESSED_FILE_MAX_LOG_ENTRIES
+# define PROCESSED_FILE_MAX_LOG_ENTRIES 100000
+#endif
 
 static int Have_Epoch;
 static int Perform_Archive_Registration;
@@ -56,6 +65,15 @@ IRU_Interval_Type;
 
 typedef struct
 {
+   const char *logdir;
+   char *path;
+   FILE *fp;
+   size_t curr_num_file_entries;
+}
+Processed_File_Log_Type;
+
+typedef struct
+{
    const char *input_filename_glob_pattern;
    char *incoming_dir;
    char *tpinfo_file;
@@ -64,6 +82,7 @@ typedef struct
    double cache_flush_exprec_wait_secs;
    int exit_on_emptydir;
    IRU_Interval_Type iru_interval;
+   Processed_File_Log_Type *log_incoming;
 }
 Control_Type;
 
@@ -74,9 +93,10 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
+   fprintf (stderr, "   -L | --logdir DIR        Log processed files in directory DIR\n");
    fprintf (stderr, "   -r | --register          Perform database registration of archived files\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
-   fprintf (stderr, "                            e.g. --cache 'd710[1-4]'\n");
+   fprintf (stderr, "                            e.g. --cache 'd710[1-4]/h[0-2][0-9]'\n");
    fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
    fprintf (stderr, "   -V | --Version N         Processing version number\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
@@ -123,6 +143,137 @@ static void set_archive_root_dir (const char *dir)
 static const char *get_archive_root_dir (void)
 {
    return Archive_Root_Dir;
+}
+
+static int close_processed_file_log (Processed_File_Log_Type *flt)
+{
+   time_t now = {0};
+   struct tm tm = {0};
+   struct stat st = {0};
+   char suffix[64];
+   char *new_path = NULL;
+   int status;
+   size_t len;
+
+   if (flt == NULL)
+     return 0;
+
+   if (flt->fp)
+     {
+        if (0 != fclose (flt->fp))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: closing: %s ", __func__, flt->path);
+             return -1;
+          }
+     }
+   flt->fp = NULL;
+
+   /* If no file exists we're done */
+   if (0 != stat (flt->path, &st))
+     return 0;
+
+   /* Rename the existing file by appending a timestamp */
+   time(&now);
+   gmtime_r(&now, &tm);
+   if (0 == strftime (suffix, sizeof(suffix), ".%Y%m%dT%H%M%S", &tm))
+     return -1;
+
+   len = strlen (flt->path) + strlen(suffix) + 1;
+   if (NULL == (new_path = (char *)MALLOC (len)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   strcpy (new_path, flt->path);
+   strcat (new_path, suffix);
+
+   status = rename (flt->path, new_path);
+   ioclib_free (new_path);
+   if (status != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: rename failed: %s ", __func__, flt->path);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int finalize_processed_file_log (Processed_File_Log_Type *flt)
+{
+   int status = close_processed_file_log (flt);
+   if (flt)
+     {
+        ioclib_free (flt->path);
+     }
+   return status;
+}
+
+static int new_processed_file_log (Processed_File_Log_Type *flt)
+{
+   if (flt->path == NULL)
+     {
+        if (NULL == (flt->path = ioclib_pathconcat (flt->logdir, PROCESSED_FILE_LOG_BASENAME)))
+          return -1;
+     }
+
+   if (0 != close_processed_file_log (flt))
+     return -1;
+
+   if (NULL == (flt->fp = fopen (flt->path, "w")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening log file for writing: %s ", __func__, flt->path);
+        return -1;
+     }
+   flt->curr_num_file_entries = 0;
+
+   return 0;
+}
+
+static int open_processed_file_log (Processed_File_Log_Type *flt)
+{
+   if (flt == NULL)
+     return 0;
+   if (flt->logdir)
+     {
+        if (0 != ioclib_mkdir (flt->logdir, 0))
+          return -1;
+     }
+   return new_processed_file_log (flt);
+}
+
+static int log_processed_file (Processed_File_Log_Type *flt, const char *path, int status)
+{
+   struct timeval tv = {0};
+
+   if (flt == NULL)
+     return 0;
+
+   if (flt->curr_num_file_entries >= PROCESSED_FILE_MAX_LOG_ENTRIES)
+     {
+        if (0 != new_processed_file_log (flt))
+          return -1;
+     }
+
+   if (flt->curr_num_file_entries == 0)
+     {
+        char *dirname;
+        if (NULL == (dirname = ioclib_dirname (path)))
+          return -1;
+        (void) fprintf (flt->fp, "# %s\n", dirname);
+        ioclib_free (dirname);
+     }
+
+   (void) gettimeofday (&tv, NULL);
+
+   if (fprintf (flt->fp, "%ld,%06ld,%d,%s\n", tv.tv_sec, tv.tv_usec, status, ioclib_basename (path)) < 0)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing to log file: %s", __func__, flt->path);
+        return -1;
+     }
+
+   flt->curr_num_file_entries++;
+
+   return 0;
 }
 
 static void free_control_type_fields (Control_Type *ctrl)
@@ -423,7 +574,7 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
 {
    Process_Method_Type *pmt;
    IOCSDPC_Common_Header_Type chdr = {0};
-   int fd, filetype;
+   int fd, filetype, status;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
@@ -444,7 +595,12 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
    if (NULL == (pmt = find_process_method (tbl, filetype)))
      return -1;
 
-   return pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
+   status = pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
+
+   /* Complain when logging fails, but don't stop processing */
+   (void) log_processed_file (ctrl->log_incoming, file, status);
+
+   return status;
 }
 
 static int process_dir_files (const Process_Method_Table_Type *tbl,
@@ -1197,6 +1353,7 @@ int main (int argc, char **argv)
    const char *appname = "L0_format";
    const char *param_file = "l0_format.cfg";
    Process_Method_Table_Type *tbl = Method_Table;
+   Processed_File_Log_Type incoming_log_info = {0};
    Control_Type ctrl = {0};
    config_t cfg = {0};
    TPInfo_Type *tp = NULL;
@@ -1209,6 +1366,7 @@ int main (int argc, char **argv)
         {"help",     no_argument,       0, 'h'},
         {"archive",  required_argument, 0, 'a'},
         {"cache",    required_argument, 0, 'c'},
+        {"logdir",   required_argument, 0, 'L'},
         {"tstart",   required_argument, 0, 't'},
         {"empty",    no_argument,       0, 'e'},
         {"register", no_argument,       0, 'r'},
@@ -1222,7 +1380,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ha:c:ervV:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:c:eL:rvV:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1236,6 +1394,10 @@ int main (int argc, char **argv)
              break;
            case 'a':
              set_archive_root_dir (optarg);
+             break;
+           case 'L':
+             incoming_log_info.logdir = optarg;
+             ctrl.log_incoming = &incoming_log_info;
              break;
            case 'c':
              cache_dir_pattern = optarg;
@@ -1306,6 +1468,9 @@ int main (int argc, char **argv)
    if (-1 == init_methods_table (tbl, &cfg))
      goto return_status;
 
+   if (0 != open_processed_file_log (ctrl.log_incoming))
+     goto return_status;
+
    tell_vinfo (0, "started (pid=%d)", getpid());
 
    catch_sigterm ();
@@ -1322,6 +1487,7 @@ int main (int argc, char **argv)
 
 return_status:
    tell_vinfo (0, "exiting: status = %d (pid=%d)", status, getpid());
+   finalize_processed_file_log (ctrl.log_incoming);
    free_control_type_fields (&ctrl);
    tpinfo_free (tp);
    config_destroy (&cfg);
