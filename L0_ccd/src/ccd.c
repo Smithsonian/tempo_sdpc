@@ -465,13 +465,21 @@ CCD_Select_Type *clt_select_alloc (const CCD_Linearity_Type *clt, size_t num_pix
         return NULL;
      }
 
+   /* Take RNG defaults from the environment. Mostly this is done so that
+    * the RNG seed can be set using the GSL_RNG_SEED environment variable.
+    */
+   gsl_rng_env_setup();
+
+   /* Hard-code a specific RNG to make sure we are using a good one.
+    * This overrides the GSL_RNG_TYPE setting from the environment.
+    */
    if (NULL == (rng = gsl_rng_alloc (gsl_rng_ranlux)))
      {
         clt_select_free (sel);
         return NULL;
      }
-
-   gsl_rng_set (rng, 0);
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "%s: GSL random generator type: %s; int1=%ld",
+              __func__, gsl_rng_name (rng), gsl_rng_get(rng));
 
    /* Select a random sample of pixels to use when computing the mean pixel value
     * in each image. Note that we'll use the SAME set of pixels to compute the
