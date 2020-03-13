@@ -136,8 +136,9 @@ static int granule_get_exposure_per_frame (const Granule_Type *g, double *exposu
    return 0;
 }
 
-/* If exprec==NULL, an exposure record is allocated and returned.
- * If exprec!=NULL, it is overwritten (and a pointer to it is returned)
+/* If an exposure record is provided, its contents are overwritten,
+ * and a pointer to it is returned.
+ * Otherwise, an exposure record is allocated and returned.
  */
 static Granule_Exprec_Type *
 granule_read_exprec_by_index (const Granule_Type *g, int ith,
@@ -147,15 +148,17 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
    int allocated_exprec = 0;
    int start[3], count[3];
 
-   if ((pexprec == NULL)
-       || ((pexprec != NULL) && (*pexprec == NULL)))
+   if ((pexprec != NULL) && (*pexprec != NULL))
+     {
+        exprec = *pexprec;
+     }
+   else
      {
         if (NULL == (exprec = new_exprec (g->num_rows, g->num_cols)))
           return NULL;
         allocated_exprec = 1;
-        *pexprec = exprec;
+        if (pexprec) *pexprec = exprec;
      }
-   else exprec = *pexprec;
 
    start[0] = ith;
    start[1] = 0;
