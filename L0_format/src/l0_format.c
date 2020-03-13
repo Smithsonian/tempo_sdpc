@@ -28,7 +28,7 @@
 #include "l0_format.h"
 
 #ifndef PROCESSED_FILE_LOG_BASENAME
-# define PROCESSED_FILE_LOG_BASENAME "l0_format_input.log"
+# define PROCESSED_FILE_LOG_BASENAME "processed_file.log"
 #endif
 
 #ifndef PROCESSED_FILE_MAX_LOG_ENTRIES
