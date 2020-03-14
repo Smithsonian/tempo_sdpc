@@ -12,16 +12,17 @@ TIO_LIBPATHS    = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
 TELL_LIBPATHS   = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
+GSL_LIBPATHS     = -lgsl -lgslcblas
 L0CCD_LIBPATHS = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
 INCS   = -I$(TIO_INC) -I$(TELL_INC) -I$(NETCDF_INC) -I$(srcdir)
 LIBS   = $(TIO_LIBPATHS) -ltio \
          $(TELL_LIBPATHS) -ltell \
 	 $(LIBCONFIG_LIBPATHS) -lconfig \
-         $(NETCDF_LIBPATHS) -lnetcdf $(RPATH) -lm
+         $(NETCDF_LIBPATHS) -lnetcdf $(RPATH) $(EXTRA_LIBS) -lm
 
 EXTRA_INCS =
-EXTRA_LIBS =
+EXTRA_LIBS = $(GSL_LIBPATHS)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
