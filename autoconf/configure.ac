@@ -128,19 +128,55 @@ fi
 AC_SUBST(ECCODES_LIB)
 AC_SUBST(ECCODES_INC)
 
+AC_ARG_WITH(refdata,
+  [  --with-refdata[=DIR]       Use refdata directory=DIR],
+  [jh_with_refdata=$withval],
+  [jh_with_refdata=no])
+if test "x$jh_with_refdata" = "xno"; then
+   REFDATA_DIR="/data/tempo/sdpc/refdata"
+else
+   REFDATA_DIR="$jh_with_refdata"
+fi
+AC_SUBST(REFDATA_DIR)
+
+AC_ARG_WITH(ancdata,
+  [  --with-ancdata[=DIR]       Use ancillary data directory=DIR],
+  [jh_with_ancdata=$withval],
+  [jh_with_ancdata=no])
+if test "x$jh_with_ancdata" = "xno"; then
+   ANCILLARY_DATA_DIR="/data/tempo/sdpc/ancillary"
+else
+   ANCILLARY_DATA_DIR="$jh_with_ancdata"
+fi
+AC_SUBST(ANCILLARY_DATA_DIR)
+
+AC_ARG_WITH(s6root,
+  [  --with-s6root[=DIR]       Use s6 supervisor installed in DIR],
+  [jh_with_s6root=$withval],
+  [jh_with_s6root=no])
+if test "x$jh_with_s6root" = "xno"; then
+   S6_ROOT_DIR="/soft/tempo/sdpc/skarnet"
+else
+   S6_ROOT_DIR="$jh_with_s6root"
+fi
+AC_SUBST(S6_ROOT_DIR)
+
 AC_ARG_WITH(inrlib,
   [  --with-inrlib[=DIR]       Use INR library installed in DIR],
   [jh_with_inrlib=$withval],
   [jh_with_inrlib=no])
 if test "x$jh_with_inrlib" = "xno"; then
+   INRSW_ROOT="$OTS_ROOT"
    INR_LIB="\$(OTS_ROOT)/lib"
    INR_INC="\$(OTS_ROOT)/include"
 else
+   INRSW_ROOT="$jh_with_inrlib"
    INR_LIB="$jh_with_inrlib/lib"
    INR_INC="$jh_with_inrlib/include"
 fi
 AC_SUBST(INR_LIB)
 AC_SUBST(INR_INC)
+AC_SUBST(INRSW_ROOT)
 
 AC_ARG_WITH(inrots,
   [  --with-inrots[=DIR]       Use INR OTS software installed in DIR],
@@ -269,7 +305,7 @@ AC_CONFIG_FILES([\
  Makefile.defines:autoconf/Makefile.defines.in \
  pipe/src/Makefile:pipe/src/Makefile.in \
  pipe/slurm/Makefile:pipe/slurm/Makefile.in \
+ pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in
 ])
 AC_OUTPUT
-
 

@@ -655,8 +655,12 @@ TELL_LIB
 INROTS_EXTRA_LIBS
 INROTS_INC
 INROTS_LIB
+INRSW_ROOT
 INR_INC
 INR_LIB
+S6_ROOT_DIR
+ANCILLARY_DATA_DIR
+REFDATA_DIR
 ECCODES_INC
 ECCODES_LIB
 LIBCONFIG_INC
@@ -750,6 +754,9 @@ with_proj
 with_slnovas
 with_libconfig
 with_eccodes
+with_refdata
+with_ancdata
+with_s6root
 with_inrlib
 with_inrots
 with_tell
@@ -1398,6 +1405,9 @@ Optional Packages:
   --with-slnovas=DIR      Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-eccodes=DIR      Use eccodes library installed in DIR
+  --with-refdata=DIR       Use refdata directory=DIR
+  --with-ancdata=DIR       Use ancillary data directory=DIR
+  --with-s6root=DIR       Use s6 supervisor installed in DIR
   --with-inrlib=DIR       Use INR library installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
@@ -2714,6 +2724,51 @@ fi
 
 
 
+# Check whether --with-refdata was given.
+if test "${with_refdata+set}" = set; then :
+  withval=$with_refdata; jh_with_refdata=$withval
+else
+  jh_with_refdata=no
+fi
+
+if test "x$jh_with_refdata" = "xno"; then
+   REFDATA_DIR="/data/tempo/sdpc/refdata"
+else
+   REFDATA_DIR="$jh_with_refdata"
+fi
+
+
+
+# Check whether --with-ancdata was given.
+if test "${with_ancdata+set}" = set; then :
+  withval=$with_ancdata; jh_with_ancdata=$withval
+else
+  jh_with_ancdata=no
+fi
+
+if test "x$jh_with_ancdata" = "xno"; then
+   ANCILLARY_DATA_DIR="/data/tempo/sdpc/ancillary"
+else
+   ANCILLARY_DATA_DIR="$jh_with_ancdata"
+fi
+
+
+
+# Check whether --with-s6root was given.
+if test "${with_s6root+set}" = set; then :
+  withval=$with_s6root; jh_with_s6root=$withval
+else
+  jh_with_s6root=no
+fi
+
+if test "x$jh_with_s6root" = "xno"; then
+   S6_ROOT_DIR="/soft/tempo/sdpc/skarnet"
+else
+   S6_ROOT_DIR="$jh_with_s6root"
+fi
+
+
+
 # Check whether --with-inrlib was given.
 if test "${with_inrlib+set}" = set; then :
   withval=$with_inrlib; jh_with_inrlib=$withval
@@ -2722,12 +2777,15 @@ else
 fi
 
 if test "x$jh_with_inrlib" = "xno"; then
+   INRSW_ROOT="$OTS_ROOT"
    INR_LIB="\$(OTS_ROOT)/lib"
    INR_INC="\$(OTS_ROOT)/include"
 else
+   INRSW_ROOT="$jh_with_inrlib"
    INR_LIB="$jh_with_inrlib/lib"
    INR_INC="$jh_with_inrlib/include"
 fi
+
 
 
 
@@ -4641,7 +4699,7 @@ LINKOBJS="$F90OBJS $COBJS"
 ac_config_headers="$ac_config_headers libtio/src/config.h:libtio/src/config.hin L0_format/src/config.h:L0_format/src/config.hin pipe/src/config.h:pipe/src/config.hin"
 
 
-ac_config_files="$ac_config_files Makefile:autoconf/Makefile.in Makefile.defines:autoconf/Makefile.defines.in pipe/src/Makefile:pipe/src/Makefile.in pipe/slurm/Makefile:pipe/slurm/Makefile.in"
+ac_config_files="$ac_config_files Makefile:autoconf/Makefile.in Makefile.defines:autoconf/Makefile.defines.in pipe/src/Makefile:pipe/src/Makefile.in pipe/slurm/Makefile:pipe/slurm/Makefile.in pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5340,6 +5398,7 @@ do
     "Makefile.defines") CONFIG_FILES="$CONFIG_FILES Makefile.defines:autoconf/Makefile.defines.in" ;;
     "pipe/src/Makefile") CONFIG_FILES="$CONFIG_FILES pipe/src/Makefile:pipe/src/Makefile.in" ;;
     "pipe/slurm/Makefile") CONFIG_FILES="$CONFIG_FILES pipe/slurm/Makefile:pipe/slurm/Makefile.in" ;;
+    "pipe/etc/sdpc_env.sh") CONFIG_FILES="$CONFIG_FILES pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
@@ -5925,6 +5984,5 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 
 

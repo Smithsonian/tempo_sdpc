@@ -3,16 +3,16 @@
 #---------------------------
 
 # SDPC_ROOT = root directory where pipeline processing software is installed
-export SDPC_ROOT="/soft/tempo/sdpc/install/v1_gnu/sdpc"
+export SDPC_ROOT="@prefix@"
 
 # SDPC_INRSW_ROOT = root directory where INR SW is installed
-export SDPC_INRSW_ROOT="/soft/tempo/sdpc/install/v1_gnu/inr"
+export SDPC_INRSW_ROOT="@INRSW_ROOT@"
 
 # SDPC_OTS_ROOT = root directory where OTS software is installed
-export SDPC_OTS_ROOT="/soft/tempo/sdpc/install/v1_gnu/ots"
+export SDPC_OTS_ROOT="@OTS_ROOT@"
 
 # SDPC_S6_ROOT = root directory where s6 supervisor is installed
-export SDPC_S6_ROOT="/soft/tempo/sdpc/skarnet"
+export SDPC_S6_ROOT="@S6_ROOT_DIR@"
 
 #---------------------------------
 #  Installed reference data paths:
@@ -21,12 +21,12 @@ export SDPC_S6_ROOT="/soft/tempo/sdpc/skarnet"
 # ANCILLARY_DIR contains time-sensitive reference data,
 # shared by all processing nodes
 # (e.g. GOES data, meteorology data, snow & ice cover)
-export SDPC_ANCILLARY_ROOT="/data/tempo/sdpc/ancillary"
+export SDPC_ANCILLARY_ROOT="@ANCILLARY_DATA_DIR@"
 
 # SDPC_REFDATA_DIR contains static reference data,
 # shared by all processing nodes
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
-export SDPC_REFDATA_DIR="/data/tempo/sdpc/refdata"
+export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 
 #-----------------------------------------
 #  Environment-dependent pipeline defaults
