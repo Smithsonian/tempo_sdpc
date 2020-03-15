@@ -66,12 +66,15 @@ module clim_module
   ! Note: clim_type % nz = clim_pres_type % nz - 1
   type :: clim_type
     integer :: nz, nlat, nlon
-    real (kind=4), dimension(:,:,:), allocatable :: vmr ! (nz, nlat, nlon)
+    logical :: have_variance    ! if .true., vmr_var is allocated
+    real (kind=4), dimension(:,:,:), allocatable :: vmr     ! (nz, nlat, nlon)
+    real (kind=4), dimension(:,:,:), allocatable :: vmr_var ! (nz, nlat, nlon)
   end type
 
   type, public :: clim_species_type
     private
     integer :: nhours
+    logical :: have_variance    ! if .true., clim % vmr_var is allocated
     real (kind=4), dimension (:), allocatable :: hours   ! (nhours)
     type(clim_type), dimension(:), allocatable :: clim   ! (nhours)
   end type
@@ -555,10 +558,11 @@ contains
 
   end subroutine
 
-  subroutine allocate_clim_type (cpt, ct, errstat)
+  subroutine allocate_clim_type (cpt, ct, have_variance, errstat)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
     type (clim_type), intent(inout) :: ct
+    logical, intent(in) :: have_variance
     integer, intent(inout) :: errstat
 
     integer :: err
@@ -569,10 +573,20 @@ contains
     ct % nlat = cpt % lat_subset % num_values
     ct % nz = cpt % nz - 1
 
+    ct % have_variance = have_variance
+
     allocate (ct % vmr (ct % nz, ct % nlat, ct % nlon), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, 'allocate_clim_type: allocate failed', errstat)
       return
+    endif
+
+    if (have_variance) then
+      allocate (ct % vmr_var (ct % nz, ct % nlat, ct % nlon), stat=err)
+      if (err /= 0) then
+        call tell_error (tell_malloc_error, 'allocate_clim_type: allocate failed', errstat)
+        return
+      endif
     endif
 
   end subroutine
@@ -609,6 +623,12 @@ contains
 
     call tiof_get3d_r4 (obj, 'TRC'//trim(species)//c_null_char, &
                         istart, icount, ct % vmr, errstat)
+
+    if (ct % have_variance) then
+      call tiof_get3d_r4 (obj, 'TRC'//trim(species)//'_variance'//c_null_char, &
+                          istart, icount, ct % vmr_var, errstat)
+    endif
+
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
                        'read_climatology: error reading file: '//trim(file), &
@@ -652,6 +672,12 @@ contains
 
     ct_avg % vmr(:,:,:) = &
       (wt0 * ct0 % vmr(:,:,:) + (1.0 - wt0) * ct1 % vmr(:,:,:))
+
+    if (ct0 % have_variance .and. ct1 % have_variance) then
+      ct_avg % vmr_var(:,:,:) = &
+        (wt0 * ct0 % vmr_var(:,:,:) + (1.0 - wt0) * ct1 % vmr_var(:,:,:))
+    endif
+
   end subroutine
 
   !> @brief
@@ -661,13 +687,17 @@ contains
   !> @param[in] cpt   Initialized instance of @a type(clim_pres_type)
   !> @param[in] species  String name of the trace gas species (must exactly
   !>                     match a species name in the climatology database)
+  !> @param[in] select_vmr_stddev  Optional, logical variable indicating whether
+  !>                           or not the VMR standard deviation will be needed.
+  !>                           Default: select_vmr_stddev = .false.
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_species_init (cst, cpt, species, errstat)
+  subroutine clim_species_init (cst, cpt, species, errstat, select_vmr_stddev)
     implicit none
     type (clim_species_type), intent(out) :: cst
     type (clim_pres_type), intent(in) :: cpt
     character (len=*), intent(in) :: species
     integer, intent(inout) :: errstat
+    logical, intent(in), optional :: select_vmr_stddev
 
     type (clim_type) :: ct_month0, ct_month1
     integer :: i, nhours, month0, month1, err
@@ -676,6 +706,12 @@ contains
     character (len=path_bufsize) :: file_month0, file_month1
 
     if (errstat /= 0) return
+
+    if (present(select_vmr_stddev)) then
+      cst % have_variance = select_vmr_stddev
+    else
+      cst % have_variance = .false.
+    endif
 
     hour_beg = cpt % hour_subset % min
     hour_end = cpt % hour_subset % max
@@ -703,14 +739,14 @@ contains
     cst % nhours = nhours
     cst % hours(:) = real((/(i, i=0,nhours-1)/) + floor(hour_beg), 4)
     do i = 1,nhours
-      call allocate_clim_type (cpt, cst % clim(i), errstat)
+      call allocate_clim_type (cpt, cst % clim(i), cst % have_variance, errstat)
       if (errstat /= 0) return
     enddo
 
     ! read climatologies and perform month interpolation
 
-    call allocate_clim_type (cpt, ct_month0, errstat)
-    call allocate_clim_type (cpt, ct_month1, errstat)
+    call allocate_clim_type (cpt, ct_month0, cst % have_variance, errstat)
+    call allocate_clim_type (cpt, ct_month1, cst % have_variance, errstat)
     if (errstat /= 0) return
 
     month0 = floor(cpt % fmonth)
@@ -777,14 +813,18 @@ contains
   !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
   !> @param[out] vmr_z   Output volume mixing ratio vs height.
   !>                     For (nz) pressure values, the VMR array size is (nz-1).
+  !> @param[out] vmr_stddev_z   (optional) Output VMR standard deviation vs height.
+  !>                     For (nz) pressure values, the VMR stddev array size is (nz-1).
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_species_vmr (cst, cpt, hour_utc, lon, lat, vmr_z, errstat)
+  subroutine clim_species_vmr (cst, cpt, hour_utc, lon, lat, vmr_z, &
+                               errstat, vmr_stddev_z)
     implicit none
     type(clim_species_type), intent(in) :: cst
     type(clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
     real (kind=4), intent(out), dimension(cpt % nz - 1) :: vmr_z
     integer, intent(inout) :: errstat
+    real (kind=4), intent(out), optional, dimension(cpt % nz - 1) :: vmr_stddev_z
 
     integer :: ihr0, ilon0, ilat0
     real (kind=4) :: wt0
@@ -799,6 +839,11 @@ contains
 
     vmr_z(:) = (wt0 * cst % clim(ihr0) % vmr(:,ilat0,ilon0) &
                 + (1.0 - wt0) * cst % clim(ihr0+1) % vmr(:,ilat0,ilon0))
+
+    if (present (vmr_stddev_z) .and. cst % have_variance) then
+      vmr_stddev_z(:) = sqrt (wt0 * cst % clim(ihr0) % vmr_var(:,ilat0,ilon0) &
+                              + (1.0 - wt0) * cst % clim(ihr0+1) % vmr_var(:,ilat0,ilon0))
+    endif
 
   end subroutine
 
