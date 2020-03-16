@@ -60,6 +60,7 @@ Night_Scan_Type;
    Surface_Point_Type day_end; \
    Step_Config_Type dt; \
    double step_size; \
+   int num_scan_steps; \
    uint16_t scan_type; \
    Night_Scan_Type night_scan;
 #include "scan.h"
@@ -183,12 +184,22 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
+   st->num_scan_steps = -1;
+   if (CONFIG_TRUE == config_setting_lookup_int (s, "scan_num_steps", &st->num_scan_steps))
+     {
+        double nan_value = nan("");
+        st->scan_end.lon = nan_value;
+        st->scan_end.lat = nan_value;
+     }
+
    if (0 != read_surface_point (s, "scan_end", &st->scan_end))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading surface point 'scan_end': %s",
-                     __func__, config_error_file (cfg));
-        return -1;
+        if (st->num_scan_steps <= 0)
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR, "%s: reading surface point 'scan_end': %s",
+                          __func__, config_error_file (cfg));
+             return -1;
+          }
      }
 
    if (0 != read_surface_point (s, "day_beg", &st->day_beg))
@@ -535,6 +546,11 @@ static int scan_end_point (const Scan_Type *st, double *lon, double *lat)
    return 0;
 }
 
+static int scan_num_steps (const Scan_Type *st)
+{
+   return st->num_scan_steps;
+}
+
 static int night_scan_region (const Scan_Type *st, int is_east, double *lon, double *lat,
                               double *width, int *num)
 {
@@ -599,8 +615,16 @@ static int scan_print_params (const Scan_Type *st, const char *pprefix,
                    prefix, st->min_sun_angle);
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = Eastern scan limit point\n",
                    prefix, st->scan_beg.lon, st->scan_beg.lat);
-   (void) fprintf (fp, "%s (%8.3f,%7.3f) = Western scan limit point\n",
-                   prefix, st->scan_end.lon, st->scan_end.lat);
+   if (0 == isnan (st->scan_end.lon))
+     {
+        (void) fprintf (fp, "%s (%8.3f,%7.3f) = Western scan limit point\n",
+                        prefix, st->scan_end.lon, st->scan_end.lat);
+     }
+   else
+     {
+        (void) fprintf (fp, "%s %d = Number of scan steps\n",
+                        prefix, st->num_scan_steps);
+     }
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = Eastern SZA control point\n",
                    prefix, st->day_beg.lon, st->day_beg.lat);
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = Western SZA control point\n",
@@ -627,6 +651,7 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_min_sun_angle = scan_min_sun_angle;
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;
+   st->st_scan_num_steps = scan_num_steps;
    st->st_print_params = scan_print_params;
    st->st_scan_type = query_scan_type;
 

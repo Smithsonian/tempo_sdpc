@@ -68,15 +68,17 @@ def read_var (nc, var_config):
 
 # Create Basemap instance.
 # For the 'geos' projection, use m1 to define the boundaries:
+# The rsphere argument is present only to workaround what seems to be a bug
+# recently introduced into the basemap module.  How nice.
 def init_basemap ():
-    lon_0=-92.85
-    m1 = Basemap(projection='geos',lon_0=lon_0,resolution=None)
+    lon_0=-91.0 # 92.85
+    m1 = Basemap(projection='geos',lon_0=lon_0,resolution=None, rsphere=(6378137.00,6356752.3142))
     px = m1.urcrnrx * 0.275
     py = m1.urcrnry * 0.48
     mx = m1.urcrnrx * (-0.275)
     my = m1.urcrnry * 0.15
     m  = Basemap(projection='geos',lon_0=lon_0,resolution='l',\
-         llcrnrx=mx,llcrnry=my,urcrnrx=px,urcrnry=py)
+         llcrnrx=mx,llcrnry=my,urcrnrx=px,urcrnry=py, rsphere=(6378137.00,6356752.3142))
     return m
 
 def config_map (m):

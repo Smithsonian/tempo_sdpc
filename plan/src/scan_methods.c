@@ -63,19 +63,29 @@ static int radiance_scan_endpoints (const Scan_Type *st,
 {
    EarthPoint beg_pt={0}, end_pt={0};
    double sat_lon;
+   int num_steps;
 
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
 
    if (0 != st->st_scan_beg (st, &beg_pt.theLon, &beg_pt.theLat))
      return -1;
-   if (0 != st->st_scan_end (st, &end_pt.theLon, &end_pt.theLat))
-     return -1;
-
    if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
      return -1;
-   if (0 != compute_scan_angles (&end_pt, sat_lon, end))
-     return -1;
+
+   if ((num_steps = st->st_scan_num_steps (st)) > 0)
+     {
+        /* microradians */
+        end->elevation = beg->elevation;
+        end->azimuth   = beg->azimuth + num_steps * st->st_step_size (st);
+     }
+   else
+     {
+        if (0 != st->st_scan_end (st, &end_pt.theLon, &end_pt.theLat))
+          return -1;
+        if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+          return -1;
+     }
 
    return 0;
 }

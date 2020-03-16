@@ -28,6 +28,9 @@ struct Scan_Type
    double (*st_step_size)(const Scan_Type *);
    /**< retrieve the step size [microradian] for each scan step */
 
+   int (*st_scan_num_steps)(const Scan_Type *);
+   /**< retrieve the requested number of scan steps */
+
    double (*st_min_sun_angle)(const Scan_Type *);
    /**< retrieve the minimum allowed sun angle [deg] */
 
