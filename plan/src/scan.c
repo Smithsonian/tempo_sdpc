@@ -43,13 +43,10 @@ typedef struct
 }
 Surface_Region_Type;
 
-typedef struct
-{
-   Surface_Region_Type east;
-   Surface_Region_Type west;
+#define NIGHT_SCAN_TYPE_PRIVATE_DATA \
+   Surface_Region_Type east; \
+   Surface_Region_Type west; \
    Step_Config_Type dt;
-}
-Night_Scan_Type;
 
 #define SCAN_TYPE_PRIVATE_DATA \
    double min_sun_angle; \
@@ -61,8 +58,7 @@ Night_Scan_Type;
    Step_Config_Type dt; \
    double step_size; \
    int num_scan_steps; \
-   uint16_t scan_type; \
-   Night_Scan_Type night_scan;
+   uint16_t scan_type;
 #include "scan.h"
 
 static void free_scan_type (Scan_Type *st)
@@ -302,9 +298,6 @@ static int read_params (config_t *cfg, Scan_Type *st)
      return -1;
 
    if (0 != read_scan_config (cfg, st))
-     return -1;
-
-   if (0 != read_night_scan_config (cfg, &st->night_scan))
      return -1;
 
    return 0;
@@ -551,10 +544,10 @@ static int scan_num_steps (const Scan_Type *st)
    return st->num_scan_steps;
 }
 
-static int night_scan_region (const Scan_Type *st, int is_east, double *lon, double *lat,
+static int night_scan_region (const Night_Scan_Type *nst, int is_east, double *lon, double *lat,
                               double *width, int *num)
 {
-   const Surface_Region_Type *reg = is_east ? &st->night_scan.east : &st->night_scan.west;
+   const Surface_Region_Type *reg = is_east ? &nst->east : &nst->west;
 
    *lon = reg->pt.lon;
    *lat = reg->pt.lat;
@@ -574,9 +567,9 @@ static double scan_integration_time (const Scan_Type *st)
    return st->dt.integration_time;
 }
 
-static double night_scan_integration_time (const Scan_Type *st)
+static double night_scan_integration_time (const Night_Scan_Type *nst)
 {
-   return st->night_scan.dt.integration_time;
+   return nst->dt.integration_time;
 }
 
 static double scan_step_size (const Scan_Type *st)
@@ -599,10 +592,10 @@ static double scan_duration (const Scan_Type *st, int num_steps)
    return __scan_duration_days (&st->dt, num_steps);
 }
 
-static double night_scan_duration (const Scan_Type *st, int num_steps)
+static double night_scan_duration (const Night_Scan_Type *nst, int num_steps)
 {
    /* FIXME - should night scan duration be computed differently? */
-   return __scan_duration_days (&st->night_scan.dt, num_steps);
+   return __scan_duration_days (&nst->dt, num_steps);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,
@@ -655,10 +648,6 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_print_params = scan_print_params;
    st->st_scan_type = query_scan_type;
 
-   st->st_night_scan_region = night_scan_region;
-   st->st_night_scan_duration = night_scan_duration;
-   st->st_night_integration_time = night_scan_integration_time;
-
    if (0 != read_params (cfg, st))
      {
         free_scan_type (st);
@@ -666,4 +655,35 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
      }
 
    return st;
+}
+
+static void free_night_scan_type (Night_Scan_Type *nst)
+{
+   if (nst == NULL)
+     return;
+   FREE(nst);
+}
+
+Night_Scan_Type *night_scan_open (config_t *cfg)
+{
+   Night_Scan_Type *nst = NULL;
+
+   if (NULL == (nst = (Night_Scan_Type *) MALLOC (sizeof *nst)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   nst->nst_delete = free_night_scan_type;
+   nst->nst_night_scan_region = night_scan_region;
+   nst->nst_night_scan_duration = night_scan_duration;
+   nst->nst_night_integration_time = night_scan_integration_time;
+
+   if (0 != read_night_scan_config (cfg, nst))
+     {
+        free_night_scan_type (nst);
+        return NULL;
+     }
+
+   return nst;
 }

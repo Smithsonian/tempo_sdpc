@@ -451,6 +451,7 @@ return_status:
 static Plan_List_Type *
 attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
                           Scan_Limit_Times_Type *limit_times,
+                          Night_Scan_Type *night_scan,
                           Plan_List_Type *entry)
 {
    const Scan_Method_Type *nl_dawn = find_scan_method ("nl_dawn");
@@ -467,7 +468,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
      {
         limit_times->jd_utc_beg = entry->tstart;
      }
-   dawn = nl_dawn->sm_plan (scan, solar_geom, limit_times);
+   dawn = nl_dawn->sm_plan (scan, solar_geom, limit_times, night_scan);
    if (dawn && (dawn->num_repeats > 0))
      {
         if (0 != plan_list_append (&dawn, entry))
@@ -489,7 +490,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
         limit_times->jd_utc_end = radiance_scans_end_time;
      }
 
-   dusk = nl_dusk->sm_plan (scan, solar_geom, limit_times);
+   dusk = nl_dusk->sm_plan (scan, solar_geom, limit_times, night_scan);
    if (dusk && (dusk->num_repeats > 0))
      {
         if (0 != plan_list_append (&entry, dusk))
@@ -625,7 +626,8 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
 
 static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Type *solar_geom,
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
-                                           const Cal_Date_Type *t0, int num_plan_days, int enable_night_scan,
+                                           const Cal_Date_Type *t0, int num_plan_days,
+                                           Night_Scan_Type *night_scan,
                                            const Optional_Output_Type *oot)
 {
    Plan_List_Type *plan_list = NULL;
@@ -654,12 +656,12 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
         if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
           goto return_status;
 
-        if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times)))
+        if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, NULL)))
           goto return_status;
 
-        if (enable_night_scan)
+        if (night_scan)
           {
-             if (NULL == (entry = attach_nightlights_scans (scan, solar_geom, &limit_times, entry)))
+             if (NULL == (entry = attach_nightlights_scans (scan, solar_geom, &limit_times, night_scan, entry)))
                goto return_status;
           }
 
@@ -743,6 +745,7 @@ int main (int argc, char **argv)
    config_t cfg = {0};
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
+   Night_Scan_Type *night_scan = NULL;
    Plan_List_Type *plan_list = NULL;
    Solar_Geom_Type *solar_geom = NULL;
    const Scan_Method_Type *sm = NULL;
@@ -927,7 +930,13 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (NULL == (plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days, enable_night_scan, &oot)))
+   if (enable_night_scan)
+     {
+        if (NULL == (night_scan = night_scan_open (&cfg)))
+          goto return_status;
+     }
+
+   if (NULL == (plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days, night_scan, &oot)))
      goto return_status;
 
    if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list))
@@ -942,6 +951,7 @@ int main (int argc, char **argv)
 return_status:
    if (solar_geom) solar_geom->sgt_delete (solar_geom);
    if (scan) scan->st_delete (scan);
+   if (night_scan) night_scan->nst_delete (night_scan);
    (void) ephem_close (&eph);
    plan_list_free (plan_list);
    close_outfile (fp_scan, scan_outfile);

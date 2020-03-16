@@ -12,7 +12,7 @@
 typedef struct
 {
    Plan_List_Type *(*sm_plan)(const Scan_Type *, Solar_Geom_Type *,
-                              const Scan_Limit_Times_Type *);
+                              const Scan_Limit_Times_Type *, void *);
    /**< generate a scan plan */
 
    int (*sm_vis)(Vis_Type *v, const Plan_List_Type *, double, int, int);

@@ -90,7 +90,7 @@ static int radiance_scan_endpoints (const Scan_Type *st,
    return 0;
 }
 
-static int nightlights_scan_endpoints (const Scan_Type *st,
+static int nightlights_scan_endpoints (const Night_Scan_Type *nst,
                                        const Solar_Geom_Type *solar_geom,
                                        const Scan_Limit_Times_Type *limit_times,
                                        int is_east,
@@ -106,7 +106,7 @@ static int nightlights_scan_endpoints (const Scan_Type *st,
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
 
-   if (0 != st->st_night_scan_region (st, is_east, &pt.theLon, &pt.theLat, &width, &num))
+   if (0 != nst->nst_night_scan_region (nst, is_east, &pt.theLon, &pt.theLat, &width, &num))
      return -1;
 
    if (0 != compute_scan_angles (&pt, sat_lon, &p))
@@ -174,13 +174,15 @@ static int std_scan_table (const Scan_Type *st,
 
 static Plan_List_Type *
 std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-          const Scan_Limit_Times_Type *limit_times)
+          const Scan_Limit_Times_Type *limit_times, void *cl)
 {
    Plan_List_Type *entry = NULL;
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps;
    uint16_t scan_type = st->st_scan_type(st);
+
+   (void) cl;
 
    if (0 != radiance_scan_endpoints (st, solar_geom, &beg, &end))
      return NULL;
@@ -209,19 +211,21 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
 static Plan_List_Type *
 nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-                       const Scan_Limit_Times_Type *limit_times)
+                       const Scan_Limit_Times_Type *limit_times,
+                       void *cl)
 {
+   Night_Scan_Type *nst = (Night_Scan_Type *)cl;
    Plan_List_Type *entry = NULL;
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 0, &beg, &end))
+   if (0 != nightlights_scan_endpoints (nst, solar_geom, limit_times, 0, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = st->st_night_scan_duration (st, num_steps);
+   time_full_scan = nst->nst_night_scan_duration (nst, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_beg - limit_times->jd_utc_beg_safe)
@@ -235,7 +239,7 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->ystart = ystart;
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = st->st_night_integration_time (st);
+   entry->integration_time = nst->nst_night_integration_time (nst);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -246,19 +250,21 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
 static Plan_List_Type *
 nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-                       const Scan_Limit_Times_Type *limit_times)
+                       const Scan_Limit_Times_Type *limit_times,
+                       void *cl)
 {
+   Night_Scan_Type *nst = (Night_Scan_Type *)cl;
    Plan_List_Type *entry = NULL;
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (st, solar_geom, limit_times, 1, &beg, &end))
+   if (0 != nightlights_scan_endpoints (nst, solar_geom, limit_times, 1, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = st->st_night_scan_duration (st, num_steps);
+   time_full_scan = nst->nst_night_scan_duration (nst, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_end_safe - limit_times->jd_utc_end)
@@ -272,7 +278,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->ystart = ystart;
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = st->st_night_integration_time (st);
+   entry->integration_time = nst->nst_night_integration_time (nst);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -365,7 +371,7 @@ static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const 
 
 static Plan_List_Type *
 opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-           const Scan_Limit_Times_Type *limit_times)
+           const Scan_Limit_Times_Type *limit_times, void *cl)
 {
    Plan_List_Type *opt_scans = NULL;
    Table_Schedule rise={0}, full={0}, set={0};
@@ -373,6 +379,8 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    double time_midpoint, sun_angle, min_sun_angle, jd_utc;
    double xstart[3], ystart;
    int num_steps[3];
+
+   (void) cl;
 
    if (0 != radiance_scan_endpoints (st, solar_geom, &beg, &end))
      return NULL;

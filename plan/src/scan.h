@@ -40,15 +40,6 @@ struct Scan_Type
    int (*st_scan_end)(const Scan_Type *, double *, double *);
    /**< retrieve the (lon,lat) coordinates of the scan's western limit [deg] */
 
-   int (*st_night_scan_region)(const Scan_Type *, int, double *, double *, double *, int *);
-   /**< retrieve night scan region as (lon,lat) of one boundary [deg], and an eastward or westward extent [urad]  */
-
-   double (*st_night_scan_duration)(const Scan_Type *, int);
-   /**< compute the time [sec] required to complete a scan with N steps */
-
-   double (*st_night_integration_time)(const Scan_Type *);
-   /**< retrieve the integration time [sec] for a single nightlights exposure in a co-add */
-
    int (*st_print_params)(const Scan_Type *, const char *, FILE *);
    /**< print the scan parameters to an open FILE pointer */
 
@@ -63,6 +54,29 @@ struct Scan_Type
  *         on error, a NULL pointer.
 */
 extern Scan_Type *scan_open (config_t *cfg, uint16_t scan_type);
+
+typedef struct Night_Scan_Type Night_Scan_Type;
+
+struct Night_Scan_Type
+{
+   void (*nst_delete)(Night_Scan_Type *);
+   /**< delete an object of type \c Night_Scan_Type */
+
+   int (*nst_night_scan_region)(const Night_Scan_Type *, int, double *, double *, double *, int *);
+   /**< retrieve night scan region as (lon,lat) of one boundary [deg], and an eastward or westward extent [urad]  */
+
+   double (*nst_night_scan_duration)(const Night_Scan_Type *, int);
+   /**< compute the time [sec] required to complete a scan with N steps */
+
+   double (*nst_night_integration_time)(const Night_Scan_Type *);
+   /**< retrieve the integration time [sec] for a single nightlights exposure in a co-add */
+
+#ifdef NIGHT_SCAN_TYPE_PRIVATE_DATA
+   NIGHT_SCAN_TYPE_PRIVATE_DATA
+#endif
+};
+
+extern Night_Scan_Type *night_scan_open (config_t *cfg);
 
 typedef struct
 {
