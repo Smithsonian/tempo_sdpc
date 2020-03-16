@@ -410,7 +410,7 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
 {
    Novas_cat_entry_t dummy_star;
    double a = GEO_SAT_RADIUS / EARTH_MEAN_RADIUS;
-   double tan_elev;
+   double tan_elev, tan_azi, delta_lon;
    short int error;
 
    /* We'll need the positions of:
@@ -432,17 +432,13 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
    if (0 != read_sat_config (cfg, &sgt->sat_longitude, &sgt->bs_longitude, &sgt->bs_latitude))
      return -1;
 
-   /* Elevation and azimuth angles to point boresight at specified (lon,lon). */
-   if (fabs (sgt->sat_longitude - sgt->bs_longitude) > DBL_EPSILON)
-     {
-        tell_verror (TELL_NOT_IMPLEMENTED_ERROR,
-                     "%s: The code assumes that the satellite and the boresight are at the same longitude", __func__);
-        return -1;
-     }
-
+   /* Elevation and azimuth angles to point boresight at specified (lat,lon). */
    tan_elev = sin(sgt->bs_latitude) / (a - cos(sgt->bs_latitude));
    sgt->bs_elevation_angle = atan(tan_elev); /* radians */
-   sgt->bs_azimuth_angle = 0.0;
+
+   delta_lon = sgt->bs_longitude - sgt->sat_longitude;
+   tan_azi = sin(delta_lon) / (a - cos(delta_lon));
+   sgt->bs_azimuth_angle = atan(tan_azi);   /* radians */
 
    /* WGS84 coordinates of geostationary satellite */
    sgt->sat_pos[0] = GEO_SAT_RADIUS * cos(sgt->sat_longitude);  /* X */

@@ -291,6 +291,8 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
     * So, if this gets generalized to support the case where the boresight
     * differs from the satellite longitude, fixing these angles will take
     * a bit of care.
+    *
+    * FIXME!!  Add support for boresight not at satellite longitude
     */
    if (0 != solar_geom->sgt_boresight_angles (solar_geom, &v->tilt, &unused_azimuth_angle_about_z_axis))
      goto return_error;
