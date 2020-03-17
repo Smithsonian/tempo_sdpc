@@ -83,7 +83,7 @@ static void usage (void)
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
    fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
-   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 [default=std]\n");
+   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split:NAME [default=std]\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
@@ -628,6 +628,7 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
                                            const Cal_Date_Type *t0, int num_plan_days,
                                            Night_Scan_Type *night_scan,
+                                           Split_Scan_Type *split_scan,
                                            const Optional_Output_Type *oot)
 {
    Plan_List_Type *plan_list = NULL;
@@ -656,7 +657,7 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
         if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
           goto return_status;
 
-        if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, NULL)))
+        if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, split_scan)))
           goto return_status;
 
         if (night_scan)
@@ -746,6 +747,7 @@ int main (int argc, char **argv)
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
    Night_Scan_Type *night_scan = NULL;
+   Split_Scan_Type *split_scan = NULL;
    Plan_List_Type *plan_list = NULL;
    Solar_Geom_Type *solar_geom = NULL;
    const Scan_Method_Type *sm = NULL;
@@ -936,7 +938,23 @@ int main (int argc, char **argv)
           goto return_status;
      }
 
-   if (NULL == (plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days, night_scan, &oot)))
+   if (0 == strncmp (scan_method, "split", 5))
+     {
+        const char *split_scan_name = strchr (scan_method, '-');
+        if (split_scan_name == NULL)
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: split scan region name not specified in scan_method string: %s",
+                          __func__, scan_method);
+             goto return_status;
+          }
+        if (NULL == (split_scan = split_scan_open (&cfg, split_scan_name + 1)))
+          goto return_status;
+     }
+
+   plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
+                                   night_scan, split_scan, &oot);
+   if (NULL == plan_list)
      goto return_status;
 
    if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list))
@@ -952,6 +970,7 @@ return_status:
    if (solar_geom) solar_geom->sgt_delete (solar_geom);
    if (scan) scan->st_delete (scan);
    if (night_scan) night_scan->nst_delete (night_scan);
+   if (split_scan) split_scan->sst_delete (split_scan);
    (void) ephem_close (&eph);
    plan_list_free (plan_list);
    close_outfile (fp_scan, scan_outfile);

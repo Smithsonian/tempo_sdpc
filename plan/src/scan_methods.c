@@ -90,6 +90,26 @@ static int radiance_scan_endpoints (const Scan_Type *st,
    return 0;
 }
 
+static int split_scan_endpoints (const Split_Scan_Type *sst,
+                                 const Solar_Geom_Type *solar_geom,
+                                 AziElev_Type *beg,
+                                 AziElev_Type *end)
+{
+   EarthPoint beg_pt={0}, end_pt={0};
+   double sat_lon;
+
+   if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
+     return -1;
+   if (0 != sst->sst_scan_region (sst, &beg_pt.theLon, &beg_pt.theLat, &end_pt.theLon, &end_pt.theLat))
+     return -1;
+   if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+     return -1;
+   if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+     return -1;
+
+   return 0;
+}
+
 static int nightlights_scan_endpoints (const Night_Scan_Type *nst,
                                        const Solar_Geom_Type *solar_geom,
                                        const Scan_Limit_Times_Type *limit_times,
@@ -207,6 +227,111 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
    return entry;
+}
+
+static Plan_List_Type *
+split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+            const Scan_Limit_Times_Type *limit_times, void *cl)
+{
+   Split_Scan_Type *sst = (Split_Scan_Type *)cl;
+   Plan_List_Type *broad = NULL;
+   Plan_List_Type *head = NULL;
+   Plan_List_Type split = {0};
+   AziElev_Type beg={0}, end={0};
+   double time_remaining, tstart;
+   int is_broad, num_narrow_repeats;
+   uint16_t scan_type = st->st_scan_type(st);
+
+   if (sst == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: sst = NULL", __func__);
+        return NULL;
+     }
+
+   /* broad contains the single-day plan for a standard
+    *       east/west scan of a broad region (e.g. the full FOR)
+    */
+   if (NULL == (broad = std_plan (st, solar_geom, limit_times, NULL)))
+     return NULL;
+
+   /* split contains the parameters for scanning a narrow region,
+    *       e.g. California.
+    */
+   if (0 != split_scan_endpoints (sst, solar_geom, &beg, &end))
+     goto return_error;
+   if (0 != std_scan_table (st, &beg, &end, &split.xstart, &split.ystart, &split.num_steps))
+     goto return_error;
+   split.scan_duration = st->st_scan_duration (st, split.num_steps);
+   split.scan_duration *= SEC_PER_DAY;
+
+   /* Now, we construct a linked list of Plan_List_Type structures for
+    * this day that alternates one scan of the broad region, with N scans
+    * of the narrow region.  For example if "broad" is a 60-min scan
+    * of the full FOR, and "narrow" is a 4-min scan of California, then
+    * the returned plan might look like:
+    *   1 full, 15 Ca, 1 full, 15 Ca, ... until the end of the day.
+    */
+
+   tstart = broad->tstart;
+   time_remaining = broad->num_repeats * broad->scan_duration;
+   num_narrow_repeats = floor(broad->scan_duration / split.scan_duration);
+
+   is_broad = 1;
+
+   while (time_remaining > split.scan_duration)
+     {
+        Plan_List_Type *entry = NULL;
+        double time_elapsed;
+
+        if (NULL == (entry = plan_list_entry_alloc (scan_type)))
+          goto return_error;
+
+        entry->tstart = tstart;
+        entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
+        entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
+
+        if ((is_broad != 0) && (time_remaining > broad->scan_duration))
+          {
+             entry->xstart = broad->xstart;
+             entry->ystart = broad->ystart;
+             entry->num_steps = broad->num_steps;
+             entry->scan_duration = broad->scan_duration;
+             entry->integration_time = broad->integration_time;
+             entry->num_repeats = 1;
+          }
+        else
+          {
+             entry->xstart = split.xstart;
+             entry->ystart = split.ystart;
+             entry->num_steps = split.num_steps;
+             entry->scan_duration = split.scan_duration;
+             entry->integration_time = sst->sst_scan_integration_time (sst);
+
+             /* By construction, this should yield num_repeats >= 1 */
+             entry->num_repeats = floor (time_remaining / split.scan_duration);
+             if (entry->num_repeats > num_narrow_repeats)
+               {
+                  entry->num_repeats = num_narrow_repeats;
+               }
+          }
+
+        if (0 != plan_list_append (&head, entry))
+          goto return_error;
+
+        time_elapsed    = entry->scan_duration * entry->num_repeats;
+        time_remaining -= time_elapsed;
+        tstart         += time_elapsed / SEC_PER_DAY;
+
+        is_broad = is_broad ? 0 : 1;
+     }
+
+   plan_list_free (broad);
+   return head;
+
+return_error:
+   plan_list_free (head);
+   plan_list_free (broad);
+   return NULL;
 }
 
 static Plan_List_Type *
@@ -534,6 +659,7 @@ static Method_Entry Method_Table[] =
    METHOD_ENTRY("opt1", opt1_plan, scan_vis),
    METHOD_ENTRY("nl_dawn", nightlights_dawn_plan, scan_vis),
    METHOD_ENTRY("nl_dusk", nightlights_dusk_plan, scan_vis),
+   METHOD_ENTRY("split", split_plan, scan_vis),
    METHOD_TABLE_END
 };
 
@@ -543,7 +669,8 @@ const Scan_Method_Type *find_scan_method (const char *name)
 
    for (e = Method_Table; e->name != NULL; e++)
      {
-        if (0 == strcmp (e->name, name))
+        size_t len = strlen(e->name);
+        if (0 == strncmp (e->name, name, len))
           {
              return &e->method;
           }

@@ -78,6 +78,24 @@ struct Night_Scan_Type
 
 extern Night_Scan_Type *night_scan_open (config_t *cfg);
 
+typedef struct Split_Scan_Type Split_Scan_Type;
+
+struct Split_Scan_Type
+{
+   void (*sst_delete)(Split_Scan_Type *);
+
+   int (*sst_scan_region)(const Split_Scan_Type *, double *, double *, double *, double *);
+   /* beg_lon, beg_lat, end_lon, end_lat */
+
+   double (*sst_scan_integration_time) (const Split_Scan_Type *);
+
+#ifdef SPLIT_SCAN_TYPE_PRIVATE_DATA
+   SPLIT_SCAN_TYPE_PRIVATE_DATA
+#endif
+};
+
+extern Split_Scan_Type *split_scan_open (config_t *cfg, const char *name);
+
 typedef struct
 {
    double jd_utc_beg;

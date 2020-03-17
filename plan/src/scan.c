@@ -43,6 +43,11 @@ typedef struct
 }
 Surface_Region_Type;
 
+#define SPLIT_SCAN_TYPE_PRIVATE_DATA \
+   Surface_Point_Type scan_beg; \
+   Surface_Point_Type scan_end; \
+   Step_Config_Type dt;
+
 #define NIGHT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Region_Type east; \
    Surface_Region_Type west; \
@@ -285,6 +290,46 @@ static int read_night_scan_config (config_t *cfg, Night_Scan_Type *night_scan)
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading night_scan_config:step_config: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return 0;
+}
+
+static int read_split_scan_config (config_t *cfg, Split_Scan_Type *split,
+                                   const char *name)
+{
+   config_setting_t *s;
+
+   if (NULL == (s = config_lookup (cfg, name)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing night_scan_config in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_surface_point (s, "scan_beg", &split->scan_beg))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading surface point 'split_scan_config:east': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_surface_point (s, "scan_end", &split->scan_end))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading surface point 'split_scan_config:west': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (0 != read_step_config (s, &split->dt))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading step_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -557,6 +602,17 @@ static int night_scan_region (const Night_Scan_Type *nst, int is_east, double *l
    return 0;
 }
 
+static int split_scan_region (const Split_Scan_Type *sst,
+                              double *beg_lon, double *beg_lat,
+                              double *end_lon, double *end_lat)
+{
+   *beg_lon = sst->scan_beg.lon;
+   *beg_lat = sst->scan_beg.lat;
+   *end_lon = sst->scan_end.lon;
+   *end_lat = sst->scan_end.lat;
+   return 0;
+}
+
 static double scan_min_sun_angle (const Scan_Type *st)
 {
    return st->min_sun_angle;
@@ -570,6 +626,11 @@ static double scan_integration_time (const Scan_Type *st)
 static double night_scan_integration_time (const Night_Scan_Type *nst)
 {
    return nst->dt.integration_time;
+}
+
+static double split_scan_integration_time (const Split_Scan_Type *sst)
+{
+   return sst->dt.integration_time;
 }
 
 static double scan_step_size (const Scan_Type *st)
@@ -686,4 +747,34 @@ Night_Scan_Type *night_scan_open (config_t *cfg)
      }
 
    return nst;
+}
+
+static void free_split_scan_type (Split_Scan_Type *sst)
+{
+   if (sst == NULL)
+     return;
+   FREE(sst);
+}
+
+Split_Scan_Type *split_scan_open (config_t *cfg, const char *name)
+{
+   Split_Scan_Type *sst = NULL;
+
+   if (NULL == (sst = (Split_Scan_Type *) MALLOC (sizeof *sst)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   sst->sst_delete = free_split_scan_type;
+   sst->sst_scan_region = split_scan_region;
+   sst->sst_scan_integration_time = split_scan_integration_time;
+
+   if (0 != read_split_scan_config (cfg, sst, name))
+     {
+        free_split_scan_type (sst);
+        return NULL;
+     }
+
+   return sst;
 }
