@@ -7,9 +7,15 @@
 
 scan_config: {
 
+ # Specify scan limits using either scan_num_steps or scan_end.
+ # If scan_num_steps <= 0, or absent, scan_end must be present
+ # scan_num_steps = 1283;
+
 # scan_beg, scan_end are the eastern and western limits of the scan:
+
  scan_beg: {lon =  -52.712; lat = 47.5605;};  # St John's
- scan_end: {lon = -123.00; lat = 18.0;};
+ scan_end: {lon = -120.00; lat = 18.0;};
+
  #scan_beg: {lon =  -73.71; lat = 18.0;};
  #scan_end: {lon = -126.40; lat = 18.0;};
  #scan_beg: {lon =  -87.623; lat = 41.881;};  # Chicago
@@ -21,6 +27,29 @@ scan_config: {
  day_beg: {lon =  -80.000; lat = 30.0;};
  day_end: {lon = -115.000; lat = 30.0;};
 
+ #day_beg: {lon = -114.235840; lat = 34.161818;};  # CA easternmost
+ # day_end: {lon = -124.387207; lat = 41.771312;};  # CA westernmost
+
+# Scan stepping parameters:
+
+  step_config: {
+     scan_reset  = 2.35;
+     scan_timing_margin = 52.51083872;
+#     integration_time = 0.118;
+#     num_coadds = 21;
+     integration_time = 0.100;
+     num_coadds = 25;
+     frame_transfer_time = 0.00833328;
+     readout_time = 0.1;
+  };
+};
+
+# A narrow region to use with "split" scans:
+California: {
+
+ scan_beg: {lon = -114.235840; lat = 34.161818;};  # CA easternmost
+ scan_end: {lon = -124.387207; lat = 41.771312;};  # CA westernmost
+
 # Scan stepping parameters:
 
   step_config: {
@@ -28,9 +57,12 @@ scan_config: {
      scan_timing_margin = 52.51083872;
      integration_time = 0.118;
      num_coadds = 21;
+#     integration_time = 0.100;
+#     num_coadds = 25;
      frame_transfer_time = 0.00833328;
      readout_time = 0.1;
   };
+
 };
 
 night_scan_config: {
@@ -90,10 +122,12 @@ sat_config: {
   epoch = "2000-01-01T00:00:00Z";
 # TEMPO epoch
 
-  sat_lon = -92.85;
+  sat_lon = -91.0;
 # sat_lon = geostationary satellite longitude
 
-  boresight: {lon = -92.85; lat = 34.095428013683204;};
+  boresight: {lon = -90.65, lat = 33.71};
+
+#  boresight: {lon = -91.0; lat = 34.095428013683204;};
 # (lon,lat) coordinates of instrument boresight point:
 # (note: lon=sat_lon and lat=34.095428013683204 => tilt=5.53 deg)
 
@@ -118,14 +152,14 @@ novas_config: {
 output_sza_map_config: {
 
 # SZA image dimension
-   img_size = 256;
+   img_size = 512;
 
 # dimensions of nominal field of regard and
 # pixel angular size [microradian] in each dimension
 
-   num_mirror_steps   = 1283;
+   num_mirror_steps   = 1285;
    size_mirror_step   = 114.0;
 
-   num_xtrack         = 2038;
+   num_xtrack         = 2048;
    size_xtrack_pixel  = 41.79;
 };
