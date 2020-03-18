@@ -80,6 +80,12 @@ extern Night_Scan_Type *night_scan_open (config_t *cfg);
 
 typedef struct Split_Scan_Type Split_Scan_Type;
 
+enum
+{
+   SCAN_SPLIT_STD = 0,
+   SCAN_SPLIT_OPT1 = 1
+};
+
 struct Split_Scan_Type
 {
    void (*sst_delete)(Split_Scan_Type *);
@@ -89,12 +95,14 @@ struct Split_Scan_Type
 
    double (*sst_scan_integration_time) (const Split_Scan_Type *);
 
+   int (*sst_base_scan_method)(const Split_Scan_Type *);
+
 #ifdef SPLIT_SCAN_TYPE_PRIVATE_DATA
    SPLIT_SCAN_TYPE_PRIVATE_DATA
 #endif
 };
 
-extern Split_Scan_Type *split_scan_open (config_t *cfg, const char *name);
+extern Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method);
 
 typedef struct
 {

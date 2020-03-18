@@ -25,6 +25,9 @@
 #define DEGTORAD       (M_PI/180.0)
 #define DEGTOMICRORAD  (1.e6*DEGTORAD)
 
+static Plan_List_Type *opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                                  const Scan_Limit_Times_Type *limit_times, void *cl);
+
 typedef struct
 {
    double azimuth;
@@ -234,12 +237,13 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
             const Scan_Limit_Times_Type *limit_times, void *cl)
 {
    Split_Scan_Type *sst = (Split_Scan_Type *)cl;
+   Plan_List_Type *base = NULL;
    Plan_List_Type *broad = NULL;
    Plan_List_Type *head = NULL;
    Plan_List_Type split = {0};
    AziElev_Type beg={0}, end={0};
    double time_remaining, tstart;
-   int is_broad, num_narrow_repeats;
+   int is_broad, num_narrow_repeats, base_scan_method;
    uint16_t scan_type = st->st_scan_type(st);
 
    if (sst == NULL)
@@ -248,14 +252,31 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         return NULL;
      }
 
-   /* broad contains the single-day plan for a standard
-    *       east/west scan of a broad region (e.g. the full FOR)
+   /* broad contains the plan for a standard east/west scan of
+    * a broad region (e.g. the full FOR)
     */
-   if (NULL == (broad = std_plan (st, solar_geom, limit_times, NULL)))
-     return NULL;
+
+   base_scan_method = sst->sst_base_scan_method (sst);
+   switch (base_scan_method)
+     {
+      case SCAN_SPLIT_STD:
+        if (NULL == (broad = std_plan (st, solar_geom, limit_times, NULL)))
+          return NULL;
+        break;
+
+      case SCAN_SPLIT_OPT1:
+        if (NULL == (base = opt1_plan (st, solar_geom, limit_times, NULL)))
+          return NULL;
+        broad = base->next;
+        break;
+
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported base scan method index=%d", __func__, base_scan_method);
+        return NULL;
+     }
 
    /* split contains the parameters for scanning a narrow region,
-    *       e.g. California.
+    * e.g. California.
     */
    if (0 != split_scan_endpoints (sst, solar_geom, &beg, &end))
      goto return_error;
@@ -325,8 +346,29 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         is_broad = is_broad ? 0 : 1;
      }
 
-   plan_list_free (broad);
-   return head;
+   if (base_scan_method == SCAN_SPLIT_STD)
+     {
+        plan_list_free (broad);
+        return head;
+     }
+   else if (base_scan_method == SCAN_SPLIT_OPT1)
+     {
+        Plan_List_Type *tail;
+        /* replace the mid-day opt1 scan with the newly generated linked list */
+        for (tail = head; tail->next != NULL; tail = tail->next)
+          {
+          }
+        base->next = head;
+        tail->next = broad->next;
+        broad->next = NULL;
+        plan_list_free (broad);
+        return base;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: this should never happen!", __func__);
+        /* FALLTHROUGH */
+     }
 
 return_error:
    plan_list_free (head);

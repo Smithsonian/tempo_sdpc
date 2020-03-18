@@ -940,15 +940,7 @@ int main (int argc, char **argv)
 
    if (0 == strncmp (scan_method, "split", 5))
      {
-        const char *split_scan_name = strchr (scan_method, '-');
-        if (split_scan_name == NULL)
-          {
-             tell_verror (TELL_RUNTIME_ERROR,
-                          "%s: split scan region name not specified in scan_method string: %s",
-                          __func__, scan_method);
-             goto return_status;
-          }
-        if (NULL == (split_scan = split_scan_open (&cfg, split_scan_name + 1)))
+        if (NULL == (split_scan = split_scan_open (&cfg, scan_method)))
           goto return_status;
      }
 

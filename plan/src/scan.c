@@ -46,7 +46,8 @@ Surface_Region_Type;
 #define SPLIT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Point_Type scan_beg; \
    Surface_Point_Type scan_end; \
-   Step_Config_Type dt;
+   Step_Config_Type dt; \
+   int base_scan_method_index;
 
 #define NIGHT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Region_Type east; \
@@ -297,7 +298,7 @@ static int read_night_scan_config (config_t *cfg, Night_Scan_Type *night_scan)
    return 0;
 }
 
-static int read_split_scan_config (config_t *cfg, Split_Scan_Type *split,
+static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
                                    const char *name)
 {
    config_setting_t *s;
@@ -310,7 +311,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *split,
         return -1;
      }
 
-   if (0 != read_surface_point (s, "scan_beg", &split->scan_beg))
+   if (0 != read_surface_point (s, "scan_beg", &sst->scan_beg))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'split_scan_config:east': %s",
@@ -318,7 +319,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *split,
         return -1;
      }
 
-   if (0 != read_surface_point (s, "scan_end", &split->scan_end))
+   if (0 != read_surface_point (s, "scan_end", &sst->scan_end))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'split_scan_config:west': %s",
@@ -326,7 +327,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *split,
         return -1;
      }
 
-   if (0 != read_step_config (s, &split->dt))
+   if (0 != read_step_config (s, &sst->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading step_config: %s",
@@ -756,9 +757,73 @@ static void free_split_scan_type (Split_Scan_Type *sst)
    FREE(sst);
 }
 
-Split_Scan_Type *split_scan_open (config_t *cfg, const char *name)
+static int parse_scan_method_string (const char *pscan_method,
+                                     char *base_scan_method, size_t size_bsm,
+                                     char *config_group_name, size_t size_cgn)
+{
+   const char *delim = "-";
+   char *scan_method = NULL;
+   char *tok = NULL;
+   int status = -1;
+
+   if (NULL == (scan_method = strdup (pscan_method)))
+     return -1;
+
+   if (NULL == (tok = strtok (scan_method, delim)))
+     goto free_and_return;
+   if (0 != strcmp (tok, "split"))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unexpected scan method string: %s", __func__, scan_method);
+        goto free_and_return;
+     }
+
+   if (NULL == (tok = strtok (NULL, delim)))
+     goto free_and_return;
+   strncpy (base_scan_method, tok, size_bsm);
+
+   if (NULL == (tok = strtok (NULL, delim)))
+     goto free_and_return;
+   strncpy (config_group_name, tok, size_cgn);
+
+   status = 0;
+free_and_return:
+   FREE(scan_method);
+   return status;
+}
+
+static int split_scan_base_scan_method (const Split_Scan_Type *sst)
+{
+   return sst->base_scan_method_index;
+}
+
+Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
 {
    Split_Scan_Type *sst = NULL;
+#define MAX_SIZE_METHOD_NAME         (16)
+#define MAX_SIZE_CONFIG_GROUP_NAME   (256)
+   char base_scan_method[MAX_SIZE_METHOD_NAME];
+   char config_group_name[MAX_SIZE_CONFIG_GROUP_NAME];
+   int base_scan_method_index;
+
+   if (0 != parse_scan_method_string (scan_method,
+                                      base_scan_method, MAX_SIZE_METHOD_NAME,
+                                      config_group_name, MAX_SIZE_CONFIG_GROUP_NAME))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: parsing scan_method string: %s",
+                     __func__, scan_method);
+        return NULL;
+     }
+
+   if (0 == strcmp (base_scan_method, "std"))
+     base_scan_method_index = SCAN_SPLIT_STD;
+   else if (0 == strcmp (base_scan_method, "opt1"))
+     base_scan_method_index = SCAN_SPLIT_OPT1;
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported base scan method: %s",
+                     __func__, scan_method);
+        return NULL;
+     }
 
    if (NULL == (sst = (Split_Scan_Type *) MALLOC (sizeof *sst)))
      {
@@ -766,11 +831,14 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *name)
         return NULL;
      }
 
+   sst->base_scan_method_index = base_scan_method_index;
+
+   sst->sst_base_scan_method = split_scan_base_scan_method;
    sst->sst_delete = free_split_scan_type;
    sst->sst_scan_region = split_scan_region;
    sst->sst_scan_integration_time = split_scan_integration_time;
 
-   if (0 != read_split_scan_config (cfg, sst, name))
+   if (0 != read_split_scan_config (cfg, sst, config_group_name))
      {
         free_split_scan_type (sst);
         return NULL;
