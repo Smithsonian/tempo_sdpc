@@ -1185,6 +1185,57 @@ return_status:
    return status;
 }
 
+static int enforce_path_uniqueness (char **path)
+{
+   char timestr[] = "yyyymmddThhmmssZ";
+   size_t len = strlen(timestr);
+   struct stat st = {0};
+   struct tm tm = {0};
+   char *newpath = NULL;
+   time_t now;
+   size_t n;
+   int status;
+
+   if (path == NULL)
+     return -1;
+
+   if (0 != stat (*path, &st))
+     return 0;
+
+   time(&now);
+   gmtime_r (&now, &tm);
+   if (len != (n = strftime (timestr, sizeof(timestr), "%Y%m%dT%H%M%SZ", &tm)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: unexpected strftime return value = %ld (expected %ld)",
+                     __func__, n, len);
+        return -1;
+     }
+
+   n += strlen(*path) + 2;  /* two strings, plus '.' plus terminating null char */
+
+   if (NULL == (newpath = (char *)MALLOC (n)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   status = snprintf (newpath, n, "%s.%s", *path, timestr);
+   if ((status < 0) || ((size_t) status >= n))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: adding suffix %s to path %s", __func__, timestr, *path);
+        FREE(newpath);
+        return -1;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "avoiding filename collision: newpath=%s", newpath);
+
+   FREE(*path);
+   *path = newpath;
+
+   return 0;
+}
+
 static int perform_copy (const char *path, const char *copydir, const char *basename)
 {
    char *copypath = NULL;
@@ -1195,6 +1246,9 @@ static int perform_copy (const char *path, const char *copydir, const char *base
 
    if (NULL == (copypath = ioclib_pathconcat (copydir, basename)))
      return -1;
+
+   if (0 != enforce_path_uniqueness (&copypath))
+     goto return_status;
 
    tell_vinfo (0, "copying %s %s", path, copypath);
 
