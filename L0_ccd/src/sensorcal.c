@@ -61,6 +61,17 @@ BB_Kernel_Type;
 
 typedef struct
 {
+   size_t num_waves;
+   float *Ainv;
+   /**< Ainv matrix, square, [num_waves,num_waves] */
+
+   double scale_factor_vis_to_uv;
+   int use_shadows;
+}
+PSF_Matrix_Type;
+
+typedef struct
+{
    float *spec;
    int *count;
    int num_rows;
@@ -70,7 +81,8 @@ typedef struct
 Shadow_Type;
 
 #define SENSORCAL_PRIVATE_DATA \
-   BB_Kernel_Type *sl; \
+   BB_Kernel_Type *sl_bbk; \
+   PSF_Matrix_Type *sl_psf; \
    BTDF_Type *diffuser_wrk; \
    BTDF_Type *diffuser_ref; \
    float *wavelength_grid; \
@@ -583,7 +595,7 @@ static int read_bb_kernels (Calibration_Type *cal, const char *path)
           }
      }
 
-   cal->sl = sl;
+   cal->sl_bbk = sl;
    status = 0;
 
 close_and_return:
@@ -595,6 +607,98 @@ close_and_return:
      }
    FREE(bb_kernels);
 
+   return status;
+}
+
+static void free_psf_matrix_type (PSF_Matrix_Type *psf)
+{
+   if (psf == NULL)
+     return;
+   FREE(psf->Ainv);
+   FREE(psf);
+}
+
+static PSF_Matrix_Type *alloc_psf_matrix_type (size_t num_waves)
+{
+   PSF_Matrix_Type *psf = NULL;
+
+   if (NULL == (psf = (PSF_Matrix_Type *)MALLOC (sizeof *psf)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)psf, 0, sizeof (*psf));
+
+   if (NULL == (psf->Ainv = (float *)MALLOC (num_waves * num_waves * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        free_psf_matrix_type (psf);
+        return NULL;
+     }
+
+   psf->num_waves = num_waves;
+
+   return psf;
+}
+
+static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg, const char *path)
+{
+   config_setting_t *s;
+   PSF_Matrix_Type *psf = NULL;
+   int ncid, dimid, start[2], count[2];
+   int use_shadows;
+   double scale_factor_vis_to_uv;
+   size_t num_waves;
+   int status = -1;
+
+   if (NULL == (s = config_lookup (cfg, "straylight.psf_method")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing group 'straylight.psf_method' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((CONFIG_TRUE != config_setting_lookup_int (s, "use_shadows", &use_shadows))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        return -1;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
+
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (0 != TIO_inq_dim (ncid, "phony_dim_0", &dimid, &num_waves))
+     goto return_status;
+
+   if (NULL == (psf = alloc_psf_matrix_type (num_waves)))
+     goto return_status;
+
+   psf->use_shadows = use_shadows;
+   psf->scale_factor_vis_to_uv = scale_factor_vis_to_uv;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_waves;
+
+   if (0 != TIO_get_var_section (ncid, "AINV", start, count, TIO_FLOAT, psf->Ainv))
+     goto return_status;
+
+   free_psf_matrix_type (cal->sl_psf);
+   cal->sl_psf = psf;
+
+   status = 0;
+return_status:
+   TIO_close (ncid);
+   if (status)
+     {
+        free_psf_matrix_type (psf);
+        cal->sl_psf = NULL;
+     }
    return status;
 }
 
@@ -730,7 +834,7 @@ static int fill_image_holes (Image_Type *img)
 
 static int slcorr_using_bb_kernels (const Calibration_Type *cal, Image_Type *img)
 {
-   BB_Kernel_Type *sl = cal->sl;
+   BB_Kernel_Type *sl_bbk = cal->sl_bbk;
    gsl_matrix_float_view Kt, S, I0, KtI0, D;
    Image_Type *img0 = NULL;
    Image_Type *kti0 = NULL;
@@ -753,15 +857,15 @@ static int slcorr_using_bb_kernels (const Calibration_Type *cal, Image_Type *img
    if (0 != fill_image_holes (img0))
      goto return_status;
 
-   if ((NULL == (kti0 = image_new (sl->num_kernels, num_cols)))
+   if ((NULL == (kti0 = image_new (sl_bbk->num_kernels, num_cols)))
        ||(NULL == (d = image_new (img->num_rows, num_cols))))
      goto return_status;
 
-   Kt = gsl_matrix_float_view_array (sl->bb_kernels_transpose, sl->num_kernels, sl->num_waves);
-   S  = gsl_matrix_float_view_array (sl->bb_stray_light, sl->num_waves, sl->num_kernels);
+   Kt = gsl_matrix_float_view_array (sl_bbk->bb_kernels_transpose, sl_bbk->num_kernels, sl_bbk->num_waves);
+   S  = gsl_matrix_float_view_array (sl_bbk->bb_stray_light, sl_bbk->num_waves, sl_bbk->num_kernels);
    I0 = gsl_matrix_float_view_array (img0->pixels, num_rows, num_cols);
 
-   KtI0 = gsl_matrix_float_view_array (kti0->pixels, sl->num_kernels, num_cols);
+   KtI0 = gsl_matrix_float_view_array (kti0->pixels, sl_bbk->num_kernels, num_cols);
    D    = gsl_matrix_float_view_array (d->pixels, num_rows, num_cols);
 
    /* We want to compute
@@ -883,7 +987,7 @@ static int shadow_mean_spectrum (Shadow_Type *sh, const Image_Type *img)
    return 0;
 }
 
-static int slcorr_subtract_shadow (const Shadow_Type *sh, Image_Type *img)
+static int subtract_shadow1 (const Shadow_Type *sh, Image_Type *img)
 {
    int p, s;
 
@@ -909,8 +1013,8 @@ static int slcorr_subtract_shadow (const Shadow_Type *sh, Image_Type *img)
    return 0;
 }
 
-static int slcorr_subtract_weighted_shadows (const Shadow_Type *top, const Shadow_Type *bot,
-                                             Image_Type *img)
+static int subtract_weighted_shadows (const Shadow_Type *top, const Shadow_Type *bot,
+                                      Image_Type *img)
 {
    float *col_weight = NULL;
    int p, s, num_not_shadowed;
@@ -969,43 +1073,42 @@ static int slcorr_subtract_weighted_shadows (const Shadow_Type *top, const Shado
    return 0;
 }
 
-static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
+static int subtract_shadows (unsigned int method, const Image_Type *img_src,
+                             Image_Type *img)
 {
    const Shadow_Type *sh = NULL;
    Shadow_Type top = {0};
    Shadow_Type bot = {0};
    int status = -1;
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: shadow");
-
-   if (cal->straylight_shadow_method & SHADOW_TOP)
+   if (method & SHADOW_TOP)
      {
         /* shadowed columns on the top/north end of the slit */
-        if (0 != shadow_alloc (&top, img->num_rows, 0, 4))
+        if (0 != shadow_alloc (&top, img_src->num_rows, 0, 4))
           goto return_status;
-        if (0 != shadow_mean_spectrum (&top, img))
+        if (0 != shadow_mean_spectrum (&top, img_src))
           goto return_status;
         sh = &top;
      }
 
-   if (cal->straylight_shadow_method & SHADOW_BOT)
+   if (method & SHADOW_BOT)
      {
         /* shadowed columns on the bottom/south end of the slit */
-        if (0 != shadow_alloc (&bot, img->num_rows, 2043, 2047))
+        if (0 != shadow_alloc (&bot, img_src->num_rows, 2043, 2047))
           goto return_status;
-        if (0 != shadow_mean_spectrum (&bot, img))
+        if (0 != shadow_mean_spectrum (&bot, img_src))
           goto return_status;
         sh = &bot;
      }
 
-   if (cal->straylight_shadow_method == (SHADOW_BOT | SHADOW_TOP))
+   if (method == (SHADOW_BOT | SHADOW_TOP))
      {
-        if (0 != slcorr_subtract_weighted_shadows (&top, &bot, img))
+        if (0 != subtract_weighted_shadows (&top, &bot, img))
           goto return_status;
      }
    else if (sh)
      {
-        if (0 != slcorr_subtract_shadow (sh, img))
+        if (0 != subtract_shadow1 (sh, img))
           goto return_status;
      }
    else
@@ -1019,6 +1122,110 @@ return_status:
    shadow_free (&top);
    shadow_free (&bot);
 
+   return status;
+}
+
+static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
+{
+   unsigned int method = cal->straylight_shadow_method;
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: shadow");
+   return subtract_shadows (method, img, img);
+}
+
+static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
+{
+   PSF_Matrix_Type *psf = cal->sl_psf;
+   gsl_matrix_float_view Ainv, I0, I;
+   Image_Type *img0 = NULL;
+   Image_Type *corr = NULL;
+   Image_Pixel_Type *pix;
+   Image_Pixel_Type *pix_corr;
+   Image_Pqf_Bitmap_Type *pqf;
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_MISSING_DATA | IMAGE_PQF_BAD_PIXEL;
+   size_t num_rows = img->num_rows;
+   size_t num_cols = img->num_cols;
+   size_t i, num_pixels = num_rows * num_cols;
+   int status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: PSF");
+
+   if (NULL == (img0 = image_dup (img)))
+     goto return_status;
+
+   if (0 != fill_image_holes (img0))
+     goto return_status;
+
+   if (NULL == (corr = image_new (img->num_rows, img->num_cols)))
+     goto return_status;
+
+   Ainv = gsl_matrix_float_view_array (psf->Ainv, psf->num_waves, psf->num_waves);
+   I0 = gsl_matrix_float_view_array (img0->pixels, num_rows, num_cols);
+   I  = gsl_matrix_float_view_array (corr->pixels, num_rows, num_cols);
+
+   /* We want to compute:
+    *    I = Ainv * I0,
+    * where '*' is matrix multiplication, and where the array dimensions are:
+    *  [p,s] = [p,p] * [p,s]      p=parallel, s=serial
+    *        = [p,s]   (** showing that the dimensions work out **)
+    *
+    * SGEMM computes C = alpha op(A) op(B) + beta C
+    */
+
+   /* I = Ainv * I0 */
+   gsl_blas_sgemm (CblasNoTrans, CblasNoTrans, 1.0, &Ainv.matrix, &I0.matrix, 0.0, &I.matrix);
+
+   /* UV correction proportional to uncorrected VIS band signal: */
+   if (psf->scale_factor_vis_to_uv > 0.0)
+     {
+        Image_Pixel_Type *pixels0 = img0->pixels;
+        Image_Pixel_Type *pixels  = corr->pixels;
+        size_t num_pixels = num_rows * num_cols;
+        double uv_corr, vis0_total;
+
+        /* Compute uncorrected VIS signal */
+        vis0_total = 0.0;
+        for (i = 0; i < num_pixels/2; i++)
+          {
+             vis0_total += pixels0[i];
+          }
+
+        /* Scale UV correction */
+        uv_corr = vis0_total * psf->scale_factor_vis_to_uv;
+
+        /* Apply UV correction */
+        for (i = num_pixels/2; i < num_pixels; i++)
+          {
+             pixels[i] -= uv_corr;
+          }
+     }
+
+   /* Over-write the input image, leaving original bad pixel values in place. */
+   pqf = img->pixel_quality_flags;
+   pix = img->pixels;
+   pix_corr = corr->pixels;
+   for (i = 0; i < num_pixels; i++)
+     {
+        if (0 == (pqf[i] & mask))
+          {
+             if ((pix[i] > 0) && (pix_corr[i] < 0))
+               {
+                  pqf[i] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+               }
+             pix[i] = pix_corr[i];
+          }
+     }
+
+   if (psf->use_shadows)
+     {
+        unsigned int method = cal->straylight_shadow_method;
+        if (0 != subtract_shadows (method, img0, img))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   image_free (img0);
+   image_free (corr);
    return status;
 }
 
@@ -1064,7 +1271,8 @@ static void cal_delete (Calibration_Type *cal)
 {
    if (cal == NULL)
      return;
-   free_bb_kernel_type (cal->sl);
+   free_bb_kernel_type (cal->sl_bbk);
+   free_psf_matrix_type (cal->sl_psf);
    btdf_free(cal->diffuser_wrk);
    btdf_free(cal->diffuser_ref);
    FREE(cal->radcal_coeffs);
@@ -1111,10 +1319,43 @@ return_error:
 }
 #endif
 
-static int config_straylight_method (Calibration_Type *cal, const char *path)
+static int read_shadow_qualifiers (Calibration_Type *cal, config_t *cfg)
+{
+   config_setting_t *s;
+   const char *which_shadows;
+
+   if (NULL == (s = config_lookup (cfg, "straylight.shadow_method")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing group 'straylight.shadow_method' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "which_shadows", &which_shadows))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        return -1;
+     }
+
+   cal->straylight_shadow_method = 0;
+
+   if (0 != strpbrk (which_shadows, "NT"))
+     {
+        cal->straylight_shadow_method |= SHADOW_TOP;
+     }
+
+   if (0 != strpbrk (which_shadows, "SB"))
+     {
+        cal->straylight_shadow_method |= SHADOW_BOT;
+     }
+
+   return 0;
+}
+
+static int config_straylight_method (Calibration_Type *cal, config_t *cfg, const char *path)
 {
    const char *sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
-   char *p;
 
    if (0 == strcmp (sl_method, "none"))
      {
@@ -1130,31 +1371,18 @@ static int config_straylight_method (Calibration_Type *cal, const char *path)
         return 0;
      }
 
+   if (0 == strcmp (sl_method, "psf"))
+     {
+        if (0 != read_sl_psf_matrix (cal, cfg, path))
+          return -1;
+        cal->cal_straylight_correction = slcorr_using_psf;
+        return read_shadow_qualifiers (cal, cfg);
+     }
+
    if (0 == strncmp (sl_method, "shadow", 6))
      {
         cal->cal_straylight_correction = slcorr_using_shadows;
-
-        /* By default, use both shadows; optionally, specify each shadow */
-
-        if (NULL == (p = strchr (sl_method, ';')))
-          {
-             cal->straylight_shadow_method = SHADOW_BOT | SHADOW_TOP;
-          }
-        else
-          {
-             cal->straylight_shadow_method = 0;
-             p++;
-             if (0 != strspn (p, "NT"))
-               {
-                  cal->straylight_shadow_method |= SHADOW_TOP;
-               }
-
-             if (0 != strspn (p, "SB"))
-               {
-                  cal->straylight_shadow_method |= SHADOW_BOT;
-               }
-          }
-        return 0;
+        return read_shadow_qualifiers (cal, cfg);
      }
 
    tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported straylight correction method: %s",
@@ -1166,6 +1394,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
+   const char *straylight_file = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
 
@@ -1217,7 +1446,17 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
           goto free_and_return;
      }
 
-   if (0 != config_straylight_method (cal, path))
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "straylight_file", &straylight_file))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading straylight_file", __func__);
+        return NULL;
+     }
+
+   FREE(path);
+   if (NULL == (path = expand_string (straylight_file)))
+     return NULL;
+
+   if (0 != config_straylight_method (cal, cfg, path))
      goto free_and_return;
 
    status = 0;
