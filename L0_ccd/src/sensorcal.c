@@ -655,7 +655,7 @@ static PSF_Matrix_Type *alloc_psf_matrix_type (size_t num_waves)
 
 static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 {
-   config_setting_t *s;
+   config_setting_t *s, *m;
    PSF_Matrix_Type *psf = NULL;
    const char *path_str;
    char *path = NULL;
@@ -684,8 +684,15 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
         goto return_status;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_int (s, "use_shadows", &use_shadows))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv)))
+   if (NULL == (m = config_setting_get_member (s, "use_shadows")))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        goto return_status;
+     }
+
+   use_shadows = config_setting_get_bool (m);
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
         goto return_status;
