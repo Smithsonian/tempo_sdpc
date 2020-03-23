@@ -15,7 +15,7 @@ enable:
                   # smear: none | oclocks | timing
                   # "timing" method seems to overcorrect
 
-   straylight   = "psf";
+   straylight   = "none";
                   # straylight: none | psf | bb_kernel | shadow | "shadow"
 };
 
@@ -36,7 +36,11 @@ calibration:
    gain_file      = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
    badpix_file    = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
    sensorcal_file = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
-   straylight_file = "$SDPC_REFDATA_DIR/instrument/TEMPO_Dmat_Ainv4intrachannel_SLCorrection.h5";
+   straylight:
+   {
+     bb_kernel = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+     psf       = "$SDPC_REFDATA_DIR/instrument/TEMPO_Dmat_Ainv4intrachannel_SLCorrection.h5";
+   };
 };
 
 metadata:

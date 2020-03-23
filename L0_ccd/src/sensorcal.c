@@ -533,18 +533,29 @@ static BB_Kernel_Type *alloc_bb_kernel_type (size_t num_waves, size_t num_kernel
    return sl;
 }
 
-static int read_bb_kernels (Calibration_Type *cal, const char *path)
+static int read_bb_kernels (Calibration_Type *cal, config_t *cfg)
 {
    BB_Kernel_Type *sl = NULL;
    float *bb_kernels = NULL;
+   const char *path_str;
+   char *path = NULL;
    size_t i, k, num_waves, num_kernels;
    int start[2], count[2];
    int ncid, dimid, status = -1;
 
+   if (CONFIG_TRUE != config_lookup_string (cfg, "calibration.straylight.bb_kernel", &path_str))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading ", __func__);
+        return -1;
+     }
+
+   if (NULL == (path = expand_string (path_str)))
+     return -1;
+
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
-     return -1;
+     goto close_and_return;
 
    if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
        || (0 != TIO_inq_dim (ncid, "n_BBSL_kernel", &dimid, &num_kernels)))
@@ -606,6 +617,7 @@ close_and_return:
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading %s", __func__, path);
      }
    FREE(bb_kernels);
+   FREE(path);
 
    return status;
 }
@@ -641,35 +653,46 @@ static PSF_Matrix_Type *alloc_psf_matrix_type (size_t num_waves)
    return psf;
 }
 
-static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg, const char *path)
+static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 {
    config_setting_t *s;
    PSF_Matrix_Type *psf = NULL;
+   const char *path_str;
+   char *path = NULL;
    int ncid, dimid, start[2], count[2];
    int use_shadows;
    double scale_factor_vis_to_uv;
    size_t num_waves;
    int status = -1;
 
+   if (CONFIG_TRUE != config_lookup_string (cfg, "calibration.straylight.psf", &path_str))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading ", __func__);
+        return -1;
+     }
+
+   if (NULL == (path = expand_string (path_str)))
+     return -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
+
    if (NULL == (s = config_lookup (cfg, "straylight.psf_method")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing group 'straylight.psf_method' in param file: %s",
                      __func__, config_error_file (cfg));
-        return -1;
+        goto return_status;
      }
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "use_shadows", &use_shadows))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv)))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
-        return -1;
+        goto return_status;
      }
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
-
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
-     return -1;
+     goto return_status;
 
    if (0 != TIO_inq_dim (ncid, "phony_dim_0", &dimid, &num_waves))
      goto return_status;
@@ -699,6 +722,8 @@ return_status:
         free_psf_matrix_type (psf);
         cal->sl_psf = NULL;
      }
+   FREE(path);
+
    return status;
 }
 
@@ -1179,7 +1204,6 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
      {
         Image_Pixel_Type *pixels0 = img0->pixels;
         Image_Pixel_Type *pixels  = corr->pixels;
-        size_t num_pixels = num_rows * num_cols;
         double uv_corr, vis0_total;
 
         /* Compute uncorrected VIS signal */
@@ -1353,7 +1377,7 @@ static int read_shadow_qualifiers (Calibration_Type *cal, config_t *cfg)
    return 0;
 }
 
-static int config_straylight_method (Calibration_Type *cal, config_t *cfg, const char *path)
+static int config_straylight_method (Calibration_Type *cal, config_t *cfg)
 {
    const char *sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
 
@@ -1365,7 +1389,7 @@ static int config_straylight_method (Calibration_Type *cal, config_t *cfg, const
 
    if (0 == strcmp (sl_method, "bb_kernel"))
      {
-        if (0 != read_bb_kernels (cal, path))
+        if (0 != read_bb_kernels (cal, cfg))
           return -1;
         cal->cal_straylight_correction = slcorr_using_bb_kernels;
         return 0;
@@ -1373,7 +1397,7 @@ static int config_straylight_method (Calibration_Type *cal, config_t *cfg, const
 
    if (0 == strcmp (sl_method, "psf"))
      {
-        if (0 != read_sl_psf_matrix (cal, cfg, path))
+        if (0 != read_sl_psf_matrix (cal, cfg))
           return -1;
         cal->cal_straylight_correction = slcorr_using_psf;
         return read_shadow_qualifiers (cal, cfg);
@@ -1394,7 +1418,6 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
-   const char *straylight_file = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
 
@@ -1446,17 +1469,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
           goto free_and_return;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string (s, "straylight_file", &straylight_file))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading straylight_file", __func__);
-        return NULL;
-     }
-
-   FREE(path);
-   if (NULL == (path = expand_string (straylight_file)))
-     return NULL;
-
-   if (0 != config_straylight_method (cal, cfg, path))
+   if (0 != config_straylight_method (cal, cfg))
      goto free_and_return;
 
    status = 0;
