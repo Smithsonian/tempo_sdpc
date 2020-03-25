@@ -65,7 +65,7 @@ California: {
 
 };
 
-night_scan_config: {
+twilight_scan_config: {
 
   east_region: {
      lon =  -66.9900; lat = 44.9062;  # Eastport, ME

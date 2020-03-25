@@ -113,12 +113,12 @@ static int split_scan_endpoints (const Split_Scan_Type *sst,
    return 0;
 }
 
-static int nightlights_scan_endpoints (const Night_Scan_Type *nst,
-                                       const Solar_Geom_Type *solar_geom,
-                                       const Scan_Limit_Times_Type *limit_times,
-                                       int is_east,
-                                       AziElev_Type *beg,
-                                       AziElev_Type *end)
+static int twilight_scan_endpoints (const Twilight_Scan_Type *tst,
+                                    const Solar_Geom_Type *solar_geom,
+                                    const Scan_Limit_Times_Type *limit_times,
+                                    int is_east,
+                                    AziElev_Type *beg,
+                                    AziElev_Type *end)
 {
    EarthPoint pt={0};
    AziElev_Type p;
@@ -129,7 +129,7 @@ static int nightlights_scan_endpoints (const Night_Scan_Type *nst,
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
 
-   if (0 != nst->nst_night_scan_region (nst, is_east, &pt.theLon, &pt.theLat, &width, &num))
+   if (0 != tst->tst_twilight_scan_region (tst, is_east, &pt.theLon, &pt.theLat, &width, &num))
      return -1;
 
    if (0 != compute_scan_angles (&pt, sat_lon, &p))
@@ -377,22 +377,22 @@ return_error:
 }
 
 static Plan_List_Type *
-nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-                       const Scan_Limit_Times_Type *limit_times,
-                       void *cl)
+twilight_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                    const Scan_Limit_Times_Type *limit_times,
+                    void *cl)
 {
-   Night_Scan_Type *nst = (Night_Scan_Type *)cl;
+   Twilight_Scan_Type *tst = (Twilight_Scan_Type *)cl;
    Plan_List_Type *entry = NULL;
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (nst, solar_geom, limit_times, 0, &beg, &end))
+   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, 0, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = nst->nst_night_scan_duration (nst, num_steps);
+   time_full_scan = tst->tst_twilight_scan_duration (tst, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_beg - limit_times->jd_utc_beg_safe)
@@ -406,7 +406,7 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->ystart = ystart;
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = nst->nst_night_integration_time (nst);
+   entry->integration_time = tst->tst_twilight_integration_time (tst);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -416,22 +416,22 @@ nightlights_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 }
 
 static Plan_List_Type *
-nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-                       const Scan_Limit_Times_Type *limit_times,
-                       void *cl)
+twilight_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                    const Scan_Limit_Times_Type *limit_times,
+                    void *cl)
 {
-   Night_Scan_Type *nst = (Night_Scan_Type *)cl;
+   Twilight_Scan_Type *tst = (Twilight_Scan_Type *)cl;
    Plan_List_Type *entry = NULL;
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
 
-   if (0 != nightlights_scan_endpoints (nst, solar_geom, limit_times, 1, &beg, &end))
+   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, 1, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = nst->nst_night_scan_duration (nst, num_steps);
+   time_full_scan = tst->tst_twilight_scan_duration (tst, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_end_safe - limit_times->jd_utc_end)
@@ -445,7 +445,7 @@ nightlights_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->ystart = ystart;
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = nst->nst_night_integration_time (nst);
+   entry->integration_time = tst->tst_twilight_integration_time (tst);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -699,8 +699,8 @@ static Method_Entry Method_Table[] =
 {
    METHOD_ENTRY("std", std_plan, scan_vis),
    METHOD_ENTRY("opt1", opt1_plan, scan_vis),
-   METHOD_ENTRY("nl_dawn", nightlights_dawn_plan, scan_vis),
-   METHOD_ENTRY("nl_dusk", nightlights_dusk_plan, scan_vis),
+   METHOD_ENTRY("twilight_dawn", twilight_dawn_plan, scan_vis),
+   METHOD_ENTRY("twilight_dusk", twilight_dusk_plan, scan_vis),
    METHOD_ENTRY("split", split_plan, scan_vis),
    METHOD_TABLE_END
 };

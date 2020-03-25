@@ -83,9 +83,10 @@ static void usage (void)
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
    fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
-   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split:NAME [default=std]\n");
+   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME [default=std]\n");
+   fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
-   fprintf (stderr, "   -N | --night             Enable night-lights scans\n");
+   fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -I | --irr FILE          Generate irradiance plan output file\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
@@ -449,13 +450,13 @@ return_status:
 }
 
 static Plan_List_Type *
-attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
-                          Scan_Limit_Times_Type *limit_times,
-                          Night_Scan_Type *night_scan,
-                          Plan_List_Type *entry)
+attach_twilight_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
+                       Scan_Limit_Times_Type *limit_times,
+                       Twilight_Scan_Type *twilight_scan,
+                       Plan_List_Type *entry)
 {
-   const Scan_Method_Type *nl_dawn = find_scan_method ("nl_dawn");
-   const Scan_Method_Type *nl_dusk = find_scan_method ("nl_dusk");
+   const Scan_Method_Type *twl_dawn = find_scan_method ("twilight_dawn");
+   const Scan_Method_Type *twl_dusk = find_scan_method ("twilight_dusk");
    Plan_List_Type *dawn = NULL;
    Plan_List_Type *dusk = NULL;
    Plan_List_Type *last = NULL;
@@ -468,7 +469,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
      {
         limit_times->jd_utc_beg = entry->tstart;
      }
-   dawn = nl_dawn->sm_plan (scan, solar_geom, limit_times, night_scan);
+   dawn = twl_dawn->sm_plan (scan, solar_geom, limit_times, twilight_scan);
    if (dawn && (dawn->num_repeats > 0))
      {
         if (0 != plan_list_append (&dawn, entry))
@@ -490,7 +491,7 @@ attach_nightlights_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
         limit_times->jd_utc_end = radiance_scans_end_time;
      }
 
-   dusk = nl_dusk->sm_plan (scan, solar_geom, limit_times, night_scan);
+   dusk = twl_dusk->sm_plan (scan, solar_geom, limit_times, twilight_scan);
    if (dusk && (dusk->num_repeats > 0))
      {
         if (0 != plan_list_append (&entry, dusk))
@@ -627,7 +628,7 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
 static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Type *solar_geom,
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
                                            const Cal_Date_Type *t0, int num_plan_days,
-                                           Night_Scan_Type *night_scan,
+                                           Twilight_Scan_Type *twilight_scan,
                                            Split_Scan_Type *split_scan,
                                            const Optional_Output_Type *oot)
 {
@@ -660,9 +661,9 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
         if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, split_scan)))
           goto return_status;
 
-        if (night_scan)
+        if (twilight_scan)
           {
-             if (NULL == (entry = attach_nightlights_scans (scan, solar_geom, &limit_times, night_scan, entry)))
+             if (NULL == (entry = attach_twilight_scans (scan, solar_geom, &limit_times, twilight_scan, entry)))
                goto return_status;
           }
 
@@ -717,7 +718,7 @@ int main (int argc, char **argv)
    uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
    int status = EXIT_FAILURE;
-   int enable_night_scan = 0;
+   int enable_twilight_scan = 0;
    int have_date = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
@@ -729,24 +730,24 @@ int main (int argc, char **argv)
      };
    static struct option long_options[] =
      {
-        {"help",    no_argument, 0, 'h'},
-        {"date",    required_argument, 0, 'd'},
-        {"config",  required_argument, 0, 'c'},
-        {"ndays",   required_argument, 0, 'n'},
-        {"night",   no_argument,       0, 'N'},
-        {"scan",    required_argument, 0, 's'},
-        {"type",    required_argument, 0, 't'},
-        {"output",  required_argument, 0, 'o'},
-        {"irr",     required_argument, 0, 'I'},
-        {"szaout",  required_argument, 0, 'z'},
-        {"tailor",  required_argument, 0, 'T'},
-        {"master",  no_argument, 0, 'm'},
+        {"help",         no_argument,       0, 'h'},
+        {"date",         required_argument, 0, 'd'},
+        {"config",       required_argument, 0, 'c'},
+        {"ndays",        required_argument, 0, 'n'},
+        {"nightlights",  no_argument,       0, 'N'},
+        {"scan",         required_argument, 0, 's'},
+        {"type",         required_argument, 0, 't'},
+        {"output",       required_argument, 0, 'o'},
+        {"irr",          required_argument, 0, 'I'},
+        {"szaout",       required_argument, 0, 'z'},
+        {"tailor",       required_argument, 0, 'T'},
+        {"master",       no_argument,       0, 'm'},
         {0,0,0,0}
      };
    config_t cfg = {0};
    Ephem_Type eph = {0};
    Scan_Type *scan = NULL;
-   Night_Scan_Type *night_scan = NULL;
+   Twilight_Scan_Type *twilight_scan = NULL;
    Split_Scan_Type *split_scan = NULL;
    Plan_List_Type *plan_list = NULL;
    Solar_Geom_Type *solar_geom = NULL;
@@ -810,7 +811,7 @@ int main (int argc, char **argv)
              usage();
              break;
            case 'N':
-             enable_night_scan++;
+             enable_twilight_scan++;
              break;
            case 'm':
              master_outfile = optarg;
@@ -932,9 +933,9 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (enable_night_scan)
+   if (enable_twilight_scan)
      {
-        if (NULL == (night_scan = night_scan_open (&cfg)))
+        if (NULL == (twilight_scan = twilight_scan_open (&cfg)))
           goto return_status;
      }
 
@@ -945,7 +946,7 @@ int main (int argc, char **argv)
      }
 
    plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
-                                   night_scan, split_scan, &oot);
+                                   twilight_scan, split_scan, &oot);
    if (NULL == plan_list)
      goto return_status;
 
@@ -961,7 +962,7 @@ int main (int argc, char **argv)
 return_status:
    if (solar_geom) solar_geom->sgt_delete (solar_geom);
    if (scan) scan->st_delete (scan);
-   if (night_scan) night_scan->nst_delete (night_scan);
+   if (twilight_scan) twilight_scan->tst_delete (twilight_scan);
    if (split_scan) split_scan->sst_delete (split_scan);
    (void) ephem_close (&eph);
    plan_list_free (plan_list);

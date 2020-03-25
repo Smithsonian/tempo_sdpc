@@ -49,7 +49,7 @@ Surface_Region_Type;
    Step_Config_Type dt; \
    int base_scan_method_index;
 
-#define NIGHT_SCAN_TYPE_PRIVATE_DATA \
+#define TWILIGHT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Region_Type east; \
    Surface_Region_Type west; \
    Step_Config_Type dt;
@@ -259,38 +259,38 @@ static int read_surface_region (config_setting_t *s, const char *name, Surface_R
    return 0;
 }
 
-static int read_night_scan_config (config_t *cfg, Night_Scan_Type *night_scan)
+static int read_twilight_scan_config (config_t *cfg, Twilight_Scan_Type *twilight_scan)
 {
    config_setting_t *s;
 
-   if (NULL == (s = config_lookup (cfg, "night_scan_config")))
+   if (NULL == (s = config_lookup (cfg, "twilight_scan_config")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing night_scan_config in param file: %s",
+                     "%s: accessing twilight_scan_config in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if (0 != read_surface_region (s, "east_region", &night_scan->east))
+   if (0 != read_surface_region (s, "east_region", &twilight_scan->east))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading surface point 'night_scan_config:east': %s",
+                     "%s: reading surface point 'twilight_scan_config:east': %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if (0 != read_surface_region (s, "west_region", &night_scan->west))
+   if (0 != read_surface_region (s, "west_region", &twilight_scan->west))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading surface point 'night_scan_config:west': %s",
+                     "%s: reading surface point 'twilight_scan_config:west': %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if (0 != read_step_config (s, &night_scan->dt))
+   if (0 != read_step_config (s, &twilight_scan->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading night_scan_config:step_config: %s",
+                     "%s: reading twilight_scan_config:step_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -306,7 +306,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
    if (NULL == (s = config_lookup (cfg, name)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing night_scan_config in param file: %s",
+                     "%s: accessing twilight_scan_config in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -590,10 +590,10 @@ static int scan_num_steps (const Scan_Type *st)
    return st->num_scan_steps;
 }
 
-static int night_scan_region (const Night_Scan_Type *nst, int is_east, double *lon, double *lat,
-                              double *width, int *num)
+static int twilight_scan_region (const Twilight_Scan_Type *tst, int is_east, double *lon, double *lat,
+                                 double *width, int *num)
 {
-   const Surface_Region_Type *reg = is_east ? &nst->east : &nst->west;
+   const Surface_Region_Type *reg = is_east ? &tst->east : &tst->west;
 
    *lon = reg->pt.lon;
    *lat = reg->pt.lat;
@@ -624,9 +624,9 @@ static double scan_integration_time (const Scan_Type *st)
    return st->dt.integration_time;
 }
 
-static double night_scan_integration_time (const Night_Scan_Type *nst)
+static double twilight_scan_integration_time (const Twilight_Scan_Type *tst)
 {
-   return nst->dt.integration_time;
+   return tst->dt.integration_time;
 }
 
 static double split_scan_integration_time (const Split_Scan_Type *sst)
@@ -654,10 +654,10 @@ static double scan_duration (const Scan_Type *st, int num_steps)
    return __scan_duration_days (&st->dt, num_steps);
 }
 
-static double night_scan_duration (const Night_Scan_Type *nst, int num_steps)
+static double twilight_scan_duration (const Twilight_Scan_Type *tst, int num_steps)
 {
-   /* FIXME - should night scan duration be computed differently? */
-   return __scan_duration_days (&nst->dt, num_steps);
+   /* FIXME - should twilight scan duration be computed differently? */
+   return __scan_duration_days (&tst->dt, num_steps);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,
@@ -719,35 +719,35 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    return st;
 }
 
-static void free_night_scan_type (Night_Scan_Type *nst)
+static void free_twilight_scan_type (Twilight_Scan_Type *tst)
 {
-   if (nst == NULL)
+   if (tst == NULL)
      return;
-   FREE(nst);
+   FREE(tst);
 }
 
-Night_Scan_Type *night_scan_open (config_t *cfg)
+Twilight_Scan_Type *twilight_scan_open (config_t *cfg)
 {
-   Night_Scan_Type *nst = NULL;
+   Twilight_Scan_Type *tst = NULL;
 
-   if (NULL == (nst = (Night_Scan_Type *) MALLOC (sizeof *nst)))
+   if (NULL == (tst = (Twilight_Scan_Type *) MALLOC (sizeof *tst)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return NULL;
      }
 
-   nst->nst_delete = free_night_scan_type;
-   nst->nst_night_scan_region = night_scan_region;
-   nst->nst_night_scan_duration = night_scan_duration;
-   nst->nst_night_integration_time = night_scan_integration_time;
+   tst->tst_delete = free_twilight_scan_type;
+   tst->tst_twilight_scan_region = twilight_scan_region;
+   tst->tst_twilight_scan_duration = twilight_scan_duration;
+   tst->tst_twilight_integration_time = twilight_scan_integration_time;
 
-   if (0 != read_night_scan_config (cfg, nst))
+   if (0 != read_twilight_scan_config (cfg, tst))
      {
-        free_night_scan_type (nst);
+        free_twilight_scan_type (tst);
         return NULL;
      }
 
-   return nst;
+   return tst;
 }
 
 static void free_split_scan_type (Split_Scan_Type *sst)
