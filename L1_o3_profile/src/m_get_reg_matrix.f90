@@ -25,8 +25,8 @@ contains
     !USE OMSAO_parameters_module,   ONLY: maxchlen                 
     USE OMSAO_variables_module,    ONLY: n_fitvar_rad
     USE OMSAO_errstat_module
-    use m_gsvd_lcurve_gcv, only: inverse
-    use gsvd_o3prof_utilities, only: choldc
+    USE m_gsvd_lcurve_gcv, only: inverse
+    USE m_gsvd_o3prof_utilities, only: choldc
 
 
     IMPLICIT NONE
@@ -42,16 +42,20 @@ contains
     ! ---------------
     INTEGER                                       :: i, j
     REAL (KIND=dp), DIMENSION(nlay_fit)           :: parr
-    REAL (KIND=dp), DIMENSION(nlay_fit, nlay_fit) :: bb0, bb1, bb2, bb_all, &
-         sainv
+    !REAL (KIND=dp), DIMENSION(nlay_fit, nlay_fit) :: bb0, bb1, bb2, bb_all,sainv
+    REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE   :: bb0, bb1, bb2, bb_all,sainv
 
     ! ==============================
     ! Name of this module/subroutine
     ! ==============================
     CHARACTER (LEN=14), PARAMETER :: modulename = 'get_reg_matrix'
 
+    ! allocating local variables
+    allocate (bb0(nlay_fit, nlay_fit), bb1(nlay_fit, nlay_fit), bb2(nlay_fit,nlay_fit), & 
+              bb_all(nlay_fit, nlay_fit), sainv(nlay_fit, nlay_fit))
 
-    pge_error_status = pge_errstat_ok  ! Initialize exit status
+    ! Initialize
+    pge_error_status = pge_errstat_ok 
 
     IF (ptr_order == 0) THEN           ! zero order
       ptr_nump = nlay_fit             ! only apply to ozone profile variables
@@ -192,7 +196,7 @@ contains
       END DO
     ELSE IF (ptr_order == 6) THEN
 
-      CALL inverse(sa, nlay_fit, sainv)
+      CALL inverse(sa, sainv, nlay_fit)
       !IF ( pge_error_status == pge_errstat_error) THEN
       !   WRITE(www_lun, *) modulename, ' : Singular Matrix!!!'
       !   RETURN
@@ -213,6 +217,8 @@ contains
 
     END IF
 
+    ! deallocating local varaibles
+    deallocate (bb0, bb1, bb2, bb_all, sainv)
     RETURN
   END SUBROUTINE get_reg_matrix
 

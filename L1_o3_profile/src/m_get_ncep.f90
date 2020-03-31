@@ -1,22 +1,26 @@
 MODULE m_get_ncep
+
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
-                                    the_month, the_year, the_day, the_lon, the_lat
+  USE OMSAO_variables_module,  ONLY: atmdbdir, atmos_unit, &
+                                the_month, the_year, the_day, the_lon, the_lat
   USE OMSAO_errstat_module
   IMPLICIT NONE
 
-  ! private variables
-  INTEGER, PARAMETER         :: nlat=72, nlon=144,  nlecm=22
-  REAL (KIND=dp), PARAMETER  :: longrid = 2.5, latgrid = 2.5, lon0=-180.0, lat0=-90.0
-  INTEGER                    :: nblat, nblon, i,j, k
-  INTEGER, DIMENSION(2)      :: latin, lonin
-  REAL (KIND=dp), DIMENSION(2), PRIVATE   :: latfrac, lonfrac
-  CHARACTER (LEN=2)          :: monc, yrc, dayc
-  CHARACTER (LEN=130)        :: ncep_fname
-  LOGICAL                    :: file_exist
+  ! dimension
+  INTEGER, PARAMETER, PRIVATE :: nlat=72, nlon=144,  nlecm=22
+  ! variables used for interpolation
+  REAL (KIND=dp), PARAMETER, PRIVATE     :: longrid = 2.5, latgrid = 2.5, lon0=-180.0, lat0=-90.0
+  INTEGER ,PRIVATE                       :: nblat, nblon
+  INTEGER, DIMENSION(2),PRIVATE          :: latin, lonin
+  REAL (KIND=dp), DIMENSION(2), PRIVATE  :: latfrac, lonfrac
+  ! others
+  LOGICAL                     :: file_exist
+  INTEGER                     :: i, j, k
+  CHARACTER (LEN=2), PRIVATE  :: monc, yrc, dayc
+  CHARACTER (LEN=130),PRIVATE :: ncep_fname
 
-  public  get_spres, get_ncepreso_surfalt, get_tpres, get_ncep_temp
-  private get_gridfrac
+  PUBLIC  get_spres, get_ncepreso_surfalt, get_tpres, get_ncep_temp
+  PRIVATE  get_gridfrac
   
   ! public variables
   CONTAINS
@@ -197,8 +201,7 @@ SUBROUTINE get_ncepreso_surfalt(z0)
       ! Determine if file exists or not
       INQUIRE (FILE= ncep_fname, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
-        write(*,*)'No Terrain Elevation datafile found!!!'
-        STOP 1
+         STOP 'No Terrain Elevation datafile found!!!'
       ENDIF
       
       OPEN (UNIT = atmos_unit, file = ncep_fname, status = 'unknown')
@@ -227,7 +230,6 @@ END SUBROUTINE get_ncepreso_surfalt
 SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
   lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
 
-  USE OMSAO_precision_module
   IMPLICIT NONE
 
   ! ======================

@@ -6,7 +6,7 @@ MODULE OMSAO_tmpodata_module
    USE OMSAO_indices_module,    ONLY: n_max_fitpars, max_rs_idx, &
        max_calfit_idx, o3_t1_idx, o3_t3_idx, spc_idx
    USE OMSAO_variables_module, ONLY:ring_group, refl_group, rad_group, & 
-       irrad_group,cali_group, geo_group, o3p_group
+       irrad_group,geo_group, cali_group
    IMPLICIT NONE
    
 
@@ -41,5 +41,4 @@ MODULE OMSAO_tmpodata_module
    TYPE(geo_group) :: tmpo_geo1, tmpo_geo2
    TYPE(refl_group) :: tmpo_refl
    TYPE(cali_group):: tmpo_cali
-   TYPE(o3p_group):: tmpo_o3p
 END MODULE OMSAO_tmpodata_module

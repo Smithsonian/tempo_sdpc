@@ -5,12 +5,18 @@ MODULE OMI_LUN_set
     INTEGER (KIND = 4), PARAMETER :: OZPROF_CTRL_LUN      = 12
     INTEGER (KIND = 4), PARAMETER :: REFDB_DIR_LUN        = 13
     INTEGER (KIND = 4), PARAMETER :: ATMOSDB_DIR_LUN      = 14
+    INTEGER (KIND = 4), PARAMETER :: CTRDB_DIR_LUN        = 15
     !! Logical Units for L1B files  (Same as those in L1B OMIE_GDPS )
     INTEGER (KIND = 4), PARAMETER :: L1B_UV_FILE_LUN      = 1100
     INTEGER (KIND = 4), PARAMETER :: L1B_VIS_FILE_LUN     = 1101
     INTEGER (KIND = 4), PARAMETER :: L1B_IRR_FILE_LUN     = 1104
     !! L2 Input
     INTEGER (KIND = 4), PARAMETER :: L2_CLD_FILE_LUN      = 500001
+    INTEGER (KIND = 4), PARAMETER :: L2_MET_FILE_LUN      = 500002
+    INTEGER (kind = 4), parameter, dimension(*) :: &
+                                     L2_MET_FILES_LUN = (/700290, 700291/)
+    INTEGER (kind = 4), parameter  :: num_met_luns = size(L2_MET_FILES_LUN)
+
     !! Logical Units for run time parameters
     INTEGER (KIND = 4), PARAMETER :: PGEVERSION_LUN       = 200105
     INTEGER (KIND = 4), PARAMETER :: PROCESSINGCENTER_LUN = 200110

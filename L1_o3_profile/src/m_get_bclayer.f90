@@ -17,13 +17,14 @@ SUBROUTINE get_bc_layer (which_atm, nloc, the_lons, the_lats, &
   USE m_get_omigeos5, ONLY: geos5
   USE m_get_fnl, ONLY:get_fnl_spres,get_fnl_tpres, get_fnl_surfalt
   USE m_get_ncep, only: get_spres, get_ncepreso_surfalt, get_tpres
+  USE m_get_met_tempo, ONLY: get_met_tempo, tempo=>thismet
   IMPLICIT NONE
   ! input/output variables
   INTEGER, INTENT(IN) :: which_atm, nloc
   REAL (KIND=dp), DIMENSION(nloc), INTENT(IN) :: the_lons, the_lats
   REAL (KIND=dp), INTENT(OUT) :: the_surfalt, ps0, pst
   ! local variables
-  INTEGER :: i
+  INTEGER :: i, errstat
   REAL (KIND=dp) :: ncepreso_z0, omi_z0
   REAL (KIND=dp), DIMENSION(nloc) :: fine_z0
 
@@ -39,15 +40,26 @@ SUBROUTINE get_bc_layer (which_atm, nloc, the_lons, the_lats, &
      ps0 = geos5%spres(currpix, currline)
      ncepreso_z0 = geos5%phis(currpix, currline)
      pst = geos5%ptrp(currpix, currline)
+  ELSE IF (which_atm == 3) THEN 
+    ! defined in make_atm exept that the_surfalb is from TEMPO level 1b
+    ! CALL get_met_tempo(errstat)
+    ! ps0 = tempo%psurf
+    ! ncepreso_z0 = tempo%z0
+    ! pst = tempo%ptrop
   ENDIF
-  DO i = 1, nloc
+  IF (which_atm /= 2 .and. which_atm /=3) THEN 
+    DO i = 1, nloc
      CALL get_finereso_surfalt(the_lons(i), the_lats(i), fine_z0(i))
-  ENDDO
-  omi_z0 = (SUM(fine_z0(1:4)) + fine_z0(5) * 4.) / 8.
-  ! Adjust surface pressure
-  ps0 = ps0 + 1013.25 * (10.**(-omi_z0/16.) - 10.**(-ncepreso_z0/16.))
-  the_surfalt = omi_z0
-
+    ENDDO
+    omi_z0 = (SUM(fine_z0(1:4)) + fine_z0(5) * 4.) / 8.
+    ! Adjust surface pressure
+    ps0 = ps0 + 1013.25 * (10.**(-omi_z0/16.) - 10.**(-ncepreso_z0/16.))
+    the_surfalt = omi_z0
+  ELSE
+    IF (which_atm /= 3) THEN 
+      the_surfalt = ncepreso_z0
+    ENDIF
+  ENDIF
   RETURN
 END SUBROUTINE get_bc_layer
 
@@ -84,8 +96,7 @@ SUBROUTINE get_finereso_surfalt(lon, lat, z0)
       ! Determine if file exists or not
       INQUIRE (FILE= surfalt_fname, EXIST= file_exist)
       IF (.NOT. file_exist) THEN
-         write(*,*)'No Terrain Elevation datafile found!!!'
-         STOP 1
+         STOP 'No Terrain Elevation datafile found!!!'
       ENDIF
 
       OPEN (UNIT = atmos_unit, file = surfalt_fname, status = 'unknown')

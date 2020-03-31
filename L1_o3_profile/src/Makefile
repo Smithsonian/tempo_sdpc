@@ -15,7 +15,7 @@ bindir     = $(prefix)/bin
 msgs_installdir = $(prefix)/msgs
 
 ADDLIBD    = -Wl,-rpath=$(OTS_ROOT)/lib -L$(OTS_ROOT)/lib
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llidort_vv2p4RTC -llapack -lblas
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llidort_vv2p7_pcachrisbrdf -llapack -lblas -lLUT_SAO
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -28,13 +28,32 @@ CP = /bin/cp
 TIO_LIB  = $(prefix)/lib
 TIO_SRC  = $(config_dir)/libtio/src
 TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
+TIOINCS     = -I$(TIOSRC_OBJS)
+TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
+
+CLIM_LIB     = $(prefix)/lib
+CLIM_SRC     = $(config_dir)/libclim/src
+CLIMSRC_OBJS = $(CLIM_SRC)/$(archobjs)
+CLIMINCS     = -I$(CLIMSRC_OBJS)
+CLIMLIBS     = -L$(CLIMSRC_OBJS) -L$(CLIM_LIB) -lclim_f
+
+MET_LIB     = $(prefix)/lib
+MET_SRC     = $(config_dir)/libmet/src
+METSRC_OBJS = $(MET_SRC)/$(archobjs)
+METINCS     = -I$(METSRC_OBJS)
+METLIBS     = -L$(MET_LIB) -lmet_f -lmet
+
+MD_LIB      = $(prefix)/lib
+MD_SRC      = $(config_dir)/libmd/src
+MDSRC_OBJS  = $(MD_SRC)/$(archobjs)
+MDINCS      = -I$(MDSRC_OBJS)
+MDLIBS      = -L$(MD_LIB) -lmd_f
 
 PSPLINELIBS  = -lpspline -lezcdf
 
 TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
                -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f \
-
 
 NETCDFLIBS   = -lnetcdf -lnetcdff
 HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
@@ -58,14 +77,17 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(TIO_SRC_OBJDIR) \
          $(MODFLG)$(TELL_INC) \
          $(MODFLG)$(NETCDF_INC) \
-	 $(MODFLG)$(PSPLINEMOD)
+	 $(MODFLG)$(PSPLINEMOD) \
+	 $(CLIMINCS) \
+	 $(METINCS)
 
 LFLAGS = -L$(objdir) \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
          -L$(NETCDF_LIB) -L$(PSPLINELIB) $(ADDLIBD)
 
 LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
-         $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS)
+         $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS) \
+	 $(CLIMLIBS) $(METLIBS)
 
 CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 
@@ -119,7 +141,7 @@ install:	install-executable install-merge-exec install-header install-msgs
 clean:  clean-o3p-names
 	-$(RM) $(objdir)/*
 
-distclean:	clean        
+distclean:	clean
 	-$(RM) -rf $(objdir)
 
 tags:
@@ -204,6 +226,7 @@ distclean-o3p-names:	clean-o3p-names
 # For releases, a static set of rules can be appended.
 Makefile:	rules.inc
 rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
+#rules.inc:	f90_files.lis c_files.lis
 ifeq (, $(shell which slsh))
    $(error "slsh is not available on $$PATH, please install S-Lang")
 endif
@@ -214,5 +237,5 @@ ODIR = $(objdir)
 SDIR = $(srcdir)
 -include rules.inc
 
-#.PHONY: tags 
+#.PHONY: tags
 .PHONY: tags o3p-names $(NAME_FILE_TARGETS)

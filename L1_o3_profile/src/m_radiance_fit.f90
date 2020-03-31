@@ -2,7 +2,7 @@
 module m_radiance_fit
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY : maxchlen, max_fit_pts
+  USE OMSAO_parameters_module, ONLY : maxchlen
   USE OMSAO_indices_module,    ONLY : max_calfit_idx, &
       shi_idx, squ_idx, wvl_idx, spc_idx, sig_idx, &
       hwe_idx, asy_idx, hwr_idx, hwl_idx, vgr_idx, vgl_idx, spk_idx, &
@@ -13,7 +13,7 @@ module m_radiance_fit
       n_fitvar_sol, fitvar_sol, lo_sunbnd, up_sunbnd, &
       mask_fitvar_sol, rmask_fitvar_sol, sol_wav_avg, &
       fitvar_sol_init, lo_sunbnd_init, up_sunbnd_init, fitvar_sol_saved, &
-      which_slit, wavcal_sol, wavcal, fixslitcal, rslit_fname, poly_order, &
+      which_slit, instrument_sidx, wavcal_sol, wavcal, fixslitcal, rslit_fname, poly_order, &
       correct_lambda, xbin_decerr
   USE OMSAO_errstat_module
   USE m_cal_fit_one
@@ -54,7 +54,7 @@ CONTAINS
   INTEGER         :: i,j, iwin, fidx, lidx, n_fit_pts,  &
                     solfit_exval, ll, lu
   REAL (KIND=dp), DIMENSION(8) :: polycoeffs
-  REAL (KIND=dp), DIMENSION(max_fit_pts) :: polyx
+  REAL (KIND=dp), DIMENSION(:), ALLOCATABLE :: polyx
   REAL (KIND=dp), DIMENSION (n_rad_wvl)      :: allwaves
   REAL (KIND=dp), DIMENSION(max_calfit_idx, 2) :: tmp_varstd
 
@@ -63,7 +63,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  !CHARACTER (LEN=*), PARAMETER :: modulename = 'radiance_fit'
+  CHARACTER (LEN=14), PARAMETER :: modulename = 'radiance_fit'
 
   IF (first) THEN
       wrt_to_screen = .FALSE.
@@ -74,7 +74,7 @@ CONTAINS
       lo_sunbnd  = lo_sunbnd_init; up_sunbnd  = up_sunbnd_init
 
       ! find the locations of actually used fitting variables
-      IF (which_slit == 5) THEN
+      IF (which_slit >= instrument_sidx) THEN
         fitvar_sol(hwe_idx:asy_idx) = 0_dp
         lo_sunbnd(hwe_idx:asy_idx)  = 0_dp
         up_sunbnd(hwe_idx:asy_idx)  = 0_dp
@@ -121,6 +121,7 @@ CONTAINS
 
       ! Initialization for wavelength registration block this to return_v1
       IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
+        allocate (polyx(n_fit_pts))
         DO i = 1, n_fit_pts
            polyx(i) = 1.0d0 * i - 1.0
         ENDDO
@@ -143,6 +144,7 @@ CONTAINS
               j = j + 1
            ENDIF
         ENDDO
+        deallocate (polyx)
       ENDIF
 
       IF (scnwrt) WRITE(*,'(A10,I4,2f8.3,I4)') 'win = ', iwin, fitwavs(1), &

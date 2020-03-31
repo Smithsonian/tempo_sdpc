@@ -12,44 +12,38 @@ contains
   ! 2. Add variable vgr_idx, vgl_idx, hwr_idx, hwl_idx
   ! Jbak:
   ! 1. add super_gauss_module
-  ! 2. 
   ! **********************************************************
 
-  SUBROUTINE spectrum_solar ( npoints, nfitvar, sol_wav_avg, locwvl, fit, &
-       fitvar)
+  SUBROUTINE spectrum_solar ( &
+        npoints, nfitvar, sol_wav_avg, locwvl, fit, fitvar)
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: wvl_idx, spc_idx, solar_idx, shi_idx, squ_idx, &
-        sin_idx,hwe_idx, asy_idx,  vgl_idx, vgr_idx, hwr_idx, hwl_idx, spk_idx, &
-        bl0_idx, bl7_idx, &
-        sc0_idx, sc7_idx, &
-        wr0_idx, wr7_idx
+        sin_idx, &
+        bl0_idx, bl7_idx, sc0_idx, sc7_idx, wr0_idx, wr7_idx
     USE OMSAO_variables_module,  ONLY: n_refspec_pts, refspec_orig_data, &
-         fitwavs, fitvar_sol, mask_fitvar_sol, which_slit, fixslitcal, &
-         yn_varyslit, correct_lambda , rmask_fitvar_sol, correct_lambda
-    USE OMSAO_slitfunction_module
+         fitwavs, fitvar_sol, mask_fitvar_sol,  &
+         correct_lambda , rmask_fitvar_sol
     USE OMSAO_errstat_module
+    USE OMSAO_slitfunction_module
+    USE m_convol, ONLY: simple_convol
     USE m_ezspline_interpolation, only: interpolation
-
-    USE  m_gauss, only: asym_gauss, asym_gauss_vary, gauss, gauss_vary
-    USE m_voigt, only: asym_voigt, asym_voigt_vary
-    USE m_triangle, only: triangle, triangle_vary
-    USE m_super_gauss, ONLY: super_gauss, super_gauss_vary
 
     IMPLICIT NONE
 
 
     INTEGER,                            INTENT (INOUT) :: npoints, nfitvar
-    REAL (KIND=dp),                     INTENT (INOUT)    :: sol_wav_avg
+    REAL (KIND=dp),                     INTENT (INOUT) :: sol_wav_avg
     REAL (KIND=dp), DIMENSION (nfitvar),INTENT (INOUT) :: fitvar
     REAL (KIND=dp), DIMENSION (npoints),INTENT (INOUT) :: locwvl, fit
 
-    REAL (KIND=dp), DIMENSION (npoints) :: del, delx, sunspec_ss , tempspec, tempwave, deli
+    REAL (KIND=dp), DIMENSION (npoints) :: del, delx, sunspec_ss , &
+        tempspec, tempwave, deli
 
     ! =======================================
     ! Variable declarations for IMPLICIT NONE
     ! =======================================
-    INTEGER :: npts, errstat, ref_fidx, ref_lidx, i
+    INTEGER :: i, npts, errstat, ref_fidx, ref_lidx
 
     ! =======================================
     ! Shorthands for solar reference spectrum
@@ -72,19 +66,20 @@ contains
 
 
     IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN
-     tempwave = 0.0d0
-     DO i = 1, npoints
-        del(i) = 1.0d0 * i
-     ENDDO
-     del = (del - npoints / 2.0) / npoints
-     deli = 1.0d0
+      tempwave = 0.0d0
+      DO i = 1, npoints
+         del(i) = 1.0d0 * i
+      ENDDO
+      del = (del - npoints / 2.0) / npoints
+      deli = 1.0d0
 
-     DO i = wr0_idx, wr7_idx
-        tempwave = tempwave + fitvar_sol(i) * deli
-        deli = deli * del
-     ENDDO
-     fitwavs(1:npoints) = tempwave
+      DO i = wr0_idx, wr7_idx
+         tempwave = tempwave + fitvar_sol(i) * deli
+         deli = deli * del
+      ENDDO
+      fitwavs(1:npoints) = tempwave
     ENDIF
+
     locwvl(1:npoints) = fitwavs(1:npoints)
     sol_wav_avg = ( fitwavs(1) + fitwavs(npoints)) / 2.0
 
@@ -115,52 +110,9 @@ contains
     ! =============================================
     ! Broadening and re-sampling of solar spectrum:
     ! =============================================
-    IF (which_slit == 5) THEN
-      ! solar calibration, don't use variable slit (unknown)
-      IF (.NOT. yn_varyslit ) THEN
-        CALL omislit_multi (kppos, kpspec, kpspec_gauss, npts)
-      ELSE
-        CALL omislit_vary  (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ELSE IF (which_slit == 4) THEN 
-      IF (.NOT. yn_varyslit ) THEN
-        CALL super_gauss (kppos, kpspec, kpspec_gauss, npts, &
-              fitvar_sol(hwe_idx), fitvar_sol(spk_idx))
-      ELSE
-        CALL super_gauss_vary  (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ELSE IF (which_slit == 3) THEN
-      IF (.NOT. yn_varyslit .OR. fixslitcal ) THEN
-        CALL triangle (kppos, kpspec, kpspec_gauss, npts, &
-!             fitvar_sol(hwe_idx), fitvar_sol(asy_idx))
-             fitvar_sol(hwe_idx))
-      ELSE  
-        CALL triangle_vary (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ELSE IF (which_slit == 2) THEN
-      IF (.NOT. yn_varyslit .OR. fixslitcal ) THEN
-        CALL asym_voigt (kppos, kpspec, kpspec_gauss, npts, &
-             fitvar_sol(vgl_idx), fitvar_sol(vgr_idx), &
-             fitvar_sol(hwl_idx), fitvar_sol(hwr_idx) )
-      ELSE  
-        CALL asym_voigt_vary (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ELSE IF (which_slit == 1) THEN
-      IF (.NOT. yn_varyslit .OR. fixslitcal ) THEN
-        CALL asym_gauss (kppos, kpspec, kpspec_gauss, npts, &
-             fitvar_sol(hwe_idx), fitvar_sol(asy_idx))
-      ELSE
-        CALL asym_gauss_vary (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ELSE
-      IF (.NOT. yn_varyslit .OR. fixslitcal ) THEN
-        CALL gauss (kppos, kpspec, kpspec_gauss, npts, &
-             fitvar_sol(hwe_idx))
-      ELSE
-        CALL gauss_vary (kppos, kpspec, kpspec_gauss, npts)
-      END IF
-    ENDIF
-
+   
+    CALL simple_convol (kppos(1:npts), kpspec(1:npts), kpspec_gauss(1:npts), npts)
+  
     !write(*,'(2f15.7, f8.2)') sum(kpspec(1:npts)), sum(kpspec_gauss(1:npts)), fitvar_sol(hwe_idx), fitvar_sol(spk_idx) !;stop
   
 
@@ -174,7 +126,6 @@ contains
       errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
       STOP 1
     END IF
-
 
     ! Add up the contributions, with solar intensity as FITVAR_SOL (SIN_IDX),
     ! to include possible linear and Beer's law forms.  Do these as 
@@ -213,22 +164,20 @@ contains
      delx = delx * del
     ENDDO
     fit(1:npoints) = fit(1:npoints) + tempspec
-
+     
     RETURN
   END SUBROUTINE spectrum_solar
 
   SUBROUTINE spectrum_earthshine ( npoints, n_fitvar, rad_wav_avg, &
-       locwvl, fit, fitvar, database, doas )
+       locwvl, fit, fitvar, doas )
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
          max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
          lbe_idx, ad2_idx, mxs_idx, &
-         bl0_idx, sc0_idx, &
-         sin_idx, shi_idx, squ_idx, bl7_idx, sc7_idx
-    USE OMSAO_parameters_module, ONLY: max_spec_pts!, max_fit_pts
+         bl0_idx, sc0_idx, sin_idx, shi_idx, squ_idx, bl7_idx, sc7_idx
     USE OMSAO_variables_module,  ONLY: fitvar_rad, mask_fitvar_rad, &
-         n_refwvl, refwvl!, curr_rad_spec, curr_sol_spec
+         n_refwvl, refwvl, database !, curr_rad_spec, curr_sol_spec
     use m_ezspline_interpolation, only: interpolation
     USE OMSAO_errstat_module
 
@@ -243,10 +192,6 @@ contains
     REAL (KIND=dp),  INTENT (IN) :: rad_wav_avg
     REAL (KIND=dp), DIMENSION (n_fitvar),   INTENT (IN) :: fitvar
     REAL (KIND=dp), DIMENSION (npoints),    INTENT (IN) :: locwvl
-    REAL (KIND=dp), DIMENSION (max_rs_idx,max_spec_pts), INTENT (IN) :: &
-         database
-!    REAL (KIND=dp), DIMENSION (max_rs_idx,max_fit_pts), INTENT (IN) :: &
-!         database
 
     ! ================
     ! Output variables

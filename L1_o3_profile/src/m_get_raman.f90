@@ -1,7 +1,7 @@
 !
 module m_get_raman
    USE m_ezspline_interpolation, only: bspline, interpol
-   USE m_get_xcrs, ONLY: get_all_raycof, geto3_crs
+   USE m_get_xcrs, ONLY: get_all_raycof, geto3_crs, crsz_set
    USE m_raman, only: raman
    USE m_avg_band, only: avg_band_refspec
 
@@ -13,19 +13,16 @@ contains
   SUBROUTINE GET_RAMAN(nl, ozprof, errstat)
 
     USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY : du2mol, deg2rad, max_ring_pts
+    USE OMSAO_parameters_module, ONLY : du2mol, deg2rad
     USE OMSAO_variables_module,  ONLY : database, n_refwvl, refwvl, &
          the_sca_atm, the_sza_atm,the_vza_atm, refwvl_sav, &
          nsol_ring, n_refwvl_sav, do_bandavg, sol_spec_ring,  &
-         refdbdir, n_rad_wvl, refidx!, &
-         !the_aza_atm, up_radbnd, lo_radbnd, fitvar_rad, database_shiwf
-    USE ozprof_data_module,      ONLY : nflay, mflay,  &
+         refdbdir, n_rad_wvl, refidx
+    USE ozprof_data_module,      ONLY : nflay, &
          atmosprof, actawin, aerwavs, gaext, fts, fzs, fozs, frhos, num_iter, &
-         wrtring, ozabs_convl !, atmos_prof_fname, nos
-    USE OMSAO_indices_module,    ONLY : ring_idx!, solar_idx, ring1_idx
+         wrtring, ozabs_convl
+    USE OMSAO_indices_module,    ONLY : ring_idx
     USE OMSAO_errstat_module 
- 
-
      
     IMPLICIT NONE 
 
@@ -36,32 +33,35 @@ contains
 
     ! Local Variables
     INTEGER, PARAMETER :: maxnu = 20000
-    LOGICAL            :: do_o3shi, do_tmpwf,problems, do_bandavg_sav
+    LOGICAL            :: problems, do_bandavg_sav
     INTEGER            :: i, j,ntemp, low, hgh!, nnref, fidx, lidx
     REAL (KIND=dp)     :: scl, xg!, deltlam
     REAL (KIND=dp), DIMENSION(0:nflay) :: tauin, ts, ozs
     REAL (KIND=dp), DIMENSION(0:nl)    :: cumoz
     REAL (KIND=dp), DIMENSION(nflay)   :: ext
-    REAL (KIND=dp), DIMENSION(nsol_ring, nflay) :: strans, vtrans, dads, dadt
-    REAL (KIND=dp), DIMENSION(maxnu, nflay)     :: st, vt
-    REAL (KIND=dp), DIMENSION(maxnu)            :: ring
-    REAL (KIND=dp), DIMENSION(n_refwvl_sav)    :: newring
-
+    REAL (KIND=dp), DIMENSION(:), ALLOCATABLE    :: newring !@n_ref_wvl
+    REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE  :: strans, vtrans !@nsol_ring
+    REAL (KIND=dp), DIMENSION(:), ALLOCATABLE    :: ring   !@maxnu
+    REAL (KIND=dp), DIMENSION(:, :), ALLOCATABLE :: st, vt !@maxnu
     ! Saved variables
-    INTEGER,                                        SAVE :: nuhi, nulo, nu
-    REAL (KIND=dp),                                 SAVE :: avgt, cosvza, cossza
-    REAL (KIND=dp), DIMENSION(max_ring_pts),        SAVE :: swavs, raycof
-    REAL (KIND=dp), DIMENSION(maxnu),               SAVE :: ramanwav
-    REAL (KIND=dp), DIMENSION(max_ring_pts, mflay), SAVE :: abscrs, aerext
+    INTEGER,                                    SAVE :: nuhi, nulo, nu
+    REAL (KIND=dp),                             SAVE :: avgt, cosvza, cossza
+    REAL (KIND=dp), DIMENSION(:), ALLOCATABLE,  SAVE :: ramanwav     !@maxnu
+    REAL (KIND=dp), DIMENSION(:), ALLOCATABLE,  SAVE :: swavs, raycof!@nsol_ring 
+    REAL (KIND=dp), DIMENSION(:,:),ALLOCATABLE, SAVE :: abscrs,aerext!@nsol_ring
+    TYPE (crsz_set) :: o3
     !REAL (KIND=dp), DIMENSION(maxnu)                     :: tmpring
-
     ! ==============================
     ! Name of this module/subroutine
     ! ==============================
     CHARACTER (LEN=9), PARAMETER :: modulename = 'GET_RAMAN'
 
-     errstat = pge_errstat_ok 
+    errstat = pge_errstat_ok 
+   
     IF (ozabs_convl) THEN   ! Check this for each cross track position
+     IF (allocated(ramanwav)) deallocate (ramanwav, swavs, raycof)   
+     allocate (ramanwav(maxnu))
+     allocate (swavs(nsol_ring), raycof(nsol_ring))
 
      ! Get position for raman calculation
      swavs(1:nsol_ring) = sol_spec_ring(1, 1:nsol_ring)
@@ -90,11 +90,14 @@ contains
      ENDIF
 
      ! Get Rayleigh scattering coefficients once
-     CALL GET_ALL_RAYCOF(nsol_ring, swavs(1:nsol_ring), raycof(1:nsol_ring))
-     
-    ENDIF
+     CALL get_all_raycof(nsol_ring, swavs(1:nsol_ring), raycof(1:nsol_ring))
+     ! ozabs_convl will be changed after calling get_abscrs routine
+  ENDIF
 
   IF (num_iter == 0) THEN
+     IF (allocated(abscrs)) deallocate (abscrs, aerext)
+     allocate (abscrs(nsol_ring, nflay), aerext(nsol_ring, nflay)) 
+
      ts(1:nflay) = (fts(1:nflay) + fts(0:nflay-1)) / 2.d0
 
      ! Use effective temperature to speed up the calculation
@@ -102,14 +105,12 @@ contains
 
      cossza = COS(the_sza_atm * deg2rad); cosvza = COS(the_vza_atm * deg2rad)
 
-     do_o3shi = .FALSE.; do_tmpwf = .FALSE.
      do_bandavg_sav = do_bandavg; do_bandavg = .FALSE.
-     !CALL GETABS_CRS(swavs(1:nsol_ring), nsol_ring, nsol_ring,1, nflay, ts(1:nflay), &
-     !     abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf, dads, dadt, problems, &
-     !     abscrs_qtdepen(1:3, 1:nsol_ring) ) 
 
-     CALL geto3_crs(swavs(1:nsol_ring), nsol_ring, nsol_ring,nflay, ts(1:nflay), &
-          abscrs(1:nsol_ring, 1:nflay), do_o3shi,  do_tmpwf,dads, dadt, problems)
+     o3%do_shiwf = .false. ; o3%do_tmpwf = .false. ; o3%do_pslwf = .false.
+     CALL geto3_crs(swavs(1:nsol_ring), nsol_ring, nsol_ring,nflay, ts(1:nflay), o3, problems)
+     abscrs(1:nsol_ring, 1:nflay) = o3%crs(1:nsol_ring, 1:nflay)
+     ozabs_convl = .true.
      IF (problems) THEN
         WRITE(www_lun, *) modulename, ': Problems in reading trace gas absorption!!!'
         do_bandavg = do_bandavg_sav; errstat = pge_errstat_error; RETURN
@@ -156,6 +157,7 @@ contains
   !WRITE(77, '(100D16.7)') frhos(1:nflay)
   
   ! Compute optical depth
+  allocate (strans(nsol_ring, nflay), vtrans(nsol_ring, nflay))
   DO i = 1, nsol_ring
      ext = raycof(i) * frhos(1:nflay) + abscrs(i, 1:nflay) * ozs(1:nflay) + aerext(i, 1:nflay) 
      
@@ -178,6 +180,7 @@ contains
   ENDDO
   
   ! Interpolate to raman grid in wavenumber
+  allocate (ring(nu), st(nu, nflay), vt(nu, nflay))
   DO i = 1, nflay
      CALL BSPLINE(swavs(1:nsol_ring), strans(1:nsol_ring, i), nsol_ring, &
           ramanwav(1:nu), st(1:nu, i), nu, errstat)
@@ -192,16 +195,16 @@ contains
         WRITE(www_lun, *) modulename, '(2): BSPLINE error, errstat = ', errstat; RETURN
      ENDIF
   ENDDO
-  
+
   ! Call raman program
   CALL RAMAN(refdbdir, nulo, nuhi, nu, nflay, avgt, the_sca_atm, cossza, &
        st(1:nu,:), vt(1:nu,:), frhos(1:nflay), ring(1:nu))
-
   !CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, swavs(1:nsol_ring), &
   !     tmpring(1:nsol_ring), nsol_ring, errstat) 
   !WRITE(78, '(F12.5, D16.7)') ((swavs(i), tmpring(i)), i = 1, nsol_ring)
   
-  ! Interpolate calculated ring back to gome radiance grids
+  ! Interpolate calculated ring back to measured radiance grids
+  allocate (newring(n_refwvl_sav))
   CALL BSPLINE(ramanwav(1:nu), ring(1:nu), nu, refwvl_sav(1:n_refwvl_sav), &
        newring(1:n_refwvl_sav), n_refwvl_sav, errstat) 
 
@@ -231,13 +234,15 @@ contains
   IF (wrtring) THEN
      WRITE(92, *) n_rad_wvl
      DO i = 1, n_rad_wvl
-        WRITE(99, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
+        WRITE(92, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
      ENDDO
   ENDIF
+  deallocate (newring)
+  deallocate (strans, vtrans)
+  deallocate (ring, st, vt)
   RETURN
   
-END SUBROUTINE GET_RAMAN
+  END SUBROUTINE GET_RAMAN
 
-
-
+ 
 end module m_get_raman

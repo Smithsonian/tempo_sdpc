@@ -10,22 +10,25 @@ CONTAINS
   SUBROUTINE tmpo_fitting_process  ( message, processing_version, pge_error_status )
 
     USE OMSAO_precision_module
+    USE OMSAO_parameters_module, ONLY: r4_missval, r8_missval
     USE OMSAO_variables_module,  only:num_wav_max, &
          nxtrack, ntimes, nwavel,pixnum_lim, linenum_lim, &
-         nxbin, nybin, currpix, currline, currloop,&
+         nxbin, nybin, currpix, currline, currloop, the_lat, the_lon,&
          the_pix, the_line,ntimes_loop,offset_line,&
          n_fitvar_rad, mask_fitvar_rad,fitvar_rad_saved,&
          npix_fitting, npix_fitted, numwin, radnhtrunc,&
+         lon_min, lon_max, lat_min, lat_max, time_min, time_max, do_geoloc_init, &
          scnwrt, calwrt,use_backup, reduce_resolution, wavcal, which_slit, &
          l2_hdf_flag, l1b_rad_filename,l2_cld_filename,l2_filename, &
-         lcurve_unit, ozwrtint_unit,calunit
+         lcurve_unit, ozwrtint_unit,calunit, &
+         glb_fitvar, glb_initval, glb_exitval
 
     USE OMSAO_errstat_module
     USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&
          ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl
     USE OMSAO_tmpodata_module, only: rad_swathname,nlines_max, &
         tmpo_rad, tmpo_irrad,tmpo_refl, tmpo_ring, tmpo_cali, &
-        tmpo_geo1,tmpo_geo2,tmpo_o3p
+        tmpo_geo1,tmpo_geo2
     USE m_specfit_ozprof
     USE m_allocate
     USE m_read_geo_tio
@@ -165,9 +168,9 @@ CONTAINS
        go to 111
     ENDIF
 
-    ALLOCATE(tmpo_o3p%exitval(nxtrack,0:nlines_max-1))
-    ALLOCATE(tmpo_o3p%initval(nxtrack,0:nlines_max-1))
-    ALLOCATE(tmpo_o3p%fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
+    ALLOCATE(glb_exitval(nxtrack,0:nlines_max-1))
+    ALLOCATE(glb_initval(nxtrack,0:nlines_max-1))
+    ALLOCATE(glb_fitvar(nxtrack, 0:nlines_max-1, n_fitvar_rad))
 
     !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Read irradiance & slit/wavelength calibration
@@ -225,12 +228,18 @@ CONTAINS
     ! @ Reading geolocation variables
     !   with Computing spatial pixel corners and effective viewing geometry
     !------------------------------------------------------------------
-
     CALL read_geo_tio (rad_swathname(1),tmpo_geo1, ntimes, nxtrack, &
         first_pix, last_pix, sline, eline, pge_error_status)
     CALL read_geo_tio (rad_swathname(2),tmpo_geo2, ntimes, nxtrack, &
         first_pix, last_pix, sline, eline, pge_error_status)
-    IF (pge_error_status /= pge_errstat_ok) THEN
+    lon_min =  minval(tmpo_geo1%lon, tmpo_geo1%lon /= r4_missval)
+    lon_max =  maxval(tmpo_geo1%lon, tmpo_geo1%lon /= r4_missval)
+    lat_min =  minval(tmpo_geo1%lat, tmpo_geo1%lat /= r4_missval)
+    lat_max =  maxval(tmpo_geo1%lat, tmpo_geo1%lat /= r4_missval)
+    time_min =  minval(tmpo_geo1%time, tmpo_geo1%time /= r8_missval)
+    time_max =  maxval(tmpo_geo1%time, tmpo_geo1%time /= r8_missval)
+    do_geoloc_init = .true. 
+   IF (pge_error_status /= pge_errstat_ok) THEN
        message =": failed to read geo location"
        RETURN
     ENDIF
@@ -281,6 +290,7 @@ CONTAINS
     ENDIF
     IF (scnwrt) WRITE(*,'(A)') '@ Create '//TRIM(ADJUSTL(l2_filename))
     CALL L2_O3P_WRITE_GEO (tmpo_geo1,first_pix, last_pix, first_line, last_line, errstat)
+      
      IF (errstat /= 0) THEN
       pge_error_status = pge_errstat_error
       RETURN
@@ -302,12 +312,12 @@ CONTAINS
     rms_avg = 0.0
     dfitcol_avg = 0.0
     drel_fitcol_avg = 0.0
-    tmpo_o3p%exitval = 10
-    tmpo_o3p%fitvar = 0.0
-    tmpo_o3p%initval = 0
+    glb_exitval = 10
+    glb_fitvar = 0.0
+    glb_initval = 0
 
     OMIBlock: do iline =  0, last_line-1, nlines_max
-
+       !if (iline < 60 )  cycle
        ! Actually lines in L1B Data
       ntimes_loop = nlines_max
       IF ( iline + ntimes_loop > last_line ) ntimes_loop = last_line - iline
@@ -315,7 +325,7 @@ CONTAINS
       eline = sline + ntimes_loop * nybin -1
       CALL tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
       IF ( pge_error_status >= pge_errstat_error ) return
-      IF (scnwrt) write(*, '(A,I4,A,I4)') &
+      IF (scnwrt) write(*, '(A,I4,A,I4,4f8.1)') &
            '@ Finishing reading radiances for lines: ', sline, ' - ', eline
       ! Perform calibration for the middle scan line and apply to the other
       !  scan lines
@@ -338,45 +348,47 @@ CONTAINS
 
         IF (ALL(tmpo_rad%pix_errstat(currpix, 0:ntimes_loop-1) == pge_errstat_error) &
              .OR. tmpo_irrad%errstat(currpix) == pge_errstat_error) THEN
-           tmpo_o3p%exitval(currpix, 0:ntimes_loop-1) = -10; CYCLE
+           print * ,currpix, '=all bad'
+           glb_exitval(currpix, 0:ntimes_loop-1) = -10; CYCLE
         ENDIF
         ! Load/adjust irradiances and slit calibration parameters
         CALL adj_solar_data (pge_error_status)
-
-        IF ( pge_error_status >= pge_errstat_error ) cycle
-
+       
+        IF ( pge_error_status >= pge_errstat_error ) THEN 
+            print * ,currpix, 'fail in adj_solar_data'
+            cycle
+        ENDIF
         curr_fitted_line = 0
         YfitLine: do currloop = 0, ntimes_loop - 1
-
-          tmpo_o3p%exitval(currpix, currloop) = -10
+          
+          glb_exitval(currpix, currloop) = -10
           currline = iline + currloop
           the_line = currline * nybin + offset_line + 1
           the_pix  = (currpix-1) * nxbin  + 1
-
+          !if (the_line .ne. 30 ) cycle
           IF (tmpo_rad%pix_errstat(currpix, currloop) == pge_errstat_error .or. &
                tmpo_irrad%errstat(currpix) == pge_errstat_error ) &
-               tmpo_o3p%exitval(currpix, currloop) = -9
+               glb_exitval(currpix, currloop) = -9
 
           ! Load/adjust radiances/geolocations fields for a particular pixel
           ! Prepare databases for the first pixel (IFitline == 1)
-          IF (tmpo_o3p%exitval(currpix, currloop) == -10) THEN
+          IF (glb_exitval(currpix, currloop) == -10) THEN
             CALL adj_earthshine_data (curr_fitted_line, pge_error_status)
             IF ( pge_error_status >= pge_errstat_error ) &
-                 tmpo_o3p%exitval(currpix, currloop) = -9
+                 glb_exitval(currpix, currloop) = -9
           ENDIF
 
-          IF (tmpo_o3p%exitval(currpix, currloop) == -10) THEN
+          IF (glb_exitval(currpix, currloop) == -10) THEN
 
-            initval = tmpo_o3p%initval(currpix, currloop)
+            initval = glb_initval(currpix, currloop)
             initval = 0
             CALL specfit_ozprof (initval, fitcol, dfitcol,rms,  exval)
             ! Store exit status for current pixel
-            tmpo_o3p%exitval(currpix, currloop) = exval
-            tmpo_o3p%fitvar(currpix, currloop, 1:n_fitvar_rad) &
+            glb_exitval(currpix, currloop) = exval
+            glb_fitvar(currpix, currloop, 1:n_fitvar_rad) &
                  = fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad))
-
-            IF (scnwrt) write(*, '(A,2I5,A,I5, A, I4, A, i3)') &
-             '@ O3P Retrieval: Line =', the_line, iline, ' XPix= ', the_pix,' init =',initval, 'exval=', exval
+            IF (scnwrt) write(*, '(A,2I5,A,I5, A, f8.2, A, f8.1,A, i3)') &
+             '@ O3P Retrieval: Line =', the_line, iline, ' XPix= ', the_pix,' lat =',the_lat,'lon=',the_lon,  'exval=', exval
           ELSE
             exval = -9
           ENDIF
@@ -388,7 +400,7 @@ CONTAINS
             print *, message
             stop 1
           ENDIF
-          IF (exval >= 0 .and. fitcol(1) > 0.0 .and.dfitcol(1, 1) >= 0.0 ) THEN
+          IF (exval > 0 .and. fitcol(1) > 0.0 .and.dfitcol(1, 1) >= 0.0 ) THEN
             ! -----------------------------------------------------------------
             ! Some general statistics on the average fitted column and
             ! uncertainty. Again, we make sure that only "good" fits are

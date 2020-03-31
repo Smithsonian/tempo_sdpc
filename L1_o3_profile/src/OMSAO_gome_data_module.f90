@@ -69,15 +69,21 @@ MODULE OMSAO_gome_data_module
 
   INTEGER :: obs_month
   INTEGER :: n_gome_solpts, gome_curpix, gome_curqual, gome_curscan, n_gome_radpts
+  INTEGER :: n_gome_q, n_stokfrac
+  INTEGER, DIMENSION(15)   :: stkidx, stkflg 
   INTEGER :: gome_stpix, gome_endpix, gome_npix
   INTEGER :: orbnum                ! orbit number from the launch
   CHARACTER (LEN=24) :: gome_pixdate
   CHARACTER (LEN=3)  :: gome_orbc  ! one of the 14 orbits in a day
+  LOGICAL            :: use_origin_q, wrt_save_stk
   REAL (KIND=dp)                                           :: ers2_alt, earth_curv, gome_integt
   REAL (KIND=dp), DIMENSION (azm_idx,n_gome_ang)           :: gome_angles_wrtn, gome_angles_wrts
   REAL (KIND=dp), DIMENSION (lon_idx,n_gome_geo)           :: gome_geoloc
   REAL (KIND=dp), DIMENSION (n_gome_data_dim, max_fit_pts) :: gome_radspec, gome_solspec
-
+  REAL (KIND=dp), DIMENSION (2, max_fit_pts)               :: gome_avgradresponse
+  REAL (KIND=dp), DIMENSION (n_gome_data_dim, max_fit_pts) :: temp_spec
+  REAL (KIND=dp), DIMENSION (3,15)                         :: gome_q 
+  
   ! Maximum ratio of # channel 2 pixels to # channel 1 ratios
   INTEGER, PARAMETER :: maxc1c2r = 8
 

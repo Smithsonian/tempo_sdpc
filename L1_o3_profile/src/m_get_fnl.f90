@@ -1,25 +1,26 @@
 MODULE m_get_fnl
   USE OMSAO_precision_module
   USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
-      the_month, the_year, the_day, the_lon, the_lat
-
-  ! used for interpolation
-  INTEGER, PARAMETER :: nlfnl = 26
-  INTEGER, PARAMETER, PRIVATE  :: nlat=180, nlon=360 
+      the_month, the_year, the_day,the_lon, the_lat
+  USE ozprof_data_module, ONLY: fnldir
+! dimension
+  INTEGER, PARAMETER           :: nlfnl = 26, nlat=180, nlon=360 
+! variables used for interpolation
   REAL (KIND=dp), PARAMETER,PRIVATE  :: longrid = 1.0, latgrid = 1.0, lon0=-180.0, lat0=-90
   REAL (KIND=dp), PARAMETER,PRIVATE  :: lat_offset   = lat0 + latgrid / 2.0
   REAL (KIND=dp), PARAMETER,PRIVATE  :: lon_offset   = lon0 + longrid  / 2.0
   REAL (KIND=dp), PRIVATE            :: frac
-  INTEGER,PRIVATE                       :: nblon, nblat
+  INTEGER, PRIVATE                   :: nblon, nblat
   INTEGER, DIMENSION(2),PRIVATE         :: latin, lonin
   REAL (KIND=dp), DIMENSION(2),PRIVATE  :: latfrac, lonfrac
-  LOGICAL,PRIVATE                    :: file_exist
 ! others
+  LOGICAL,PRIVATE                    :: file_exist
   INTEGER, PRIVATE                   :: i, j, k
   CHARACTER (LEN=2),PRIVATE          :: monc, dayc
   CHARACTER (LEN=4),PRIVATE          :: yrc
   CHARACTER (LEN=130),PRIVATE        :: fnl_fname
-  
+
+
   public get_fnl_temp, get_fnl_spres, & 
          get_fnl_sfct, get_fnl_tpres, get_fnl_surfalt
 
@@ -31,25 +32,24 @@ MODULE m_get_fnl
   ! ======================
   ! Input/Output variables
   ! ======================
-! FNL data modules
-  REAL (KIND=DP), DIMENSION (nlfnl) :: tprof
+  REAL (KIND=DP),    DIMENSION (nlfnl), INTENT(OUT)  :: tprof
   INTEGER (KIND=DP), DIMENSION (:,:,:), SAVE, POINTER :: glbtemp
   LOGICAL, SAVE :: first=.TRUE.
 
   IF (first) THEN
      allocate (glbtemp(nlon, nlat, nlfnl))
+
      WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
      WRITE(dayc, '(I2.2)') the_day            ! from 9 to '09'     
      WRITE(yrc,  '(I4.4)') the_year
 
-     fnl_fname = TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnltemp/fnltemp_' //yrc // monc // dayc // '.dat'    
+     fnl_fname = TRIM(ADJUSTL(atmdbdir)) // TRIM(ADJUSTL(fnldir))//'/fnltemp/fnltemp_' //yrc // monc // dayc // '.dat'    
 
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no T profile file found, use monthly mean!!!'
-          print * , fnl_fname
-         fnl_fname = TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnltemp/fnltempavg'// monc // '.dat'
+        fnl_fname = TRIM(ADJUSTL(atmdbdir)) //TRIM(ADJUSTL(fnldir))//'/fnltemp/fnltempavg'// monc // '.dat'
      ENDIF
      
      ! NCEP FNL: 26 layers (top down from 10 to 1000 mb), but data will be
@@ -59,7 +59,7 @@ MODULE m_get_fnl
      CLOSE (atmos_unit)
      first = .FALSE.
   ENDIF
- ! ================================================================
+
   nblat = 2; frac = (the_lat - lat_offset) / latgrid + 1
   latin(1) = INT(frac); latin(2) = latin(1) + 1
   latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
@@ -84,30 +84,29 @@ MODULE m_get_fnl
         tprof = tprof + glbtemp(lonin(i), latin(j), :) * lonfrac(i) *latfrac(j)
      ENDDO
   ENDDO
-RETURN
-END SUBROUTINE get_fnl_temp
+  RETURN
+  END SUBROUTINE get_fnl_temp
  
-SUBROUTINE get_fnl_spres (spres)
+  SUBROUTINE get_fnl_spres (spres)
   IMPLICIT NONE
   REAL (KIND=dp), INTENT(OUT)  :: spres
   INTEGER (KIND=DP), DIMENSION (:,:),SAVE, POINTER ::glbspres
-  LOGICAL, SAVE                         :: first=.TRUE.
+  LOGICAL, SAVE                :: first=.TRUE.
   IF (first) THEN
      allocate (glbspres(nlon, nlat))
      WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
      WRITE(dayc, '(I2.2)') the_day            ! from 9 to '09'     
      WRITE(yrc,  '(I4.4)') the_year
-     fnl_fname =TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnlsp/fnlsp_' // yrc// monc // dayc // '.dat'
+     fnl_fname =TRIM(ADJUSTL(atmdbdir)) // TRIM(ADJUSTL(fnldir))//'/fnlsp/fnlsp_' // yrc// monc // dayc // '.dat'
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no surface pressure file found, use monthlymean!!!'
-       fnl_fname = TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnlsp/fnlspavg' //monc // '.dat'
+       fnl_fname = TRIM(ADJUSTL(atmdbdir)) // TRIM(ADJUSTL(fnldir))//'/fnlsp/fnlspavg' //monc // '.dat'
      ENDIF
 
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
      READ (atmos_unit, '(360I4)') ((glbspres(i, j), i=1, nlon), j=1, nlat)
-     CLOSE (atmos_unit)
      first = .FALSE.
   ENDIF
 
@@ -135,10 +134,10 @@ SUBROUTINE get_fnl_spres (spres)
         spres = spres + glbspres(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
      ENDDO
   ENDDO
-RETURN
-END SUBROUTINE get_fnl_spres
+  RETURN
+  END SUBROUTINE get_fnl_spres
 
-SUBROUTINE get_fnl_sfct (sfct)
+  SUBROUTINE get_fnl_sfct (sfct)
   IMPLICIT NONE
   REAL (KIND=dp), INTENT(OUT)  :: sfct
   INTEGER (KIND=DP), DIMENSION (:,:),SAVE, POINTER ::glbsfct
@@ -146,17 +145,18 @@ SUBROUTINE get_fnl_sfct (sfct)
 
   IF (first) THEN
      allocate (glbsfct(nlon, nlat))
+
      WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
      WRITE(dayc, '(I2.2)') the_day            ! from 9 to '09'     
      WRITE(yrc,  '(I4.4)') the_year
 
-     fnl_fname =TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnlst/fnlst_' // yrc //monc // dayc // '.dat'
+     fnl_fname =TRIM(ADJUSTL(atmdbdir)) // TRIM(ADJUSTL(fnldir))//'/fnlst/fnlst_' // yrc //monc // dayc // '.dat'
 
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no surface temperature file found, use monthlymean!!!'
-        fnl_fname = TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnlst/fnlstavg' //monc // '.dat'
+        fnl_fname = TRIM(ADJUSTL(atmdbdir)) // TRIM(ADJUSTL(fnldir))//'/fnlst/fnlstavg' //monc // '.dat'
      ENDIF
 
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
@@ -189,16 +189,16 @@ SUBROUTINE get_fnl_sfct (sfct)
         sfct = sfct + glbsfct(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
      ENDDO
   ENDDO
-RETURN
-RETURN
-END SUBROUTINE get_fnl_sfct
+  RETURN
+  RETURN
+  END SUBROUTINE get_fnl_sfct
 
-
-SUBROUTINE get_fnl_tpres (tpres)
+  SUBROUTINE get_fnl_tpres (tpres)
   IMPLICIT NONE
   REAL (KIND=dp), INTENT(OUT)  :: tpres
   INTEGER (KIND=dp), DIMENSION(:,:), SAVE, POINTER :: glbtpres
   LOGICAL, SAVE                         :: first=.TRUE.
+
   IF (first) THEN
     allocate (glbtpres(nlon, nlat))
     WRITE(monc, '(I2.2)') the_month          ! from 9 to '09' 
@@ -206,12 +206,12 @@ SUBROUTINE get_fnl_tpres (tpres)
     WRITE(yrc,  '(I4.4)') the_year
 
     fnl_fname =TRIM(ADJUSTL(atmdbdir)) // &
-               'fnl13.75LST/fnltp/fnltp_' //yrc // monc // dayc // '.dat'
+               TRIM(ADJUSTL(fnldir))//'/fnltp/fnltp_' //yrc // monc // dayc // '.dat'
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no tropopause pressure file found, use monthlymean!!!'
-        fnl_fname = TRIM(ADJUSTL(atmdbdir)) // 'fnl13.75LST/fnltp/fnltpavg' //monc // '.dat'
+        fnl_fname = TRIM(ADJUSTL(atmdbdir)) //TRIM(ADJUSTL(fnldir))//'/fnltp/fnltpavg' //monc // '.dat'
      ENDIF
 
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
@@ -244,10 +244,10 @@ SUBROUTINE get_fnl_tpres (tpres)
         tpres = tpres + glbtpres(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
      ENDDO
   ENDDO
-RETURN
-END SUBROUTINE get_fnl_tpres
+  RETURN
+  END SUBROUTINE get_fnl_tpres
 
-SUBROUTINE get_fnl_surfalt(z0)
+  SUBROUTINE get_fnl_surfalt(z0)
 
   IMPLICIT NONE
   ! ======================
@@ -266,8 +266,7 @@ SUBROUTINE get_fnl_surfalt(z0)
      ! Determine if file exists or not
      INQUIRE (FILE= fnl_fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
-       write(*,*) 'No Terrain Elevation datafile found!!!'
-       STOP 1
+        STOP 'No Terrain Elevation datafile found!!!'
      ENDIF
      OPEN (UNIT = atmos_unit, file = fnl_fname, status = 'unknown')
      DO i = 1, 4
@@ -293,5 +292,6 @@ SUBROUTINE get_fnl_surfalt(z0)
   z0 = z0 / 1000.0  ! convert tp km
 
   RETURN
-END SUBROUTINE get_fnl_surfalt
+  END SUBROUTINE get_fnl_surfalt
+
 END MODULE m_get_fnl

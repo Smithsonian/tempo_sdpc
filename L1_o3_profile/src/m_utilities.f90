@@ -1,15 +1,1051 @@
 !
 module m_utilities
 
-  public check_for_endofinput, skip_to_filemark, &
-         get_substring, string2index, signdp, day_of_year
-  private gome_check_read_status!, year_month_day, &
-       ! upper_case, utc_julian_date_and_time, 
+  USE OMSAO_precision_module
+  USE OMSAO_indices_module, ONLY : eoi_str
+  USE OMSAO_errstat_module, ONLY : file_read_ok, file_read_failed, &
+         file_read_eof
+  USE OMSAO_variables_module, ONLY : maxchlen
+
+  public convert_byte_to_8bits, &
+         convert_2bytes_to_16bits,& 
+         convert_2byte_to_32bits, &
+         coadd_byte_qflgs, coadd_2bytes_qflgs, & 
+         check_for_endofinput, skip_to_filemark, gome_check_read_status, &
+         get_substring, string2index, upper_case, & 
+         get_doy, day_of_year,find_pos, signdp, &
+         get_monfrac, get_latfrac, get_gridfrac, get_gridfrac1
+
+  private convert_16bits_to_2bytes,  &
+          convert_8bits_to_byte
+         !, year_month_day, &
+         ! upper_case, utc_julian_date_and_time, 
 
 contains
 
+  SUBROUTINE convert_2bytes_to_32bits ( nbits, ndim, byte_num, bit_num)
+    ! ==========================================================
+    ! Takes an NDIM dimensional 2Byte integer BYTE_NUM and
+    ! converts it into an NDIM x 32 dimensional interger BIT_NUM
+    ! ==========================================================
+    ! jbak please check this subroutine 
+    USE OMSAO_precision_module
+    IMPLICIT NONE
 
-!  Unused?
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                   INTENT (IN) :: ndim, nbits
+    INTEGER (KIND=i4), DIMENSION (ndim), INTENT (IN) :: byte_num
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i4), DIMENSION (ndim,0:nbits-1), INTENT (OUT) :: bit_num
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4)                   :: i!, j
+    REAL (KIND=dp)                      :: powval
+    INTEGER (KIND=i8), DIMENSION (ndim) :: tmp_byte
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    bit_num = 0_i4
+
+    ! ------------------------------------------------
+    ! Save input variable in TMP_BYTE for modification
+    ! ------------------------------------------------
+    tmp_byte(1:ndim) = byte_num(1:ndim)
+
+    WHERE ( tmp_byte(1:ndim) < 0)
+      tmp_byte(1:ndim) = int(tmp_byte(1:ndim) + 4294967296_i8 , kind=i8)
+    ENDWHERE
+
+    ! -------------------------------------------------------------------
+    ! Starting with the highest power NBYTES-1, subtract powers of 2 and
+    ! assign 1 whereever the power fits in the flag number. At the end we
+    ! arrive at a 16 BIT binary representation from which we can extract
+    ! the surface information.
+    ! -------------------------------------------------------------------
+    DO i = nbits-1, 0, -1
+      powval = 2.0 ** i
+      IF ( powval > 0 ) THEN
+        WHERE ( tmp_byte(1:ndim) >= powval )
+          bit_num(1:ndim,i) = 1_i4
+          tmp_byte(1:ndim) = tmp_byte(1:ndim) - int(powval, kind=i8)
+        ENDWHERE
+      END IF
+    END DO
+
+    RETURN
+  END SUBROUTINE convert_2bytes_to_32bits
+
+
+  SUBROUTINE convert_2bytes_to_16bits ( nbits, ndim, byte_num, bit_num )
+
+    ! ==========================================================
+    ! Takes an NDIM dimensional 2Byte integer BYTE_NUM and
+    ! converts it into an NDIM x 16 dimensional interger BIT_NUM
+    ! ==========================================================
+
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                   INTENT (IN) :: ndim, nbits
+    INTEGER (KIND=i2), DIMENSION (ndim), INTENT (IN) :: byte_num
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i2), DIMENSION (ndim,0:nbits-1), INTENT (OUT) :: bit_num
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4)                   :: i!, j
+    REAL (KIND=dp)                      :: powval
+    INTEGER (KIND=i2), DIMENSION (ndim) :: tmp_byte
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    bit_num = 0_i2
+
+    ! ------------------------------------------------
+    ! Save input variable in TMP_BYTE for modification
+    ! ------------------------------------------------
+    tmp_byte(1:ndim) = byte_num(1:ndim)
+
+    WHERE ( tmp_byte(1:ndim) < 0)
+      tmp_byte(1:ndim) = int(tmp_byte(1:ndim) + 65536 , kind=i2)
+    ENDWHERE
+
+    ! -------------------------------------------------------------------
+    ! Starting with the highest power NBYTES-1, subtract powers of 2 and
+    ! assign 1 whereever the power fits in the flag number. At the end we
+    ! arrive at a 16 BIT binary representation from which we can extract
+    ! the surface information.
+    ! -------------------------------------------------------------------
+    DO i = nbits-1, 0, -1
+      powval = 2.0 ** i
+      IF ( powval > 0 ) THEN
+        WHERE ( tmp_byte(1:ndim) >= powval )
+          bit_num(1:ndim,i) = 1_i2
+          tmp_byte(1:ndim) = tmp_byte(1:ndim) - int(powval, kind=i2)
+        ENDWHERE
+      END IF
+    END DO
+
+    RETURN
+  END SUBROUTINE convert_2bytes_to_16bits
+
+  SUBROUTINE convert_16bits_to_2bytes ( nbits, ndim, bit_num, byte_num )
+
+    ! ==========================================================
+    ! Takes an NDIM dimensional 2Byte integer BYTE_NUM and
+    ! converts it into an NDIM x 16 dimensional interger BIT_NUM
+    ! ==========================================================
+
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ----------------------
+    ! Input/Out variables
+    ! ----------------------
+    INTEGER (KIND=i4),                   INTENT (IN)           :: ndim, nbits
+    INTEGER (KIND=i2), DIMENSION (ndim,0:nbits-1), INTENT (IN) :: bit_num
+    INTEGER (KIND=i2), DIMENSION (ndim), INTENT (OUT)          :: byte_num
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4) :: i!, j
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    byte_num = 0
+
+    DO i = 0, nbits - 1 
+      byte_num = int(byte_num + bit_num(:, i) * 2 ** i , kind=i2)
+    ENDDO
+
+
+    WHERE (byte_num > 32767)
+      byte_num = int(byte_num - 65536 , kind=i2)
+    ENDWHERE
+
+
+    RETURN
+  END SUBROUTINE convert_16bits_to_2bytes
+
+  ! xliu, 03/25/2011, add several subroutines for bit-based operation of 8-bit unsigned integer
+  SUBROUTINE convert_byte_to_8bits ( nbits, ndim, byte_num, bit_num )
+
+    ! ==========================================================
+    ! Takes an NDIM dimensional unsigned Byte integer BYTE_NUM and
+    ! converts it into an NDIM x 8 dimensional interger BIT_NUM
+    ! ==========================================================
+
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4),                   INTENT (IN) :: ndim, nbits
+    INTEGER (KIND=i1), DIMENSION (ndim), INTENT (IN) :: byte_num
+
+    ! ----------------
+    ! Output variables
+    ! ----------------
+    INTEGER (KIND=i1), DIMENSION (ndim,0:nbits-1), INTENT (OUT) :: bit_num
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4)                   :: i!, j
+    REAL (KIND=dp)                      :: powval
+    INTEGER (KIND=i2), DIMENSION (ndim) :: tmp_byte
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    bit_num = 0_i1
+
+    ! ------------------------------------------------
+    ! Save input variable in TMP_BYTE for modification
+    ! ------------------------------------------------
+    ! Note: fortran does not have unsigned integer, so copy it to 2 bytes
+    ! and 256 for negative nunmbers
+    tmp_byte(1:ndim) = byte_num(1:ndim)
+    WHERE ( tmp_byte(1:ndim) < 0 )
+      tmp_byte(1:ndim) = int(tmp_byte(1:ndim) + 256 , kind=i2)
+    ENDWHERE
+
+    ! -------------------------------------------------------------------
+    ! Starting with the highest power NBYTES-1, subtract powers of 2 and
+    ! assign 1 whereever the power fits in the flag number. At the end we
+    ! arrive at a 8 BIT binary representation from which we can extract
+    ! the surface information.
+    ! -------------------------------------------------------------------
+    DO i = nbits-1, 0, -1
+      powval = 2.0 ** i
+      IF ( powval > 0 ) THEN
+        WHERE ( tmp_byte(1:ndim) >= powval )
+          bit_num(1:ndim,i) = 1_i1
+          tmp_byte(1:ndim) = tmp_byte(1:ndim) - int(powval, kind=i2)
+        ENDWHERE
+      END IF
+    END DO
+
+    RETURN
+  END SUBROUTINE convert_byte_to_8bits
+
+  SUBROUTINE convert_8bits_to_byte ( nbits, ndim, bit_num, byte_num )
+
+    ! ==========================================================
+    ! Takes an NDIM dimensional 2Byte integer BYTE_NUM and
+    ! converts it into an NDIM x 16 dimensional interger BIT_NUM
+    ! ==========================================================
+
+    USE OMSAO_precision_module
+    IMPLICIT NONE
+
+    ! ----------------------
+    ! Input/Out variables
+    ! ----------------------
+    INTEGER (KIND=i4),                   INTENT (IN)           :: ndim, nbits
+    INTEGER (KIND=i1), DIMENSION (ndim,0:nbits-1), INTENT (IN) :: bit_num
+    INTEGER (KIND=i1), DIMENSION (ndim), INTENT (OUT)          :: byte_num
+
+    ! ---------------
+    ! Local variables
+    ! ---------------
+    INTEGER (KIND=i4) :: i
+
+    ! ----------------------------
+    ! Initialize output quantities
+    ! ----------------------------
+    byte_num = 0
+
+    DO i = 0, nbits - 1 
+      byte_num = int(byte_num + bit_num(:, i) * 2 ** i , kind=i1)
+    ENDDO
+
+    WHERE (byte_num > 127)
+      byte_num = int(byte_num - 256 , kind=i1)
+    ENDWHERE
+
+    RETURN
+  END SUBROUTINE convert_8bits_to_byte
+
+  SUBROUTINE coadd_byte_qflgs(nbits, ndim, qflg1, qflg2)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+  ! --------------------------
+  ! Input/Output variables
+  ! --------------------------
+  INTEGER (KIND=i4),                    INTENT (IN)  :: nbits, ndim
+  INTEGER (KIND=i1), DIMENSION(ndim), INTENT (INOUT) :: qflg1
+  INTEGER (KIND=i1), DIMENSION(ndim), INTENT (IN)    :: qflg2
+
+  INTEGER (KIND=i1), DIMENSION (ndim, 0:nbits-1) :: bit_num1, bit_num2
+
+  CALL convert_byte_to_8bits ( nbits, ndim, qflg1, bit_num1 )
+  CALL convert_byte_to_8bits ( nbits, ndim, qflg2, bit_num2 ) !jbak (qflg1->qflg2)
+
+  bit_num1 = bit_num1 + bit_num2
+
+  WHERE(bit_num1 > 1)
+     bit_num1 = 1
+  ENDWHERE
+
+  ! Convert 8 bits to 1 byte
+  CALL convert_8bits_to_byte (nbits, ndim, bit_num1, qflg1)
+
+  RETURN
+  END SUBROUTINE coadd_byte_qflgs
+
+  SUBROUTINE coadd_2bytes_qflgs(nbits, ndim, qflg1, qflg2)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! --------------------------
+  ! Input/Output variables
+  ! --------------------------
+  INTEGER (KIND=i4),                    INTENT (IN)  :: nbits, ndim
+  INTEGER (KIND=i2), DIMENSION(ndim), INTENT (INOUT) :: qflg1
+  INTEGER (KIND=i2), DIMENSION(ndim), INTENT (IN)    :: qflg2
+
+  INTEGER (KIND=i2), DIMENSION (ndim, 0:nbits-1) :: bit_num1, bit_num2
+
+  CALL convert_2bytes_to_16bits ( nbits, ndim, qflg1, bit_num1 )
+  CALL convert_2bytes_to_16bits ( nbits, ndim, qflg2, bit_num2 ) !jbak (qflg1->qflg2)
+
+  bit_num1 = bit_num1 + bit_num2
+
+  WHERE(bit_num1 > 1)
+     bit_num1 = 1
+  ENDWHERE
+
+  ! Convert 16 bits to 2bytes
+  CALL convert_16bits_to_2bytes (nbits, ndim, bit_num1, qflg1)
+
+  RETURN
+  END SUBROUTINE coadd_2bytes_qflgs
+
+  FUNCTION day_of_year ( year, month, day ) RESULT ( jday )
+
+    IMPLICIT NONE
+
+    ! ---------------
+    ! Input variables
+    ! ---------------
+    INTEGER (KIND=i4), INTENT (IN) :: year, month, day
+
+    ! ---------------
+    ! Result variable
+    ! ---------------
+    INTEGER (KIND=i4) :: jday
+
+    ! ------------------------------
+    ! Local variables and parameters
+    ! ------------------------------
+    INTEGER (KIND=i4), PARAMETER :: n_month = 12
+    INTEGER (KIND=i4), DIMENSION (n_month), PARAMETER :: &
+         days_per_month = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+
+    ! -------------------------------------------------------
+    ! First find day of the year in a regular (non leap) year
+    ! -------------------------------------------------------
+    SELECT CASE ( month )
+    CASE ( 1 )
+      jday = day
+    CASE (2:12)
+      jday = SUM ( days_per_month(1:month-1) ) + day
+    CASE DEFAULT
+      jday = -9999
+    END SELECT
+
+    ! -------------------------
+    ! Now apply leap year rules
+    ! ------------------------------------
+    ! * Divisible by 4:   leap year
+    ! * Divisible by 100: not a leap year
+    ! * Divisible by 400: leap year
+    ! ------------------------------------
+    IF ( MOD(year,4) == 0 .AND. ( MOD(year,100) /= 0 .OR. &
+         MOD(year,400) == 0 ) .and. month .gt. 2) jday = jday+1
+
+    RETURN
+  END FUNCTION day_of_year
+
+  SUBROUTINE get_doy (theyear, themon,  theday, thedoy)
+
+    IMPLICIT NONE
+
+    ! --------------------------
+    ! Input/Output variables
+    ! --------------------------
+    INTEGER, INTENT (IN)   :: theyear, themon, theday
+    INTEGER, INTENT (OUT)  :: thedoy
+
+    ! Local variables
+    INTEGER, DIMENSION(12) :: ndays = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
+
+    IF (MOD(theyear, 4) == 0) ndays(2) = 29
+    IF (themon == 1) THEN
+      thedoy = theday
+    ELSE 
+      thedoy = SUM(ndays(1:themon-1)) + theday
+    ENDIF
+
+    RETURN
+  END SUBROUTINE get_doy
+
+  SUBROUTINE timestamp (curtime )
+    !
+    !*******************************************************************************
+    !
+    !! TIMESTAMP prints the current YMDHMS date as a time stamp.
+    !
+    !
+    !  Example:
+    !
+    !    May 31 2001   9:45:54.872 AM
+    !
+    !  Modified:
+    !
+    !    31 May 2001
+    !
+    !  Author:
+    !
+    !    John Burkardt
+    !
+    !  Parameters:
+    !
+    !    None
+    !
+    implicit none
+    !
+    character (len=24), INTENT(OUT) :: curtime
+    integer d
+    character ( len = 8 ) date
+    integer h
+    integer m
+    integer mm
+    character ( len = 3 ), parameter, dimension(12) :: month = (/ &
+         'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC' /)
+    integer n
+    integer s
+    character ( len = 10 )  time
+    integer values(8)
+    integer y
+    character ( len = 5 ) zone
+    !
+    call date_and_time ( date, time, zone, values )
+
+    y = values(1)
+    m = values(2)
+    d = values(3)
+    h = values(5)
+    n = values(6)
+    s = values(7)
+    mm = values(8)
+
+    !if ( h < 12 ) then
+    !  ampm = 'AM'
+    !else if ( h == 12 ) then
+    !  if ( n == 0 .and. s == 0 ) then
+    !    ampm = 'Noon'
+    !  else
+    !    ampm = 'PM'
+    !  end if
+    !else
+    !  h = h - 12
+    !  if ( h < 12 ) then
+    !    ampm = 'PM'
+    !  else if ( h == 12 ) then
+    !    if ( n == 0 .and. s == 0 ) then
+    !      ampm = 'Midnight'
+    !    else
+    !      ampm = 'AM'
+    !    end if
+    !  end if
+    !end if
+
+    WRITE ( curtime, '(a3,1x,i2.2,1x,i4,1x,i2.2,a1,i2.2,a1,i2.2,a1,i3.3)' ) &
+         TRIM ( month(m) ), d, y, h, ':', n, ':', s, '.', mm
+
+    RETURN
+  END SUBROUTINE timestamp
+
+  SUBROUTINE check_for_endofinput ( iostring, yn_eoi )
+
+    IMPLICIT NONE
+
+    ! ==============
+    ! Input variable
+    ! ==============
+    CHARACTER (LEN=*), INTENT (IN) :: iostring
+
+    ! ===============
+    ! Output variable
+    ! ===============
+    LOGICAL, INTENT (OUT) :: yn_eoi
+
+    yn_eoi = .FALSE.
+    IF ( TRIM(ADJUSTL(iostring)) == eoi_str ) yn_eoi = .TRUE.
+
+    RETURN
+  END SUBROUTINE check_for_endofinput
+
+  SUBROUTINE gome_check_read_status ( ios, file_read_stat )
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT (IN)  :: ios
+    INTEGER, INTENT (OUT) :: file_read_stat
+
+    SELECT CASE ( ios )
+    CASE ( :-1 )  
+  file_read_stat = file_read_eof
+    CASE (   0 )  
+  file_read_stat = file_read_ok
+    CASE DEFAULT  
+  file_read_stat = file_read_failed
+    END SELECT
+
+    RETURN
+  END SUBROUTINE gome_check_read_status
+
+
+  SUBROUTINE skip_to_filemark ( funit, lm_string, lastline, file_read_stat )
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,           INTENT (IN) :: funit
+    CHARACTER (LEN=*), INTENT (IN) :: lm_string
+
+    ! ================
+    ! Output variables
+    ! ================
+    INTEGER,           INTENT (OUT) :: file_read_stat
+    CHARACTER (LEN=*), INTENT (OUT) :: lastline
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER                  :: lmlen, ios!, iline
+    CHARACTER (LEN=maxchlen) :: tmpline
+
+    ! -------------------------------------------
+    ! Determine the length of the string landmark
+    ! -------------------------------------------
+    lmlen = LEN(TRIM(ADJUSTL(lm_string)))
+
+    ! -------------------------------------------------------
+    ! Read lines in the file until we either find the string,
+    ! reach the end of the file, or reading fails otherwise.
+    ! ----------------------------------------------------
+    ios = 0
+    getlm: DO WHILE ( ios == 0 )
+      READ (UNIT=funit, FMT='(A)', IOSTAT=ios) tmpline
+      tmpline = TRIM(ADJUSTL(tmpline))
+      IF ( ios /= 0 .OR. tmpline(1:lmlen) == lm_string ) EXIT getlm
+    END DO getlm
+
+    ! ---------------------------------------------------
+    ! Return the last line read for the case that we need 
+    ! to extract further information from it
+    ! ---------------------------------------------------
+    lastline = TRIM(ADJUSTL(tmpline))
+
+    CALL gome_check_read_status ( ios, file_read_stat )
+
+    RETURN
+  END SUBROUTINE skip_to_filemark
+
+
+  SUBROUTINE get_substring ( string, sstart, substring, nsubstring, eostring )
+
+    IMPLICIT NONE
+
+    ! =========================================================================
+    ! Given string STRING, extract first space- or comma-delimited substring
+    ! beginning on or after position SSTART, and return its value, SUBSTRING 
+    ! and length, NSUBSTRING; update STRING and SSTART to remove the substring.
+    ! 
+    ! F90 version of the original GET_TOKEN by J. Lavanigno
+    ! =========================================================================
+
+    ! NSUBSTRING represents the token's length without trailing blanks. It's
+    ! set to 0 if no substring was found in STRING: this can be used to 
+    ! determine when to stop looking.
+    !
+    ! This routine makes no attempt to detect or handle the case in which
+    ! the token is bigger than the token buffer.  It's assumed that the
+    ! caller will declare line and token to be the same size so that this
+    ! won't ever happen.
+
+    ! ==================
+    ! Modified arguments.
+    ! ==================
+    CHARACTER (LEN = *), INTENT (INOUT) :: string
+    INTEGER,             INTENT (INOUT) :: sstart
+
+    ! =================
+    ! Output arguments.
+    ! =================
+    CHARACTER (LEN =LEN(string)), INTENT (OUT) :: substring
+    INTEGER,                      INTENT (OUT) :: nsubstring
+    LOGICAL,                      INTENT (OUT) :: eostring
+
+    ! ================
+    ! Local arguments.
+    ! ================
+    CHARACTER :: char
+    INTEGER   :: lstart, lend, nline
+
+
+    ! ------------------
+    ! Initialize outputs
+    ! ------------------
+    substring  = ' '  
+    nsubstring = 0  
+    eostring = .FALSE.
+
+    nline = LEN(TRIM(ADJUSTL(string)) )
+
+
+    ! ------------------------------------------------------
+    ! We are working on character variables, i.e., positions 
+    ! are always larger than 0
+    ! ------------------------------------------------------
+    IF ( sstart <= 0 ) sstart = 1
+
+    ! ----------------------------------------------
+    ! Check first whether we have to any work at all
+    ! ----------------------------------------------
+    IF ( sstart >= nline ) THEN
+      eostring = .TRUE.  
+      RETURN
+    END IF
+
+    ! --------------------------------------------------------
+    ! Find first character in line that's not a blank or comma
+    ! --------------------------------------------------------
+    findchar: DO lstart = sstart, nline
+      char = string(lstart:lstart)
+      SELECT CASE ( char )
+      CASE ( ' ' )
+        IF ( lstart == nline ) THEN
+          sstart = nline + 1
+         RETURN  ! there are no further substrings in STRING
+        END IF
+      CASE ( ',' )
+        IF ( lstart == nline ) THEN
+          sstart = nline + 1
+         RETURN  ! there are no further substrings in STRING
+        END IF
+      CASE DEFAULT
+        EXIT findchar
+      END SELECT
+    END DO findchar
+
+
+    ! --------------------------------------------------
+    ! Start of the next substring is at position LSTART.
+    ! Now find separator that ends the substring.
+    ! --------------------------------------------------
+    findsep: DO lend = lstart + 1, nline
+      char = string (lend:lend)
+      If ( char == ' ' .OR. char == ',' ) EXIT findsep
+    END DO findsep
+    IF ( (lend == nline) .AND. (char /= ' ' .AND. char /= ',') ) lend = lend + 1
+    lend = lend - 1
+
+    ! --------------------
+    ! Output the substring
+    ! --------------------
+    nsubstring = lend - lstart + 1
+
+    substring(1:nsubstring) = string (lstart:lend)
+
+    ! -----------------------------------------------------------------
+    ! The next substring, if any, starts at least two characters beyond
+    ! the end of thelast (we have to skip over the comma or space that 
+    ! marks the substring's end).
+    ! -----------------------------------------------------------------
+    sstart = lend + 2
+
+    ! ---------------------------------------------
+    ! Final check, whether we have to any more work
+    ! ---------------------------------------------
+    IF ( sstart >= nline ) eostring = .TRUE.
+
+    RETURN
+  END SUBROUTINE get_substring
+
+  SUBROUTINE string2index ( table, ntable, string, stridx )
+
+    ! =====================================================
+    ! Looks up STRING in character table TABLE of dimension
+    ! NTABLE, and returns position STRIDX. Defaults to
+    ! STRIDX = -1 if STRING is not found in TABLE.
+    ! =====================================================
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                               INTENT (IN) :: ntable
+    CHARACTER (LEN=*), DIMENSION (ntable), INTENT (IN) :: table
+    CHARACTER (LEN=*),                     INTENT (IN) :: string
+
+    ! ================
+    ! Output variables
+    ! ================
+    INTEGER, INTENT (OUT) :: stridx
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER :: i
+
+    stridx = -1
+
+    getidx: DO i = 1,  ntable
+      IF ( TRIM(ADJUSTL(string)) == TRIM(ADJUSTL(table(i))) ) THEN
+        stridx = i
+        EXIT getidx
+      END IF
+    END DO getidx
+
+    RETURN
+  END SUBROUTINE string2index
+
+  CHARACTER (LEN=maxchlen) FUNCTION int2string ( int_num, ni ) RESULT ( int_str )
+
+  ! ===============================================================
+  ! Converts INTEGER number INT_NUM to STRING INT_STR of length NI
+  ! or the number of digits in INT_NUM, whatever is larger.
+  ! ===============================================================
+
+  IMPLICIT NONE
+
+  ! ---------------
+  ! Input variables
+  ! ---------------
+  INTEGER (KIND=i4),  INTENT (IN)  :: int_num, ni
+
+  !! ---------------
+  !! Result variable
+  !! ---------------
+  !CHARACTER (LEN=*) :: int_str
+
+  ! ------------------------------
+  ! Local variables and parameters
+  ! ------------------------------
+  ! * Arrays containing indices for number strings in ASCII table
+  INTEGER (KIND=i4),                   PARAMETER :: n = 10
+  INTEGER (KIND=i4), DIMENSION(0:n-1)            :: aidx
+  CHARACTER (LEN=1), DIMENSION(0:n-1), PARAMETER :: astr = (/"0","1","2","3","4","5","6","7","8","9" /)
+  ! * Temporary and loop variables
+  INTEGER (KIND=i4)                              :: i, k, nd, tmpint, ld
+
+  ! ----------------------------------------------------
+  ! Compute the index entries of ASTR in the ASCII table
+  ! ----------------------------------------------------
+  aidx = IACHAR(astr)
+
+  ! ----------------------------------------------------------
+  ! Find the number of digits in INT_NUM. This is equal to the
+  ! truncated integer of LOG10(INT_NUM) plus 1.
+  ! ----------------------------------------------------------
+  SELECT CASE ( int_num )
+  CASE ( 0:9 )
+     nd = 1
+  CASE ( 10: )
+     nd = INT ( LOG10(REAL(int_num)) ) + 1
+  CASE DEFAULT
+     int_str = '?' ; RETURN
+  END SELECT
+ ! -------------------------------------------------------------
+  ! We may want to create a string that is longer than the number
+  ! of digits in INT_NUM. This will create leading "0"s.
+  ! -------------------------------------------------------------
+  nd = MAX ( nd, ni )
+
+  ! ----------------------------------------------
+  ! Convert the integer to string "digit by digit"
+  ! ----------------------------------------------
+  int_str = "" ; tmpint = int_num
+  DO i = 1, nd
+     ld = MOD ( tmpint, 10 )        ! Current last digit
+     tmpint = ( tmpint - ld ) / 10  ! Remove current last digit from INT_STR
+     k = nd - i + 1                 ! Position of current digit in INT_STR
+     int_str(k:k) = ACHAR(aidx(ld)) ! Convert INTEGER digit to CHAR
+  END DO
+
+  RETURN
+  END FUNCTION int2string
+
+
+  REAL (KIND=KIND(1.0D0)) FUNCTION signdp ( x )
+
+    IMPLICIT NONE
+
+    REAL (KIND=dp), INTENT (IN) :: x
+
+    signdp = 0.0_dp
+    IF ( x < 0.0_dp ) THEN
+      signdp = -1.0_dp
+    ELSE
+      signdp = +1.0_dp
+    END IF
+
+    RETURN
+  END FUNCTION signdp
+
+  SUBROUTINE reverse ( inarr, num )
+    IMPLICIT NONE
+    INTEGER, PARAMETER :: dp = KIND(1.0D0)
+
+    INTEGER, INTENT(IN) :: num
+    INTEGER             :: i
+    REAL (KIND=dp), DIMENSION(1: num), INTENT(INOUT) :: inarr
+    REAL (KIND=dp), DIMENSION(1: num)                :: temp
+
+    DO i = 1, num
+      temp(i) = inarr(num - i + 1)
+    ENDDO
+    inarr = temp
+
+    RETURN
+  END SUBROUTINE reverse
+
+  SUBROUTINE find_pos (fwave,nf, cwave,nc, pos)
+
+    USE OMSAO_precision_module
+    USE OMSAO_variables_module, ONLY : winlim, numwin
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                        INTENT (IN)         :: nc, nf
+    REAL (KIND=dp), DIMENSION (nf), INTENT (IN)         :: fwave
+    REAL (KIND=dp), DIMENSION (nc), INTENT (IN)         :: cwave
+    
+    ! ===============
+    ! Output  variables
+    ! ===============
+    INTEGER, DIMENSION (nc) :: pos
+    ! ===============
+    ! Local variables
+    ! ===============
+    REAL (KIND=dp) :: dfw, dcw, temp
+    INTEGER        :: i, j, iwin, npos, fidx, fidxc, lidx, lidxc, midx
+
+    fidx = 1; fidxc = 1
+    dcw  = cwave(2) - cwave(1)
+    dfw  = fwave(2) - fwave(1) !xliu, 10/22/2009
+    npos = 0
+    DO iwin = 1, numwin
+      IF (iwin == numwin) THEN
+        lidx = nf; lidxc = nc
+      ELSE
+        temp = (winlim(iwin, 2) + winlim(iwin + 1, 1)) / 2.0
+        lidx =  MINVAL(MAXLOC(fwave, MASK=(fwave <= temp)))
+        lidxc = MINVAL(MAXLOC(cwave, MASK=(cwave <= temp)))
+      ENDIF
+      IF (fwave(1) > winlim(iwin, 2)) CYCLE         
+      DO i = fidxc, lidxc
+        ! Find the closest pixel
+        midx = MINVAL(MAXLOC(fwave(fidx:lidx), MASK=(fwave(fidx:lidx) <= cwave(i)))) + fidx
+        pos(i) = midx
+     !   print *, iwin, i, cwave(i), fwave(midx)
+      ENDDO
+
+      fidx = lidx + 1; fidxc = lidxc + 1
+    ENDDO
+    RETURN
+  END SUBROUTINE find_pos
+
+ SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                       :: nmon, mon, day
+  INTEGER, INTENT(OUT)                      :: nbmon
+  INTEGER, DIMENSION(2), INTENT(OUT)        :: monin
+  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: monfrac
+
+  IF (day <= 15) THEN
+     monin(1) = mon - 1
+     IF (monin(1) == 0) monin(1) = 12
+     monin(2) = mon
+     monfrac(1) = (15.0 - day) / 30.0
+     monfrac(2) = 1.0 - monfrac(1)
+  ELSE
+     monin(2) = mon + 1
+     IF (monin(2) == 13) monin(2) = 1
+     monin(1) = mon
+     monfrac(2) = (day - 15) / 30.0
+     monfrac(1) = 1.0 - monfrac(2)
+  ENDIF
+     nbmon=2
+  END SUBROUTINE get_monfrac
+
+  SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac,latin)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                       :: nlat
+  REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
+  INTEGER, INTENT(OUT)                      :: nblat
+  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
+  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
+
+  ! ======================
+  ! Local variables
+  ! ======================  
+  REAL (KIND=dp) :: frac, lat_offset
+
+  lat_offset   = lat0 + latgrid / 2.0
+  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+  latin(1) = INT(frac); latin(2) = latin(1) + 1
+  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+
+  IF (latin(1) == 0)   THEN
+     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+  ENDIF
+
+  IF (latin(2) > nlat) THEN
+     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+  ENDIF
+  RETURN
+  END SUBROUTINE get_latfrac
+
+  SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
+  lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                       :: nlon, nlat
+  REAL (KIND=dp), INTENT(IN)                :: lon0, lat0, lat, lon,longrid, latgrid
+  INTEGER, INTENT(OUT)                      :: nblon, nblat
+  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin, lonin
+  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac, lonfrac
+
+  ! ======================
+  ! Local variables
+  ! ======================  
+  REAL (KIND=dp) :: frac, lat_offset, lon_offset
+
+  lat_offset   = lat0 + latgrid / 2.0
+  lon_offset   = lon0 + longrid  / 2.0
+
+  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+  latin(1) = INT(frac); latin(2) = latin(1) + 1
+  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+  IF (latin(1) == 0)   THEN
+     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+  ENDIF
+  IF (latin(2) > nlat) THEN
+     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+  ENDIF
+
+  ! Circular in longitude direction
+  nblon = 2; frac = (lon - lon_offset) / longrid + 1
+  lonin(1) = INT(frac); lonin(2) = lonin(1) + 1
+  lonfrac(1) = lonin(2) - frac; lonfrac(2) = 1.0 - lonfrac(1)
+  IF (lonin(1) == 0)   lonin(1) = nlon
+  IF (lonin(2) > nlon) lonin(2) = 1
+
+  RETURN
+
+  END SUBROUTINE get_gridfrac
+
+  SUBROUTINE get_gridfrac1(nlon, nlat, nmon, longrid, latgrid, mongrid,lon0, lat0, mon0, &
+     lon, lat, mon, nblon, nblat, nbmon, lonfrac, latfrac, monfrac,lonin, latin, monin)
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                       :: nlon, nlat, nmon
+  REAL (KIND=dp), INTENT(IN)                :: lon0, lat0, mon0, lat,lon, mon, longrid, latgrid, mongrid
+  INTEGER, INTENT(OUT)                      :: nblon, nblat, nbmon
+  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin, lonin, monin
+  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac, lonfrac, monfrac
+
+  ! ======================
+  ! Local variables
+  ! ======================  
+  REAL (KIND=dp) :: frac, lat_offset, lon_offset, mon_offset
+
+  lat_offset   = lat0   + latgrid / 2.0
+  lon_offset   = lon0   + longrid / 2.0
+  mon_offset   = mon0   + mongrid / 2.0
+
+  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+  latin(1) = INT(frac); latin(2) = latin(1) + 1
+  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+  IF (latin(1) == 0)   THEN
+     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+  ENDIF
+
+  IF (latin(2) > nlat) THEN
+     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+  ENDIF
+
+  ! Circular in longitude direction
+  nblon = 2; frac = (lon - lon_offset) / longrid + 1
+  lonin(1) = INT(frac); lonin(2) = lonin(1) + 1
+  lonfrac(1) = lonin(2) - frac; lonfrac(2) = 1.0 - lonfrac(1)
+  IF (lonin(1) == 0)   lonin(1) = nlon
+  IF (lonin(2) > nlon) lonin(2) = 1
+
+  ! Circular in year
+  nbmon = 2; frac = (mon - mon_offset) / mongrid + 1
+  monin(1) = INT(frac); monin(2) = monin(1) + 1
+  monfrac(1) = monin(2) - frac; monfrac(2) = 1.0 - monfrac(1)
+  IF (monin(1) == 0)   monin(1) = nmon
+  IF (monin(2) > nmon) monin(2) = 1
+
+  RETURN
+
+  END SUBROUTINE get_gridfrac1
+  !  Unused?
 !
 !  SUBROUTINE utc_julian_date_and_time ( year, month, day, julday, hour, &
 !       minute, second )
@@ -125,58 +1161,6 @@ contains
 !
 !    RETURN
 !  END SUBROUTINE utc_julian_date_and_time
-
-
-
-
-  FUNCTION day_of_year ( year, month, day ) RESULT ( jday )
-
-    USE OMSAO_precision_module, ONLY: i4
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: year, month, day
-
-    ! ---------------
-    ! Result variable
-    ! ---------------
-    INTEGER (KIND=i4) :: jday
-
-    ! ------------------------------
-    ! Local variables and parameters
-    ! ------------------------------
-    INTEGER (KIND=i4), PARAMETER :: n_month = 12
-    INTEGER (KIND=i4), DIMENSION (n_month), PARAMETER :: &
-         days_per_month = (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
-
-    ! -------------------------------------------------------
-    ! First find day of the year in a regular (non leap) year
-    ! -------------------------------------------------------
-    SELECT CASE ( month )
-    CASE ( 1 )
-      jday = day
-    CASE (2:12)
-      jday = SUM ( days_per_month(1:month-1) ) + day
-    CASE DEFAULT
-      jday = -9999
-    END SELECT
-
-    ! -------------------------
-    ! Now apply leap year rules
-    ! ------------------------------------
-    ! * Divisible by 4:   leap year
-    ! * Divisible by 100: not a leap year
-    ! * Divisible by 400: leap year
-    ! ------------------------------------
-    IF ( MOD(year,4) == 0 .AND. ( MOD(year,100) /= 0 .OR. &
-         MOD(year,400) == 0 ) .and. month .gt. 2) jday = jday+1
-
-    RETURN
-  END FUNCTION day_of_year
-
-
 !  Unused
 !
 !  SUBROUTINE year_month_day ( year, month, day, newyear, newmonth, newday )
@@ -264,435 +1248,36 @@ contains
 
 !   Unused
 !
-!  FUNCTION upper_case ( mixstring ) RESULT ( upcase )
-!
-!    ! =============================================
-!    ! Function to convert strings to all upper case
-!    ! =============================================
-!
-!    IMPLICIT NONE
-!
-!    ! ------------------------------------------------------------
-!    CHARACTER (LEN=*), INTENT (IN) :: mixstring   ! Input string
-!    ! ------------------------------------------------------------
-!
-!    ! -------------------------------------------------------------
-!    CHARACTER (LEN=len(mixstring))              :: upcase      ! Result string
-!    ! -------------------------------------------------------------
-!
-!    ! -------------------------------------------------------------
-!    INTEGER :: i!, slen                            ! Local variables
-!    ! -------------------------------------------------------------
-!
-!    DO i = 1, LEN(mixstring)
-!      SELECT CASE ( ICHAR(mixstring(i:i)) )
-!      CASE ( 97:122 )
-!        upcase(i:i) = ACHAR(ICHAR(mixstring(i:i))-32)
-!      CASE DEFAULT
-!        upcase(i:i) = mixstring(i:i)
-!      END SELECT
-!    END DO
-!
-!    RETURN
-!  END FUNCTION upper_case
+  FUNCTION upper_case ( mixstring ) RESULT ( upcase )
 
-
-
-
-  SUBROUTINE check_for_endofinput ( iostring, yn_eoi )
-
-    USE OMSAO_indices_module, ONLY : eoi_str
-    IMPLICIT NONE
-
-    ! ==============
-    ! Input variable
-    ! ==============
-    CHARACTER (LEN=*), INTENT (IN) :: iostring
-
-    ! ===============
-    ! Output variable
-    ! ===============
-    LOGICAL, INTENT (OUT) :: yn_eoi
-
-    yn_eoi = .FALSE.
-    IF ( TRIM(ADJUSTL(iostring)) == eoi_str ) yn_eoi = .TRUE.
-
-    RETURN
-  END SUBROUTINE check_for_endofinput
-
-
-
-
-
-  SUBROUTINE gome_check_read_status ( ios, file_read_stat )
-
-    USE OMSAO_errstat_module, ONLY : file_read_ok, file_read_failed, &
-         file_read_eof
-    IMPLICIT NONE
-
-    INTEGER, INTENT (IN)  :: ios
-    INTEGER, INTENT (OUT) :: file_read_stat
-
-    SELECT CASE ( ios )
-    CASE ( :-1 )  
-  file_read_stat = file_read_eof
-    CASE (   0 )  
-  file_read_stat = file_read_ok
-    CASE DEFAULT  
-  file_read_stat = file_read_failed
-    END SELECT
-
-    RETURN
-  END SUBROUTINE gome_check_read_status
-
-
-
-
-  SUBROUTINE skip_to_filemark ( funit, lm_string, lastline, file_read_stat )
-
-    USE OMSAO_variables_module, ONLY : maxchlen
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    INTEGER,           INTENT (IN) :: funit
-    CHARACTER (LEN=*), INTENT (IN) :: lm_string
-
-    ! ================
-    ! Output variables
-    ! ================
-    INTEGER,           INTENT (OUT) :: file_read_stat
-    CHARACTER (LEN=*), INTENT (OUT) :: lastline
-
-    ! ===============
-    ! Local variables
-    ! ===============
-    INTEGER                  :: lmlen, ios!, iline
-    CHARACTER (LEN=maxchlen) :: tmpline
-
-    ! -------------------------------------------
-    ! Determine the length of the string landmark
-    ! -------------------------------------------
-    lmlen = LEN(TRIM(ADJUSTL(lm_string)))
-
-    ! -------------------------------------------------------
-    ! Read lines in the file until we either find the string,
-    ! reach the end of the file, or reading fails otherwise.
-    ! ----------------------------------------------------
-    ios = 0
-    getlm: DO WHILE ( ios == 0 )
-      READ (UNIT=funit, FMT='(A)', IOSTAT=ios) tmpline
-      tmpline = TRIM(ADJUSTL(tmpline))
-      IF ( ios /= 0 .OR. tmpline(1:lmlen) == lm_string ) EXIT getlm
-    END DO getlm
-
-    ! ---------------------------------------------------
-    ! Return the last line read for the case that we need 
-    ! to extract further information from it
-    ! ---------------------------------------------------
-    lastline = TRIM(ADJUSTL(tmpline))
-
-    CALL gome_check_read_status ( ios, file_read_stat )
-
-    RETURN
-  END SUBROUTINE skip_to_filemark
-
-
-
-  SUBROUTINE get_substring ( string, sstart, substring, nsubstring, eostring )
+    ! =============================================
+    ! Function to convert strings to all upper case
+    ! =============================================
 
     IMPLICIT NONE
 
-    ! =========================================================================
-    ! Given string STRING, extract first space- or comma-delimited substring
-    ! beginning on or after position SSTART, and return its value, SUBSTRING 
-    ! and length, NSUBSTRING; update STRING and SSTART to remove the substring.
-    ! 
-    ! F90 version of the original GET_TOKEN by J. Lavanigno
-    ! =========================================================================
+    ! ------------------------------------------------------------
+    CHARACTER (LEN=*), INTENT (IN) :: mixstring   ! Input string
+    ! ------------------------------------------------------------
 
-    ! NSUBSTRING represents the token's length without trailing blanks. It's
-    ! set to 0 if no substring was found in STRING: this can be used to 
-    ! determine when to stop looking.
-    !
-    ! This routine makes no attempt to detect or handle the case in which
-    ! the token is bigger than the token buffer.  It's assumed that the
-    ! caller will declare line and token to be the same size so that this
-    ! won't ever happen.
+    ! -------------------------------------------------------------
+    CHARACTER (LEN=len(mixstring))              :: upcase      ! Result string
+    ! -------------------------------------------------------------
 
-    ! ==================
-    ! Modified arguments.
-    ! ==================
-    CHARACTER (LEN = *), INTENT (INOUT) :: string
-    INTEGER,             INTENT (INOUT) :: sstart
+    ! -------------------------------------------------------------
+    INTEGER :: i!, slen                            ! Local variables
+    ! -------------------------------------------------------------
 
-    ! =================
-    ! Output arguments.
-    ! =================
-    CHARACTER (LEN =LEN(string)), INTENT (OUT) :: substring
-    INTEGER,                      INTENT (OUT) :: nsubstring
-    LOGICAL,                      INTENT (OUT) :: eostring
-
-    ! ================
-    ! Local arguments.
-    ! ================
-    CHARACTER :: char
-    INTEGER   :: lstart, lend, nline
-
-
-    ! ------------------
-    ! Initialize outputs
-    ! ------------------
-    substring  = ' '  
-  nsubstring = 0  
-  eostring = .FALSE.
-
-    nline = LEN(TRIM(ADJUSTL(string)) )
-
-
-    ! ------------------------------------------------------
-    ! We are working on character variables, i.e., positions 
-    ! are always larger than 0
-    ! ------------------------------------------------------
-    IF ( sstart <= 0 ) sstart = 1
-
-    ! ----------------------------------------------
-    ! Check first whether we have to any work at all
-    ! ----------------------------------------------
-    IF ( sstart >= nline ) THEN
-      eostring = .TRUE.  
-  RETURN
-    END IF
-
-    ! --------------------------------------------------------
-    ! Find first character in line that's not a blank or comma
-    ! --------------------------------------------------------
-    findchar: DO lstart = sstart, nline
-      char = string(lstart:lstart)
-      SELECT CASE ( char )
-      CASE ( ' ' )
-        IF ( lstart == nline ) THEN
-          sstart = nline + 1
- RETURN  ! there are no further substrings in STRING
-        END IF
-      CASE ( ',' )
-        IF ( lstart == nline ) THEN
-          sstart = nline + 1
- RETURN  ! there are no further substrings in STRING
-        END IF
+    DO i = 1, LEN(mixstring)
+      SELECT CASE ( ICHAR(mixstring(i:i)) )
+      CASE ( 97:122 )
+        upcase(i:i) = ACHAR(ICHAR(mixstring(i:i))-32)
       CASE DEFAULT
-        EXIT findchar
+        upcase(i:i) = mixstring(i:i)
       END SELECT
-    END DO findchar
-
-
-    ! --------------------------------------------------
-    ! Start of the next substring is at position LSTART.
-    ! Now find separator that ends the substring.
-    ! --------------------------------------------------
-    findsep: DO lend = lstart + 1, nline
-      char = string (lend:lend)
-      If ( char == ' ' .OR. char == ',' ) EXIT findsep
-    END DO findsep
-    IF ( (lend == nline) .AND. (char /= ' ' .AND. char /= ',') ) lend = lend + 1
-    lend = lend - 1
-
-    ! --------------------
-    ! Output the substring
-    ! --------------------
-    nsubstring = lend - lstart + 1
-
-    substring(1:nsubstring) = string (lstart:lend)
-
-    ! -----------------------------------------------------------------
-    ! The next substring, if any, starts at least two characters beyond
-    ! the end of thelast (we have to skip over the comma or space that 
-    ! marks the substring's end).
-    ! -----------------------------------------------------------------
-    sstart = lend + 2
-
-    ! ---------------------------------------------
-    ! Final check, whether we have to any more work
-    ! ---------------------------------------------
-    IF ( sstart >= nline ) eostring = .TRUE.
+    END DO
 
     RETURN
-  END SUBROUTINE get_substring
-
-
-  SUBROUTINE string2index ( table, ntable, string, stridx )
-
-    ! =====================================================
-    ! Looks up STRING in character table TABLE of dimension
-    ! NTABLE, and returns position STRIDX. Defaults to
-    ! STRIDX = -1 if STRING is not found in TABLE.
-    ! =====================================================
-
-    IMPLICIT NONE
-
-    ! ===============
-    ! Input variables
-    ! ===============
-    INTEGER,                               INTENT (IN) :: ntable
-    CHARACTER (LEN=*), DIMENSION (ntable), INTENT (IN) :: table
-    CHARACTER (LEN=*),                     INTENT (IN) :: string
-
-    ! ================
-    ! Output variables
-    ! ================
-    INTEGER, INTENT (OUT) :: stridx
-
-    ! ===============
-    ! Local variables
-    ! ===============
-    INTEGER :: i
-
-    stridx = -1
-
-    getidx: DO i = 1,  ntable
-      IF ( TRIM(ADJUSTL(string)) == TRIM(ADJUSTL(table(i))) ) THEN
-        stridx = i
-        EXIT getidx
-      END IF
-    END DO getidx
-
-    RETURN
-  END SUBROUTINE string2index
-
-
-  REAL (KIND=KIND(1.0D0)) FUNCTION signdp ( x )
-
-    USE OMSAO_precision_module, ONLY: dp
-    IMPLICIT NONE
-
-    REAL (KIND=dp), INTENT (IN) :: x
-
-    signdp = 0.0_dp
-    IF ( x < 0.0_dp ) THEN
-      signdp = -1.0_dp
-    ELSE
-      signdp = +1.0_dp
-    END IF
-
-    RETURN
-  END FUNCTION signdp
-
-  SUBROUTINE reverse ( inarr, num )
-    IMPLICIT NONE
-    INTEGER, PARAMETER :: dp = KIND(1.0D0)
-
-    INTEGER, INTENT(IN) :: num
-    INTEGER             :: i
-    REAL (KIND=dp), DIMENSION(:), INTENT(INOUT) :: inarr ! (num)
-    REAL (KIND=dp), DIMENSION(num)              :: temp
-
-    DO i = 1, num
-      temp(i) = inarr(num - i + 1)
-    ENDDO
-    inarr = temp
-
-    RETURN
-  END SUBROUTINE reverse
-
-  SUBROUTINE timestamp (curtime )
-    !
-    !*******************************************************************************
-    !
-    !! TIMESTAMP prints the current YMDHMS date as a time stamp.
-    !
-    !
-    !  Example:
-    !
-    !    May 31 2001   9:45:54.872 AM
-    !
-    !  Modified:
-    !
-    !    31 May 2001
-    !
-    !  Author:
-    !
-    !    John Burkardt
-    !
-    !  Parameters:
-    !
-    !    None
-    !
-    implicit none
-    !
-    character (len=24), INTENT(OUT) :: curtime
-    integer d
-    character ( len = 8 ) date
-    integer h
-    integer m
-    integer mm
-    character ( len = 3 ), parameter, dimension(12) :: month = (/ &
-         'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC' /)
-    integer n
-    integer s
-    character ( len = 10 )  time
-    integer values(8)
-    integer y
-    character ( len = 5 ) zone
-    !
-    call date_and_time ( date, time, zone, values )
-
-    y = values(1)
-    m = values(2)
-    d = values(3)
-    h = values(5)
-    n = values(6)
-    s = values(7)
-    mm = values(8)
-
-    !if ( h < 12 ) then
-    !  ampm = 'AM'
-    !else if ( h == 12 ) then
-    !  if ( n == 0 .and. s == 0 ) then
-    !    ampm = 'Noon'
-    !  else
-    !    ampm = 'PM'
-    !  end if
-    !else
-    !  h = h - 12
-    !  if ( h < 12 ) then
-    !    ampm = 'PM'
-    !  else if ( h == 12 ) then
-    !    if ( n == 0 .and. s == 0 ) then
-    !      ampm = 'Midnight'
-    !    else
-    !      ampm = 'AM'
-    !    end if
-    !  end if
-    !end if
-
-    write ( curtime, '(a3,1x,i2.2,1x,i4,1x,i2.2,a1,i2.2,a1,i2.2,a1,i3.3)' ) &
-         trim ( month(m) ), d, y, h, ':', n, ':', s, '.', mm
-
-    return
-  END SUBROUTINE timestamp
-
-  SUBROUTINE GET_DOY(theyear, themon,  theday, thedoy)
-    USE OMSAO_precision_module
-    IMPLICIT NONE
-
-    ! --------------------------
-    ! Input/Output variables
-    ! --------------------------
-    INTEGER, INTENT (IN)   :: theyear, themon, theday
-    INTEGER, INTENT (OUT)  :: thedoy
-
-    ! Local variables
-    INTEGER, DIMENSION(12) :: ndays = (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/)
-
-    IF (MOD(theyear, 4) == 0) ndays(2) = 29
-    IF (themon == 1) THEN
-      thedoy = theday
-    ELSE 
-      thedoy = SUM(ndays(1:themon-1)) + theday
-    ENDIF
-
-    RETURN
-  END SUBROUTINE GET_DOY
-
+  END FUNCTION upper_case
+   
 end module m_utilities

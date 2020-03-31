@@ -2,7 +2,7 @@
 module m_ezspline_interpolation
 
   public ezspline_interpolation, bspline, bspline1, bspline2, interpol, & 
-       interpol2, blend_101, blend_103, interpolation
+       interpol2, blend_101, blend_103, interpolation,linearinterpolationweights
   private spline, splint, splint1!, blend_102
 
 contains
@@ -20,15 +20,15 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                       INTENT (IN) :: n_in, n_out
-    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_in, y_in  ! (n_in)
-    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_out       ! (n_out)
+    INTEGER,                           INTENT (IN) :: n_in, n_out
+    REAL (KIND=dp), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
+    REAL (KIND=dp), DIMENSION (n_out), INTENT (IN) :: x_out
 
     ! ----------------
     ! Output variables
     ! ----------------
-    INTEGER,                       INTENT (OUT) :: errstat
-    REAL (KIND=dp), DIMENSION (:), INTENT (OUT) :: y_out  ! (n_out)
+    INTEGER,                           INTENT (OUT) :: errstat
+    REAL (KIND=dp), DIMENSION (n_out), INTENT (OUT) :: y_out
 
     ! ------------------------------
     ! Local variables and parameters
@@ -112,9 +112,9 @@ contains
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
-    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya ! (n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x ! (np)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y ! (np)
+    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
+    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
+    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y
 
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
@@ -135,6 +135,7 @@ contains
     xmin = MINVAL(x); xmax = MAXVAL(x)
     xamin = MINVAL(xa); xamax = MAXVAL(xa)
     IF (xmin < xamin .OR. xmax > xamax) THEN
+      print * , xmin , '<', xamin, 'or', xmax, '>', xamax
       errstat =  -3; RETURN
     ENDIF
 
@@ -159,9 +160,9 @@ contains
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
-    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya ! (n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x      ! (np)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dydx ! (np)
+    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
+    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
+    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y, dydx
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
@@ -205,9 +206,9 @@ contains
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
     LOGICAL, INTENT (IN)                      :: cal_shiwf
-    REAL (KIND=dp), DIMENSION(:),  INTENT(IN) :: xa, ya  ! (n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x       ! (np)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dydx ! (np)
+    REAL (KIND=dp), DIMENSION(n),  INTENT(IN) :: xa, ya
+    REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
+    REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y, dydx
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
@@ -257,8 +258,8 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x, y ! (n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT) :: y2  ! (n)
+    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: x, y  
+    REAL (KIND=dp), DIMENSION(n), INTENT(OUT) :: y2
 
     REAL (KIND=dp), DIMENSION(n)  :: u
     INTEGER       :: i, k
@@ -292,9 +293,9 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n, m 
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: xa, ya, y2a !(n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x           !(m)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y, dy1      !(m)
+    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
+    REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
+    REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y, dy1
 
     INTEGER        :: ii, klo, khi, k 
     REAL (KIND=dp) :: h, a, b
@@ -312,10 +313,7 @@ contains
       ENDDO
 
       h = xa (khi) - xa (klo)
-      IF (h == 0.0) then
-        write(*,*)'Bad xa input in: splint!!!'
-        STOP 1
-      endif
+      IF (h == 0.0) STOP 'Bad xa input in: splint!!!'
       a = (xa (khi) - x(ii)) / h
       b = (x(ii) - xa (klo)) / h
 
@@ -336,9 +334,9 @@ contains
     IMPLICIT NONE
     INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n, m
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: xa, ya, y2a ! (n)
-    REAL (KIND=dp), DIMENSION(:), INTENT(IN) :: x ! (m)
-    REAL (KIND=dp), DIMENSION(:), INTENT(OUT):: y ! (m)
+    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
+    REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
+    REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y
 
     INTEGER        :: ii, klo, khi, k 
     REAL (KIND=dp) :: h, a, b
@@ -364,10 +362,7 @@ contains
       ENDDO
 
       h = xa (khi) - xa (klo)
-      IF (h == 0.0) then
-        write (*,*) 'Bad xa input in: splint!!!'
-        stop 1
-      endif
+      IF (h == 0.0) STOP 'Bad xa input in: splint!!!'
       a = (xa (khi) - x(ii)) / h
       b = (x(ii) - xa (klo)) / h
 
@@ -812,9 +807,9 @@ contains
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER,                       INTENT (IN) :: n_in, n_out
-    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_in, y_in  ! (n_in)
-    REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: x_out       ! (n_out)
+    INTEGER,                           INTENT (IN) :: n_in, n_out
+    REAL (KIND=dp), DIMENSION (n_in),  INTENT (IN) :: x_in, y_in
+    REAL (KIND=dp), DIMENSION (n_out), INTENT (IN) :: x_out
 
     ! ----------------
     ! Output variables
@@ -887,8 +882,49 @@ contains
     RETURN
   END SUBROUTINE interpolation
   
+  SUBROUTINE LinearInterpolationWeights(nx,x,x_int,idx0,xwt0,xwt1)
 
+    ! --------------------
+    ! Subroutine Arguments
+    ! --------------------
+    INTEGER,      INTENT(IN)  :: nx
+    REAL(KIND=8), INTENT(IN)  :: x(nx)
+    REAL(KIND=8), INTENT(IN)  :: x_int
+    INTEGER,      INTENT(OUT) :: idx0
+    REAL(KIND=8), INTENT(OUT) :: xwt0
+    REAL(KIND=8), INTENT(OUT) :: xwt1
 
+    ! ---------------
+    ! Local Variables
+    ! ---------------
+    INTEGER :: i
 
+    ! =====================================================================
+    ! LinearInterpolationWeights starts here
+    ! =====================================================================
+
+    IF(x_int .LE. x(1)) THEN
+      idx0 = 1
+      xwt0 = 1.0d0
+      xwt1 = 0.0d0
+    ELSEIF(x_int .GE. x(nx)) THEN
+      idx0 = nx-1
+      xwt0 = 0.0d0
+      xwt1 = 1.0d0
+    ELSE
+      idx0 = -1
+      i    =  1
+      DO WHILE(idx0 .LT. 0)
+        IF(x(i) .GT. x_int) THEN
+          idx0 = i-1
+          xwt0 = (x(idx0+1)-x_int)/(x(idx0+1)-x(idx0))
+          xwt1 = 1.0d0 - xwt0
+        ENDIF
+        i = i+1
+      ENDDO
+
+    ENDIF
+
+  END SUBROUTINE LinearInterpolationWeights
 
 end module m_ezspline_interpolation

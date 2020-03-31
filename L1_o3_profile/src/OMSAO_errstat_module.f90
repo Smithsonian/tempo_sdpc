@@ -34,7 +34,8 @@ MODULE OMSAO_errstat_module
   ! ----------------
   ! Some error stati
   ! ----------------
-  INTEGER, PARAMETER :: pge_errstat_ok = 0, pge_errstat_warning  = 1, &
+  INTEGER, PARAMETER :: &
+       pge_errstat_ok = 0, pge_errstat_warning  = 1, &
        pge_errstat_error = 2, pge_errstat_fatal = 3
 
   ! -----------------------------------------------------------------
@@ -53,9 +54,7 @@ MODULE OMSAO_errstat_module
   INTEGER, PARAMETER :: www_lun = 333
   CHARACTER (LEN=maxchlen) :: www_message
 
-  public error_check
-!  private pge_error_status_exit
-
+  PUBLIC error_check
 
 CONTAINS
 
@@ -79,8 +78,7 @@ CONTAINS
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER   (KIND=i4), INTENT (IN) :: iserr, errref, severity, vblev, &
-         errpoint
+    INTEGER   (KIND=i4), INTENT (IN) :: iserr, errref, severity, vblev, errpoint
     CHARACTER (LEN=*),   INTENT (IN) :: addmsg
 
     ! -----------------
@@ -134,14 +132,11 @@ CONTAINS
     RETURN
   END SUBROUTINE error_check
 
-
 !   Unused
 !
 !  SUBROUTINE pge_error_status_exit ( pge_error_status, exit_value )
 !
 !    USE OMSAO_parameters_module, ONLY: maxchlen
-!
-!    use m_int2string
 !
 !    IMPLICIT NONE
 !
@@ -171,7 +166,6 @@ CONTAINS
 !    ! External subroutine
 !    ! -------------------
 !    INTEGER   (KIND=i4),      EXTERNAL :: OMI_SMF_setmsg
-!    !CHARACTER (LEN=maxchlen), EXTERNAL :: int2string
 !
 !    exit_value = 0
 !
@@ -206,7 +200,7 @@ CONTAINS
 !      ! If we ever reach here, then PGE_ERRSTAT has been set to a funny
 !      ! value. This should never happen, but we buffer this case anyway.
 !      ! -----------------------------------------------------------------
-!      ecode = int2string ( estat, 1 )
+!      WRITE(ecode, '(i1)') estat
 !      errmsg = 'Exit code was "'//TRIM(ADJUSTL(ecode))//'".'
 !      estat = OMI_SMF_setmsg ( OMSAO_U_ENDOFRUN, errmsg, " ", vb_lev_default )
 !      exit_value = 1

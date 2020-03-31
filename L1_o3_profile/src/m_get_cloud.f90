@@ -1,5 +1,6 @@
 !
 module m_get_cloud
+  IMPLICIT NONE
 
   public get_cloud_miprop, get_cloud_maprop, get_tomsv8_ctp
   private !get_isccp_ctp
@@ -41,17 +42,17 @@ contains
     ! ======================
     ! LOCAL variables
     ! ======================
+    LOGICAL,        SAVE  :: first = .TRUE.          
     REAL (KIND=dp), SAVE, DIMENSION(MWL) :: wl
     REAL (KIND=dp), SAVE, DIMENSION(MWL) :: raa, qext, assa, qasy
     REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: phfcn
-    LOGICAL,        SAVE  :: first = .TRUE.          
     INTEGER         :: i, j, k, low, high, nwl
     REAL (KIND=dp)  :: extcld, xg
 
     ! ------------------------------
     ! Name of this subroutine/module
     ! ------------------------------
-    CHARACTER (LEN=*), PARAMETER    :: modulename = 'm_get_cloud_miprop'
+    CHARACTER (LEN=18), PARAMETER    :: modulename = 'm_get_cloud_miprop'
 
     ! --------------------------------------------------------------
     ! Initialize to out variables
@@ -190,9 +191,6 @@ contains
     ! Initialize variables
     errstat = pge_errstat_ok
     ctaus = 0.0; ctps = 0.0; cfracs = 0.0
-
-    ! JCH: try to catch variable being used before being properly initialized
-    nactp1 = 2147483647
 
     IF (first) THEN
       ! get month, day, year from level 1 filename. Even though the actual date 
@@ -453,7 +451,7 @@ contains
     USE OMSAO_precision_module 
     USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit
     USE OMSAO_errstat_module
-    use prepare_atmosphere, only: get_gridfrac1
+    USe m_utilities, only: get_gridfrac1
 
     IMPLICIT NONE
 
@@ -523,5 +521,5 @@ contains
     RETURN
   END SUBROUTINE GET_TOMSV8_CTP
 
-
+  
 end module m_get_cloud

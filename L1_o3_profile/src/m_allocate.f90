@@ -3,11 +3,12 @@ MODULE m_allocate
 
   USE OMSAO_indices_module, only:  max_calfit_idx, n_max_fitpars, & 
       omi_idx,instrument_idx
-  USE OMSAO_parameters_module, only: max_fit_pts, max_ring_pts, mrefl
+  USE OMSAO_parameters_module, only: max_fit_pts, max_ring_pts, mrefl, & 
+      r4_missval, r8_missval
   USE OMSAO_variables_module, ONLY: &
       slit_rad, wavcal, wavcal_sol,yn_varyslit, &
       rad_group, irrad_group, refl_group, ring_group, cali_group, geo_group
-
+  
   IMPLICIT NONE
 
   PUBLIC allocate_spec, allocate_geo, dealloc
@@ -103,7 +104,7 @@ CONTAINS
    type (geo_group), intent(inout) :: geo
 
    IF (ALLOCATED (geo%time)) DEALLOCATE (geo%time)
-   if (allocated (geo%step_idx)) deallocate (geo%step_idx)
+   if (ALLOCATED (geo%step_idx)) deallocate (geo%step_idx)
    IF (ALLOCATED (geo%lon)) DEALLOCATE (geo%lon)
    IF (ALLOCATED (geo%lat)) DEALLOCATE (geo%lat)
    IF (ALLOCATED (geo%sza)) DEALLOCATE (geo%sza)
@@ -124,7 +125,6 @@ CONTAINS
    IF (ALLOCATED (geo%land_water_flg)) DEALLOCATE (geo%land_water_flg)
    IF (ALLOCATED (geo%snow_ice_flg)) DEALLOCATE (geo%snow_ice_flg)
    IF (ALLOCATED (geo%glint_flg)) DEALLOCATE (geo%glint_flg)
-
    return
  end subroutine deallocate_geo
 
@@ -356,6 +356,9 @@ CONTAINS
    ALLOCATE (geo%clon(4, nx, 0:ny-1), geo%clat(4, nx, 0:ny-1), stat=status)
    ALLOCATE (geo%elon(0:nx, 0:ny-1), geo%elat(0:nx, 0:ny-1), stat=status)  
   
+   ! initialize
+   geo%lon = r4_missval ; geo%lat = r4_missval ; geo%time = r8_missval
+
    RETURN
    111 continue
    status  = -1

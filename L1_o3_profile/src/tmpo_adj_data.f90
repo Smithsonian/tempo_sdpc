@@ -3,7 +3,7 @@ MODULE tmpo_adj_data
 
   USE OMSAO_tmpodata_module, ONLY : nxtrack_max,nlines_max,  & 
   ring=>tmpo_ring, refl=>tmpo_refl, rad=>tmpo_rad, irrad=>tmpo_irrad,&
-  cali=>tmpo_cali, geo1=>tmpo_geo1, geo2=>tmpo_geo2, o3p=>tmpo_o3p
+  cali=>tmpo_cali, geo1=>tmpo_geo1, geo2=>tmpo_geo2
   IMPLICIT NONE
   PUBLIC  adj_solar_data, adj_earthshine_data     
   PRIVATE adj_rad_sig!, load_comres
@@ -18,8 +18,8 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY: curr_sol_spec, n_irrad_wvl, &
          use_meas_sig, numwin, nsol_ring, sol_spec_ring, nsolpix, &
          yn_varyslit, slit_rad, solwinfit, nslit, slitwav, slitfit, &
-         sring_fidx, sring_lidx,  currpix, which_slit
-    USE ozprof_data_module,      ONLY: div_sun, sun_posr, sun_specr, nrefl
+         sring_fidx, sring_lidx,  currpix, which_slit, curr_radresponse_spec
+    USE ozprof_data_module,      ONLY: div_sun, sun_posr, sun_specr, nrefl,which_inr
     USE OMSAO_errstat_module 
     
     IMPLICIT NONE
@@ -44,6 +44,11 @@ CONTAINS
       curr_sol_spec(sig_idx, 1:n_irrad_wvl) = normweight
     ENDIF
     nsolpix(1:numwin) = irrad%npix(1:numwin, currpix) 
+
+    IF (which_inr ==1) THEN 
+     IF (allocated(curr_radresponse_spec)) deallocate(curr_radresponse_spec)
+     allocate (curr_radresponse_spec(2,n_irrad_wvl))
+    ENDIF
 
     ! Solar Spectrum for Ring Calculation
     nsol_ring = ring%nsol(currpix)
@@ -85,7 +90,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: mswath, normweight, max_fit_pts
     USE OMSAO_variables_module,  ONLY: calunit, curr_rad_spec, curr_sol_spec, &
          n_rad_wvl, use_meas_sig, numwin, nradpix, the_sza_atm, the_vza_atm, &
-         the_aza_atm, the_sca_atm, the_month, the_year, the_day,the_jday, the_lon, &
+         the_aza_atm, the_sca_atm, the_month, the_year, the_day,the_jday, the_time, the_lon, &
          the_lat, the_lats, the_lons, edgelons, edgelats, the_surfalt, nview, &
          nloc, the_utc, n_radwvl_sav, radwvl_sav,  nradpix_sav, saa_minlat, &
          saa_maxlat, saa_minlon, saa_maxlon, saa_minlat1, saa_maxlat1, &
@@ -93,7 +98,8 @@ CONTAINS
          n_fitvar_rad, radwavcal_freq, currpix, currloop, &
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_ori, &
-         GranuleYear, GranuleMonth, GranuleDay,GranuleJDay, currline
+         GranuleYear, GranuleMonth, GranuleDay,GranuleJDay, currline, &
+         glb_fitvar, glb_exitval, glb_initval
     !USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
     USE ozprof_data_module, ONLY: div_rad, div_sun, rad_posr, rad_specr, &
          nsaa_spike, saa_flag, the_cfrac, the_ctp, the_cld_flg, which_cld, &
@@ -159,6 +165,7 @@ CONTAINS
     !--------------------------------------------------------------------------------------------
     ! geometry
     !---------------------------------------------------------------------------------------------
+    the_time    = geo1%time   (currline)
     nview       = 1
     the_sza_atm = geo1%sza    (currpix, currline)
     the_vza_atm = geo1%vza    (currpix, currline)
@@ -544,41 +551,40 @@ CONTAINS
     south_idx = currloop - 1
     IF (south_idx < 0) south_idx = nlines_max - 1
 
-    o3p%initval(currpix, currloop) = 0
+    glb_initval(currpix, currloop) = 0
     fitvar = 0.0
     finit = 0.0
     IF (west_idx > 0) THEN
-      IF (o3p%exitval(west_idx, currloop) > 0) THEN  ! Western pixel (success retrieval)
+      IF (glb_exitval(west_idx, currloop) > 0) THEN  ! Western pixel (success retrieval)
         fitvar(1:n_fitvar_rad) = fitvar(1:n_fitvar_rad) + &
-             o3p%fitvar(west_idx, currloop, 1:n_fitvar_rad)
+             glb_fitvar(west_idx, currloop, 1:n_fitvar_rad)
         finit = finit + 1.0
       ENDIF
 
       IF (south_idx >= 0 .AND. south_idx /= nlines_max - 1) THEN
-        IF (o3p%exitval(west_idx, south_idx) > 0) THEN ! Southwestern pixel (success retrieval)
+        IF (glb_exitval(west_idx, south_idx) > 0) THEN ! Southwestern pixel (success retrieval)
           fitvar(1:n_fitvar_rad) = fitvar(1:n_fitvar_rad) &
-               + o3p%fitvar(west_idx, south_idx, 1:n_fitvar_rad) * 0.5
+               + glb_fitvar(west_idx, south_idx, 1:n_fitvar_rad) * 0.5
           finit = finit + 0.5
         ENDIF
       ENDIF
     ENDIF
 
     IF ( south_idx >= 0 ) THEN
-      IF (o3p%exitval(currpix, south_idx) > 0) THEN     ! Southern pixel (success retrieval)
+      IF (glb_exitval(currpix, south_idx) > 0) THEN     ! Southern pixel (success retrieval)
         fitvar(1:n_fitvar_rad) = fitvar(1:n_fitvar_rad) + &
-             o3p%fitvar(currpix, south_idx, 1:n_fitvar_rad) 
+             glb_fitvar(currpix, south_idx, 1:n_fitvar_rad) 
         finit = finit + 1.0
       ENDIF
     ENDIF
 
     IF (finit > 0) THEN
       fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad)) = fitvar(1:n_fitvar_rad) / finit
-      o3p%initval(currpix, currloop) = 1
+      glb_initval(currpix, currloop) = 1
     ENDIF
 
     RETURN
   END SUBROUTINE adj_earthshine_data
-
 
   SUBROUTINE adj_rad_sig (radspec, solspec, np)
 
@@ -598,16 +604,16 @@ CONTAINS
     ! ====================
     ! Local variables
     ! ====================
-    INTEGER, PARAMETER                :: nreg = 3
+    INTEGER, PARAMETER                :: nreg = 4
     INTEGER                           :: i, j, fidx, lidx!, iwin
     !REAL(KIND=dp)                     :: dw1, dw2
     REAL (KIND=dp), DIMENSION(np)     :: relsig, normrad, sig
     !REAL (KIND=dp), DIMENSION(maxwin) :: floor_noise =  &
     !     (/0.004, 0.002, 0.001, 0.001, 0.001/)
     REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
-         (/0.004, 0.004, 0.002/)
+         (/0.004, 0.004, 0.002,0.01/)
     REAL (KIND=dp), DIMENSION(0:nreg) :: reg_waves = &
-         (/260.0, 300.0, 310.0, 350./)
+         (/260.0, 300.0, 310.0, 350.,800./)
 
     ! I/F
     normrad = radspec(spc_idx,:) / solspec(spc_idx,:) * (div_rad / div_sun) 

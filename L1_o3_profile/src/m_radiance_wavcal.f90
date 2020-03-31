@@ -2,9 +2,9 @@
 module m_radiance_wavcal
 
   USE m_cal_fit_one
-
+  USE OMSAO_variables_module, ONLY: instrument_sidx
   INTEGER, PARAMETER, PRIVATE  :: wavcal_unit = 10004
-
+  
   public radiance_wavcal, radiance_wavcal_vary
   private
 
@@ -137,8 +137,8 @@ contains
     USE OMSAO_parameters_module, ONLY : maxchlen
     USE OMSAO_indices_module,    ONLY : max_calfit_idx, shi_idx, &
        squ_idx, wvl_idx, spc_idx, sig_idx, hwe_idx, hwr_idx, vgr_idx, &
-       vgl_idx, asy_idx, hwl_idx, &
-       spk_idx
+       vgl_idx, asy_idx, hwl_idx, spk_idx!, & ! bl0_idx, bl1_idx, bl2_idx, bl3_idx, &
+       !sc0_idx, sc1_idx, sc2_idx, sc3_idx
     USE OMSAO_variables_module,  ONLY : n_fitvar_sol, fitvar_sol, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, sswav_rad, nwavcal_rad, &
          wavcal_fit_pts, n_wavcal_step, smooth_slit,  wavcal_redo, &
@@ -199,7 +199,7 @@ contains
     fitvar_sol_saved  =  fitvar_sol_init
     fitvar_sol = fitvar_sol_init
 
-    IF (which_slit /= 5) THEN
+    IF (which_slit < instrument_sidx) THEN
       tmpslit = 0.0
       fpos = MINVAL(MINLOC(allwaves, MASK=(allwaves >= slitwav(1))))
       lpos = MINVAL(MAXLOC(allwaves, MASK=(allwaves <= slitwav(nslit))))
@@ -284,7 +284,7 @@ contains
           fitvar_sol = fitvar_sol_saved
           !fixslitcal = .FALSE.; fitvar_sol(slitind) = 0.0
           fixslitcal = .TRUE. 
-          IF (which_slit /= 5) THEN
+          IF (which_slit < instrument_sidx) THEN
             fitvar_sol(slitind) = tmpslit(:, (fpos+lpos)/2)
             lo_sunbnd(slitind) = fitvar_sol(slitind)
             up_sunbnd(slitind) = fitvar_sol(slitind)

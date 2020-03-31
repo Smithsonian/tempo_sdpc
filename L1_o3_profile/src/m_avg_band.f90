@@ -2,7 +2,7 @@
 module m_avg_band
 
   public avg_band_radspec, avg_band_refspec, avg_band_effozcrs, &
-       avg_band_ozcrs, avg_band_spec
+         avg_band_ozcrs, avg_band_spec
   private !avg_band_effrefspec, avg_band_subrefspec
 
 contains
@@ -95,8 +95,6 @@ contains
     RETURN
 
   END SUBROUTINE avg_band_radspec
-
-
 
 
   ! NOTE: Used to average reference spectrum, which is already 

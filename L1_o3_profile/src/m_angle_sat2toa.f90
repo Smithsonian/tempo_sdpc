@@ -1,11 +1,11 @@
 !> viewing angle calculations
-module m_angle_sat2toa
+MODULE m_angle_sat2toa
 
-  public angle_sat2toa, omi_angle_sat2toa, adjust_angle, &
+  PUBLIC angle_sat2toa, omi_angle_sat2toa, adjust_angle, &
        sunglint_probability, scia_angle_sat2toa, gome2_angle_sat2toa
-  private
+  PRIVATE
 
-contains
+CONTAINS
 
   SUBROUTINE angle_sat2toa ( earth_curv, ers2_alt, atm_hght, n_arr_pix, &
        zen0, zen, relazm, sza, vza, aza, sca )
@@ -100,12 +100,6 @@ contains
 
     RETURN
   END SUBROUTINE angle_sat2toa
-
-
-
-
-
-
 
   ! For OMI, viewing gometry is provided at surface
   ! In lidort, viewing geometry is defined at the bottom of surface. 
@@ -222,11 +216,6 @@ contains
   END SUBROUTINE omi_angle_sat2toa
 
 
-
-
-
-
-
   ! Adjust the input viewing geometry from surface to those at 
   ! sea surface level (zero km), which is required in LIDORT 
 
@@ -292,11 +281,6 @@ contains
 
   END SUBROUTINE adjust_angle
 
-
-
-
-
-
   ! Calculate the probability of Sun Glint
   SUBROUTINE SUNGLINT_PROBABILITY (sza, vza, azm, prob)
     USE OMSAO_precision_module
@@ -339,13 +323,6 @@ contains
 
     RETURN
   END SUBROUTINE SUNGLINT_PROBABILITY
-
-
-
-
-
-
-
 
   SUBROUTINE scia_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, &
        n_arr_pix, zen0, zen, relazm, sza, vza, aza, sca )
@@ -443,11 +420,6 @@ contains
     RETURN
 
   END SUBROUTINE scia_angle_sat2toa
-
-
-
-
-
 
   SUBROUTINE gome2_angle_sat2toa ( earth_curv, ers2_alt, atm_hght, &
        n_arr_pix, zen0, zen, relazm, sza, vza, aza, sca )
@@ -554,4 +526,4 @@ contains
   END SUBROUTINE gome2_angle_sat2toa
 
 
-end module m_angle_sat2toa
+END MODULE m_angle_sat2toa

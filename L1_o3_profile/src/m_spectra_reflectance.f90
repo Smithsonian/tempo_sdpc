@@ -1,43 +1,37 @@
-!
 module m_spectra_reflectance
-      use m_ezspline_interpolation, only: bspline2, interpolation
   public spectra_reflectance
   private
-
-contains
-
-  ! **************************************************************************
+  ! ******************************************************************************
   ! Author:  xiong liu
   ! Date  :  July 17, 2003
   ! Purpose: 1. Calibrate solar and radiance spectrum to compute reflectance
   !          for comparing with the LIDORT-calculated radiance
-  !          2. Also correct absorption by other species other than ozone 
-  !          because these species are not modelled in the LIDORT  
-  ! **************************************************************************
+  !          2. Also correct absorption by other species other than ozone because
+  !          these species are not modelled in the LIDORT  
+  ! ******************************************************************************
+  contains
+SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errstat)
 
-  SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errstat)
+  USE OMSAO_precision_module
+  USE OMSAO_indices_module, ONLY    : &
+       max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
+       lbe_idx, ad2_idx, mxs_idx, com_idx, &
+       com1_idx, no2_t1_idx, com2_idx, com3_idx,&
+       shift_offset, rsl_idx, maxoth, maxwin
+  USE OMSAO_variables_module,  ONLY : fitvar_rad, mask_fitvar_rad,  &
+       database, currspec, fitwavs, n_refwvl, refwvl, lo_radbnd, refnhextra, &
+       up_radbnd, database_shiwf, slwf, numwin, nradpix, refidx, &
+       database_pslwf, npsl, database_cmwf
+  USE ozprof_data_module,      ONLY : div_rad, div_sun, use_lograd, do_subfit, &
+       slind, slfind, shind, shfind, rnind, rnfind, dcind,      &
+       dcfind, isind, isfind, irind, irfind, slwins, shwins, &
+       rnwins, dcwins, iswins, irwins, nsl, nsh, nrn, ndc, nis, nir, &
+       fit_atanring, rtm_treatment, & 
+       np1, p1wins, p1find, p1ind, np2, p2wins, p2find, p2ind, &
+       np3, p3wins, p3find, p3ind, cmfind, cmind, ncm, which_inr
+  USE OMSAO_errstat_module
+  USE m_ezspline_interpolation, ONLY: interpolation , bspline2
 
-    USE OMSAO_precision_module
-    USE OMSAO_indices_module, ONLY    : maxoth, maxwin, &
-        max_rs_idx, max_calfit_idx, solar_idx, ring_idx, &
-        mxs_idx, ad1_idx,lbe_idx, ad2_idx, no2_t1_idx, &
-        com_idx, com1_idx, com2_idx, com3_idx, &
-        shift_offset !, fsl_idx, rsl_idx
-    USE OMSAO_variables_module,  ONLY : numwin, refnhextra, &
-        fitvar_rad, mask_fitvar_rad, lo_radbnd, up_radbnd, & 
-        database, database_shiwf, slwf, database_pslwf, &
-        database_cmwf, npsl, &
-        currspec, fitwavs, n_refwvl, refwvl, nradpix, refidx
-    USE ozprof_data_module, ONLY : div_rad, div_sun, use_lograd, do_subfit, &
-         slind, slfind, shind, shfind, rnind, rnfind, dcind, &
-         dcfind, isind, isfind, irind, irfind, slwins, shwins, &
-         rnwins, dcwins, iswins, irwins, nsl, nsh, nrn, ndc, nis,nir,&
-         fit_atanring, rtm_treatment, &
-         np1, p1wins, p1find, p1ind, np2, p2wins, p2find, p2ind, &
-         cmfind, cmind, ncm
-    USE OMSAO_errstat_module
-
- 
   IMPLICIT NONE
 
 
@@ -59,14 +53,13 @@ contains
   ! ===============
   ! Local variables
   ! ===============
+  LOGICAL  :: correct_simrad = .true.
   INTEGER  :: i, j, k, fidx, lidx, nextra, nord
   REAL (KIND=dp), DIMENSION (ns)      :: del, sunspec_ss, locdbs, dfdsl, gshiwf, tempsum
   REAL (KIND=dp), DIMENSION (n_refwvl):: sunpos_ss, refpos_ss, delref
   REAL (KIND=dp), DIMENSION (ns)      :: corrected_irrad, corr, corrected_rad
   REAL (KIND=dp)                      :: wavg
-  LOGICAL, PARAMETER                  :: correct_simrad = .false.
   LOGICAL                             :: cal_shiwf
-  LOGICAL, SAVE :: first=.true.
   INTEGER, DIMENSION (maxoth, 2)      :: tmpwins
   INTEGER, DIMENSION (maxwin, maxoth) :: tmpind, tmpfind
   ! ------------------------------
@@ -74,10 +67,8 @@ contains
   ! ------------------------------
   CHARACTER (LEN=19), PARAMETER      :: modulename = 'spectra_reflectance'
 
+  IF (use_lograd) simrad(1:ns) = EXP(simrad(1:ns))
   errstat = pge_errstat_ok
-
-  tmpwins(:,:) = 0
-  fidx = 1
 
   ! Obtain the uncondensed array of variables
   fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar(1:nf)
@@ -91,6 +82,7 @@ contains
            lidx =  fidx + nradpix(i) + nextra - 1
            delref(fidx:lidx) = refwvl(fidx:lidx) - (refwvl(fidx)+refwvl(lidx))*0.5
            IF (shfind(i, 1) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) + fitvar_rad(shind(i, 1)) 
+  
            DO j = 2, nsh
               IF (shfind(i, j) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) +  &
                    fitvar_rad(shind(i, j)) * delref(fidx:lidx)**(j-1)
@@ -106,20 +98,22 @@ contains
         lidx = SUM(nradpix(1: shwins(1, 2))) +  shwins(1, 2) * nextra
         delref(fidx:lidx) = refwvl(fidx:lidx) - (refwvl(fidx)+refwvl(lidx))*0.5
         IF (shfind(1, 1) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) + fitvar_rad(shind(1, 1)) 
+        
         DO j= 2, nsh
            IF (shfind(1, j) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) +  &
                 fitvar_rad(shind(1, j)) * delref(fidx:lidx)**(j-1)
         ENDDO
      ENDIF
   ENDIF
- ! Re-sample the solar reference spectrum to the radiance grid
+
+  ! Re-sample the solar reference spectrum to the radiance grid
   CALL interpolation (n_refwvl, sunpos_ss(1:n_refwvl), database(solar_idx, 1:n_refwvl), &
-   ns, fitwavs(1:ns), sunspec_ss(1:ns), errstat)  
+       ns, fitwavs(1:ns), sunspec_ss(1:ns), errstat)  
+
   IF ( errstat >= pge_errstat_warning ) THEN
-       !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-    WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending:solar spectrum ', errstat
-    WRITE(www_lun, * ) sunpos_ss(1), sunpos_ss(n_refwvl), fitwavs(1), fitwavs(ns)
-    errstat = pge_errstat_error; RETURN
+     !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+     WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending: ', errstat
+     errstat = pge_errstat_error; RETURN
   END IF
 
   IF (do_shiwf .AND. nsl > 0) THEN
@@ -128,7 +122,7 @@ contains
 
      IF ( errstat >= pge_errstat_warning ) THEN
         !errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-        WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending:do_shiwf ', errstat
+        WRITE(www_lun, '(2A,I3)') modulename, ': interpolation out of bounds or not ascending: ', errstat
         errstat = pge_errstat_error; RETURN
      END IF
      
@@ -317,10 +311,7 @@ contains
   ! Internal Scattering in Radiance
   corrected_rad = currspec(1:ns)
   IF ( nir > 0 ) THEN
-     IF (first) THEN
-       WRITE(www_lun, '(A)') 'please consider to apply radiance response spectrum for correcting internal scattering in radiance'
-        first = .false.
-     ENDIF
+   IF (which_inr == 0 ) THEN 
      IF (do_subfit) THEN
         fidx = 1
         DO i = 1, numwin
@@ -329,10 +320,8 @@ contains
            wavg = (fitwavs(fidx) + fitwavs(lidx)) * 0.5
            del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
            tempsum(fidx:lidx) = SUM(corrected_rad(fidx:lidx)) / wavg * fitwavs(fidx:lidx)
-           ! (use radiance response spectrum
-           !tempsum(fidx:lidx) = -1.0/div_rad/database(rsl_idx, refidx(fidx:lidx)) 
-                      
-           !print * , i,tempsum(fidx), tempsum(lidx), fitvar_rad(irind(i,1))
+           !tempsum(fidx:lidx) = 1.0
+
            IF (irfind(i, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) &
                    + fitvar_rad(irind(i, 1)) * tempsum(fidx:lidx)
            DO j = 2, nir
@@ -351,7 +340,7 @@ contains
         wavg = (fitwavs(fidx) + fitwavs(lidx)) * 0.5
         del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
         tempsum(fidx:lidx) = SUM(corrected_rad(fidx:lidx)) / wavg * fitwavs(fidx:lidx)
-        !tempsum(fidx:lidx) = -1.0/div_rad/database(rsl_idx, refidx(fidx:lidx)) 
+        
         IF (irfind(1, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) &
                    + fitvar_rad(irind(1, 1)) * tempsum(fidx:lidx) 
         
@@ -360,14 +349,52 @@ contains
                 + fitvar_rad(irind(1, j)) * tempsum(fidx:lidx) * del(fidx:lidx) ** (j-1)
         ENDDO
      ENDIF
+   ELSE IF (which_inr == 1) THEN 
+     IF (do_subfit) THEN
+        fidx = 1
+        DO i = 1, numwin
+           lidx =  fidx + nradpix(i) - 1
+           
+           wavg = (fitwavs(fidx) + fitwavs(lidx)) * 0.5
+           del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
+
+           IF (irfind(i, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) - &
+                fitvar_rad(irind(i, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
+
+           DO j = 2, nir
+              IF (irfind(i, j) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) -  &
+                   fitvar_rad(irind(i, j)) * del(fidx:lidx) ** (j-1 ) / div_rad &
+                   / database(rsl_idx, refidx(fidx:lidx))   
+           ENDDO
+
+           fidx = lidx + 1
+        ENDDO
+     ELSE
+        IF (irwins(1, 1) == 1) THEN
+           fidx = 1
+        ELSE
+           fidx = SUM(nradpix(1: irwins(1, 1)-1)) + 1 
+        ENDIF
+        lidx = SUM(nradpix(1: irwins(1, 2))) 
+        wavg = (fitwavs(fidx) + fitwavs(lidx)) * 0.5
+        del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
+        
+        IF (irfind(1, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) - &
+             fitvar_rad(irind(1, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
+        DO j = 2, nir
+           IF (irfind(1, j) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) -  &
+                fitvar_rad(irind(1, j)) * del(fidx:lidx) ** (j-1)  / div_rad &
+                / database(rsl_idx, refidx(fidx:lidx))   
+        ENDDO
+     ENDIF
+   ENDIF
   ENDIF
-    
+
   fitspec = corrected_rad / corrected_irrad * div_rad / div_sun 
   ! Beer's law contributions for species other than ozone profile, because 
   ! measured radiance was already contaminated by absorption other than ozone, 
   ! we need to multiply exp(+...) in order to match the modeled reflectance.
   ! Now it is being treated in LIDORT directly
-  !IF (return_v1 == .false. ) THEN  ! maybe no impact with/without this option
   DO j = no2_t1_idx, max_rs_idx
      i = max_calfit_idx + (j-1) * mxs_idx + lbe_idx
 
@@ -388,13 +415,12 @@ contains
            errstat = pge_errstat_error; RETURN
         ENDIF
      END IF
-     IF (correct_simrad) THEN
-         simrad(1:ns) = simrad(1:ns) * EXP( -fitvar_rad(i) * locdbs(1:ns))
+     IF (correct_simrad) THEN 
+      simrad(1:ns) = simrad(1:ns) * EXP( -fitvar_rad(i) * locdbs(1:ns))
      ELSE
-         fitspec(1:ns) = fitspec(1:ns) * EXP( fitvar_rad(i) * locdbs(1:ns))
+      fitspec(1:ns) = fitspec(1:ns) * EXP( fitvar_rad(i) * locdbs(1:ns))
      ENDIF
   END DO
-  !ENDIF
 
   IF (.NOT. fit_atanring) THEN
      IF ( nrn > 0 ) THEN
@@ -433,7 +459,7 @@ contains
                    fitvar_rad(rnind(1, j)) * del(fidx:lidx) ** (j-1)
            ENDDO
         ENDIF
-        IF (correct_simrad) THEN 
+        IF (correct_simrad) THEN        
             simrad = simrad * EXP(-database(ring_idx, refidx(1:ns)) * corr)
         ELSE
             fitspec = fitspec * EXP(database(ring_idx, refidx(1:ns)) * corr)
@@ -443,11 +469,8 @@ contains
      ! Fitting Ring effect using y = -[a0 * [atan((x-a1)/a2) + 1.54223] + 1]
      corr = atan( (fitwavs - fitvar_rad(rnind(1, 2))) / fitvar_rad(rnind(1, 3)) )
      corr = -(fitvar_rad(rnind(1, 1)) * (corr - corr(1)) + 1.0)
-     IF (correct_simrad) THEN 
-         simrad = simrad * EXP(-database(ring_idx, refidx(1:ns)) * corr)
-     ELSE
-         fitspec = fitspec * EXP(database(ring_idx, refidx(1:ns)) * corr)
-     ENDIF
+     !fitspec = fitspec * EXP(database(ring_idx, refidx(1:ns)) * corr)
+     simrad = simrad * EXP(-database(ring_idx, refidx(1:ns)) * corr)
   ENDIF 
   
   
@@ -476,32 +499,24 @@ contains
      END IF
      
      IF (j == com_idx .OR. j == com1_idx .OR. j == com2_idx .OR. j == com3_idx) THEN ! locdbs is rel % diff. btw. measured and simulated
-        IF (correct_simrad) THEN
-           simrad(1:ns) = simrad(1:ns) * (1.0 + fitvar_rad(i) * locdbs(1:ns))
-        ELSE
-           fitspec(1:ns) = fitspec(1:ns)  * (1.0 - fitvar_rad(i) * locdbs(1:ns))
-        ENDIF
+        simrad(1:ns) = simrad(1:ns) * (1.0 + fitvar_rad(i) * locdbs(1:ns))
      ELSE
-        IF (correct_simrad) THEN 
-           simrad(1:ns) = simrad(1:ns) - fitvar_rad(i)*locdbs(1:ns)
-        ELSE
-           fitspec(1:ns)= fitspec(1:ns)  + fitvar_rad(i) * locdbs(1:ns)
-        ENDIF
+        simrad(1:ns) = simrad(1:ns)  - fitvar_rad(i) * locdbs(1:ns)
      END IF
   ENDDO
 
-
-  ! Second add-on contributions: add to the Sun-normalized radiance 
-  ! (e.g. commomd mode, ring filling in)
-  nord = 0
-  IF ( np1 > 0 .or. np2 > 0) THEN
+  ! fit convolution-indued residuals
+  IF ( np1 > 0 .or. np2 > 0 .or. np3 > 0) THEN
      DO k = 1, npsl
         corr = 0.0 ; del  = 0.0
         IF (k == 1 ) THEN 
              nord = np1 ; tmpind=p1ind ; tmpfind=p1find ; tmpwins = p1wins
-        ELSE IF (k == 2 ) THEN
+        ELSE IF (k ==2 ) THEN 
              nord = np2 ; tmpind=p2ind ; tmpfind=p2find ; tmpwins = p2wins
+        ELSE IF (k ==3 ) THEN 
+             nord = np3 ; tmpind=p3ind ; tmpfind=p3find ; tmpwins = p3wins
         ENDIF
+        
         IF (do_subfit) THEN ! I don't know we need do_subfit ?
            fidx = 1
            DO i = 1, numwin
@@ -512,6 +527,7 @@ contains
                  IF (tmpfind(i, j) > 0) corr(fidx:lidx) = corr(fidx:lidx) + &
                       fitvar_rad(tmpind(i, j)) * del(fidx:lidx) ** (j-1)
               ENDDO
+            !print * , tmpfind(:, 1), corr(1:5)
               fidx = lidx + 1
            ENDDO
         ELSE
@@ -528,13 +544,9 @@ contains
                    fitvar_rad(tmpind(1, j)) * del(fidx:lidx) ** (j-1)
            ENDDO
         ENDIF
-
-        IF (correct_simrad) THEN 
-            simrad = simrad  * EXP(-database_pslwf(k, refidx(1:ns)) * corr)
-        ELSE
-            fitspec= fitspec * EXP(database_pslwf(k,refidx(1:ns)) * corr)
-        ENDIF
-    ENDDO ! loop of n_slitvar
+        simrad = simrad *exp( -(database_pslwf(refidx(1:ns),k) * corr))
+        !print * , i, sum(simrad), database_pslwf(refidx(1:10), k),fitvar_rad(tmpind(1:2, 1))
+    ENDDO 
   ENDIF
 
   IF (ncm > 0 ) THEN  !JBAk
@@ -558,7 +570,10 @@ contains
 
   ! Second add-on co
   ! Use logarithmic of the reflectance 
-  IF (use_lograd)  fitspec(1:ns) = LOG(fitspec(1:ns))
+  IF (use_lograd)  THEN
+     fitspec(1:ns) = LOG(fitspec(1:ns))
+     simrad(1:ns)  = LOG(simrad(1:ns))
+  ENDIF
 
   RETURN
 END SUBROUTINE spectra_reflectance

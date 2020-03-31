@@ -47,7 +47,8 @@ contains
                                          zerospec_string
 
     USE OMSAO_variables_module,    ONLY: l1l2inp_unit,use_backup, use_solcomp,    &
-         l1b_irrad_filename, l1b_rad_filename, l2_filename, l2_cld_filename, &
+         l1b_irrad_filename, l1b_rad_filename, l2_met_filename,l2_met_filenames, & 
+         l2_filename, l2_cld_filename, &
          avg_solcomp, avgsol_allorb, &
          n_fincol_idx, max_itnum_sol, &
          max_itnum_rad,  yn_smooth, yn_doas, weight_sun, fitvar_sol_saved, &
@@ -63,9 +64,10 @@ contains
          linenum_lim,  pixnum_lim, coadd_uv2,       &
          fitvar_rad_str, winwav_min, winwav_max, &
          have_amftable, have_undersampling, winlim, sol_identifier, &
-         rad_identifier, numwin, nviswin,scnwrt, calwrt,calscn, rtmdbg,& 
+         rad_identifier, numwin, nviswin, nuvwin,scnwrt, wcenter_uvvis, &
+         calwrt,calscn, rtmdbg,& 
          band_selectors, do_bandavg, &
-         n_band_avg, n_band_samp, outdir, atmdbdir, tabdir, refdbdir, &
+         n_band_avg, n_band_samp, outdir, atmdbdir, tabdir, refdbdir, ctrdbdir, &
          rmask_fitvar_rad, database_indices, slit_trunc_limit, &
          reduce_resolution, redsampr, redlam, reduce_slit, rm_mgline, &
          redfixwav,use_redfixwav, nredfixwav, redfixwav_fname, radnhtrunc, &
@@ -75,7 +77,7 @@ contains
          upper_wvls, lower_wvls, upper_spec, lower_spec, retlbnd, retubnd,& 
          nswath, orbnum, orbnumsol,num_param, ncoadd, do_ch2reso
     USE OMSAO_errstat_module
-    USE omi_read_l1b_data, only: find_scan_line_range
+    !USE omi_read_l1b_data, only: find_scan_line_range
     USE OMSAO_omidata_module, ONLY:  &
         mswath_omi=>mswath, nxomi_max=>nxtrack_max, ntomi_max=>ntimes_max, &
         upper_wvls_omi=>upper_wvls, lower_wvls_omi=>lower_wvls, &
@@ -230,7 +232,19 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(refdbdir), modulename, 0)
     END IF
-
+    
+    ! ctrdir
+    version = 1
+    errstat = PGS_PC_getreference( CTRDB_DIR_LUN, version, ctrdbdir )
+    IF( errstat /= PGS_S_SUCCESS ) THEN
+      WRITE(msg, '(A,I10,I4)') 'get file from lun=', REFDB_DIR_LUN, version
+      errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+           modulename, 0)
+      pge_error_status = pge_errstat_error
+      RETURN
+    ELSE
+      errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(ctrdbdir), modulename, 0)
+    END IF
     ! -----------------------------------------------------------
     ! Position cursor to read instrument name
     ! -----------------------------------------------------------
@@ -360,6 +374,7 @@ contains
     retlbnd = 1000.0
     retubnd = 0.0
     nviswin = 0
+    wcenter_uvvis = 400
     DO i = 1, numwin
       READ(fit_ctrl_unit, *) band_selectors(i), winlim(i, 1), winlim(i, 2), &
                             n_band_avg(i), n_band_samp(i)
@@ -404,9 +419,10 @@ contains
       IF (winlim(i, 2) > retubnd(band_selectors(i))) &
            retubnd(band_selectors(i)) = winlim(i, 2)
       IF (instrument_idx == tempo_idx .or. instrument_idx == gome2_idx) THEN 
-         IF (winlim(i,1) > 400.0) nviswin = nviswin + 1
+         IF (winlim(i,1) > wcenter_uvvis) nviswin = nviswin + 1
       ENDIF
     END DO
+    nuvwin = numwin - nviswin
     IF (MAXVAL(n_band_avg(1:numwin)) == 1) do_bandavg = .FALSE.
 
     DO i = 1, mswath
@@ -1020,6 +1036,25 @@ contains
         errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
              'l2_cld_filename ='//TRIM(l2_cld_filename), modulename, 0)
       END IF
+
+      ! read l2_met_filename
+      version = 1
+      allocate(l2_met_filenames(num_met_luns))
+      DO i = 1, num_met_luns
+      IF (i > 1) cycle 
+      errstat = PGS_PC_getreference( L2_MET_FILES_LUN(i), version, l2_met_filenames(i) )
+      IF( errstat /= PGS_S_SUCCESS ) THEN
+        WRITE(msg, '(A,I10,I4)') 'get file from lun=', L2_MET_FILES_LUN(i), version
+        errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, msg, &
+             modulename, 0)
+        pge_error_status = pge_errstat_error
+        RETURN
+      ELSE
+        errstat = OMI_SMF_setmsg(OMI_S_SUCCESS,  &
+             'l2_met_filename ='//TRIM(l2_met_filenames(i)), modulename, 0)
+      END IF
+     ENDDO
+
       ! read l2_filename
       version = 1
       errstat = PGS_PC_getreference( L2_OUT_LUN, version, l2_filename )
@@ -1168,18 +1203,20 @@ contains
     ! Check for consistency of pixel limits to process
     ! ------------------------------------------------
     IF (select_lonlat) THEN
-      CALL find_scan_line_range(slat, elat, slon, elon, linelim(1), &
-           linelim(2), pixlim(1), pixlim(2), pge_error_status )
-      IF (pixlim(1) < 0 .OR. linelim(1) < 0 .OR. pge_error_status >= &
-           pge_errstat_error) THEN
-        pge_error_status = pge_errstat_error
-        RETURN
-      ENDIF
-      ! pixlim is based on UV1, if both channels are selected
-      IF (coadd_uv2) THEN
-        pixlim(1) = pixlim(1) * ncoadd - 1
-        pixlim(2) = pixlim(2) * ncoadd
-      ENDIF
+      !CALL find_scan_line_range(slat, elat, slon, elon, linelim(1), &
+      !     linelim(2), pixlim(1), pixlim(2), pge_error_status )
+      !IF (pixlim(1) < 0 .OR. linelim(1) < 0 .OR. pge_error_status >= &
+      !     pge_errstat_error) THEN
+      !  pge_error_status = pge_errstat_error
+      !  RETURN
+      !ENDIF
+      !! pixlim is based on UV1, if both channels are selected
+      !IF (coadd_uv2) THEN
+      !  pixlim(1) = pixlim(1) * ncoadd - 1
+      !  pixlim(2) = pixlim(2) * ncoadd
+      !ENDIF
+       WRITE(*,*) 'setlect_lonlat should be false'
+       STOP
     ENDIF
 
     ! check for boundaries
@@ -1349,17 +1386,13 @@ contains
       !ELSE IF (reduce_resolution .AND. use_redfixwav) THEN
       !   radnhtrunc = 2; refnhextra = 1
     ELSE
-      radnhtrunc = 3
-      refnhextra = 2
+      radnhtrunc = 2
+      refnhextra = 1
       IF (instrument_idx == tempo_idx) THEN 
         radnhtrunc = 5
         refnhextra = 2
       ENDIF
     ENDIF
-    IF (use_so2dtcrs) refspec_fname (so2_idx) = zerospec_string
-    !IF (use_o4dtcrs) refspec_fname (o2o2_idx) = zerospec_string
-    IF (use_o2dptcrs) refspec_fname (o2_idx) = zerospec_string
-    IF (use_h2odptcrs) refspec_fname (h2o_idx) = zerospec_string
     ! ------------------------------------------------------------------------
     fitvar_rad_saved = fitvar_rad_init
     IF ( yn_doas ) THEN
@@ -1381,11 +1414,8 @@ contains
          ENDIF
       ENDDO
     ENDIF
+    www_message = ''
     RETURN
-    DO i = 1, 192
-      WRITE(*, '(2I5, A10,f5.2, A20)') i, rmask_fitvar_rad(i), fitvar_rad_str(i),&
-      fitvar_rad_init(i),  fitvar_rad_unit(i)
-    ENDDO
     !xliu, 09/23/05 Add direcotry, remove hard code directory
     ! ----------------------------------------------------------
     ! Position cursor to read database directory

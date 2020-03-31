@@ -206,7 +206,7 @@ MODULE OMSAO_indices_module
   !    degradation corrrection 2
   !    degradation corrrection 3
 
-  INTEGER, PARAMETER :: maxalb = 14, maxwfc = 12, maxoth = 4, maxgrp = 13, maxcldaer=8
+  INTEGER, PARAMETER :: maxalb = 50, maxwfc = 12, maxoth = 4, maxgrp = 11, maxcldaer=8
   INTEGER, PARAMETER :: n_max_fitpars = max_calfit_idx + mxs_idx * max_rs_idx &
        + max_rs_idx + maxlay * 2  + maxalb + maxwfc + maxcldaer + (maxgrp * maxoth) * maxwin
   INTEGER, PARAMETER :: shift_offset = max_calfit_idx + max_rs_idx * mxs_idx
@@ -222,6 +222,7 @@ MODULE OMSAO_indices_module
   ! Indices for fitting wavelengths, spectrum, and weights
   ! ------------------------------------------------------
   INTEGER, PARAMETER :: wvl_idx = 1, spc_idx = 2, sig_idx = 3
+  INTEGER, PARAMETER :: q_idx = 4 ! only for gome
 
   ! -----------------------------------------
   ! Indices for angles and AMFs in AMF tables
@@ -366,10 +367,10 @@ MODULE OMSAO_indices_module
   !----------------------
   ! instrumnet indices
   !----------------------
-  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, gome2_idx = 4,tempo_idx = 5
-  INTEGER, PARAMETER :: max_instrument_idx = tempo_idx
+  INTEGER, PARAMETER :: omi_idx = 1, gome_idx = 2, scia_idx = 3, gome2_idx = 4,tempo_idx = 5, simu_idx=6
+  INTEGER, PARAMETER :: max_instrument_idx = simu_idx
   CHARACTER (LEN=4), DIMENSION (max_instrument_idx), PARAMETER :: &
-       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2','TMPO' /)
+       which_instrument = (/ 'OMI ', 'GOME', 'SCIA', 'GOM2','TMPO','SIMU' /)
   INTEGER :: instrument_idx
 END MODULE OMSAO_indices_module
 

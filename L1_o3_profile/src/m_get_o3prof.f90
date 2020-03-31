@@ -1,26 +1,28 @@
 
 MODULE m_get_o3prof
 
-  USE OMSAO_parameters_module, ONLY: p0
+  USE OMSAO_parameters_module, ONLY: p0, du2mol
   USE OMSAO_precision_module
-  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
-                               the_month, the_year, the_day, the_lon, the_lat, tabdir
+  USE OMSAO_variables_module, ONLY: atmdbdir, tabdir, atmos_unit, & 
+  the_month, the_year, the_day, the_utc, the_lon, the_lat, the_time,&
+  lat_min, lat_max, lon_min, lon_max, time_min, time_max
   USE ozprof_data_module,     ONLY: which_clima, which_aperr, which_toz, & 
-                                    trpz, ozone_above60km, use_logstate, & 
-                                    which_aperr, min_serr, min_terr, loose_aperr, norm_tropo3
+                                    trpz, pst, ozone_above60km, use_logstate, & 
+                                    min_serr, min_terr, loose_aperr, norm_tropo3
   USE OMSAO_errstat_module
   USE NETCDF
   USE m_ezspline_interpolation, ONLY: bspline
   USE m_utilities, ONLY:reverse
-
+  !USE m_get_m2prof, ONLY:m2du, get_m2prof
   IMPLICIT NONE
   ! common variables used in this module
-  INTEGER, PRIVATE  :: nblat, nblon , nbmon
+  INTEGER, PARAMETER :: which_m2 = 2, neof=72
+  INTEGER, PRIVATE   :: nblat, nblon , nbmon
   INTEGER, DIMENSION(2), PRIVATE        :: latin, lonin, monin
   REAL (KIND=dp), DIMENSION(2), PRIVATE :: latfrac, lonfrac, monfrac
   CHARACTER (LEN=130), PRIVATE          :: apfname
 
-  public get_o3prof, get_apriori_covar, get_tomsv8_clima
+  public get_o3prof, get_apriori_covar, get_tomsv8_clima, get_normtoz, test
   private
   
   CONTAINS
@@ -43,8 +45,44 @@ MODULE m_get_o3prof
   ! get_mlso3prof(year, month, day, lat, nz, mnorstd, ps, oz, oz, ntp, errstat)
   ! get_mlso3prof_singple
   ! get_fortstd
+  ! get_gcnr
   ! *external subroutines : BSPLINE, REVERSE in EZSPLINE_INTERPOLATION
   ! NOte : o3prof is from down to top , std is from to to down
+
+SUBROUTINE test (error)
+  LOGICAL :: norm_o3p = .false.  
+  REAL (KIND=dp) :: toz
+  INTEGER, PARAMETER :: numk =  65
+  INTEGER :: i, ntp, error
+  REAL (KIND=dp) , DIMENSION (0:numk) :: umkp, umkz 
+  REAL (KIND=dp) , DIMENSION (1:numk) :: ozprof
+  REAL (KIND=dp) , DIMENSION (1:numk, 1:numk) :: sao3
+  
+  which_clima = 12 
+  which_aperr = 12
+  the_lon =  -97.46540832519531
+  the_lat =  36.584938049316406
+  the_year  = 2018
+  the_month = 10
+  the_day   = 29
+  umkp (0:numk)=(/(p0 * 10.0D0 ** (-REAL(i, KIND=dp)/16.D0), i=0, numk )/)
+  umkz (0:numk)=(/(i, i=0, numk )/)
+
+  call get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
+  call reverse(ozprof, numk)
+  call reverse(umkp, numk + 1) 
+  call reverse(umkz, numk + 1) 
+  call get_apriori_covar(numk, umkp, umkz, ozprof,toz,  ntp, sao3)  
+
+  write(123, *) numk, ": Number of layers", trpz, ":tropopause (km)"
+  WRITE(123, *) 'ps(hPa)  zs (km)  o3 (du) SD(%) COVAR (du)'
+  WRITE(123, '(f5.1, f10.4)') umkz(0), umkp(0)
+  DO i = 1, numk
+    WRITE(123, '(f5.1, f10.4, 70e17.5)') umkz(i), umkp(i), ozprof(i),sqrt(sao3(i, i))*100/ozprof(i), sao3(i, 1:numk)
+     print * , umkz(i), sqrt(sao3(i,i))*100./ozprof(i)
+  ENDDO
+  stop
+END SUBROUTINE
 
 SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
 
@@ -65,9 +103,10 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
   !============================
   INTEGER :: i, errstat, mnorstd, fidx, lidx, tmpntp
   REAL (KIND=dp) :: tmp
-  REAL (KIND=dp), DIMENSION (1:nmipas) :: mipasp, mipaso3
+  REAL (KIND=dp), DIMENSION(:), allocatable :: oztmp
+  REAL (KIND=dp), DIMENSION(:), allocatable :: mipasp, mipaso3 !(nmipas)
   REAL (KIND=dp), DIMENSION(0:nref)    :: ozref, refp
-  REAL (KIND=DP), DIMENSION(0:nv8)     :: pv8
+  REAL (KIND=DP), DIMENSION(:), allocatable :: pv8, v8oz !(0:nv8)
   REAL (KIND=dp), DIMENSION(0:numk)    :: umkoz, umkpg
   CHARACTER(10), PARAMETER :: modulename='get_o3prof'
 
@@ -78,28 +117,54 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
   ! Get a priori
   ozref(0:nref) = 0.0
   ! a. a priori climatology for 60-70 km from MIPAS climatology
+  allocate(mipasp(nmipas), mipaso3(nmipas))
   CALL GET_MIPASIG2O3(mipasp, mipaso3)
   ozref(nmpref:nref-1) = mipaso3(nmpref:nref-1)
   ozref(nref)          = sum(mipaso3(nref:nmipas))
   ozone_above60km      = SUM( ozref(nmpref:nref)) ! used to correct to-dependent profiles 
+  deallocate(mipasp, mipaso3)
 
   ! b. Get a priori climatology for 0-60 km (pressure altitude)
   IF (which_clima == 1) THEN 
+     allocate(pv8(0:nv8), v8oz(0:nv8))
      DO i = 0, nv8 - 1
            pv8(i) = p0*2.0D0 ** (-i) 
-        ENDDO
-        pv8(nv8)   = refp(nref) ! reconsider before pv8(nv8) = umkp(num) : 2^(-13.5)
-        pv8(0:nv8) = LOG(pv8(0:nv8) )
-        !CALL get_v8prof(toz, v8oz(1:nv8))
-        PRINT * , 'not well implemented'
-        stop 1
+     ENDDO
+     pv8(nv8)   = refp(nref) ! reconsider before pv8(nv8) = umkp(num) : 2^(-13.5)
+     pv8(0:nv8) = LOG(pv8(0:nv8) )
+    !CALL get_v8prof(toz, v8oz(1:nv8))
+     PRINT * , 'not well implemented' ; stop
   ELSE IF (which_clima == 2) THEN
      CALL GET_MCPROF (ozref(1:nmpref-1), 1) 
   ELSE IF (which_clima >= 8 .AND. which_clima <=9) THEN
      CALL GET_TBPROF (ozref(1:nmpref-1), 1)
   ELSE IF (which_clima == 10) THEN
      CALL GET_MLprof(ozref(1:nmpref-1), 1) 
-  ELSE
+  ELSE IF (which_clima == 11) THEN
+    
+  ELSE IF (which_clima == 12) THEN 
+     IF (which_m2 == 1) THEN
+        !CALL get_m2prof ('TO3',toz,nmpref-1,refp(0:nmpref-1), neof)
+     ELSE IF (which_m2 == 2) THEN 
+        !CALL get_m2prof ('TPP',trpz,nmpref-1,refp(0:nmpref-1), neof)
+     ELSE IF (which_m2 == 3) THEN 
+        !CALL get_m2prof ('LAZ',the_lat,nmpref-1,refp(0:nmpref-1), neof)
+     ENDIF
+     !ozref(1:nmpref-1) = m2du%o3p(1:nmpref-1)
+     !print * , ozprof(1:nmpref-1), sum(ozprof(1:nmpref-1))
+     !CALL GET_MLprof(ozref(1:nmpref-1), 1) 
+     !print * , ozprof(1:nmpref-1), sum(ozprof(1:nmpref-1))
+  ELSE IF (which_clima == 13) THEN 
+     allocate(oztmp(nmpref-1))
+     tmp = exp((log(pst) + log(p0))*0.5)
+     tmpntp = MINVAL(MINLOC(refp(0:nmpref-1), MASK=(refp(0:nmpref-1) >  tmp)))-1
+     CALL GET_tempoprof(tmpntp,refp(0:tmpntp),oztmp(1:tmpntp),1)
+     ozref(1:tmpntp) = oztmp(1:tmpntp)
+     CALL GET_TBPROF (oztmp(1:nmpref-1), 1)
+     ozref(tmpntp) = ozref(tmpntp)*0.5 + oztmp(tmpntp)*0.5
+     ozref(tmpntp+1:nmpref-1) = oztmp(tmpntp+1:nmpref-1)
+     deallocate(oztmp)
+  ELSE 
      CALL GET_MLprof(ozref(1:nmpref-1), 1)
   ENDIF
  
@@ -109,27 +174,20 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
 
   ! Bondary layer correction
   IF (umkp(0) > p0) THEN !sfc
-      tmp = ( umkp(0) - p0)/(refp(0)-refp(1))
-      ozref(1) = ozref(1)*(1+tmp)
-      refp(0) = umkp(0)
-  !    print * , ozref(1), umkp(0), p0, refp(0), refp(1)
+     tmp = ( umkp(0) - p0)/(refp(0)-refp(1))
+     ozref(1) = ozref(1)*(1+tmp)
+     refp(0) = umkp(0)
   ENDIF
-
- ! DO i = 1, nref
- !    ozref(i) = ozref(i-1) + ozref(i)
- ! ENDDO
 
   refp = LOG(refp)
   umkpg = LOG(umkp)
   ! @ Interpolate Ozone to Retrieved Grid
   CALL BSPLINE(refp, ozref, nref+1, umkpg(0:numk), umkoz(0:numk), numk+1,errstat)
   IF (errstat < 0) THEN
-     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-     stop 1
+     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop
   ENDIF
   umkoz(1:numk) = umkoz(1:numk) - umkoz(0:numk-1)
   ozprof (1:numk) = umkoz(1:numk)
-
   IF (which_clima == 11) THEN
      CALL get_geoschem_o3p (umkp, umkz, ozprof, numk, ntp)
   ELSE IF (which_clima == 7 ) THEN
@@ -154,6 +212,7 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
      CALL get_geoschem_o3mean(umkp, ozprof, numk, ntp)
   ENDIF
 
+  !WRITE(*,*) norm_o3p, sum(ozprof(1:numk)), toz
   IF (norm_o3p) THEN 
      IF (which_clima /=6 .AND. which_clima /= 7 ) tmpntp = ntp
      ! jbak the limitation of the vertical range to the layers below the ozone layer is better 
@@ -163,7 +222,7 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
       ELSE
        fidx=1 ; lidx=numk
       ENDIF
-     CALL get_normtoz (toz, numk, ozprof, fidx, lidx)
+      CALL get_normtoz (toz, numk, ozprof, fidx, lidx)
   ENDIF
   return
 END SUBROUTINE get_o3prof
@@ -181,7 +240,7 @@ SUBROUTINE get_normtoz (toz, nz,  oz, fidx, lidx)
   ! ======================
   ! Local variables
   ! ======================
-  REAL :: res_to3
+  REAL (KIND=dp):: res_to3
   ! 1:sfc, nz:top
    IF (fidx /= 1 .or. lidx  /= nz) THEN
      !oz(1:ntp) = oz(1:ntp) * (toz - SUM(oz(ntp+1:nz))) / SUM(oz(1:ntp))
@@ -190,8 +249,8 @@ SUBROUTINE get_normtoz (toz, nz,  oz, fidx, lidx)
      !fidx = INT(ntp/2.0)
      !lidx = tmpntp
      res_to3 = 0.0
-     IF (lidx < nz) res_to3 = real (SUM(oz(lidx+1:nz)), kind=r4)
-     IF (fidx > 1 ) res_to3 = real (res_to3 + SUM(oz(1:fidx-1)), kind=r4)
+     IF (lidx < nz) res_to3 = SUM(oz(lidx+1:nz))
+     IF (fidx > 1 ) res_to3 = res_to3 + SUM(oz(1:fidx-1))
      oz(fidx:lidx) = oz(fidx:lidx) * (toz - res_to3) /SUM(oz(fidx:lidx))
    ELSE
      oz(1:nz) = oz(1:nz) * toz /SUM(oz(1:nz))
@@ -208,14 +267,15 @@ END SUBROUTINE get_normtoz
 ! correlation length (5 km for now)
 ! ==============================================================
 
-SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
+SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   IMPLICIT NONE
 
   ! ======================
   ! Input/Output variables
   ! ======================
   INTEGER, INTENT(IN) :: nz, ntp
-  REAL (KIND=dp), DIMENSION(0:),      INTENT(IN) :: ps, zs  ! (0:nz)
+  REAL (KIND=dp) :: toz
+  REAL (KIND=dp), DIMENSION(0:nz),    INTENT(IN) :: ps, zs
   REAL (KIND=dp), DIMENSION(nz),      INTENT(IN) :: ozprof
   REAL (KIND=dp), DIMENSION(nz, nz),  INTENT(OUT) :: sao3 ! top-down
 
@@ -228,10 +288,11 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
 
   REAL (KIND=dp), DIMENSION(nz)       :: zmid
   REAL (KIND=dp), DIMENSION(0:nz)     :: pslg, nstd, nstd1, ps1, zs1
-  INTEGER                               :: i, j, mnorstd, tmpntp, nref
+  INTEGER                             :: i, j, k,mnorstd, tmpntp, nref
   REAL (KIND=dp) :: tmp
-  REAL (KIND=dp), DIMENSION(mref)       :: astd
-  REAL (KIND=dp), DIMENSION(0: mref)    :: cumastd, preslg, pres
+  REAL (KIND=dp), DIMENSION(:), ALLOCATABLE :: oztmp, ozavg
+  REAL (KIND=dp), DIMENSION(mref)     :: astd, a1, a2, a3
+  REAL (KIND=dp), DIMENSION(0: mref)  :: cumastd, preslg, pres
 
   ! ==============================
   ! Name of this module/subroutine
@@ -242,7 +303,16 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
   ! get astd
   ! ==============================
   sao3 = 0.0; astd = 0.0
-
+  IF (which_aperr == 12 ) THEN 
+    IF (which_m2 == 1) THEN 
+    !  CALL get_m2prof ('TO3',toz,nz,ps(0:nz), neof)
+    ELSE IF (which_m2 == 2) THEN 
+    !  CALL get_m2prof ('TPP',trpz,nz,ps(0:nz), neof)
+    ELSE IF (which_m2 == 3) THEN 
+    !  CALL get_m2prof ('LAZ',the_lat,nz,ps(0:nz),neof)
+    ENDIF
+    !sao3 = m2du%sa
+  ELSE ! sa is calculated from aperr
   nref = 60
   pres(1:60) = (/(1013.25*10.0**(-1.0*i/16.0), i = 59, 0, -1)/)
   pres(0) = 0.05  ! about 70 km
@@ -255,7 +325,18 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
      call get_mcprof(astd(1:nref), 2) 
   ELSE IF (which_aperr >= 8 .and. which_aperr <=9) THEN
      call get_tbprof (astd(1:nref),2) 
-  ELSE  ! IF (which_aperr == 10) THEN
+  ELSE IF (which_aperr == 10) THEN 
+     call get_mlprof (astd(1:nref),2) 
+  ELSE IF (which_aperr == 13) THEN
+     allocate(oztmp(nref), ozavg(nref))
+     tmp = exp((log(pst) + log(p0))*0.5)
+     tmpntp = MAXVAL(MAXLOC(pres(0:nref), MASK=(pres(0:nref) <  tmp)))+1
+     CALL GET_TBPROF (astd(1:nref), 2)
+     CALL GET_tempoprof(nref-tmpntp+1,pres(tmpntp-1:nref),oztmp(tmpntp:nref),2)
+     astd(tmpntp) = astd(tmpntp)*0.5 + oztmp(tmpntp)*0.5
+     astd(tmpntp+1:nref) = oztmp(tmpntp+1:nref)
+     deallocate(oztmp, ozavg)
+  ELSE 
      call get_mlprof (astd(1:nref),2) 
   ENDIF
  ! ==============================
@@ -282,15 +363,14 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, ntp,  sao3)
     CALL BSPLINE(preslg(0:nref), cumastd(0:nref),nref+1, pslg(0:nz),&
          nstd(0:nz), nz+1, errstat)
     IF (errstat < 0) THEN
-       WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
-       STOP 1
+       WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
     ENDIF
 
   ! Contruct the full covariance matrix for ozone (in Dobson units)
   nstd(1:nz) = nstd(1:nz) - nstd(0:nz-1)
   !print *, SUM(nstd(ntp+1:nz)) / SUM(ozprof(ntp+1:nz))
   !nstd(1:nz) =  ozprof(1:nz) * 0.5
-IF (which_aperr == 3) THEN
+  IF (which_aperr == 3) THEN
      ps1(0) = ps(nz)
      DO i = 1, nz
         ps1(i) = ps(nz-i); nstd1(i) = nstd(nz-i+1)
@@ -308,8 +388,7 @@ IF (which_aperr == 3) THEN
      mnorstd = 2
      CALL get_mlso3prof(nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
      IF (errstat < 0) THEN
-        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'
-        STOP 1
+        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
      ENDIF
      DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)
@@ -323,8 +402,7 @@ IF (which_aperr == 3) THEN
      mnorstd = 2
      CALL get_mlso3prof_single(nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
      IF (errstat < 0) THEN
-        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'
-        STOP 1
+        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
      ENDIF
      DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)
@@ -358,10 +436,11 @@ IF (which_aperr == 3) THEN
         sao3(j, i) = sao3(i, j)
      ENDDO
   ENDDO
+  ENDIF
   RETURN
-END SUBROUTINE get_apriori_covar
+  END SUBROUTINE get_apriori_covar
 
-SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
+  SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
 
   IMPLICIT NONE
   ! ======================
@@ -379,7 +458,7 @@ SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
 
   INTEGER :: ncid, varid, i, j, fidx, lidx, errstat
   REAL, SAVE  :: lon(nlon), lat(nlat), gsps(nlon, nlat, nps)
-  REAL, SAVE, DIMENSION (:,:,:), POINTER:: gso3 !(nlon, nlat, nps)
+  REAL, SAVE, DIMENSION (:,:,:), ALLOCATABLE:: gso3 !(nlon, nlat, nps)
   LOGICAL, SAVE :: first=.true.
 
   REAL (KIND=dp), DIMENSION(nps)   :: o3
@@ -396,7 +475,7 @@ SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
   INQUIRE (FILE= apfname, EXIST= file_exist)
   IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no geoschem o3p file!!!'
-        stop 1
+        stop
   ENDIF
   ! OPEN
   CALL check( nf90_open(trim(ADJUSTL(apfname)), NF90_NOWRITE, ncid))
@@ -413,8 +492,8 @@ SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
   CALL check( nf90_inq_varid(ncid, "PSURF", varid) ) ! nx, ny
   CALL check( nf90_get_var(ncid, varid, gsps) )
   first = .false.
- ENDIF
- CALL get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
+  ENDIF
+  CALL get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
        the_lon, the_lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
 
   o3 = 0.0 ; ps=0.0
@@ -440,17 +519,17 @@ SUBROUTINE get_geoschem_o3p  (refps, refzs, refo3, nz, ntp )
      print * , cumo3(2:nps)-cumo3(1:nps-1), fidx, lidx
   ENDIF
   RETURN
-END SUBROUTINE get_geoschem_o3p
+ END SUBROUTINE get_geoschem_o3p
 
-SUBROUTINE check(status)
+ SUBROUTINE check(status)
  INTEGER, intent ( in) :: status
  IF (status /= nf90_noerr) THEN
      print *, trim(nf90_strerror(status))
-     stop 1
+     stop
  ENDIF
-END SUBROUTINE check
+ END SUBROUTINE check
 
-SUBROUTINE get_geoschem_o3mean( ps, ozprof, nz, ntp)
+ SUBROUTINE get_geoschem_o3mean( ps, ozprof, nz, ntp)
   
   IMPLICIT NONE
 
@@ -471,7 +550,7 @@ SUBROUTINE get_geoschem_o3mean( ps, ozprof, nz, ntp)
   REAL (KIND=dp), DIMENSION(0:nz)  :: tempoz
   
   ! Saved variables
-  REAL (KIND=dp), DIMENSION(:,:,:),POINTER, SAVE :: geosoz
+  REAL (KIND=dp), DIMENSION(:,:,:),ALLOCATABLE, SAVE :: geosoz
   LOGICAL                                 , SAVE :: first = .TRUE.
 
   REAL (KIND=dp), DIMENSION(0:nalt)           :: geospres, cumoz
@@ -519,25 +598,20 @@ SUBROUTINE get_geoschem_o3mean( ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
-  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
-  if (ntp0 < 0) then
-    write (*,*)'**** Error: get_geoschem_o3mean: ntp0 initialization failed'
-    stop 1
-  endif
      
   CALL BSPLINE(geospres, cumoz, nalt0+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)     
   ozprof(1:ntp0) =  tempoz(1:ntp0) !* SUM(ozprof(1:ntp)) / SUM(tempoz(1:ntp)) *
   
   RETURN  
-END SUBROUTINE get_geoschem_o3mean
+  END SUBROUTINE get_geoschem_o3mean
 
-SUBROUTINE get_geoschem_o3std(ps, ozprof, nz, ntp)
+  SUBROUTINE get_geoschem_o3std(ps, ozprof, nz, ntp)
 
   IMPLICIT NONE
 
@@ -558,7 +632,7 @@ SUBROUTINE get_geoschem_o3std(ps, ozprof, nz, ntp)
   REAL (KIND=dp), DIMENSION(0:nz)  :: tempoz
   
   ! Saved variables
-  REAL (KIND=dp), DIMENSION(:,:,:),POINTER, SAVE :: geosoz
+  REAL (KIND=dp), DIMENSION(:,:,:),ALLOCATABLE, SAVE :: geosoz
   LOGICAL                                 , SAVE :: first = .TRUE.
 
   REAL (KIND=dp), DIMENSION(0:nalt)           :: geospres, cumoz
@@ -604,28 +678,23 @@ SUBROUTINE get_geoschem_o3std(ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
-  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
-  if (ntp0 < 0) then
-    write (*,*)'**** Error: get_geoschem_o3std: ntp0 initialization failed'
-    stop 1
-  endif
   
   CALL BSPLINE(geospres, cumoz, nalt+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)    
   ozprof(1:ntp0) =  tempoz(1:ntp0) 
   
   RETURN  
-END SUBROUTINE get_geoschem_o3std
+  END SUBROUTINE get_geoschem_o3std
 
 ! Obtain TB hybrid oz profiles
 ! 2011.6.15 Jbak
 ! ======================================================================
-SUBROUTINE get_tbprof (ozref, out_prof)
+  SUBROUTINE get_tbprof (ozref, out_prof)
 
   IMPLICIT NONE
 
@@ -694,17 +763,12 @@ SUBROUTINE get_tbprof (ozref, out_prof)
      ELSE ! troposphere
        ozref(i) = ozref(i)*weight2 +AB(i)*(1-weight2)
      ENDIF
-      !  write(*,'(10f8.2)') refz(i),refz(i)-trpz,weight1,
-      !  weight2,ozref2(i),llm(i), ab(i)
   ENDDO
 
-  IF (any(ozref(:) < 0)) then
-    print * , 'error at get_tbprof'
-    stop 1
-  ENDIF
+  IF (any(ozref(:) < 0)) then ; print * , 'error at get_tbprof' ; stop ; ENDIF
   RETURN
 
-END SUBROUTINE get_tbprof
+  END SUBROUTINE get_tbprof
 
 ! ===============================================================
 ! Obtain TB-based oz profiles (12 month, 18 latitude bands, 80 layers : ppb)
@@ -712,7 +776,7 @@ END SUBROUTINE get_tbprof
 ! 2011.6.2 Jbak
 ! ===============================================================
 
-SUBROUTINE get_tb(ozref,std, which_tb)
+  SUBROUTINE get_tb(ozref,std, which_tb)
 
   IMPLICIT NONE
 
@@ -730,15 +794,16 @@ SUBROUTINE get_tb(ozref,std, which_tb)
   REAL (KIND=dp), PARAMETER         :: lat0=-90., latgrid=10.
   REAL (KIND=dp), DIMENSION(nlay)   :: ozref0,std0 ! orignal profile
   REAL (KIND=dp), DIMENSION(0:nlay) :: cum0,cums0, refz0, zstar, tb0
-  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, tb
+  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, offset, tb
 
   INTEGER                           :: i, j, k,fidx, lidx, errstat
-  REAL (KIND=dp)                    :: fdum
+  REAL (KIND=dp)                    :: frac,fdum
+  REAL (KIND=dp)                    :: meg
   REAL (KIND=dp)                    :: gravity_correct ! used for convertingunit
 
   LOGICAL, SAVE                     :: first = .TRUE.
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER ::ozrefs,ozrefs1, ozrefs2
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER ::stds,stds1, stds2
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE ::ozrefs,ozrefs1, ozrefs2
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE ::stds,stds1, stds2
   REAL (KIND=dp), SAVE, DIMENSION(nmon, nlat)    ::mtropz, mtropz1, mtropz2
   REAL (KIND=dp), SAVE, DIMENSION(nlat)          ::lats
   REAL (KIND=dp), SAVE, DIMENSION(nlay) :: z0
@@ -804,9 +869,9 @@ SUBROUTINE get_tb(ozref,std, which_tb)
         stds2(:, j+12, :)     =stds2(:, 13, :)
         mtropz2(:,j+12)       =mtropz2(:,13)
      ENDDO
-     IF (any(ozrefs1 < 0) .or. any(ozrefs <0) ) then
-         print *, 'TB clima contain -999'
-         stop 1
+     IF (any(ozrefs1 < 0) .or. any(ozrefs2 <0) ) then
+         print *, 'TB clima contain -999'  ; stop
+         STOP
      ENDIF
     first = .FALSE.
   ENDIF
@@ -870,14 +935,12 @@ SUBROUTINE get_tb(ozref,std, which_tb)
 
  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay)
-      stop 1
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay) ; stop
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
   IF (errstat < 0) THEN
-    WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat
-    stop 1
+    WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop
   ENDIF
 
   ozref(1:nref) = cum(1:nref)-cum(0:nref-1)
@@ -888,9 +951,9 @@ SUBROUTINE get_tb(ozref,std, which_tb)
   CALL REVERSE(STD(1:nref), nref)
 
   RETURN
-END SUBROUTINE get_tb
+  END SUBROUTINE get_tb
 
-SUBROUTINE get_ab (ozref,std)
+  SUBROUTINE get_ab (ozref,std)
   ! remove the option of selecting tropical, extratropical AB
   ! just use AB all by Jbak 2017-07-11
   IMPLICIT NONE
@@ -909,18 +972,18 @@ SUBROUTINE get_ab (ozref,std)
   REAL (KIND=dp), DIMENSION(0:nlay) :: refz, zstar
   REAL (KIND=dp)                    :: gravity_correct
 
-  REAL (KIND=dp)                :: fdum
-  INTEGER                       :: i, j, k
+  REAL (KIND=dp)                :: frac,fdum
+  INTEGER                       :: i, j, k, errstat
 
   LOGICAL, SAVE                 :: first = .TRUE.
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER::ozrefs
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER::stds
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE::ozrefs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE::stds
   REAL (KIND=dp), SAVE, DIMENSION(nlay) :: zs0
 
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  !CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
+  CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
 
   ! ** load std profiles ** !
   IF (first) THEN
@@ -972,93 +1035,93 @@ END SUBROUTINE get_ab
 ! Obtain TOMS V8 ozone profiles (12 month, 18 latitude bands,
 !   3-10 profiles with total ozone at a step of 50 DU
 ! ===============================================================
-!SUBROUTINE get_v8prof(toz, oz)
-!
-!  IMPLICIT NONE
-!
-!  INTEGER, PARAMETER                           :: nl = 11
-!  ! ======================
-!  ! Input/Output variables
-!  ! ======================
-!
-!  REAL (KIND=dp), INTENT(INOUT)                :: toz
-!  REAL (KIND=dp), DIMENSION(nl), INTENT(OUT)   :: oz
-!
-!  ! ======================
-!  ! Local variables
-!  ! ======================
-!  INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
-!  REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
-!  CHARACTER (LEN=200)                                :: line
-!
-!  REAL (KIND=dp) :: frac, fdum, maxoz,minoz
-!  INTEGER        :: i, j, ib, profin, nprof, im
-!
-!  ! saved variables
-!  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
-!  INTEGER,        SAVE, DIMENSION(:,:), POINTER:: nprofs
-!  LOGICAL,        SAVE  :: first = .TRUE.
-!
-!! ** load oz profiles ** !
-!
-!  IF (first) THEN
-!   allocate(ozprofs(nmon, nlat, maxprof, nl), nprofs(nmon, nlat))
-!  apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
-!  OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')
-!        ! Read until the target month        
-!         DO im = 1, nmon
-!           DO i = 1, nlat
-!              READ(atmos_unit, *)
-!              nprof = 1
-!              DO j = 1, maxprof
-!                 READ (atmos_unit, '(A)') line;  READ (line, *) fdum
-!
-!                 IF (fdum < 999.0) THEN
-!                    READ (line, *) fdum, ozprofs(im, i, nprof, :)
-!                    nprof = nprof + 1
-!                 ENDIF
-!              ENDDO
-!              nprofs(im, i) = nprof - 1
-!           ENDDO
-!        ENDDO
-!  CLOSE (atmos_unit)
-!  first = .FALSE.
-!  ENDIF
-!
-!  CALL get_monfrac(nmon, the_month, the_day, nbmon, monfrac, monin)
-!  CALL get_latfrac(nlat,latgrid, lat0, the_lat, nblat, latfrac, latin)
-!
-!  oz = 0.0
-!  DO im = 1, nbmon
-!        DO ib = 1, nblat
-!           nprof = nprofs(monin(im), latin(ib))
-!           minoz = SUM(ozprofs(monin(im), latin(ib), 1, :))
-!           maxoz = SUM(ozprofs(monin(im), latin(ib), nprof, :))
-!
-!           IF (toz < minoz) THEN
-!              WRITE(*,*)'Warning: no a priori profile available!!!'
-!              oz  = oz + ozprofs(monin(im), latin(ib), 1, :) * toz / minoz *latfrac(ib)
-!           ELSE IF (toz > maxoz) THEN
-!              WRITE(*,*)'Warning: no a priori profile available!!!'
-!              oz = oz + ozprofs(monin(im), latin(ib), nprof, :) * toz / maxoz *latfrac(ib)
-!           ELSE
-!              profin = INT ((toz - minoz ) / 50.0)+1
-!              IF (profin == 0) THEN
-!                 profin = 1
-!              ELSE IF (profin == nprof) THEN
-!                 profin = profin - 1
-!              ENDIF
-!
-!              frac = 1.0 - (toz - (minoz + (profin-1) * 50.0)) / 50.0
-!              oz = oz + latfrac(ib) * monfrac(im) * (frac * ozprofs(monin(im),latin(ib), profin, :) &
-!                   + (1.0 - frac) * ozprofs(monin(im), latin(ib), profin+1, :))           
-!           ENDIF
-!        ENDDO
-!  ENDDO
-!  RETURN
-!END SUBROUTINE get_v8prof
+SUBROUTINE get_v8prof(toz, oz)
 
-SUBROUTINE get_mcprof(ozref, which_out)
+  IMPLICIT NONE
+
+  INTEGER, PARAMETER                           :: nl = 11
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+
+  REAL (KIND=dp), INTENT(INOUT)                :: toz
+  REAL (KIND=dp), DIMENSION(nl), INTENT(OUT)   :: oz
+
+  ! ======================
+  ! Local variables
+  ! ======================
+  INTEGER, PARAMETER :: nlat=18, maxprof=10, nmon=12
+  REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
+  CHARACTER (LEN=200)                                :: line
+
+  REAL (KIND=dp) :: frac, fdum, maxoz,minoz
+  INTEGER        :: i, j, ib, profin, nprof, im
+
+  ! saved variables
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), ALLOCATABLE :: ozprofs
+  INTEGER,        SAVE, DIMENSION(:,:), ALLOCATABLE:: nprofs
+  LOGICAL,        SAVE  :: first = .TRUE.
+
+! ** load oz profiles ** !
+
+  IF (first) THEN
+   allocate(ozprofs(nmon, nlat, maxprof, nl), nprofs(nmon, nlat))
+  apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
+  OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')
+        ! Read until the target month        
+         DO im = 1, nmon
+           DO i = 1, nlat
+              READ(atmos_unit, *)
+              nprof = 1
+              DO j = 1, maxprof
+                 READ (atmos_unit, '(A)') line;  READ (line, *) fdum
+
+                 IF (fdum < 999.0) THEN
+                    READ (line, *) fdum, ozprofs(im, i, nprof, :)
+                    nprof = nprof + 1
+                 ENDIF
+              ENDDO
+              nprofs(im, i) = nprof - 1
+           ENDDO
+        ENDDO
+  CLOSE (atmos_unit)
+  first = .FALSE.
+  ENDIF
+
+  CALL get_monfrac(nmon, the_month, the_day, nbmon, monfrac, monin)
+  CALL get_latfrac(nlat,latgrid, lat0, the_lat, nblat, latfrac, latin)
+
+  oz = 0.0
+  DO im = 1, nbmon
+        DO ib = 1, nblat
+           nprof = nprofs(monin(im), latin(ib))
+           minoz = SUM(ozprofs(monin(im), latin(ib), 1, :))
+           maxoz = SUM(ozprofs(monin(im), latin(ib), nprof, :))
+
+           IF (toz < minoz) THEN
+              WRITE(*,*) 'Warning: no a priori profile available!!!'
+              oz  = oz + ozprofs(monin(im), latin(ib), 1, :) * toz / minoz *latfrac(ib)
+           ELSE IF (toz > maxoz) THEN
+              WRITE(*,*) 'Warning: no a priori profile available!!!'
+              oz = oz + ozprofs(monin(im), latin(ib), nprof, :) * toz / maxoz *latfrac(ib)
+           ELSE
+              profin = INT ((toz - minoz ) / 50.0)+1
+              IF (profin == 0) THEN
+                 profin = 1
+              ELSE IF (profin == nprof) THEN
+                 profin = profin - 1
+              ENDIF
+
+              frac = 1.0 - (toz - (minoz + (profin-1) * 50.0)) / 50.0
+              oz = oz + latfrac(ib) * monfrac(im) * (frac * ozprofs(monin(im),latin(ib), profin, :) &
+                   + (1.0 - frac) * ozprofs(monin(im), latin(ib), profin+1, :))           
+           ENDIF
+        ENDDO
+  ENDDO
+  RETURN
+  END SUBROUTINE get_v8prof
+
+  SUBROUTINE get_mcprof(ozref, which_out)
 
   IMPLICIT NONE
 
@@ -1066,7 +1129,7 @@ SUBROUTINE get_mcprof(ozref, which_out)
   ! ======================
   ! Input/Output variables
   ! ======================
-  INTEGER, INTENT (IN)               :: which_out ! 1=o3p, 2=std
+  INTEGER , INTENT (IN)               :: which_out ! 1=o3p, 2=std
   REAL (KIND=dp), DIMENSION(nref), INTENT(OUT) :: ozref
 
   ! ======================
@@ -1075,12 +1138,12 @@ SUBROUTINE get_mcprof(ozref, which_out)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlevel=61 ! o3 (DU) for 60 layer, std (mr) for 61 level
   INTEGER :: i, j, im,ib
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
-  REAL (KIND=dp)                                  :: idum
+  REAL (KIND=dp)                                  :: frac, idum
   REAL (KIND=dp), DIMENSION(nlevel)               :: std0, pres
   REAL (KIND=dp), DIMENSION(nref)                 :: std
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: ozrefs
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: stds
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: ozrefs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: stds
   LOGICAL,        SAVE                            :: first = .TRUE.
 
 ! ** load oz profiles ** !
@@ -1129,13 +1192,13 @@ SUBROUTINE get_mcprof(ozref, which_out)
   IF (which_out == 2) ozref(1:nref) = std(1:nref)  
 
   RETURN
-END SUBROUTINE get_mcprof
+  END SUBROUTINE get_mcprof
 
 !  DU table 
 !  lat [-85, 85]
 !  mon [1, 12]
 !  lat [0-1, 64-65, 66-90]
-SUBROUTINE get_mlprof(out, index_out)
+  SUBROUTINE get_mlprof(out, index_out)
 
   IMPLICIT NONE
 
@@ -1152,11 +1215,12 @@ SUBROUTINE get_mlprof(out, index_out)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlay=66
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
   CHARACTER (LEN=10) :: cdum
-  INTEGER :: i, im,ib
+  REAL (KIND=dp)     :: frac
+  INTEGER :: i, j, im,ib
   REAL (KIND=dp),DIMENSION(nlay) :: ozref0,std0, pres
   REAL (KIND=dp),DIMENSION(nref) :: std, ozref
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: ozrefs, stds
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: ozrefs, stds
   LOGICAL,        SAVE                            :: first = .TRUE.
 ! ** load oz profiles ** !
   IF (first) THEN
@@ -1212,12 +1276,12 @@ SUBROUTINE get_mlprof(out, index_out)
   IF ( index_out == 1 ) out(:) = ozref(:)
   IF ( index_out == 2 ) out(:) = std(:)
   RETURN
-END SUBROUTINE get_mlprof
+  END SUBROUTINE get_mlprof
 
 ! Use MIPAS IG2 Temperature Profile cimatology 
 ! 121 levels (pressre altitude from 120 km to 0 km), 4 months (1,4,7,10)
 ! and 6 latitude bands (-75, -45, -10, 10, 45, 75)
-SUBROUTINE GET_MIPASIG2O3(xx, yy)
+  SUBROUTINE GET_MIPASIG2O3(xx, yy)
   
   IMPLICIT NONE
   
@@ -1235,7 +1299,7 @@ SUBROUTINE GET_MIPASIG2O3(xx, yy)
   REAL (KIND=dp), DIMENSION(1:nlat), PARAMETER    :: lats = (/-75.0, -45.0, -10.0, 10.0, 45.0, 75.0/)
 
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: profs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: profs
   REAL (KIND=dp), SAVE, DIMENSION(nl)             :: pres0
   LOGICAL,        SAVE                            :: first = .TRUE.
 
@@ -1313,9 +1377,9 @@ SUBROUTINE GET_MIPASIG2O3(xx, yy)
 
   RETURN
 
-END SUBROUTINE GET_MIPASIG2O3
+  END SUBROUTINE GET_MIPASIG2O3
 
-SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)  
+  SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)  
 
   IMPLICIT NONE
 
@@ -1336,8 +1400,8 @@ SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)
   REAL (KIND=dp), DIMENSION(nalt)  :: gprof
   REAL (KIND=dp), DIMENSION(0:nz)  :: tempoz
 
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER :: geosoz
-  LOGICAL, SAVE                                     :: first = .TRUE.
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE :: geosoz
+  LOGICAL, SAVE                                  :: first = .TRUE.
 
   ! Correct coordinates
   REAL (KIND=DP), DIMENSION(0:nalt), PARAMETER:: pres = (/1.0d0,          &
@@ -1381,16 +1445,11 @@ SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)
   ENDDO
   nalt0 = j
 
-  ntp0 = -1
   DO i = 1, ntp
      IF (ps(i) < geospres(nalt0)) THEN
         ntp0 = i - 1; EXIT
      ENDIF
   ENDDO
-  if (ntp0 < 0) then
-    write (*,*)'**** Error: get_geoschem_o31: ntp0 initialization failed'
-    stop 1
-  endif
   
   CALL BSPLINE(geospres, cumoz, nalt0+1, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)     
@@ -1399,10 +1458,10 @@ SUBROUTINE get_geoschem_o31(ps, ozprof, nz, ntp)
   !ozprof(1:ntp) =  tempoz(1:ntp) * SUM(ozprof(1:ntp)) / SUM(tempoz(1:ntp)) 
   
   RETURN  
-END SUBROUTINE GET_GEOSCHEM_O31
+  END SUBROUTINE GET_GEOSCHEM_O31
 
 
-SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)  
+  SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)  
   IMPLICIT NONE
 
   ! ======================
@@ -1417,12 +1476,12 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
   ! ======================
   INTEGER, PARAMETER        :: nlat=46, nlon=72, nalt=13
   REAL (KIND=dp), PARAMETER :: longrid = 5.0, latgrid = 4.0, lon0=-180.0, lat0=-92.0
-  INTEGER                   :: errstat, i, j, ntp0
+  INTEGER                   :: errstat, i, j, k, ntp0
 
   REAL (KIND=dp), DIMENSION(nalt)             :: gprof
   REAL (KIND=dp), DIMENSION(0:nz)             :: tempoz
 
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: geosoz
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: geosoz
   LOGICAL, SAVE                                     :: first = .TRUE.
 
   ! Correct coordinates
@@ -1430,8 +1489,8 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
        800., 700., 600., 500., 400., 300., 250., 200., 150., 125., 100./)
 
   REAL (KIND=dp), DIMENSION(1:nalt)           :: cumoz, presmod
-  !CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
-  !     'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
+  CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
+       'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=2)                           :: monc
   
   IF (first) THEN
@@ -1460,7 +1519,6 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
      cumoz(i) = cumoz(i-1) + (gprof(i-1) + gprof(i)) * (pres(i-1) - pres(i)) / 2533.125 
   ENDDO
 
-  ntp0 = -1
   presmod = pres
   DO i = 1, ntp
      IF (ps(i) < presmod(nalt)) THEN
@@ -1468,11 +1526,7 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
      ENDIF
   ENDDO
   IF (presmod(1) < ps(0))  presmod(1) = ps(0)
-  if (ntp0 < 0) then
-    write (*,*)'**** Error: get_logan_clima: ntp0 initialization failed'
-    stop 1
-  endif
-
+  
   CALL BSPLINE(presmod, cumoz, nalt, ps(0:ntp0), tempoz(0:ntp0), ntp0+1, errstat)
   tempoz(1:ntp0) = tempoz(1:ntp0) - tempoz(0:ntp0-1)    
   ozprof(1:ntp0) =  tempoz(1:ntp0)  ! use actual profile shape
@@ -1481,7 +1535,7 @@ SUBROUTINE get_logan_clima( ps, ozprof, nz, ntp)
   ! ozprof(1:ntp) =  tempoz(1:ntp) * SUM(ozprof(1:ntp)) / SUM(tempoz(1:ntp)) 
  
   RETURN  
-END SUBROUTINE GET_LOGAN_CLIMA
+  END SUBROUTINE GET_LOGAN_CLIMA
 
 
 ! =====================================================================
@@ -1489,7 +1543,7 @@ END SUBROUTINE GET_LOGAN_CLIMA
 ! (quality flags applied) 0.1-215 mb (i.e., 10-64 km), 36 latitude bins
 ! updated for MLSv4.2 by jbak on 2017-08-30
 ! =====================================================================
-SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
+  SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
   IMPLICIT NONE
 
   INTEGER, PARAMETER                           :: ml = 37, mlat=36
@@ -1512,11 +1566,12 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
   REAL (KIND=dp), DIMENSION (0:ml) :: cumoz
   REAL (KIND=dp), DIMENSION (0:nz) :: tmpcumoz, tmps
   REAL (KIND=dp), DIMENSION (2)    :: latfrac
+  REAL (KIND=dp)                   :: sumfrac
   INTEGER,        DIMENSION (2)    :: latin
 
   ! Saved variables
   INTEGER, SAVE                             :: nlat, nl
-  REAL (KIND=dp), SAVE, DIMENSION(:,:), POINTER :: mlsprofs, mlstds
+  REAL (KIND=dp), SAVE, DIMENSION(:,:), ALLOCATABLE :: mlsprofs, mlstds
   REAL (KIND=dp), SAVE, DIMENSION(0:ml)     :: mlsps
   REAL (KIND=dp), SAVE, DIMENSION(mlat)     :: mlslats
   LOGICAL,        SAVE                      :: first = .TRUE.
@@ -1536,9 +1591,7 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
      INQUIRE (FILE= apfname, EXIST= file_exist) 
      IF (.NOT. file_exist) THEN
         WRITE(*,*) apfname
-        WRITE(www_lun, *) 'No MLS ozone profile found!!!'
-        errstat = -1
-        STOP 1
+        WRITE(www_lun, *) 'No MLS ozone profile found!!!'; errstat = -1; STOP
      ENDIF
      
      OPEN (UNIT = atmos_unit, file = apfname, status = 'unknown')
@@ -1598,7 +1651,6 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
  
   ! Only use MLS altitude range where reltative variability is < 50%
   ! Find first MLS layer to be used
-  sl = -1
   DO i = 1, nl
      IF (ratio(i) <= 50.0) THEN
         sl = i; EXIT
@@ -1610,23 +1662,14 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
         sl = i; EXIT
      ENDIF
   ENDDO
-  if (sl < 0) then
-    write (*,*)'**** Error: get_mlso3prof: sl initialization failed'
-    stop 1
-  endif
 
   ! Find last MLS layer to be used
-  el = -1
   DO i = nl, 1, -1
      IF (ratio(i) <= 50.0) THEN
         el = i; EXIT
      ENDIF
   ENDDO
-  if (el < 0) then
-    write (*,*)'**** Error: get_mlso3prof: el initialization failed'
-    stop 1
-  endif
-
+  
   IF (mnorstd == 2) tmpoz(1:nl) = tmpozstd(1:nz)
    
   ! Get cumulative ozone profile from (215 mb to 0.1 mb)
@@ -1656,13 +1699,13 @@ SUBROUTINE get_mlso3prof(nz, mnorstd, ps, zs, oz, ntp, errstat)
 
   ntp = fidx
   RETURN
-END SUBROUTINE get_mlso3prof
+  END SUBROUTINE get_mlso3prof
 
 ! =====================================================================
 ! Obtain AURA MLS zonal mean ozone profiles and its standard deviations
 ! (quality flags applied) 0.1-215 mb (i.e., 10-64 km), 36 latitude bins
 ! =====================================================================
-SUBROUTINE get_mlso3prof_single(nz, mnorstd, ps, zs, oz, ntp, errstat)
+  SUBROUTINE get_mlso3prof_single(nz, mnorstd, ps, zs, oz, ntp, errstat)
   IMPLICIT NONE
 
   INTEGER, PARAMETER                           :: ml = 37
@@ -1738,28 +1781,18 @@ SUBROUTINE get_mlso3prof_single(nz, mnorstd, ps, zs, oz, ntp, errstat)
  
   ! Only use MLS altitude range where reltative variability is < 50%
   ! Find first MLS layer to be used
-  sl = -1
   DO i = 1, nl
      IF (ratio(i) <= 50.0) THEN
         sl = i; EXIT
      ENDIF
   ENDDO
-  if (sl < 0) then
-    write (*,*)'**** Error: get_mlso3prof_single: sl initialization failed'
-    stop 1
-  endif
 
   ! Find last MLS layer to be used
-  el = -1
   DO i = nl, 1, -1
      IF (ratio(i) <= 50.0) THEN
         el = i; EXIT
      ENDIF
   ENDDO
-  if (el < 0) then
-    write (*,*)'**** Error: get_mlso3prof_single: el initialization failed'
-    stop 1
-  endif
   
   IF (mnorstd == 1) THEN
      tmpoz(1:nl) = mlsprof(1:nz)
@@ -1787,13 +1820,13 @@ SUBROUTINE get_mlso3prof_single(nz, mnorstd, ps, zs, oz, ntp, errstat)
   ntp = fidx
   
   RETURN
-END SUBROUTINE get_mlso3prof_single
+  END SUBROUTINE get_mlso3prof_single
 
 ! ===============================================================
 ! Obtain TOMS V8 ozone profiles (12 month, 18 latitude bands,
 !   3-10 profiles with total ozone at a step of 50 DU
 ! ===============================================================
-SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
+  SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
 
   IMPLICIT NONE
 
@@ -1814,29 +1847,29 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
   ! ======================
   INTEGER, PARAMETER :: nmon=12, nlat=18, maxprof=10
   REAL (KIND=dp), PARAMETER :: lat0=-90.0, latgrid=10.0
-  !CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
-  !     'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
+  CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
+       'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=200)                                :: line
 
   ! saved variables
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), POINTER :: ozprofs
-  INTEGER,        SAVE, DIMENSION(:,:), POINTER     :: nprofs
-  REAL (KIND=dp), SAVE, DIMENSION(0:nl0)            :: pv80
-  LOGICAL,        SAVE                              :: first = .TRUE.
+  !REAL (KIND=dp), SAVE, DIMENSION(nmon, nlat, maxprof, nl0) :: ozprofs
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:,:), ALLOCATABLE :: ozprofs
+  INTEGER,        SAVE, DIMENSION(nmon, nlat)               :: nprofs
+  REAL (KIND=dp), SAVE, DIMENSION(0:nl0)                    :: pv80
+  LOGICAL,        SAVE                                      :: first = .TRUE.
 
-  REAL (KIND=dp)                                    :: frac, fdum, maxoz, minoz
-  REAL (KIND=dp), DIMENSION(nl0)                    :: oz0
-  REAL (KIND=dp), DIMENSION(0:nl0)                  :: cum0
-  REAL (KIND=dp), DIMENSION(0:nl)                   :: logps, cum
-  REAL (KIND=dp), DIMENSION(2)                      :: latfrac, monfrac
-  INTEGER,        DIMENSION(2)                      :: latin, monin
+  REAL (KIND=dp)                                            :: frac, fdum, maxoz, minoz
+  REAL (KIND=dp), DIMENSION(nl0)                            :: oz0
+  REAL (KIND=dp), DIMENSION(0:nl0)                          :: cum0
+  REAL (KIND=dp), DIMENSION(0:nl)                           :: logps, cum
+  REAL (KIND=dp), DIMENSION(2)                              :: latfrac, monfrac
+  INTEGER,        DIMENSION(2)                              :: latin, monin
   INTEGER :: i, j, ib, profin, nprof, im
 
   CHARACTER (LEN=16), PARAMETER :: modulename = 'get_tomsv8_clima'
 
   IF (first) THEN
      allocate (ozprofs(nmon, nlat, maxprof, nl0))
-     allocate (nprofs(nmon, nlat))
      ! read the TOMS V8 profiles
      apfname = TRIM(ADJUSTL(atmdbdir)) // 'v8clima/tomsv8_ozone_clima.dat'
      OPEN (UNIT = atmos_unit, file= apfname, status = 'unknown')
@@ -1923,12 +1956,12 @@ SUBROUTINE get_tomsv8_clima(month, day, lat, toz, nl, ps, apoz, oz, errstat)
   oz(1:i) = apoz(1:i) * SUM(oz(1:i)) / SUM(apoz(1:i))
   
   RETURN
-END SUBROUTINE get_tomsv8_clima
+  END SUBROUTINE get_tomsv8_clima
 
 ! ===============================================================
 ! Obtain fortstd profiles (12 month, 17 latitude bands, 19 levels)
 ! ===============================================================
-SUBROUTINE get_fortstd(std)
+  SUBROUTINE get_fortstd(std)
   IMPLICIT NONE
   INTEGER, PARAMETER                            ::  nref = 19
   ! ======================
@@ -1943,7 +1976,7 @@ SUBROUTINE get_fortstd(std)
   REAL (KIND=dp), DIMENSION(nlay) :: std0, pres
   INTEGER                         :: i, j, k
   LOGICAL, SAVE                   :: first = .TRUE.
-  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER :: stds 
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE :: stds 
 
   
 ! ** load std profiles ** !
@@ -1979,9 +2012,222 @@ SUBROUTINE get_fortstd(std)
   ENDDO
   RETURN
 
-END SUBROUTINE get_fortstd 
+  END SUBROUTINE get_fortstd 
 
-SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
+  SUBROUTINE get_tempoprof(nref,ps, ozprof, which_out)
+  use clim_module
+  use tell_module
+  use OMSAO_variables_module, ONLY: do_geoloc_init
+  IMPLICIT NONE
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+   INTEGER, INTENT(IN) :: nref, which_out
+   REAL (KIND=dp), DIMENSION(0:nref), INTENT(IN) :: ps
+   REAL (KIND=dp), DIMENSION(nref), INTENT(OUT)  :: ozprof
+  ! ======================
+  ! local variables
+  ! ======================
+   TYPE (clim_pres_type), SAVE :: cpt
+   TYPE (clim_pres_bounds_type), SAVE :: bounds
+   TYPE (clim_species_type), SAVE :: cst
+   INTEGER, SAVE  :: nl0
+   INTEGER :: errstat, nl
+   INTEGER :: year, month, day
+   REAL (KIND=r8) :: hour
+   REAL (KIND=r4) :: lon, lat
+   REAL (KIND=r4) :: hour_f, lon_f, lat_f
+   REAL (kind=r4), dimension(:), allocatable, SAVE :: pres, vmr,vmr_stddev
+   REAL (KIND=r4), dimension(:), allocatable ::  partial_column, tmp
+   character (len=6), PARAMETER :: clim_db_molecule_name  ='O3    '
+   logical :: is_reord
+   INTEGER :: i
+   REAL(KIND=dp), DIMENSION(:), allocatable :: pstmp
+  ! ======================
+  ! module name
+  ! ======================
+   character (len=13), parameter :: modulename = 'get_tempoprof'
+   
+   errstat=0
+   IF (do_geoloc_init) THEN  
+   !--------------------------------------
+   ! initialize climatology
+   !-------------------------------------
+   !@ set bounds
+   if (time_max - time_min > 86400.0) then
+      call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
+      return
+   endif
+
+   call tio_f_taix_time_to_utc_caldate(time_min, year, month, day,hour)
+   bounds % hour_beg = real (hour, kind=r4)
+   call tio_f_taix_time_to_utc_caldate(time_max, year, month, day,hour)
+   bounds % hour_end = real (hour, kind=r4)
+   bounds % lon_min = real(lon_min,kind=r4)
+   bounds % lon_max = real(lon_max,kind=r4)
+   bounds % lat_min = real(lat_min,kind=r4)
+   bounds % lat_max = real(lat_max,kind=r4)
+
+   !@ set bounds
+   call clim_pres_init (cpt, month, day, bounds, errstat)
+   if (errstat /= 0) THEN 
+      call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_pres_init", errstat)
+      return
+   endif
+   nl0 = clim_pres_nz (cpt)
+
+   call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat,.true.)
+   if (errstat /= 0) then
+     call tell_error ( tell_io_read_error, "libclim_climatology: initializing "//trim(clim_db_molecule_name), errstat)
+     return
+   end if
+   do_geoloc_init = .false.
+   ENDIF
+  !--------------------------------------
+  ! get climatology for this pixel
+  !---------------------------------
+  lon_f = real(the_lon, kind=r4)
+  lat_f = real(the_lat, kind=r4)
+  call tio_f_taix_time_to_utc_caldate(the_time, year, month, day,hour)
+  hour_f = real(hour, kind=r4)
+
+  nl = nl0 ! number of level
+  allocate (pres(nl))
+  call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
+   
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_pres", errstat)
+    deallocate(pres)
+    return
+  end if
+
+  allocate (vmr(nl), vmr_stddev(nl))
+  ! Get vmr profile
+  call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat, vmr_stddev)
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_species_vmr", errstat)
+    deallocate(pres, vmr, vmr_stddev)
+    return
+  end if
+  
+ 
+  ! Compute partical columns
+  nl  = nl -1 ! number of layer
+  allocate (partial_column(nl))
+  IF (which_out == 1) THEN 
+    call clim_partial_column (pres, vmr, partial_column, errstat)
+  ELSE
+    call clim_partial_column (pres, vmr_stddev, partial_column, errstat)
+  ENDIF
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, "libclim_climatology:calculating partiacl column", errstat)
+    deallocate(partial_column, pres, vmr, vmr_stddev)
+    return
+  else
+    partial_column = partial_column/du2mol
+    ! Fix non-physical partial columns
+    where (partial_column < 0.0_r8)
+     partial_column = 0.0_r8
+    end where
+    deallocate(vmr, vmr_stddev)
+  endif
+
+  ! interpolation to user grids
+  is_reord = .false.
+  allocate(pstmp(0:nref))
+  pstmp(0:nref) =ps(0:nref)
+  IF (ps(0) < ps(1)) THEN
+     is_reord = .true.
+     pstmp(0:nref) =(/(ps(i), i = nref,0,-1)/)
+   ENDIF
+  CALL bspline_partial_column (nl, pres(1:nl+1)*1.D0, partial_column(1:nl)*1.D0, &
+       nref, pstmp(0:nref), ozprof(1:nref), errstat)
+  if (errstat /= 0) then
+     call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in bspline_partial_column", errstat)
+  else 
+    IF (is_reord) THEN 
+     ozprof(1:nref) = (/(ozprof(i), i = nref, 1, -1)/)
+    ENDIF
+  endif
+  IF (errstat /= 0) THEN 
+      print * , pres(1), pres(nl+1), pstmp(0), pstmp(nref); stop
+  ENDIF
+  deallocate (pstmp,pres,partial_column)
+  RETURN
+  END SUBROUTINE get_tempoprof
+   
+  SUBROUTINE bspline_partial_column(nl1,ps1,prof1, nl2,ps2,prof2, errstat)
+  ! bottom to top
+  IMPLICIT NONE
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)            :: nl1, nl2
+  REAL(kind=r8), DIMENSION(nl1+1),INTENT(IN)  :: ps1
+  REAL(kind=r8), DIMENSION(nl1), INTENT(IN)   :: prof1
+  REAL(kind=r8), DIMENSION(nl2+1), INTENT(IN) :: ps2
+  REAL(kind=r8), DIMENSION(nl2), INTENT(OUT)  :: prof2
+  INTEGER, INTENT(OUT)            :: errstat
+  ! ======================
+  ! local variables
+  ! ======================
+  INTEGER :: i, fidx, lidx
+  REAL (kind=r8) :: tmp
+  REAL(kind=r8), ALLOCATABLE, DIMENSION(:) :: psg1, psg2, cum1, cum2
+  CHARACTER(LEN=100), PARAMETER :: modulename = 'bspline_partial_column'
+  errstat = 0
+  IF ((ps1(1) > ps1(nl1+1) .and. ps2(1) <ps2(nl2+1)) .or. &
+   (ps1(1) < ps1(nl1+1) .and. ps2(1) > ps2(nl2+1))) THEN 
+    WRITE(*,*) modulename//'vertical grids are inconsistent'
+    errstat = -1 ; return
+  ENDIF
+
+  fidx = 1; lidx = nl2+1
+  IF (ps2(1) > ps1(1) ) THEN 
+      do i = 1, nl2+1
+         IF ( ps2(i) <=  ps1(1) ) exit
+      enddo
+      fidx = i
+  ENDIF
+
+  IF (ps2(nl2+1) < ps1(nl1+1) ) THEN 
+      do i = nl2+1, 1, -1
+         IF ( ps2(i) >=  ps1(nl1+1) ) exit
+      enddo
+      lidx = i
+  ENDIF
+
+  IF (allocated(psg1)) THEN 
+     deallocate(psg1, cum1, psg2, cum2)
+  ENDIF
+
+  allocate (psg1(nl1+1), cum1(nl1+1), psg2(nl2+1), cum2(nl2+1))
+  psg1 = log(ps1) ;   psg2 = log(ps2)
+  cum1 = 0.D0
+  DO i = 2, nl1+1
+    cum1(i) = cum1(i-1) + prof1(i-1)
+  ENDDO
+  
+  CALL BSPLINE(psg1(1:nl1+1),cum1(1:nl1+1),nl1+1,psg2(fidx:lidx),cum2(fidx:lidx),lidx-fidx + 1,errstat)
+  IF (errstat /= 0 ) THEN 
+      WRITE(*,*) modulename//'errors in bspline' ;stop
+  ENDIF
+  DO i = fidx-1, 1, -1
+     tmp = (cum2(i+1)-cum2(i+2))/(psg2(i+1) - psg2(i+2))
+     cum2(i) = cum2(i+1) + tmp*(psg2(i) - psg2(i+1))
+  !   print * ,'(a)', i , tmp, cum2(i:i+2), ps2(i:i+2)
+  ENDDO
+  DO i = lidx+1, nl2+1
+     tmp = (cum2(i-1)-cum2(i-2))/(psg2(i-1) - psg2(i-2))
+     cum2(i) = cum2(i-1) + tmp*(psg2(i) - psg2(i-1))
+  !   print * , '(b)',i , cum2(i+1), cum2(i), ps2(i+1), ps2(i)
+  ENDDO
+  prof2(1:nl2) = cum2(2:nl2+1) - cum2(1:nl2)
+  deallocate(psg1, cum1, psg2, cum2)
+  RETURN
+  END SUBROUTINE bspline_partial_column
+
+  SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
 
   IMPLICIT NONE
 
@@ -2007,9 +2253,9 @@ SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
      monfrac(1) = 1.0 - monfrac(2)
   ENDIF
      nbmon=2
-END SUBROUTINE get_monfrac
+  END SUBROUTINE get_monfrac
 
-SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
+  SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
 
   IMPLICIT NONE
 
@@ -2040,9 +2286,9 @@ SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
      latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
   ENDIF
   RETURN
-END SUBROUTINE get_latfrac
+  END SUBROUTINE get_latfrac
 
-SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
+  SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
   lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
 
   IMPLICIT NONE
@@ -2082,6 +2328,6 @@ SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
   IF (lonin(2) > nlon) lonin(2) = 1
   
   RETURN
-END SUBROUTINE get_gridfrac
+  END SUBROUTINE get_gridfrac
 
 END MODULE m_get_o3prof

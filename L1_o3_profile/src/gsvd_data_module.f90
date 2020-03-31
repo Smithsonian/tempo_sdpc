@@ -1,11 +1,11 @@
-MODULE gsvd_data_module
-
   ! *******************************************************
   ! Author:  xiong liu
   ! Date  :  July 25, 2003
   ! Purpose: Variables used in various SUBROUTINE/FUNCTION
   !			 such as fcurv, scurv, find_lcorner
   ! *******************************************************
+
+MODULE gsvd_data_module
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module, ONLY : max_fit_pts

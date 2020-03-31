@@ -15,26 +15,142 @@
 !            2hw1e gam(1/k)    |_     hw1e ^k   _|
 ! Reminder
 !    slit function derivatives are implemented in super_gauss_multi, super_gauss_fc
+
+! asymetric super gaussian is added Jun. 2019 jbak
 ! =========================================================================
 
 MODULE m_super_gauss
 
  USE OMSAO_precision_module
- USE OMSAO_indices_module,   ONLY : hwe_idx, spk_idx
+ USE OMSAO_indices_module,   ONLY : hwe_idx, spk_idx, asy_idx
  USE OMSAO_variables_module, ONLY : slit_trunc_limit,  winlim, numwin,&
      solwinfit, slitwav, slitfit, nslit, & ! slit function variables
-     do_dsdw, do_dsdk ! logical variables to implement sf derivaties
+     do_dsdw, do_dsdk, do_dsda ! logical variables to implement sf derivaties
  USE m_ezspline_interpolation, ONLY: interpolation 
  USE OMSAO_errstat_module
 
  IMPLICIT NONE
 
- PUBLIC :: super_gauss, super_gauss_multi, super_gauss_vary, &
-           super_gauss_f2c, super_gauss_vary_f2c
+ PUBLIC :: super_gauss,       super_agauss, & 
+           super_gauss_multi, super_agauss_multi, &
+           super_gauss_vary,  super_agauss_vary, & 
+           super_gauss_f2c,  super_agauss_f2c, & 
+           super_gauss_vary_f2c, super_agauss_vary_f2c
  PRIVATE
 
 CONTAINS
-SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
+
+
+ SUBROUTINE super_agauss (wvlarr, specarr, specmod, npoints, hw1e, e_asym, power)
+
+
+    USE OMSAO_precision_module
+    USE OMSAO_variables_module, ONLY : slit_trunc_limit
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                             INTENT (IN) :: npoints
+    REAL (KIND=dp),                      INTENT (IN) :: hw1e, e_asym, power
+    REAL (KIND=dp), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
+
+    ! ================
+    ! Output variables
+    ! ================
+    REAL (KIND=dp), DIMENSION (npoints), INTENT (OUT) :: specmod
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER         :: i, j, j1, j2, num_slit, mslit, mslit0
+    REAL (KIND=dp)  :: delwvl, slitsum, rsw, lsw
+    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl
+    INTEGER,        DIMENSION (npoints) :: idx
+
+    ! --------------------------------------------------------
+    ! Initialize output variable (default for "no convolution"
+    ! --------------------------------------------------------
+    specmod(1:npoints) = specarr(1:npoints)
+
+    ! -----------------------------------------------
+    ! No Gaussian convolution if Halfwidth @ 1/e is 0
+    ! -----------------------------------------------
+    IF ( hw1e == 0.0 .or. power == 0.0) RETURN
+    ! --------------------------------------------------------------
+    ! Find the number of spectral points that fall within a Gaussian
+    ! slit function with values >= 0.001. Remember that we have an
+    ! asymmetric Gaussian, so we create a wavelength array symmetric
+    ! around 0. The spacing is provided by the equidistant WVLARR.
+    ! --------------------------------------------------------------
+    rsw = -(hw1e * (1.0 + ABS(e_asym))) ** (power)
+    delwvl = wvlarr(2) - wvlarr(1)
+    mslit = NINT( SQRT( LOG(slit_trunc_limit) * rsw) / delwvl)
+    num_slit = mslit * 2 + 1; mslit = mslit + 1
+
+   IF (num_slit > npoints) THEN
+     mslit = (npoints-1) / 2 + 1;    num_slit = mslit * 2 - 1
+     !WRITE(*, *) 'Too small a slit fitting window!!!'; RETURN
+   ENDIF
+
+   ! left side
+   lsw = -(hw1e * (1.0 - e_asym)) ** power
+   j = -mslit + 1
+   DO i = 1, mslit - 1
+     locwvl(i) = delwvl * j
+     j = j + 1
+   ENDDO
+   slit(1:mslit-1) = EXP(abs(locwvl(1:mslit-1))**power / lsw)
+   locwvl(mslit) = 0.0; slit(mslit) = 1.0
+
+   ! Right side
+   rsw = -(hw1e * (1.0 + e_asym)) ** power
+   j = 1
+   DO i = mslit+1, num_slit
+     locwvl(i) = delwvl * j
+     j = j + 1
+   ENDDO
+   slit(mslit+1:num_slit) = EXP( abs(locwvl(mslit+1:num_slit))**power / rsw)
+
+   ! Normalization
+   slitsum = SUM(slit(1:num_slit))
+   slit(1:num_slit) = slit(1:num_slit) / slitsum
+  ! ---------------------------------------------------------------
+  ! Convolve spectrum. First do the middle part, where we have full
+  ! overlap coverage of the slit function. Again, remember the
+  ! asymmetry of the Gaussian, which makes impossible a simple
+  ! 50-50 division of the summation interval.
+  ! ---------------------------------------------------------------
+
+  ! Make a local copy of the NSLIT spectrum points to be convolved
+  ! with the slit function. The spectrum points to be convolved are
+  ! arranged such that the updated index corresponds to the maximum
+  ! of the slit function (MSLIT). For simplicity we reflect the
+  ! spectrum at the array end points.
+
+  ! ----------------------------------------------------
+  ! Loop over all points of the spectrum to be convolved
+  ! ----------------------------------------------------
+  DO i = 1, npoints
+     ! First do the right half of the slit function
+     DO j = mslit, num_slit
+        j1 = i+j-mslit ; IF ( j1 > npoints ) j1 = npoints - MOD(j1, npoints)
+        idx(j) = j1
+     END DO
+
+     ! Now the left half of the slit function
+     DO j = mslit-1, 1, -1
+        j2 = i+j-mslit ; IF ( j2 < 1 ) j2 = ABS(j2) + 2
+        idx(j) = j2
+     END DO
+
+     specmod(i) = DOT_PRODUCT(slit(1:num_slit), specarr(idx(1:num_slit)))
+  END DO
+
+  RETURN
+  END SUBROUTINE super_agauss
+
+  SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
 
   IMPLICIT NONE
   ! ===============
@@ -65,7 +181,7 @@ SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
   ! --------------------------------------
   IF ( hw1e == 0.0 .or. power ==0.0) THEN 
      WRITE(*,*) 'super gaussian error'
-     STOP 1
+     STOP
   ENDIF
   
   delwvl = wvlarr(2) - wvlarr(1)
@@ -87,7 +203,6 @@ SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
 
   slit0 = slit0 / slitsum
   slit(1:num_slit) = slit(1:num_slit) / slitsum
- 
   ! Convolve spectrum. reflect at endpoints.
   ! Doesn't look right
   specmod(1:npoints) = slit0 * specarr(1:npoints)
@@ -101,19 +216,201 @@ SUBROUTINE super_gauss (wvlarr, specarr, specmod, npoints, hw1e, power)
      END DO
   END DO
   RETURN
-END SUBROUTINE super_gauss
+  END SUBROUTINE super_gauss
 
+  SUBROUTINE super_agauss_multi (wvlarr, specarr, specmod, npoints)
 
-SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
-
+  USE OMSAO_precision_module
+  USE OMSAO_variables_module,  ONLY : solwinfit, winlim, numwin,slit_trunc_limit
+  USE OMSAO_indices_module,    ONLY : hwe_idx, asy_idx, spk_idx
 
   IMPLICIT NONE
 
   ! ===============
   ! Input variables
   ! ===============
-  INTEGER,                       INTENT (IN) :: npoints
-  REAL (KIND=dp), DIMENSION (:), INTENT (IN) :: wvlarr, specarr ! (npoints)
+  INTEGER,                             INTENT (IN) :: npoints
+  REAL (KIND=dp), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
+
+  ! ================
+  ! Output variables
+  ! ================
+  REAL (KIND=dp), DIMENSION (npoints), INTENT (OUT) :: specmod
+
+  ! ===============
+  ! Local variables
+  ! ===============
+  INTEGER                             :: i, j, j1, j2, num_slit, mslit, fidx,lidx, iwin
+  REAL (KIND=dp)                      :: delwvl, slitsum,  maxslit, hw1e,e_asym, power,rsw, lsw, upbnd
+  REAL (KIND=dp)                      :: slitsum1,hw1e_pert,e_asym_pert, power_pert, pert
+  REAL (KIND=dp), DIMENSION (npoints) :: slit, slit1,locwvl
+  INTEGER,        DIMENSION (npoints) :: idx
+  REAL (KIND=dp), EXTERNAL            :: signdp
+
+  ! --------------------------------------------------------
+  ! Initialize output variable (default for "no convolution"
+  ! --------------------------------------------------------
+  specmod(1:npoints) = specarr(1:npoints)
+
+  fidx = 1
+  DO iwin = 1, numwin
+
+     hw1e = solwinfit(iwin, hwe_idx, 1); e_asym = solwinfit(iwin, asy_idx, 1) 
+     power = solwinfit(iwin, spk_idx, 1)
+
+     IF (wvlarr(1) > winlim(iwin, 2)) cycle
+
+     IF (iwin < numwin) THEN
+        upbnd = (winlim(iwin, 2) + winlim(iwin+1, 1))/2.0
+        lidx = MINVAL(MAXLOC(wvlarr, MASK=(wvlarr <= upbnd )))
+     ELSE
+        lidx = npoints
+     END IF
+
+     ! -----------------------------------------------
+     ! No Gaussian convolution if Halfwidth @ 1/e is 0
+     ! -----------------------------------------------
+     IF ( hw1e == 0.0 .or. power == 0.0 ) RETURN
+
+     ! --------------------------------------------------------------
+     ! Find the number of spectral points that fall within a Gaussian
+     ! slit function with values >= 0.001. Remember that we have an
+     ! asymmetric Gaussian, so we create a wavelength array symmetric
+     ! around 0. The spacing is provided by the equidistant WVLARR.
+     ! --------------------------------------------------------------
+     rsw = -(hw1e * (1.0 + ABS(e_asym))) ** (power)
+     delwvl = wvlarr(fidx+1) - wvlarr(fidx)
+     mslit = NINT( SQRT( LOG(slit_trunc_limit) * rsw) / delwvl)
+     num_slit = mslit * 2 + 1; mslit = mslit + 1
+
+     IF (num_slit > npoints) THEN
+        mslit = (npoints-1) / 2 + 1;    num_slit = mslit * 2 - 1
+     ENDIF
+
+     ! left side
+     lsw = -(hw1e * (1.0 - e_asym)) ** power
+     j = -mslit + 1
+     DO i = 1, mslit - 1
+        locwvl(i) = delwvl * j
+        j = j + 1
+     ENDDO
+     slit(1:mslit-1) = EXP((abs(locwvl(1:mslit-1)))**power / lsw)
+     locwvl(mslit) = 0.0; slit(mslit) = 1.0
+
+     ! Right side
+     rsw = -(hw1e * (1.0 + e_asym)) ** power
+     j = 1
+     DO i = mslit+1, num_slit
+        locwvl(i) = delwvl * j
+        j = j + 1
+     ENDDO
+
+     slit(mslit+1:num_slit) = EXP(locwvl(mslit+1:num_slit)**(power) / rsw)
+     ! Normalization
+     slitsum = SUM(slit(1:num_slit))
+     slit(1:num_slit) = slit(1:num_slit) / slitsum
+
+     IF (do_dsdw  .or. do_dsdk .or. do_dsda) THEN 
+       IF (do_dsdw) THEN
+         hw1e_pert = hw1e*1.001       
+         power_pert = power
+         e_asym_pert = e_asym
+         pert = hw1e*0.001       
+       ELSE IF (do_dsdk) THEN
+         hw1e_pert = hw1e
+         power_pert = power*1.001         
+         e_asym_pert = e_asym
+         pert = power*0.001         
+       ELSE IF (do_dsda) THEN 
+         hw1e_pert = hw1e
+         power_pert = power
+         e_asym_pert = e_asym*1.001
+         pert = e_asym*0.001
+       ENDIF
+
+       rsw = -(hw1e_pert * (1.0 + ABS(e_asym_pert))) ** (power_pert)
+       delwvl = wvlarr(fidx+1) - wvlarr(fidx)
+       mslit = NINT( SQRT( LOG(slit_trunc_limit) * rsw) / delwvl)
+       num_slit = mslit * 2 + 1; mslit = mslit + 1
+
+       IF (num_slit > npoints) THEN
+         mslit = (npoints-1) / 2 + 1;    num_slit = mslit * 2 - 1
+       ENDIF
+
+       ! left side
+       lsw = -(hw1e_pert * (1.0 - e_asym_pert)) ** (power_pert)
+       j = -mslit + 1
+       DO i = 1, mslit - 1
+        locwvl(i) = delwvl * j
+        j = j + 1
+       ENDDO
+       slit1(1:mslit-1) = EXP(locwvl(1:mslit-1)**(power_pert) / lsw)
+       locwvl(mslit) = 0.0; slit1(mslit) = 1.0
+
+       ! Right side
+       rsw = -(hw1e_pert * (1.0 + e_asym_pert)) ** (power_pert)
+       j = 1
+       DO i = mslit+1, num_slit
+        locwvl(i) = delwvl * j
+        j = j + 1
+       ENDDO
+
+       slit1(mslit+1:num_slit) = EXP(locwvl(mslit+1:num_slit)**(power_pert) / rsw)
+
+       slitsum1 = sum(slit1(1:num_slit))
+       slit (1:num_slit) = (slit1(1:num_slit)/slitsum1 - slit(1:num_slit))/pert
+     ENDIF
+
+     ! ---------------------------------------------------------------
+     ! Convolve spectrum. First do the middle part, where we have full
+     ! overlap coverage of the slit function. Again, remember the
+     ! asymmetry of the Gaussian, which makes impossible a simple
+     ! 50-50 division of the summation interval.
+     ! ---------------------------------------------------------------
+
+     ! Make a local copy of the NSLIT spectrum points to be convolved
+     ! with the slit function. The spectrum points to be convolved are
+     ! arranged such that the updated index corresponds to the maximum
+     ! of the slit function (MSLIT). For simplicity we reflect the
+     ! spectrum at the array end points.
+
+     ! ----------------------------------------------------
+     ! Loop over all points of the spectrum to be convolved
+     ! ----------------------------------------------------
+     DO i = fidx, lidx
+        ! First do the right half of the slit function
+        DO j = mslit, num_slit
+           j1 = i + j - mslit
+           IF ( j1 > npoints ) j1 = npoints - MOD(j1, npoints)
+           idx(j) = j1
+        END DO
+
+        ! Now the left half of the slit function
+        DO j = mslit-1, 1, -1
+           j2 = i+ j - mslit ; IF ( j2 < 1 ) j2 = ABS(j2) + 2
+           idx(j) = j2
+        END DO
+
+        specmod(i) = DOT_PRODUCT(slit(1:num_slit), specarr(idx(1:num_slit)))
+     END DO
+
+     fidx = lidx + 1
+
+     IF (fidx > npoints) EXIT
+  END DO
+
+  RETURN
+  END SUBROUTINE super_agauss_multi
+
+  SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
+
+  IMPLICIT NONE
+
+  ! ===============
+  ! Input variables
+  ! ===============
+  INTEGER,                             INTENT (IN) :: npoints
+  REAL (KIND=dp), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
 
   ! ================
   ! Output variables
@@ -124,7 +421,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
   ! Local variables
   ! ===============
   INTEGER                             :: i, j, ii, j1, j2, num_slit, mslit, fidx, lidx, iwin
-  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, coef, pert, ssum1
+  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, sw, coef, pert, ssum1
   REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, upbnd, slit1
 
   ! --------------------------------------------------------
@@ -135,6 +432,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
   fidx = 1
   DO iwin = 1, numwin
 
+     IF (wvlarr(1) > winlim(iwin, 2)) CYCLE
      hw1e  = solwinfit(iwin, hwe_idx, 1)
      power = solwinfit(iwin, spk_idx, 1)
      IF (iwin < numwin) THEN
@@ -147,10 +445,7 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
      ! -----------------------------------------------
      ! No Gaussian convolution if Halfwidth @ 1/e is 0
      ! -----------------------------------------------
-     IF ( hw1e == 0.0 .or. power == 0.0 ) then
-       write(*,*)' hw1e=0 or power=0 in super_gauss_multi'
-       STOP 1
-     endif
+     IF ( hw1e == 0.0 .or. power == 0.0 ) STOP
 
      ! --------------------------------------------------------------
      ! Find the number of spectral points that fall within a Gaussian
@@ -220,9 +515,189 @@ SUBROUTINE super_gauss_multi (wvlarr, specarr, specmod, npoints)
   END DO
 
   RETURN
-END SUBROUTINE super_gauss_multi
+  END SUBROUTINE super_gauss_multi
 
-SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check in detail
+  SUBROUTINE super_agauss_vary (wvlarr, specarr, specmod, npoints)
+ 
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                             INTENT (IN) :: npoints
+    REAL (KIND=dp), DIMENSION (npoints), INTENT (IN) :: wvlarr, specarr
+
+    ! ================
+    ! Output variables
+    ! ================
+    REAL (KIND=dp), DIMENSION (npoints), INTENT (OUT) :: specmod
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER                             :: i, j, j1, j2, num_slit, mslit, &
+         errstat,  fidx, lidx, fslit, lslit, finter, linter, iwin
+    REAL (KIND=dp)                      :: delwvl,hw1e, e_asym,power, lsw, rsw, &
+         upbnd!, slitsum, maxslit
+    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, lochwe, locasy, locspk
+    INTEGER,        DIMENSION (npoints) :: idx
+
+    ! ------------------
+    ! External functions
+    ! ------------------
+    INTEGER :: OMI_SMF_setmsg
+
+    ! ------------------------------
+    ! Name of this subroutine/module
+    ! ------------------------------
+    CHARACTER (LEN=15), PARAMETER :: modulename = 'asym_gauss_vary'
+
+
+    !WRITE(www_lun, *) 'nslit = ', nslit
+    !WRITE(www_lun, '(10f8.3)') slitwav(1:nslit), slitfit(1:nslit, hwe_idx, 1)
+
+    errstat = pge_errstat_ok
+    ! --------------------------------------------------------
+    ! Initialize output variable (default for "no convolution"
+    ! --------------------------------------------------------
+    specmod(1:npoints) = specarr(1:npoints)
+
+
+    ! -----------------------------------------------
+    ! No Gaussian convolution if Halfwidth @ 1/e is 0
+    ! -----------------------------------------------
+    hw1e   = MAXVAL(slitfit(1:nslit, hwe_idx, 1))
+    power  = MAXVAL(slitfit(1:nslit, spk_idx, 1))
+    e_asym = MAXVAL(ABS(slitfit(1:nslit, asy_idx, 1)))
+
+    IF ( hw1e == 0.0 .or. power == 0.0 ) RETURN
+
+    ! --------------------------------------------------------------
+    ! Find the number of spectral points that fall within a Gaussian
+    ! slit function with values >= 0.01. Remember that we have an
+    ! asymmetric Gaussian, so we create a wavelength array symmetric
+    ! around 0. The spacing is provided by the equidistant WVLARR.
+    ! --------------------------------------------------------------  
+    rsw = -(hw1e * (1.0 + ABS(e_asym))) ** power
+    delwvl = wvlarr(2) - wvlarr(1)
+    mslit = NINT( SQRT( LOG(slit_trunc_limit) * rsw) / delwvl) 
+    num_slit = mslit * 2 + 1; mslit = mslit + 1
+
+    IF (num_slit > npoints) THEN
+      mslit = (npoints-1) / 2 + 1;    num_slit = mslit * 2 - 1
+      !WRITE(www_lun, *) 'Too small a slit fitting window!!!'; RETURN
+    ENDIF
+
+    ! get an array of slit variables (lochwe, locasy) for each wavelength position
+    lochwe = 0.0; locasy=0.0 ; locspk = 0.0
+    fidx = 1; lidx = npoints
+    DO iwin = 1, numwin
+      IF (wvlarr(1) > winlim(iwin, 2)) cycle
+      IF (iwin < numwin) THEN
+        upbnd = (winlim(iwin, 2) + winlim(iwin+1, 1))/2.0 
+        lidx = MINVAL(MAXLOC(wvlarr, MASK=(wvlarr <= upbnd )))
+      ELSE 
+        lidx = npoints
+      END IF
+
+      fslit = MINVAL(MINLOC(slitwav(1:nslit), &
+           MASK=(slitwav(1:nslit) >= wvlarr(fidx))))
+      lslit = MINVAL(MAXLOC(slitwav(1:nslit), &
+           MASK=(slitwav(1:nslit) <= wvlarr(lidx))))
+
+      ! no slit between fidx:lidx, should never happen
+      IF (fslit <= 0) THEN
+        fslit = lslit
+      ELSE IF (lslit <= 0) THEN
+        lslit = fslit
+      ENDIF
+
+      IF (fslit > nslit .OR. lslit > nslit) THEN  
+        WRITE(www_lun, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
+             slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
+        WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
+        STOP 1
+      ENDIF
+
+      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
+        lochwe(fidx:lidx) = SUM(slitfit(fslit:lslit, hwe_idx, 1))/(lslit-fslit+1)
+        locasy(fidx:lidx) = SUM(slitfit(fslit:lslit, asy_idx, 1))/(lslit-fslit+1) 
+        locspk(fidx:lidx) = SUM(slitfit(fslit:lslit, spk_idx, 1))/(lslit-fslit+1) 
+      ELSE
+        ! finter <= linter here
+        finter = MINVAL(MINLOC(wvlarr, MASK = (wvlarr >= slitwav(fslit))))
+        linter = MINVAL(MAXLOC(wvlarr, MASK = (wvlarr <= slitwav(lslit))))
+
+        CALL interpolation ( &
+             lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
+             linter-finter+1, wvlarr(finter:linter), lochwe(finter:linter), errstat )
+        IF ( errstat > pge_errstat_warning ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+        CALL interpolation (lslit-fslit+1, slitwav(fslit:lslit), &
+             slitfit(fslit:lslit, asy_idx, 1), linter-finter+1, wvlarr(finter:linter),&
+             locasy(finter:linter), errstat)
+        IF ( errstat > pge_errstat_warning ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+       CALL interpolation ( &
+             lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
+             linter-finter+1, wvlarr(finter:linter), locspk(finter:linter), errstat )
+        IF ( errstat > pge_errstat_warning ) THEN
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+        IF (finter > fidx) THEN
+          lochwe(fidx:finter-1)=slitfit(fslit, hwe_idx, 1)
+          locasy(fidx:finter-1)=slitfit(fslit, asy_idx, 1)
+          locspk(fidx:finter-1)=slitfit(fslit, spk_idx, 1)
+        END IF
+
+        IF (linter < lidx)  THEN
+          lochwe(linter+1:lidx)=slitfit(lslit, hwe_idx, 1)
+          locasy(linter+1:lidx)=slitfit(lslit, asy_idx, 1)
+          locspk(linter+1:lidx)=slitfit(lslit, spk_idx, 1)
+        END IF
+      ENDIF
+      fidx = lidx + 1
+    ENDDO
+
+    DO i = 1, npoints
+      ! get the hw1e and e_asym at this point
+      hw1e = lochwe(i)
+       e_asym = locasy(i) 
+      power=locspk(i)
+      lsw = -(hw1e*(1.0 - e_asym))**(power)
+      rsw = -(hw1e*(1.0 + e_asym))**(power)
+
+      ! First do the right half of the slit function
+      DO j = mslit, num_slit
+        j1 = i + j - mslit
+        IF (j1 > npoints) j1 = npoints - MOD(j1, npoints)
+        locwvl(j) = (abs(wvlarr(j1)-wvlarr(i))) ** power / rsw
+        idx(j) = j1
+      END DO
+
+      ! Now the left half of the slit function
+      DO j = mslit-1, 1, -1
+        j2 = i + j - mslit
+        IF (j2 < 1) j2 = ABS(j2) + 2
+        locwvl(j) = (wvlarr(j2)-wvlarr(i)) ** 2 / lsw
+        idx(j) = j2
+      END DO
+      slit(1:num_slit) = EXP(locwvl(1:num_slit))
+
+      specmod(i) = DOT_PRODUCT(slit(1:num_slit), specarr(idx(1:num_slit))) &
+           / SUM(slit(1:num_slit))
+    END DO
+
+    RETURN
+  END SUBROUTINE super_agauss_vary
+
+
+  SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check in detail
 
   IMPLICIT NONE
 
@@ -332,7 +807,7 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
         WRITE(*, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
              slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP 1
+        STOP
      ENDIF
      
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -347,16 +822,14 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
              linter-finter+1, wvlarr(finter:linter), lochwe(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-           STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
         END IF
         
         CALL interpolation ( &
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
              linter-finter+1, wvlarr(finter:linter), locspk(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-           STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
         END IF
 
         IF (finter > fidx) THEN
@@ -395,10 +868,9 @@ SUBROUTINE super_gauss_vary (wvlarr, specarr, specmod, npoints) ! need to check 
   END DO
   !stop ! not tested
   RETURN
-END SUBROUTINE super_gauss_vary
+  END SUBROUTINE super_gauss_vary
 
-
-SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
+  SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   
   IMPLICIT NONE
 
@@ -414,7 +886,7 @@ SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
+  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
   REAL (KIND=dp) :: power, temp, hw1e, dfw, ssum, ssum1, coeff, pert
   REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
   
@@ -423,6 +895,7 @@ SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   dfw  = fwave(2) - fwave(1) 
   DO iwin = 1, numwin
 
+     IF (cwave(1) > winlim(iwin, 2)) CYCLE
      IF (iwin == numwin) THEN
         lidx = nf; lidxc = nc
      ELSE
@@ -446,13 +919,11 @@ SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
         IF (do_dsdw) THEN 
           slit1(sidx:eidx) =coeff* EXP (-1.*(abs(cwave(i) - fwave(sidx:eidx))/(hw1e*1.001))**power)         
           ssum1 = sum(slit1(sidx:eidx))
-          pert = hw1e*0.001
-          slit (sidx:eidx) = (slit1(sidx:eidx)/ssum1 - slit(sidx:eidx))/pert
+          slit (sidx:eidx) = (slit1(sidx:eidx)/ssum1 -slit(sidx:eidx))/(hw1e*0.001)
         ELSE IF (do_dsdk) THEN 
           slit1 (sidx:eidx) =coeff* EXP (-1.*(abs(cwave(i) - fwave(sidx:eidx))/hw1e)**(power*1.001))         
           ssum1 = sum(slit1(sidx:eidx))
-          pert = power*0.001
-          slit (sidx:eidx) =(slit1(sidx:eidx)/ssum1 - slit(sidx:eidx))/pert
+          slit (sidx:eidx) =(slit1(sidx:eidx)/ssum1 -slit(sidx:eidx))/(power*0.001)
         ENDIF  
         DO j = 1, nspec
            cspec(i, j) = SUM(fspec(sidx:eidx, j) * slit(sidx:eidx)) !/pert
@@ -462,10 +933,104 @@ SUBROUTINE super_gauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ENDDO 
   RETURN
 
-END SUBROUTINE super_gauss_f2c
+  END SUBROUTINE super_gauss_f2c
 
+  SUBROUTINE super_agauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
 
-SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                        INTENT (IN)         :: nc, nf, nspec
+    REAL (KIND=dp), DIMENSION (nf), INTENT (IN)         :: fwave
+    REAL (KIND=dp), DIMENSION (nf, nspec), INTENT (IN)  :: fspec
+    REAL (KIND=dp), DIMENSION (nc), INTENT (IN)         :: cwave
+    REAL (KIND=dp), DIMENSION (nc, nspec), INTENT (OUT) :: cspec
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, &
+         eidx, nhalf1, nhalf2
+    REAL (KIND=dp) :: temp, hw1esq, hw1e, power,e_asym, lasy, rasy, dfw, ssum
+    REAL (KIND=dp) :: power_pert,lasy_pert, rasy_pert,ssum1, pert
+    REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
+
+    !slit(:) = 0.0; cspec(:, :)= 0.0
+    dfw  = fwave(2) - fwave(1) !xliu, 10/22/2009
+
+    fidx = 1; fidxc = 1
+    DO iwin = 1, numwin
+
+      IF (cwave(1) > winlim(iwin, 2)) CYCLE
+      IF (iwin == numwin) THEN
+        lidx = nf; lidxc = nc
+      ELSE
+        temp = (winlim(iwin, 2) + winlim(iwin + 1, 1)) / 2.0
+        lidx =  MINVAL(MAXLOC(fwave, MASK=(fwave <= temp)))
+        lidxc = MINVAL(MAXLOC(cwave, MASK=(cwave <= temp)))
+      ENDIF
+      hw1e   = solwinfit(iwin, hwe_idx, 1)
+      power  = solwinfit(iwin, spk_idx, 1)
+      e_asym = solwinfit(iwin, asy_idx, 1)
+      hw1esq = hw1e**(power)
+      lasy = hw1esq * (1.0 - e_asym)**(power)
+      rasy = hw1esq * (1.0 + e_asym)**(power)
+      IF (do_dsdw .or. do_dsdk .or. do_dsda ) THEN 
+       IF (do_dsdw) THEN
+         hw1e = hw1e*1.001       
+         power_pert = power
+         e_asym = e_asym
+         pert = hw1e*0.001
+       ELSE IF (do_dsdk) THEN
+         hw1e = hw1e
+         power_pert = power*1.001
+         e_asym = e_asym
+         pert = power*0.001
+       ELSE IF (do_dsda) THEN 
+         hw1e = hw1e
+         power_pert = power
+         e_asym = e_asym*1.001
+         pert = e_asym*0.001
+       ENDIF
+       hw1esq = hw1e ** (power_pert)
+       lasy_pert = hw1esq * (1.0 - e_asym)**power_pert
+       rasy_pert = hw1esq * (1.0 + e_asym)**power_pert
+      ENDIF
+
+      !xliu, 10/22/2009
+      nhalf1  = CEILING( SQRT(lasy) / dfw * SQRT(-LOG(slit_trunc_limit))) 
+      nhalf2  = CEILING( SQRT(rasy) / dfw * SQRT(-LOG(slit_trunc_limit))) 
+      DO i = fidxc, lidxc
+        ! Find the closest pixel
+        midx = MINVAL(MAXLOC(fwave(fidx:lidx), MASK=(fwave(fidx:lidx) <= cwave(i)))) + fidx
+        !xliu, 10/22/2009, replace above with following
+        sidx = MAX(midx - nhalf1, 1)
+        eidx = MIN(nf, midx + nhalf2)
+        slit(sidx:midx) = EXP(-(abs(cwave(i) - fwave(sidx:midx)))**power / lasy )
+        slit(midx+1:eidx) = EXP(-(abs(cwave(i) - fwave(midx+1:eidx)))**power / rasy )
+        ssum = SUM(slit(sidx:eidx))
+        slit (sidx:eidx) = slit(sidx:eidx)/ssum
+        IF (do_dsdw .or. do_dsdk .or. do_dsda ) THEN 
+          slit1(sidx:midx)   = EXP(-(abs(cwave(i) - fwave(sidx:midx)))**power_pert / lasy_pert )
+          slit1(midx+1:eidx) = EXP(-(abs(cwave(i) - fwave(midx+1:eidx)))**power_pert / rasy_pert )          
+          ssum1 = sum(slit1(sidx:eidx))
+          slit (sidx:eidx) = (slit1(sidx:eidx)/ssum1  - slit(sidx:eidx))/pert
+        ENDIF
+        DO j = 1, nspec
+          cspec(i, j) = SUM(fspec(sidx:eidx, j) * slit(sidx:eidx)) 
+        ENDDO
+      ENDDO
+
+      fidx = lidx + 1; fidxc = lidxc + 1
+    ENDDO
+
+    RETURN
+
+  END SUBROUTINE super_agauss_f2c
+
+  SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
  
   IMPLICIT NONE
 
@@ -481,7 +1046,7 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, &
+  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, &
        midx, sidx, eidx, fslit,lslit, finter, linter, errstat, nhalf
   REAL (KIND=dp) :: temp, hw1e, power, dfw, ssum, coeff
   REAL (KIND=dp), DIMENSION (nf) :: slit
@@ -502,6 +1067,8 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   fidx = 1; fidxc = 1
 
   DO iwin = 1, numwin
+
+     IF (cwave(1) > winlim(iwin, 2)) CYCLE
      IF (iwin == numwin) THEN
         lidx = nf; lidxc = nc
      ELSE
@@ -526,7 +1093,7 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
         WRITE(*, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
                     slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP 1
+        STOP
      ENDIF
 
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -541,16 +1108,14 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
              linter-finter+1, cwave(finter:linter), lochwe(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-           STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
         END IF
 
         CALL interpolation ( &
              lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
              linter-finter+1, cwave(finter:linter), locspk(finter:linter), errstat )
         IF ( errstat > pge_errstat_warning ) THEN
-           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
-           STOP 1
+           errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
         END IF
         
         IF (finter > fidxc) THEN
@@ -590,6 +1155,152 @@ SUBROUTINE super_gauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
   ENDDO
 
   RETURN
-END SUBROUTINE super_gauss_vary_f2c
+  END SUBROUTINE super_gauss_vary_f2c
+
+
+  SUBROUTINE  super_agauss_vary_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
+
+    IMPLICIT NONE
+
+    ! ===============
+    ! Input variables
+    ! ===============
+    INTEGER,                        INTENT (IN)         :: nc, nf, nspec
+    REAL (KIND=dp), DIMENSION (nf), INTENT (IN)         :: fwave
+    REAL (KIND=dp), DIMENSION (nf, nspec), INTENT (IN)  :: fspec
+    REAL (KIND=dp), DIMENSION (nc), INTENT (IN)         :: cwave
+    REAL (KIND=dp), DIMENSION (nc, nspec), INTENT (OUT) :: cspec
+
+    ! ===============
+    ! Local variables
+    ! ===============
+    INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, &
+         eidx, fslit,lslit, finter, linter, errstat, nhalf1, nhalf2!, iw
+    REAL (KIND=dp) :: temp, hw1esq, lasy, rasy, dfw, ssum, power
+    REAL (KIND=dp), DIMENSION (nf) :: slit
+    REAL (KIND=dp), DIMENSION (nc) :: lochwe, locasy, locspk
+
+    ! ------------------
+    ! External functions
+    ! ------------------
+    INTEGER :: OMI_SMF_setmsg
+
+    ! ------------------------------
+    ! Name of this subroutine/module
+    ! ------------------------------
+    CHARACTER (LEN=19), PARAMETER :: modulename = 'asym_gauss_vary_f2c'
+
+    errstat = pge_errstat_ok
+
+    !slit(:) = 0.0; cspec(:, :)= 0.0
+    dfw  = fwave(2) - fwave(1) !xliu, 10/22/2009
+    fidx = 1; fidxc = 1
+    DO iwin = 1, numwin
+
+      IF (cwave(1) > winlim(iwin, 2)) CYCLE
+      IF (iwin == numwin) THEN
+        lidx = nf; lidxc = nc
+      ELSE
+        temp = (winlim(iwin, 2) + winlim(iwin + 1, 1)) / 2.0
+        lidx =  MINVAL(MAXLOC(fwave, MASK=(fwave <= temp)))
+        lidxc = MINVAL(MAXLOC(cwave, MASK=(cwave <= temp)))
+      ENDIF
+
+      fslit = MINVAL(MINLOC(slitwav(1:nslit), &
+           MASK=(slitwav(1:nslit) >= cwave(fidxc))))
+      lslit = MINVAL(MAXLOC(slitwav(1:nslit), &
+           MASK=(slitwav(1:nslit) <= cwave(lidxc))))
+
+      ! no slit between fidx:lidx, should never happen
+      IF (fslit <= 0) THEN
+        fslit = lslit
+      ELSE IF (lslit <= 0) THEN
+        lslit = fslit
+      ENDIF
+
+      IF (fslit > nslit .OR. lslit > nslit) THEN  
+        WRITE(www_lun, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
+             slitwav(nslit), nslit, cwave(1), cwave(nc)
+        WRITE(www_lun, *) modulename, ': Not slit available for this window!!!'
+        STOP 1
+      ENDIF
+
+      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
+        lochwe(fidxc:lidxc) = SUM(slitfit(fslit:lslit, hwe_idx, 1))/(lslit-fslit+1)
+        locasy(fidxc:lidxc) = SUM(slitfit(fslit:lslit, asy_idx, 1))/(lslit-fslit+1)
+        locspk(fidxc:lidxc) = SUM(slitfit(fslit:lslit, spk_idx, 1))/(lslit-fslit+1)
+      ELSE
+        ! finter <= linter here
+        finter = MINVAL(MINLOC(cwave, MASK = (cwave >= slitwav(fslit))))
+        linter = MINVAL(MAXLOC(cwave, MASK = (cwave <= slitwav(lslit))))
+
+        CALL interpolation ( &
+             lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, hwe_idx, 1), &
+             linter-finter+1, cwave(finter:linter), lochwe(finter:linter), errstat )
+        IF ( errstat > pge_errstat_warning ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+        CALL interpolation ( &
+             lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, asy_idx, 1), &
+             linter-finter+1, cwave(finter:linter), locasy(finter:linter), errstat )
+        IF ( errstat > pge_errstat_warning ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+        CALL interpolation ( &
+             lslit-fslit+1, slitwav(fslit:lslit), slitfit(fslit:lslit, spk_idx, 1), &
+             linter-finter+1, cwave(finter:linter), locspk(finter:linter), errstat )
+        IF ( errstat > pge_errstat_warning ) THEN
+          errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) ; STOP 1
+        END IF
+
+        IF (finter > fidxc) THEN
+          lochwe(fidxc:finter-1)=slitfit(fslit, hwe_idx, 1)
+          locasy(fidxc:finter-1)=slitfit(fslit, asy_idx, 1)
+          locspk(fidxc:finter-1)=slitfit(fslit, spk_idx, 1)
+        END IF
+
+        IF (linter < lidxc)  THEN
+          lochwe(linter+1:lidxc)=slitfit(lslit, hwe_idx, 1)
+          locasy(linter+1:lidxc)=slitfit(lslit, asy_idx, 1)
+          locspk(linter+1:lidxc)=slitfit(lslit, spk_idx, 1)
+        END IF
+      ENDIF
+
+      DO i = fidxc, lidxc
+
+        power  = locspk(i)
+        hw1esq = lochwe(i)**(power)
+        lasy = hw1esq * (1.0 - locasy(i))**power
+        rasy = hw1esq * (1.0 + locasy(i))**power
+
+        !xliu, 10/22/2009
+        nhalf1  = CEILING( SQRT(lasy) / dfw * SQRT(-LOG(slit_trunc_limit))) 
+        nhalf2  = CEILING( SQRT(rasy) / dfw * SQRT(-LOG(slit_trunc_limit))) 
+
+        ! Find the closest pixel
+        midx = MINVAL(MAXLOC(fwave(fidx:lidx), MASK=(fwave(fidx:lidx) <= cwave(i)))) + fidx
+
+
+        !xliu, 10/22/2009, replace above with following
+        sidx = MAX(midx - nhalf1, 1)
+        eidx = MIN(nf, midx + nhalf2)
+        slit(sidx:midx) = EXP(-(abs(cwave(i) - fwave(sidx:midx)))**power / lasy )
+        slit(midx+1:eidx) = EXP(-(abs(cwave(i) - fwave(midx+1:eidx)))**power / rasy )
+
+        ssum = SUM(slit(sidx:eidx))
+        DO j = 1, nspec
+          cspec(i, j) = SUM(fspec(sidx:eidx, j) * slit(sidx:eidx)) / ssum
+        ENDDO
+      ENDDO
+
+      fidx = lidx + 1; fidxc = lidxc + 1
+    ENDDO
+
+    RETURN
+
+  END SUBROUTINE super_agauss_vary_f2c
 
 END MODULE m_super_gauss
+

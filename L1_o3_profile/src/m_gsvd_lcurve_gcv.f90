@@ -33,7 +33,7 @@ contains
     USE ozprof_data_module,     ONLY : lcurve_gcv
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
-    !use gsvd_o3prof_utilities, only: dggsvd, dgetri
+    USE m_gsvd_o3prof_utilities, only: dggsvd, dgetri
 
     IMPLICIT NONE
 
@@ -272,7 +272,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
-    !use gsvd_o3prof_utilities, only: dtrtri
+    USE m_gsvd_o3prof_utilities, only: dtrtri
 
     IMPLICIT NONE
 
@@ -553,7 +553,7 @@ contains
     USE ozprof_data_module,      ONLY : lcurve_write
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
-    use gsvd_o3prof_utilities, only: fmin
+    use m_gsvd_o3prof_utilities, only: fmin
 
     IMPLICIT NONE
 
@@ -715,7 +715,7 @@ contains
 
 
   ! --------------------------------------------------------------------
-  SUBROUTINE inverse (a, n, b) ! Invert matrix by Gauss method
+  SUBROUTINE inverse (a, b, n) ! Invert matrix by Gauss method
     ! --------------------------------------------------------------------
     IMPLICIT NONE
 

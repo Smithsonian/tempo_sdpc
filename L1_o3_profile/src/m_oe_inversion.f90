@@ -1,341 +1,912 @@
-!
-module m_oe_inversion
+! The original code, developed by Roeland van Oss, was converted to FORTRAN 90
+! and modified for by X. Liu
 
-  public oe_inversion
-  private
+! Note from X. Liu
+! do_sa_diagonal: assume no covariance in the a priori covariance matrix
+! do_oe_output:   write intermediate results
+! file_unit:      file unitto write intermediate results
+! delta_chi_min:  convergence criteria
+! last_iter:      is this the last iteration (will calculate averaging kernels, 
+!                 sx, sxn, contri, otherwise unnecessary)
+! num_iter:       current iteration
+! y:              differences between observed and simulated radiances
+! dy:             measurement error
+! rk:             weighting function matrix
+! xap:            a priori state vector
+! xold:           previus state vector
+! sa:             a priori covariance matrix
+! sidx, eidx:     start and end positions of key variables (e.g., ozone) in the state vector
+! x:              updated retrieval vector
+! sx:             covariance matrix (both smoothing and random-noise)
+! sxn:            random-noise covariance matrix
+! conv:           Does it converge?
+! rKernel:        averaging kernels
+! contri:         contribution function
+! ozdfs :         DFS for ozone variables
+! ozinfo:         information content for ozone variables
+! chi_new:        updated cost function
+! ynew:           differences between observed and simulated radiances after updating state vector                    
 
+! Notes from Roeland's code                                            
+! =========================                                            
 
-contains
+! Optimal estimation retrieval:                                         
+! the optimal estimation for state vector x obeying:                    
+!       y=Kx                                                            
+! is calculated.                                                        
+! Sy is the measurement error covariance matrix; only the sqrt diagonal 
+! is passed as vector dy(ny).                                           
+!                                                                       
+! xa is the apriori for the state vector, Sa the aprior covariance matri
+! and x the retrieved state vector.                                     
+!                                                                       
+! Method described in: C.D. Rogers "Inverse Methods for Atmospheric Soun
+! Theory and Practice" (Draft version 06-02-1998) Chapter 2.6.          
+!                                                                       
+! Firstly, all quantities are transformed such that the error covariance
+! matrices are unit matrices.                                           
+! The new matrix Ktil = Sy^(-1/2)*K*Sa^(1/2) is then decomposed         
+! with SVD: Ktil = U*W*V^T, using NumRec DSVDCMP.                       
+!                                                                       
+! The retrieved state vector x is calculated by:                        
+! x_prime = (W^t*W+I)^(-1)(W*y_prime + xa_prime)                        
+! with:                                                                 
+!       x(_a)_prime=VT*Sa^(-1/2)*x(_a),                                 
+!       x(_a)=Sa^(1/2)*V*x(_a)_prime,                                   
+!       y_prime=UT*Sy^(-1/2)*y.                                         
+! The error covariance of the state vector x is calculated by:          
+!       Sx=Sa^(1/2)*V*(WT*W+I)^(-1)*VT*Sa^(1/2)                         
+!                                                                       
+!               Author: Roeland van Oss, KNMI, 2000    
+MODULE m_oe_inversion
+  
+  USE m_gsvd_o3prof_utilities, ONLY: dsvdcmp
+  
+  PUBLIC oe_inversion, oe_inversion_y
+CONTAINS
+SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min, last_iter, &
+     num_iter, ny, nx, y, dy, rk, xap, xold, sa, xname, sidx, eidx, x, sx, sxn, conv, &
+     rkernel, contr, ozdfs, ozinfoh, chi_new, ynew)  
 
-  ! The original code, developed by Roeland van Oss, was converted to 
-  ! FORTRAN 90 and modified for by X. Liu
+  USE OMSAO_precision_module
+  IMPLICIT NONE
 
-  ! Note from X. Liu
-  ! Sx return the posteri covariance matrix (sum of noise and smoothing) 
-  ! To get the noise only covariance matrix, use sxn                     
+  ! ====================================
+  ! Input / Output variaibles
+  ! ====================================
+  LOGICAL, INTENT(IN)         :: do_sa_diagonal, do_oe_output, last_iter
+  INTEGER, INTENT(IN)         :: file_unit, num_iter, nx, ny, sidx, eidx
+  REAL (KIND=dp), INTENT (IN) :: delta_chi_min
+  REAL (KIND=dp), DIMENSION(ny, nx), INTENT (IN)  :: rK 
+  REAL (KIND=dp), DIMENSION(ny), INTENT (IN)      :: y, dy
+  REAL (KIND=dp), DIMENSION(nx, nx), INTENT(IN)   :: Sa 
+  REAL (KIND=dp), DIMENSION(nx), INTENT (IN)      :: xap, xold
+  CHARACTER(len=6), DIMENSION(nx), INTENT(IN)     :: xname
 
-  ! Notes from Roeland's code                                            
-  ! =========================                                            
+  LOGICAL, INTENT(OUT)                            :: conv                                   
+  REAL (KIND=dp), INTENT(OUT)                     :: ozdfs, ozinfoh, chi_new
+  REAL (KIND=dp), DIMENSION(nx), INTENT(OUT)      :: x
+  REAL (KIND=dp), DIMENSION(ny), INTENT (OUT)     :: ynew
+  REAL (KIND=dp), DIMENSION(nx, nx), INTENT (OUT) :: Sx, Sxn, rkernel
+  REAL (KIND=dp), DIMENSION(nx, ny), INTENT (OUT) :: contr
 
-  ! Optimal estimation retrieval:                                         
-  ! the optimal estimation for state vector x obeying:                    
-  !       y=Kx                                                            
-  ! is calculated.                                                        
-  ! Sy is the measurement error covariance matrix; only the sqrt diagonal 
-  ! is passed as vector dy(ny).                                           
-  !                                                                       
-  ! xa is the apriori for the state vector, Sa the aprior covariance matri
-  ! and x the retrieved state vector.                                     
-  !                                                                       
-  ! Method described in: C.D. Rogers "Inverse Methods for Atmospheric Soun
-  ! Theory and Practice" (Draft version 06-02-1998) Chapter 2.6.          
-  !                                                                       
-  ! Firstly, all quantities are transformed such that the error covariance
-  ! matrices are unit matrices.                                           
-  ! The new matrix Ktil = Sy^(-1/2)*K*Sa^(1/2) is then decomposed         
-  ! with SVD: Ktil = U*W*V^T, using NumRec DSVDCMP.                       
-  !                                                                       
-  ! The retrieved state vector x is calculated by:                        
-  ! x_prime = (W^t*W+I)^(-1)(W*y_prime + xa_prime)                        
-  ! with:                                                                 
-  !       x(_a)_prime=VT*Sa^(-1/2)*x(_a),                                 
-  !       x(_a)=Sa^(1/2)*V*x(_a)_prime,                                   
-  !       y_prime=UT*Sy^(-1/2)*y.                                         
-  ! The error covariance of the state vector x is calculated by:          
-  !       Sx=Sa^(1/2)*V*(WT*W+I)^(-1)*VT*Sa^(1/2)                         
-  !                                                                       
-  !               Author: Roeland van Oss, KNMI, 2000    
+  ! =======================                                                              
+  ! Local variables                                                       
+  ! =======================         
+  INTEGER                          :: i, j, l, k 
+  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  wsa_max, delta_chi 
+  REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, wsa_inv, w, xastd, xa, &
+       tmpw2, tmpw2p1, tmpratio
+  REAL(KIND=dp), DIMENSION(ny)     :: ytmp
+  REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u, tmp2
+  REAL(KIND=dp), DIMENSION(nx, nx) :: usa, vsa, sasqp, sasqn, tmp, tmp1, v
 
-  SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, &
-       delta_chi_min, last_iter, num_iter, ny, nx, y, dy, rk, xap, xold, &
-       sa, xname, sidx, eidx, x, sx, sxn, conv, rkernel, contr, ozdfs, &
-       ozinfoh, chi_new, ynew)  
+  conv = .FALSE.  ! set to be initial : it is false without this line
+  xa = xap - xold
+  DO i = 1, nx
+     xastd(i) = SQRT(Sa (i, i))
+  ENDDO
 
-    USE OMSAO_precision_module
-    use gsvd_o3prof_utilities, only: dsvdcmp
-
-    IMPLICIT NONE
-
-    ! ====================================
-    ! Input / Output variaibles
-    ! ====================================
-    LOGICAL, INTENT(IN)         :: do_sa_diagonal, do_oe_output, last_iter
-    INTEGER, INTENT(IN)         :: file_unit, num_iter, nx, ny, sidx, eidx
-    REAL (KIND=dp), INTENT (IN) :: delta_chi_min
-    REAL (KIND=dp), DIMENSION(ny, nx), INTENT (IN)  :: rK 
-    REAL (KIND=dp), DIMENSION(ny), INTENT (IN)      :: y, dy
-    REAL (KIND=dp), DIMENSION(:, :), INTENT(IN)     :: Sa ! (nx,nx)
-    REAL (KIND=dp), DIMENSION(nx), INTENT (IN)      :: xap, xold
-    CHARACTER(len=6), DIMENSION(nx), INTENT(IN)     :: xname
-
-    LOGICAL, INTENT(OUT)                            :: conv                 
-    REAL (KIND=dp), INTENT(OUT)                     :: ozdfs, ozinfoh, chi_new
-    REAL (KIND=dp), DIMENSION(nx), INTENT(OUT)      :: x
-    REAL (KIND=dp), DIMENSION(ny), INTENT (OUT)     :: ynew
-    REAL (KIND=dp), DIMENSION(nx, nx), INTENT (OUT) :: Sx, Sxn, rkernel
-    REAL (KIND=dp), DIMENSION(nx, ny), INTENT (OUT) :: contr
-
-    ! =======================                      
-    ! Local variables
-    ! =======================
-    INTEGER                          :: i, j!, l, k 
-    REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h, &
-         delta_chi !, wsa_max
-    REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, &
-         wsa_inv, w, xastd, xa, tmpw2, tmpw2p1, tmpratio
-    REAL (KIND=dp), DIMENSION(ny)    :: ytmp
-    REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u, tmp2
-    REAL(KIND=dp), DIMENSION(nx, nx) :: usa, vsa, sasqp, sasqn, tmp, tmp1, v
-
-    xa = xap - xold
-    DO i = 1, nx
-      xastd(i) = SQRT(Sa (i, i))
-    ENDDO
-
-    IF (do_sa_diagonal) THEN      ! Diagonal Apriori    
-      ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp) 
-      DO j = 1, nx           
+  IF (do_sa_diagonal) THEN      ! Diagonal Apriori    
+     ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp) 
+     DO j = 1, nx           
         rK_tilde (:, j) = xastd(j) * rK (:, j) / dy 
-      ENDDO
-      u = rK_tilde
+     ENDDO
+     u = rK_tilde
 
-      ! SVD of Ktil:                                                          
-      CALL dsvdcmp (u, ny, nx, ny, nx, w, v) 
-      tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
+     ! SVD of Ktil:                                                          
+     CALL dsvdcmp (u, ny, nx, ny, nx, w, v) 
+     tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
 
-      ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
-      DO i = 1, nx 
+     ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
+     DO i = 1, nx 
         y_prime (i) = SUM ( u(:, i) * y / dy )
-      ENDDO
+     ENDDO
 
-      ! Construct xa_prime=VT*Sa^(-1/2)*xa:                                   
-      DO i = 1, nx 
+     ! Construct xa_prime=VT*Sa^(-1/2)*xa:                                   
+     DO i = 1, nx 
         xa_prime (i) = SUM ( v(:, i) * xa  / xastd ) 
-      ENDDO
+     ENDDO
 
-      ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime) 
-      x_prime = (w * y_prime + xa_prime ) / tmpw2p1
+     ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime) 
+     x_prime = (w * y_prime + xa_prime ) / tmpw2p1
 
-      ! Construct x=Sa^(1/2)*V*x_prime:                                       
-      DO i = 1, nx 
+     ! Construct x=Sa^(1/2)*V*x_prime:                                       
+     DO i = 1, nx 
         x (i) = SUM ( v (i, :) * x_prime * xastd(i) )
-      ENDDO
-
-      ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
-      DO i = 1, nx 
+     ENDDO
+    
+     ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
+     DO i = 1, nx 
         DO j = 1, nx 
-          Sx (i, j) = SUM( v (i, :) * v (j, :) / tmpw2p1 )  * xastd(i) * xastd(j)
+           Sx (i, j) = SUM( v (i, :) * v (j, :) / tmpw2p1 )  * xastd(i) * xastd(j)
         ENDDO
-      ENDDO
+     ENDDO
 
-      IF (last_iter .OR. do_oe_output) THEN
+     IF (last_iter .OR. do_oe_output) THEN
         ! Construct rkernel=Sa^(1/2)*V* (W^t*W+I)^(-1)*WT*W *V^t*Sa^(-1/2)      
         DO i = 1, nx 
-          DO j = 1, nx 
-            rkernel (i, j) = SUM (v (i, :) * v (j, :) * tmpratio ) * xastd(i) * xastd(j)
-          ENDDO
+           DO j = 1, nx 
+              rkernel (i, j) = SUM (v (i, :) * v (j, :) * tmpratio ) * xastd(i) * xastd(j)
+           ENDDO
         ENDDO
-      ENDIF
+     ENDIF
 
-    ELSE ! Sa is not diagonal      
+  ELSE ! Sa is not diagonal      
 
-      ! SVD of Sa to calculate Sa^(1/2) and Sa^(-1/2)                         
-      ! NOTE: Sa is square and symmetric: u=v                                 
-      usa = sa
-      CALL dsvdcmp (usa, nx, nx, nx, nx, wsa, vsa) 
+     ! SVD of Sa to calculate Sa^(1/2) and Sa^(-1/2)                         
+     ! NOTE: Sa is square and symmetric: u=v                                 
+     usa = sa
+     CALL dsvdcmp (usa, nx, nx, nx, nx, wsa, vsa) 
 
-      ! Make reciprokal of very small eigenvalues zero: ! replaced with follow
-      wsa_min = 1.d-16
-      wsa_inv = 0.0d0
-      DO i = 1, nx 
+     ! Make reciprokal of very small eigenvalues zero: ! replaced with follow
+     wsa_min = 1.d-16
+     wsa_inv = 0.0d0
+     DO i = 1, nx
         IF (wsa (i) > wsa_min) wsa_inv (i) = 1.0d0 / wsa (i) 
-      ENDDO
+     ENDDO
 
-      ! Sa^(1/2) = U*W^(1/2)*UT and Sa^(-1/2) = U*W^(-1/2)*UT                 
-      DO i = 1, nx 
+     ! Sa^(1/2) = U*W^(1/2)*UT and Sa^(-1/2) = U*W^(-1/2)*UT                 
+     DO i = 1, nx 
         DO j = 1, nx 
-          sasqp (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa) )
-          sasqn (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa_inv) )
+           sasqp (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa) )
+           sasqn (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa_inv) )
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp)        
-      ! NOTE: Sy is assumed to be diagonal!!!:                                
-      DO i = 1, ny 
+     ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp)        
+     ! NOTE: Sy is assumed to be diagonal!!!:                                
+     DO i = 1, ny 
         DO j = 1, nx 
-          rK_tilde (i, j) = SUM (rK (i, :) * sasqp (:, j))
-          u (i, j) = rK_tilde (i, j) / dy (i) 
+           rK_tilde (i, j) = SUM (rK (i, :) * sasqp (:, j))
+           u (i, j) = rK_tilde (i, j) / dy (i) 
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! SVD of Ktil:                                                          
-      CALL dsvdcmp (u, ny, nx, ny, nx, w, v) 
-      tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
+     ! SVD of Ktil:                                                          
+     CALL dsvdcmp (u, ny, nx, ny, nx, w, v)
+     tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
 
-      ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
-      DO i = 1, nx 
+     ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
+     DO i = 1, nx 
         y_prime (i) = SUM (u (:, i) * y / dy) 
-      ENDDO
+     ENDDO
 
-      ! Construct xa_prime=VT*Sa^(-1/2)*xa: 
-      DO i = 1, nx 
+     ! Construct xa_prime=VT*Sa^(-1/2)*xa: 
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp (i, j) = SUM (v (:, i) * sasqn (:, j))
+           tmp (i, j) = SUM (v (:, i) * sasqn (:, j))
         ENDDO
         xa_prime (i) = SUM (tmp (i, :) * xa)
-      ENDDO
+     ENDDO
 
-      ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime)
-      x_prime = (w * y_prime + xa_prime ) / tmpw2p1   
+     ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime)
+     x_prime = (w * y_prime + xa_prime ) / tmpw2p1   
 
-      ! Construct x=Sa^(1/2)*V*x_prime:                                                                                   
-      DO i = 1, nx 
+     ! Construct x=Sa^(1/2)*V*x_prime:                                                                                   
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp (i, j) = SUM(sasqp(i, :) * v (:, j)) 
+           tmp (i, j) = SUM(sasqp(i, :) * v (:, j)) 
         ENDDO
         x (i) =  SUM(tmp (i, :) * x_prime)
-      ENDDO
+     ENDDO
 
-      ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
-      ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)                                
-      DO i = 1, nx 
+     ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
+     ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)                                
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp (i, j) =  SUM (sasqp (i, :) * v (:, j) / tmpw2p1(j)) 
+           tmp (i, j) =  SUM (sasqp (i, :) * v (:, j) / tmpw2p1(j)) 
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! then: tmp1 = tmp*VT:                                                  
-      DO i = 1, nx 
+     ! then: tmp1 = tmp*VT:                                                  
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp1 (i, j) = SUM( tmp (i, :) * v (j, :))
+           tmp1 (i, j) = SUM( tmp (i, :) * v (j, :))
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! then: sx = tmp1*Sa^(1/2):                                             
-      DO i = 1, nx 
+     ! then: sx = tmp1*Sa^(1/2):                                             
+     DO i = 1, nx 
         DO j = 1, nx 
-          sx (i, j) = SUM (tmp1 (i, :) * sasqp (:, j) )
+           sx (i, j) = SUM (tmp1 (i, :) * sasqp (:, j) )
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! IF (last_iter .OR. do_oe_output) THEN                        
+     ! IF (last_iter .OR. do_oe_output) THEN                        
 
-      ! Construct rkernel=Sa^(1/2)*V* (W^t*W+I)^(-1)*WT*W *V^t*Sa^(-1/2)      
-      ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)*WT*W                           
-      DO i = 1, nx 
+     ! Construct rkernel=Sa^(1/2)*V* (W^t*W+I)^(-1)*WT*W *V^t*Sa^(-1/2)      
+     ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)*WT*W                           
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp (i, j) = SUM (sasqp (i, :) * v (:, j) * tmpratio(j) )
+           tmp (i, j) = SUM (sasqp (i, :) * v (:, j) * tmpratio(j) )
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! then: tmp1 = tmp*VT:                                                  
-      DO i = 1, nx 
+     ! then: tmp1 = tmp*VT:                                                  
+     DO i = 1, nx 
         DO j = 1, nx 
-          tmp1 (i, j) = SUM(tmp (i, :) * v (j, :))  
+           tmp1 (i, j) = SUM(tmp (i, :) * v (j, :))  
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! then: rkernel = tmp1*Sa^(-1/2):                                       
-      DO i = 1, nx 
+     ! then: rkernel = tmp1*Sa^(-1/2):                                       
+     DO i = 1, nx 
         DO j = 1, nx 
-          rkernel (i, j) = SUM (tmp1 (i, :) * sasqn (:, j) )
+           rkernel (i, j) = SUM (tmp1 (i, :) * sasqn (:, j) )
         ENDDO
-      ENDDO
+     ENDDO
 
-      ! endif          
-    ENDIF  ! Sa diagonal or not diagonal  
+     ! endif          
+  ENDIF  ! Sa diagonal or not diagonal  
 
-    ! Improvement in Chi:                                                   
-    chi_old = SQRT(SUM( (y / dy) ** 2) / ny)
-    DO i = 1, ny 
-      ytmp(i) = SUM (rK (i, :) * x )
-    ENDDO
-    chi_new   =  SQRT (SUM(((y - ytmp) / dy ) **2) / ny)
-    ynew      = y - ytmp
-    delta_chi = ABS ( (chi_new - chi_old) / chi_old) 
+  ! Improvement in Chi:                                                   
+  chi_old = SQRT(SUM( (y / dy) ** 2) / ny)
+  DO i = 1, ny 
+     ytmp(i) = SUM (rK (i, :) * x )
+  ENDDO
 
-    ! Check convergence                                                     
-    IF (delta_chi < delta_chi_min) conv = .TRUE. 
+  chi_new   =  SQRT (SUM(((y - ytmp) / dy ) **2) / ny)
+  ynew      = y - ytmp
+  delta_chi = ABS ( (chi_new - chi_old) / chi_old) 
 
-    IF (last_iter .OR. do_oe_output) THEN   
-      ! Construct contribution function: Sx K^T Sy^(-1):                  
-      DO i = 1, nx 
+  ! Check convergence                                                     
+  IF (delta_chi < delta_chi_min) conv = .TRUE. 
+
+  IF (last_iter .OR. do_oe_output) THEN   
+     ! Construct contribution function: Sx K^T Sy^(-1):                  
+     DO i = 1, nx 
         DO j = 1, ny 
-          contr(i, j) = SUM(sx(i, :) * rK(j, :)) / (dy(j) ** 2) 
+           contr(i, j) = SUM(sx(i, :) * rK(j, :)) / (dy(j) ** 2) 
         ENDDO
-      ENDDO
-    ENDIF
+     ENDDO
+  ENDIF
 
-    ! Construct retrieval noise covariance matrix: Sx K^T Sy^(-1) K Sx      
-    DO i = 1, ny 
-      DO j = 1, nx 
+  ! Construct retrieval noise covariance matrix: Sx K^T Sy^(-1) K Sx      
+  DO i = 1, ny 
+     DO j = 1, nx 
         tmp2(i, j) = SUM(rK (i, :) * sx (:, j)) / (dy (i) ** 2)    
-      ENDDO
-    ENDDO
+     ENDDO
+  ENDDO
 
-    DO i = 1, nx 
-      DO j = 1, nx 
+  DO i = 1, nx 
+     DO j = 1, nx 
         tmp(i, j) =  SUM(rK (:, i) * tmp2 (:, j))
-      ENDDO
-    ENDDO
+     ENDDO
+  ENDDO
 
-    DO i = 1, nx 
-      DO j = 1, nx 
+  DO i = 1, nx 
+     DO j = 1, nx 
         Sxn(i, j) = SUM(Sx(:, i) * tmp (:, j))
-      ENDDO
-    ENDDO
+     ENDDO
+  ENDDO
 
-    ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
-    IF (last_iter .OR. do_oe_output) THEN  
+  ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+  IF (last_iter .OR. do_oe_output) THEN  
 
-      dfn = SUM(1.0d0 / tmpw2p1)
-      h = SUM(0.5d0 * LOG (tmpw2p1) )
-      dfs = nx - dfn 
+     dfn = SUM(1.0d0 / tmpw2p1)
+     h = SUM(0.5d0 * LOG (tmpw2p1) )
+     dfs = nx - dfn 
 
-      ozdfs = 0.0 
-      DO i = sidx, eidx 
+     ozdfs = 0.0 
+     DO i = sidx, eidx 
         ozdfs = ozdfs + rkernel (i, i) 
-      ENDDO
+     ENDDO
 
-      ! need to check for this later        
-      ozinfoh = ozdfs / dfs * h    
-    ENDIF
+     ! need to check for this later        
+     ozinfoh = ozdfs / dfs * h    
+  ENDIF
 
-    !  Level 2 output debug                                                 
-    !  --------------------                                                 
-    IF (do_oe_output) THEN
-      ! chi-square                                                            
-      WRITE (file_unit, '(A, I5)')    'Iteration = ', num_iter 
-      WRITE (file_unit, '(A, D14.6)') 'Old Chi   = ', chi_old 
-      WRITE (file_unit, '(A, D14.6)') 'New Chi   = ', chi_new 
-      WRITE (file_unit, '(A, D14.6, A1,D14.6)') 'Delchi / limit value = ', &
-           delta_chi, '/', delta_chi_min                                  
+  !  Level 2 output debug                                                 
+  !  --------------------                                                 
+  IF (do_oe_output) THEN
+     ! chi-square                                                            
+     WRITE (file_unit, '(A, I5)')    'Iteration = ', num_iter 
+     WRITE (file_unit, '(A, D14.6)') 'Old Chi   = ', chi_old 
+     WRITE (file_unit, '(A, D14.6)') 'New Chi   = ', chi_new 
+     WRITE (file_unit, '(A, D14.6, A1,D14.6)') 'Delchi / limit value = ', &
+          delta_chi, '/', delta_chi_min                                  
 
-      ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
-      WRITE (file_unit, '(2(A, D14.6))') 'DFN =       ', dfn, ' OZDFN  = ',  (eidx - sidx + 1)  - ozdfs                                   
-      WRITE (file_unit, '(2(A, D14.6))') 'DFS =       ', dfs, ' OZDFS  = ', ozdfs                                                         
-      WRITE (file_unit, '(2(A, D14.6))') 'Information content = ', h,  ' OZINFO = ', ozinfoh                                          
+     ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+     WRITE (file_unit, '(2(A, D14.6))') 'DFN =       ', dfn, ' OZDFN  = ',  (eidx - sidx + 1)  - ozdfs                                   
+     WRITE (file_unit, '(2(A, D14.6))') 'DFS =       ', dfs, ' OZDFS  = ', ozdfs                                                         
+     WRITE (file_unit, '(2(A, D14.6))') 'Information content = ', h,  ' OZINFO = ', ozinfoh                                          
 
-      !! Eigenvalues:                                                          
-      !WRITE(file_unit,'(A)') ' Eigenvalues:'                       
-      !WRITE(file_unit,'(A)') ' columns, points'                    
-      !WRITE(file_unit,'(I3,I5)') 1, nx                               
-      !DO i = 1, nx                                                 
-      !   WRITE(file_unit,'(I3,5D15.7)') i, w(i)                      
-      !ENDDO
+     !! Eigenvalues:                                                          
+     !WRITE(file_unit,'(A)') ' Eigenvalues:'                       
+     !WRITE(file_unit,'(A)') ' columns, points'                    
+     !WRITE(file_unit,'(I3,I5)') 1, nx                               
+     !DO i = 1, nx                                                 
+     !   WRITE(file_unit,'(I3,5D15.7)') i, w(i)                      
+     !ENDDO
 
-      ! A priori and its error and retrieved state and error                                       
-      WRITE (file_unit, '(A6,6A14)') '  Var  ', ' retrieved ', ' noise error', 'smooth error', &
-           'Previous ', ' apriori  ', ' apr. error '  
+     ! A priori and its error and retrieved state and error                                       
+     WRITE (file_unit, '(A6,6A14)') '  Var  ', ' retrieved ', ' noise error', 'smooth error', &
+          'Previous ', ' apriori  ', ' apr. error '  
 
-      DO i = 1, nx 
+     DO i = 1, nx 
         WRITE (file_unit, '(A6, 6D14.6)') xname (i), x (i) + xold (i), SQRT (sxn (i, i) ), &
              SQRT (Sx (i, i) ), xold (i), xap (i), xastd(i)                                             
-      ENDDO
+     ENDDO
 
-    ENDIF
+  ENDIF
 
-    RETURN 
-  END SUBROUTINE oe_inversion
+  RETURN 
+END SUBROUTINE oe_inversion
 
-end module m_oe_inversion
+! Sy is not diognal
+SUBROUTINE oe_inversion_y (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min, last_iter, &
+     num_iter, ny, nx, y, sy, rk, xap, xold, sa, xname, sidx, eidx, x, sx, sxn, conv, &
+     rkernel, contr, ozdfs, ozinfoh, chi_new, ynew)  
+
+  USE OMSAO_precision_module
+  IMPLICIT NONE
+
+  ! ====================================
+  ! Input / Output variaibles
+  ! ====================================
+  LOGICAL, INTENT(IN)         :: do_sa_diagonal, do_oe_output, last_iter
+  INTEGER, INTENT(IN)         :: file_unit, num_iter, nx, ny, sidx, eidx
+  REAL (KIND=dp), INTENT (IN) :: delta_chi_min
+  REAL (KIND=dp), DIMENSION(ny, nx), INTENT (IN)  :: rK 
+  REAL (KIND=dp), DIMENSION(ny), INTENT (IN)      :: y
+  REAL (KIND=dp), DIMENSION(ny, ny), INTENT (IN)  :: sy
+  REAL (KIND=dp), DIMENSION(nx, nx), INTENT(IN)   :: Sa 
+  REAL (KIND=dp), DIMENSION(nx), INTENT (IN)      :: xap, xold
+  CHARACTER(len=6), DIMENSION(nx), INTENT(IN)     :: xname
+
+  LOGICAL, INTENT(OUT)                            :: conv                                   
+  REAL (KIND=dp), INTENT(OUT)                     :: ozdfs, ozinfoh, chi_new
+  REAL (KIND=dp), DIMENSION(nx), INTENT(OUT)      :: x
+  REAL (KIND=dp), DIMENSION(ny), INTENT (OUT)     :: ynew
+  REAL (KIND=dp), DIMENSION(nx, nx), INTENT (OUT) :: Sx, Sxn, rkernel
+  REAL (KIND=dp), DIMENSION(nx, ny), INTENT (OUT) :: contr
+
+  ! =======================                                                              
+  ! Local variables                                                       
+  ! =======================         
+  INTEGER                          :: i, j, l, k 
+  REAL(KIND=dp), DIMENSION(1, 1)   :: chi
+  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  wsa_max, delta_chi 
+  REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, wsa_inv, w, xastd, xa, &
+       tmpw2, tmpw2p1, tmpratio
+  REAL(KIND=dp), DIMENSION(ny)     :: wsy, wsy_inv
+  REAL(KIND=dp), DIMENSION(ny)     :: ytmp, dy
+  REAL(KIND=dp), DIMENSION(1, ny)  :: y1t
+  REAL(KIND=dp), DIMENSION(ny, 1)  :: y1
+  REAL(KIND=dp), DIMENSION(nx, 1)  :: matx1
+  REAL(KIND=dp), DIMENSION(ny, ny) :: sy_inv
+  REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u, tmp2
+  REAL(KIND=dp), DIMENSION(nx, nx) :: usa, vsa, sasqp, sasqn, tmp, tmp1, v
+  REAL(KIND=dp), DIMENSION(ny, ny) :: usy, vsy, sysqp, sysqn, wsy2, wsy2_inv!, tmp, tmp1, v
+
+  conv = .FALSE. 
+
+  dy = 1.0D0
+  !y1t(1, 1:ny) = y(1:ny)  
+  y1(1:ny, 1)  = y(1:ny) 
+  DO i = 1, ny
+     dy(i) = SQRT(sy(i, i))
+  ENDDO
+
+
+  xa = xap - xold
+  DO i = 1, nx
+     xastd(i) = SQRT(Sa (i, i))
+  ENDDO
+
+  IF (do_sa_diagonal) THEN      ! Diagonal Apriori    
+     ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp) 
+     DO j = 1, nx           
+        rK_tilde (:, j) = xastd(j) * rK (:, j) / dy 
+     ENDDO
+     u = rK_tilde
+
+     ! SVD of Ktil:                                                          
+     CALL dsvdcmp (u, ny, nx, ny, nx, w, v) 
+     tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
+
+     ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
+     DO i = 1, nx 
+        y_prime (i) = SUM ( u(:, i) * y / dy )
+     ENDDO
+
+     ! Construct xa_prime=VT*Sa^(-1/2)*xa:                                   
+     DO i = 1, nx 
+        xa_prime (i) = SUM ( v(:, i) * xa  / xastd ) 
+     ENDDO
+
+     ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime) 
+     x_prime = (w * y_prime + xa_prime ) / tmpw2p1
+
+     ! Construct x=Sa^(1/2)*V*x_prime:                                       
+     DO i = 1, nx 
+        x (i) = SUM ( v (i, :) * x_prime * xastd(i) )
+     ENDDO
+
+     ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
+     DO i = 1, nx 
+        DO j = 1, nx 
+           Sx (i, j) = SUM( v (i, :) * v (j, :) / tmpw2p1 )  * xastd(i) * xastd(j)
+        ENDDO
+     ENDDO
+
+     IF (last_iter .OR. do_oe_output) THEN
+        ! Construct rkernel=Sa^(1/2)*V* (W^t*W+I)^(-1)*WT*W *V^t*Sa^(-1/2)      
+        DO i = 1, nx 
+           DO j = 1, nx 
+              rkernel (i, j) = SUM (v (i, :) * v (j, :) * tmpratio ) * xastd(i) * xastd(j)
+           ENDDO
+        ENDDO
+     ENDIF
+
+  ELSE ! Sa is not diagonal      
+
+     ! SVD of Sa to calculate Sa^(1/2) and Sa^(-1/2)                         
+     ! NOTE: Sa is square and symmetric: u=v                                 
+     usa = sa
+     CALL dsvdcmp (usa, nx, nx, nx, nx, wsa, vsa) 
+
+     ! Make reciprokal of very small eigenvalues zero: ! replaced with follow
+     wsa_min = 1.d-16
+     wsa_inv = 0.0d0
+     DO i = 1, nx
+        IF (wsa (i) > wsa_min) wsa_inv (i) = 1.0d0 / wsa (i) 
+     ENDDO
+
+     ! Sa^(1/2) = U*W^(1/2)*UT and Sa^(-1/2) = U*W^(-1/2)*UT                 
+     DO i = 1, nx 
+        DO j = 1, nx 
+           sasqp (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa) )
+           sasqn (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa_inv) )
+        ENDDO
+     ENDDO
+
+     ! Sy is not diagonal
+     usy = sy
+
+     CALL dsvdcmp (usy, ny, ny, ny, ny, wsy, vsy) 
+     ! Make reciprokal of very small eigenvalues zero: 
+     wsy_inv = 0.0d0
+     DO i = 1, ny
+        IF (wsy (i) > wsa_min) wsy_inv (i) = 1.0d0 / wsy (i) 
+     ENDDO
+     ! Sy^(1/2) = U*W^(1/2)*UT and Sy^(-1/2) = U*W^(-1/2)*UT 
+     !do i =1, ny
+     !   wsy2(i, i) = wsy(i)
+     !   wsy2_inv(i, i) = wsy_inv(i)
+     !enddo
+     !sysqp = MATMUL(MATMUL(usy, SQRT (wsy2)), TRANSPOSE(usy))
+     !sysqn = MATMUL(MATMUL(usy, SQRT (wsy2_inv)), TRANSPOSE(usy))
+     !sy_inv= MATMUL(MATMUL(usy, wsy2_inv), TRANSPOSE(usy))
+     DO i = 1, ny 
+        DO j = 1, ny 
+           sysqp (i, j) = SUM ( usy (i, :) * usy (j, :) * SQRT (wsy) )
+           sysqn (i, j) = SUM ( usy (i, :) * usy (j, :) * SQRT (wsy_inv) )
+           sy_inv(i, j) = SUM ( usy (i, :) * usy (j, :) * wsy_inv )
+        ENDDO
+     ENDDO
+
+     ! Construct rK_tilde = Sy^(-1/2)*K*Sa^(1/2) (u=Ktil for dsvdcmp)        
+     ! NOTE: Sy is assumed to be not diagonal!!!:                                
+     !DO i = 1, ny 
+     !   DO j = 1, nx 
+     !      rK_tilde (i, j) = SUM (rK (i, :) * sasqp (:, j))
+     !      u (i, j) = rK_tilde (i, j) / dy (i) 
+     !   ENDDO
+     !ENDDO
+
+     rK_tilde =  MATMUL(MATMUL(sysqn, rK), sasqp)
+     u = rK_tilde
+
+     ! SVD of Ktil:                                                          
+     CALL dsvdcmp (u, ny, nx, ny, nx, w, v)
+     tmpw2 = w ** 2;    tmpw2p1 = tmpw2 + 1.0d0; tmpratio = tmpw2 / tmpw2p1
+
+     ! Construct y_prime=UT*Sy^(-1/2)*y:                                     
+     !DO i = 1, nx 
+     !   y_prime (i) = SUM (u (:, i) * y / dy) 
+     !ENDDO
+     matx1 = MATMUL(MATMUL(TRANSPOSE(u), sysqn), y1)
+     y_prime(1:nx) = matx1(1:nx, 1)
+
+     ! Construct xa_prime=VT*Sa^(-1/2)*xa: 
+     DO i = 1, nx 
+        DO j = 1, nx 
+           tmp (i, j) = SUM (v (:, i) * sasqn (:, j))
+        ENDDO
+        xa_prime (i) = SUM (tmp (i, :) * xa)
+     ENDDO
+     !xa_prime = MATMUL(MATMUL(TRANSPOSE(v), sasqn), xa)
+
+     ! ACTUAL RETRIEVAL: Calculate x_prime = (WT*W+I)^(-1)(W*y_prime + xa_prime)
+     x_prime = (w * y_prime + xa_prime ) / tmpw2p1   
+
+     ! Construct x=Sa^(1/2)*V*x_prime:                                                                                   
+     DO i = 1, nx 
+        DO j = 1, nx 
+           tmp (i, j) = SUM(sasqp(i, :) * v (:, j)) 
+        ENDDO
+        x (i) =  SUM(tmp (i, :) * x_prime)
+     ENDDO
+     !x = MATMUL(MATMUL(sasqp, v), x_prime)
+
+
+     ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
+     ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)                                
+     DO i = 1, nx 
+        DO j = 1, nx 
+           tmp (i, j) =  SUM (sasqp (i, :) * v (:, j) / tmpw2p1(j)) 
+        ENDDO
+     ENDDO
+
+     ! then: tmp1 = tmp*VT:                                                  
+     !DO i = 1, nx 
+     !   DO j = 1, nx 
+     !      tmp1 (i, j) = SUM( tmp (i, :) * v (j, :))
+     !   ENDDO
+     !ENDDO
+     tmp1 = MATMUL(tmp, TRANSPOSE(v))
+
+     ! then: sx = tmp1*Sa^(1/2):                                             
+     !DO i = 1, nx 
+     !   DO j = 1, nx 
+     !      sx (i, j) = SUM (tmp1 (i, :) * sasqp (:, j) )
+     !   ENDDO
+     !ENDDO
+     sx = MATMUL(tmp1, sasqp)
+
+     ! IF (last_iter .OR. do_oe_output) THEN                        
+
+     ! Construct rkernel=Sa^(1/2)*V* (W^t*W+I)^(-1)*WT*W *V^t*Sa^(-1/2)      
+     ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)*WT*W                           
+     DO i = 1, nx 
+        DO j = 1, nx 
+           tmp (i, j) = SUM (sasqp (i, :) * v (:, j) * tmpratio(j) )
+        ENDDO
+     ENDDO
+
+     ! then: tmp1 = tmp*VT:                                                  
+     !DO i = 1, nx 
+     !   DO j = 1, nx 
+     !      tmp1 (i, j) = SUM(tmp (i, :) * v (j, :))  
+     !   ENDDO
+     !ENDDO
+     tmp1 = MATMUL(tmp, TRANSPOSE(v))
+
+     ! then: rkernel = tmp1*Sa^(-1/2):                                       
+     !DO i = 1, nx 
+     !   DO j = 1, nx 
+     !      rkernel (i, j) = SUM (tmp1 (i, :) * sasqn (:, j) )
+     !   ENDDO
+     !ENDDO
+     rkernel = MATMUL(tmp1, sasqn)     
+
+     ! endif          
+  ENDIF  ! Sa diagonal or not diagonal  
+
+  ! Improvement in Chi:                                                   
+  !chi_old = SQRT(SUM( (y / dy) ** 2) / ny)
+  chi = SQRT(MATMUL(MATMUL(TRANSPOSE(y1), sy_inv),y1) / ny)
+  chi_old = chi(1, 1)
+
+  DO i = 1, ny 
+     ytmp(i) = SUM (rK (i, :) * x )
+  ENDDO
+  !chi_new   =  SQRT (SUM(((y - ytmp) / dy ) **2) / ny)
+
+  y1(1:ny, 1) = y-ytmp
+  chi     =  SQRT(MATMUL(MATMUL(TRANSPOSE(y1), sy_inv), y1) / ny)
+  chi_new =  chi(1, 1)
+
+  ynew      = y - ytmp
+  delta_chi = ABS ( (chi_new - chi_old) / chi_old) 
+
+  ! Check convergence                                                     
+  IF (delta_chi < delta_chi_min) conv = .TRUE. 
+
+  IF (last_iter .OR. do_oe_output) THEN   
+     ! Construct contribution function: Sx K^T Sy^(-1):                  
+     !DO i = 1, nx 
+     !   DO j = 1, ny 
+     !      contr(i, j) = SUM(sx(i, :) * rK(j, :)) / (dy(j) ** 2) 
+     !   ENDDO
+     !ENDDO
+     contr = MATMUL(MATMUL(sx, TRANSPOSE(rk)), sy_inv)
+  ENDIF
+
+  ! Construct retrieval noise covariance matrix: Sx K^T Sy^(-1) K Sx      
+  !DO i = 1, ny 
+  !   DO j = 1, nx 
+  !      tmp2(i, j) = SUM(rK (i, :) * sx (:, j)) / (dy (i) ** 2)    
+  !   ENDDO
+  !ENDDO
+  !DO i = 1, nx 
+  !   DO j = 1, nx 
+  !      tmp(i, j) =  SUM(rK (:, i) * tmp2 (:, j))
+  !   ENDDO
+  !ENDDO
+  !DO i = 1, nx 
+  !   DO j = 1, nx 
+  !      Sxn(i, j) = SUM(Sx(:, i) * tmp (:, j))
+  !   ENDDO
+  !ENDDO
+
+  Sxn = MATMUL(MATMUL(MATMUL(MATMUL(sx, TRANSPOSE(rK)), sy_inv), rK), Sx)
+
+  ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+  IF (last_iter .OR. do_oe_output) THEN  
+
+     dfn = SUM(1.0d0 / tmpw2p1)
+     h = SUM(0.5d0 * LOG (tmpw2p1) )
+     dfs = nx - dfn 
+
+     ozdfs = 0.0 
+     DO i = sidx, eidx 
+        ozdfs = ozdfs + rkernel (i, i) 
+     ENDDO
+
+     ! need to check for this later        
+     ozinfoh = ozdfs / dfs * h    
+  ENDIF
+
+  !  Level 2 output debug                                                 
+  !  --------------------                                                 
+  IF (do_oe_output) THEN
+     ! chi-square                                                            
+     WRITE (file_unit, '(A, I5)')    'Iteration = ', num_iter 
+     WRITE (file_unit, '(A, D14.6)') 'Old Chi   = ', chi_old 
+     WRITE (file_unit, '(A, D14.6)') 'New Chi   = ', chi_new 
+     WRITE (file_unit, '(A, D14.6, A1,D14.6)') 'Delchi / limit value = ', &
+          delta_chi, '/', delta_chi_min                                  
+
+     ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+     WRITE (file_unit, '(2(A, D14.6))') 'DFN =       ', dfn, ' OZDFN  = ',  (eidx - sidx + 1)  - ozdfs                                   
+     WRITE (file_unit, '(2(A, D14.6))') 'DFS =       ', dfs, ' OZDFS  = ', ozdfs                                                         
+     WRITE (file_unit, '(2(A, D14.6))') 'Information content = ', h,  ' OZINFO = ', ozinfoh                                          
+
+     !! Eigenvalues:                                                          
+     !WRITE(file_unit,'(A)') ' Eigenvalues:'                       
+     !WRITE(file_unit,'(A)') ' columns, points'                    
+     !WRITE(file_unit,'(I3,I5)') 1, nx                               
+     !DO i = 1, nx                                                 
+     !   WRITE(file_unit,'(I3,5D15.7)') i, w(i)                      
+     !ENDDO
+
+     ! A priori and its error and retrieved state and error                                       
+     WRITE (file_unit, '(A6,6A14)') '  Var  ', ' retrieved ', ' noise error', 'smooth error', &
+          'Previous ', ' apriori  ', ' apr. error '  
+
+     DO i = 1, nx 
+        WRITE (file_unit, '(A6, 6D14.6)') xname (i), x (i) + xold (i), SQRT (sxn (i, i) ), &
+             SQRT (Sx (i, i) ), xold (i), xap (i), xastd(i)                                             
+     ENDDO
+
+  ENDIF
+
+  RETURN 
+END SUBROUTINE oe_inversion_y
+
+!!$
+!!$
+!!$! Follow Rodger 2000
+!!$SUBROUTINE oe_inversion_new (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min, last_iter, &
+!!$     num_iter, ny, nx, y, dy, rk, xap, xold, sa, xname, sidx, eidx, x, sx, sxn, conv, &
+!!$     rkernel, contr, ozdfs, ozinfoh, chi_new, ynew)  
+!!$
+!!$  USE OMSAO_precision_module
+!!$  IMPLICIT NONE
+!!$
+!!$  ! ====================================
+!!$  ! Input / Output variaibles
+!!$  ! ====================================
+!!$  LOGICAL, INTENT(IN)         :: do_sa_diagonal, do_oe_output, last_iter
+!!$  INTEGER, INTENT(IN)         :: file_unit, num_iter, nx, ny, sidx, eidx
+!!$  REAL (KIND=dp), INTENT (IN) :: delta_chi_min
+!!$  REAL (KIND=dp), DIMENSION(ny, nx), INTENT (IN)  :: rK 
+!!$  REAL (KIND=dp), DIMENSION(ny), INTENT (IN)      :: y
+!!$  REAL (KIND=dp), DIMENSION(ny, ny), INTENT (IN)  :: dy
+!!$  REAL (KIND=dp), DIMENSION(nx, nx), INTENT(IN)   :: Sa 
+!!$  REAL (KIND=dp), DIMENSION(nx), INTENT (IN)      :: xap, xold
+!!$  CHARACTER(len=6), DIMENSION(nx), INTENT(IN)     :: xname
+!!$
+!!$  LOGICAL, INTENT(OUT)                            :: conv                                   
+!!$  REAL (KIND=dp), INTENT(OUT)                     :: ozdfs, ozinfoh, chi_new
+!!$  REAL (KIND=dp), DIMENSION(nx), INTENT(OUT)      :: x
+!!$  REAL (KIND=dp), DIMENSION(ny), INTENT (OUT)     :: ynew
+!!$  REAL (KIND=dp), DIMENSION(nx, nx), INTENT (OUT) :: Sx, Sxn, rkernel
+!!$  REAL (KIND=dp), DIMENSION(nx, ny), INTENT (OUT) :: contr
+!!$
+!!$  ! =======================                                                              
+!!$  ! Local variables                                                       
+!!$  ! =======================         
+!!$  INTEGER                          :: i, j, l, k 
+!!$  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  wsa_max, delta_chi 
+!!$  REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, wsa_inv, w, xastd, xa, &
+!!$       tmpw2, tmpw2p1, tmpratio
+!!$  REAL(KIND=dp), DIMENSION(ny)     :: ytmp, wsy, wsy_inv
+!!$  REAL(KIND=dp), DIMENSION(ny, ny) :: sy_inv, usy, vsy, tmpy, g, uu_inv
+!!$  REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u, tmp2
+!!$  REAL(KIND=dp), DIMENSION(nx, ny) :: gain
+!!$  REAL(KIND=dp), DIMENSION(nx, nx) :: usa, vsa, sa_inv, sasqp, sasqn, tmp, tmp1, v
+!!$
+!!$  conv = .FALSE. 
+!!$  xa = xap - xold
+!!$  DO i = 1, nx
+!!$     xastd(i) = SQRT(Sa (i, i))
+!!$  ENDDO
+!!$
+!!$
+!!$
+!!$  ! SVD of Sa to calculate Sa^(-1)                       
+!!$  ! NOTE: Sa is square and symmetric: u=v                                 
+!!$  usa = sa
+!!$  CALL dsvdcmp (usa, nx, nx, nx, nx, wsa, vsa) 
+!!$
+!!$  ! Make reciprokal of very small eigenvalues zero: ! replaced with follow
+!!$  wsa_min = 1.d-16
+!!$  wsa_inv = 0.0d0
+!!$  DO i = 1, nx
+!!$     IF (wsa (i) > wsa_min) wsa_inv (i) = 1.0d0 / wsa (i) 
+!!$  ENDDO
+!!$
+!!$  !! Sa^(1/2) = U*W^(1/2)*UT and Sa^(-1/2) = U*W^(-1/2)*UT                 
+!!$  !DO i = 1, nx 
+!!$  !   DO j = 1, nx 
+!!$  !      sasqp (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa) )
+!!$  !      sasqn (i, j) = SUM ( usa (i, :) * usa (j, :) * SQRT (wsa_inv) )
+!!$  !   ENDDO
+!!$  !ENDDO
+!!$
+!!$  !!Sa^(-1) = U*W^(-1)*UT
+!!$  sa_inv = MATMUL(MATMUL(usa, wsa_inv), TRANSPOSE(usa))
+!!$
+!!$  ! Sy is not diagonal
+!!$  usy = Sy
+!!$  CALL dsvdcmp (usy, ny, ny, ny, ny, wsy, vsy) 
+!!$  ! Make reciprokal of very small eigenvalues zero: 
+!!$  wsy_inv = 0.0d0
+!!$  DO i = 1, nx
+!!$     IF (wsy (i) > wsa_min) wsy_inv (i) = 1.0d0 / wsy (i) 
+!!$  ENDDO
+!!$  !!Sy^(-1) = U*W^(-1)*UT 
+!!$  sy_inv= MATMUL(MATMUL(usy, wsy_inv), TRANSPOSE(usy))
+!!$
+!!$  ! Construct K*Sa*KT+Sy
+!!$  tmpy = matmul(matmul(rK, sa), transpose(rK)) + Sy
+!!$  uu = tmpy
+!!$  CALL dsvdcmp (uu, ny, ny, ny, ny, wu, vu)
+!!$  wsy_inv = 0.0d0
+!!$  DO i = 1, nx
+!!$     IF (wsy (i) > wsa_min) wsy_inv (i) = 1.0d0 / wu (i) 
+!!$  ENDDO
+!!$  uu_inv = MATMUL(MATMUL(uu, wsy_inv), TRANSPOSE(uu))
+!!$
+!!$  ! Get Gain matrix
+!!$  gain = matmul(matmul(Sa, transpose(rK)), uu_inv)
+!!$
+!!$  ! ACTUAL RETRIEVAL: Calculate x
+!!$  x = xap + matmul(gain, y - matmul(rK, xa))  
+!!$
+!!$  ! Construct Sx=Sa-G*K*Sa
+!!$  Sx = Sa - matmul(matmul(gain, rK), Sa)
+!!$
+!!$  ! Construct rkernel=G*K   
+!!$  rkernel = matmul(gain, rK)                                  
+!!$
+!!$
+!!$  ! Improvement in Chi:                                                   
+!!$  !chi_old = SQRT(SUM( (y / dy) ** 2) / ny)
+!!$  chi_old = SQRT(MATMUL(MATMUL(y, sy_inv), TRANSPOSE(y)) / ny)
+!!$  DO i = 1, ny 
+!!$     ytmp(i) = SUM (rK (i, :) * x )
+!!$  ENDDO
+!!$  !chi_new   =  SQRT (SUM(((y - ytmp) / dy ) **2) / ny)
+!!$  chi_new =  SQRT(MATMUL(MATMUL(y-ytmp, sy_inv), TRANSPOSE(y-ytmp)) / ny)
+!!$  ynew      = y - ytmp
+!!$  delta_chi = ABS ( (chi_new - chi_old) / chi_old) 
+!!$
+!!$  ! Check convergence                                                     
+!!$  IF (delta_chi < delta_chi_min) conv = .TRUE. 
+!!$
+!!$  IF (last_iter .OR. do_oe_output) THEN   
+!!$     ! Construct contribution function: Sx K^T Sy^(-1):                  
+!!$     contr = MATMUL(MATMUL(sx, TRANSPOSE(rk)), sy_inv)
+!!$  ENDIF
+!!$
+!!$  ! Construct retrieval noise covariance matrix: Sx K^T Sy^(-1) K Sx      
+!!$  DO i = 1, ny 
+!!$     DO j = 1, nx 
+!!$        tmp2(i, j) = SUM(rK (i, :) * sx (:, j)) / (dy (i) ** 2)    
+!!$     ENDDO
+!!$  ENDDO
+!!$
+!!$  DO i = 1, nx 
+!!$     DO j = 1, nx 
+!!$        tmp(i, j) =  SUM(rK (:, i) * tmp2 (:, j))
+!!$     ENDDO
+!!$  ENDDO
+!!$
+!!$  DO i = 1, nx 
+!!$     DO j = 1, nx 
+!!$        Sxn(i, j) = SUM(Sx(:, i) * tmp (:, j))
+!!$     ENDDO
+!!$  ENDDO
+!!$  Sxn = matmul(matmul(matmul(matmul(Sx, transpose(rK)), sy_inv), rK), Sx)
+!!$
+!!$
+!!$  ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+!!$  IF (last_iter .OR. do_oe_output) THEN  
+!!$
+!!$     dfn = SUM(1.0d0 / tmpw2p1)
+!!$     h = SUM(0.5d0 * LOG (tmpw2p1) )
+!!$     dfs = nx - dfn 
+!!$
+!!$     ozdfs = 0.0 
+!!$     DO i = sidx, eidx 
+!!$        ozdfs = ozdfs + rkernel (i, i) 
+!!$     ENDDO
+!!$
+!!$     ! need to check for this later        
+!!$     ozinfoh = ozdfs / dfs * h    
+!!$  ENDIF
+!!$
+!!$  !  Level 2 output debug                                                 
+!!$  !  --------------------                                                 
+!!$  IF (do_oe_output) THEN
+!!$     ! chi-square                                                            
+!!$     WRITE (file_unit, '(A, I5)')    'Iteration = ', num_iter 
+!!$     WRITE (file_unit, '(A, D14.6)') 'Old Chi   = ', chi_old 
+!!$     WRITE (file_unit, '(A, D14.6)') 'New Chi   = ', chi_new 
+!!$     WRITE (file_unit, '(A, D14.6, A1,D14.6)') 'Delchi / limit value = ', &
+!!$          delta_chi, '/', delta_chi_min                                  
+!!$
+!!$     ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
+!!$     WRITE (file_unit, '(2(A, D14.6))') 'DFN =       ', dfn, ' OZDFN  = ',  (eidx - sidx + 1)  - ozdfs                                   
+!!$     WRITE (file_unit, '(2(A, D14.6))') 'DFS =       ', dfs, ' OZDFS  = ', ozdfs                                                         
+!!$     WRITE (file_unit, '(2(A, D14.6))') 'Information content = ', h,  ' OZINFO = ', ozinfoh                                          
+!!$
+!!$     !! Eigenvalues:                                                          
+!!$     !WRITE(file_unit,'(A)') ' Eigenvalues:'                       
+!!$     !WRITE(file_unit,'(A)') ' columns, points'                    
+!!$     !WRITE(file_unit,'(I3,I5)') 1, nx                               
+!!$     !DO i = 1, nx                                                 
+!!$     !   WRITE(file_unit,'(I3,5D15.7)') i, w(i)                      
+!!$     !ENDDO
+!!$
+!!$     ! A priori and its error and retrieved state and error                                       
+!!$     WRITE (file_unit, '(A6,6A14)') '  Var  ', ' retrieved ', ' noise error', 'smooth error', &
+!!$          'Previous ', ' apriori  ', ' apr. error '  
+!!$
+!!$     DO i = 1, nx 
+!!$        WRITE (file_unit, '(A6, 6D14.6)') xname (i), x (i) + xold (i), SQRT (sxn (i, i) ), &
+!!$             SQRT (Sx (i, i) ), xold (i), xap (i), xastd(i)                                             
+!!$     ENDDO
+!!$
+!!$  ENDIF
+!!$
+!!$  RETURN 
+
+!!$END SUBROUTINE oe_inversion_new
+
+END MODULE m_oe_inversion

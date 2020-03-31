@@ -21,31 +21,29 @@ MODULE OMSAO_parameters_module
   ! ----------------------------------
   ! Maximum iteration number for loops
   ! ----------------------------------
-  INTEGER, PARAMETER :: forever = 9999, max_iter=10
+  INTEGER, PARAMETER :: forever = 9999, max_iter=10 ! changed from 50
 
   ! ----------------------------------
   ! Maximum swath for all instruments
   ! ----------------------------------
-  INTEGER, PARAMETER :: mswath = 2
+  INTEGER, PARAMETER :: mswath = 2 ! mostly 2, but for GOME/TROPOOMI is more
 
   ! -------------------------------------------------------------------------
   ! Maximum numbers for fitting parameters, GOME pixels, spectral points, ...
   ! -------------------------------------------------------------------------
-  !INTEGER, PARAMETER :: max_spec_pts = 25001 ! Original reference spectrum
   INTEGER, PARAMETER :: max_spec_pts = 37000 ! Original reference spectrum
-  INTEGER, PARAMETER :: max_fit_pts  = 800               ! fitted array
-  INTEGER, PARAMETER :: max_ref_pts  = max_fit_pts + 20  ! convolved reference
-                                                         !  spectrum
-  INTEGER, PARAMETER :: max_ring_pts = max_fit_pts + 50  ! solar spectrum for
-                                                         !  ring calculation
+  INTEGER, PARAMETER :: max_fit_pts  = 800   ! fitted array
+  INTEGER, PARAMETER :: max_ref_pts  = max_fit_pts + 20  ! convolved refspc
+  INTEGER, PARAMETER :: max_ring_pts = max_fit_pts + 50  ! solar for ring
   INTEGER, PARAMETER :: maxloc  =  5  ! # of points to describe a pixel
   INTEGER, PARAMETER :: maxview =  5  ! # of view angles to describe a pixel
-
-  ! ---------------------------------------------------------------------------
-  ! Maximum numbers for layers in retrievals and radiative transfer calculation
-  ! ---------------------------------------------------------------------------
+  INTEGER, PARAMETER :: max_slitfile_pts = 400  ! If using an input slitfunc file
+  INTEGER, PARAMETER :: max_nslit        = 1024 * 4  ! Max slitfunc from a file
+  ! -----------------------------------------------------------------------------
+  ! Maximum numbers for layers in retrievals and in radiative transfer calculation
+  ! -----------------------------------------------------------------------------
   !INTEGER, PARAMETER        :: maxlay = 66, mflay = 100 
-  INTEGER, PARAMETER        :: maxlay = 30, mflay = 70
+  INTEGER, PARAMETER        :: maxlay = 30, mflay = 65
   REAL (KIND=dp), PARAMETER :: lcurve_tol = 1.0D-8, smallval = 1.0E-10_dp
 
   ! -----------------------------------------------
@@ -57,11 +55,14 @@ MODULE OMSAO_parameters_module
   ! -----------------------------------------------
   ! Number of windows to be used: 1, 2, 3, 4
   ! -----------------------------------------------
+  !INTEGER, PARAMETER :: maxband = 2   ! UV-1, UV-2, not used anywhere
   INTEGER, PARAMETER :: maxwin = 4
-  ! INTEGER, PARAMETER :: maxband = 2 ! uv1, uv2
 
   ! number of wavelengths around 370 nm used for calculating cloud fraction
-  INTEGER, PARAMETER :: mrefl = 100, mreflcld=200
+  INTEGER, PARAMETER :: mrefl = 100
+
+  ! Number of wavelengths used for cloud/surface albedo retrieval, 340-365 nm
+  INTEGER, PARAMETER :: mreflcld = 300
 
   ! ==================
   ! Physical constants
@@ -79,14 +80,13 @@ MODULE OMSAO_parameters_module
   REAL (KIND=dp), PARAMETER :: rearth  = 6367.45 ! Mean radius of Earth (km)
   REAL (KIND=dp), PARAMETER :: zerok   = 273.15 ! Mean radius of Earth (km)
   REAL (KIND=dp), PARAMETER :: O2mix= 0.20949858, N2mix= 0.78079469, &
-       CO2mix=0.0003668  ! Air composition
+                               CO2mix=0.0003668  ! Air composition
 
   ! =============================================================
   ! Large weight for wavelengths to be excluded from the fitting;
   ! small weight for wavelengths to be included in the fitting
   ! =============================================================
   REAL (KIND=dp), PARAMETER :: downweight = 1.0E+10_dp, normweight = 1.0_dp
-
 
   ! =========================================
   ! Order of polynomial for DOAS baseline fit
@@ -111,6 +111,11 @@ MODULE OMSAO_parameters_module
   INTEGER, PARAMETER :: n_sol_winwav = 2*n_sol_window+2
   INTEGER, PARAMETER :: n_rad_winwav = 2*n_rad_window+2
 
+  ! -------------------------
+  ! "start of table" landmark
+  ! -------------------------
+  CHARACTER (LEN=39), PARAMETER :: &
+       lm_start_of_table = "start of table (don't delete this line)"
 
   CHARACTER (LEN=maxchlen) :: algorithm_version
   CHARACTER (LEN=*), PARAMETER  :: ozprof_str  = 'Ozone profile retrieval'
@@ -139,20 +144,12 @@ MODULE OMSAO_parameters_module
   REAL    (KIND=sp), PARAMETER :: missing_value_sp = -9.9999E+02_sp
   INTEGER (KIND=i4), PARAMETER :: missing_value_i4 = -99999_i4
 
-  ! -------------------------
-  ! "start of table" landmark
-  ! -------------------------
-  CHARACTER (LEN=39), PARAMETER :: &
-       lm_start_of_table = "start of table (don't delete this line)"
-
-
   ! -----------
   ! Fill values
   ! -----------
-  !INTEGER (KIND=i1), PARAMETER :: int8_fill  = -127, uint8_fill  = 255
-  !INTEGER (KIND=i2), PARAMETER :: int16_fill = -32767,  uint16_fill = 65535
-  !INTEGER (KIND=i4), PARAMETER :: int32_fill = -2147483647, &
-  !                               uint32_fill = 4294967295
+  !INTEGER (KIND=i1), PARAMETER :: int8_fill  = -127,        uint8_fill  = 255
+  !INTEGER (KIND=i2), PARAMETER :: int16_fill = -32767,      uint16_fill = 65535
+  !INTEGER (KIND=i4), PARAMETER :: int32_fill = -2147483647, uint32_fill = 4294967295
 
   REAL (KIND=r4),  PARAMETER :: float32_fill = -1.0E+30_r4
   REAL (KIND=r8),  PARAMETER :: float64_fill = -1.0E+30_r8
@@ -170,10 +167,9 @@ MODULE OMSAO_parameters_module
        vb_lev_default = 0, vb_lev_omidebug = 1, vb_lev_develop = 3, &
        vb_lev_1mb = 4, vb_lev_gt1mb = 5, vb_lev_screen = 6
 
-  ! ---------------------------------------------------------------------------
+  ! --------------------------------------------------------------------------
   ! Missing values: We define two sets of the same value, but with different
-  !                 names.
-  ! --------------- one set follows the naming convention of the OMI-GDPS-IODS
+  ! names. one set follows the naming convention of the OMI-GDPS-IODS
   ! document (Table 4-14), the other one follows more closely the KIND
   ! definition used in the present PGEs.
   !
@@ -181,8 +177,7 @@ MODULE OMSAO_parameters_module
   ! for the case of quantities like the Effective Solar Zenith Angle, which
   ! are defined as R8 in the PGE but are written as R4 to the output file.
   ! If R8_MISSVAL was a truly R8 value (e.g., -1.0E+300), then the
-  ! conversionto R4 and the HE5 writewould fail.
-  !
+  ! conversionto R4 and the HE5 write would fail.
   ! ---------------------------------------------------------------------------
   CHARACTER (LEN=9),   PARAMETER :: str_missval     = "undefined"
   INTEGER   (KIND=i1), PARAMETER :: int8_missval    = -100         !-127
@@ -210,32 +205,31 @@ MODULE OMSAO_parameters_module
   ! ELSUNC Abnormal Termination Exit Values
   ! ---------------------------------------
   INTEGER (KIND=i2), PARAMETER :: &
-       elsunc_nostart_eval = -1, &  ! Wrong dimensions or wrong starting point
-       elsunc_maxiter_eval = -2, &  ! Interation exceeded max allowed number
-       elsunc_hessian_eval = -3, &  ! Interation exceeded max allowed number
-       elsunc_no2deri_eval = -4, &  ! No Second Derivative
-       elsunc_newtstp_eval = -5, &  ! Undamped Newton Step is a failure
-       elsunc_nodecst_eval = -6, &  ! Last step was not descending
-       elsunc_onesolu_eval = -7, &  ! Only one feasible point
-       elsunc_parsoob_eval = -11, &  ! Fitting parameters out of bounds
-       elsunc_infloop_eval =   -12, &  ! Hit "infinite loop" snag
-       elsunc_highest_eval = 12344, &  ! Largest possible exit value
-       elsunc_usrstop_eval = elsunc_infloop_eval
+    elsunc_nostart_eval = -1, &  ! Wrong dimensions or wrong starting point
+    elsunc_maxiter_eval = -2, &  ! Interation exceeded max allowed number
+    elsunc_hessian_eval = -3, &  ! Interation exceeded max allowed number
+    elsunc_no2deri_eval = -4, &  ! No Second Derivative
+    elsunc_newtstp_eval = -5, &  ! Undamped Newton Step is a failure
+    elsunc_nodecst_eval = -6, &  ! Last step was not descending
+    elsunc_onesolu_eval = -7, &  ! Only one feasible point
+    elsunc_parsoob_eval = -11, & ! User-defined: Fitting parameters out of bounds
+    elsunc_infloop_eval = -12, & ! User-defined: Hit "infinite loop" snag
+    elsunc_highest_eval = 12344, &  ! Largest possible exit value
+    elsunc_usrstop_eval = elsunc_infloop_eval
   REAL    (KIND=r8), PARAMETER ::   &    ! R8 versions for Valid entries
-       elsunc_usrstop_eval_r8 =   -10_r8, &
-       elsunc_highest_eval_r8 = 12344_r8
+    elsunc_usrstop_eval_r8 = -10_r8, elsunc_highest_eval_r8 = 12344_r8
 
   ! ----------------------------------
   ! Entries for main quality data flag
   ! ----------------------------------
   INTEGER (KIND=i2), PARAMETER :: &
-       main_qa_missing = -1_i2, main_qa_good = 0_i2, main_qa_suspect = 1_i2, &
-       main_qa_bad = 2_i2
+    main_qa_missing = -1_i2, main_qa_good = 0_i2, main_qa_suspect = 1_i2, &
+    main_qa_bad = 2_i2
   INTEGER (KIND=i2), PARAMETER :: &
-       main_qa_min_flag = main_qa_missing, main_qa_max_flag = main_qa_bad
+    main_qa_min_flag = main_qa_missing, main_qa_max_flag = main_qa_bad
   REAL    (KIND=r8), PARAMETER :: &
-       main_qa_min_flag_r8 = REAL(main_qa_missing, KIND=r8), &
-       main_qa_max_flag_r8 = REAL(main_qa_bad,     KIND=r8)
+    main_qa_min_flag_r8 = REAL(main_qa_missing, KIND=r8), &
+    main_qa_max_flag_r8 = REAL(main_qa_bad,     KIND=r8)
 
   ! -----------------------------------------------------------------
   ! Blank strings of various lengths.

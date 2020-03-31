@@ -8,8 +8,9 @@ MODULE m_get_tracegas
   USE OMSAO_errstat_module
   USE m_ezspline_interpolation, ONLY: interpol, bspline
   public get_geoschem_hcho, & ! unit is converted from ppb to DU
-         get_bro, &
+         get_geoschem_h2o, &
          get_geoschem_so2, &
+         get_bro, &
          get_no2, &
          get_afglus_h2o
   private
@@ -41,7 +42,7 @@ MODULE m_get_tracegas
     INTEGER, DIMENSION(2)                       :: latin, lonin
     REAL (KIND=dp), DIMENSION(2)                :: latfrac, lonfrac
 
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:), POINTER :: geoshcho
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: geoshcho
     LOGICAL, SAVE  :: first = .TRUE.
 
     ! Correct coordinates
@@ -55,7 +56,7 @@ MODULE m_get_tracegas
     CHARACTER (LEN=130)               :: geosfile
   
     IF (first) THEN
-      allocate(geoshcho(nlon, nlat, nalt))
+       allocate(geoshcho(nlon, nlat, nalt))
        geosfile = TRIM(ADJUSTL(atmdbdir)) // 'geoschem_hcho/' // months(month) // '_hcho_avg.dat'
        OPEN(UNIT = atmos_unit, FILE = geosfile, status='old')
        DO i = 1, 5
@@ -120,9 +121,9 @@ MODULE m_get_tracegas
     REAL(KIND=dp), DIMENSION(2) :: latfrac
 
     INTEGER,        SAVE, DIMENSION(nlat)               :: nszas
-    REAL (KIND=dp), SAVE, DIMENSION(nlat, nalt, maxsza) :: allbro
-    REAL (KIND=dp), SAVE, DIMENSION(nlat, nalt)         :: alts
-    REAL (KIND=dp), SAVE, DIMENSION(nlat, maxsza)       :: szas
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: allbro
+    REAL (KIND=dp), SAVE, DIMENSION(:,:),   ALLOCATABLE :: alts
+    REAL (KIND=dp), SAVE, DIMENSION(:,:),   ALLOCATABLE :: szas
     REAL (KIND=dp), SAVE, DIMENSION(nmax)               :: ptmp0, brotmp, ptmp
     INTEGER, SAVE                                       :: ntmp
     LOGICAL, SAVE                                       :: first = .TRUE.
@@ -141,6 +142,8 @@ MODULE m_get_tracegas
     CHARACTER (LEN=130)               :: fname
   
     IF (first) THEN
+       allocate (allbro(nlat, nalt, maxsza), alts(nlat, nalt), szas(nlat, maxsza))
+
        fname = TRIM(ADJUSTL(atmdbdir)) // 'BRO/' // months(month) // '_atm_BrO.dat' 
        OPEN(UNIT = atmos_unit, FILE = fname, status='old')
      
@@ -275,10 +278,10 @@ MODULE m_get_tracegas
     REAL(KIND=dp), DIMENSION(2) :: latfrac, lonfrac
 
     INTEGER,        SAVE, DIMENSION(nlat)                :: nszas
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER  :: allno2
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE  :: allno2
     REAL (KIND=dp), SAVE, DIMENSION(nlat, nalt)          :: alts
     REAL (KIND=dp), SAVE, DIMENSION(nlat, maxsza)        :: szas
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER :: geosno2
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE :: geosno2
     LOGICAL, SAVE                                        :: first = .TRUE.
 
     REAL (KIND=dp), DIMENSION(ngalt)            :: gprof
@@ -402,12 +405,12 @@ MODULE m_get_tracegas
        CALL INTERPOL(tempalt(0:nalt+ntp), cumno2(0:nalt+ntp), nalt + ntp + 1, zs(0:nz), temp(0:nz), nz+1, errstat)
        temp(1:nz) = temp(1:nz) - temp(0:nz-1)
        no2 = no2 + temp(1:nz) * latfrac(i)     
-  ENDDO
+    ENDDO
 
   no2(1:nz) = no2(1:nz) * du2mol
  
   RETURN  
-END SUBROUTINE GET_NO2
+  END SUBROUTINE GET_NO2
 
   ! ps: bottom up
   ! read GEOS-4 fields (96-97, 99-00) and GEOS-3 fields (98) of SO2 from Randall Martin and Neil Moore
@@ -432,7 +435,7 @@ END SUBROUTINE GET_NO2
     INTEGER, PARAMETER        :: nlat = 91, nlon = 144, nalt_pre2006 = 21, nalt_post2006 = 30
     INTEGER, SAVE             :: nalt
     REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.0, lon0=-181.25, lat0=-91.0
-    INTEGER                   :: errstat, i, j, k, nblat, nblon
+    INTEGER                   :: errstat, i, j, k, nblat, nblon, error
     REAL (KIND=dp), DIMENSION(0:nalt_post2006)          :: geospres, cumso2
     REAL (KIND=dp), DIMENSION(nalt_post2006)            :: gprof
     REAL (KIND=dp), DIMENSION(0:nz)                     :: tempso2
@@ -440,7 +443,7 @@ END SUBROUTINE GET_NO2
     INTEGER, DIMENSION(2)                               :: latin,   lonin
     REAL(KIND=dp), DIMENSION(2)                         :: latfrac, lonfrac
 
-    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),POINTER :: geosso2
+    REAL (KIND=dp), SAVE, DIMENSION(:,:,:),ALLOCATABLE :: geosso2
     LOGICAL, SAVE   :: first = .TRUE.
 
     ! Correct coordinates (for geos3 fields)
@@ -581,7 +584,7 @@ END SUBROUTINE GET_NO2
     ! ======================
     INTEGER, INTENT(IN)                          :: nz
     REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
-    REAL (KIND=dp), DIMENSION(:),   INTENT(OUT) :: h2o ! (nz)
+    REAL (KIND=dp), DIMENSION(nz),   INTENT(OUT) :: h2o
     ! Local variables
     ! AFGL US standard atmosphere
     INTEGER, PARAMETER              :: nz0 = 51
@@ -611,6 +614,108 @@ END SUBROUTINE GET_NO2
     RETURN
   END SUBROUTINE GET_AFGLUS_H2O
 
+ !======================================================================
+ ! xliu, 1/2/2015
+ ! GEOS-Chem H2O (used in Helen Wang's OMI H2O product
+ ! H2O actually comes from GEOS MERRA product (1x1 downgraded to 2.5x2)
+ ! Data are generated from full chemistry run with 54 tracers
+ !    with daily GFED3 biomass burning emissions
+ ! GEOS-CHEM SIMULATION v9-01-03: GEOS-5 NOx-Ox-HC-Aerosol simulation
+ !======================================================================
+
+  SUBROUTINE GET_GEOSCHEM_H2O(month, lon, lat, ps, h2o, ntp, nz)  
+  USE OMSAO_precision_module
+  USE OMSAO_parameters_module, ONLY: du2mol
+  USE OMSAO_variables_module, ONLY: atmdbdir , atmos_unit
+
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER, INTENT(IN)                          :: month, nz, ntp
+  REAL (KIND=dp), INTENT(IN)                   :: lon, lat
+  REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: ps
+  REAL (KIND=dp), DIMENSION(nz),   INTENT(OUT) :: h2o  ! in Dobson Units
+
+  ! ======================
+  ! Local variables
+  ! ======================
+  INTEGER, PARAMETER        :: nlat = 91, nlon = 144, nalt = 35
+  REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.0, lon0=-181.25, lat0=-91.0
+  INTEGER                   :: errstat, i, j, k, nblat, nblon, error
+  REAL (KIND=dp), DIMENSION(0:nalt)          :: geospres, cumh2o
+  REAL (KIND=dp), DIMENSION(nalt)            :: gprof
+  REAL (KIND=dp), DIMENSION(0:nz)            :: temph2o
+  INTEGER, DIMENSION(2)                      :: latin,   lonin
+  REAL(KIND=dp), DIMENSION(2)                :: latfrac, lonfrac
+
+  REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE :: geosh2o
+  LOGICAL, SAVE                                       :: first = .TRUE.
+
+  ! for MERRA fields (only first 35 layers up to 92 mb)
+  REAL (KIND=DP), DIMENSION(0:nalt), PARAMETER:: ap4    = (/  &
+       0.000000,    0.048048,    6.593752,   13.134800,  19.613110,  26.092010, &
+       32.570808,   38.982010,   45.339008,   51.696110,  58.053211,  64.362640, &
+       70.621979,   78.834221,   89.099922,   99.365211, 109.181702, 118.958603, &
+       128.695908,  142.910004,  156.259995,  169.608994, 181.619003, 193.097000, &
+       203.259003,  212.149994,  218.776001,  223.897995, 224.363007, 216.865005, &
+       201.192001,  176.929993,  150.393005,  127.836998, 108.663002,  92.365723/)
+  
+  REAL (KIND=DP), DIMENSION(0:nalt), PARAMETER:: bp4    = (/  &
+       1.000000,   0.984952,   0.963406,   0.941865,  0.920387,   0.898908, &
+       0.877429,   0.856018,   0.834661,   0.813304,  0.791947,   0.770638, &
+       0.749378,   0.721166,   0.685900,   0.650635,  0.615818,   0.581042, &
+       0.546304,   0.494590,   0.443740,   0.392891,  0.343381,   0.294403, &
+       0.246741,   0.200350,   0.156224,   0.113602,  0.063720,   0.028010, &
+       0.006960,   0.000000,   0.000000,   0.000000,  0.000000,   0.000000/)  
+  !p(L) = AP4(L) + BP4(L) * ps  
+  CHARACTER (LEN=130)               :: geosfile
+  CHARACTER (LEN=2)                 :: monc
+
+  IF (first) THEN
+     allocate (geosh2o(nlon, nlat, nalt))
+     WRITE(monc,  '(I2.2)') month  
+     geosfile = TRIM(ADJUSTL(atmdbdir)) // 'gch2o/gc_merra_h2o_2007' // monc // '.dat'
+
+     OPEN(UNIT = atmos_unit, FILE = geosfile, status='old')
+     DO i = 1, 5
+        READ(atmos_unit, *) 
+     ENDDO
+     READ(atmos_unit, '(35E12.4)') (((geosh2o(i, j, k), k = 1, nalt), j = 1, nlat), i = 1, nlon)
+     CLOSE (atmos_unit)
+     first = .FALSE.
+  ENDIF
+
+  CALL get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
+       lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
+
+  gprof = 0.0
+  DO i = 1, nblon
+     DO j = 1, nblat 
+        gprof = gprof + geosh2o(lonin(i), latin(j), :) * lonfrac(i) * latfrac(j)
+     ENDDO
+  ENDDO
+
+  geospres = ap4 + bp4 * ps(0)
+
+  ! Integrate from ppb to DU  
+  cumh2o = 0.0
+  DO i = 1, nalt  ! 1266.5625 = 1.25 * 1013.25
+     cumh2o(i) = cumh2o(i-1) + gprof(i) * (geospres(i-1) - geospres(i)) / 1266.5625
+  ENDDO
+  !WRITE(90, *) nalt
+  !WRITE(90, '(30D14.6)') (geospres(i), i=0, nalt)
+  !WRITE(90, '(30D14.6)') (gprof(i), i=1, nalt)
+
+  h2o = 0.0
+  CALL INTERPOL(geospres, cumh2o, nalt+1, ps(0:ntp), temph2o(0:ntp), ntp+1, errstat)
+  h2o(1:ntp) = temph2o(1:ntp) - temph2o(0:ntp-1)   ! DU at each layer 
+  h2o(1:nz) = h2o(1:nz) * du2mol
+
+  RETURN  
+  enD SUBROUTINE GET_GEOSCHEM_H2O
+
   !SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
   !
   !  IMPLICIT NONE
@@ -639,37 +744,37 @@ END SUBROUTINE GET_NO2
   !     nbmon=2
   !END SUBROUTINE get_monfrac
 
-  !SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
-  !
-  !IMPLICIT NONE
-  !  ! ======================
-  !  ! Input/Output variables
-  !  ! ======================
-  !  INTEGER, INTENT(IN)                       :: nlat
-  !  REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
-  !  INTEGER, INTENT(OUT)                      :: nblat
-  !  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
-  !  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
-  !
-  !  ! ======================
-  !  ! Local variables
-  !  ! ======================  
-  !  REAL (KIND=dp) :: frac, lat_offset
-  !
-  !  lat_offset   = lat0 + latgrid / 2.0
-  !  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
-  !  latin(1) = INT(frac); latin(2) = latin(1) + 1
-  !  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
-  !
-  !  IF (latin(1) == 0)   THEN
-  !     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
-  !  ENDIF
-  !
-  !  IF (latin(2) > nlat) THEN
-  !     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
-  !  ENDIF
-  !  RETURN
-  !END SUBROUTINE get_latfrac
+  SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
+
+  IMPLICIT NONE
+    ! ======================
+    ! Input/Output variables
+    ! ======================
+    INTEGER, INTENT(IN)                       :: nlat
+    REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
+    INTEGER, INTENT(OUT)                      :: nblat
+    INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
+    REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
+
+    ! ======================
+    ! Local variables
+    ! ======================  
+    REAL (KIND=dp) :: frac, lat_offset
+
+    lat_offset   = lat0 + latgrid / 2.0
+    nblat = 2; frac = (lat - lat_offset) / latgrid + 1
+    latin(1) = INT(frac); latin(2) = latin(1) + 1
+    latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
+
+    IF (latin(1) == 0)   THEN
+       latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
+    ENDIF
+
+    IF (latin(2) > nlat) THEN
+       latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
+    ENDIF
+    RETURN
+  END SUBROUTINE get_latfrac
 
   SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
     lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)

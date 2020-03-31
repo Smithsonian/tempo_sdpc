@@ -10,8 +10,8 @@ CONTAINS
   SUBROUTINE reduce_irrad_resolution (spec, qflag, np, nx, which_slit, slwth, &
        samprate, dwav, retswav, retewav, swav, ewav, np_out, pge_error_status)
 
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: max_spec_pts
+    USE OMSAO_precision_module 
+    USE OMSAO_parameters_module, ONLY: nmax=>max_spec_pts
     USE OMSAO_indices_module,    ONLY: sig_idx!, wvl_idx, spc_idx
     USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
     USE ozprof_data_module,      ONLY: pos_alb
@@ -25,7 +25,7 @@ CONTAINS
     ! ====================
     INTEGER, INTENT(IN)                                 :: np, nx, which_slit
     INTEGER, INTENT(OUT)                                :: np_out, pge_error_status
-    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN)    :: qflag
+    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN)    :: qflag                   
     REAL (KIND=dp), INTENT(IN)                          :: samprate, slwth, retswav, retewav
     REAL (KIND=dp), INTENT(INOUT)                       :: dwav
     REAL (KIND=dp), INTENT(INOUT)                       :: swav, ewav
@@ -34,7 +34,6 @@ CONTAINS
     ! ====================
     ! Local variables
     ! ====================
-    INTEGER, PARAMETER     :: nmax = max_spec_pts
     INTEGER                :: i, j, ix, mslit, nf, nsamp, nsamp1, nslit, errstat, iwin, idx
     INTEGER, DIMENSION(nx) :: nmod
     INTEGER, DIMENSION( 3) :: sidx, eidx, nstep
@@ -55,10 +54,6 @@ CONTAINS
 
     pge_error_status = pge_errstat_ok
 
-    ! JCH: Try to catch variables used without proper initialization
-    nslit = 2147483647
-    mslit = 2147483647
-
     ! If slwth == 0, not allowed, unless that user provides a fixed wavelength grid
     IF (slwth == 0 .AND. .NOT. use_redfixwav) THEN
       WRITE(www_lun, '(2A)') modulename, ': Zero Slit Width Not allowed!!!'
@@ -67,11 +62,11 @@ CONTAINS
 
     ! Filter bad measurements, determine wavelength range for all x-track positions
     dlam0 = spec(1, 2, 1) - spec(1, 1, 1)
-    ewav = MAXVAL(spec(1, np, :))
+    ewav = MAXVAL(spec(1, np, :)) 
     DO ix = 1, nx
       j = 0
 
-      DO i = 1, np
+      DO i = 1, np 
         IF (spec(2, i, ix) > 0. .AND. spec(2, i, ix) <= 4.0E14 .AND. qflag(i, ix) == 0) THEN
           j = j + 1
           specmod(:, j, ix) = spec(:, i, ix)
@@ -112,9 +107,6 @@ CONTAINS
       ELSE IF (which_slit == 2) THEN          ! Triangular (slwth is FWHM)
         mslit = NINT(slwth / dwav)
         nsamp = INT(slwth / samprate / dwav)
-      ELSE
-        write(*,*)'*** Error: reduce_irrad_resolution: not supported:  which_slit = ',which_slit
-        stop 1
       ENDIF
       nslit = mslit * 2 + 1
       nsamp1 = INT(dlam0 / dwav)
@@ -135,7 +127,7 @@ CONTAINS
 
       ! Convolve and Sample
       ! More sampling at the two ends of the selected spectral range
-      ! Especially for the first and last 4 positions
+      ! Especially for the first and last 4 positions 
       ! This is to avoid extrapolation while keeping as many measurements as possible
       IF (retswav <= fnspec(1, mslit+1)) THEN
         i = mslit + 1 + 3 * nsamp1
@@ -209,7 +201,7 @@ CONTAINS
 
       ! Add a wavelength at the wavelength to derive initial cloud fraction
       IF (swav < pos_alb .AND. ewav > pos_alb) THEN
-        DO i = j, 1, -1
+        DO i = j, 1, -1 
           IF (spec(1, i, 1) < pos_alb) THEN
             spec(1, i+1:j, 1:nx) = spec(1, i+2:j+1, 1:nx)
             spec(1, i+1, 1:nx) = pos_alb
@@ -230,21 +222,21 @@ CONTAINS
           CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
                np_out, spec(1, 1:np_out, ix),  spec(i, 1:np_out, ix), pge_error_status )
           IF ( pge_error_status > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
             RETURN
           END IF
         ENDDO
       ENDDO
     ELSE
 
-      DO ix = 1, nx
+      DO ix = 1, nx 
         ! Pre-interpolation
         DO i = 2, 3
           CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
                nf, fnspec(1, 1:nf), fnspec(i, 1:nf), pge_error_status )
           IF ( pge_error_status > pge_errstat_warning ) THEN
             print *, ix, 'interpolation problem'
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
             RETURN
           END IF
         ENDDO
@@ -264,7 +256,7 @@ CONTAINS
             idx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= spec(1, j, ix))))
             IF ( ABS(fnspec(1, idx-1) - spec(1, j, ix)) < ABS(fnspec(1, idx) - spec(1, j, ix))) idx = idx - 1
             spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, idx-mslit:idx+mslit))
-            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise
+            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise              
           ENDDO
         ENDIF
       ENDDO
@@ -290,8 +282,8 @@ CONTAINS
   SUBROUTINE reduce_rad_resolution (spec, qflag, np, nx, which_slit, slwth, &
        samprate, dwav, retswav, retewav, swav, ewav, np_out, pge_error_status)
 
-    USE OMSAO_precision_module
-    USE OMSAO_parameters_module, ONLY: max_spec_pts
+    USE OMSAO_precision_module 
+    USE OMSAO_parameters_module, ONLY: nmax=>max_spec_pts
     USE OMSAO_indices_module,    ONLY: sig_idx!, wvl_idx, spc_idx
     USE OMSAO_variables_module,  ONLY: use_redfixwav, nredfixwav, redfixwav
     USE ozprof_data_module,      ONLY: pos_alb
@@ -305,14 +297,13 @@ CONTAINS
     ! ====================
     INTEGER, INTENT(IN)                              :: np, nx, which_slit
     INTEGER, INTENT(OUT)                             :: np_out, pge_error_status
-    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN) :: qflag
+    INTEGER (KIND=i2), DIMENSION(np, nx), INTENT(IN) :: qflag                   
     REAL (KIND=dp), INTENT(IN)                       :: samprate, slwth, dwav, swav, ewav, retswav, retewav
     REAL (KIND=dp), DIMENSION(sig_idx, np, nx), INTENT(INOUT) :: spec
 
     ! ====================
     ! Local variables
     ! ====================
-    INTEGER, PARAMETER     :: nmax = max_spec_pts
     INTEGER                :: i, j, ix, mslit, nf, nsamp, nsamp1, nslit, errstat, fidx, lidx, iwin, idx
     INTEGER, DIMENSION(nx) :: nmod
     INTEGER, DIMENSION( 3) :: sidx, eidx, nstep
@@ -333,24 +324,19 @@ CONTAINS
 
     pge_error_status = pge_errstat_ok
 
-    ! JCH: Try to catch variables used without proper initialization
-    nslit = 2147483647
-    mslit = 2147483647
-    nf = 2147483647
-
     ! If slwth == 0, not allowed, unless that user provides a fixed wavelength grid
     IF (slwth == 0 .AND. .NOT. use_redfixwav) THEN
       WRITE(www_lun, '(2A)') modulename, ': Zero Slit Width Not allowed!!!'
       pge_error_status = pge_errstat_error
     ENDIF
 
-    dlam0 = spec(1, 2, 1) - spec(1, 1, 1)
+    dlam0 = spec(1, 2, 1) - spec(1, 1, 1)  
 
     ! Filter bad measurements
     DO ix = 1, nx
       j = 0
 
-      DO i = 1, np
+      DO i = 1, np 
         IF (spec(2, i, ix) > 0. .AND. spec(2, i, ix) <= 4.0E14 .AND. qflag(i, ix) == 0) THEN
           j = j + 1
           specmod(:, j, ix) = spec(:, i, ix)
@@ -385,9 +371,6 @@ CONTAINS
       ELSE IF (which_slit == 2) THEN          ! Triangular (slwth is FWHM)
         mslit = NINT(slwth / dwav)
         nsamp = INT(slwth / samprate / dwav)
-      ELSE
-        write(*,*)'*** Error: reduce_rad_resolution: not supported:  which_slit = ',which_slit
-        stop 1
       ENDIF
       nslit  = mslit * 2 + 1
       nsamp1 = INT(dlam0 / dwav)
@@ -408,7 +391,7 @@ CONTAINS
 
       ! Convolve and Sample
       ! More sampling at the two ends of the selected spectral range
-      ! Especially for the first and last 4 positions
+      ! Especially for the first and last 4 positions 
       ! This is to avoid extrapolation while keeping as many measurements as possible
       IF (retswav <= fnspec(1, mslit+1)) THEN
         i = mslit + 1 + 3 * nsamp1
@@ -483,7 +466,7 @@ CONTAINS
 
       ! Add a wavelength at the wavelength to derive initial cloud fraction
       IF (swav < pos_alb .AND. ewav > pos_alb) THEN
-        DO i = j, 1, -1
+        DO i = j, 1, -1 
           IF (spec(1, i, 1) < pos_alb) THEN
             spec(1, i+1:j, 1:nx) = spec(1, i+2:j+1, 1:nx)
             spec(1, i+1, 1:nx) = pos_alb
@@ -503,14 +486,14 @@ CONTAINS
           CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
                np_out, spec(1, 1:np_out, ix),  spec(i, 1:np_out, ix), pge_error_status )
           IF ( pge_error_status > pge_errstat_warning ) THEN
-            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+            errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
             RETURN
           END IF
         ENDDO
       ENDDO
 
     ELSE
-      DO ix = 1, nx
+      DO ix = 1, nx 
         ! Pre-interpolation
         fidx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= specmod(1, 1, ix))))
         lidx = MAXVAL(MAXLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) <= specmod(1, nmod(ix), ix))))
@@ -518,11 +501,11 @@ CONTAINS
         fnspec(2:3, lidx+1:nf) = 0.0
 
         IF (nmod(ix) > np * 0.75) THEN
-          DO i = 2, 3
+          DO i = 2, 3           
             CALL interpolation (nmod(ix),  specmod(1, 1:nmod(ix), ix), specmod(i, 1:nmod(ix), ix), &
                  lidx-fidx+1, fnspec(1, fidx:lidx), fnspec(i, fidx:lidx), pge_error_status )
             IF ( pge_error_status > pge_errstat_warning ) THEN
-              errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0)
+              errstat = OMI_SMF_setmsg (omsao_e_interpol, modulename, '', 0) 
               RETURN
             END IF
           ENDDO
@@ -551,13 +534,14 @@ CONTAINS
             idx = MAXVAL(MINLOC(fnspec(1, 1:nf), MASK=(fnspec(1, 1:nf) >= spec(1, j, ix))))
             IF ( ABS(fnspec(1, idx-1) - spec(1, j, ix)) < ABS(fnspec(1, idx) - spec(1, j, ix))) idx = idx - 1
             spec(2, j, ix) = SUM(slit(1:nslit) * fnspec(2, idx-mslit:idx+mslit))
-            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise
+            spec(3, j, ix) = SUM(slit(1:nslit) * fnspec(3, idx-mslit:idx+mslit)) * redsnr   ! Reduce noise              
           ENDDO
         ENDIF
       ENDDO
 
       np_out = j
     ENDIF
+
 
     RETURN
   END SUBROUTINE reduce_rad_resolution
@@ -645,6 +629,9 @@ CONTAINS
   !
   !  END SUBROUTINE SPIKE_DETECT_CORRECT1
 
+
+
+
   SUBROUTINE ROUGH_SPIKE_DETECT(ns, waves, rad, sol, nspike)
 
     USE OMSAO_precision_module
@@ -695,20 +682,21 @@ CONTAINS
     RETURN
   END SUBROUTINE ROUGH_SPIKE_DETECT
 
-    SUBROUTINE SPIKE_DETECT_CORRECT(ns, fitspec, simrad)
 
+    SUBROUTINE SPIKE_DETECT_CORRECT(ns, fitspec, simrad)
+  
      USE OMSAO_precision_module
       USE OMSAO_variables_module, ONLY : currspec!, fitwavs, fitweights
       USE ozprof_data_module,     ONLY : use_lograd
       IMPLICIT NONE
-
+  
       ! =======================
       ! Input/Output variables
       ! =======================
       INTEGER, INTENT(IN)                             :: ns
       REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: simrad
       REAL (KIND=dp), INTENT(INOUT), DIMENSION (ns)   :: fitspec
-
+  
       ! =======================
       ! local variables
       ! =======================
@@ -716,18 +704,18 @@ CONTAINS
       REAL (KIND=dp), DIMENSION(ns)  :: mratio, sratio
       REAL (KIND=dp)                 :: fitavg, simavg, fitavg3, &
            simavg3, fitavg2, simavg2
-
+  
       IF (use_lograd) THEN
         simrad = EXP(simrad)
         fitspec = EXP(fitspec)
       ENDIF
       !WRITE(90, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
-
+  
      ! use approach 1 is better
       approach = 1
-
+  
     IF (approach == 1) THEN
-
+  
        ! Assume the average of last 10 pixels are without errors
         ! Also assume the ratio of adjacent pixels is less dependent on
         ! ozone profile
@@ -735,60 +723,61 @@ CONTAINS
         sratio(ns) = sratio(ns-1)
         mratio(1:ns-1) = fitspec(1:ns-1) / fitspec(2:ns)
         mratio(ns) = mratio(ns-1)
-
+  
         fitavg = SUM(fitspec(ns-9:ns)) / 10.0D0
         simavg = SUM(simrad(ns-9:ns))  / 10.0D0
-
+  
        sratio(ns-10)   = simrad(ns-10)  / simavg
         mratio(ns-10)   = fitspec(ns-10) / fitavg
         fitspec(ns-10)  = fitspec(ns-10)  * sratio(ns-10) / mratio(ns-10)
         currspec(ns-10) = currspec(ns-10) * sratio(ns-10) / mratio(ns-10)
-
+  
         DO i = ns - 11, 1, - 1
           mratio(i)  = fitspec(i)  / fitspec(i + 1)
           fitspec(i) = fitspec(i)  * sratio(i) / mratio(i)
           currspec(i)= currspec(i) * sratio(i) / mratio(i)
         ENDDO
       ELSE
-
+  
        ! Assume the average of last 20 pixels are without errors
         ! Also assume the ratio of adjacent pixels (first * third / second^2) &
         ! is less dependent on ozone profile
-
+  
        sratio(1:ns-2) = simrad(1:ns-2)  * simrad(3:ns)  / (simrad(2:ns-1)**2.0)
         mratio(1:ns-2) = fitspec(1:ns-2) * fitspec(3:ns) / (fitspec(2:ns-1)**2.0)
-
+  
         fitavg3= SUM(fitspec(ns-9:ns)) / 10.0D0
         simavg3= SUM(simrad(ns-9:ns))  / 10.0D0
         fitavg2= SUM(fitspec(ns-19:ns-10)) / 10.0D0
         simavg2= SUM(simrad(ns-19:ns-10))  / 10.0D0
-
+  
         sratio(ns-20)  = simrad(ns-20)  * simavg3 / (simavg2**2.0)
         mratio(ns-20)  = fitspec(ns-20) * fitavg3 / (fitavg2**2.0)
         fitspec (ns-20)= fitspec(ns-20) * sratio(ns-20) / mratio(ns-20)
         currspec(ns-20)= currspec(ns-20)* sratio(ns-20) / mratio(ns-20)
-
+  
         sratio(ns-21)  = simrad(ns-21)  * simavg2 / (simrad(ns-20)**2.0)
         mratio(ns-21)  = fitspec(ns-21) * fitavg2 / (fitspec(ns-20)**2.0)
         fitspec (ns-21)= fitspec(ns-21) * sratio(ns-21) / mratio(ns-21)
        currspec(ns-21)= currspec(ns-21)* sratio(ns-21) / mratio(ns-21)
-
+  
         DO i = ns - 22, 1, - 1
           mratio(i)  = fitspec(i)  * fitspec(i+2) / (fitspec(i + 1)**2.0)
           fitspec(i) = fitspec(i)  * sratio(i)    /  mratio(i)
          currspec(i)= currspec(i) * sratio(i)    /  mratio(i)
        ENDDO
      ENDIF
-
+  
       !WRITE(91, '(f8.3, 2d14.6)') ((fitwavs(i), fitspec(i), simrad(i)), i=1, ns)
       IF (use_lograd) THEN
         simrad = LOG(simrad)
         fitspec = LOG(fitspec)
       ENDIF
-
+ 
      RETURN
-
+  
     END SUBROUTINE SPIKE_DETECT_CORRECT
+
 
   !  Unused
   !
@@ -846,6 +835,8 @@ CONTAINS
   !
   !    RETURN
   !  END SUBROUTINE ROUGH_SPIKE_DETECT1
+
+
 
   ! xliu, 05/23/2010
   ! Identify spikes (e.g. due to emission lines, protons) in UV-1
@@ -912,7 +903,6 @@ CONTAINS
  SUBROUTINE cubic_specfit ( a, na, y, m, ctrl, dyda, mdy )
 
     USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : max_spec_pts
     USE OMSAO_variables_module, ONLY  : cubic_x, cubic_y, cubic_w
     USE OMSAO_errstat_module
 
@@ -938,6 +928,7 @@ CONTAINS
     x  = cubic_x(1:m)
     y0 = a(1) + a(2)*x + a(3)*x*x + a(4)*x*x*x
 
+
     SELECT CASE ( ABS(ctrl) )
     CASE ( 1 )
       y  = ( y0 - cubic_y(1:m) ) / cubic_w(1:m)
@@ -959,7 +950,6 @@ CONTAINS
  SUBROUTINE poly_specfit ( a, na, y, m, ctrl, dyda, mdy )
 
     USE OMSAO_precision_module
-    !USE OMSAO_parameters_module, ONLY : max_spec_pts
     USE OMSAO_variables_module, ONLY  : poly_x, poly_y, poly_w
     USE OMSAO_errstat_module
 
@@ -1011,8 +1001,9 @@ CONTAINS
   SUBROUTINE poly_fit (locwvl, npoints, locspec, ll_rad, lu_rad, r )
 
   USE OMSAO_precision_module
+  USE OMSAO_parameters_module, ONLY : elsunc_np, elsunc_nw
   USE OMSAO_variables_module,  ONLY : poly_x, poly_y, poly_w, poly_order
-  USE bounded_nonlin_LS,       ONLY : elsunc
+  USE m_bounded_nonlin_LS,       ONLY : elsunc
 
   IMPLICIT NONE
 
@@ -1023,22 +1014,26 @@ CONTAINS
   REAL (KIND=dp), DIMENSION (poly_order), INTENT (OUT)   :: r
 
   REAL (KIND=dp), DIMENSION (npoints)              :: tmp, ptmp, sig
+  REAL (KIND=dp), DIMENSION (poly_order)           :: par, polfunc
+  REAL (KIND=dp), DIMENSION (poly_order,poly_order):: covar
 
-  INTEGER                             :: i, nlower, nupper, nfitted
-  REAL (KIND=dp)                      :: locavg
+  INTEGER                             :: i, j, nlower, nupper, nfitted
+  REAL (KIND=dp)                      :: locavg, chisq
   REAL (KIND=dp), DIMENSION (npoints) :: x
 
   ! ================
   ! ELSUNC variables
   ! ================
   INTEGER                                       :: exval
-  REAL (KIND=dp)                                :: chisq2
+  REAL (KIND=dp), DIMENSION (npoints)           :: fitres
+  REAL (KIND=dp)                                :: rms, chisq2
   INTEGER                                       :: elbnd
   INTEGER,        DIMENSION (11)                :: p
   REAL (KIND=dp), DIMENSION (6)                 :: w
   REAL (KIND=dp), DIMENSION (poly_order)         :: blow, bupp
-  REAL (KIND=dp), DIMENSION (npoints)           :: f
+  REAL (KIND=dp), DIMENSION (npoints)           :: f, fitspec
   REAL (KIND=dp), DIMENSION (npoints,poly_order) :: dfda
+
 
   ! ======================
   ! Assign fitting weights
@@ -1066,11 +1061,11 @@ CONTAINS
   ! ELBND: 0 = unconstrained
   !        1 = all variables have same lower bound
   !        else: lower and upper bounds must be supplied by the use
-  ! ===============================================================
+  ! ===============================================================  
   elbnd = 0  ;  exval = 0
   p   = -1 ; p(1) = 0  ;  p(3) = 5  ; w = -1.0
   blow(1:poly_order) = 0.0  ;  bupp(1:poly_order) = 0.0
-
+  
   poly_x(1:nfitted) = ptmp(1:nfitted)
   poly_y(1:nfitted) =  tmp(1:nfitted)
   poly_w(1:nfitted) =  sig(1:nfitted)

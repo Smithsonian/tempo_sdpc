@@ -6,7 +6,7 @@ PROGRAM PROFOZ_main
   USE OMSAO_errstat_module
   USE OMSAO_variables_module, ONLY:l2_filename
   USE OMI_LUN_set
-  USE omi_pge_process
+!  USE omi_pge_process
   USE tmpo_pge_process
   !USE gome2_pge_process
   USE m_read_fitting_controls, only: read_fitting_control_file
@@ -73,7 +73,7 @@ PROGRAM PROFOZ_main
   ! ---------------------------------------------------------------------------
   SELECT CASE ( instrument_idx )
   CASE ( omi_idx )
-    CALL omi_fitting_process  (message, pge_error_status)
+    !CALL omi_fitting_process  (message, pge_error_status)
   CASE ( gome2_idx)
     !CALL gome2_fitting_process  (message, pge_error_status)
   CASE (tempo_idx)

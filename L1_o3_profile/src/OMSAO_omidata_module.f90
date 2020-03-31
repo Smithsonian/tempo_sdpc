@@ -6,7 +6,7 @@ MODULE OMSAO_omidata_module
        max_fit_pts, max_ring_pts, mrefl
   USE OMSAO_indices_module,    ONLY: n_max_fitpars, max_rs_idx, &
        max_calfit_idx, o3_t1_idx, o3_t3_idx, spc_idx
-  USE OMSAO_variables_module, ONLY: cali_group, irrad_group, rad_group, refl_group, ring_group, geo_group, o3p_group
+ ! USE OMSAO_variables_module, ONLY: cali_group, irrad_group, rad_group, refl_group, ring_group, geo_group
   IMPLICIT NONE
 
   ! max number of channels (UV-1 and UV-2) reqd for OMI O3 profile retrievals
@@ -88,13 +88,12 @@ MODULE OMSAO_omidata_module
   INTEGER (KIND=i4), PARAMETER :: qa_percent_passed = 80, &
        qa_percent_suspect = 50
  
-  TYPE (cali_group) :: omi_cali
-  TYPE (irrad_group):: omi_irrad
-  TYPE (rad_group)  :: omi_rad
-  TYPE (ring_group) :: omi_ring
-  TYPE (refl_group) :: omi_refl
-  TYPE (geo_group) :: omi_geo
-  TYPE (o3p_group) :: omi_o3p 
+  !TYPE (cali_group) :: omi_cali
+  !TYPE (irrad_group):: omi_irrad
+  !TYPE (rad_group)  :: omi_rad
+  !TYPE (ring_group) :: omi_ring
+  !TYPE (refl_group) :: omi_refl
+  !TYPE (geo_group) :: omi_geo
   ! OUTPUT variables
   CHARACTER(len=*), PARAMETER :: l2_swathname = 'OMI Vertical Ozone Profile'
 

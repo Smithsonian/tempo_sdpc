@@ -1,8 +1,8 @@
 MODULE m_get_toz
 
   USE OMSAO_precision_module 
-  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, &
-      the_month, the_year, the_day, the_lon, the_lat, l3_toc_filename
+  USE OMSAO_variables_module, ONLY: atmdbdir, atmos_unit, l3_toc_filename, &
+      the_month, the_year, the_day, the_lon, the_lat
   USE OMSAO_errstat_module
   USE OMSAO_he5_module
 
@@ -20,25 +20,25 @@ MODULE m_get_toz
   CONTAINS
   SUBROUTINE get_toz (which_toz, toz)
   
-    IMPLICIT NONE
-    ! ======================
-    ! Input/Output variables
-    ! ======================
-    INTEGER , INTENT(IN) :: which_toz
-    REAL (KIND=dp), INTENT(OUT) :: toz
-    IF (which_toz ==  1 ) THEN
+  IMPLICIT NONE
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  INTEGER , INTENT(IN) :: which_toz
+  REAL (KIND=dp), INTENT(OUT) :: toz
+  CHARACTER (len=4) :: ctoz
+  toz = 0.0
+  IF (which_toz ==  1 ) THEN
        CALL get_eptoz (toz) 
-    ELSE IF (which_toz == 2) THEN 
+  ELSE IF (which_toz == 2) THEN 
        CALL get_omtoz_zm (toz)
-    ELSE IF (which_toz == 3) THEN 
+  ELSE IF (which_toz == 3) THEN 
        CALL get_omtoz (toz)
-     IF (toz <= 0.0) THEN 
-          CALL get_omtoz_zm(toz)
-     ENDIF
-    ELSE 
-     toz = 0.0
+    IF (toz <= 0.0) THEN 
+       CALL get_omtoz_zm(toz)
     ENDIF
-  
+  ENDIF
+  WRITE(www_lun, *) 'get_toz:', toz, 'which_toz:', which_toz  
   END SUBROUTINE get_toz
 
   ! ===================================================
@@ -61,8 +61,8 @@ MODULE m_get_toz
   INTEGER, PARAMETER           :: nlat=180, nlon=288
   REAL (KIND=dp), PARAMETER    :: longrid = 1.25, latgrid = 1.0, lon0=-180.0, lat0=-90.0
   CHARACTER (LEN=2)            :: monc, yrc, dayc
-  INTEGER, SAVE, DIMENSION(:,:), POINTER:: glbtoz
-  LOGICAL, SAVE                        :: first = .TRUE.
+  INTEGER, SAVE, DIMENSION(:,:), ALLOCATABLE:: glbtoz
+  LOGICAL, SAVE                :: first = .TRUE.
 
   IF (first) THEN
      allocate(glbtoz(nlon, nlat))
@@ -123,7 +123,7 @@ MODULE m_get_toz
   INTEGER :: fid, grid_id, status
   INTEGER (KIND=8), DIMENSION(2)       :: start, stride
   INTEGER (KIND=8), DIMENSION(2)       :: edge =(/nlon, nlat/)
-  REAL, SAVE, DIMENSION(:,:),POINTER   :: glbtoz
+  REAL, SAVE, DIMENSION(:,:),ALLOCATABLE   :: glbtoz
   LOGICAL, PARAMETER                   :: do_fillin =.TRUE.
   LOGICAL, SAVE                        :: first = .TRUE.
    
@@ -133,8 +133,7 @@ MODULE m_get_toz
      INQUIRE (FILE = TRIM(ADJUSTL(l3_toc_filename)), EXIST = file_exist)
      IF (.NOT. file_exist) THEN
         WRITE(*,*) 'please prepare OMI TO3 L3 climatological data'
-        WRITE(*, *) 'GET_OMTOZ: TOC file does not exist!!!', l3_toc_filename
-        STOP 1
+        WRITE(*, *) 'GET_OMTOZ: TOC file does not exist!!!', l3_toc_filename ; STOP
      ENDIF
      start(:) = 0 ; stride(:) = 1
      fid = HE5_GDopen(TRIM(ADJUSTL(l3_toc_filename)), he5f_acc_rdonly)
@@ -182,10 +181,10 @@ MODULE m_get_toz
                    j = j + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = r4 )
+             dis = real((eidx - sidx), KIND = dp )
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = real( 1.0 - REAL((k - sidx), KIND=dp) /dis, kind=r4)
+                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
                       glbtoz(i,k) = frac*glbtoz(i, sidx) + (1.0 - frac)*glbtoz(i,eidx)
                    ENDDO
              ENDIF
@@ -219,10 +218,10 @@ MODULE m_get_toz
                    i = i + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = r4 )
+             dis = real((eidx - sidx), KIND = dp )
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = real( 1.0 - REAL((k - sidx), KIND=dp) /dis, kind=r4)
+                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
                       glbtoz(k,j) = frac*glbtoz(sidx, j) + (1.0 - frac)*glbtoz(eidx,j)
                    ENDDO
              ENDIF
@@ -242,11 +241,11 @@ MODULE m_get_toz
      DO j = 1, nblat
         IF (glbtoz(lonin(i), latin(j)) > 0) THEN 
              toz = toz + glbtoz(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
-             sumfrac = sumfrac + real (lonfrac(i)*latfrac(j), kind=r4)
+             sumfrac = sumfrac + lonfrac(i)*latfrac(j)
         ENDIF
      ENDDO
   ENDDO
-  toz0=real(toz, kind=r4)
+  toz0=toz 
   IF (toz > 0) toz = toz/sumfrac
   IF (toz > 0) toz = toz +3  
   RETURN
@@ -259,7 +258,7 @@ MODULE m_get_toz
   ! ======================
   ! Input/Output variables
   ! ======================
-   REAL (KIND=dp),INTENT(OUT)                   :: toz
+   REAL (KIND=dp),INTENT(OUT)      :: toz
    
   ! ======================
   ! Local variables
@@ -269,13 +268,13 @@ MODULE m_get_toz
   CHARACTER (LEN=130)              :: omto3fname
   CHARACTER (LEN=2)                :: monc, dayc
   CHARACTER (LEN=4)                :: yrc
-  INTEGER                          :: i, ib, nband
-  REAL (KIND=dp)                   :: mnalt
+  INTEGER                          :: i, j, ib, nband
+  REAL (KIND=dp)                   :: mnalt, do3
 
   ! Saved variables
   !REAL (KIND=dp), SAVE, DIMENSION(ntlat) :: zmto3, tlats, zmalt
-  REAL (KIND=dp), SAVE, DIMENSION(:), POINTER :: zmto3, tlats, zmalt
-  LOGICAL,        SAVE                   :: first = .TRUE.
+  REAL (KIND=dp), SAVE, DIMENSION(:), ALLOCATABLE :: zmto3, tlats, zmalt
+  LOGICAL,        SAVE                       :: first = .TRUE.
 
   IF (first) THEN
      allocate (zmto3(ntlat), tlats(ntlat), zmalt(ntlat))
@@ -289,8 +288,7 @@ MODULE m_get_toz
      ! Determine if file exists or not
      INQUIRE (FILE= omto3fname, EXIST= file_exist)
      IF (.NOT. file_exist) THEN
-        WRITE(*, *) 'No Zonal Mean OMTO3 found!!!'
-        stop 1
+        WRITE(*, *) 'No Zonal Mean OMTO3 found!!!' ; stop
      ENDIF
      OPEN (UNIT = atmos_unit, file = omto3fname, status = 'unknown')
      DO i = 1, ntlat
@@ -319,7 +317,7 @@ MODULE m_get_toz
      ! Accounting for different terrain height using approximate pressure conversion
 !     IF (ps(0) < ps(1)) THEN 
 !         WRITE(*, *) 'check the order of pressure , should be down to top here'
-!         stop 1
+!         stop
 !     ENDIF
 !     do3 = 0.0
 !     IF (mnalt > 0.0 ) THEN 
@@ -402,5 +400,5 @@ MODULE m_get_toz
   IF (lonin(2) > nlon) lonin(2) = 1
   
   RETURN
-END SUBROUTINE get_gridfrac
+  END SUBROUTINE get_gridfrac
 END MODULE m_get_toz

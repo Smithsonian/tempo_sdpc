@@ -1,11 +1,19 @@
 !
-module m_cal_fit_one
-  USE bounded_nonlin_LS, ONLY: elsunc  
-  USE m_spectra, ONLY:spectrum_solar
-  USE m_fitting_util, ONLY: poly_fit
-  public cal_fit_one
-  private specfit, specfit_func_sol
-contains
+MODULE m_cal_fit_one
+  
+  USE OMSAO_parameters_module, ONLY: max_fit_pts
+  USE OMSAO_precision_module
+  USE m_bounded_nonlin_LS,     ONLY: elsunc  
+  USE m_spectra,               ONLY: spectrum_solar, spectrum_earthshine
+  USE m_fitting_util,          ONLY: poly_fit
+
+  IMPLICIT NONE
+  REAL (KIND=dp), DIMENSION (max_fit_pts), PUBLIC :: calfitone
+
+  PUBLIC  cal_fit_one, specfit, specfit_func, specfit_func_sol
+  PRIVATE 
+
+CONTAINS
 
   ! ********************************************************************
   ! Note: make sure currspec, fitwavs, fitweights, slitcal are set properly
@@ -13,21 +21,20 @@ contains
   SUBROUTINE cal_fit_one (n_fit_pts, n_fitvar_sol, wrt_to_screen, &
        wrt_to_file, slitcal, slit_unit, avgwav, varstd, solfit_exval)
 
-    USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY : max_calfit_idx, solar_idx, & 
          hwe_idx, asy_idx, shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, &
          vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
-         bl0_idx, bl1_idx, bl2_idx, bl3_idx, &
-         sc0_idx, sc1_idx, sc2_idx, sc3_idx, &
-         wr0_idx, wr7_idx
+         bl0_idx, bl1_idx, bl2_idx, bl3_idx, &!bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
+         sc0_idx, sc1_idx, sc2_idx, sc3_idx,& ! sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
+         wr0_idx, wr7_idx !, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx
 
     USE OMSAO_variables_module,   ONLY: weight_sun,  &
-        fitvar_sol, fitvar_sol_saved,chisq,  sol_wav_avg, which_slit, &
+        fitvar_sol, fitvar_sol_saved,chisq,  sol_wav_avg, which_slit,instrument_sidx, &
         mask_fitvar_sol, rmask_fitvar_sol, fitwavs, fitweights, currspec,& 
         lo_sunbnd, up_sunbnd,max_itnum_sol, poly_order, &
-        n_refspec_pts, refspec_orig_data,tmp_rad
+        n_refspec_pts, refspec_orig_data !, tmp_rad
     USE OMSAO_errstat_module
-
+  
     IMPLICIT NONE
 
     ! ================
@@ -58,7 +65,8 @@ contains
     ! Name of this subroutine/module
     ! ------------------------------
     CHARACTER (LEN=11), PARAMETER :: modulename = 'cal_fit_one'
-
+    !EXTERNAL specfit_func_sol
+  
     ! Initialization for wavelength registration
     IF (ANY(rmask_fitvar_sol(wr0_idx:wr7_idx) > 0)) THEN ! updated v2
        DO i = 1, n_fit_pts
@@ -111,8 +119,7 @@ contains
         WRITE(www_lun, *) ref_fidx, ref_lidx, n_fit_pts
         WRITE(www_lun, *) fitwavs(1), fitwavs(n_fit_pts)
         WRITE(www_lun, *) refspec_orig_data(solar_idx, ref_fidx, wvl_idx), refspec_orig_data(solar_idx, ref_lidx, wvl_idx)
-        WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'
-        STOP 1
+        WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'; STOP
      END IF
      
      fitvar_sol(sin_idx) = SUM(currspec(1:n_fit_pts)) * (ref_lidx-ref_fidx + 1.0) / &
@@ -123,20 +130,19 @@ contains
      lobnd(1:n_fitvar_sol) = lo_sunbnd(mask_fitvar_sol(1:n_fitvar_sol)) 
      upbnd(1:n_fitvar_sol) = up_sunbnd(mask_fitvar_sol(1:n_fitvar_sol))  
   
-  
 !  CALL specfit ( &
 !       n_fitvar_sol, fitvar(1:n_fitvar_sol), n_fitvar_sol, n_fit_pts, &
 !       lobnd(1:n_fitvar_sol), upbnd(1:n_fitvar_sol), max_itnum_sol,   &
 !       rms, chisq, covar(1:n_fitvar_sol,1:n_fitvar_sol), fitspec(1:n_fit_pts), &
 !       fitres(1:n_fit_pts), stderr, solfit_exval, specfit_func_sol)
-   CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), &
+
+     CALL specfit ( n_fitvar_sol, fitvar(1:n_fitvar_sol), &
          n_fit_pts, lobnd(1:n_fitvar_sol), upbnd(1:n_fitvar_sol), &
          max_itnum_sol, rms, chisq, covar(1:n_fitvar_sol,1:n_fitvar_sol), &
          fitspec(1:n_fit_pts), fitres(1:n_fit_pts), stderr, solfit_exval, &
          specfit_func_sol)
 
-
-     tmp_rad(1:n_fit_pts) = fitspec(1:n_fit_pts)
+     calfitone(1:n_fit_pts) = fitspec(1:n_fit_pts)
      !DO i = 1, n_fit_pts
      !   WRITE(90, '(f10.4, 3D14.6)') fitwavs(i), currspec(i), fitspec(i), fitres(i)
      !ENDDO
@@ -157,7 +163,7 @@ contains
      IF (wrt_to_screen .OR. (wrt_to_file .AND. solfit_exval > 0)) THEN
         IF (which_slit == 3) THEN ! triangle (symmetric)
            hw1e = fitvar_sol(hwe_idx); e_asym = 0.0
-        ELSE IF (which_slit == 5) THEN ! OMI-preflight_slit
+        ELSE IF (which_slit >= instrument_sidx) THEN ! OMI-preflight_slit
            hw1e = 0.0; e_asym = 0.0; spk = 0.0
         ELSE IF (which_slit == 2) THEN ! Voigt
            vgl  = fitvar_sol(vgl_idx);  vgr    = fitvar_sol(vgr_idx)
@@ -206,14 +212,13 @@ contains
 
    END SUBROUTINE cal_fit_one
 
-
-   SUBROUTINE specfit ( nfitvar, fitvar, nspecpts, lowbnd, &
-       uppbnd, max_itnum, rms, chisq, covar, fitspec, fitres, stderr, &
-       exval, fitfunc )
+   SUBROUTINE specfit ( &
+       nfitvar, fitvar, nspecpts, lowbnd,  uppbnd, max_itnum, & 
+       rms, chisq, covar, fitspec, fitres, stderr, exval, fitfunc )
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: elsunc_userdef
-    USE OMSAO_parameters_module, ONLY: elsunc_np, elsunc_nw!, max_spec_pts
+    USE OMSAO_parameters_module, ONLY: elsunc_np, elsunc_nw
     USE OMSAO_variables_module, ONLY: tol,  epsrel,  epsabs,  epsx
 
     IMPLICIT NONE
@@ -266,7 +271,7 @@ contains
 
     blow(1:nfitvar) = lowbnd(1:nfitvar)
     bupp(1:nfitvar) = uppbnd(1:nfitvar)
-CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
+    CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
           fitfunc,elbnd, blow(1:nfitvar),  bupp(1:nfitvar), &
           p, w, exval, f(1:nspecpts),dfda(1:nspecpts,1:nfitvar) )
     ! ------------------------------------------------------------------
@@ -274,7 +279,6 @@ CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
     ! ------------------------------------------------------------------
     CALL fitfunc ( fitvar, nfitvar, fitspec, nspecpts, 3, &
          dfda(1:nspecpts,1:nfitvar), 0)
-
     ! ---------------------------------------------------------------
     ! Compute fitting residual
     ! FITRES is the negative of the returned function F = Model-Data.
@@ -298,15 +302,17 @@ CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
     RETURN
   END SUBROUTINE specfit
 
+
+  !------------------------------------------------------------------------------
+  ! Calculates the Solar spectrum and its derivatives for ELSUNC
+  ! NOTE: the variable DYDA as required here is the transpose of that
+  !       rquired for the Numerical Recipes
+  !-------------------------------------------------------------------------------
   SUBROUTINE specfit_func_sol ( fitvar, nfitvar, ymod, npoints, ctrl, dyda, mdy )
-    !
-    ! Calculates the Solar spectrum and its derivatives for ELSUNC
-    ! NOTE: the variable DYDA as required here is the transpose of that
-    !       rquired for the Numerical Recipes
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY : fitwavs, fitweights, &
-                                       currspec,sol_wav_avg
+       currspec,sol_wav_avg
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -326,10 +332,12 @@ CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
       ! -----------------------------------------------------------------------
       ! Calculate the weighted difference between fitted and measured spectrum.
       ! -----------------------------------------------------------------------
-
    CALL spectrum_solar ( npoints, nfitvar, sol_wav_avg, &
            locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar) )
       ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) /fitweights(1:npoints)
+   !CALL spectrum_solar ( npoints, nfitvar, yn_smooth, sol_wav_avg, &
+   !        locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar), yn_doas )
+   !   ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) ) /fitweights(1:npoints)
     CASE ( 2 )
       ! ---------------------------------------------------------------------
       ! The following sets up ELSUNC for numerical computation of the fitting
@@ -344,6 +352,8 @@ CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
       CALL spectrum_solar ( npoints, nfitvar, sol_wav_avg, &
            locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar))
 
+     ! CALL spectrum_solar ( npoints, nfitvar, yn_smooth, sol_wav_avg, &
+     !      locwvl(1:npoints), ymod(1:npoints), fitvar(1:nfitvar), yn_doas)
     CASE DEFAULT
       WRITE (www_lun,'(A,I4)') &
      "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL= ", ctrl
@@ -352,67 +362,65 @@ CALL elsunc ( fitvar(1:nfitvar), nfitvar, nspecpts, nspecpts,&
     RETURN
   END SUBROUTINE specfit_func_sol
 
-!  SUBROUTINE specfit_func ( vars, npars, ymod, npoints, ctrl, dyda, mdy )
-!
-!    !
-!    !     Calculates the spectrum and its derivatives for ELSUNC
-!    !
-!    ! NOTE: the variable DYDA as required here is the transpose of that
-!    !       rquired for the Numerical Recipes
-!    !
-!
-!    USE OMSAO_precision_module
-!    !USE OMSAO_parameters_module, ONLY : max_spec_pts
-!    USE OMSAO_variables_module, ONLY : database, yn_doas, yn_smooth, &
-!         rad_wav_avg, fitwavs, fitweights, currspec
-!    USE OMSAO_errstat_module
-!    use spectra, only: spectrum_earthshine
-!
-!    IMPLICIT NONE
-!
-!    INTEGER, INTENT (IN)    :: npars, mdy
-!    INTEGER, INTENT (INOUT) :: ctrl, npoints
-!    REAL (KIND=dp), DIMENSION (npars),         INTENT (IN)    :: vars
-!    REAL (KIND=dp), DIMENSION (npoints),       INTENT (INOUT) :: ymod
-!    REAL (KIND=dp), DIMENSION (npoints,npars), INTENT (INOUT) :: dyda
-!
-!    !INTEGER                                   :: i
-!    !REAL (KIND=dp), DIMENSION (npars)         :: vartmp
-!    REAL (KIND=dp), DIMENSION (npoints)       :: locwvl!, dyplus, dyminus
-!
-!    locwvl(1:npoints) = fitwavs(1:npoints)
-!
-!    SELECT CASE ( ABS ( ctrl ) )
-!    CASE ( 1 )
-!      ! Calculate the weighted difference between fitted and measured spectrum.
-!      CALL spectrum_earthshine ( &
-!           npoints, npars, yn_smooth, rad_wav_avg, locwvl(1:npoints), &
-!           ymod(1:npoints), vars(1:npars),database, yn_doas )
-!
-!      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) )&
-!           / fitweights(1:npoints)
-!
-!    CASE ( 2 )
-!      ! ---------------------------------------------------------------------
-!      ! The following sets up ELSUNC for numerical computation of the fitting
-!      ! function derivative. It is faster and more flexible than the original
-!      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
-!      ! ---------------------------------------------------------------------
-!      ctrl = 0; RETURN
-!
-!    CASE ( 3 )
-!      ! Calculate the spectrum, without weighting
-!      CALL spectrum_earthshine ( npoints, npars, yn_smooth, rad_wav_avg, &
-!           locwvl(1:npoints), ymod(1:npoints), vars(1:npars), database, &
-!           yn_doas )
-!
-!    CASE DEFAULT
-!      WRITE (www_lun,'(A,I4)') &
-!           "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle
-!           CTRL = ", ctrl
-!    END SELECT
-!
-!    RETURN
-!  END SUBROUTINE specfit_func
+  SUBROUTINE specfit_func ( vars, npars, ymod, npoints, ctrl, dyda, mdy )
+
+     !
+     !     Calculates the spectrum and its derivatives for ELSUNC
+    !
+    ! NOTE: the variable DYDA as required here is the transpose of that
+    !       rquired for the Numerical Recipes
+    !
+
+    USE OMSAO_precision_module
+    !USE OMSAO_parameters_module, ONLY : max_spec_pts
+    USE OMSAO_variables_module, ONLY : yn_doas, &
+         rad_wav_avg, fitwavs, fitweights, currspec
+    USE OMSAO_errstat_module
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT (IN)    :: npars, mdy
+    INTEGER, INTENT (INOUT) :: ctrl, npoints
+    REAL (KIND=dp), DIMENSION (npars),         INTENT (IN)    :: vars
+    REAL (KIND=dp), DIMENSION (npoints),       INTENT (INOUT) :: ymod
+    REAL (KIND=dp), DIMENSION (npoints,npars), INTENT (INOUT) :: dyda
+
+    !INTEGER                                   :: i
+    !REAL (KIND=dp), DIMENSION (npars)         :: vartmp
+    REAL (KIND=dp), DIMENSION (npoints)       :: locwvl!, dyplus, dyminus
+
+    locwvl(1:npoints) = fitwavs(1:npoints)
+
+    SELECT CASE ( ABS ( ctrl ) )
+    CASE ( 1 )
+      ! Calculate the weighted difference between fitted and measured spectrum.
+      CALL spectrum_earthshine ( &
+           npoints, npars,  rad_wav_avg, locwvl(1:npoints), &
+           ymod(1:npoints), vars(1:npars),yn_doas )
+
+      ymod(1:npoints) = ( ymod(1:npoints) - currspec(1:npoints) )&
+           / fitweights(1:npoints)
+
+    CASE ( 2 )
+      ! ---------------------------------------------------------------------
+      ! The following sets up ELSUNC for numerical computation of the fitting
+      ! function derivative. It is faster and more flexible than the original
+      ! "manual" (AUTODIFF) scheme, and gives better fitting uncertainties.
+      ! ---------------------------------------------------------------------
+      ctrl = 0; RETURN
+
+    CASE ( 3 )
+      ! Calculate the spectrum, without weighting
+      CALL spectrum_earthshine ( npoints, npars, rad_wav_avg, &
+           locwvl(1:npoints), ymod(1:npoints), vars(1:npars), &
+           yn_doas )
+
+    CASE DEFAULT
+      WRITE (www_lun,'(A,I4)') &
+           "ERROR in function ELSUNC_SPECFIT_FUNC. Don't know how to handle CTRL = ", ctrl
+    END SELECT
+
+    RETURN
+  END SUBROUTINE specfit_func
 
 END MODULE m_cal_fit_one

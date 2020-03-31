@@ -17,7 +17,7 @@ contains
          fitvar_sol,  mask_fitvar_sol, lo_sunbnd, up_sunbnd, n_irrad_wvl, &
          sswav_sol, nwavcal_sol, wavcal_fit_pts, n_wavcal_step, &
          smooth_slit, wavcal_redo, swavcal_fname, nsolpix, winlim, &
-         poly_order, solwavfit, fixslitcal, which_slit, &
+         poly_order, solwavfit, fixslitcal, which_slit, instrument_sidx, &
          fitweights, fitwavs, currspec, fitvar_sol_saved, slitfit, nslit, &
          slitwav, fitvar_sol_init, numwin, sol_spec_ring, nsol_ring, &
          currpixchar, scnwrt, sol_wav_avg, correct_lambda
@@ -71,7 +71,7 @@ contains
     fitvar_sol_saved  =  fitvar_sol_init
     fitvar_sol = fitvar_sol_init
 
-    IF (which_slit /= 5) THEN
+    IF (which_slit < instrument_sidx) THEN
       tmpslit = 0.0
       fpos = MINVAL(MINLOC(allwaves, MASK=(allwaves >= slitwav(1))))
       lpos = MINVAL(MAXLOC(allwaves, MASK=(allwaves <= slitwav(nslit))))
@@ -153,7 +153,7 @@ contains
           fixslitcal = .FALSE.
           fitvar_sol(slitind) = 0.0
           !fixslitcal = .TRUE.; 
-          IF (which_slit /= 5) THEN 
+          IF (which_slit < instrument_sidx) THEN 
             fitvar_sol(slitind) = tmpslit(:, (fpos+lpos)/2)
             lo_sunbnd(slitind)  = fitvar_sol(slitind)
             up_sunbnd(slitind)  = fitvar_sol(slitind)
