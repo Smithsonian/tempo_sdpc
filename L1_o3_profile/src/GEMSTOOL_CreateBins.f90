@@ -1,4 +1,7 @@
-module GEMSTOOL_createbins_m
+module GEMSTOOL_createbins_pm
+   ! JCH: because GEMSTOOL_createbins_m is private to vlidort, I'm changing
+   !      the name of this module to GEMSTOOL_createbins_pm to indicate that
+   !      this is a private/custom version
 
 !  Modules in GEMSTOOL_sourcecode/structures
 
@@ -711,5 +714,5 @@ END SUBROUTINE GEMSTOOL_CreateBins_V4
 
 !  finish module
 
-End Module GEMSTOOL_createbins_m
+End Module GEMSTOOL_createbins_pm
 

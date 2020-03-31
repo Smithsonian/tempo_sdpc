@@ -56,7 +56,10 @@ module VLIDORT_eofpc_module
 !    - PCA Binning routine. Replaced 1/20/16.
 !    - PCA Caller  routine (New version with polarization, 20 January 2016)
    use GEMSTOOL_PCACaller_m
-   USE GEMSTOOL_createbins_m
+   USE GEMSTOOL_createbins_pm
+   ! JCH: because GEMSTOOL_createbins_m is private to vlidort, I'm changing
+   !      the name of this module to GEMSTOOL_createbins_pm to indicate that
+   !      this is a private/custom version
 
 !  Jbak : shared variables between PCA master and O3P algorithm
    USE vlidort_data_module, ONLY: & 
