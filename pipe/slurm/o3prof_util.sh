@@ -7,6 +7,13 @@ set -e
 set -u
 ulimit -s unlimited
 
+# If SDPC_O3PROF_MODE is not set, define it
+: "${SDPC_O3PROF_MODE:=UVVIS}"
+
+# If USE_FORECAST_MET_DATA is not set, define it to be OFF
+# To use forecast data, set it to anything else
+: "${USE_FORECAST_MET_DATA:=OFF}"
+
 # 1. Processing will run in the subdirectory provided on the command line,
 #    which already contains all necessary inputs.
 # 2. Processing ultimately stores all results in a tar file in an
@@ -142,15 +149,56 @@ error_exit(){
   exit 1
 }
 
+set_met_file_path()
+{
+  varname=$1
+  met_file_path=$(grep ${varname} ${rad_basename}.lis | sed -e s,${varname}=,,)
+}
+
+define_met_files()
+{
+if test x"$USE_FORECAST_MET_DATA" = x"OFF" ; then
+      set_met_file_path "met_file_path_synth"
+      met_file1=$(basename $met_file_path)
+      met_dir1=$(dirname $met_file_path)
+
+      met_file2=""
+      met_dir2=""
+else
+      set_met_file_path "met_file_path_hires"
+      met_file1=$(basename $met_file_path)
+      met_dir1=$(dirname $met_file_path)
+
+      set_met_file_path "met_file_path_lores"
+      met_file2=$(basename $met_file_path)
+      met_dir2=$(dirname $met_file_path)
+fi
+}
+
 config_subdir()
 {
    subdir_name=$1
 
+   case "$SDPC_O3PROF_MODE" in
+     UV)
+       control_file="${etc_dir}/o3_profile/default_main_control_uv.inp"
+       profoz_file="${etc_dir}/o3_profile/profoz_uv.inp"
+       ;;
+
+     UVVIS)
+       control_file="${etc_dir}/o3_profile/default_main_control_uvvis.inp"
+       profoz_file="${etc_dir}/o3_profile/profoz_uvvis.inp"
+       ;;
+
+     *)
+     echo "*** $0: unsupported mode SDPC_O3PROF_MODE = $SDPC_O3PROF_MODE"
+     exit 1
+     ;;
+   esac
+
    # Copy control files to product directory
-   control_file="${etc_dir}/o3_profile/default_main_control.inp"
    /bin/cp $control_file $subdir_name
-   profoz_file="${etc_dir}/o3_profile/default_profoz.inp"
-   /bin/cp $profoz_file $subdir_name/profoz.inp
+   /bin/cp $profoz_file $subdir_name
 
    product_dir=.
    spectra_dir=.
@@ -165,6 +213,9 @@ config_subdir()
    cloud_file="../${cld_file}"
    product_file="${out_basename}.nc"
    control_file_basename=$(basename $control_file)
+   profoz_file_basename=$(basename $profoz_file)
+
+   define_met_files
 
    # Read the block parameters:
    read xt_beg xt_end <"$subdir_name/block.txt"
@@ -172,7 +223,7 @@ config_subdir()
    xt_beg=$(($xt_beg+1))
    xt_end=$(($xt_end+1))
 
-   template_pcf="$etc_dir/o3_profile/default.pcf.in"
+   template_pcf="$etc_dir/o3_profile/o3_profile.pcf.in"
 # Edit the PCF file template:
    sed \
     -e s,@refdata_dir@,$refdata_dir,g \
@@ -184,6 +235,11 @@ config_subdir()
     -e s,@cloud_file@,$cloud_file,g \
     -e s,@product_file@,$product_file,g \
     -e s,@control_file@,$control_file_basename,g \
+    -e s,@profoz_file@,$profoz_file_basename,g \
+    -e s,@met_dir1@,$met_dir1,g \
+    -e s,@met_file1@,$met_file1,g \
+    -e s,@met_dir2@,$met_dir2,g \
+    -e s,@met_file2@,$met_file2,g \
     -e s,@line_sample_extent@,-1\ -1\ $xt_beg\ $xt_end,g \
     -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
     $template_pcf > $subdir_name/$pcf_file

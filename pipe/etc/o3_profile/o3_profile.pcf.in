@@ -5,12 +5,15 @@
 ! @spectra_dir@
 10|./|@refdata_dir@/data||||1
 11|@control_file@|@product_dir@||||1
-12|profoz.inp|@product_dir@||||1
+12|@profoz_file@|@product_dir@||||1
 13|refdb/|@refdata_dir@/data||||1
 14|ATMOS/|@refdata_dir@/data||||1
+15|control/|@refdata_dir@||||1
 1100|@radiance_file@||||@radiance_file@|1
 1104|@irradiance_file@||||@irradiance_file@|1
 500001|@cloud_file@||||@cloud_file@|1
+700290|@met_file1@|@met_dir1@||||1
+700291|@met_file2@|@met_dir2@||||1
 10301|leapsec.dat|@refdata_dir@/data||||1
 #400121|OZON_CLIM.txt|../tbl/CLIM||||1
 #400122|TEMP_CLIM.txt|../tbl/CLIM||||1

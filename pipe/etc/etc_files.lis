@@ -20,9 +20,11 @@ cloud/metadata.nml
 o3_total/default.pcf.in
 o3_total/SIMPLE.MCF
 o3_total/metadata.nml
-o3_profile/default_main_control.inp
-o3_profile/default_profoz.inp
-o3_profile/default.pcf.in
+o3_profile/o3_profile.pcf.in
+o3_profile/default_main_control_uv.inp
+o3_profile/default_main_control_uvvis.inp
+o3_profile/profoz_uv.inp
+o3_profile/profoz_uvvis.inp
 level1/radiance.met.template
 level1/irradiance.met.template
 level3/simple.met.template
