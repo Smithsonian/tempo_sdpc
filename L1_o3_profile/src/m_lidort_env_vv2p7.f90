@@ -78,6 +78,8 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   USE m_ezspline_interpolation, ONLY: bspline
   USE m_set_brdf, ONLY: error, surface, SurfProf, window, Geolocation
   USE Surface_module, ONLY: SetSurfaceLinearization,SetSurfaceOpticalProperties
+
+  implicit none
   
   ! =======================
   ! Input/Output variables
@@ -98,7 +100,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   ! =======================
   INTEGER, PARAMETER :: nlowstr = 2
   LOGICAL :: problems, do_clouds, do_fozwf, do_faerwf, do_fraywf, do_abs
-  INTEGER :: ic, iw, ialbwf, i, j, k, low, hgh, fidx, lidx,&
+  INTEGER :: ic, iw, ialbwf, i, j, k, low, hgh, fidx, lidx, iwf, idx, &
              nstep, istk, npolmod, ipol, nsprs, nz1, nfgas, nw0
   INTEGER :: ozwfidx, aodwfidx, twaewfidx, codwfidx, sprswfidx, raywfidx
   INTEGER, DIMENSION (nallgas)                  :: gasin   
@@ -838,7 +840,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
             ! use 80% (could be adjusted when the_cfrac gt 0.90)
           ENDIF
         ENDIF
-        IF (plcorr==2) THEN 
+        IF (polcorr==2) THEN
           tmpalb = lambertian_albedo
           IF (tmpalb <0.001) tmpalb = 0.001
           IF (tmpalb >0.999) tmpalb = 0.999
