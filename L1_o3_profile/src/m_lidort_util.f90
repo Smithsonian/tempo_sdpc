@@ -3063,7 +3063,7 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs,nalb,
   !Local variables
   INTEGER                                       :: i, j, k, fidx, lidx, nk
   REAL (KIND=dp)                                :: tmp, tmpsum
-  REAL (KIND=dp), DIMENSION(nw, nz)             :: amf, tmpcrs
+  REAL (KIND=dp), DIMENSION(nw, nz1)            :: amf, tmpcrs
   REAL (KIND=dp), DIMENSION(ngas, nw)           :: tamf
   REAL (KIND=dp)                                :: avcd, svcd
  
