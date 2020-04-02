@@ -374,7 +374,7 @@ MODULE m_convol
        WRITE(*,*) 'out', wvl(1), wvl(ni0), ni0
        WRITE(*,*) 'in', refspec_orig_data(solar_idx, 1, wvl_idx)
        WRITE(*,*) 'in', refspec_orig_data(solar_idx, n_refspec_pts(solar_idx), wvl_idx)
-       STOP
+       STOP 1
     ENDIF
     deallocate (wave, spec)
     RETURN

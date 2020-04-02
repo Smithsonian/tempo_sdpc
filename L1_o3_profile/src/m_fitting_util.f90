@@ -895,7 +895,7 @@ CONTAINS
     !DO iw = 1, ns
     !   WRITE(90, *) fitwavs(iw), simrad(iw), fitspec(iw)
     !ENDDO
-    !STOP
+    !STOP 1
 
     RETURN
   END SUBROUTINE UV1_SPIKE_DETECT

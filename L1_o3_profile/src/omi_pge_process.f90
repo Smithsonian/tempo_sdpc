@@ -358,7 +358,7 @@ CONTAINS
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     IF (calwrt) THEN
         close(calunit)
-        STOP
+        STOP 1
     ENDIF
 
     CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &

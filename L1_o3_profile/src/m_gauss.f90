@@ -996,7 +996,7 @@ SUBROUTINE gauss_tophat (wvlarr, specarr, specmod, npoints, hw1e)
     !DO i = 1, npoints
     !   WRITE(90, *) wvlarr(i), specmod(i), specarr(i)
     !ENDDO
-    !STOP
+    !STOP 1
 
     RETURN
 

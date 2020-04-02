@@ -183,7 +183,7 @@ SUBROUTINE GEMSTOOL_CreateBins_V5 ( which_win, ndat, hgascum, gascum, wav, amf,&
      IF (PCA_BINS(ipca,nbin) < max_tau) PCA_BINS(ipca,nbin) = max_tau
      deallocate (tau_sub)
      IF (nbin > GT_Maxbins) THEN 
-       WRITE(*,*) 'nbin > GT_Maxbins' ; stop
+       WRITE(*,*) 'nbin > GT_Maxbins' ; stop 1
      ENDIF
    ENDDO ! loop of win   
    ! Binning process
@@ -233,13 +233,13 @@ SUBROUTINE GEMSTOOL_CreateBins_V5 ( which_win, ndat, hgascum, gascum, wav, amf,&
          COUNT1 = SUM(NCNT(0:BIN(W)-1)) + BINDEX(W)
      ENDIF
      IF (COUNT1 == 0) THEN 
-        WRITE(*,*) 'Errors in check bin_v6' ; STOP
+        WRITE(*,*) 'Errors in check bin_v6' ; stop 1
      ENDIF
      INDEX(COUNT1) = W
    ENDDO
 
    IF (sum(NCNT(0:nbin-1)) /= ndat) THEN 
-     WRITE(*,*) 'ncnt=ndat', sum(ncnt(0:nbin-1)), ndat ; stop
+     WRITE(*,*) 'ncnt=ndat', sum(ncnt(0:nbin-1)), ndat ; stop 1
    ENDIF
    ! Finish with deallocation
    deallocate(tau,bindex)
@@ -357,7 +357,7 @@ subroutine GEMSTOOL_CreateBins_V3 &
    ! DO W = 0, nbin-1
    !  print * , W, exp(BINLIMS(W)), NCNT_OLD(W)
    ! ENDDO
-!    STOP
+!    STOP 1
 !write(*,'(i2,2x,10i5)')NBIN_OLD, NCNT_OLD(0:8), SUM(NCNT_OLD(0:8))
 !write(*,'(9F12.4)')BINLIMS(0:8)
 
@@ -664,7 +664,7 @@ SUBROUTINE GEMSTOOL_CreateBins_V4 ( which_win, ndat, wav, &
    ENDIF
 
    IF (nbin > GT_Maxbins) THEN 
-     WRITE(*,*) 'nbin > GT_Maxbins' ; stop
+     WRITE(*,*) 'nbin > GT_Maxbins' ; stop 1
    ENDIF
 
    ! Binning process

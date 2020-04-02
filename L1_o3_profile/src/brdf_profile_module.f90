@@ -388,7 +388,7 @@ MODULE profile_module
 
       print*,'Vertical Grid type index in profile is unrecognized',&
              vgridtype
-      STOP
+      STOP 1
 
     ENDIF
     
@@ -3054,7 +3054,7 @@ MODULE profile_module
       ELSE
         
         print*,'Unknown state element type for ',TRIM(ADJUSTL(varname))
-        STOP
+        STOP 1
         
       ENDIF
       

@@ -951,7 +951,7 @@ contains
      AERFLAG(1:nlayers) = .false.
    endif
    if ( do_clouds ) then
-     CLDFLAG(1:nlayers) = Geophys%Clouds%CLOUD_LAYERFLAGS(N)
+     CLDFLAG(1:nlayers) = Geophys%Clouds%CLOUD_LAYERFLAGS(1:nlayers)
    else
      CLDFLAG(1:nlayers) = .false.
    endif
@@ -1095,7 +1095,7 @@ contains
    S2_NTOTAL  = 2 * nlayers
    S2_NGEOMS  = ngeoms
    IF (ngeoms /= 1) THEN 
-      WRITE(*,*) 'check if ngeoms == 1 or not' !!! ; stop'
+      WRITE(*,*) 'check if ngeoms == 1 or not' !!! ; stop
    ENDIF
 !  Stream Value
 
@@ -1334,7 +1334,7 @@ contains
           PCA_nbins, PCA_ncnt, PCA_neofs, PCA_bins)
    ELSE
      print * , 'wrong binning index', PCA_binning_index
-     stop
+     stop 1
    ENDIF
    deallocate (taugcum,tauhgcum, taucum)
    n_call_vlidort = SUM(PCA_neofs(1:PCA_nbins)*2)+ PCA_nbins

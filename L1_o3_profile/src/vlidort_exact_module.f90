@@ -661,7 +661,7 @@ contains
    local_nmoms = Geophys%Atmos%ngreek_moments_input
    !print * , do_aerosols, do_clouds, do_optional_2stream, nwav, nlayers,local_nmoms, n_totalatmos_wfs, n_surface_wfs
    IF (first .and. nwav > 50) THEN 
-      WRITE(*,'(A,i3)') 'N call in exact:', nwav
+      WRITE(*,'(A,i9)') 'N call in exact:', nwav
        first = .false.
    ENDIF
 !  constants

@@ -81,7 +81,7 @@ SUBROUTINE test (error)
     WRITE(123, '(f5.1, f10.4, 70e17.5)') umkz(i), umkp(i), ozprof(i),sqrt(sao3(i, i))*100/ozprof(i), sao3(i, 1:numk)
      print * , umkz(i), sqrt(sao3(i,i))*100./ozprof(i)
   ENDDO
-  stop
+  stop 1
 END SUBROUTINE
 
 SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
@@ -133,7 +133,7 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
      pv8(nv8)   = refp(nref) ! reconsider before pv8(nv8) = umkp(num) : 2^(-13.5)
      pv8(0:nv8) = LOG(pv8(0:nv8) )
     !CALL get_v8prof(toz, v8oz(1:nv8))
-     PRINT * , 'not well implemented' ; stop
+     PRINT * , 'not well implemented' ; stop 1
   ELSE IF (which_clima == 2) THEN
      CALL GET_MCPROF (ozref(1:nmpref-1), 1) 
   ELSE IF (which_clima >= 8 .AND. which_clima <=9) THEN
@@ -184,7 +184,7 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
   ! @ Interpolate Ozone to Retrieved Grid
   CALL BSPLINE(refp, ozref, nref+1, umkpg(0:numk), umkoz(0:numk), numk+1,errstat)
   IF (errstat < 0) THEN
-     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop
+     WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop 1
   ENDIF
   umkoz(1:numk) = umkoz(1:numk) - umkoz(0:numk-1)
   ozprof (1:numk) = umkoz(1:numk)
@@ -363,7 +363,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
     CALL BSPLINE(preslg(0:nref), cumastd(0:nref),nref+1, pslg(0:nz),&
          nstd(0:nz), nz+1, errstat)
     IF (errstat < 0) THEN
-       WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat; STOP
+       WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat; stop 1
     ENDIF
 
   ! Contruct the full covariance matrix for ozone (in Dobson units)
@@ -388,7 +388,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
      mnorstd = 2
      CALL get_mlso3prof(nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
      IF (errstat < 0) THEN
-        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
+        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; stop 1
      ENDIF
      DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)
@@ -402,7 +402,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
      mnorstd = 2
      CALL get_mlso3prof_single(nz, mnorstd, ps1(0:nz), zs1(0:nz), nstd1(1:nz), tmpntp, errstat)
      IF (errstat < 0) THEN
-        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; STOP
+        WRITE(*, *) modulename, ': Error in getting MLS ozone variabilities!!!'; stop 1
      ENDIF
      DO i = 1, nz
         nstd(i) = nstd1(nz-i+1)
@@ -475,7 +475,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   INQUIRE (FILE= apfname, EXIST= file_exist)
   IF (.NOT. file_exist) THEN
         WRITE(*, *) 'Warning: no geoschem o3p file!!!'
-        stop
+        stop 1
   ENDIF
   ! OPEN
   CALL check( nf90_open(trim(ADJUSTL(apfname)), NF90_NOWRITE, ncid))
@@ -525,7 +525,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
  INTEGER, intent ( in) :: status
  IF (status /= nf90_noerr) THEN
      print *, trim(nf90_strerror(status))
-     stop
+     stop 1
  ENDIF
  END SUBROUTINE check
 
@@ -765,7 +765,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
      ENDIF
   ENDDO
 
-  IF (any(ozref(:) < 0)) then ; print * , 'error at get_tbprof' ; stop ; ENDIF
+  IF (any(ozref(:) < 0)) then ; print * , 'error at get_tbprof' ; stop 1 ; ENDIF
   RETURN
 
   END SUBROUTINE get_tbprof
@@ -870,8 +870,8 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
         mtropz2(:,j+12)       =mtropz2(:,13)
      ENDDO
      IF (any(ozrefs1 < 0) .or. any(ozrefs2 <0) ) then
-         print *, 'TB clima contain -999'  ; stop
-         STOP
+         print *, 'TB clima contain -999'  ; stop 1
+         stop 1
      ENDIF
     first = .FALSE.
   ENDIF
@@ -935,12 +935,12 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
 
  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay) ; stop
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay) ; stop 1
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
   IF (errstat < 0) THEN
-    WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop
+    WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop 1
   ENDIF
 
   ozref(1:nref) = cum(1:nref)-cum(0:nref-1)
@@ -1591,7 +1591,7 @@ SUBROUTINE get_v8prof(toz, oz)
      INQUIRE (FILE= apfname, EXIST= file_exist) 
      IF (.NOT. file_exist) THEN
         WRITE(*,*) apfname
-        WRITE(www_lun, *) 'No MLS ozone profile found!!!'; errstat = -1; STOP
+        WRITE(www_lun, *) 'No MLS ozone profile found!!!'; errstat = -1; stop 1
      ENDIF
      
      OPEN (UNIT = atmos_unit, file = apfname, status = 'unknown')
@@ -2150,7 +2150,7 @@ SUBROUTINE get_v8prof(toz, oz)
     ENDIF
   endif
   IF (errstat /= 0) THEN 
-      print * , pres(1), pres(nl+1), pstmp(0), pstmp(nref); stop
+      print * , pres(1), pres(nl+1), pstmp(0), pstmp(nref); stop 1
   ENDIF
   deallocate (pstmp,pres,partial_column)
   RETURN
@@ -2210,7 +2210,7 @@ SUBROUTINE get_v8prof(toz, oz)
   
   CALL BSPLINE(psg1(1:nl1+1),cum1(1:nl1+1),nl1+1,psg2(fidx:lidx),cum2(fidx:lidx),lidx-fidx + 1,errstat)
   IF (errstat /= 0 ) THEN 
-      WRITE(*,*) modulename//'errors in bspline' ;stop
+      WRITE(*,*) modulename//'errors in bspline' ;stop 1
   ENDIF
   DO i = fidx-1, 1, -1
      tmp = (cum2(i+1)-cum2(i+2))/(psg2(i+1) - psg2(i+2))

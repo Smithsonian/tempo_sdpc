@@ -1216,7 +1216,7 @@ contains
       !  pixlim(2) = pixlim(2) * ncoadd
       !ENDIF
        WRITE(*,*) 'setlect_lonlat should be false'
-       STOP
+       STOP 1
     ENDIF
 
     ! check for boundaries

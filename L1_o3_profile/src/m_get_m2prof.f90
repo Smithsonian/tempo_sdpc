@@ -104,7 +104,7 @@
                        !AnnualClimFN_k=M2AnnualClimFn, nEOFs_k = 10)! 42
     IF( LFAIL ) THEN
        WRITE(*,*) modulename//TRIM(msg)//'in M2CLIM_Stage'
-       STOP
+       STOP 1
     ENDIF
 
     z1 = 2
@@ -133,7 +133,7 @@
       WRITE(*,*) modulename //': Anual mean is set'
     ENDIF
     IF (.NOT. SET) THEN 
-      WRITE(*,*) modulename //': Errors in M2CLIM)stVar' ; STOP
+      WRITE(*,*) modulename //': Errors in M2CLIM)stVar' ; STOP 1
     ENDIF
    
     ! copy to global  output variables (m2du)

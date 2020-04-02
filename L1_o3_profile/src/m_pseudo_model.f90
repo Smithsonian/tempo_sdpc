@@ -154,19 +154,19 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   IF (first) THEN
     IF (use_albspc) vary_sfcalb = .TRUE.
     IF (do_rtm_pca .and. nfwfc > 0) THEN
-       WRITE(*,'(A)') modulename//'nfwfc is not implemnted in PCA simulation' ; stop
+       WRITE(*,'(A)') modulename//'nfwfc is not implemnted in PCA simulation' ; stop 1
     ENDIF
     IF (do_rtm_pca .and. do_brdf) THEN
-       WRITE(*,'(A)') modulename//'BRDF is not implemnted in PCA simulation' ; stop
+       WRITE(*,'(A)') modulename//'BRDF is not implemnted in PCA simulation' ; stop 1
     ENDIF
     IF (do_brdf) THEN
        IF (nalbwf ==1) THEN
-          WRITE(*,'(A)') modulename//'nalbwf need to increase in BRDF mode' ; stop
+          WRITE(*,'(A)') modulename//'nalbwf need to increase in BRDF mode' ; stop 1
        ENDIF
        WRITE(*,'(A)') modulename//'BRDF need to be improved'
     ENDIF
     IF (use_prefitalb) THEN
-       WRITE(*,'(A)') modulename//'prefitalb is not really implemented'; stop
+       WRITE(*,'(A)') modulename//'prefitalb is not really implemented'; stop 1
     ENDIF
     IF (do_alb_longwav) THEN
        IF (nviswin > 1) THEN
@@ -175,7 +175,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        WRITE(*,'(A)') modulename//'do_alb_longwav need to be improved'
     ENDIF
     IF (n_gome_q > 0 .and. mstks == 1) THEN
-       WRITE(*,'(A)') modulename//'mstks need to increase 3 for  GOME polarization from Q/U' ; stop
+       WRITE(*,'(A)') modulename//'mstks need to increase 3 for  GOME polarization from Q/U' ; stop 1
     ENDIF
     first = .true.
   ENDIF
@@ -1358,7 +1358,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      !   WRITE(92, '(f10.4, 80d14.6)') fitwavs(i), fitspec(i), simrad(i),
      !   walb0s(i) !, dyda(i, 1:nf)
      !ENDDO
-     !CLOSE(92) ; STOP
+     !CLOSE(92) ; stop 1
 
      ! Remove longer wavelengths wfs except for alb and cloud
      idx330 = maxval(minloc(waves(1:ns), mask=(waves(1:ns)>=330.0)))

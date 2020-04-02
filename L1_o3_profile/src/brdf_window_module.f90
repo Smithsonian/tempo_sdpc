@@ -182,7 +182,7 @@ MODULE window_module
     IF(TRIM(ADJUSTL(Window%RTMSettings%RTMName)) .EQ. '') THEN
       print*,TRIM(ADJUSTL(Window%RTMSettings%RTMName)) // &
              ' could not be matched to any RTM sim settings'
-      STOP
+      STOP 1
     ENDIF
     
     ! Determine if we need to load the ISRF from file
@@ -229,7 +229,7 @@ MODULE window_module
       IF(.NOT. PRESENT(AMFWavelength)) THEN
         print*,'Calculation is in AMF Mode...'
         print*,'ERROR:Could not initialize spectral window as AMFWavelength was not provided'
-        STOP
+        STOP 1
       ENDIF
 
       ! Define window
@@ -238,7 +238,7 @@ MODULE window_module
       IF(Window%Settings%ISRF%OptionIndex .EQ. 0) THEN
         print*,'Cannot use instrument LUT ISRF in AMF Calculation mode'
         print*,'Use one of the fixed options in the input file'
-        STOP
+        STOP 1
       ENDIF
     ENDIF
 
@@ -598,7 +598,7 @@ MODULE window_module
     ELSE
       print*,'In Window Model'
       print*,'Unrecognized Radiative Transfer Model'
-      STOP
+      STOP 1
     ENDIF
     
   END FUNCTION GetWindowNumStokes
@@ -645,7 +645,7 @@ MODULE window_module
     ELSE
       print*,'In Window Model'
       print*,'Unrecognized Radiative Transfer Model'
-      STOP
+      STOP 1
     ENDIF
     
   END FUNCTION GetWindowNumMoments
@@ -1109,7 +1109,7 @@ MODULE window_module
     ELSE
       print*,'In Window Model'
       print*,'Unrecognized Radiative Transfer Model'
-      STOP
+      STOP 1
     ENDIF
     
   END FUNCTION GetWindowNumStreams

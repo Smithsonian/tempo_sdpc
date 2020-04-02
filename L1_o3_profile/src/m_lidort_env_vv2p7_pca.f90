@@ -165,7 +165,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
      IF (problems) THEN 
          WRITE(*,*) 'Errors in lidort_read_config'
          print *, message
-         STOP
+         STOP 1
      ENDIF 
      first = .FALSE.
   ENDIF
@@ -211,7 +211,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
      ts(1:nz) = (fts(1:nz) + fts(0:nz-1)) / 2.0
 
      IF (nwfc > 0) THEN 
-       PRINT *, 'not implemented for nwfc > 0 in PCA' ; STOP
+       PRINT *, 'not implemented for nwfc > 0 in PCA' ; STOP 1
      ENDIF
  ENDIF
 
@@ -848,7 +848,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
                 cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), absod(1:nfgas, 1:nz1), problems)
         IF (problems) THEN 
              print * , 'problem in lidort prof prep'
-             STOP
+             STOP 1
         ENDIF
         deltau(ip+woff, 1:nz1) = deltau_vert_input(1:nz1)
         delsca(ip+woff, 1:nz1) = deltau_vert_input(1:nz1)*omega_total_input(1:nz1) 
@@ -1556,7 +1556,7 @@ SUBROUTINE LIDORT_PROF_PREP (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, rayc
            !  Assume no effects on air density              
         ELSE IF ( profilewf_names(q) == 'average temperature of layer---' ) THEN
            PRINT * , 'NEED WORK MORE'
-           STOP
+           STOP 1
            l_omega_total_input(q, i) = - SUM(absod(:, i) * eta(:, i)) / extco
            l_deltau_vert_input(q, i) = + SUM(absod(:, i) * eta(:, i)) / extco
            !l_greekmat_total_input(q, : , i, :) = ZERO
@@ -1566,7 +1566,7 @@ SUBROUTINE LIDORT_PROF_PREP (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, rayc
            !  no variation of phase functions
         ELSE IF ( profilewf_names(q) == 'average pressure of layer------' ) THEN
            PRINT * , 'NEED WORK MORE'
-           STOP
+           STOP 1
            pvar = extco_r/ extco
            l_omega_total_input(q, i) = ((ONE - pvar) * scaco_input(1) - &
                 pvar * (scaco - scaco_input(1))) / scaco
@@ -1638,7 +1638,7 @@ SUBROUTINE LIDORT_PROF_PREP (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, rayc
               !print *, maxval(l_greekmat_total_input), minval(l_greekmat_total_input)
               !print *, i, l_deltau_vert_input(q,i), l_omega_total_input(q,i)
               !WRITE(www_lun, '(6D14.6)') (l_phasmoms_total_input(1, j, 1:nactgksec), j = 0, ngreek_moments_input)
-              !STOP
+              !STOP 1
            ENDIF
            !  w.r.t  aerosol scattering coefficient / single scattering albedo
            !  aerosol optical thickness will not change

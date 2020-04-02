@@ -161,7 +161,7 @@ contains
     !DO i = 1, num_slit
     !   WRITE(www_lun, '(2d14.6)') slit(i), locsli(i)
     !END DO
-    !STOP
+    !STOP 1
 
     RETURN
   END SUBROUTINE asym_voigt

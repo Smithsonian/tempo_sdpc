@@ -400,7 +400,7 @@ contains
          n_radpts, curr_rad_wvl, spline_sun, errstat )  
     IF (which_inr == 1) THEN
         IF (.NOT. allocated(curr_radresponse_spec)) THEN 
-           WRITE(*,*) 'curr_radresponse_spec is not allocated'; stop
+           WRITE(*,*) 'curr_radresponse_spec is not allocated'; stop 1
         ENDIF
         CALL interpolation (n_irrad_wvl, curr_radresponse_spec(wvl_idx,1:n_irrad_wvl),        &
         curr_radresponse_spec(spc_idx,1:n_irrad_wvl), n_radpts,curr_rad_wvl(1:n_radpts), &
@@ -725,7 +725,7 @@ contains
     !DO i = 1, n_rad_pts
     !   WRITE(91, *) curr_wvl(i), database(us1_idx, i),  database(us2_idx, i)
     !ENDDO
-    !STOP
+    !stop 1
 
     ! Use derived slit from radiance later on if it is available
     IF (slit_rad) THEN

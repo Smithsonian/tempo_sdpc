@@ -1631,7 +1631,7 @@ SUBROUTINE super_gaussian_sf(npoints, hw1e, e_asym, g_shap, wvlarr, specarr, spe
         CALL getslit_sgf(delwvl,dhalf_var,hw1e,e_asym,g_shap-dp,nslit,sf_val_m(1:nslit),slitsum_m)
       ELSE
         print*,'Unknown derivative Index (super_gaussian_sf)',deriv_idx ! RaiseFatalError
-        STOP
+        STOP 1
       ENDIF
       
       ! To complete the derivative
@@ -1792,7 +1792,7 @@ SUBROUTINE super_gaussian_sf(npoints, hw1e, e_asym, g_shap, wvlarr, specarr, spe
         dshap = 1.0d-4 ; dp = dshap
       ELSE
         print*,'Unknown derivative Index (SuperGaussISRF_WvlDep)',deriv_idx ! RaiseFatalError
-        STOP
+        STOP 1
       ENDIF
     
     ENDIF

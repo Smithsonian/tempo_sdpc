@@ -104,7 +104,7 @@ CONTAINS
           RETURN
         ENDIF
         IF ( n_refspec_pts(i) > maxline ) THEN 
-          WRITE(*, *) TRIM(ADJUSTL(modulename))//':increase maxline>',n_refspec_pts(i),'!!!' ; STOP
+          WRITE(*, *) TRIM(ADJUSTL(modulename))//':increase maxline>',n_refspec_pts(i),'!!!' ; STOP 1
         ENDIF
         WRITE(www_lun, '(A80,/,D14.6, I5,2F10.2)') refspec_fname(i), refspec_norm(i), & 
          n_refspec_pts(i), onespec(1, wvl_idx), onespec( n_refspec_pts(i), wvl_idx)

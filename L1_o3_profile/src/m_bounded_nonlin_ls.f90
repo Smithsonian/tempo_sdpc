@@ -1206,7 +1206,7 @@ CONTAINS
           inds=aset(i)
           aset(i)=0
           CALL newunc(x,n,f,m,ffunc,funcev,jacev,c,mdc,ERR,w1)
-          !tpk IF(ERR /= 0) STOP
+          !tpk IF(ERR /= 0) STOP 1
           IF(ERR /= 0) RETURN
           CALL triunc(c,m,n,tol,aset,nract-1,p,qraux,lprank)
           !       write(10,*) 'lprank= ', lprank

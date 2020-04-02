@@ -216,7 +216,7 @@ contains
   !DO i = 1, n_refwvl_sav
   !   WRITE(90, '(f8.4, D14.5)') refwvl_sav(i), newring(i)
   !ENDDO
-  !STOP
+  !STOP 1
   
   IF (do_bandavg) THEN
      CALL avg_band_refspec(refwvl_sav(1:n_refwvl_sav), newring(1:n_refwvl_sav), &

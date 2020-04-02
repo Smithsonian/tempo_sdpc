@@ -119,7 +119,7 @@ CONTAINS
         WRITE(www_lun, *) ref_fidx, ref_lidx, n_fit_pts
         WRITE(www_lun, *) fitwavs(1), fitwavs(n_fit_pts)
         WRITE(www_lun, *) refspec_orig_data(solar_idx, ref_fidx, wvl_idx), refspec_orig_data(solar_idx, ref_lidx, wvl_idx)
-        WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'; STOP
+        WRITE(www_lun, *) modulename,' : Solar spectra not cover fitting window!!!'; STOP 1
      END IF
      
      fitvar_sol(sin_idx) = SUM(currspec(1:n_fit_pts)) * (ref_lidx-ref_fidx + 1.0) / &

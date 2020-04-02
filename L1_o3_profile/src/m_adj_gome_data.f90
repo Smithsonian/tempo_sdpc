@@ -410,7 +410,7 @@ contains
   !    !   ELSE
   !    !      WRITE(www_lun, *) 'adj_rad_sig: # wavelengths <= 10 in win ', &
   !    !           iwin, nradpix(iwin)
-  !    !      STOP
+  !    !      STOP 1
   !    !   END IF
   !
   !    !   fidx = lidx + 1

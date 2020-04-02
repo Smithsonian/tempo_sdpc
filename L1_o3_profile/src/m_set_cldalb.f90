@@ -32,10 +32,10 @@ module m_set_cldalb
   ELSE IF (instrument_idx == gome2_idx) THEN 
     IF (the_snowice >= 10) THEN 
       snowflg = 1 
-      WRITE(*,*) 'snowflag should be checked for gome2' ; stop
+      WRITE(*,*) 'snowflag should be checked for gome2' ; stop 1
     ENDIF
   ELSE
-    WRITE(*,*) 'snowflag should be checked for this instrument' ; stop
+    WRITE(*,*) 'snowflag should be checked for this instrument' ; stop 1
   ENDIF
   RETURN
   END SUBROUTINE set_snowoceanflg
@@ -117,7 +117,7 @@ module m_set_cldalb
      DO i = 1, nalbw
         print *, albwave(i), albarr(i)
      ENDDO
-     STOP
+     stop 1
   ELSE
      WRITE(*, *) 'Albedo database: not implemented!!!'
      pge_error_status = pge_errstat_error; RETURN

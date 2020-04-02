@@ -678,7 +678,7 @@ SUBROUTINE get_caloz (nl, pres, ozprof)
      OPEN(profunit, FILE=TRIM(ADJUSTL(caloz_fname)), STATUS='old')
      READ(profunit, *) nz, oztyp
      IF (nz > mflay) THEN
-        WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'; STOP
+        WRITE(www_lun, *) modulename, ': Need to increase mflay!!!'; STOP 1
      ENDIF
      READ (profunit, *) 
      IF (oztyp <= 2) THEN
@@ -688,7 +688,7 @@ SUBROUTINE get_caloz (nl, pres, ozprof)
      ENDIF
      
      IF ( oztyp == 1 .AND. nz /= nl ) THEN
-        WRITE(www_lun, *) modulename, ': Number of layers are inconsistent!!!'; STOP 
+        WRITE(www_lun, *) modulename, ': Number of layers are inconsistent!!!'; STOP 1 
      ELSE
         READ (profunit, *) 
         READ (profunit, *) ps(0:nz)  ! mb

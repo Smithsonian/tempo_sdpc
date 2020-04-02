@@ -311,7 +311,7 @@ contains
     deallocate( lons, lats, szas, any_pixels, latdf, okline, lines)
     !WRITE(www_lun, '(4F8.2)') slat, elat, slon, elon
     !WRITE(www_lun, '(4I8)')  sline, eline, spix, epix
-    !STOP
+    !STOP 1
 
     RETURN
   END SUBROUTINE find_scan_line_range

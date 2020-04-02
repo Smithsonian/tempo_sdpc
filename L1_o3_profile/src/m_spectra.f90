@@ -113,7 +113,7 @@ contains
    
     CALL simple_convol (kppos(1:npts), kpspec(1:npts), kpspec_gauss(1:npts), npts)
   
-    !write(*,'(2f15.7, f8.2)') sum(kpspec(1:npts)), sum(kpspec_gauss(1:npts)), fitvar_sol(hwe_idx), fitvar_sol(spk_idx) !;stop
+    !write(*,'(2f15.7, f8.2)') sum(kpspec(1:npts)), sum(kpspec_gauss(1:npts)), fitvar_sol(hwe_idx), fitvar_sol(spk_idx) !;stop 1
   
 
     ! ------------------------------------------------------

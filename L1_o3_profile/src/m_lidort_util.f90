@@ -742,7 +742,7 @@ SUBROUTINE hres_radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, nalb, faerlvl,  &
      rad(1:nrad) = otmp(1:nrad) / oi0(1:nrad)
 
      IF (do_pslwf) THEN
-        print * , 'not implemented '; stop
+        print * , 'not implemented '; stop 1
      ENDIF
 
      DO i = 1, nz
@@ -1861,7 +1861,7 @@ SUBROUTINE radwf_inter_convol(nw, nz, nctp, ncbp, nsprs, nalbwf, faerlvl,  &
   eidx = sidx
   IF (nvar < eidx) THEN 
      WRITE(*,*) ADJUSTL(TRIM(modulename))//'nvar < eidx'
-     STOP
+     stop 1
   ENDIF
   ! *** second, convole all spectra at once ****
   CALL convol_f2c(hwave(1:nhw), inarr(1:nhw, 1:eidx), nhw, eidx, owave(1:now), outarr(1:now, 1:eidx), now)
@@ -2325,7 +2325,7 @@ SUBROUTINE radwf_interpol(nw, nz, nctp, ncbp, nsprs, faerlvl, do_radcals, &
   !        fozwf(i, 1:nz)
   !ENDDO  
   !print *, nz, nl, nw
-  !!STOP
+  !!stop 1
 
   deallocate (didxs, uidxs, effcrs, a, b, crs1, crs2, tmp1, tmp2, wav1, wav2)
   RETURN
@@ -2549,7 +2549,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
              wtc_ic(1:nwLUT),  wto_ic(1:nwLUT, npJ))
         IF (do_raywf) THEN 
           PRINT * , 'not implemented in polcorr_lut'
-          STOP
+          stop 1
         ENDIF
       ENDIF
     ENDIF
@@ -2681,7 +2681,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
         WRITE (*,'(A, 3L,10f8.2)') 'call itoa_rpro',do_plan,do_cfracwf,do_albwf, & 
                                     vza, sza, lat, ozdu
        IF( LFAIL ) THEN
-            WRITE(*,*) TRIM(msg) ; STOP
+            WRITE(*,*) TRIM(msg) ; stop 1
        ENDIF
        IF (frac /= 0.0) THEN 
            IF (ic == 2) THEN 

@@ -424,7 +424,8 @@ CONTAINS
 
     IF (calwrt) THEN
        close(calunit)
-       STOP
+       write (*,*)'exiting before write_final: calwrt = ',calwrt
+       STOP 1
     ENDIF
 
     CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
@@ -469,7 +470,7 @@ CONTAINS
     message = ADJUSTL(TRIM(modulename))//ADJUSTL(TRIM(message))
     WRITE(*,*) message
     CALL tell_error (tell_io_write_error, message, pge_error_status)
-    STOP
+    STOP 1
   END SUBROUTINE tmpo_fitting_process
 
   SUBROUTINE write_final ( fitted_col, rmsavg, davg, drelavg, &

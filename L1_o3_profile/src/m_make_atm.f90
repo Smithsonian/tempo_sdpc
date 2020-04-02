@@ -179,11 +179,11 @@ contains
     ENDIF
 
     IF (nold > mflay) THEN 
-       WRITE(*,*) ADJUSTL(TRIM(modulename))//':Increase mflay' ; stop
+       WRITE(*,*) ADJUSTL(TRIM(modulename))//':Increase mflay' ; stop 1
     ENDIF
     IF (ALL(told(1:nlecm) == 0.0)) THEN 
        told(0:nold) = told0(0:nold)
-       WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm ; STOP
+       WRITE(*,*) 'USE temperature applied due to bad values from ', which_atm ; stop 1
     ENDIF
 
     pold(nold) = p0 * 2.0D0 ** (-13.5D0)  ! TOP
@@ -284,11 +284,11 @@ contains
       ELSE
         OPEN (UNIT=profunit, FILE=TRIM(ADJUSTL(presgrid_fname)), status='old', IOSTAT=errstat)
         IF ( errstat /= pge_errstat_ok ) THEN
-          WRITE(www_lun, *) modulename, ': Error in opening pressure grid file!!!'; STOP
+          WRITE(www_lun, *) modulename, ': Error in opening pressure grid file!!!'; stop 1
         ENDIF
         READ (profunit, *) ntemp, is_pgrid
         IF (ntemp /= numk + 1) THEN
-          WRITE(www_lun, *) modulename, ': The number of layers is inconsistent!!!'; STOP
+          WRITE(www_lun, *) modulename, ': The number of layers is inconsistent!!!'; stop 1
         ENDIF
         IF (is_pgrid) THEN 
           READ (profunit, *) umkp0(0:numk) 
@@ -806,7 +806,7 @@ contains
     !   WRITE(90, '(9D14.6)') fts(i), fps(i), fzs(i), &
     !        fozs(i), frhos(i), mgasprof(1, i), mgasprof(4, i), mgasprof(5, i), mgasprof(7, i)
     !ENDDO
-    !STOP
+    !stop 1
 
     ! =============== Write to atmospheric profiles as LIDORT Input====================
     IF (atmwrt) THEN
@@ -880,7 +880,7 @@ contains
      DO i = 0, numk
        write(*,'(i4, 10f8.2)') i, atmosprof(1:3,i), ozprof(i)
      ENDDO
-     print * , 'do_debug'//ADJUSTL(TRIM(modulename)) ; STOP
+     print * , 'do_debug'//ADJUSTL(TRIM(modulename)) ; stop 1
     ENDIF
     RETURN
   

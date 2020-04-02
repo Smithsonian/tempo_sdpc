@@ -125,7 +125,7 @@ contains
     !WRITE(www_lun, *) extcld, gcq
     !WRITE(www_lun, *) gcasy
     !WRITE(www_lun, *) gcw
-    !STOP
+    !STOP 1
 
     RETURN
   END SUBROUTINE GET_CLOUD_MIPROP

@@ -238,7 +238,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   ENDIF
   IF (which_cld == 5 .OR. which_toz == 4) THEN
      !CALL read_cldalb_input(errstat)
-     STOP
+     stop 1
      IF (errstat /= pge_errstat_ok) THEN
         WRITE(*, *) modulename, ' Error in reading cldalb fit input!!!'
         pge_error_status = pge_errstat_error; RETURN
@@ -280,7 +280,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
      WRITE(www_lun, *) modulename, ': hres_samprate must be multiples of 0.01!!!'
      !hres_samprate = NINT(hres_samprate * 100) / 100.
      !WRITE(www_lun, *) modulename, ': hres_samprate is reset to: ', hres_samprate
-     !stop
+     !stop 1
   ENDIF
   
   ! Read parameters for specifying sampling rate for specified # of spectral region
@@ -546,7 +546,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   ENDIF
 
   IF (do_alb_longwav .and. nviswin /= 0) THEN 
-    WRITE(www_lun, *) TRIM(adjustl(modulename))//':longwav alb retrievals not completed!' ; stop
+    WRITE(www_lun, *) TRIM(adjustl(modulename))//':longwav alb retrievals not completed!' ; stop 1
   ENDIF
   ! check the upper and lower range for albedo and cloud 
   ! Use waves < alb_swav and waves > alb_ewav to retrieve albedo
@@ -1036,23 +1036,23 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         np3 = 0
     ELSE IF (which_slit == 2) THEN  ! triangle
          npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
-       print * , 'not yet implemented ' ; stop
+       print * , 'not yet implemented ' ; stop 1
     ELSE IF (which_slit == 3) THEN  ! viot
        !npsl = 4 ; psl_fpos(1:npsl) = [vgl_idx, vgr_idx, hwl_idx,hwr_idx ]
-       print * , 'not yet implemented ' ; stop
+       print * , 'not yet implemented ' ; stop 1
     ELSE IF (which_slit == 4) THEN  ! super gaussian
         npsl = 2 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx]
        !np2 = np3; p2wins = p3wins; p2ind = p3ind; p2find = p3find
        np3 = 0
        IF (np1 ==0 .or. np2 == 0) THEN 
           PRINT * , 'check for pw or pk'
-          STOP
+          stop 1
        ENDIF
     ELSE IF (which_slit == 5) THEN ! asym super gaussian
         npsl = 3 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx, asy_idx]
        IF (np1 ==0 .or. np2 == 0 .or. np3 == 0) THEN 
           PRINT * , 'check for pw or pk'
-          STOP
+          stop 1
        ENDIF
     ELSE IF (which_slit == instrument_sidx) THEN  ! omi instrument
          np1 = 0 ; np2 = 0 ; np3 = 0
@@ -1105,10 +1105,10 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   ! debuging part
   !---------------------------
   IF (nfwfc > 0 .and. do_rtm_pca) THEN
-      WRITE(*,'()') modulename//':Rethink, wcfrac is not implemented in PCA RTM !!!';STOP
+      WRITE(*,'()') modulename//':Rethink, wcfrac is not implemented in PCA RTM !!!';stop 1
   ENDIF
   IF (use_prefitalb) THEN 
-      WRITE(*,'()') modulename//':use_prefitalb is not really implemented!!!';STOP
+      WRITE(*,'()') modulename//':use_prefitalb is not really implemented!!!';stop 1
   ENDIF
   RETURN
 END SUBROUTINE read_ozprof_input

@@ -1065,7 +1065,7 @@ MODULE m_get_initial_albedo
      ! Determine if file exists or not
      INQUIRE (FILE = alb_fname, EXIST = file_exist)
      IF (.NOT. file_exist) THEN
-        WRITE(*, *) 'GET_OMLER_ALB: albedo file does not exist!!!'; STOP
+        WRITE(*, *) 'GET_OMLER_ALB: albedo file does not exist!!!'; STOP 1
      ENDIF
 
      alb_fid = HE5_GDopen(TRIM(ADJUSTL(alb_fname)), he5f_acc_rdonly)
@@ -1213,7 +1213,7 @@ MODULE m_get_initial_albedo
         alb_fname = TRIM(ADJUSTL(atmdbdir)) // 'sciagm2alb/GOME2_MetOp-A_PMD_surface_LER_product.hdf5'
         nlon = 720; nlat = 360; longrid = 0.5d0; latgrid = 0.5d0; nwvl0 = 12
      ELSE
-        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP
+        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP 1
      ENDIF
      
      nm = 2     
@@ -1236,7 +1236,7 @@ MODULE m_get_initial_albedo
      ! Determine if file exists or not
      INQUIRE (FILE = alb_fname, EXIST = file_exist)
      IF (.NOT. file_exist) THEN
-        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP
+        WRITE(*, *) 'GET_SCIAGM2_ALB: albedo file does not exist!!!'; STOP 1
      ENDIF
 
      CALL H5OPEN_F(hdferr)

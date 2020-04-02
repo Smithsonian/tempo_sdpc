@@ -143,7 +143,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
       CALL get_hres_radcal_waves(errstat)
       IF (errstat == pge_errstat_error) THEN
         WRITE(*, *) modulename, ': Errors in getting fine & radiance calculation wavelength grids!!!'
-        STOP
+        STOP 1
       ENDIF
     ENDIF
     CALL set_tracegas (ngas)

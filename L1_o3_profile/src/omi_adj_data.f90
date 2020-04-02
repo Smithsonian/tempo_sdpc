@@ -984,7 +984,7 @@ contains
     !DO i = 1, np - 1
     !   WRITE(92, *) radspec(1, i), sig(i)
     !ENDDO
-    !STOP
+    !STOP 1
 
     RETURN
   END SUBROUTINE adj_rad_sig

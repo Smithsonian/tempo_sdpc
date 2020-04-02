@@ -349,7 +349,7 @@ MODULE error_module
     ! =====================================================================
 
     ! Placeholder for now - stop for everything
-    IF( error%Fatal ) STOP
+    IF( error%Fatal ) STOP 1
     
     ! Set Return value to true if there is a pixel error
     CheckError = Error%Pixel

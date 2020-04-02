@@ -181,7 +181,7 @@ CONTAINS
   ! --------------------------------------
   IF ( hw1e == 0.0 .or. power ==0.0) THEN 
      WRITE(*,*) 'super gaussian error'
-     STOP
+     STOP 1
   ENDIF
   
   delwvl = wvlarr(2) - wvlarr(1)
@@ -445,7 +445,7 @@ CONTAINS
      ! -----------------------------------------------
      ! No Gaussian convolution if Halfwidth @ 1/e is 0
      ! -----------------------------------------------
-     IF ( hw1e == 0.0 .or. power == 0.0 ) STOP
+     IF ( hw1e == 0.0 .or. power == 0.0 ) STOP 1
 
      ! --------------------------------------------------------------
      ! Find the number of spectral points that fall within a Gaussian
@@ -807,7 +807,7 @@ CONTAINS
         WRITE(*, *) fslit, lslit, wvlarr(fidx), wvlarr(lidx), slitwav(1), &
              slitwav(nslit), nslit, wvlarr(1), wvlarr(npoints)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
      ENDIF
      
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value
@@ -1093,7 +1093,7 @@ CONTAINS
         WRITE(*, *) fslit, lslit, cwave(fidxc), cwave(lidxc), slitwav(1), &
                     slitwav(nslit), nslit, cwave(1), cwave(nc)
         WRITE(*, *) modulename, ': Not slit available for this window!!!'
-        STOP
+        STOP 1
      ENDIF
 
      IF (lslit < fslit + 3) THEN  ! extrapolate, use the nearest value

@@ -205,7 +205,7 @@ MODULE covariance_module
         ELSE
           print*,'Only Parameterized covariance of the same ' &
                // 'profile type may be used in ProfilePar case'
-          STOP
+          STOP 1
         ENDIF
       
       ELSEIF(StateType .EQ. 'Scalar') THEN
@@ -277,7 +277,7 @@ MODULE covariance_module
 
       IF(nX .NE. lmx) THEN
         print*,'FATAL: Cannot use ZCORRELATED Covariance Param. when nX != lmx'
-        STOP
+        STOP 1
       ENDIF
 
       DO I=1,lmx

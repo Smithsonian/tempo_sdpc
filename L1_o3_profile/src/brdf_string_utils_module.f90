@@ -184,7 +184,7 @@ CONTAINS
             WRITE( 6, '(a)' ) 'Unexpected end of file encountered!'
             WRITE( 6, '(a)' ) 'STOP in READ_ONE_LINE (input_mod.f)'
             WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-            STOP
+            STOP 1
          ELSE
             RETURN
          ENDIF
@@ -279,7 +279,7 @@ CONTAINS
          WRITE( 6, '(a)' ) 'End of file encountered!' 
          WRITE( 6, '(a)' ) 'STOP in SPLIT_ONE_LINE (input_mod.f)!'
          WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         STOP
+         STOP 1
       ENDIF
 
       !=================================================================
@@ -297,7 +297,7 @@ CONTAINS
          WRITE( 6, 100   ) N_EXP, N_SUBSTRS
          WRITE( 6, '(a)' ) 'STOP in SPLIT_ONE_LINE (input_mod.f)!'
          WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         STOP
+         STOP 1
  100     FORMAT( 'Expected ',i2, ' substrs but found ',i3 )
       ENDIF
        
@@ -404,7 +404,7 @@ CONTAINS
          WRITE( 6, '(a)' ) 'STRREPL: PATTERN and REPLTXT must have same # of characters!'
          WRITE( 6, '(a)' ) 'STOP in STRREPL (charpak_mod.f)'
          WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         STOP
+         STOP 1
       ENDIF
 
       ! Loop over all instances of PATTERN in STR

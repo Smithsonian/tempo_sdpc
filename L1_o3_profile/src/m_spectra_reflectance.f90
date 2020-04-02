@@ -306,7 +306,7 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
   !DO i = 1, ns
   !   WRITE(www_lun, '(F10.4,D14.7)') fitwavs(i), corrected_irrad(i) * div_s
   !ENDDO
-  !STOP
+  !STOP 1
 
   ! Internal Scattering in Radiance
   corrected_rad = currspec(1:ns)

@@ -67,7 +67,7 @@ MODULE m_get_gcnr
     nlat = nlat_gc
     ! check out of bounds 
     IF (the_utc < 0 .or. the_utc >= 24 ) THEN
-       WRITE (*,*) 'gcnr: it is out of bounds' ; stop
+       WRITE (*,*) 'gcnr: it is out of bounds' ; stop 1
     ENDIF
  
     IF (first) THEN 
@@ -105,7 +105,7 @@ MODULE m_get_gcnr
     ! check out of bounds 
     IF (the_lon  < lon(1) .or. the_lon >  lon(nlon) .or. &
        the_lat < lat(1) .or. the_lat > lat(nlat) ) THEN
-       WRITE (*,*) 'gcnr: it is out of bounds ; stop'
+       WRITE (*,*) 'gcnr: it is out of bounds' ; stop
     ENDIF
     print * , the_lon, the_lat, the_utc
     ! define hourly interpolation variables    
@@ -262,7 +262,7 @@ MODULE m_get_gcnr
   IF (status /= nf90_noerr) THEN
      print*,NF_STRERROR(status)
      WRITE(*,*)  'Errors in reading NETCDF'
-     stop
+     stop 1
   ENDIF
  END SUBROUTINE check
 

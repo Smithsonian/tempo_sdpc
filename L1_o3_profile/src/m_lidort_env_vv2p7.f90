@@ -201,7 +201,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         write(1,'(A,I3,A,A)')'Action  # ',i,' : ',Trim(VLIDORT_InputStatus%TS_INPUTACTIONS(i))
        ENDDO
       close(1)
-      STOP
+      STOP 1
     ENDIF
 
     VLIDORT_FixIn%Cont%TS_NLAYERS_NOMS = 0 
@@ -586,7 +586,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
      CALL GET_ALB_OZCRS_RAY(nz1, ts(1:nz1), nfgas, allcrs(1, 1:nfgas, 1:nz1), raycof(1), depol(1), problems)
      IF (problems) THEN
         WRITE(*, *) modulename, ' : Problems in reading O3 XSec for determining Fc!!!'
-        errstat = pge_errstat_error; STOP
+        errstat = pge_errstat_error; STOP 1
      ENDIF
 
      !CALL GET_ALL_RAYCOF_DEPOL(1, 360.D0, raycof(1), depol(1))
@@ -896,12 +896,12 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
 
         VLIDORT_LinOut%Prof%TS_profilewf(1:n_atmos_wfs, nz1+1:nz, 1, 1, 1:NSTOKES, 1) = 0.0
         IF ( VLIDORT_Out%Status%TS_STATUS_INPUTCHECK .eq. VLIDORT_SERIOUS ) THEN
-          WRITE(*,*)'VLIDORT input abort, PROFILEWF calculation', lamda, iw ; STOP
+          WRITE(*,*)'VLIDORT input abort, PROFILEWF calculation', lamda, iw ; STOP 1
         ELSE IF ( VLIDORT_Out%Status%TS_STATUS_INPUTCHECK .ne. VLIDORT_SERIOUS .and. &
               VLIDORT_Out%Status%TS_STATUS_CALCULATION .eq. VLIDORT_SERIOUS ) then
               print * ,  VLIDORT_Out%Status%TS_STATUS_INPUTCHECK , &
               VLIDORT_Out%Status%TS_STATUS_CALCULATION 
-          WRITE(*,*)'VLIDORT calculation abort, PROFILEWF calculation',lamda,iw; STOP
+          WRITE(*,*)'VLIDORT calculation abort, PROFILEWF calculation',lamda,iw; STOP 1
         ENDIF
         CALL cpu_time(e2)
         e_vlidort = e_vlidort + e2 - e1
@@ -1450,7 +1450,7 @@ SUBROUTINE LIDORT_PROF_PREP (lamda, raycof, depol, &
   ELSE IF (NSTOKES == 4) THEN 
      nactgksec = 8; nactgkmatc = ngkmatc
   eLSE IF (NSTOKES == 2) THEN 
-      WRITE(*,*) 'nstokes=2' ; STOP
+      WRITE(*,*) 'nstokes=2' ; STOP 1
   ENDIF
    
 
@@ -1807,7 +1807,7 @@ SUBROUTINE LIDORT_PROF_PREP (lamda, raycof, depol, &
               !print *, maxval(VLIDORT_LinFixIn%Optical%TS_l_greekmat_total_input), minval(VLIDORT_LinFixIn%Optical%TS_l_greekmat_total_input)
               !print *, i, VLIDORT_LinFixIn%Optical%TS_l_deltau_vert_input(q,i), VLIDORT_LinFixIn%Optical%TS_l_omega_total_input(q,i)
               !WRITE(www_lun, '(6D14.6)') (l_phasmoms_total_input(1, j, 1:nactgksec), j = 0, nmoms)
-              !STOP
+              !STOP 1
            ENDIF
            !  w.r.t  aerosol scattering coefficient / single scattering albedo
            !  aerosol optical thickness will not change
@@ -1948,7 +1948,7 @@ SUBROUTINE GET_SLANT_TAU(nz, zs, tauin, sza, tauout)
   ENDIF
 
   !CALL VLIDORT_CHAPMAN(fail, message, trace)
-  PRINT * , 'not implemented'; STOP
+  PRINT * , 'not implemented'; STOP 1
   tauout = 0.0
   DO i = 1, nz
      DO j = 1, i

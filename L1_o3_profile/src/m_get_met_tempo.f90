@@ -47,7 +47,7 @@ MODULE  m_get_met_tempo
       print * , l2_met_filenames(1)
       if (errstat /= 0) then
         call tell_error (tell_runtime_error, "error opening synthetic met data", errstat)
-        STOP
+        STOP 1
       endif
     else
       have_synthetic_met_data = .false.
@@ -96,7 +96,7 @@ MODULE  m_get_met_tempo
    thismet%ts(0:thismet%np)=tprof
    deallocate(tprof, pprof, tprof_r4)
    IF (errstat /= 0) THEN 
-      WRITE(*,*) 'Errors in get_met_tempo' ; STOP
+      WRITE(*,*) 'Errors in get_met_tempo' ; STOP 1
    ENDIF
    
    ! heanding the pressure grids of out of range

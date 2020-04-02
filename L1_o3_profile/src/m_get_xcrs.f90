@@ -654,7 +654,7 @@ CONTAINS
 
   crsz%crs(fidx:lidx, 1:nz) = crsz%crs(fidx:lidx, 1:nz)*refspec_norm(o2_idx) 
   IF (do_bandavg) THEN 
-       WRITE(*,*) 'geto2_hitran: not implemented for do bandavg' ; STOP
+       WRITE(*,*) 'geto2_hitran: not implemented for do bandavg' ; stop 1
   ENDIF
   IF (first) THEN 
      first = .FALSE.
@@ -769,7 +769,7 @@ CONTAINS
   crsz%crs(fidx:lidx,z1:z2) = crsz%crs(fidx:lidx,z1:z2)*refspec_norm(h2o_idx)  
 
   IF (do_bandavg) THEN 
-       WRITE(*,*) 'geth2o_hitran: not implemented for do bandavg' ; STOP
+       WRITE(*,*) 'geth2o_hitran: not implemented for do bandavg' ; stop 1
   ENDIF
   IF (first) THEN 
      first = .FALSE.
@@ -949,7 +949,7 @@ CONTAINS
   !crsz%crs(fidx:lidx, 1:nz) = crsz%crs(fidx:lidx, 1:nz)*refspec_norm(o2_idx)
   IF (do_bandavg) THEN 
     WRITE(*,*) 'geto2_hitran: not implemented for do bandavg'
-    STOP
+    stop 1
   ENDIF
   IF (first) THEN 
      first = .FALSE.
@@ -1142,7 +1142,7 @@ CONTAINS
   crsz%crs(fidx:lidx, 1:nz) = crsz%crs(fidx:lidx, 1:nz) !*refspec_norm(h2o_idx)
   IF (do_bandavg) THEN 
     WRITE(*,*) 'geth2o_hitran: not implemented for do bandavg'
-    STOP
+    stop 1
   ENDIF
   IF (first) THEN 
      first = .FALSE.
@@ -1786,7 +1786,7 @@ CONTAINS
               IF (errstat < 0) THEN
                 !    print * , hreswav(fidx:lidx)
                  WRITE(*, *) modulename, ' : BSPLINE2 error, errstat = ',errstat
-                  stop
+                  stop 1
                  problems=.true. ; return
               ENDIF
            ENDIF
@@ -2311,7 +2311,7 @@ CONTAINS
         WRITE(www_lun,'(A)') TRIM(ADJUSTL(absfname))
         OPEN(UNIT = ozabs_unit, file=TRIM(ADJUSTL(absfname)), status='old')
     ELSE
-        WRITE(*,*) modulename//': No file of '//TRIM(ADJUSTL(absfname)); STOP
+        WRITE(*,*) modulename//': No file of '//TRIM(ADJUSTL(absfname)); stop 1
     ENDIF
 
     DO WHILE (tmpchar /= 'START OF TABLE') 
@@ -2324,7 +2324,7 @@ CONTAINS
     READ (ozabs_unit, *) ts(1:txcrs%nt)
     IF ((txcrs%nt > 1 .AND. .NOT. txcrs%tdepend ) .AND. (MINVAL(ts(1:txcrs%nt)) > 220. &
         .OR.  MAXVAL(ts(1:txcrs%nt)) < 280. )) THEN
-       WRITE(*, *) modulename//': Temperature range for X-section not enough!!!';STOP
+       WRITE(*, *) modulename//': Temperature range for X-section not enough!!!';stop 1
     ENDIF
 
     j = 1
@@ -2391,11 +2391,11 @@ CONTAINS
            CALL INTERPOL(ts(1:nt), crs(1:nt,i), nt, tz(1:nz), &
                 crsz(i, 1:nz), nz, errstat)
            IF (errstat < 0) THEN
-              WRITE(*, *) 'calc_crsz:  INTERPOL2 error, errstat = ', errstat ;STOP
+              WRITE(*, *) 'calc_crsz:  INTERPOL2 error, errstat = ', errstat ;stop 1
            ENDIF
         ENDDO
      ELSE
-        WRITE(*, *) 'calc_crsz:Such type of ozone cross sections not implemented'; STOP
+        WRITE(*, *) 'calc_crsz:Such type of ozone cross sections not implemented'; stop 1
      ENDIF
      RETURN
   END FUNCTION calc_crsz
@@ -2439,13 +2439,13 @@ CONTAINS
            CALL INTERPOL2(ts(1:nt), crs(1:nt,i), nt, .TRUE., tz(1:nz), &
                 tmpcrs(1:nz), dadtz(i, 1:nz), nz, errstat)
            IF (errstat < 0) THEN
-              WRITE(*, *) ' INTERPOL2 error, errstat = ', errstat;STOP
+              WRITE(*, *) ' INTERPOL2 error, errstat = ', errstat;stop 1
            ENDIF
         ENDDO
         deallocate(tmpcrs)
      ELSE
         WRITE(*, *)  'Such type of ozone cross sections not implemented'
-        STOP
+        stop 1
      ENDIF
      RETURN
   END FUNCTION calc_tmpwf
@@ -2578,7 +2578,7 @@ CONTAINS
     fail = .false.
     INQUIRE (FILE= TRIM(ADJUSTL(abs_fname)), EXIST= file_exist)
     IF (.not. file_exist) THEN
-        write(*,*) "No exsit:"//abs_fname ; stop
+        write(*,*) "No exsit:"//abs_fname ; stop 1
     ENDIF 
 
     ! ================================================================
@@ -2587,7 +2587,7 @@ CONTAINS
     ! Open file in read mode
     ncid = ncopn(trim(adjustl(abs_fname)), nf_Nowrite, rcode)
     if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncopn failed' ; stop
+       message =  ' error in read_xy_nc_prof: ncopn failed' ; stop 1
     endif
 
     ! Read the grid dimensions
@@ -2681,7 +2681,7 @@ CONTAINS
     ! Open file in read mode
     INQUIRE (FILE= TRIM(ADJUSTL(abs_fname)), EXIST= file_exist)
     IF (.not. file_exist) THEN
-        write(*,*) "No exsit:"//abs_fname ; stop
+        write(*,*) "No exsit:"//abs_fname ; stop 1
     ENDIF 
     ncid = ncopn(trim(adjustl(abs_fname)), nf_Nowrite, rcode)
     WRITE(*,*) trim(adjustl(abs_fname))
