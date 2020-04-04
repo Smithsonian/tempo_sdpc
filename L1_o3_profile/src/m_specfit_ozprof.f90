@@ -125,6 +125,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   CHARACTER (LEN=14), PARAMETER :: modulename = 'specfit_ozprof'
 
   ! Initialize variables for convenience
+  toz = 0.0
   nalbwf  = 1 ! become more if do_brdf
   npoints = n_rad_wvl
   errstat = pge_errstat_ok
