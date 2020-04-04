@@ -1,9 +1,13 @@
 !
 module m_ezspline_interpolation
 
-  public ezspline_interpolation, bspline, bspline1, bspline2, interpol, & 
+  public ezspline_interpolation, bspline, bspline1, bspline2, interpol, &
        interpol2, blend_101, blend_103, interpolation,linearinterpolationweights
   private spline, splint, splint1!, blend_102
+  private monotonic
+
+  logical, parameter, private :: debug_mode = .false.
+  integer, parameter, private  :: dp = KIND(1.0D0)
 
 contains
 
@@ -11,7 +15,7 @@ contains
        y_out, errstat )
 
     USE EZspline_obj
-    USE EZspline  
+    USE EZspline
     USE OMSAO_precision_module
     USE OMSAO_errstat_module
 
@@ -103,12 +107,32 @@ contains
     RETURN
   END SUBROUTINE ezspline_interpolation
 
+  logical function monotonic (x)
+  implicit none
+  real (kind=dp), dimension(:), intent(in) :: x
+  real (kind=dp) :: diff(size(x)-1)
+  integer :: n
+
+  ! It's extremely inefficient to perform this test on every call
+  ! during production, but the test may be useful for debugging.
+  ! Therefore, we control this function using 'debug_mode' which should
+  ! be declared as a compile-time logical constant (e.g. logical, parameter).
+  ! When debug_mode=.false. the compiler can optimize this function away
+  ! completely, replacing the function call with a compile-time constant.
+
+  if (debug_mode) then
+    n = size(x)
+    diff = x(2:n) - x(1:n-1)
+    monotonic = all(diff>0) .or. all(diff<0)
+  else
+    monotonic = .true.
+  endif
+  end function monotonic
 
   ! This subroutine combine spline and splint fnuction
   SUBROUTINE BSPLINE(xa, ya, n, x, y, np, errstat)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
@@ -116,10 +140,8 @@ contains
     REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
     REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y
 
-
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
-    REAL (KIND=dp), DIMENSION(n-1)            :: diff
     REAL (KIND=dp)                            :: xmin, xmax, xamin, xamax
 
     errstat = 0
@@ -127,8 +149,7 @@ contains
       errstat = - 1; RETURN
     ENDIF
 
-    diff = xa(2:n) - xa(1:n-1)
-    IF (.NOT. (ALL(diff > 0) .OR. ALL(diff < 0))) THEN
+    if (.not.monotonic(xa)) then
       errstat =  -2; RETURN
     ENDIF
 
@@ -151,12 +172,10 @@ contains
     RETURN
   END SUBROUTINE BSPLINE
 
-
   ! This subroutine combine spline and splint function
   SUBROUTINE BSPLINE1(xa, ya, n, x, y, dydx, np, errstat)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
@@ -166,7 +185,6 @@ contains
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
-    REAL (KIND=dp), DIMENSION(n-1)            :: diff
     REAL (KIND=dp)                            :: xmin, xmax, xamin, xamax
 
     errstat = 0
@@ -174,8 +192,7 @@ contains
       errstat = - 1; RETURN
     ENDIF
 
-    diff = xa(2:n) - xa(1:n-1)
-    IF (.NOT. (ALL(diff > 0) .OR. ALL(diff < 0))) THEN
+    if (.not.monotonic(xa)) then
       errstat =  -2; RETURN
     ENDIF
 
@@ -200,8 +217,7 @@ contains
   ! This subroutine provide a switch for calculating shifting wf
   SUBROUTINE BSPLINE2(xa, ya, n, cal_shiwf, x, y, dydx, np, errstat)
 
-    IMPLICIT NONE  
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
+    IMPLICIT NONE
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
@@ -212,7 +228,6 @@ contains
 
     REAL (KIND=dp), DIMENSION(n)              :: y2a, xacpy
     REAL (KIND=dp), DIMENSION(np)             :: xcpy
-    REAL (KIND=dp), DIMENSION(n-1)            :: diff
     REAL (KIND=dp)                            :: xmin, xmax, xamin, xamax
 
     errstat = 0
@@ -220,8 +235,7 @@ contains
       errstat = - 1; RETURN
     ENDIF
 
-    diff = xa(2:n) - xa(1:n-1)
-    IF (.NOT. (ALL(diff > 0) .OR. ALL(diff < 0))) THEN
+    if (.not.monotonic(xa)) then
       errstat =  -2; RETURN
     ENDIF
 
@@ -251,14 +265,12 @@ contains
     RETURN
   END SUBROUTINE BSPLINE2
 
-
   ! modified to always use "natural" boundary conditions
   SUBROUTINE SPLINE (x, y, n, y2)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n
-    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: x, y  
+    REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: x, y
     REAL (KIND=dp), DIMENSION(n), INTENT(OUT) :: y2
 
     REAL (KIND=dp), DIMENSION(n)  :: u
@@ -272,7 +284,7 @@ contains
       sig = (x (i) - x (i - 1)) / (x (i + 1) -x (i - 1))
       p = sig * y2 (i - 1) + 2.D0
       y2 (i) = (sig - 1.) / p
-      u (i) = (6._dp * ((y (i + 1) - y (i)) / (x (i + 1) - x (i)) -  & 
+      u (i) = (6._dp * ((y (i + 1) - y (i)) / (x (i + 1) - x (i)) -  &
            (y (i) - y (i - 1)) / (x (i) - x (i - 1))) / (x (i + 1) - &
            x (i - 1)) - sig * u (i - 1)) / p
     ENDDO
@@ -287,20 +299,18 @@ contains
     RETURN
   END SUBROUTINE SPLINE
 
-
   SUBROUTINE SPLINT1 (xa, ya, y2a, n, x, y, dy1, m)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
-    INTEGER, INTENT(IN) :: n, m 
+    INTEGER, INTENT(IN) :: n, m
     REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
     REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
     REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y, dy1
 
-    INTEGER        :: ii, klo, khi, k 
+    INTEGER        :: ii, klo, khi, k
     REAL (KIND=dp) :: h, a, b
 
-    DO ii = 1, m 
+    DO ii = 1, m
       klo = 1
       khi = n
       DO WHILE (khi - klo > 1)
@@ -322,7 +332,7 @@ contains
 
       dy1(ii)=(-1.0D0/h) * ya(klo) + (1.0D0/h) * ya(khi) + &
            (-(3.D0*a**2 - 1.0D0)  * y2a(klo) / h + (3.0D0*b**2 - 1.0D0) * &
-           y2a(khi)/h) * (h**2) / 6.D0     
+           y2a(khi)/h) * (h**2) / 6.D0
     ENDDO
 
     RETURN
@@ -332,18 +342,17 @@ contains
   SUBROUTINE SPLINT (xa, ya, y2a, n, x, y, m)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
     INTEGER, INTENT(IN) :: n, m
     REAL (KIND=dp), DIMENSION(n), INTENT(IN) :: xa, ya, y2a
     REAL (KIND=dp), DIMENSION(m), INTENT(IN) :: x
     REAL (KIND=dp), DIMENSION(m), INTENT(OUT):: y
 
-    INTEGER        :: ii, klo, khi, k 
+    INTEGER        :: ii, klo, khi, k
     REAL (KIND=dp) :: h, a, b
 
     !klo = 1; khi = n
 
-    DO ii = 1, m 
+    DO ii = 1, m
       klo = 1; khi = n
 
       !IF ( khi - klo == 1) THEN
@@ -373,11 +382,80 @@ contains
     RETURN
   END SUBROUTINE SPLINT
 
+  integer function binary_search (xa, t)
+    implicit none
+    real (kind=dp), dimension(:), intent(in) :: xa
+    real (kind=dp), intent(in) :: t
+
+    integer :: n, n0, n1, n2
+    real (kind=dp) :: xt
+
+    n = size(xa)
+
+    n0 = 1
+    n1 = n+1
+
+    if (xa(1) < xa(2)) then
+      ! xa in ascending order
+
+      ! Don't extrapolate
+      if (t < xa(1)) then
+        binary_search = 1
+        return
+      else if (xa(n) < t) then
+        binary_search = n
+        return
+      endif
+
+      do while (n1 > n0+1)
+        n2 = (n0 + n1) / 2
+        xt = xa(n2)
+        if (t <= xt) then
+          if (xt == t) then
+            binary_search = n2
+            return
+          endif
+          n1 = n2
+        else
+          n0 = n2
+        endif
+      enddo
+
+    else
+      ! xa in descending order
+
+      ! Don't extrapolate
+      if (t > xa(1)) then
+        binary_search = 1
+        return
+      else if (xa(n) > t) then
+        binary_search = n
+        return
+      endif
+
+      do while (n1 > n0+1)
+        n2 = (n0 + n1) / 2
+        xt = xa(n2)
+        if (t >= xt) then
+          if (xt == t) then
+            binary_search = n2
+            return
+          endif
+          n1 = n2
+        else
+          n0 = n2
+        endif
+      enddo
+    endif
+
+    binary_search = n0
+
+  end function binary_search
+
   ! This is not optimized (could save the time to find the index by using previous indices)
   SUBROUTINE INTERPOL(xa, ya, n, x, y, np, errstat)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
 
     INTEGER, INTENT (IN)                      :: n, np
     INTEGER, INTENT (OUT)                     :: errstat
@@ -385,7 +463,6 @@ contains
     REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
     REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y
 
-    REAL (KIND=dp), DIMENSION(n-1)            :: diff
     REAL (KIND=dp), DIMENSION(np)             :: frac
     INTEGER,        DIMENSION(np)             :: fidx
     INTEGER                                   :: i
@@ -395,17 +472,23 @@ contains
       errstat = - 1; RETURN
     ENDIF
 
-    diff = xa(2:n) - xa(1:n-1)
-    IF (.NOT. (ALL(diff > 0) .OR. ALL(diff < 0))) THEN
+    if (.not.monotonic(xa)) then
       errstat =  -2; RETURN
     ENDIF
 
+    !JCH the old code was extremely inefficient.
+    !I think a binary search will work better.
+    if (.true.) then
+      do i = 1, np
+        fidx(i) = MIN(n-1, binary_search (xa, x(i)))
+      enddo
+    else !JCH
     ! find the node
     IF (xa(1) < xa(n)) THEN
       DO i = 1, np
         IF (x(i) <= xa(1)) THEN
           fidx(i) = 1  ! extrapolation
-        ELSE 
+        ELSE
           fidx(i) = MIN(n-1, MINVAL(MAXLOC(xa, MASK=(xa <= x(i)))))
         ENDIF
       ENDDO
@@ -418,10 +501,11 @@ contains
         ENDIF
       ENDDO
     ENDIF
+    endif !JCH
 
     frac = (x - xa(fidx)) / (xa(fidx+1) - xa(fidx))
     y = (1.0D0 - frac) * ya(fidx) + frac * ya(fidx + 1)
-    
+
     RETURN
 
   END SUBROUTINE INTERPOL
@@ -430,7 +514,6 @@ contains
   SUBROUTINE INTERPOL2(xa, ya, n, calc_shiwf, x, y, dydx, np, errstat)
 
     IMPLICIT NONE
-    INTEGER, PARAMETER  :: dp = KIND(1.0D0)
 
     INTEGER, INTENT (IN)                      :: n, np
     LOGICAL, INTENT (IN)                      :: calc_shiwf
@@ -439,7 +522,6 @@ contains
     REAL (KIND=dp), DIMENSION(np), INTENT(IN) :: x
     REAL (KIND=dp), DIMENSION(np), INTENT(OUT):: y, dydx
 
-    REAL (KIND=dp), DIMENSION(n-1)            :: diff
     REAL (KIND=dp), DIMENSION(np)             :: frac
     INTEGER,        DIMENSION(np)             :: fidx
     INTEGER                                   :: i
@@ -449,17 +531,23 @@ contains
       errstat = - 1; RETURN
     ENDIF
 
-    diff = xa(2:n) - xa(1:n-1)
-    IF (.NOT. (ALL(diff > 0) .OR. ALL(diff < 0))) THEN
+    if (.not.monotonic(xa)) then
       errstat =  -2; RETURN
     ENDIF
 
+    !JCH the old code was extremely inefficient.
+    !I think a binary search will work better.
+    if (.true.) then
+      do i = 1, np
+        fidx(i) = MIN(n-1, binary_search (xa, x(i)))
+      enddo
+    else !JCH
     ! find the node
     IF (xa(1) < xa(n)) THEN
       DO i = 1, np
         IF (x(i) <= xa(1)) THEN
           fidx(i) = 1  ! extrapolation
-        ELSE 
+        ELSE
           fidx(i) = MIN(n-1, MINVAL(MAXLOC(xa, MASK=(xa <= x(i)))))
         ENDIF
       ENDDO
@@ -472,6 +560,7 @@ contains
         ENDIF
       ENDDO
     ENDIF
+    endif !JCH
 
     frac = (x - xa(fidx)) / (xa(fidx+1) - xa(fidx))
 
@@ -484,8 +573,6 @@ contains
     RETURN
 
   END SUBROUTINE INTERPOL2
-
-
 
   SUBROUTINE blend_101 ( r, x0, x1, x )
     !
@@ -532,14 +619,13 @@ contains
     !
     !  Parameters:
     !
-    !    Input, real R, the coordinate where an interpolated value is desired.  
+    !    Input, real R, the coordinate where an interpolated value is desired.
     !
     !    Input, real X0, X1, the data values at the ends of the line.
     !
     !    Output, real X, the interpolated data value at (R).
     !
     IMPLICIT NONE
-    INTEGER, PARAMETER :: dp = KIND(1.0D0)
 
     REAL (KIND=dp) :: r
     REAL (KIND=dp) :: x
@@ -550,9 +636,6 @@ contains
 
     RETURN
   END SUBROUTINE blend_101
-
-
-
 
 !   Unused?
 !
@@ -598,10 +681,10 @@ contains
 !    !    The nonlinear term ( r * s ) has an important role:
 !    !
 !    !      If ( x01 + x10 - x00 - x11 ) is zero, then the input data lies in
-!    !      a plane, and the mapping is affine.  All the interpolated data 
-!    !      will lie on the plane defined by the four corner values.  In 
-!    !      particular, on any line through the square, data values at 
-!    !      intermediate points will lie between the values at the endpoints.  
+!    !      a plane, and the mapping is affine.  All the interpolated data
+!    !      will lie on the plane defined by the four corner values.  In
+!    !      particular, on any line through the square, data values at
+!    !      intermediate points will lie between the values at the endpoints.
 !    !
 !    !      If ( x01 + x10 - x00 - x11 ) is not zero, then the input data does
 !    !      not lie in a plane, and the interpolation map is nonlinear.  On
@@ -644,15 +727,14 @@ contains
 !    !
 !    !  Parameters:
 !    !
-!    !    Input, real R, S, the coordinates where an interpolated value is 
-!    !    desired.  
+!    !    Input, real R, S, the coordinates where an interpolated value is
+!    !    desired.
 !    !
 !    !    Input, real X00, X01, X10, X11, the data values at the corners.
 !    !
 !    !    Output, real X, the interpolated data value at (R,S).
 !    !
 !    IMPLICIT NONE
-!    INTEGER, PARAMETER :: dp = KIND(1.0D0)
 !
 !    REAL (KIND=dp) :: r
 !    REAL (KIND=dp) :: s
@@ -663,13 +745,12 @@ contains
 !    REAL (KIND=dp) :: x11
 !
 !    x =             + x00 &
-!         + r *     ( - x00 + x10 ) & 
+!         + r *     ( - x00 + x10 ) &
 !         + s *     ( - x00       + x01 ) &
 !         + r * s * ( + x00 - x10 - x01 + x11 )
 !
 !    RETURN
 !  END SUBROUTINE blend_102
-
 
   SUBROUTINE blend_103(r, s, t, x000, x001, x010, x011, x100, x101, x110, x111, x )
     !
@@ -680,9 +761,9 @@ contains
     !
     !  Diagram:
     !
-    !    011--------------111 
+    !    011--------------111
     !      |               |
-    !      |               | 
+    !      |               |
     !      |               |
     !      |               |
     !      |               |
@@ -702,14 +783,14 @@ contains
     !      |               |
     !      |               |
     !      |               |
-    !      |               | 
     !      |               |
-    !    000--------------100 
+    !      |               |
+    !    000--------------100
     !
     !
     !  Formula:
     !
-    !    Written as a polynomial in R, S and T, the interpolation map has the 
+    !    Written as a polynomial in R, S and T, the interpolation map has the
     !    form:
     !
     !      X(R,S,T) =
@@ -765,7 +846,6 @@ contains
     !    Output, real X, the interpolated data value at (R,S,T).
     !
     IMPLICIT NONE
-    INTEGER, PARAMETER :: dp = KIND(1.0D0)
 
     REAL (KIND=dp) :: r
     REAL (KIND=dp) :: s
@@ -800,7 +880,6 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_errstat_module, ONLY: pge_errstat_ok, pge_errstat_warning, &
          pge_errstat_error
- 
 
     IMPLICIT NONE
 
@@ -830,7 +909,7 @@ contains
     y_out(1:n_out) = 0.0_dp
 
     ! ------------------------------------------------------------------------
-    ! Find indices in radiance wavelength spectrum that cover reference 
+    ! Find indices in radiance wavelength spectrum that cover reference
     !  spectrum
     ! ------------------------------------------------------------------------
 
@@ -842,10 +921,10 @@ contains
          imax = MINVAL ( MINLOC ( x_out(1:n_out), MASK = x_out(1:n_out) > x_in(n_out) ) )
 
     ! -------------------------------------------------------------------------
-    ! Check whether we have the whole wavelength range. If not, set 
-    ! PGE_ERROR_STATUS to WARNING level, which will trigger an error message 
-    ! in the calling module. We don't want to report errors in this 
-    ! subroutine, since it is so generic that the error message would not 
+    ! Check whether we have the whole wavelength range. If not, set
+    ! PGE_ERROR_STATUS to WARNING level, which will trigger an error message
+    ! in the calling module. We don't want to report errors in this
+    ! subroutine, since it is so generic that the error message would not
     ! be very helpful.
     ! ------------------------------------------------------------------------
     IF ( imin /= 1 .OR. imax /= n_out ) THEN
@@ -881,7 +960,7 @@ contains
 
     RETURN
   END SUBROUTINE interpolation
-  
+
   SUBROUTINE LinearInterpolationWeights(nx,x,x_int,idx0,xwt0,xwt1)
 
     ! --------------------
