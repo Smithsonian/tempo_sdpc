@@ -218,7 +218,7 @@ contains
     ! Compute altitude grids for this temperature profile
     ! xliu, 03/09/11: Slightly modify the way of computing altitude grids (based on
     !       surface pressure and surface altitude). Also use surface temperature  from met. data.
-    pold = LOG(pold); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
+    pold(0:nold) = LOG(pold(0:nold)); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
     IF (use_input_spres) THEN
       IF (spres == pold(0)) THEN
          zold(0) = the_surfalt

@@ -825,7 +825,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        END DO
      ENDIF
      ENDDO
-     IF (nostk > 1) Qsimrad= LOG(ABS(Qsimrad))
+     IF (nostk > 1) Qsimrad(1:ns)= LOG(ABS(Qsimrad(1:ns)))
      simrad = LOG(simrad)           ! get dlnI     
   END IF
 
