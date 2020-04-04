@@ -617,7 +617,8 @@ contains
 !    - Indices 1/2 = Q/U (First). 1 = LD, 2 = FO (Second)
 
    real(gtpk) :: intensity_Bin  (0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3)  ! 1 = LD, 2 = 2S, 3 = FO
-   real(gtpk) :: LP_IJacs_Bin   (GT_maxatmoswfs,GT_maxlayers,0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3)
+   !! real(gtpk) :: LP_IJacs_Bin   (GT_maxatmoswfs,GT_maxlayers,0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3)
+   real(gtpk), allocatable :: LP_IJacs_Bin(:,:,:,:,:,:) !   (GT_maxatmoswfs,GT_maxlayers,0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3)
    real(gtpk) :: LS_IJacs_Bin   (0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3)
 
    real(gtpk) :: StokesQU_Bin   (2,0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,2)
@@ -1494,6 +1495,10 @@ contains
 
 !  Initialize Intensity results (PRJ calculations). Add Q/U Zeroing. 9/23/16
 !   12/28/17 Use simplified array declarations.
+
+    if (.not.allocated(lp_ijacs_bin)) then
+      allocate (LP_IJacs_Bin (GT_maxatmoswfs,GT_maxlayers,0:GT_maxbins-1,GT_Maxeofs2p1,GT_maxGeometries,3))
+    endif
 
    INTENSITY_BIN = GTZero ; STOKESQU_BIN  = GTZero 
    LP_IJACS_BIN  = GTZero ; LP_QUJACS_BIN = GTZero 
