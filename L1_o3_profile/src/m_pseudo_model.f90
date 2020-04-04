@@ -780,11 +780,11 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
     ENDIF
   ENDIF
 
-  simrad = fsimrad(1:ns, 1)
+  simrad(1:ns) = fsimrad(1:ns, 1)
   IF (nostk > 1) THEN
-    Qsimrad= fsimrad(1:ns, 2)
+    Qsimrad (1:ns) = fsimrad(1:ns, 2)
     direc=1.0
-    WHERE (Qsimrad < 0_dp)
+    WHERE (Qsimrad(1:ns) < 0_dp)
        direc = -1.0
     END WHERE
   ENDIF
@@ -826,7 +826,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
      ENDIF
      ENDDO
      IF (nostk > 1) Qsimrad(1:ns)= LOG(ABS(Qsimrad(1:ns)))
-     simrad = LOG(simrad)           ! get dlnI     
+     simrad(1:ns) = LOG(simrad(1:ns))           ! get dlnI
   END IF
 
   IF (.NOT. do_albwf) albwf(:,:, :) = 0.0D0
