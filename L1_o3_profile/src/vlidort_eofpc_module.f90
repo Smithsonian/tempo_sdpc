@@ -848,17 +848,17 @@ contains
    alb_pcainclude      = Inputs%PCAControl%alb_pcainclude
    do_3M_correction    = Inputs%PCAControl%do_3M_correction
 !  VLIDORT. Initialize the Input structures.
-   IF ( first ) THEN 
+   !IF (num_iter == 0) THEN
+   !IF ( first ) THEN 
         call GEMSTOOL_VLIDORT_Initialize &
        ( Inputs, nlayers, VLIDORT_FixIn, VLIDORT_ModIn, VLIDORT_Sup, fail, Message1 )
-   ENDIF
+   !ENDIF
 
    VLIDORT_FixIn%Cont%TS_NLAYERS          = nlayers
    IF ( VLIDORT_FixIn%Bool%TS_do_dnwelling ) then
       VLIDORT_ModIn%MUserVal%TS_user_levels(1) = Real(nlayers,fpk)
    ENDIF
 
-   IF (num_iter == 0) THEN
      VLIDORT_ModIn%MUserVal%TS_N_USER_RELAZMS  = 1
      VLIDORT_ModIn%MUserVal%TS_USER_RELAZMS(1)   = Inputs%Geometry%GEMS_azms(1)
      VLIDORT_ModIn%MSunrays%TS_N_SZANGLES       = 1
@@ -870,15 +870,15 @@ contains
      VLIDORT_ModIn%MUserVal%TS_USER_OBSGEOMS_INPUT(1,2)   = Inputs%Geometry%GEMS_vzas(1)
      VLIDORT_ModIn%MUserVal%TS_USER_OBSGEOMS_INPUT(1,3)   = Inputs%Geometry%GEMS_azms(1)
      VLIDORT_ModIn%MCont%TS_NGREEK_MOMENTS_INPUT    = local_nmoms
+   !ENDIF
 !  Fix heights
 
    VLIDORT_FixIn%Chapman%TS_height_grid(0:nlayers) = Geophys%Atmos%Level_heights(0:nlayers)
    VLIDORT_ModIn%MUserVal%TS_GEOMETRY_SPECHEIGHT   = Geophys%Atmos%Level_heights(nlayers)
-   ENDIF
 !  linearization control
 !mick fix 7/30/2018 - initialize DO_ATMOS_LBBF, DO_SURFACE_LBBF, COLUMNWF_NAMES, & PROFILEWF_NAMES 
 
-   IF (num_iter == 0) THEN 
+  ! IF (num_iter == 0) THEN 
    VLIDORT_LinModIn%MCont%TS_DO_PROFILE_LINEARIZATION      = .false.
    VLIDORT_LinModIn%MCont%TS_DO_COLUMN_LINEARIZATION       = .false.
    VLIDORT_LinModIn%MCont%TS_DO_SURFACE_LINEARIZATION      = .false.
@@ -910,7 +910,7 @@ contains
       VLIDORT_LinModIn%MCont%TS_DO_SIMULATION_ONLY           = .false.
       VLIDORT_LinFixIn%Cont%TS_N_TOTALPROFILE_WFS            = n_totalatmos_wfs
    endif
-  ENDIF
+  !ENDIF
 !  Optical property zeroing
 !  ------------------------
 
@@ -1329,6 +1329,7 @@ contains
          amf = minval([cos(Inputs%Geometry%GEMS_szas(1)*3.14/180.),cos(Inputs%Geometry%GEMS_vzas(1)*3.14/180.)])
          amf = maxval([(Inputs%Geometry%GEMS_szas(1)),(Inputs%Geometry%GEMS_vzas(1))])
           !print * , taugcum(1:ndat)
+    
      CALL GEMSTOOL_CreateBins_V5 (which_win, ndat, tauhgcum(1:ndat),taugcum(1:ndat), &
           Geophys%WavGrids%Wav(1:ndat), amf, &
           index(1:ndat), Assigned_bins(1:ndat), &
