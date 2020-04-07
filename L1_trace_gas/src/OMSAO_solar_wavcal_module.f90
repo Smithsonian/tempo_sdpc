@@ -194,7 +194,7 @@ CONTAINS
     ngood = 0 ; nbad = 0 ; bad_idx = 0
     wvl_good = 0.0_r8 ; wvl_bad = 0.0_r8 ; spc_good = 0.0_r8 ; spc_bad = 0.0_r8
     DO i = 1, num_irr_wvl
-      IF ( adj_spec(i) <= 0.0_r8 .OR. adj_spec(i) == downweight ) THEN
+      IF ( adj_spec(i) <= 0.0_r8 .OR. adj_wgts(i) == downweight ) THEN
         nbad          = nbad + 1
         bad_idx(nbad) = i
         wvl_bad(nbad) = adj_wvl(i)
