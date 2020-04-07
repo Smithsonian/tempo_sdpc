@@ -38,6 +38,7 @@ module OMSAO_linterpolation_module
   implicit none
 
   INTEGER, PARAMETER :: SP = 8
+  logical, parameter :: debug_mode=.true.
 
   interface linInterpol
     module procedure interpol1D
@@ -50,7 +51,7 @@ module OMSAO_linterpolation_module
   end interface
 
   PUBLIC :: GetNode
-  private :: monotonDecrease, findNode
+  private :: monotonDecrease, findNode, monotonic, binary_search
   private :: interpol1D, interpol2D, interpol3D, interpol4D, interpol5D, interpol6D, interpol7D
 
 contains
@@ -87,6 +88,107 @@ contains
 
   end function  monotonDecrease
 
+
+  ! It's extremely inefficient to perform these tests on every call
+  ! during production, but it may be useful for debugging.
+  ! Therefore, we control this function using 'debug_mode' which should
+  ! be declared as a compile-time logical constant (e.g. logical, parameter).
+  ! When debug_mode=.false. the compiler can optimize this function away
+  ! completely, replacing the function call with a compile-time constant.
+  logical function monotonic (dimScale, ndim)
+
+  implicit none
+
+  integer, intent(in) :: ndim
+  REAL(SP), dimension(ndim), intent(in) :: dimscale
+
+  if (debug_mode) then
+    if (.NOT.monotonIncrease(dimScale,ndim) .and. &
+      .NOT.monotonDecrease(dimScale,ndim)) then
+      monotonic = .false.
+    else
+      monotonic = .true.
+    end if
+  else
+    monotonic = .true.
+  endif
+
+  end function monotonic
+
+
+  !faster than minloc for large arrays.
+  integer function binary_search (xa, t)
+    implicit none
+    real (kind=8), dimension(:), intent(in) :: xa
+    real (kind=8), intent(in) :: t
+
+    integer :: n, n0, n1, n2
+    real (kind=8) :: xt
+
+    n = size(xa)
+
+    n0 = 1
+    n1 = n+1
+
+    if (xa(1) < xa(2)) then
+      ! xa in ascending order
+
+      ! Don't extrapolate
+      if (t < xa(1)) then
+        binary_search = 1
+        return
+      else if (xa(n) < t) then
+        binary_search = n
+        return
+      endif
+
+      do while (n1 > n0+1)
+        n2 = (n0 + n1) / 2
+        xt = xa(n2)
+        if (t <= xt) then
+          if (xt == t) then
+            binary_search = n2
+            return
+          endif
+          n1 = n2
+        else
+          n0 = n2
+        endif
+      enddo
+
+    else
+      ! xa in descending order
+
+      ! Don't extrapolate
+      if (t > xa(1)) then
+        binary_search = 1
+        return
+      else if (xa(n) > t) then
+        binary_search = n
+        return
+      endif
+
+      do while (n1 > n0+1)
+        n2 = (n0 + n1) / 2
+        xt = xa(n2)
+        if (t >= xt) then
+          if (xt == t) then
+            binary_search = n2
+            return
+          endif
+          n1 = n2
+        else
+          n0 = n2
+        endif
+      enddo
+    endif
+
+    binary_search = n0
+
+  end function binary_search
+
+
+
   integer function findNode(dimScale, ndim, x)
 
     integer, intent(in) :: ndim
@@ -95,8 +197,7 @@ contains
     integer, dimension(1) :: nearestLocation
 
     ! check if the dimension scale is monotonically increasing or decreasing
-    if (.NOT.monotonIncrease(dimScale,ndim) .and. &
-      .NOT.monotonDecrease(dimScale,ndim)) then
+    if (.NOT.monotonic(dimScale,ndim)) then
       findnode = -2
       return
     end if
@@ -115,7 +216,8 @@ contains
     end if
 
     ! find the nearest grid point near x
-    nearestLocation=minloc(abs(dimscale-x))
+    nearestLocation = binary_search(dimscale, x)
+    !nearestLocation=minloc(abs(dimscale-x))
 
     if (dimscale(nearestLocation(1)) > x ) then
       findNode = nearestLocation(1) - 1
