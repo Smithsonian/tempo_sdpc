@@ -644,7 +644,7 @@ contains
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step
-    integer, parameter :: deflate_level = 5
+    integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
     ! In case you want to write out the as-yet unused sub2km fields
     logical :: do_sub2km = .FALSE.
