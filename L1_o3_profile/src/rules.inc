@@ -399,6 +399,7 @@ $(ODIR)/m_get_cloud.o: $(SDIR)/m_get_cloud.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_cloud.f90 -o $(ODIR)/m_get_cloud.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_ncep.o: $(SDIR)/m_get_ncep.f90 \
+  $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
@@ -422,20 +423,18 @@ $(ODIR)/m_get_omigeos5.o: $(SDIR)/m_get_omigeos5.f90 \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_omigeos5.f90 -o $(ODIR)/m_get_omigeos5.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_get_gcnr.o: $(SDIR)/m_get_gcnr.f90 \
-  $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_variables_module.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_gcnr.f90 -o $(ODIR)/m_get_gcnr.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_bclayer.o: $(SDIR)/m_get_bclayer.f90 \
   $(ODIR)/m_get_fnl.o \
   $(ODIR)/m_get_met_tempo.o \
   $(ODIR)/m_get_ncep.o \
   $(ODIR)/m_get_omigeos5.o \
+  $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_bclayer.f90 -o $(ODIR)/m_get_bclayer.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_toz.o: $(SDIR)/m_get_toz.f90 \
+  $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -452,6 +451,7 @@ $(ODIR)/m_get_o3prof.o: $(SDIR)/m_get_o3prof.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_o3prof.f90 -o $(ODIR)/m_get_o3prof.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_tracegas.o: $(SDIR)/m_get_tracegas.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -488,6 +488,7 @@ $(ODIR)/m_get_reg_matrix.o: $(SDIR)/m_get_reg_matrix.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_reg_matrix.f90 -o $(ODIR)/m_get_reg_matrix.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_prepare_atmosphere.o: $(SDIR)/m_prepare_atmosphere.f90 \
+  $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o
