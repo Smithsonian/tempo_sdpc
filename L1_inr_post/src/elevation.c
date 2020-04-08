@@ -53,10 +53,10 @@ static int pixel_bbox (const double lon_cnr[4], const double lat_cnr[4],
           return -1;
 
         if (lon_k < lon_bbox[0]) lon_bbox[0] = lon_k;
-        else if (lon_k > lon_bbox[1]) lon_bbox[1] = lon_k;
+        if (lon_k > lon_bbox[1]) lon_bbox[1] = lon_k;
 
         if (lat_k > lat_bbox[0]) lat_bbox[0] = lat_k;
-        else if (lat_k < lat_bbox[1]) lat_bbox[1] = lat_k;
+        if (lat_k < lat_bbox[1]) lat_bbox[1] = lat_k;
      }
 
    return 0;

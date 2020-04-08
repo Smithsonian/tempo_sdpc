@@ -1149,12 +1149,19 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
 
              if (num_valid_points == geoloc->num_corner)
                {
+#if 1
+                  /* Just always sort CCW.  It's slower, but catches the corner case
+                   * when the points end up in CW order.
+                   */
+                  (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
+#else
                   if (0 == isconvex_polygon (lon_cnr, lat_cnr, geoloc->num_corner))
                     {
                        tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: non-convex polygon: mirror_step=%d xtrack=%d",
                              __func__, s, y);
                        (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
                     }
+#endif
                }
           }
      }
