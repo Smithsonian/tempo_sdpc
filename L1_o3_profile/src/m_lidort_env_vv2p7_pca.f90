@@ -18,6 +18,8 @@ MODULE m_lidort_env_vv2p7_pca
 
   IMPLICIT NONE
   INTEGER, SAVE :: nstreams, nstokes, nlayers !, n_totalatmos_wfs, n_surface_wfs
+  
+  PRIVATE :: lidort_prof_prep_pca
 ! **********************************************************
 ! JBAK 
 ! - vlidort source code : vv2p7  
@@ -603,7 +605,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
             ENDDO
           ENDIF
         ENDIF
-        CALL LIDORT_PROF_PREP(iw,lamda ,nstokes, nz1, n_totalatmos_wfs, &
+        CALL lidort_prof_prep_pca(iw,lamda ,nstokes, nz1, n_totalatmos_wfs, &
              raycof(iw), depol(iw), fzs(0:nz1), frhos(1:nz1), &
              varyprof(1:nz1), nfgas, gasin(1:nfgas), allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
              alleta(1:nfgas, 1:nz1), useasy, nmom, profilewf_names_cc(1:n_totalatmos_wfs), & 
@@ -840,7 +842,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
             ENDDO
           ENDIF
         ENDIF
-        CALL LIDORT_PROF_PREP(iw,lamda ,nstokes, nz1, n_totalatmos_wfs, raycof(iw), depol(iw), fzs(0:nz1), frhos(1:nz1), &
+        CALL lidort_prof_prep_pca(iw,lamda ,nstokes, nz1, n_totalatmos_wfs, raycof(iw), depol(iw), fzs(0:nz1), frhos(1:nz1), &
                 varyprof(1:nz1), nfgas, gasin(1:nfgas), allcrs(iw, 1:nfgas, 1:nz1), allcol(1:nfgas, 1:nz1), &
                 alleta(1:nfgas, 1:nz1), useasy, nmom, profilewf_names_cc(1:n_totalatmos_wfs), aerosol, aersca(1:nz1),      &
                 aerext(1:nz1), aerasy(1:nz1), aermoms(0:nmom, 1:maxgksec, 1:nz1), aermsk(1:nz1), &
@@ -1205,7 +1207,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   RETURN
 END SUBROUTINE LIDORT_PROF_ENV_PCA
 
-SUBROUTINE LIDORT_PROF_PREP (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, raycof, depol, zsgrid, airgrid,  varyprof, &
+SUBROUTINE lidort_prof_prep_pca (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, raycof, depol, zsgrid, airgrid,  varyprof, &
      ngas, gasin, abscrs, gascol, eta, useasy, nmoms, profilewf_names, &          
      do_aerosols, aersca, aerext, aerasy, aermoms, aermsk, &
      do_clouds, cldsca, cldext, cldasy, cldmoms, cldmsk, absod, problems)
@@ -1745,53 +1747,7 @@ SUBROUTINE LIDORT_PROF_PREP (iw, lamda, nstokes, nlayers, n_totalatmos_wfs, rayc
 !          sza_local_input(1:nlayers, 1))
 !  ENDIF
   
-END SUBROUTINE LIDORT_PROF_PREP
-
-! Compute slant optical thickness using Chapman function in LIDORT
-SUBROUTINE GET_SLANT_TAU(nz, zs, tauin, sza, tauout)
-  !USE OMSAO_parameters_module, ONLY  : maxchlen, rearth
-  USE OMSAO_precision_module
-  IMPLICIT NONE
-
-  ! =======================
-  ! Input/Output variables
-  ! =======================
-  INTEGER, INTENT(IN)                          :: nz
-  REAL (KIND=dp), DIMENSION(0:nz), INTENT(IN)  :: zs, tauin
-  REAL (KIND=dp), INTENT(IN)                   :: sza
-  REAL (KIND=dp), DIMENSION(0:nz), INTENT(out) :: tauout
-  ! =======================
-  ! Local variables
-  ! =======================
-  INTEGER                   :: i, j
-  !LOGICAL                   :: fail
-  !CHARACTER (len=maxchlen)  :: message, trace
-
-!  VLIDORT_ModIn%MSunRays%TS_N_SZANGLES = 1
-!  VLIDORT_ModIn%MSunRays%TS_SZANGLES = sza
-  IF (sza >= 90.0 .OR. sza < 0) THEN
-     STOP 'GET_SLANT_TAU: SZA is >= 90 or < 0!!!'
-  ENDIF
-
-  nlayers = nz
-  !! FIX ME taugrid_input(0:nz) = tauin
-
-!  VLIDORT_FixIn%Chapman%TS_height_grid(0:nz) = zs
-!  VLIDORT_ModIn%MChapman%TS_earth_radius = rearth
-  IF (nz > maxlayers) THEN
-     STOP 'LIDORT_PROF_ENV: # of layers exceeded allowed !!!'
-  ENDIF
-  STOP ' VLIDORT_CAPMAN NOT implemented, which is from v2p4 !!!'
-  !CALL VLIDORT_CHAPMAN(fail, message, trace)
-  tauout = 0.0
-  DO i = 1, nz
-     DO j = 1, i
-        !! FIX ME tauout(i) = tauout(i) + VLIDORT_Work_Miscellanous%deltau_slant(i, j, 1)
-     ENDDO
-  ENDDO
-
-  RETURN
-END SUBROUTINE GET_SLANT_TAU
+END SUBROUTINE lidort_prof_prep_pca
 
 END MODULE m_lidort_env_vv2p7_pca
 

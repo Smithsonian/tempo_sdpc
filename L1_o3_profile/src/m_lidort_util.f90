@@ -2466,8 +2466,8 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
   LOGICAL, PARAMETER :: do_plan = .true., do_debug=.false.
   CHARACTER (LEN=255) :: msg
   !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
-  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-o3-UV/LUT0/'
-  CHARACTER(LEN=11), DIMENSION(2)  :: LUT_type = (/"vec06stNL48", "sca02stNL48"  /)
+  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-o3-UV/LUT-24/'
+  CHARACTER(LEN=11), DIMENSION(2)  :: LUT_type = (/"vec06stNL48", "sca02stNL24"  /)
   LOGICAL :: log_ret = .FALSE., L_stageJ, LFAIL
   REAL (KIND=4), DIMENSION(1:8) :: vza_grid = & 
        (/0.0, 15.0, 30.0, 43.0, 53.0, 61.0, 67.0, 72.0/)
@@ -2526,7 +2526,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
       allocate(dfrad(max_spec_pts), dfcfracwf(max_spec_pts),dfalbwf(max_spec_pts))
       allocate(dffozwf(max_spec_pts, mflay), dftauwf(max_spec_pts, mflay))
       allocate(taucum(max_spec_pts, 0:mflay))
-      print * , VLDLUTDir1 
+      print * , ADJUSTL(TRIM(VLDLUTDir1)), do_raywf 
       allocate (wl(1:nwLUT),pJ(npJ),pL(0:npJ),taucum_lut(nwLUT,0:npJ), &
                Itoa(nwLUT,2), wta(nwLUT, 2), wtc(nwLUT,2), wto(nwLUT, npJ, 2))
       IF (do_raywf) THEN 
@@ -2790,11 +2790,11 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
       fozwf(i, 1:nz) = fozwf(i, 1:nz)*dffozwf(i,1:nz)
       if (do_albwf) albwf(i,1)   = albwf(i,1)*dfalbwf(i)
       if (do_cfracwf) cfracwf(i)   = cfracwf(i)*dfcfracwf(i)
-      IF (i == nw .and.  niter==0 ) & 
-      WRITE(*,'(A,L,i5,A,2f8.2,A,3e15.7, A,3e15.7, A, f6.2)') & 
-      'LUT:',do_plan, i,'dfrad=', exp(dfrad(i)),exp(dfrad(i)+adj_o3), & 
-              'cf/alb/o3=',dfcfracwf(i),dfalbwf(i),dffozwf(i,nz), & 
-              'tau=',sum(tabs(i,1:nz)), taucum(i, nz), dftauwf(i,nz),'ozdu=',ozdu
+      !IF (i == nw .and.  niter==0 ) & 
+      !WRITE(*,'(A,L,i5,A,2f8.2,A,3e15.7, A,3e15.7, A, f6.2)') & 
+      !'LUT:',do_plan, i,'dfrad=', exp(dfrad(i)),exp(dfrad(i)+adj_o3), & 
+      !        'cf/alb/o3=',dfcfracwf(i),dfalbwf(i),dffozwf(i,nz), & 
+      !        'tau=',sum(tabs(i,1:nz)), taucum(i, nz), dftauwf(i,nz),'ozdu=',ozdu
   ENDDO 
     
   IF(first) first=.false.

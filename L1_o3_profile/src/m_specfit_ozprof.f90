@@ -407,10 +407,11 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   ELSE
      nsub = 1
   ENDIF
-              
-  WRITE(*, '(3(A,F8.2), 2(A,i4), f5.2)') ' spres =', ps0, ' tpres =', pst, &
-     ' toz = ', toz, 'snow=', the_snowice, 'land/ocean:', the_landwater_flg,the_landfrac
 
+  IF (scnwrt) THEN               
+      WRITE(*, '(3(A,F8.2), 2(A,i4), f5.2)') ' spres =', ps0, ' tpres =', pst, &
+     ' toz = ', toz, 'snow=', the_snowice, 'land/ocean:', the_landwater_flg,the_landfrac
+  ENDIF
   ! ======================================================================
   !	 Set up state vector, a priori state vector and covariance matrix
   ! ======================================================================

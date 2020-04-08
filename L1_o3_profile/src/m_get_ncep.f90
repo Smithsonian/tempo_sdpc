@@ -4,6 +4,7 @@ MODULE m_get_ncep
   USE OMSAO_variables_module,  ONLY: atmdbdir, atmos_unit, &
                                 the_month, the_year, the_day, the_lon, the_lat
   USE OMSAO_errstat_module
+  USE m_utilities, ONLY: get_gridfrac
   IMPLICIT NONE
 
   ! dimension
@@ -20,7 +21,7 @@ MODULE m_get_ncep
   CHARACTER (LEN=130),PRIVATE :: ncep_fname
 
   PUBLIC  get_spres, get_ncepreso_surfalt, get_tpres, get_ncep_temp
-  PRIVATE  get_gridfrac
+  PRIVATE 
   
   ! public variables
   CONTAINS
@@ -226,48 +227,5 @@ SUBROUTINE get_ncepreso_surfalt(z0)
   
   RETURN
 END SUBROUTINE get_ncepreso_surfalt
-
-SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
-  lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
-
-  IMPLICIT NONE
-
-  ! ======================
-  ! Input/Output variables
-  ! ======================
-  INTEGER, INTENT(IN)                       :: nlon, nlat
-  REAL (KIND=dp), INTENT(IN)                :: lon0, lat0, lat, lon, longrid, latgrid
-  INTEGER, INTENT(OUT)                      :: nblon, nblat
-  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin, lonin
-  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac, lonfrac
-  
-  ! ======================
-  ! Local variables
-  ! ======================  
-  REAL (KIND=dp) :: frac, lat_offset, lon_offset
-  
-  lat_offset   = lat0 + latgrid / 2.0
-  lon_offset   = lon0 + longrid  / 2.0
-  
-  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
-  latin(1) = INT(frac); latin(2) = latin(1) + 1
-  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
-  IF (latin(1) == 0)   THEN 
-     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
-  ENDIF
-  IF (latin(2) > nlat) THEN
-     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
-  ENDIF
-  
-  ! Circular in longitude direction
-  nblon = 2; frac = (lon - lon_offset) / longrid + 1
-  lonin(1) = INT(frac); lonin(2) = lonin(1) + 1
-  lonfrac(1) = lonin(2) - frac; lonfrac(2) = 1.0 - lonfrac(1)
-  IF (lonin(1) == 0)   lonin(1) = nlon
-  IF (lonin(2) > nlon) lonin(2) = 1
-  
-  RETURN
-  
-END SUBROUTINE get_gridfrac
 
 END MODULE m_get_ncep

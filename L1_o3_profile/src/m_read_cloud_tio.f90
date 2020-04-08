@@ -21,7 +21,7 @@ module m_read_cloud_tio
 
 
   public read_cloud_tio
-  private read_cloud_dims, read_cloud_data, fill_in_ctp
+  private read_cloud_dims, read_cloud_data, fill_in_tempoctp
 
 
 contains
@@ -129,7 +129,7 @@ contains
          flgbits(1:nxtrack, :, 14) + flgbits(1:nxtrack, :, 15) 
 
     ! Fill in cloud top pressure values for bad pixels
-     call fill_in_ctp(nxtrack, ntimes, ctp(1:nxtrack, 0:ntimes-1), &
+     call fill_in_tempoctp(nxtrack, ntimes, ctp(1:nxtrack, 0:ntimes-1), &
          qflag(1:nxtrack, 0:ntimes-1))
      
 
@@ -298,7 +298,7 @@ contains
 
 
 
-  subroutine fill_in_ctp(nxtrack, nstep, ctp, qflag)
+  subroutine fill_in_tempoctp(nxtrack, nstep, ctp, qflag)
 
     implicit none
 
@@ -440,6 +440,6 @@ contains
 
     return
 
-  end subroutine fill_in_ctp
+  end subroutine fill_in_tempoctp
 
 end module m_read_cloud_tio

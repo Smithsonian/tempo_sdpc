@@ -55,7 +55,6 @@ m_get_ncep.f90
 m_get_fnl.f90
 m_get_met_tempo.f90
 m_get_omigeos5.f90
-m_get_gcnr.f90
 m_get_bclayer.f90
 m_get_toz.f90
 m_get_o3prof.f90

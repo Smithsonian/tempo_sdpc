@@ -53,7 +53,7 @@ MODULE OMSAO_pixelcorner_module
 
   public compute_pixel_corners, sphergeom_intermediate, circle_rdis
   private get_sphgeoview_corners, angle_minus_twopi, &
-       convert_gpqualflag_info,convert_xtrackqflag_info
+          convert_omi_gpqualflag_info,convert_omi_xtrackqflag_info
     !, sphergeom_baseline_comp, lonlat_to_pi, circle_dis
 
 CONTAINS
@@ -397,12 +397,12 @@ CONTAINS
         omi_XTrackQFlg(ix, iy) = omi_XTrackQFlg(xmidx, ymidx)
       ENDDO
 
-      CALL convert_xtrackqflag_info (nx, omi_XTrackQFlg(1:nx, iy), &
+      CALL convert_omi_xtrackqflag_info (nx, omi_XTrackQFlg(1:nx, iy), &
            rowanomaly_flg(1:nx, iy), waveshift_flg(1:nx), &
            blockage_flg(1:nx), straysun_flg(1:nx), &
            strayearth_flg(1:nx) )  
       ! get separate land/water, glint, snow/ice flags
-      CALL convert_gpqualflag_info (nx, omi_GeoFlg(1:nx, iy), &
+      CALL convert_omi_gpqualflag_info (nx, omi_GeoFlg(1:nx, iy), &
            omi_land_water_flg(1:nx, iy), omi_glint_flg(1:nx, iy), &
            omi_snow_ice_flg(1:nx, iy)) 
     ENDDO
@@ -464,7 +464,7 @@ CONTAINS
     RETURN
   END SUBROUTINE compute_pixel_corners
 
-  SUBROUTINE convert_gpqualflag_info ( &
+  SUBROUTINE convert_omi_gpqualflag_info ( &
        nxtrack, omi_geoflg, land_water_flg, glint_flg, snow_ice_flg )
 
     USE OMSAO_precision_module
@@ -523,9 +523,9 @@ CONTAINS
     END DO
 
     RETURN
-  END SUBROUTINE convert_gpqualflag_info
+  END SUBROUTINE convert_omi_gpqualflag_info
 
-  SUBROUTINE convert_xtrackqflag_info ( nxtrack, omi_xtrackqflg, &
+  SUBROUTINE convert_omi_xtrackqflag_info ( nxtrack, omi_xtrackqflg, &
        rowanomaly_flg, waveshift_flg, blockage_flg, straysun_flg, strayearth_flg )
 
     USE OMSAO_precision_module
@@ -580,7 +580,7 @@ CONTAINS
     ENDDO
 
     RETURN
-  END SUBROUTINE convert_xtrackqflag_info
+  END SUBROUTINE convert_omi_xtrackqflag_info
 
   !   Unused?
   !

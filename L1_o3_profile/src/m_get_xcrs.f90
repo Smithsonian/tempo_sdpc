@@ -33,8 +33,6 @@ MODULE m_get_xcrs
 !   CHARACTER(maxchlen), PARAMETER :: o4abs_fname='OMSAO_Thalman_O4quad_337-654nm.dat'
    CHARACTER(maxchlen), PARAMETER :: o4abs_fname= 'OMSAO_Thalman_O4quad_extended654nm.dat'
    !CHARACTER(maxchlen), PARAMETER :: o4abs_fname='OMSAO_Thalman_O4ts_extended654nm.dat'
-   CHARACTER(maxchlen), PARAMETER :: h2oabs_fname='hitran_lut/h2o_lut_388-660nm_0p04fwhm.nc'
-   CHARACTER(maxchlen), PARAMETER :: o2abs_fname='hitran_lut/o2_lut_570-660nm_0p04fwhm.nc'
    CHARACTER(maxchlen), PARAMETER :: o2abs1_fname='hitran_lut/HITRAN2016_O2_530-660nm_0p00_reduced.nc'
    CHARACTER(maxchlen), PARAMETER :: h2oabs1_fname='hitran_lut/HITRAN2016_H2O_530-660nm_0p00_reduced.nc'
    CHARACTER(maxchlen), PARAMETER :: o2abs2_fname='hitran_lut/HITRAN2016_O2_530-660nm_0p01_reduced.nc'
@@ -67,17 +65,6 @@ MODULE m_get_xcrs
    REAL (KIND=dp), DIMENSION(:,:,:,:),ALLOCATABLE :: crs  
    END TYPE  hitran16_set
 
-   TYPE  hitran_set
-   INTEGER         :: ncid ! id of file
-   INTEGER         :: wmx, pmx, tmx ! dimension
-   INTEGER         :: widx0, widxf ! index range coveraing window
-   REAL (KIND=dp)  :: normc
-   REAL (KIND=dp), DIMENSION(:),ALLOCATABLE:: ps
-   REAL (KIND=dp), DIMENSION(:),ALLOCATABLE :: ts
-   REAL (KIND=dp), DIMENSION(:),  ALLOCATABLE :: wvl 
-   REAL (KIND=dp), DIMENSION(:,:,:),ALLOCATABLE :: crs  
-   END TYPE  hitran_set
-   
    !-----------------------------------------------------------------
    ! help variables
    !-----------------------------------------------------------------
@@ -93,7 +80,7 @@ MODULE m_get_xcrs
    END TYPE crsz_set
 
 
-   PUBLIC  crsz_set, geto3_crs,getso2_crs, geto4_crs,geth2o_crs_hitran,geto2_crs_hitran, &           ! called in raman
+   PUBLIC  crsz_set, geto3_crs , &! called in raman
            get_all_raycof,  &     ! called in raman
            get_alb_ozcrs_ray, &   ! nw = 1 for 347 nm
            get_hres_gascrs_ray, & ! nw > 1 without convolution
@@ -103,7 +90,8 @@ MODULE m_get_xcrs
    !PRIVATE read_txcrs, calc_crsz, & 
    !        read_hitran_lut,calc_hitran_crsz, & 
    !        get_all_raycof_depol,get_all_raycof_depol1
-   !        getabs_crs_hitran, geto4_crs, getso2_crs
+   !        geto4_crs, getso2_crs
+   !        geth2o_crs_hitran16, geto2_crs_hitran16
 
 CONTAINS 
 
@@ -562,224 +550,6 @@ CONTAINS
   RETURN  
   END SUBROUTINE geto4_crs    
 
-  SUBROUTINE geto2_crs_hitran(lamda, nlsav, nlamda, nz,tsgrid, psgrid, crsz, do_convl)
-  USE m_convol
-  IMPLICIT NONE
-  
-  !----------------------------------------------
-  ! Input variables
-  !------------------------------------------------
-  INTEGER, INTENT(IN)                                :: nlamda, nlsav, nz
-  REAL (KIND=dp), INTENT(IN), DIMENSION(nlsav)       :: lamda
-  REAL (KIND=dp), INTENT(IN), DIMENSION(nz)          :: tsgrid, psgrid
-  LOGICAL, INTENT(IN) :: do_convl
-  !------------------------------------------------- 
-  ! Output variables
-  !-------------------------------------------------
-  TYPE (crsz_set), INTENT(INOUT) :: crsz
-  !-------------------------------------------------
-  ! Local variables
-  !-------------------------------------------------
-  LOGICAL, PARAMETER :: do_i0corr=.false.
-  INTEGER            :: fidx, lidx, i, errstat, npts
-  REAL (KIND=dp)     :: scalex
-  CHARACTER (LEN=100) :: filename
-  !-------------------------------------------------
-  ! Save variables
-  !-------------------------------------------------
-  INTEGER, SAVE:: nwvl_lut
-  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE, SAVE :: crs
-  TYPE (hitran_set), SAVE :: lut
-  LOGICAL, SAVE :: first = .true.
-  ! ------------------------------
-  ! Name of this subroutine/module
-  ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER    :: modulename = 'geto2_crs'
- 
-  IF (first) THEN
-     !---------------------------------------------------------------------
-     ! read look-up table
-     !----------------------------------------------------------------------
-     filename = TRIM(ADJUSTL(refdbdir))//TRIM(ADJUSTL(o2abs_fname))
-     CALL read_hitran_lut(filename, winwav_min, winwav_max, lut)
-     refspec_norm(o2_idx) = 1.0E-25
-     lut%crs = lut%crs/refspec_norm(o2_idx) 
-     o2crs_convl = .TRUE.
-     nwvl_lut = lut%wmx
-  ENDIF
- !---------------------------------------------------------------------
- ! calculate 
- !----------------------------------------------------------------------
- IF (num_iter == 0 ) THEN 
-   IF (allocated (crs)) deallocate (crs)
-   allocate (crs(nwvl_lut, nz))
-   CALL calc_hitran_crsz (lut%crs(1:nwvl_lut, 1:lut%tmx, 1:lut%pmx),&
-         lut%wmx, lut%tmx, lut%pmx,lut%ts(1:lut%tmx), lut%ps(1:lut%pmx),&
-         nz, tsgrid, psgrid, crs(1:lut%wmx,1:nz))
-  ENDIF
-
-  IF (allocated(crsz%crs))  deallocate (crsz%crs) 
-  IF (allocated(crsz%dads)) deallocate (crsz%dads) 
-  IF (allocated(crsz%dadt)) deallocate (crsz%dadt) 
-  IF (allocated(crsz%dadp)) deallocate (crsz%dadp) 
-
-  allocate (crsz%crs( nlamda, nz))
-
- ! Convolution 
-  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= lut%wvl(1) )))
-  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= lut%wvl(nwvl_lut))))
-  npts = lidx - fidx + 1
-  crsz%crs = 0.0
- 
-  IF (fidx >= 1 .and. lidx > fidx) THEN 
-    PRINT * , 'geto2_jbak', do_convl, do_i0corr
-    IF (do_convl .and. o2crs_convl ) THEN
-       scalex = 0.1 !1.0E23
-       IF (do_i0corr) THEN
-         CALL convol_i0f2c(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, 1:nz), nwvl_lut, nz,scalex, &
-            lamda(fidx:lidx), crsz%crs(fidx:lidx, 1:nz), lidx-fidx+1)
-       ELSE
-         CALL convol_f2c(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, 1:nz), nwvl_lut, nz,& 
-           lamda(fidx:lidx), crsz%crs(fidx:lidx, 1:nz), lidx-fidx+1)
-       ENDIF
-    ELSE 
-      !CALL find_pos (lut%wvl(1:nwvl_lut), nwvl_lut,lamda(fidx:lidx),npts, pos(1:npts))      
-      DO i = 1, nz 
-         !abscrs(fidx:lidx, i) = crsz(pos(1:npts), i)
-         CALL INTERPOL(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, i), nwvl_lut, &
-             lamda(fidx:lidx),crsz%crs(fidx:lidx, i), lidx-fidx + 1, errstat)         
-      ENDDO
-    ENDIF
-  ENDIF
-
-  crsz%crs(fidx:lidx, 1:nz) = crsz%crs(fidx:lidx, 1:nz)*refspec_norm(o2_idx) 
-  IF (do_bandavg) THEN 
-       WRITE(*,*) 'geto2_hitran: not implemented for do bandavg' ; stop 1
-  ENDIF
-  IF (first) THEN 
-     first = .FALSE.
-     WRITE(www_lun,*) ADJUSTL(TRIM(filename)), refspec_norm(o2_idx)
-     WRITE(www_lun,*) lamda(fidx), lamda(lidx), fidx, lidx
-     WRITE(www_lun,*) 'do_conv/do_io',do_convl, do_i0corr
-  ENDIF
-  RETURN  
-  END SUBROUTINE geto2_crs_hitran
-
-  SUBROUTINE geth2o_crs_hitran(lamda, nlsav, nlamda, nz,tsgrid, psgrid, crsz, do_convl)
-  USE ozprof_data_module, ONLY: mgasprof, h2oidx, h2ot2idx
-  USE m_convol
-  IMPLICIT NONE
-  
-  !----------------------------------------------
-  ! Input variables
-  !------------------------------------------------
-  INTEGER, INTENT(IN)                                :: nlamda, nlsav, nz
-  REAL (KIND=dp), INTENT(IN), DIMENSION(nlsav)       :: lamda
-  REAL (KIND=dp), INTENT(IN), DIMENSION(nz)          :: tsgrid, psgrid
-  LOGICAL, INTENT(IN) :: do_convl
-  !------------------------------------------------- 
-  ! Output variables
-  !-------------------------------------------------
-  TYPE (crsz_set), INTENT(INOUT) :: crsz
-  !-------------------------------------------------
-  ! Local variables
-  !-------------------------------------------------
-  LOGICAL, PARAMETER :: do_i0corr=.false.
-  INTEGER            :: fidx, lidx, i, errstat, npts
-  REAL (KIND=dp)     :: scalex
-  !INTEGER, DIMENSION(:), ALLOCATABLE :: pos
-  REAL (KIND=dp), DIMENSION(:),ALLOCATABLE :: h2oprof
-  CHARACTER (LEN=100) :: filename
-  !-------------------------------------------------
-  ! Save variables
-  !-------------------------------------------------
-  INTEGER, SAVE:: nwvl_lut, z1, z2
-  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE, SAVE :: crs
-  TYPE (hitran_set), SAVE :: lut
-  LOGICAL, SAVE :: first = .true.
-  ! ------------------------------
-  ! Name of this subroutine/module
-  ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER    :: modulename = 'geth2o_crs'
- 
-  IF (first) THEN
-     !---------------------------------------------------------------------
-     ! read look-up table
-     !----------------------------------------------------------------------
-     filename = TRIM(ADJUSTL(refdbdir))//TRIM(ADJUSTL(h2oabs_fname))
-     CALL read_hitran_lut (filename, winwav_min, winwav_max, lut)
-     refspec_norm(h2o_idx) = 1.0E-25
-     lut%crs = lut%crs/refspec_norm(h2o_idx) 
-     h2ocrs_convl = .TRUE.
-     nwvl_lut = lut%wmx
-  ENDIF
-  !---------------------------------------------------------------------
-  ! calculate 
-  !----------------------------------------------------------------------
-  IF (num_iter == 0 ) THEN 
-   IF (allocated (crs)) deallocate (crs)
-   allocate (crs(nwvl_lut, nz))
-   allocate (h2oprof(nz))
-   h2oprof(1:nz) = mgasprof(h2oidx, 1:nz) + mgasprof(h2ot2idx, 1:nz)
-   DO i =  1, nz
-     IF (h2oprof(i) > 0 ) EXIT
-   ENDDO
-   z1 = i
-   z2 = nz
-   CALL calc_hitran_crsz (lut%crs(1:nwvl_lut, 1:lut%tmx, 1:lut%pmx),&
-         lut%wmx, lut%tmx, lut%pmx,lut%ts(1:lut%tmx), lut%ps(1:lut%pmx),&
-         z2-z1+1, tsgrid(z1:z2), psgrid(z1:z2), crs(1:lut%wmx,z1:z2))
-   deallocate(h2oprof)
-  ENDIF
-
-
-  IF (allocated(crsz%crs))  deallocate (crsz%crs) 
-  IF (allocated(crsz%dads)) deallocate (crsz%dads) 
-  IF (allocated(crsz%dadt)) deallocate (crsz%dadt) 
-  IF (allocated(crsz%dadp)) deallocate (crsz%dadp) 
-
-  allocate (crsz%crs( nlamda, nz)) ; crsz%crs = 0.0
-
- ! Convolution 
-  fidx = MINVAL(MINLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) >= lut%wvl(1) )))
-  lidx = MINVAL(MAXLOC(lamda(1:nlsav), MASK=(lamda(1:nlsav) <= lut%wvl(nwvl_lut))))
-  npts = lidx - fidx + 1
- 
-  IF (fidx >= 1 .and. lidx > fidx) THEN 
-    !PRINT * , 'geth2o_jbak', do_convl, do_i0corr, fidx, lidx
-    IF (do_convl .and. h2ocrs_convl ) THEN
-       scalex = 0.1 !1.0E23
-       IF (do_i0corr) THEN
-         CALL convol_i0f2c(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, z1:z2), nwvl_lut,z2-z1+1,scalex, &
-            lamda(fidx:lidx), crsz%crs(fidx:lidx, z1:z2), lidx-fidx+1)
-       ELSE
-         CALL convol_f2c(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, z1:z2), nwvl_lut, z2-z1+1,& 
-           lamda(fidx:lidx), crsz%crs(fidx:lidx, z1:z2), lidx-fidx+1)
-       ENDIF
-    ELSE 
-      !CALL find_pos (lut%wvl(1:nwvl_lut), nwvl_lut,lamda(fidx:lidx),npts, pos(1:npts))      
-      DO i = z1, z2 
-         !crsz%crs(fidx:lidx, i) = crsz%crs(pos(1:npts), i)
-         CALL INTERPOL(lut%wvl(1:nwvl_lut), crs(1:nwvl_lut, i), nwvl_lut, &
-             lamda(fidx:lidx), crsz%crs(fidx:lidx, i), lidx-fidx + 1, errstat)         
-      ENDDO
-    ENDIF
-  ENDIF
- 
-  crsz%crs(fidx:lidx,z1:z2) = crsz%crs(fidx:lidx,z1:z2)*refspec_norm(h2o_idx)  
-
-  IF (do_bandavg) THEN 
-       WRITE(*,*) 'geth2o_hitran: not implemented for do bandavg' ; stop 1
-  ENDIF
-  IF (first) THEN 
-     first = .FALSE.
-     WRITE(www_lun,*) ADJUSTL(TRIM(filename)), refspec_norm(h2o_idx)
-     WRITE(www_lun,*) lamda(fidx), lamda(lidx), fidx, lidx
-     WRITE(www_lun,*) 'do_conv/do_io',do_convl, do_i0corr
-  ENDIF
-  RETURN  
-  END SUBROUTINE geth2o_crs_hitran
- 
   SUBROUTINE geto2_crs_hitran16(lamda, nlsav, nlamda, nz, tsgrid, psgrid,crsz, do_convl, vs)
   USE m_convol
   IMPLICIT NONE
@@ -997,6 +767,8 @@ CONTAINS
   ! Save variables
   !-------------------------------------------------
   INTEGER, SAVE :: nwvl_lut, z1, z2
+  INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: wids
+  REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, SAVE :: wwfs 
   LOGICAL, SAVE :: first = .true.
   REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: crs, dxdtz
   TYPE(hitran16_set), save  :: lut
@@ -1017,6 +789,12 @@ CONTAINS
      refspec_norm(h2o_idx) = 1.0E-25
      h2ocrs_convl = .TRUE.
      nwvl_lut = lut%wmx
+     allocate (wids(nlamda), wwfs(nlambda))
+     widxs=0 ; wwfs = 0.0
+
+     DO i = , nlamda
+     ENDDO
+
   ENDIF
   dods = crsz%do_shiwf
   dodt = crsz%do_tmpwf
@@ -1581,11 +1359,7 @@ CONTAINS
     o2%do_shiwf = do_o2shi ; o2%do_tmpwf = do_o2tmp ; o2%do_pslwf = do_o2psl
      !CALL GET_O2_CiRS(lamda, nlsav, nlamda, nz, ps(1:nz), ts(1:nz),& 
      ! crsz%o2(1:nlamda, 1:nz), problems)
-    IF (which_hitran ==1 ) THEN 
-    CALL geto2_crs_hitran(lamda, nlsav, nlamda, nz,ts, ps,o2, do_convl)    
-    ELSE
     CALL geto2_crs_hitran16(lamda, nlsav, nlamda, nz,ts, ps,o2, do_convl,0)    
-    ENDIF
     IF (problems) THEN
       WRITE(*, *) modulename, ' : Problems in getting O2 cross section!!!'
       RETURN
@@ -1604,11 +1378,7 @@ CONTAINS
      !CALL GET_H2O_CRS(lamda, nlsav, nlamda, nz, ps(1:nz)/1013.25, ts(1:nz), &
      !     h2oprof(1:nz), ccrs%h2o(1:nlamda, 1:nz), problems) ! XLIU
      h2o%do_shiwf = do_h2oshi ; h2o%do_tmpwf = do_h2otmp ; h2o%do_pslwf = do_h2opsl
-     IF (which_hitran == 1 ) THEN 
-     CALL geth2o_crs_hitran(lamda, nlsav, nlamda, nz, ts, ps, h2o, do_convl)
-     ELSE
      CALL geth2o_crs_hitran16(lamda, nlsav, nlamda, nz, ts, ps, h2o, do_convl,0)
-     ENDIF
     IF (problems) THEN
       WRITE(*, *) modulename, ' : Problems in getting H2O cross section!!!'
       RETURN
@@ -2075,12 +1845,8 @@ CONTAINS
          solwinfit(:, spk_idx, 1) = 2.0
         ENDIF
        ENDIF
-       IF (which_hitran == 1) THEN 
-       CALL geto2_crs_hitran (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps, o2, do_convl)
-       ELSE
        CALL geto2_crs_hitran16 (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps, o2, do_convl, 1)
        !CALL geto2_crs_hitran16 (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps, o20, do_convl,0)
-       ENDIF
        IF (do_convl) THEN 
         IF (yn_varyslit) THEN
           slitfit(1:nslit, :,1)  = slitfit_save(1:nslit, :)
@@ -2118,12 +1884,8 @@ CONTAINS
        ENDIF
        h2ocrsz(1:nhresp, 1:nz)=0.0 !;h2odadsz(1:nhresp, 1:nz)=0.0
        h2ocrsz0(1:nhresp, 1:nz)=0.0 !;h2odadsz(1:nhresp, 1:nz)=0.0
-       IF (which_hitran == 1) THEN 
-       CALL geth2o_crs_hitran (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps,h2o, do_convl)       
-       ELSE
        CALL geth2o_crs_hitran16 (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps,h2o, do_convl,1)       
        !CALL geth2o_crs_hitran16 (hreswav(1:nhresp), nhresp, nhresp, nz,ts, ps,h2o0, do_convl,0)       
-       ENDIF
        h2ocrsz = h2o%crs
        h2ocrsz0 = h2o%crs
        IF (do_convl)  THEN
@@ -2543,109 +2305,6 @@ CONTAINS
   RETURN
     
   END FUNCTION calc_pslwf
-
-  SUBROUTINE read_hitran_lut (abs_fname, win_min, win_max, lut)
-
-    ! ORIGINAL CODE : GC_xsections_module.f90 (M. Chris ?)
-    IMPLICIT NONE
-    INCLUDE 'netcdf.inc'
-    !----------------------------------
-    !Input
-    !---------------------------------
-    CHARACTER(LEN=*) :: abs_fname
-    REAL (KIND=dp) :: win_min, win_max
-    !---------------------------------
-    !Output 
-    !---------------------------------
-    TYPE(hitran_set), INTENT(OUT) :: lut
-    !---------------------------------
-    !Local variables
-    !---------------------------------
-    ! helper for reading nc file
-    INTEGER :: ncid, rcode, vid
-    CHARACTER(len=maxchlen) :: message, tmpchar
-    LOGICAL :: file_exist, fail
-    ! helper for LUT interpolation
-    INTEGER :: dimid(3), fidx, lidx
-    !-------------------------------------------------------------------
-    ! LUT variables
-    !--------------------------------------------------------------------
-    INTEGER :: wmx, pmx, tmx
-    REAL(KIND=8), ALLOCATABLE, DIMENSION(:)      :: p_lut, wvl_lut, T_lut
-    REAL(KIND=8), ALLOCATABLE, DIMENSION(:,:,:)  :: xs_lut
-    !------------------------------------------------------------------
-
-    fail = .false.
-    INQUIRE (FILE= TRIM(ADJUSTL(abs_fname)), EXIST= file_exist)
-    IF (.not. file_exist) THEN
-        write(*,*) "No exsit:"//abs_fname ; stop 1
-    ENDIF 
-
-    ! ================================================================
-    ! Open netCDF file and allocate arrays
-    ! ================================================================
-    ! Open file in read mode
-    ncid = ncopn(trim(adjustl(abs_fname)), nf_Nowrite, rcode)
-    if (rcode  .eq. -1 ) then
-       message =  ' error in read_xy_nc_prof: ncopn failed' ; stop 1
-    endif
-
-    ! Read the grid dimensions
-    rcode = nf_inq_varid(ncid, 'CrossSection', vid)
-    rcode = nf_inq_vardimid(ncid, vid, dimid)
-    rcode = nf_inq_dim(ncid, dimid(1),tmpchar, wmx)
-    rcode = nf_inq_dim(ncid, dimid(2),tmpchar, tmx)
-    rcode = nf_inq_dim(ncid, dimid(3),tmpchar, pmx)
-
-    ! Allocate arrays
-    ALLOCATE(wvl_lut(wmx))
-    ALLOCATE(t_lut(tmx))
-    ALLOCATE(p_lut(pmx))
-    ALLOCATE(xs_lut( wmx,tmx,pmx))
-  
-    ! read Grids
-    rcode = nf_inq_varid(ncid, 'Wavelength', vid)
-    rcode = nf_get_var_double(ncid, vid,wvl_lut)
-    rcode = nf_inq_varid(ncid, 'Pressure', vid)
-    rcode = nf_get_var_double(ncid, vid,p_lut)
-    rcode = nf_inq_varid(ncid, 'Temperature', vid)
-    rcode = nf_get_var_double(ncid,vid,t_lut)
-    ! ----------------------
-    ! Read cross sections
-    ! ----------------------
-    rcode = nf_inq_varid(ncid, 'CrossSection', vid)
-    rcode = nf_get_var_double(ncid,vid,xs_lut)
-   
-    ! ----------
-    ! Close file
-    ! ----------
-
-    call ncclos(ncid, rcode)
-    if (rcode .eq. -1) then
-       message =  ' error in netcdf_rd_dim: ncclos'
-       fail = .true.; return
-    endif
-
-    ! ================================================================
-    ! subtrac for ozone fitting 
-    ! ================================================================
-     ! Get index range covering window
-    fidx = MINVAL(MINLOC(wvl_lut, MASK= wvl_lut .GE.  537))
-    lidx = MINVAL(MAXLOC(wvl_lut, MASK= wvl_lut .LE. win_max))
-    wmx = lidx - fidx + 1
-    lut%wmx = wmx
-    lut%tmx = tmx
-    lut%pmx = pmx
-     allocate (lut%wvl(lut%wmx), lut%ps(pmx), lut%ts(tmx), &
-              lut%crs(lut%wmx,tmx, pmx))
-
-    lut%wvl (1:wmx) = wvl_lut(fidx:lidx)
-    lut%ps (1:pmx) = p_lut(1:pmx)
-    lut%ts (1:tmx) = t_lut(1:tmx)
-    lut%crs (1:wmx, 1:tmx, 1:pmx) = xs_lut(fidx:lidx,1:tmx, 1:pmx)
-    deallocate (wvl_lut, t_lut, p_lut, xs_lut)
-    RETURN 
-    END SUBROUTINE read_hitran_lut
 
     SUBROUTINE read_hitran16_lut(abs_fname, win_min, win_max,lut)
 

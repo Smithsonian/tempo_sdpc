@@ -12,7 +12,8 @@ MODULE m_get_o3prof
   USE OMSAO_errstat_module
   USE NETCDF
   USE m_ezspline_interpolation, ONLY: bspline
-  USE m_utilities, ONLY:reverse
+  USE m_utilities, ONLY:reverse, get_monfrac, get_latfrac, get_gridfrac
+
   !USE m_get_m2prof, ONLY:m2du, get_m2prof
   IMPLICIT NONE
   ! common variables used in this module
@@ -935,7 +936,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
 
  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay) ; stop 1
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz ; stop 1
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
@@ -2226,108 +2227,5 @@ SUBROUTINE get_v8prof(toz, oz)
   deallocate(psg1, cum1, psg2, cum2)
   RETURN
   END SUBROUTINE bspline_partial_column
-
-  SUBROUTINE get_monfrac(nmon, mon, day, nbmon, monfrac, monin)
-
-  IMPLICIT NONE
-
-  ! ======================
-  ! Input/Output variables
-  ! ======================
-  INTEGER, INTENT(IN)                       :: nmon, mon, day
-  INTEGER, INTENT(OUT)                      :: nbmon
-  INTEGER, DIMENSION(2), INTENT(OUT)        :: monin
-  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: monfrac
-
-  IF (day <= 15) THEN
-     monin(1) = mon - 1
-     IF (monin(1) == 0) monin(1) = 12
-     monin(2) = mon
-     monfrac(1) = (15.0 - day) / 30.0
-     monfrac(2) = 1.0 - monfrac(1)
-  ELSE
-     monin(2) = mon + 1
-     IF (monin(2) == 13) monin(2) = 1
-     monin(1) = mon
-     monfrac(2) = (day - 15) / 30.0
-     monfrac(1) = 1.0 - monfrac(2)
-  ENDIF
-     nbmon=2
-  END SUBROUTINE get_monfrac
-
-  SUBROUTINE get_latfrac( nlat, latgrid, lat0, lat,  nblat, latfrac, latin)
-
-  IMPLICIT NONE
-
-  ! ======================
-  ! Input/Output variables
-  ! ======================
-  INTEGER, INTENT(IN)                       :: nlat
-  REAL (KIND=dp), INTENT(IN)                :: lat0, lat, latgrid
-  INTEGER, INTENT(OUT)                      :: nblat
-  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin
-  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac
-
-  ! ======================
-  ! Local variables
-  ! ======================  
-  REAL (KIND=dp) :: frac, lat_offset
-
-  lat_offset   = lat0 + latgrid / 2.0
-  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
-  latin(1) = INT(frac); latin(2) = latin(1) + 1
-  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
-
-  IF (latin(1) == 0)   THEN
-     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
-  ENDIF
-
-  IF (latin(2) > nlat) THEN
-     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
-  ENDIF
-  RETURN
-  END SUBROUTINE get_latfrac
-
-  SUBROUTINE get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
-  lon, lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
-
-  IMPLICIT NONE
-
-  ! ======================
-  ! Input/Output variables
-  ! ======================
-  INTEGER, INTENT(IN)                       :: nlon, nlat
-  REAL (KIND=dp), INTENT(IN)                :: lon0, lat0, lat, lon, longrid, latgrid
-  INTEGER, INTENT(OUT)                      :: nblon, nblat
-  INTEGER, DIMENSION(2), INTENT(OUT)        :: latin, lonin
-  REAL (KIND=dp), DIMENSION(2), INTENT(OUT) :: latfrac, lonfrac
-  
-  ! ======================
-  ! Local variables
-  ! ======================  
-  REAL (KIND=dp) :: frac, lat_offset, lon_offset
-  
-  lat_offset   = lat0 + latgrid / 2.0
-  lon_offset   = lon0 + longrid  / 2.0
-  
-  nblat = 2; frac = (lat - lat_offset) / latgrid + 1
-  latin(1) = INT(frac); latin(2) = latin(1) + 1
-  latfrac(1) = latin(2) - frac; latfrac(2) = 1.0 - latfrac(1)
-  IF (latin(1) == 0)   THEN 
-     latin(1) = 1;    latfrac(1) = 1.0; nblat = 1
-  ENDIF
-  IF (latin(2) > nlat) THEN
-     latin(1) = nlat; latfrac(1) = 1.0; nblat = 1
-  ENDIF
-  
-  ! Circular in longitude direction
-  nblon = 2; frac = (lon - lon_offset) / longrid + 1
-  lonin(1) = INT(frac); lonin(2) = lonin(1) + 1
-  lonfrac(1) = lonin(2) - frac; lonfrac(2) = 1.0 - lonfrac(1)
-  IF (lonin(1) == 0)   lonin(1) = nlon
-  IF (lonin(2) > nlon) lonin(2) = 1
-  
-  RETURN
-  END SUBROUTINE get_gridfrac
 
 END MODULE m_get_o3prof

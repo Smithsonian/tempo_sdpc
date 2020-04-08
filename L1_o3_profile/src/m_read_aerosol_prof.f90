@@ -79,7 +79,7 @@ contains
          strat_aerosol, which_aerosol, maxmom
     USE OMSAO_errstat_module
     use m_ezspline_interpolation, only: bspline, interpol
-    use prepare_atmosphere, only: get_gridfrac
+    use m_utilities, only: get_gridfrac
 
     IMPLICIT NONE
 
