@@ -194,8 +194,7 @@ $(ODIR)/m_convol.o: $(SDIR)/m_convol.f90 \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_slitfunction_module.o \
-  $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/ozprof_data_module.o
+  $(ODIR)/OMSAO_variables_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_convol.f90 -o $(ODIR)/m_convol.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_avg_band.o: $(SDIR)/m_avg_band.f90 \
   $(ODIR)/OMSAO_errstat_module.o \

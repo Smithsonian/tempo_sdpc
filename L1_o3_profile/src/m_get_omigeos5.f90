@@ -46,19 +46,16 @@ MODULE  m_get_omigeos5
     INTEGER         ::  rank, error ! Error flag
     CHARACTER(maxchlen) :: dname
     ! data variables
-    REAL (KIND=r8) :: dtdp
-    REAL (KIND=r8),DIMENSION (1:ngl) :: tmp, pmid
     REAL (KIND=r4),DIMENSION(nx, 0:nt-1)     :: lat, lon, spres, ptrp, phis
     REAL (KIND=r4),DIMENSION(1:ngl,nx, 0:nt-1) :: ts, dp
     REAL (KIND=r4),DIMENSION(0:ngl,nx, 0:nt-1) :: ps
     ! Coadding varaibles
     INTEGER :: ix, iy, iix, iiy, j, k ! used in loop
-    INTEGER :: nline, nbx, nbin, sline, eline,  nx4, nx1
+    INTEGER :: nline, nbx, nbin, sline, eline, nx1
     INTEGER :: xoff, xoff0
     REAL (KIND=r4):: cc
     LOGICAL :: file_exist
     !----------
-    INTEGER, DIMENSION(0:ngl) :: ord ! convert top-down to down-top
     LOGICAL,SAVE :: first = .true.
   
     IF (first) THEN

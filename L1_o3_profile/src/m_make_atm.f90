@@ -42,8 +42,7 @@ contains
     USE OMSAO_parameters_module, ONLY: p0, boltz, xmair, accgrav, ugc, avo, &
          rearth, du2mol
     USE OMSAO_variables_module, ONLY : profunit, sza => the_sza_atm, &
-         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline, & 
-         nloc, the_lons, the_lats
+         the_surfalt, the_lon, the_lat, fitvar_rad_init, currpix, currline
     USE OMSAO_indices_module,   ONLY : so2_idx, hcho_idx, bro_idx, bro2_idx, &
          no2_t1_idx, so2v_idx, o2o2_idx, no2_t2_idx, & 
          o2_idx,  o2t2_idx, h2o_idx, h2ot2_idx
@@ -72,7 +71,7 @@ contains
     USE m_get_met_tempo, ONLY: get_met_tempo,tempo=>thismet
     IMPLICIT NONE
 
-    INTEGER, PARAMETER :: nv8=11, nlfnl=26, nref=71, nmpref=61, nmipas=121
+    INTEGER, PARAMETER :: nv8=11, nlfnl=26, nmipas=121!, nref=71, nmpref=61
     ! Input variables
     INTEGER, INTENT(IN)          :: year, month, day, ndiv, numk
     INTEGER, INTENT(OUT)         :: errstat

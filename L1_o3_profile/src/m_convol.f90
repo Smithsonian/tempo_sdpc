@@ -235,7 +235,7 @@ MODULE m_convol
     REAL (KIND=dp), DIMENSION (:,:), ALLOCATABLE :: fspec !(nf, nspec)
     REAL (KIND=dp), DIMENSION (:)  , ALLOCATABLE :: i0 !(nf)
     REAL (KIND=dp), DIMENSION (:)  , ALLOCATABLE :: newi0 !(nc)
-    CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
+    !CHARACTER (LEN=16), PARAMETER    :: modulename = 'CORRECT_I0EFFECT'
     LOGICAL, PARAMETER :: weight_irrad = .true.
   
     allocate (fspec(nf, nspec), i0(nf), newi0(nc))
@@ -349,7 +349,7 @@ MODULE m_convol
   END SUBROUTINE convol_f2c_stk
 
   SUBROUTINE get_i0 (ni0, wvl, i0)
-    USE ozprof_data_module, ONLY: hw1e=>hres_slitwidth
+    !USE ozprof_data_module, ONLY: hw1e=>hres_slitwidth
     IMPLICIT NONE
     ! INPUT/OUTPUT variables
     INTEGER, INTENT(IN) :: ni0

@@ -47,13 +47,13 @@ module m_set_cldalb
        lo_radbnd, up_radbnd, nf=>n_fitvar_rad, mask_fitvar_rad, &
        the_month, the_day, edgelons, edgelats, the_jday, &
        the_sza_atm, the_vza_atm, the_aza_atm, & 
-       numwin, nviswin, widx_rvis,nradpix, rmask_fitvar_rad, wcenter_uvvis
+       numwin, nviswin, widx_rvis,nradpix, rmask_fitvar_rad
   USE ozprof_data_module,        ONLY: albidx, albfidx, nalb, nfalb, albmin, &
        albmax, albfpix, alblpix, albfpix_r, alblpix_r, & 
         do_lambcld, lambcld_refl, which_alb, &
        the_fixalb, do_simu, radcalwrt, lambcld_initalb, ecfrfind, & !has_glint,glintprob
        wfcmax, wfcmin, nwfc, nfwfc, wfcfpix, wfclpix, wfcfidx, wfcidx, the_snowice, pos_alb, &
-       do_brdf, use_albspc, use_albeofs, which_albspc ,the_landwater_flg,  & 
+       do_brdf, use_albspc, which_albspc ,the_landwater_flg,  & 
        albspcs, malbspc, nactalbspc, is_albspcvar, sfcalbs, nrefl, &
        albspcs_hres, use_effcrs, ncalcp, radcwav, the_landfrac !nalbspc
   USE OMSAO_errstat_module
@@ -89,7 +89,6 @@ module m_set_cldalb
   ! ===============
   ! module name
   ! ===============
-  LOGICAL :: do_debug
   CHARACTER(LEN=10), PARAMETER      :: modulename = 'SET_CLDALB'
 
   pge_error_status = pge_errstat_ok

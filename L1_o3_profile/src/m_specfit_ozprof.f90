@@ -34,7 +34,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
        h2o_idx, h2ot2_idx, cm2fidx, cm3fidx !bro_idx, hcho_idx, no2_t1_idx, no2_t2_idx
   USE OMSAO_variables_module,    ONLY: scnwrt, refspec_norm,&
        weight_rad, nradpix, npix_fitted, rad_wav_avg,&
-       numwin, widx_vis, wcenter_uvvis, nuvwin, nviswin, &
+       numwin, widx_vis, wcenter_uvvis, nviswin, &
        n_rad_wvl, curr_rad_spec,fitwavs, currspec, fitweights, &
        n_fitvar_rad, fitvar_rad_str, mask_fitvar_rad, lo_radbnd, up_radbnd, &
        fitvar_rad, fitvar_rad_saved, fitvar_rad_std, fitvar_rad_nstd, &
@@ -43,7 +43,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
        currpix, currline, nloc,  the_lons, the_lats, the_surfalt, the_lon, the_lat, &
        the_year, the_day, the_month, the_jday
   USE ozprof_data_module,        ONLY: &
-       use_oe, use_logstate, smooth_ozbc, ptr_order, ozwrtwf, wrtalbspc, & 
+       use_oe, use_logstate, smooth_ozbc, ptr_order, ozwrtwf, & 
        use_large_so2_aperr, do_sy_diagonal, merr_corrlen, msyserr, merr_covar, &
        ozprof_start_index, ozprof_end_index, ozfit_start_index, ozfit_end_index, &
        covar, ncovar, contri, ozwrtcontri, weight_function, ndiv, &
@@ -56,17 +56,17 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
        nwfc, nfwfc, eff_wfc, eff_wfc_init, wfcidx, wfcfidx, &
        the_cfrac, the_cod, the_ctp, &
        maxawin, actawin, aerwavs,  &
-       ngas, nfgas, gasidxs, fgasidxs, tracegas, mgasprof, &
-       do_subfit, fit_atanring, nos, nsh,nir, & !nsl, nrn,nis, ndc
-       osind, rnind, dcind, isind, irind, shind, shfind, osfind, irfind, & !slind
+       ngas, gasidxs, fgasidxs, tracegas, mgasprof, &
+       do_subfit, fit_atanring, nos, nsh, & !nsl, nrn,nis, ndc
+       osind, rnind, dcind, isind, irind, shind, shfind, osfind, & !slind
        np1, np2, np3, p1find, p2find, p3find, p1ind, p2ind, p3ind,ncm, cmind, &
-       ozabs_convl, use_effcrs, radcalwrt, do_simu, do_rtm_pca, ncalcp, radcwav, &
+       ozabs_convl, use_effcrs, radcalwrt, do_simu, &
        glintprob, the_snowice, the_landwater_flg, the_landfrac, &
        tropaod, tropsca, tropwaer, strataod, stratsca, taodind, taodfind, twaeind,   &
        saodfind, ecfrind, ecfrfind, ecodind, ecodfind, ectpind, ectpfind, has_glint, &
        twaefind, saodind, sprsind, sprsfind, so2zind, so2zfind,&
-       albfpix, alblpix, is_albspcvar, use_albeofs, use_albspc, nalbspc, nactalbspc, &
-       which_albspc,sfcalbs, albspcs, do_brdf, nalbwf, num_iter, do_debug_o3p
+       albfpix, alblpix, is_albspcvar, use_albeofs, nalbspc, nactalbspc, &
+       which_albspc,sfcalbs, albspcs, do_brdf, nalbwf, do_debug_o3p
   USE OMSAO_errstat_module
   USE m_get_reg_matrix, ONLY: get_reg_matrix
   USE m_get_bclayer, ONLY: get_bc_layer

@@ -71,10 +71,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        do_alb_longwav, alb_swav, alb_ewav,  which_cld, use_prefitalb, pf2ba0, pf2ba1, pf2fc0, pf2fc1, &
        do_sy_diagonal, merr_covar, &
        is_albspcvar, albspcs, use_albspc, use_albeofs, nactalbspc, sfcalbs, &
-       do_rtm_pca, do_brdf, vary_sfcalb, the_snowice, rtm_outputs, set_rtmvar, ccrs, &
+       do_rtm_pca, do_brdf, vary_sfcalb, the_snowice, rtm_outputs, set_rtmvar, &
        allrms, allradrms
-  USE cloud_data_module, ONLY : new_cfrac, new_alb, new_ps0, new_ctp, n_newalb, &
-       n_newwfc, use_retctp, use_retalb, avgwav_cld
+  USE cloud_data_module, ONLY : new_cfrac, new_alb, n_newalb, &
+       n_newwfc, use_retalb, avgwav_cld
   USE OMSAO_gome_data_module, ONLY: n_gome_q, gome_q, stkidx, &
       use_origin_q ,n_stokfrac
   USE m_gsvd_o3prof_utilities, ONLY: sq_matrix_invert
@@ -123,7 +123,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   REAL (KIND=dp), DIMENSION(numwin, maxoth):: o3shi
   REAL (KIND=dp), DIMENSION(nlay)          :: tprof, ozprof, ozadj, ozaprof
   REAL (KIND=dp), DIMENSION(nf)            :: fitvar_saved
-  REAL (KIND=dp)                           :: rms, radrms, wavavg, albavg, newoz, tmpval
+  REAL (KIND=dp)                           :: rms, radrms, wavavg, newoz
   REAL (KIND=dp)                           :: so2adj, so2vadj, newso2, newbro, &
        newhcho, newno2, newo4, newo2, newh2o, broadj, hchoadj, no2adj, o4adj, o2adj, h2oadj, newalb 
   REAL (KIND=dp), DIMENSION (numwin)       :: allchisq
@@ -145,7 +145,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ! Name of this module/subroutine
   ! ==============================
   INTEGER :: funit
-  LOGICAL :: do_debug = .false., do_debug_out = .false.
+  LOGICAL :: do_debug_out = .false.
   CHARACTER (LEN=12), PARAMETER :: modulename = 'pseudo_model'
 
   !============================================================================
@@ -1404,14 +1404,14 @@ SUBROUTINE HRES_RADCALC_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   USE OMSAO_variables_module, ONLY : numwin, &
        fitvar_rad_str, fitvar_rad, rmask_fitvar_rad
   USE ozprof_data_module,     ONLY : radcwav, ncalcp,  &
-       nalb, albidx, albmin, albmax, albfpix, alblpix, albfpix_r, alblpix_r, &
+       nalb, albidx, albfpix, alblpix, albfpix_r, alblpix_r, &
        nwfc, wfcidx, wfcmin, wfcmax, wfcfpix, wfclpix, &
        which_cld, do_alb_longwav, use_prefitalb, pf2ba0,&
        pf2ba1, pf2fc0, pf2fc1, & 
        is_albspcvar, use_albeofs, nactalbspc, albspcs_hres,  &
-       do_rtm_pca, rtm_outputs, vary_sfcalb, do_brdf, the_cfrac
-  USE cloud_data_module, ONLY : new_cfrac, new_alb, new_ps0, new_ctp, n_newalb, &
-       n_newwfc, use_retctp, use_retalb, avgwav_cld
+       do_rtm_pca, rtm_outputs, vary_sfcalb, do_brdf
+  USE cloud_data_module, ONLY : new_cfrac, new_alb, n_newalb, &
+       n_newwfc, use_retalb, avgwav_cld
   USE OMSAO_errstat_module
   IMPLICIT NONE
 
@@ -1445,7 +1445,7 @@ SUBROUTINE HRES_RADCALC_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  CHARACTER(16), PARAMETER :: modulename = 'HRES_RADCALC_ENV'
+  !CHARACTER(16), PARAMETER :: modulename = 'HRES_RADCALC_ENV'
   errstat = pge_errstat_ok
   nw0 = MAXVAL([nw, ncalcp])
   IF (allocated(waves0)) deallocate (waves0, walb0s0, wfc0s0)

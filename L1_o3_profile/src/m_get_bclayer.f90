@@ -18,14 +18,14 @@ SUBROUTINE get_bc_layer (which_atm, nloc, the_lons, the_lats, &
   USE m_get_omigeos5, ONLY: geos5
   USE m_get_fnl, ONLY:get_fnl_spres,get_fnl_tpres, get_fnl_surfalt
   USE m_get_ncep, only: get_spres, get_ncepreso_surfalt, get_tpres
-  USE m_get_met_tempo, ONLY: get_met_tempo, tempo=>thismet
+  USE m_get_met_tempo, ONLY: get_met_tempo
   IMPLICIT NONE
   ! input/output variables
   INTEGER, INTENT(IN) :: which_atm, nloc
   REAL (KIND=dp), DIMENSION(nloc), INTENT(IN) :: the_lons, the_lats
   REAL (KIND=dp), INTENT(OUT) :: the_surfalt, ps0, pst
   ! local variables
-  INTEGER :: i, errstat
+  INTEGER :: i
   REAL (KIND=dp) :: ncepreso_z0, omi_z0
   REAL (KIND=dp), DIMENSION(nloc) :: fine_z0
 

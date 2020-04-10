@@ -63,7 +63,7 @@ CONTAINS
     ! ===============
     ! Local variables
     ! ===============
-    INTEGER         :: i, j, j1, j2, num_slit, mslit, mslit0
+    INTEGER         :: i, j, j1, j2, num_slit, mslit!, mslit0
     REAL (KIND=dp)  :: delwvl, slitsum, rsw, lsw
     REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl
     INTEGER,        DIMENSION (npoints) :: idx
@@ -241,7 +241,7 @@ CONTAINS
   ! Local variables
   ! ===============
   INTEGER                             :: i, j, j1, j2, num_slit, mslit, fidx,lidx, iwin
-  REAL (KIND=dp)                      :: delwvl, slitsum,  maxslit, hw1e,e_asym, power,rsw, lsw, upbnd
+  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e,e_asym, power,rsw, lsw, upbnd
   REAL (KIND=dp)                      :: slitsum1,hw1e_pert,e_asym_pert, power_pert, pert
   REAL (KIND=dp), DIMENSION (npoints) :: slit, slit1,locwvl
   INTEGER,        DIMENSION (npoints) :: idx
@@ -421,7 +421,7 @@ CONTAINS
   ! Local variables
   ! ===============
   INTEGER                             :: i, j, ii, j1, j2, num_slit, mslit, fidx, lidx, iwin
-  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, sw, coef, pert, ssum1
+  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, coef, pert, ssum1
   REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, upbnd, slit1
 
   ! --------------------------------------------------------
@@ -886,8 +886,8 @@ CONTAINS
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
-  REAL (KIND=dp) :: power, temp, hw1e, dfw, ssum, ssum1, coeff, pert
+  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, midx, sidx, eidx, nhalf
+  REAL (KIND=dp) :: power, temp, hw1e, dfw, ssum, ssum1, coeff!, pert
   REAL (KIND=dp), DIMENSION (nf) :: slit, slit1
   
   !slit(:) = 0.0; cspec(:, :)= 0.0
@@ -1046,7 +1046,7 @@ CONTAINS
   ! ===============
   ! Local variables
   ! ===============
-  INTEGER        :: i, j, iwin, iw, fidx, fidxc, lidx, lidxc, &
+  INTEGER        :: i, j, iwin, fidx, fidxc, lidx, lidxc, &
        midx, sidx, eidx, fslit,lslit, finter, linter, errstat, nhalf
   REAL (KIND=dp) :: temp, hw1e, power, dfw, ssum, coeff
   REAL (KIND=dp), DIMENSION (nf) :: slit

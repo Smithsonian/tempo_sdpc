@@ -12,8 +12,8 @@ module m_utilities
          get_doy, day_of_year,find_pos, signdp, &
          get_monfrac, get_latfrac, get_gridfrac, get_gridfrac1
 
-  private convert_16bits_to_2bytes,  &
-          convert_8bits_to_byte
+  !private convert_16bits_to_2bytes,  &
+         ! convert_8bits_to_byte
          !, year_month_day, &
          ! upper_case, utc_julian_date_and_time, 
 
@@ -535,7 +535,7 @@ contains
     ! Local variables
     ! ===============
     REAL (KIND=dp) :: dfw, dcw, temp
-    INTEGER        :: i, j, iwin, npos, fidx, fidxc, lidx, lidxc, midx
+    INTEGER        :: i, iwin, npos, fidx, fidxc, lidx, lidxc, midx
 
     fidx = 1; fidxc = 1
     dcw  = cwave(2) - cwave(1)

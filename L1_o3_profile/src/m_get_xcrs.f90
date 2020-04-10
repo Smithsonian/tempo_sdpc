@@ -591,7 +591,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=9), PARAMETER    :: modulename = 'geto2_crs'
+  !CHARACTER (LEN=9), PARAMETER    :: modulename = 'geto2_crs'
  
   IF (first) THEN
      !---------------------------------------------------------------------
@@ -767,8 +767,6 @@ CONTAINS
   ! Save variables
   !-------------------------------------------------
   INTEGER, SAVE :: nwvl_lut, z1, z2
-  INTEGER, DIMENSION(:), ALLOCATABLE, SAVE :: wids
-  REAL(KIND=dp), DIMENSION(:), ALLOCATABLE, SAVE :: wwfs 
   LOGICAL, SAVE :: first = .true.
   REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: crs, dxdtz
   TYPE(hitran16_set), save  :: lut
@@ -776,7 +774,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=10), PARAMETER    :: modulename = 'geth2o_crs'
+  !CHARACTER (LEN=10), PARAMETER    :: modulename = 'geth2o_crs'
  
   IF (first) THEN
      !---------------------------------------------------------------------
@@ -789,12 +787,6 @@ CONTAINS
      refspec_norm(h2o_idx) = 1.0E-25
      h2ocrs_convl = .TRUE.
      nwvl_lut = lut%wmx
-     allocate (wids(nlamda), wwfs(nlambda))
-     widxs=0 ; wwfs = 0.0
-
-     DO i = , nlamda
-     ENDDO
-
   ENDIF
   dods = crsz%do_shiwf
   dodt = crsz%do_tmpwf
@@ -1471,13 +1463,13 @@ CONTAINS
   USE ozprof_data_module,     ONLY : do_subfit, nos, oswins, osfind, &
        ncalcp, radcidxs, hcrs,&
        ngas, gasidxs, fgasidxs,  fgassidxs,&
-       so2sfidx, so2vsfidx, o4sfidx, o2sfidx, h2osfidx, &
+       so2sfidx, so2vsfidx, o4sfidx, &
        use_so2dtcrs, use_o4dtcrs, use_o2dptcrs, use_h2odptcrs, &
        nhresp, hreswav, &
        hres_gas, hres_gasshi, hresgabs, hresgabs0, hresray, &
-       hres_i0, hres_raycof, hres_depol, &
-       hres_o3, hres_so2, hres_o4, hres_o2, hres_h2o, &
-       hres_o3shi, hres_so2shi, hres_o4shi, hres_o2shi, hres_h2oshi, &
+       hres_raycof, hres_depol, &
+       hres_o3, hres_so2, hres_o4, &
+       hres_o3shi, hres_so2shi, hres_o4shi, &
        o3crsz, o3dadsz, o3dadtz, & 
        so2crsz,o4crsz, o2crsz, h2ocrsz, o2crsz0, h2ocrsz0, &
        so2dads,o4dads, o2dads, h2odads
@@ -1505,12 +1497,12 @@ CONTAINS
   REAL (KIND=dp)                       :: tmp, so2sum, o4sum, o2sum,h2osum
   REAL (KIND=dp), DIMENSION(:),   ALLOCATABLE :: delshi, tmpwav, delpos ! (nhresp)
   REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: so2dadsz, o4dadsz, o2dadsz, h2odadsz
-  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: so2dadtz, o4dadtz, o2dadtz, h2odadtz
+  REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: so2dadtz, o4dadtz!, o2dadtz, h2odadtz
   REAL (KIND=dp), DIMENSION(:,:), ALLOCATABLE :: slitfit_save, solwinfit_save
   ! Save variables
   LOGICAL, SAVE :: first = .TRUE.
   TYPE(txcrs_set), SAVE  :: o3, so2, o4
-  TYPE(crsz_set), SAVE :: o2, h2o, o20,h2o0
+  TYPE(crsz_set), SAVE :: o2, h2o
   ! Name of this subroutine/module
   ! ------------------------------
   CHARACTER (LEN=19), PARAMETER :: modulename = 'GET_HRES_GASCRS_RAY'
@@ -2310,7 +2302,7 @@ CONTAINS
 
     IMPLICIT NONE
     INCLUDE 'netcdf.inc'
-    INTEGER, PARAMETER :: maxh_ht = 52002
+    !INTEGER, PARAMETER :: maxh_ht = 52002
     !----------------------------------
     !Input
     !---------------------------------
@@ -2324,15 +2316,15 @@ CONTAINS
     !Local variables
     !---------------------------------
     LOGICAL :: file_exist, fail
-    INTEGER :: rcode,ncid,  vid, dimid(4), w, wmx, pmx, bmx, tmx, fidx, lidx
+    INTEGER :: rcode,ncid,  vid, dimid(4), wmx, pmx, bmx, tmx, fidx, lidx
     CHARACTER (LEN=100) :: tmpchar
     !-------------------------------------------------------------------
     ! LUT variables
     !--------------------------------------------------------------------
-    INTEGER :: nwvl_lut, np_lut, nT_lut
+    !INTEGER :: nwvl_lut, np_lut, nT_lut
     REAL(KIND=8), ALLOCATABLE, DIMENSION(:)  :: p_lut, wvl_lut, br_lut
     REAL(KIND=8), ALLOCATABLE, DIMENSION(:,:):: T_lut
-    REAL(KIND=8), ALLOCATABLE, DIMENSION(:,:,:,:)  :: xs_lut
+    !REAL(KIND=8), ALLOCATABLE, DIMENSION(:,:,:,:)  :: xs_lut
     ! =====================================================================
     ! InitType_pTLookupTable starts here
     ! =====================================================================

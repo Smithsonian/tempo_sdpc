@@ -26,7 +26,6 @@ MODULE m_get_toz
   ! ======================
   INTEGER , INTENT(IN) :: which_toz
   REAL (KIND=dp), INTENT(OUT) :: toz
-  CHARACTER (len=4) :: ctoz
   toz = 0.0
   IF (which_toz ==  1 ) THEN
        CALL get_eptoz (toz) 
@@ -119,7 +118,8 @@ MODULE m_get_toz
   INTEGER, PARAMETER           :: nlat=180, nlon=360
   REAL (KIND=dp), PARAMETER    :: longrid = 1, latgrid = 1.0, lon0=-180.0, lat0=-90.0
   INTEGER                      :: i, j, k,  fidx, lidx, sidx, eidx
-  REAL                         :: dis, frac, sumfrac, toz0
+  REAL                         :: dis, frac, toz0
+  real (kind=dp)               :: sumfrac
   INTEGER :: fid, grid_id, status
   INTEGER (KIND=8), DIMENSION(2)       :: start, stride
   INTEGER (KIND=8), DIMENSION(2)       :: edge =(/nlon, nlat/)
@@ -181,10 +181,10 @@ MODULE m_get_toz
                    j = j + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = dp )
+             dis = eidx - sidx
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
+                      frac = 1.0 - (k - sidx)/dis
                       glbtoz(i,k) = frac*glbtoz(i, sidx) + (1.0 - frac)*glbtoz(i,eidx)
                    ENDDO
              ENDIF
@@ -218,10 +218,10 @@ MODULE m_get_toz
                    i = i + 1
                ENDIF
              ENDDO
-             dis = real((eidx - sidx), KIND = dp )
+             dis = eidx - sidx
              IF (dis <= 10) THEN 
                    DO k= sidx +1, eidx -1
-                      frac = 1.0 - REAL((k - sidx), KIND=dp) /dis
+                      frac = 1.0 - (k - sidx) /dis
                       glbtoz(k,j) = frac*glbtoz(sidx, j) + (1.0 - frac)*glbtoz(eidx,j)
                    ENDDO
              ENDIF
@@ -245,7 +245,7 @@ MODULE m_get_toz
         ENDIF
      ENDDO
   ENDDO
-  toz0=toz 
+  toz0=real(toz, kind=sp)
   IF (toz > 0) toz = toz/sumfrac
   IF (toz > 0) toz = toz +3  
   RETURN
@@ -268,8 +268,8 @@ MODULE m_get_toz
   CHARACTER (LEN=130)              :: omto3fname
   CHARACTER (LEN=2)                :: monc, dayc
   CHARACTER (LEN=4)                :: yrc
-  INTEGER                          :: i, j, ib, nband
-  REAL (KIND=dp)                   :: mnalt, do3
+  INTEGER                          :: i, ib, nband
+  REAL (KIND=dp)                   :: mnalt
 
   ! Saved variables
   !REAL (KIND=dp), SAVE, DIMENSION(ntlat) :: zmto3, tlats, zmalt

@@ -93,8 +93,8 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
   ! =======================                                                              
   ! Local variables                                                       
   ! =======================         
-  INTEGER                          :: i, j, l, k 
-  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  wsa_max, delta_chi 
+  INTEGER                          :: i, j
+  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h, delta_chi 
   REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, wsa_inv, w, xastd, xa, &
        tmpw2, tmpw2p1, tmpratio
   REAL(KIND=dp), DIMENSION(ny)     :: ytmp
@@ -385,20 +385,19 @@ SUBROUTINE oe_inversion_y (do_sa_diagonal, do_oe_output, file_unit, delta_chi_mi
   ! =======================                                                              
   ! Local variables                                                       
   ! =======================         
-  INTEGER                          :: i, j, l, k 
+  INTEGER                          :: i, j
   REAL(KIND=dp), DIMENSION(1, 1)   :: chi
-  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  wsa_max, delta_chi 
+  REAL(KIND=dp)                    :: dfn, chi_old, wsa_min, dfs, h,  delta_chi 
   REAL(KIND=dp), DIMENSION(nx)     :: y_prime, xa_prime, x_prime, wsa, wsa_inv, w, xastd, xa, &
        tmpw2, tmpw2p1, tmpratio
   REAL(KIND=dp), DIMENSION(ny)     :: wsy, wsy_inv
   REAL(KIND=dp), DIMENSION(ny)     :: ytmp, dy
-  REAL(KIND=dp), DIMENSION(1, ny)  :: y1t
   REAL(KIND=dp), DIMENSION(ny, 1)  :: y1
   REAL(KIND=dp), DIMENSION(nx, 1)  :: matx1
   REAL(KIND=dp), DIMENSION(ny, ny) :: sy_inv
-  REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u, tmp2
+  REAL(KIND=dp), DIMENSION(ny, nx) :: rK_tilde, u
   REAL(KIND=dp), DIMENSION(nx, nx) :: usa, vsa, sasqp, sasqn, tmp, tmp1, v
-  REAL(KIND=dp), DIMENSION(ny, ny) :: usy, vsy, sysqp, sysqn, wsy2, wsy2_inv!, tmp, tmp1, v
+  REAL(KIND=dp), DIMENSION(ny, ny) :: usy, vsy, sysqp, sysqn
 
   conv = .FALSE. 
 

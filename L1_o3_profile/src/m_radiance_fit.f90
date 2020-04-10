@@ -63,7 +63,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=14), PARAMETER :: modulename = 'radiance_fit'
+  !CHARACTER (LEN=14), PARAMETER :: modulename = 'radiance_fit'
 
   IF (first) THEN
       wrt_to_screen = .FALSE.

@@ -40,14 +40,12 @@ contains
          comvidx,  cm1vidx,  cm2vidx, cm3vidx, & 
          hwe_idx, asy_idx, vgl_idx, hwr_idx, spk_idx, shi_idx, squ_idx,& 
          wr0_idx, wr7_idx , &
-         so2_idx, o2_idx, h2o_idx, &
          which_instrument, max_instrument_idx, instrument_idx, &
          gome_idx, omi_idx, scia_idx, gome2_idx, tempo_idx
-    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts, &
-                                         zerospec_string
+    USE OMSAO_parameters_module,   ONLY: mswath, maxchlen, maxwin, max_fit_pts
 
     USE OMSAO_variables_module,    ONLY: l1l2inp_unit,use_backup, use_solcomp,    &
-         l1b_irrad_filename, l1b_rad_filename, l2_met_filename,l2_met_filenames, & 
+         l1b_irrad_filename, l1b_rad_filename, l2_met_filenames, & 
          l2_filename, l2_cld_filename, &
          avg_solcomp, avgsol_allorb, &
          n_fincol_idx, max_itnum_sol, &
@@ -87,8 +85,7 @@ contains
         upper_wvls_tmpo=>upper_wvls, lower_wvls_tmpo=>lower_wvls, &
         upper_spec_tmpo=>upper_spec, lower_spec_tmpo=>lower_spec
     USE ozprof_data_module, ONLY: radcalwrt,ozprof_flag, ozprof_input_fname,& 
-        nlay, nos, nsh, nsl, do_simu, nfgas, ozfit_end_index, ozfit_start_index, &
-        use_so2dtcrs, use_o2dptcrs, use_h2odptcrs 
+        nlay, nos, nsh, nsl, do_simu, nfgas, ozfit_end_index, ozfit_start_index
     USE UTIL_tools_class
     USE m_utilities, only: get_substring, string2index,check_for_endofinput, &
                            skip_to_filemark

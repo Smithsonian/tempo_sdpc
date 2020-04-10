@@ -64,7 +64,7 @@ CONTAINS
   ! ------------------------------
   ! Name of this subroutine/module
   ! ------------------------------
-  CHARACTER (LEN=14), PARAMETER :: modulename = 'solar_fit'
+  !CHARACTER (LEN=14), PARAMETER :: modulename = 'solar_fit'
   
   IF (first) THEN
      wrt_to_screen = calscn

@@ -289,10 +289,10 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
 
   REAL (KIND=dp), DIMENSION(nz)       :: zmid
   REAL (KIND=dp), DIMENSION(0:nz)     :: pslg, nstd, nstd1, ps1, zs1
-  INTEGER                             :: i, j, k,mnorstd, tmpntp, nref
+  INTEGER                             :: i, j, mnorstd, tmpntp, nref
   REAL (KIND=dp) :: tmp
   REAL (KIND=dp), DIMENSION(:), ALLOCATABLE :: oztmp, ozavg
-  REAL (KIND=dp), DIMENSION(mref)     :: astd, a1, a2, a3
+  REAL (KIND=dp), DIMENSION(mref)     :: astd
   REAL (KIND=dp), DIMENSION(0: mref)  :: cumastd, preslg, pres
 
   ! ==============================
@@ -795,11 +795,10 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   REAL (KIND=dp), PARAMETER         :: lat0=-90., latgrid=10.
   REAL (KIND=dp), DIMENSION(nlay)   :: ozref0,std0 ! orignal profile
   REAL (KIND=dp), DIMENSION(0:nlay) :: cum0,cums0, refz0, zstar, tb0
-  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, offset, tb
+  REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, tb
 
   INTEGER                           :: i, j, k,fidx, lidx, errstat
-  REAL (KIND=dp)                    :: frac,fdum
-  REAL (KIND=dp)                    :: meg
+  REAL (KIND=dp)                    :: fdum
   REAL (KIND=dp)                    :: gravity_correct ! used for convertingunit
 
   LOGICAL, SAVE                     :: first = .TRUE.
@@ -973,8 +972,8 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   REAL (KIND=dp), DIMENSION(0:nlay) :: refz, zstar
   REAL (KIND=dp)                    :: gravity_correct
 
-  REAL (KIND=dp)                :: frac,fdum
-  INTEGER                       :: i, j, k, errstat
+  REAL (KIND=dp)                :: fdum
+  INTEGER                       :: i, j, k
 
   LOGICAL, SAVE                 :: first = .TRUE.
   REAL (KIND=dp), SAVE, DIMENSION(:,:,:), ALLOCATABLE::ozrefs
@@ -984,7 +983,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
-  CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
+  !CHARACTER (LEN=17), PARAMETER :: modulename = 'get_ab'      
 
   ! ** load std profiles ** !
   IF (first) THEN
@@ -1139,7 +1138,7 @@ SUBROUTINE get_v8prof(toz, oz)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlevel=61 ! o3 (DU) for 60 layer, std (mr) for 61 level
   INTEGER :: i, j, im,ib
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
-  REAL (KIND=dp)                                  :: frac, idum
+  REAL (KIND=dp)                                  :: idum
   REAL (KIND=dp), DIMENSION(nlevel)               :: std0, pres
   REAL (KIND=dp), DIMENSION(nref)                 :: std
   ! saved variables
@@ -1216,8 +1215,7 @@ SUBROUTINE get_v8prof(toz, oz)
   INTEGER, PARAMETER :: nlat=18, nmon=12, nlay=66
   REAL (KIND=dp), parameter :: latgrid=10, lat0=-90
   CHARACTER (LEN=10) :: cdum
-  REAL (KIND=dp)     :: frac
-  INTEGER :: i, j, im,ib
+  INTEGER :: i, im,ib
   REAL (KIND=dp),DIMENSION(nlay) :: ozref0,std0, pres
   REAL (KIND=dp),DIMENSION(nref) :: std, ozref
   ! saved variables
@@ -1477,7 +1475,7 @@ SUBROUTINE get_v8prof(toz, oz)
   ! ======================
   INTEGER, PARAMETER        :: nlat=46, nlon=72, nalt=13
   REAL (KIND=dp), PARAMETER :: longrid = 5.0, latgrid = 4.0, lon0=-180.0, lat0=-92.0
-  INTEGER                   :: errstat, i, j, k, ntp0
+  INTEGER                   :: errstat, i, j, ntp0
 
   REAL (KIND=dp), DIMENSION(nalt)             :: gprof
   REAL (KIND=dp), DIMENSION(0:nz)             :: tempoz
@@ -1490,8 +1488,6 @@ SUBROUTINE get_v8prof(toz, oz)
        800., 700., 600., 500., 400., 300., 250., 200., 150., 125., 100./)
 
   REAL (KIND=dp), DIMENSION(1:nalt)           :: cumoz, presmod
-  CHARACTER (LEN=3), DIMENSION(12)            :: months = (/'jan', 'feb', &
-       'mar', 'apr',  'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=2)                           :: monc
   
   IF (first) THEN
@@ -1567,7 +1563,6 @@ SUBROUTINE get_v8prof(toz, oz)
   REAL (KIND=dp), DIMENSION (0:ml) :: cumoz
   REAL (KIND=dp), DIMENSION (0:nz) :: tmpcumoz, tmps
   REAL (KIND=dp), DIMENSION (2)    :: latfrac
-  REAL (KIND=dp)                   :: sumfrac
   INTEGER,        DIMENSION (2)    :: latin
 
   ! Saved variables
@@ -1848,8 +1843,6 @@ SUBROUTINE get_v8prof(toz, oz)
   ! ======================
   INTEGER, PARAMETER :: nmon=12, nlat=18, maxprof=10
   REAL (KIND=dp), PARAMETER :: lat0=-90.0, latgrid=10.0
-  CHARACTER (LEN=3), DIMENSION(12)  :: months = (/'jan', 'feb','mar', 'apr', &
-       'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'/)
   CHARACTER (LEN=200)                                :: line
 
   ! saved variables
@@ -2036,10 +2029,9 @@ SUBROUTINE get_v8prof(toz, oz)
    INTEGER :: errstat, nl
    INTEGER :: year, month, day
    REAL (KIND=r8) :: hour
-   REAL (KIND=r4) :: lon, lat
    REAL (KIND=r4) :: hour_f, lon_f, lat_f
    REAL (kind=r4), dimension(:), allocatable, SAVE :: pres, vmr,vmr_stddev
-   REAL (KIND=r4), dimension(:), allocatable ::  partial_column, tmp
+   REAL (KIND=r4), dimension(:), allocatable ::  partial_column
    character (len=6), PARAMETER :: clim_db_molecule_name  ='O3    '
    logical :: is_reord
    INTEGER :: i
@@ -2125,7 +2117,7 @@ SUBROUTINE get_v8prof(toz, oz)
     deallocate(partial_column, pres, vmr, vmr_stddev)
     return
   else
-    partial_column = partial_column/du2mol
+    partial_column = real (partial_column/du2mol, kind=r4)
     ! Fix non-physical partial columns
     where (partial_column < 0.0_r8)
      partial_column = 0.0_r8

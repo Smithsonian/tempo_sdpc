@@ -139,7 +139,7 @@ install-msgs:
 install:	install-executable install-merge-exec install-header install-msgs
 
 clean:  clean-o3p-names
-	-$(RM) $(objdir)/*
+	-$(RM) -f $(objdir)/*
 
 distclean:	clean
 	-$(RM) -rf $(objdir)

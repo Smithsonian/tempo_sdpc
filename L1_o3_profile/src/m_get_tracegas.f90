@@ -436,7 +436,7 @@ MODULE m_get_tracegas
     INTEGER, PARAMETER        :: nlat = 91, nlon = 144, nalt_pre2006 = 21, nalt_post2006 = 30
     INTEGER, SAVE             :: nalt
     REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.0, lon0=-181.25, lat0=-91.0
-    INTEGER                   :: errstat, i, j, k, nblat, nblon, error
+    INTEGER                   :: errstat, i, j, k, nblat, nblon
     REAL (KIND=dp), DIMENSION(0:nalt_post2006)          :: geospres, cumso2
     REAL (KIND=dp), DIMENSION(nalt_post2006)            :: gprof
     REAL (KIND=dp), DIMENSION(0:nz)                     :: tempso2
@@ -644,7 +644,7 @@ MODULE m_get_tracegas
   ! ======================
   INTEGER, PARAMETER        :: nlat = 91, nlon = 144, nalt = 35
   REAL (KIND=dp), PARAMETER :: longrid = 2.5, latgrid = 2.0, lon0=-181.25, lat0=-91.0
-  INTEGER                   :: errstat, i, j, k, nblat, nblon, error
+  INTEGER                   :: errstat, i, j, k, nblat, nblon
   REAL (KIND=dp), DIMENSION(0:nalt)          :: geospres, cumh2o
   REAL (KIND=dp), DIMENSION(nalt)            :: gprof
   REAL (KIND=dp), DIMENSION(0:nz)            :: temph2o

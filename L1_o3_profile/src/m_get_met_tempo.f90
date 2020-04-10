@@ -22,7 +22,7 @@ MODULE  m_get_met_tempo
   !===========================
   ! local variables
   !===========================
-  INTEGER :: i, np,imet, ilay, status
+  INTEGER :: np,imet, ilay, status
   INTEGER, PARAMETER :: met_flags = 7, nlecm = 30
   real(kind=dp), dimension(:), allocatable :: pprof, tprof
   real(kind=sp), dimension(:), allocatable :: tprof_r4
