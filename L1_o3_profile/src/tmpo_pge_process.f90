@@ -320,8 +320,8 @@ CONTAINS
        !if (iline < 60 )  cycle
        ! Actually lines in L1B Data
       ntimes_loop = nlines_max
-      IF ( iline + ntimes_loop > last_line ) ntimes_loop = last_line - iline
       sline = offset_line + iline * nybin +1
+      IF ( sline + ntimes_loop > last_line ) ntimes_loop = last_line - sline
       eline = sline + ntimes_loop * nybin -1
       CALL tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
       IF ( pge_error_status >= pge_errstat_error ) return
