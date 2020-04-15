@@ -418,6 +418,9 @@ CONTAINS
       ENDDO XtrackPix
     ENDDO OMIBlock ! from first_line to last_line
 
+    ! If we got this far, then we've succeeded (by definition)
+    pge_error_status = pge_errstat_ok
+
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     ! Final output
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
