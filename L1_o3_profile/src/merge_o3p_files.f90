@@ -31,13 +31,18 @@ program merge_o3p_files
   integer (kind=4), dimension(:), allocatable :: step_out
   integer :: n, status, dummyid, i, j, omiflag, omicount, max_nmax_wavs
   integer, parameter :: one=1
+  logical :: have_diagnostic_group
 
   type (tiof_file_type) :: tio_l2in
   !input & output filenames entered via namelist
   namelist /merge_o3p_iolist/ ninput, input_files, outfile
 
-  !--------------------------------------------------------------------
+  have_diagnostic_group = .false.
+  ozwrtwf = .false.
+  ozwrtres = .false.
+  reduce_resolution = .true.  ! means don't include wavelengths
 
+  !--------------------------------------------------------------------
   max_nmax_wavs = 0
   omicount = 0
   omiflag = 0
@@ -103,16 +108,27 @@ program merge_o3p_files
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_merr, dummyid)
       if (status == nf90_noerr) ozwrtsnr = .true.
       call tiof_pop_group(tio_l2in, errstat)
+
+      ! diagnostic group is optional
+      call tell_push_queue
       call tiof_push_group (tio_l2in, o3p_grp_diagnostic, errstat)
-      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_weight_func, dummyid)
-      if (status == nf90_noerr) ozwrtwf = .true.
-      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_norm_radiance, dummyid)
-      if (status == nf90_noerr) ozwrtres = .true.
-      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_wavel, dummyid)
-      if (status == nf90_noerr) then
-        reduce_resolution = .false. !note false means include wavelengths
+      call tell_pop_queue(1)
+      if (errstat /= 0) then
+        errstat = 0
+        call tell_set_error (errstat)
       else
-        reduce_resolution = .true.
+        have_diagnostic_group = .true.
+        status = nf90_inq_varid(tio_l2in%groupid, o3p_var_weight_func, dummyid)
+        if (status == nf90_noerr) ozwrtwf = .true.
+        status = nf90_inq_varid(tio_l2in%groupid, o3p_var_norm_radiance, dummyid)
+        if (status == nf90_noerr) ozwrtres = .true.
+        status = nf90_inq_varid(tio_l2in%groupid, o3p_var_wavel, dummyid)
+        if (status == nf90_noerr) then
+          reduce_resolution = .false. !note false means include wavelengths
+        else
+          reduce_resolution = .true.
+        endif
+        call tiof_pop_group (tio_l2in, errstat)
       endif
       call close_o3p(tio_l2in, errstat)
       if (errstat /= 0) stop 1
@@ -245,8 +261,10 @@ program merge_o3p_files
          nnoise_elems(n), nmax_wavs(n), naeros_wavs(n), &
          one, nxtrack(n), one, nstep(n), errstat)
 
-    call read_o3p_diagnostic (tio_l2in, nstep(n), nxtrack(n), nmax_wavs(n), &
-         nfitvars(n), one, nxtrack(n), one, nstep(n), errstat)
+    if (have_diagnostic_group) then
+      call read_o3p_diagnostic (tio_l2in, nstep(n), nxtrack(n), nmax_wavs(n), &
+                                nfitvars(n), one, nxtrack(n), one, nstep(n), errstat)
+    endif
 
     call read_o3p_qastat (tio_l2in, nstep(n), nxtrack(n), nfitwins(n), &
          nmax_wavs(n), one, nxtrack(n), one, nstep(n), errstat)

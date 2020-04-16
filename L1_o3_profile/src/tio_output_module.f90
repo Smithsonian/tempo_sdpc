@@ -27,6 +27,8 @@ module tio_output_module
   real (kind=8), private, parameter :: fill_int16 = -32767
   real (kind=8), private, parameter :: fill_uint16 = 65535
 
+  logical, private :: have_diagnostic_group = .false.
+
 contains
 
   !> Create netCDF Level 2 product file
@@ -61,7 +63,6 @@ contains
 
     type (tiof_file_type), pointer :: obj
     type (tiof_dimlist_type) :: dimlist
-
 
     if (errstat < 0) return
 
@@ -109,7 +110,6 @@ contains
     call tiof_def_group (obj, o3p_grp_product, errstat)
     call tiof_def_group (obj, o3p_grp_geolocation, errstat)
     call tiof_def_group (obj, o3p_grp_support_data, errstat)
-    call tiof_def_group (obj, o3p_grp_diagnostic, errstat)
     call tiof_def_group (obj, o3p_grp_qa_stats, errstat)
     call tiof_def_group (obj, o3p_grp_metadata, errstat)
     if (errstat < 0) then
@@ -169,7 +169,6 @@ contains
       return
     endif
 
-
     !write product group variables
     call tiof_push_group (obj, o3p_grp_product, errstat)
     call append_product_vars (obj, dimlist, num_param, ngas, errstat)
@@ -180,7 +179,6 @@ contains
            errstat)
       return
     endif
-
 
     !write support data group variables
     call tiof_push_group (obj, o3p_grp_support_data, errstat)
@@ -193,19 +191,15 @@ contains
       return
     endif
 
-
     !write diagnostic group variables
 
-    call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
     call append_diagnostic_vars (obj, dimlist, errstat)
-    call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
            "l2_tio_create: creating diagnotic group in "//trim(filename), &
            errstat)
       return
     endif
-
 
     !write QA stats group variables
     call tiof_push_group (obj, o3p_grp_qa_stats, errstat)
@@ -218,9 +212,7 @@ contains
       return
     endif
 
-
     !write metadata
-
 
     !before finishing, free the dimsension list, index arrays
     call tiof_dimlist_free(dimlist)
@@ -233,8 +225,6 @@ contains
       return
     endif
   end subroutine l2_tio_create
-
-
 
   !> Close Level 2 product file
   !! @param[inout] errstat Error status variable
@@ -251,8 +241,6 @@ contains
     endif
 
   end subroutine l2_tio_close
-
-
 
   !> Write coordinate variables to L2 netCDF file
   !! @param[inout]  obj        pointer to output file
@@ -302,40 +290,42 @@ contains
 
     if (errstat < 0) return
 
-    !If optional variables in use, allocate indices
-    if (ozwrtcovar) then
-      allocate(elm_indices(num_elms), stat=status)
-      if (status /= 0) then
-        call tell_error (tell_malloc_error, &
-             'write_coordinate_vars:  allocate failed', errstat)
-        return
+    if (.false.) then
+      !If optional variables in use, allocate indices
+      if (ozwrtcovar) then
+        allocate(elm_indices(num_elms), stat=status)
+        if (status /= 0) then
+          call tell_error (tell_malloc_error, &
+                           'write_coordinate_vars:  allocate failed', errstat)
+          return
+        endif
       endif
-    endif
 
-    if (ozwrtres) then
-      allocate(wav_max_indices(num_wav_max), stat=status)
-      if (status /= 0) then
-        call tell_error (tell_malloc_error, &
-             'write_coordinate_vars:  allocate failed', errstat)
-        return
+      if (ozwrtres) then
+        allocate(wav_max_indices(num_wav_max), stat=status)
+        if (status /= 0) then
+          call tell_error (tell_malloc_error, &
+                           'write_coordinate_vars:  allocate failed', errstat)
+          return
+        endif
       endif
-    endif
 
-    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      allocate(gas_indices(ngas), stat=status)
-      if (status /= 0) then
-        call tell_error (tell_malloc_error, &
-             'write_coordinate_vars:  allocate failed', errstat)
-        return
+      if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+        allocate(gas_indices(ngas), stat=status)
+        if (status /= 0) then
+          call tell_error (tell_malloc_error, &
+                           'write_coordinate_vars:  allocate failed', errstat)
+          return
+        endif
       endif
-    endif
 
-    if (aerosol) then
-      allocate(aeros_wavl_indices(num_aeros_wavl), stat=status)
-      if (status /= 0) then
-        call tell_error (tell_malloc_error, &
-             'write_coordinate_vars:  allocate failed', errstat)
-        return
+      if (aerosol) then
+        allocate(aeros_wavl_indices(num_aeros_wavl), stat=status)
+        if (status /= 0) then
+          call tell_error (tell_malloc_error, &
+                           'write_coordinate_vars:  allocate failed', errstat)
+          return
+        endif
       endif
     endif
 
@@ -350,38 +340,40 @@ contains
                              dimids=[dimids(2)])
     call tiof_varlist_append (varlist, errstat, o3p_dim_corner, nf90_int, &
                              dimids=[dimids(3)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_layer, nf90_int, &
-                             dimids=[dimids(4)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_layerp1, nf90_int, &
-                             dimids=[dimids(5)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_fitvar, nf90_int, &
-                             dimids=[dimids(6)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_param, nf90_int, &
-                             dimids=[dimids(7)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_windows, nf90_int, &
-                             dimids=[dimids(8)])
-    ! Add optional coordinates
-    if (ozwrtcovar) then
-      call tiof_dimlist_lookup(dimlist, [o3p_dim_elms], dimids(9:9), errstat)
-      call tiof_varlist_append (varlist, errstat, o3p_dim_elms, nf90_int, &
-                             dimids=[dimids(9)])
-    endif
-    if (ozwrtres) then
-      call tiof_dimlist_lookup(dimlist, [o3p_dim_wavl_max], dimids(10:10), &
+    if (.false.) then
+      call tiof_varlist_append (varlist, errstat, o3p_dim_layer, nf90_int, &
+                                dimids=[dimids(4)])
+      call tiof_varlist_append (varlist, errstat, o3p_dim_layerp1, nf90_int, &
+                                dimids=[dimids(5)])
+      call tiof_varlist_append (varlist, errstat, o3p_dim_fitvar, nf90_int, &
+                                dimids=[dimids(6)])
+      call tiof_varlist_append (varlist, errstat, o3p_dim_param, nf90_int, &
+                                dimids=[dimids(7)])
+      call tiof_varlist_append (varlist, errstat, o3p_dim_windows, nf90_int, &
+                                dimids=[dimids(8)])
+      ! Add optional coordinates
+      if (ozwrtcovar) then
+        call tiof_dimlist_lookup(dimlist, [o3p_dim_elms], dimids(9:9), errstat)
+        call tiof_varlist_append (varlist, errstat, o3p_dim_elms, nf90_int, &
+                                  dimids=[dimids(9)])
+      endif
+      if (ozwrtres) then
+        call tiof_dimlist_lookup(dimlist, [o3p_dim_wavl_max], dimids(10:10), &
            errstat)
-      call tiof_varlist_append (varlist, errstat, o3p_dim_wavl_max, nf90_int, &
-                             dimids=[dimids(10)])
-    endif
-    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      call tiof_dimlist_lookup(dimlist, [o3p_dim_gas], dimids(11:11), errstat)
-      call tiof_varlist_append (varlist, errstat, o3p_dim_gas, nf90_int, &
-                             dimids=[dimids(11)])
-    endif
-    if (aerosol) then
-      call tiof_dimlist_lookup(dimlist, [o3p_dim_aeros_wavl], dimids(12:12), &
-           errstat)
-      call tiof_varlist_append (varlist, errstat, o3p_dim_aeros_wavl, &
-           nf90_int, dimids=[dimids(12)])
+        call tiof_varlist_append (varlist, errstat, o3p_dim_wavl_max, nf90_int, &
+                                  dimids=[dimids(10)])
+      endif
+      if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+        call tiof_dimlist_lookup(dimlist, [o3p_dim_gas], dimids(11:11), errstat)
+        call tiof_varlist_append (varlist, errstat, o3p_dim_gas, nf90_int, &
+                                  dimids=[dimids(11)])
+      endif
+      if (aerosol) then
+        call tiof_dimlist_lookup(dimlist, [o3p_dim_aeros_wavl], dimids(12:12), &
+                                 errstat)
+        call tiof_varlist_append (varlist, errstat, o3p_dim_aeros_wavl, &
+                                  nf90_int, dimids=[dimids(12)])
+      endif
     endif
 
     !Write variable list to L2 file
@@ -395,8 +387,8 @@ contains
       return
     endif
 
-    ! Use input mirror step indices, and set xtrack indices to binned pixel 
-    ! numbers so as to allow stitching together of output files when code 
+    ! Use input mirror step indices, and set xtrack indices to binned pixel
+    ! numbers so as to allow stitching together of output files when code
     ! is run on subsets of the granule
     !Write variable indices to L2 file
     call tiof_put1d_i4 (obj, o3p_dim_step, [0], [num_steps], &
@@ -410,48 +402,50 @@ contains
     call tiof_put1d_i4 (obj, o3p_dim_corner, [0], [num_corners], &
          corner_indices, errstat)
 
-    layer_indices = [(i, i=0,num_layer-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_layer, [0], [num_layer], &
-         layer_indices, errstat)
+    if (.false.) then
+      layer_indices = [(i, i=0,num_layer-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_layer, [0], [num_layer], &
+                          layer_indices, errstat)
 
-    layerp1_indices = [(i, i=0,num_layerp1-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_layerp1, [0], [num_layerp1], &
-         layerp1_indices, errstat)
+      layerp1_indices = [(i, i=0,num_layerp1-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_layerp1, [0], [num_layerp1], &
+                          layerp1_indices, errstat)
 
-    fitvar_indices = [(i, i=0,num_fitvar-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_fitvar, [0], [num_fitvar], &
-         fitvar_indices, errstat)
+      fitvar_indices = [(i, i=0,num_fitvar-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_fitvar, [0], [num_fitvar], &
+                          fitvar_indices, errstat)
 
-    param_indices = [(i, i=0,num_param-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_param, [0], [num_param], &
-         param_indices, errstat)
+      param_indices = [(i, i=0,num_param-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_param, [0], [num_param], &
+                          param_indices, errstat)
 
-    window_indices = [(i, i=0,num_windows-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_windows, [0], [num_windows], &
-         window_indices, errstat)
+      window_indices = [(i, i=0,num_windows-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_windows, [0], [num_windows], &
+                          window_indices, errstat)
 
-    if (ozwrtcovar) then
-      elm_indices = [(i, i=0,num_elms-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_elms, [0], [num_elms], &
-           elm_indices, errstat)
-    endif
+      if (ozwrtcovar) then
+        elm_indices = [(i, i=0,num_elms-1)]
+        call tiof_put1d_i4 (obj, o3p_dim_elms, [0], [num_elms], &
+                            elm_indices, errstat)
+      endif
 
-    if (ozwrtres) then
-      wav_max_indices = [(i, i=0,num_wav_max-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_wavl_max, [0], [num_wav_max], &
-           wav_max_indices, errstat)
-    endif
+      if (ozwrtres) then
+        wav_max_indices = [(i, i=0,num_wav_max-1)]
+        call tiof_put1d_i4 (obj, o3p_dim_wavl_max, [0], [num_wav_max], &
+                            wav_max_indices, errstat)
+      endif
 
-    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      gas_indices = [(i, i=0,ngas-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_gas, [0], [ngas], &
-           gas_indices, errstat)
-    endif
+      if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+        gas_indices = [(i, i=0,ngas-1)]
+        call tiof_put1d_i4 (obj, o3p_dim_gas, [0], [ngas], &
+                            gas_indices, errstat)
+      endif
 
-    if (aerosol) then
-      aeros_wavl_indices = [(i, i=0,num_aeros_wavl-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_aeros_wavl, [0], [num_aeros_wavl], &
-           aeros_wavl_indices, errstat)
+      if (aerosol) then
+        aeros_wavl_indices = [(i, i=0,num_aeros_wavl-1)]
+        call tiof_put1d_i4 (obj, o3p_dim_aeros_wavl, [0], [num_aeros_wavl], &
+                            aeros_wavl_indices, errstat)
+      endif
     endif
 
     if (errstat < 0) then
@@ -461,26 +455,26 @@ contains
       return
     endif
 
-    !tidy up any allocated arrays
-    if (ozwrtcovar) then
-      deallocate(elm_indices, stat=errstat)
-    endif
+    if (.false.) then
+      !tidy up any allocated arrays
+      if (ozwrtcovar) then
+        deallocate(elm_indices, stat=errstat)
+      endif
 
-    if (ozwrtres) then
-      deallocate(wav_max_indices, stat=errstat)
-    endif
+      if (ozwrtres) then
+        deallocate(wav_max_indices, stat=errstat)
+      endif
 
-    if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
-      deallocate(gas_indices, stat=errstat)
-    endif
+      if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
+        deallocate(gas_indices, stat=errstat)
+      endif
 
-    if (aerosol) then
-      deallocate(aeros_wavl_indices, stat=errstat)
+      if (aerosol) then
+        deallocate(aeros_wavl_indices, stat=errstat)
+      endif
     endif
-
 
   end subroutine write_coordinate_vars
-
 
   !> Define geolocation variables in L2 output file
   !! @param[in]    obj      pointer to output file
@@ -489,7 +483,7 @@ contains
   subroutine append_geolocation_vars(obj, dimlist, errstat)
 
     implicit none
-    
+
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
@@ -619,8 +613,6 @@ contains
 
   end subroutine append_geolocation_vars
 
-
-
   !> Define product variables in L2 output file
   !! @param[in]    obj        pointer to output file
   !! @param[in]    dimlist    dimension list
@@ -631,7 +623,7 @@ contains
   subroutine append_product_vars(obj, dimlist, num_param, ngas, errstat)
 
     implicit none
-    
+
     ! input
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
@@ -846,7 +838,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif
-    ! Optional products 
+    ! Optional products
 
     ! Other fitted gases
     if (ngas > 0 .and. (gaswrt .or. ozwrtvar)) then
@@ -921,15 +913,12 @@ contains
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif ! other non-gas parameters
- 
+
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
 
   end subroutine append_product_vars
-
-
-
 
   !> Define support variables in L2 output file
   !! @param[in]    obj        pointer to output file
@@ -941,7 +930,7 @@ contains
   subroutine append_support_vars(obj, dimlist, num_param, ngas, errstat)
 
     implicit none
-    
+
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(in) :: num_param, ngas
@@ -1357,25 +1346,21 @@ contains
                               attlist=att_coord)
     endif
 
-
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
 
   end subroutine append_support_vars
 
-
-
-
   !> Define support variables in L2 output file
   !! @param[in]    obj        pointer to output file
   !! @param[in]    dimlist    dimension list
   !! @param[inout] errstat    error status variable
-  subroutine append_diagnostic_vars(obj, dimlist, errstat)
+  subroutine append_diagnostic_vars (obj, dimlist, errstat)
 
     implicit none
-    
-    type (tiof_file_type), intent(in) :: obj
+
+    type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
 
@@ -1394,7 +1379,6 @@ contains
                               [o3p_dim_xtrack, o3p_dim_step], &
                               dimids_xtrack_step, &
                               errstat)
-
 
     if (ozwrtres) then
       call tiof_dimlist_lookup (dimlist, &
@@ -1506,14 +1490,16 @@ contains
                               attlist=att_coord)
     endif
 
-    call tiof_def_vars (obj, varlist, errstat)
+    if (varlist % num_items > 0) then
+      call tiof_def_group (obj, o3p_grp_diagnostic, errstat)
+      call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+      call tiof_def_vars (obj, varlist, errstat)
+      call tiof_pop_group (obj, errstat)
+      have_diagnostic_group = (errstat == 0)
+    endif
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
   end subroutine append_diagnostic_vars
-
-
-
-
 
   !> Define support variables in L2 output file
   !! @param[in]    obj        pointer to output file
@@ -1522,7 +1508,7 @@ contains
   subroutine append_qa_vars(obj, dimlist, errstat)
 
     implicit none
-    
+
     type (tiof_file_type), intent(in) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer, intent(inout) :: errstat
@@ -1620,15 +1606,12 @@ contains
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif
-      
 
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
 
   end subroutine append_qa_vars
-
-
 
   !> Write all geolocation variables to Level 2 product file
   !! @param[in] first_pix  index of first xtrack pixel in use
@@ -1661,7 +1644,7 @@ contains
     call tiof_put1d_i4 (obj, tempo_dim_step, [0], [num_lines], &
                         geo%step_idx(0:num_lines-1), errstat)
     call tiof_pop_group (obj, errstat)
- 
+
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [0], [num_lines], &
@@ -1699,9 +1682,6 @@ contains
 
   end subroutine l2_tio_write_geo
 
-
-
-
   !> Write data for current pixel to L2 netCDF file
   !! @param[in]    ipix        current cross-track pixel index (0 based)
   !! @param[in]    iline       current mirror step index (0 based)
@@ -1720,7 +1700,7 @@ contains
   subroutine l2_tio_write_data (ipix, iline, exval, fitcol, dfitcol, ngas, &
        nlayer, nfitvar, nwindow, num_param, num_wav_max, ozfit_idxs, &
        ozfit_idxe, errstat)
-    
+
     use OMSAO_variables_module, only: n_rad_wvl, nradpix, fitres_rad, &
          fitweights, fitspec_rad, simspec_rad, mask_fitvar_rad, &
          fitvar_rad, fothvarpos, fitvar_rad_nstd, fitvar_rad_std, &
@@ -1845,7 +1825,7 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_tropo_o3_err, [iline, ipix], &
          [1,1], [real(dfitcol(3, 1), kind=4)], errstat)
     ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
-    ! Optional products 
+    ! Optional products
     ! other fitted gases
     if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve, [iline, ipix, 0], &
@@ -1987,13 +1967,13 @@ contains
       ii = 0
       do irow=1,nn-1
         do jcol = irow+1, nn
-          ii = ii + 1 
+          ii = ii + 1
           ncorrl_foo    = ncovar(irow,jcol) &
                / sqrt( ncovar(irow,irow)*ncovar(jcol,jcol))
           ncorrl_1d(ii) = nint( ncorrl_foo*1.0d04 , kind=2)
         enddo
       enddo
-      if( ii /= num_elms) then 
+      if( ii /= num_elms) then
         call tell_error (tell_io_write_error, &
                        "l2_tio_write_data: upper off-diagonal elements size mismatch", &
                        errstat)
@@ -2018,7 +1998,7 @@ contains
          errstat)
     endif
    !cloud optical depth
-    if (.not. do_lambcld) then  
+    if (.not. do_lambcld) then
       call tiof_put1d_r4 (obj, o3p_var_cld_opt_depth, &
          [iline, ipix], [1,1], &
          [real(the_cod, kind=4)], errstat)
@@ -2041,7 +2021,9 @@ contains
     endif
 
     ! Diagnostic group
-    call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    if (have_diagnostic_group) then
+      call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    endif
     ! Optional parameters
     ! fitted wavelengths
     if ( (.not. reduce_resolution) .and. &
@@ -2119,9 +2101,6 @@ contains
     if (allocated(ncorrl_1d)) deallocate(ncorrl_1d, stat=errstat)
 
   end subroutine l2_tio_write_data
-
-
-
 
   !> Write data for current pixel to L2 netCDF file
   !! @param[in]    ipix        current cross-track pixel index (0 based)
@@ -2206,7 +2185,7 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_tropo_o3_err, [iline, ipix], &
          [1,1], [tmp1D_layer(1)], errstat)
     ! FIXME - Surface layer (0-2km) O3 column will go here in UVIS code
-    ! Optional products 
+    ! Optional products
     ! other fitted gases
     if ( ngas > 0 .and. (gaswrt .or. ozwrtvar) ) then
       call tiof_put1d_r4 (obj, o3p_var_other_gas_retrieve, [iline, ipix, 0], &
@@ -2319,7 +2298,7 @@ contains
          tmp2D_contri(1:nfitvar, 1:num_wav_max), errstat)
     endif
     !cloud optical depth
-    if (.not. do_lambcld) then  
+    if (.not. do_lambcld) then
       call tiof_put1d_r4 (obj, o3p_var_cld_opt_depth, &
          [iline, ipix], [1,1], &
          [tmp1D_layer(0)], errstat)
@@ -2342,7 +2321,9 @@ contains
     endif
 
     ! Diagnostic group
-    call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    if (have_diagnostic_group) then
+      call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    endif
     ! Optional parameters
     ! fitted wavelengths
     if ( (.not. reduce_resolution) .and. &
@@ -2400,9 +2381,7 @@ contains
       return
     endif
 
-
   end subroutine l2_tio_fill_data
-
 
   !> Write all geolocation variables to merged Level 2 product file
   !-----------------------------------------------------------------
@@ -2470,7 +2449,6 @@ contains
     endif
 
   end subroutine write_merged_geo
-
 
   !> Write all geolocation variables to merged Level 2 product file
   !-----------------------------------------------------------------
@@ -2718,7 +2696,9 @@ contains
     endif
 
     ! Diagnostic group
-    call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    if (have_diagnostic_group) then
+      call tiof_push_group (obj, o3p_grp_diagnostic, errstat)
+    endif
     ! Optional parameters
     ! fitted wavelengths
     if (.not. reduce_resolution) then
@@ -2777,7 +2757,6 @@ contains
 
   end subroutine write_merged_data
 
-
   !> Copy metadata required for processing from L1B input file
   !! @param[in]    l1bfile  Filename for input radiance file
   !! @param[inout] errstat  Error status variable
@@ -2808,7 +2787,6 @@ contains
     endif
   end subroutine copy_hdr_metadata
 
-
   !> Label product type in Level 2 product file
   !! @param[in]    label   product type label to apply
   !! @param{in]    processing_version processing version used in file creation
@@ -2829,7 +2807,5 @@ contains
     endif
 
   end subroutine label_output_file
-
-
 
 end module tio_output_module
