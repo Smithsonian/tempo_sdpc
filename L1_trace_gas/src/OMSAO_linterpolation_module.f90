@@ -38,7 +38,7 @@ module OMSAO_linterpolation_module
   implicit none
 
   INTEGER, PARAMETER :: SP = 8
-  logical, parameter :: debug_mode=.true.
+  logical, parameter :: debug_mode=.false.
 
   interface linInterpol
     module procedure interpol1D
