@@ -203,7 +203,7 @@ config_subdir()
    product_dir=.
    spectra_dir=.
    cloud_dir=.
-   refdata_dir="$SDPC_RUN_DIR/refdata/o3_profile_jbak"
+   refdata_dir="$SDPC_RUN_DIR/refdata/o3_profile"
 
    pcf_file="$product_dir/o3_profile.pcf"
 
