@@ -3061,20 +3061,24 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs,nalb,
   LOGICAL,                           INTENT(IN) :: do_so2zwf
   REAL (KIND=dp), DIMENSION(nw),    INTENT(OUT) :: so2zwf
   !Local variables
-  INTEGER                                       :: i, j, k, fidx, lidx, nk
-  REAL (KIND=dp)                                :: tmp, tmpsum
-  REAL (KIND=dp), DIMENSION(nw, nz)             :: amf, tmpcrs
-  REAL (KIND=dp), DIMENSION(ngas, nw)           :: tamf
-  REAL (KIND=dp)                                :: avcd, svcd
+  LOGICAL                                        :: do_wf = .false.
+  INTEGER                                        :: i, j, k, fidx, lidx, nk
+  REAL (KIND=dp)                                 :: tmp, tmpsum
+  REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:)   :: amf, tmpcrs
+  REAL (KIND=dp), ALLOCATABLE, DIMENSION (:,:)   :: tamf
+  REAL (KIND=dp)                                 :: avcd, svcd
  
   ! Obtain AMF  each wavelength and at each layer
-  amf (:,:) = 0.0D0
   IF (ANY(fgasidxs > 0)) THEN ! dlnI/dtau
+     allocate (amf(nw, nz), tmpcrs(nw, nz), tamf(ngas, nw))
      DO i = 1, nz1
         amf(:, i) = -ozwf(:, i) / rad(:) / ccrs%o3(:, i) / du2mol
      ENDDO
+     amf (:,nz1+1:nz) = 0.0D0 ; tmpcrs(:,nz1+1:nz) = 0.0
+     do_wf = .true.
   ENDIF 
     
+  IF (do_wf ) THEN
   ! Replace cross sections with weighting functions
   DO i = 1, ngas 
      IF (fgasidxs(i) > 0) THEN
@@ -3142,13 +3146,13 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs,nalb,
         ELSE
            tmp = avcd * refspec_norm(gasidxs(i))
            IF ( gasidxs(i) == so2_idx .OR. gasidxs(i) == so2v_idx) THEN 
-               tmpcrs = ccrs%so2
-           ELSE IF (gasidxs(i) == o2o2_idx) THEN 
-               tmpcrs = ccrs%o4
+               tmpcrs(1:nw,1:nz1) = ccrs%so2(1:nw, 1:nz1)
+           ELSE IF (gasidxs(i) == o2o2_idx) THEN
+               tmpcrs(1:nw,1:nz1) = ccrs%o4(1:nw, 1:nz1)
            ELSE IF (gasidxs(i) == o2_idx .OR. gasidxs(i) == o2t2_idx) THEN 
-               tmpcrs = ccrs%o2
+               tmpcrs(1:nw,1:nz1) = ccrs%o2(1:nw, 1:nz1)
            ELSE IF (gasidxs(i) == h2o_idx .OR. gasidxs(i) == h2ot2_idx) THEN
-               tmpcrs = ccrs%h2o
+               tmpcrs(1:nw,1:nz1) = ccrs%h2o(1:nw, 1:nz1)
            ENDIF
            DO j = 1, nw
                tamf(i, j) = SUM(amf(j, 1:nz1) * mgasprof(i, 1:nz1) * tmpcrs(j, 1:nz1) ) / tmp
@@ -3207,6 +3211,8 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs,nalb,
         ENDIF  
      ENDIF
   ENDDO
+   deallocate(amf, tmpcrs, tamf)
+  ENDIF ! do_wf
   RETURN
   END SUBROUTINE get_tracegas_wf
 
