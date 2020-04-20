@@ -3068,6 +3068,7 @@ SUBROUTINE polcorr_online(niter, which_polcorr, nw,  nz, nctp, ncbp, nsprs,nalb,
   REAL (KIND=dp)                                :: avcd, svcd
  
   ! Obtain AMF  each wavelength and at each layer
+  amf (:,:) = 0.0D0
   IF (ANY(fgasidxs > 0)) THEN ! dlnI/dtau
      DO i = 1, nz1
         amf(:, i) = -ozwf(:, i) / rad(:) / ccrs%o3(:, i) / du2mol
