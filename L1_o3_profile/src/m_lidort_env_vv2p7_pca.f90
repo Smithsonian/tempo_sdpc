@@ -158,15 +158,13 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   do_atmos_linearization = .false.
   do_surface_linearization = .false.
   do_fraywf = .false. ; fraywf=0.0D0
-
   IF (first) THEN
      ! ======================= Read LIDORT Control Input ==========================
      WRITE(*,'(A,A,3I2)') 'RTM=PCA', 'polcorr=', polcorr, the_str, nflay
      CALL LIDORT_Read_Config (ADJUSTL(TRIM(ctrdbdir))//'vlidort_control_vv2p7_pca.inp', & 
      aerosol, has_clouds, Inputs, problems, message)
      IF (problems) THEN 
-         WRITE(*,*) 'Errors in lidort_read_config'
-         print *, message
+         WRITE(*,*) 'Errors in lidort_read_config:'//ADJUSTL(TRIM(message))
          STOP 1
      ENDIF 
      first = .FALSE.
@@ -524,6 +522,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
 
     radclrclds(:,:,:) = 0.0
     DO ic = 1, 2
+      nw0=0
       wfrac (:) = 0.0
       DO ip = 1, npolcorr
         iw = polcorr_idxs(ip)
@@ -630,18 +629,17 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         l_geophys%l_totalods%l_taudp(1:n_totalatmos_wfs, 1:nz1, ip)   = l_deltau_vert_input(1:n_totalatmos_wfs, 1:nz1)
         l_geophys%l_totalods%l_omega(1:n_totalatmos_wfs, 1:nz1, ip)   = l_omega_total_input(1:n_totalatmos_wfs, 1:nz1)
         ENDIF
-        wfrac(ip) = frac
-        Geophys%WavGrids%nwav           = ip
+        nw0                             = nw0 + 1
+        wfrac(ip)                       = frac
         Geophys%WavGrids%wav(ip)        = waves(iw) !@@@ Need to change
         Geophys%Xsecs%Rayleigh_depol(ip)= depol(iw)
-        
     ENDDO ! loop of wavelength
-        nw0 = ip-1
         IF (nw0 ==0) cycle  
         Inputs%RTMcontrol%NVLIDORT_nstreams = nstreams
         Inputs%RTMcontrol%NVlidort_nstokes  = nstokes
         Inputs%Atmosph%do_clouds   = do_clouds
         Inputs%Atmosph%do_aerosols = aerosol
+        Geophys%WavGrids%nwav                = nw0
         Geophys%Atmos%ngreek_moments_input   = nmom
         Geophys%Atmos%nlayers   = nz1
         Geophys%Atmos%Level_heights(0:nz1) = fzs(0:nz1)
@@ -664,6 +662,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
            errstat = pge_errstat_error
            RETURN
         ENDIF
+
         ! radiance
         Do istk = 1, 1 !nostk
           radclrclds(ic,1:nw0, istk) =  RO%Stokes(istk,1:nw0)*polerr(1:nw0, ic, istk)
@@ -757,7 +756,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
     ELSE
       do_clouds = .TRUE.  ; frac = the_cfrac
     ENDIF
-
+    nw0 = 0
     wfrac (:) = frac
     IF (frac == 0.0) CYCLE
 
@@ -767,7 +766,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
       w1 = npcapix(ipca,1)
       w2 = npcapix(ipca,2)
       which_win = which_pcabin(ipca)
-      ip = 1
+      ip = 1 ; nw0 = 0
       DO iw = w1, w2
         do_prep = .FALSE.
         IF ((ic == 1)  .OR. ( .NOT. do_lambcld ) ) THEN
@@ -866,16 +865,16 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         l_geophys%l_totalods%l_taudp(1:n_totalatmos_wfs, 1:nz1, ip)   = l_deltau_vert_input(1:n_totalatmos_wfs, 1:nz1)
         l_geophys%l_totalods%l_omega(1:n_totalatmos_wfs, 1:nz1, ip)   = l_omega_total_input(1:n_totalatmos_wfs, 1:nz1)
         ENDIF  
-        Geophys%WavGrids%nwav     = ip
         Geophys%WavGrids%wav(ip)  = waves(iw) !@@@ Need to change
         ip = ip + 1
+        nw0 = nw0 + 1
     ENDDO ! loop of wavelength
-        nw0 = ip-1
         IF (nw0 == 0) cycle 
         Inputs%RTMcontrol%NVLIDORT_nstreams = nstreams
         Inputs%RTMcontrol%NVlidort_nstokes = nstokes
         Inputs%Atmosph%do_clouds   = do_clouds
         Inputs%Atmosph%do_aerosols = aerosol
+        Geophys%WavGrids%nwav      = nw0
         Geophys%Atmos%ngreek_moments_input   = nmom
         Geophys%Atmos%nlayers   = nz1
         Geophys%Atmos%Level_heights(0:nz1) = fzs(0:nz1)
@@ -1048,7 +1047,6 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
    do_abs = .false.
    if (polcorr==2 .and. do_plutcorr_after) do_abs = .true.
    delabs(1:nw, 1:nz1) = deltau(1:nw, 1:nz1) - delsca(1:nw, 1:nz1)
-   print * , 'pca interpolation scheme ! hres_radwf_inter_convol'
    CALL hres_radwf_inter_convol(nw, nz1, nctp, ncbp, nsprs, nalbwf, faer_lvl, & 
       do_albwf, do_faerwf, do_twaewf, do_codwf, do_sprswf, do_cfracwf, do_tracewf,&
       do_o3shi, do_tmpwf,do_pslwf, waves, ozs(1:nz1), do_abs, delabs(1:nw,1:nz1), &

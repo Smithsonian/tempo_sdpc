@@ -1936,7 +1936,6 @@ contains
       i = ozfit_idxs; j = ozfit_idxe
       ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
       OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*1.0d4, KIND= 2)
-      print * , 'avger:tiof_put2d_i2'
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
            [1,1,nlayer,nlayer], transpose(OzAvgK_I16(1:nlayer,1:nlayer)), errstat)
     endif

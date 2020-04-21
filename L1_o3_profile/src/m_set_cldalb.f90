@@ -47,7 +47,7 @@ module m_set_cldalb
        lo_radbnd, up_radbnd, nf=>n_fitvar_rad, mask_fitvar_rad, &
        the_month, the_day, edgelons, edgelats, the_jday, &
        the_sza_atm, the_vza_atm, the_aza_atm, & 
-       numwin, nviswin, widx_rvis,nradpix, rmask_fitvar_rad
+       numwin,  widx_rvis, nradpix, widx_vis, rmask_fitvar_rad
   USE ozprof_data_module,        ONLY: albidx, albfidx, nalb, nfalb, albmin, &
        albmax, albfpix, alblpix, albfpix_r, alblpix_r, & 
         do_lambcld, lambcld_refl, which_alb, &
@@ -55,7 +55,7 @@ module m_set_cldalb
        wfcmax, wfcmin, nwfc, nfwfc, wfcfpix, wfclpix, wfcfidx, wfcidx, the_snowice, pos_alb, &
        do_brdf, use_albspc, which_albspc ,the_landwater_flg,  & 
        albspcs, malbspc, nactalbspc, is_albspcvar, sfcalbs, nrefl, &
-       albspcs_hres, use_effcrs, ncalcp, radcwav, the_landfrac !nalbspc
+       albspcs_hres, use_effcrs, ncalcp, radcwav, the_landfrac  !nalbspc
   USE OMSAO_errstat_module
   USE m_set_brdf, ONLY: set_brdf, Surface
   USE m_ezspline_interpolation, ONLY:bspline
@@ -82,10 +82,11 @@ module m_set_cldalb
   ! GOME albedo database: 335, 380, 440, 495, 555, 610, 670 nm
   ! OMI albedo database:  328, 345, 354, 380, 442, 477, 499 nm
   ! For GOME-2 MSC/PMD and SCIA, wavelengths are read from the data
-  INTEGER, PARAMETER                 :: nalbw0 = 29
-  REAL (KIND=dp), DIMENSION (nalbw0) :: albarr, albwave
   LOGICAL                            :: noalb, do_adjcfrac       
-  INTEGER (KIND=i4), EXTERNAL       :: day_of_year       
+  INTEGER, PARAMETER                 :: nalbw0 = 29
+  INTEGER (KIND=i4), EXTERNAL        :: day_of_year       
+  REAL (KIND=dp), DIMENSION (nalbw0) :: albarr, albwave
+  REAL (KIND=dp), ALLOCATABLE        :: tmpspcs(:,:), tmpwav(:)
   ! ===============
   ! module name
   ! ===============
@@ -122,82 +123,6 @@ module m_set_cldalb
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
  
-  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
-  IF (use_albspc .or. do_brdf) THEN
-    fidx = SUM(nradpix(1 : numwin - nviswin)) + 1
-    lidx = npoints
-    ntmp = lidx - fidx + 1
-    IF (allocated(albspcs)) deallocate (albspcs)
-    allocate (albspcs(npoints, 0:malbspc-1))
-    albspcs = 0.0
-    IF (do_brdf) THEN 
-       CALL set_brdf (npoints, fitwavs(1:npoints), nactalbspc,the_landfrac, pge_error_status)
-    ELSE
-      IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) then ! from peter  
-        CALL get_surface_spectrum (the_jday, the_sza_atm, the_aza_atm, the_vza_atm, edgelons, edgelats, &
-            snowflg,  ntmp, fitwavs(fidx:lidx), albspcs(fidx:lidx,0:malbspc-1), nactalbspc, the_landfrac, pge_error_status)
-        IF (snowflg == 1) THEN
-          albspcs(fidx:lidx, 0) = albspcs(fidx:lidx, 0) * the_snowice / 100.0
-        ENDIF
-        IF (the_landfrac == 0.0) nactalbspc = 1
-        print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg
-      ELSE  IF (which_albspc == 2) THEN 
-        CALL SET_BRDF(ntmp, fitwavs(fidx:lidx), nactalbspc, the_landfrac, pge_error_status)
-        IF (Surface%Option4%Wvl(1) > fitwavs(fidx) .or. & 
-           Surface%Option4%Wvl(Surface%Option4%wmx) <  fitwavs(lidx) ) THEN
-           WRITE(*,'(A)') modulename//':Check the boundaries of BRDF spectrum !!!' ; RETURN
-        ENDIF 
-        CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx, fitwavs(fidx:lidx), & 
-             albspcs(fidx:lidx,0),ntmp, pge_error_status)
-        DO i=1,Surface%Option4%fmx
-          CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
-          fitwavs(fidx:lidx), albspcs(fidx:lidx,i),ntmp, pge_error_status)
-        ENDDO
-      ENDIF
-    ENDIF
-
-     !WRITE(999,*) ntmp
-     !DO i  = fidx, lidx
-     !WRITE(999, '(10e15.7)') fitwavs(i), albspcs(i, 0:malbspc-1)
-     !ENDDO
-     
-    IF (.not. use_effcrs) THEN 
-      IF (allocated(albspcs_hres)) deallocate(albspcs_hres)
-      allocate (albspcs_hres(ncalcp, 0:malbspc-1))
-      fidx=widx_rvis ; lidx=ncalcp
-      ntmp = lidx-fidx+1
-      IF (do_brdf) THEN 
-        CALL set_brdf (ncalcp, radcwav(1:ncalcp), nactalbspc, the_landfrac, pge_error_status)
-      ELSE
-        albspcs_hres = 0.0
-        IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) THEN 
-          CALL get_surface_spectrum (the_jday, the_sza_atm, the_aza_atm, the_vza_atm,edgelons, edgelats, &
-          snowflg,  ntmp, radcwav(fidx:lidx), albspcs_hres(fidx:lidx,0:malbspc-1), nactalbspc,the_landfrac, pge_error_status)
-          IF (snowflg == 1) albspcs_hres(fidx:lidx, 0) = albspcs_hres(fidx:lidx,0) *the_snowice/100.0
-          IF (the_landfrac == 0) nactalbspc =1
-        ELSE IF (which_albspc == 2) THEN 
-          IF (Surface%Option4%Wvl(1) > radcwav(fidx) .or. & 
-             Surface%Option4%Wvl(Surface%Option4%wmx) <  radcwav(lidx) ) THEN
-             WRITE(*,'(A)') modulename//':Check the boundaries of BRDF spectrum !!!' ; RETURN
-          ENDIF 
-          CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx, radcwav(fidx:lidx), & 
-               albspcs_hres(fidx:lidx,0),ntmp, pge_error_status)
-          DO i=1,Surface%Option4%fmx
-            CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
-            radcwav(fidx:lidx), albspcs_hres(fidx:lidx,i),ntmp, pge_error_status)
-          ENDDO
-        ENDIF
-      ENDIF
-       !WRITE(999, *)  ntmp     
-       !DO i  = fidx, lidx
-       !   WRITE(999, *) radcwav(i),  albspcs_hres(i, 0:malbspc-1)
-       !ENDDO
-    ENDIF
-    IF (pge_error_status == pge_errstat_error) THEN
-      WRITE(*, *) modulename, ' Error in getting surface albedo spectrum'; RETURN
-    ENDIF
-  ENDIF
-
   ! get initial albedo
   IF (nrefl > 0) THEN
      IF (ctp > 0.0) THEN
@@ -268,6 +193,7 @@ module m_set_cldalb
    !ENDIF
 
   ! xliu, 12/07/2014, changed based on ASTER snow spectrum
+  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
    IF (the_snowice > 100 .and. snowflg == 1 ) THEN  ! permanently covered
       albedo = 0.98
       albarr = albedo
@@ -298,8 +224,11 @@ module m_set_cldalb
      ! The derived cloud fraction is derived as initial value
      ! Slightly change the value for clear-sky/cloud-sky, so weighting function 
      ! for clouds are calculated
-     IF ( cfrac == 0.0) cfrac = 0.01
-     IF ( cfrac == 1.0) cfrac = 0.99
+     !IF ( cfrac == 0.0) cfrac = 0.01
+     !IF ( cfrac == 1.0) cfrac = 0.99
+     ! make consistent with pseudo_model 
+     IF ( cfrac <= 0.01) cfrac = 0.00
+     IF ( cfrac >= 0.99) cfrac = 1.00
      !IF ( has_glint .AND. cfrac < 0.20 * glintprob ) cfrac = 0.0D0
   ENDIF
   
@@ -469,6 +398,91 @@ module m_set_cldalb
         pge_error_status = pge_errstat_error; RETURN
      ENDIF
   ENDIF
+
+  IF (use_albspc .or. do_brdf) THEN
+    ! Jbak, 04/21/2020
+    ! At first, getting spectrum @ effective wavelengths (==> albspcs_hres) 
+    ! due to wider window than actual window if .not. use_effcrs and 
+    ! then albspcs is interpolated from albspcs_hres to avoid double calling
+    ! routine 
+    ! do_brdf is not implemented, yet
+    IF (allocated(albspcs)) deallocate (albspcs)
+    allocate (albspcs(npoints, 0:malbspc-1))
+    albspcs = 0.0
+
+    fidx = widx_vis ; lidx = npoints
+    ntmp = lidx - fidx + 1
+    IF (.NOT. use_effcrs) THEN
+      IF (allocated(albspcs_hres)) deallocate(albspcs_hres)
+      allocate (albspcs_hres(ncalcp, 0:malbspc-1))
+      albspcs_hres=0.0
+      fidx=widx_rvis ; lidx=ncalcp
+      ntmp = lidx-fidx+1
+    ENDIF
+  
+    IF (cfrac /= 1.00) THEN 
+   
+      allocate(tmpwav(ntmp), tmpspcs(ntmp, 0:malbspc-1))
+      IF (.NOT. use_effcrs) THEN 
+        tmpwav = radcwav(fidx:lidx)
+      ELSE
+        tmpwav = fitwavs(fidx:lidx)  
+      ENDIF
+    
+      !CALL set_brdf (npoints, fitwavs(1:npoints), nactalbspc,the_landfrac, pge_error_status)
+      IF (use_albspc) THEN 
+        IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) then ! from peter  
+          CALL get_surface_spectrum (the_jday, the_sza_atm, the_aza_atm, the_vza_atm, edgelons, edgelats, &
+            snowflg,  ntmp,tmpwav,tmpspcs(:,0:malbspc-1), nactalbspc, the_landfrac, pge_error_status)
+          IF (snowflg == 1) THEN
+            albspcs(:, 0) = tmpspcs(:, 0) * the_snowice / 100.0
+          ENDIF
+          IF (the_landfrac == 0.0) nactalbspc = 1
+          print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg, cfrac
+          IF (use_effcrs) THEN 
+            DO i = 0, nactalbspc -1 
+              albspcs(fidx:lidx,i) = tmpspcs(:,i)
+            ENDDO
+          ELSE
+            DO i = 0, nactalbspc -1 
+              albspcs_hres(fidx:lidx,i) = tmpspcs(:,i)
+              CALL BSPLINE(tmpwav, tmpspcs(:,i),ntmp,& 
+                 fitwavs(widx_vis:npoints),albspcs(widx_vis:npoints,i),npoints-widx_vis+1,pge_error_status)
+              IF (pge_error_status ==  pge_errstat_error) THEN 
+                WRITE(*,'(A)') modulename//':errors in bspline for albspcs  !!!'; STOP 1
+              ENDIF
+            ENDDO
+          ENDIF
+        ELSE  IF (which_albspc == 2) THEN 
+          CALL SET_BRDF(ntmp, tmpwav, nactalbspc, the_landfrac, pge_error_status)
+          fidx=widx_vis; lidx=npoints ; ntmp = fidx-lidx + 1
+          CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx,& 
+               fitwavs(fidx:lidx), albspcs(fidx:lidx,0), ntmp, pge_error_status)
+          IF (pge_error_status ==  pge_errstat_error) THEN 
+            WRITE(*,'(A)') modulename//':errors in bspline  !!!'; STOP 1
+          ENDIF
+          DO i=1,Surface%Option4%fmx
+            CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
+                 fitwavs(fidx:lidx), albspcs(fidx:lidx,i), ntmp, pge_error_status)
+          ENDDO 
+          IF (.NOT. use_effcrs) THEN 
+            fidx=widx_rvis; lidx=ncalcp ; ntmp = fidx-lidx + 1
+            CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx,& 
+                 radcwav(fidx:lidx), albspcs_hres(fidx:lidx,0), ntmp, pge_error_status)
+            IF (pge_error_status ==  pge_errstat_error) THEN 
+              WRITE(*,'(A)') modulename//':errors in bspline  !!!'; STOP 1
+            ENDIF
+            DO i=1,Surface%Option4%fmx
+              CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
+              radcwav, albspcs_hres(fidx:lidx,i),ntmp, pge_error_status)
+            ENDDO 
+          ENDIF
+        ENDIF
+      ENDIF ! end of use_albspc
+      deallocate(tmpwav, tmpspcs)
+    ENDIF ! not full cloudy scene
+  ENDIF
+
   RETURN
   
 END SUBROUTINE set_cldalb
