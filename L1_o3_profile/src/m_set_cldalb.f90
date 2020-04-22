@@ -435,7 +435,7 @@ module m_set_cldalb
           CALL get_surface_spectrum (the_jday, the_sza_atm, the_aza_atm, the_vza_atm, edgelons, edgelats, &
             snowflg,  ntmp,tmpwav,tmpspcs(:,0:malbspc-1), nactalbspc, the_landfrac, pge_error_status)
           IF (snowflg == 1) THEN
-            albspcs(:, 0) = tmpspcs(:, 0) * the_snowice / 100.0
+            tmpspcs(:, 0) = tmpspcs(:, 0) * the_snowice / 100.0
           ENDIF
           IF (the_landfrac == 0.0) nactalbspc = 1
           print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg, cfrac
