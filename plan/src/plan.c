@@ -48,6 +48,14 @@
 
 #define IRRADIANCE_SUN_ANGLE_DEG 30.0
 
+#define MIN_SCAN_DURATION_SEC (2 * 60.0)
+
+enum
+{
+   PARTIAL_SCAN_END = 0,
+   PARTIAL_SCAN_BEGIN = 1
+};
+
 typedef struct
 {
    char *ephem_name;
@@ -87,6 +95,7 @@ static void usage (void)
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
+   fprintf (stderr, "   -M | --maneuver FILE     Read maneuver times from FILE\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -I | --irr FILE          Generate irradiance plan output file\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
@@ -115,14 +124,22 @@ static int read_config_file (const char *config_file, config_t *cfg)
 int mkjdtimestr (double jd_utc, char *buf, int bufsize)
 {
    Cal_Date_Type t0;
-   double sec;
+   double fhour, sec;
    int hour, min, status;
 
-   novas_cal_date (jd_utc, &t0.year, &t0.month, &t0.day, &t0.hour);
-   hour = t0.hour;
-   min  = 60*(t0.hour - hour);
-   sec  = 3600*(t0.hour - hour - min/60.0);
+   /* Try to avoid printing silly things like: 16:59:60Z or 16:60:00Z */
 
+   novas_cal_date (jd_utc, &t0.year, &t0.month, &t0.day, &t0.hour);
+   /* round at msec resolution */
+   fhour = round (t0.hour * 3600.0e3)/3600.0e3;
+   hour =   fhour;
+   min  =  (fhour - hour)*60;
+   sec  = ((fhour - hour)*60 - min)*60;
+   /* truncate at msec resolution */
+   sec = round (sec * 1.e3) / 1.e3;
+
+   /* Seconds should be printed with no more precision than the above calculation,
+    * e.g. compute to msec, and print msec */
    if (((status = snprintf (buf, bufsize, "%4d-%02d-%02dT%02d:%02d:%06.3fZ",
                             t0.year, t0.month, t0.day, hour, min, sec)) < 0)
        || (status >= bufsize))
@@ -682,6 +699,266 @@ return_status:
    return plan_list;
 }
 
+static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bound, Plan_List_Type **pnew_entry)
+{
+   Plan_List_Type *new_entry = NULL;
+   double scan_duration_days = entry->scan_duration / SEC_PER_DAY;
+   double entry_end = entry->tstart + entry->num_repeats * scan_duration_days;
+   double fnum = (entry_end - t_bound) / scan_duration_days;
+   int num = (int) fnum;
+   double frac, duration_sec, tstart;
+
+   *pnew_entry = NULL;
+
+   if (is_start)
+     {
+        frac = (fnum-num);
+        duration_sec = floor (frac * entry->scan_duration);
+        tstart = t_bound;
+     }
+   else
+     {
+        frac = 1.0 - (fnum-num);
+        duration_sec = floor (frac * entry->scan_duration);
+        tstart = t_bound - duration_sec / SEC_PER_DAY;
+     }
+
+   if (duration_sec < MIN_SCAN_DURATION_SEC)
+     return 0;
+
+   if (NULL == (new_entry = plan_list_entry_alloc (entry->scan_type)))
+     return -1;
+
+   *new_entry = *entry;
+
+   /* Note that the partial scan always begins from xstart,ystart */
+   new_entry->tstart = tstart;
+   new_entry->scan_duration = duration_sec;
+   new_entry->num_steps = frac * entry->num_steps;
+   new_entry->num_repeats = 1;
+
+   *pnew_entry = new_entry;
+
+   return 1;
+}
+
+static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, double mnv_end)
+{
+   Plan_List_Type *entry = NULL;
+   Plan_List_Type *parent_entry = NULL;
+   Plan_List_Type *pre_gap_partial = NULL;
+   Plan_List_Type *post_gap_partial = NULL;
+
+   for (entry = plan_list; entry != NULL; parent_entry = entry, entry = entry->next)
+     {
+        double scan_duration_days = entry->scan_duration / SEC_PER_DAY;
+        double entry_beg = entry->tstart;
+        double entry_end = entry->tstart + entry->num_repeats * scan_duration_days;
+        int orig_num_repeats, num_remaining, prev_num, need_partial_scan;
+
+        /* Skip entries that precede the maneuver interval */
+        if (entry_end < mnv_beg)
+          continue;
+        /* When remaining plan entries follow the maneuver, we're done */
+        if (mnv_end < entry_beg)
+          return 0;
+
+        if ((mnv_beg < entry_beg) && (entry_end < mnv_end))
+          {
+             /* Entire plan entry is lost */
+             entry->num_repeats = 0;
+          }
+        else if ((entry_beg < mnv_beg) && (mnv_end < entry_end))
+          {
+             Plan_List_Type *curr = entry;
+             Plan_List_Type *save_next = entry->next;
+             Plan_List_Type *post_gap;
+
+             /* Original plan entry may be split into 4 entries:
+              *  1. pre-gap full scans
+              *  2. pre-gap partial scan
+              *   >>>> the maneuver <<<<
+              *  3. post-gap partial scan
+              *  4. post-gap full scans
+              */
+             orig_num_repeats = entry->num_repeats;
+
+             /* pre-gap partial scan */
+             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
+               return -1;
+             if (need_partial_scan)
+               {
+                  curr->next = pre_gap_partial;
+                  curr = pre_gap_partial;
+               }
+
+             /* post-gap partial scan */
+             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
+               return -1;
+             if (need_partial_scan)
+               {
+                  curr->next = post_gap_partial;
+                  curr = post_gap_partial;
+               }
+
+             /* pre-gap full scans (zero is ok) */
+             entry->num_repeats = floor((mnv_beg - entry_beg) / scan_duration_days);
+
+             /* post-gap full scans (zero is ok) */
+             num_remaining = floor((entry_end - mnv_end) / scan_duration_days);
+             if (num_remaining)
+               {
+                  if (NULL == (post_gap = plan_list_entry_alloc (entry->scan_type)))
+                    return -1;
+
+                  curr->next = post_gap;
+                  curr = post_gap;
+
+                  *post_gap = *entry;
+
+                  prev_num = orig_num_repeats - num_remaining;
+                  post_gap->tstart = entry->tstart + prev_num * scan_duration_days;
+                  post_gap->num_repeats = num_remaining;
+               }
+
+             curr->next = save_next;
+             entry = curr;
+          }
+        else if (entry_beg < mnv_beg)
+          {
+             /* pre-gap partial scan */
+             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
+               return -1;
+             if (need_partial_scan)
+               {
+                  pre_gap_partial->next = entry->next;
+                  entry->next = pre_gap_partial;
+               }
+
+             /* pre-gap full scans */
+             entry->num_repeats = floor((mnv_beg - entry_beg) / scan_duration_days);
+          }
+        else
+          {
+             /* post-gap partial scan */
+             if (parent_entry)
+               {
+                  if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
+                    return -1;
+
+                  if (need_partial_scan)
+                    {
+                       parent_entry->next = post_gap_partial;
+                       post_gap_partial->next = entry;
+                    }
+               }
+
+             /* post-gap full scans */
+             num_remaining = floor ((entry_end - mnv_end) / scan_duration_days);
+             prev_num = entry->num_repeats - num_remaining;
+             entry->tstart = entry->tstart + prev_num * scan_duration_days;
+             entry->num_repeats = num_remaining;
+          }
+     }
+
+   return 0;
+}
+
+static int utcstr_to_jd_utc (const char *utc_str, double *jd_utc)
+{
+   Cal_Date_Type t0 = {0};
+   double taix_sec, hour;
+   int year, month, day;
+
+   if ((0 != tio_time_utcstr_to_taix (utc_str, &taix_sec))
+       || (0 != tio_time_taix_to_utc_caldate (taix_sec, &year, &month, &day, &hour)))
+     return -1;
+
+   t0.year = year;
+   t0.month = month;
+   t0.day = day;
+   t0.hour = hour;
+   *jd_utc = novas_julian_date (t0.year, t0.month, t0.day, t0.hour);
+
+   return 0;
+}
+
+static int read_maneuver_interval (FILE *fp, double *mnv_beg, double *mnv_end)
+{
+#define MNV_BUFSIZE (80)
+   char buf[MNV_BUFSIZE];
+   const char *delim = ",";
+   char *str;
+   double duration_min;
+   double min_per_day = 24.0*60.0;
+
+   buf[0] = 0;
+   do
+     {
+        if (NULL == fgets (buf, sizeof(buf), fp))
+          {
+             if (feof(fp)) return 1;
+             goto return_error;
+          }
+     }
+   while (*buf == '#');
+
+   if ((NULL == (str = strtok (buf, delim)))
+       || (0 != utcstr_to_jd_utc (str, mnv_beg)))
+     goto return_error;
+
+   if ((NULL == (str = strtok (NULL, delim)))
+       || (1 != sscanf (str, "%le", &duration_min)))
+     goto return_error;
+
+   if (duration_min < 0.0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: invalid maneuver duration (%s)",
+                     __func__, str);
+        goto return_error;
+     }
+
+   *mnv_end = *mnv_beg + duration_min / min_per_day;
+
+   return 0;
+return_error:
+   tell_verror (TELL_IO_READ_ERROR, "%s: reading maneuver time intervals", __func__);
+   return -1;
+}
+
+static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_file)
+{
+   FILE *fp = NULL;
+   int status = -1;
+
+   if (maneuver_file == NULL)
+     return 0;
+
+   if (NULL == (fp = fopen (maneuver_file, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, maneuver_file);
+        return -1;
+     }
+
+   for (;;)
+     {
+        double mnv_beg, mnv_end;
+        int eof;
+
+        if ((eof = read_maneuver_interval (fp, &mnv_beg, &mnv_end)) < 0)
+          goto return_status;
+        if (eof) break;
+
+        if (0 != insert_maneuver_gap (plan_list, mnv_beg, mnv_end))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   if (fp) fclose (fp);
+   return status;
+}
+
 static void close_outfile (FILE *fp, const char *filename)
 {
    if ((fp == NULL) || (fp == stdout) || (fp == stderr))
@@ -722,6 +999,7 @@ int main (int argc, char **argv)
    int have_date = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
+   const char *maneuver_file = NULL;
    Optional_Output_Type oot =
      {
         .scan_tailoring_file = NULL,
@@ -741,6 +1019,7 @@ int main (int argc, char **argv)
         {"irr",          required_argument, 0, 'I'},
         {"szaout",       required_argument, 0, 'z'},
         {"tailor",       required_argument, 0, 'T'},
+        {"maneuver",     required_argument, 0, 'M'},
         {"master",       no_argument,       0, 'm'},
         {0,0,0,0}
      };
@@ -771,7 +1050,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNc:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNM:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -809,6 +1088,9 @@ int main (int argc, char **argv)
              break;
            case 'h':
              usage();
+             break;
+           case 'M':
+             maneuver_file = optarg;
              break;
            case 'N':
              enable_twilight_scan++;
@@ -948,6 +1230,9 @@ int main (int argc, char **argv)
    plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
                                    twilight_scan, split_scan, &oot);
    if (NULL == plan_list)
+     goto return_status;
+
+   if (0 != include_maneuvers (plan_list, maneuver_file))
      goto return_status;
 
    if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list))
