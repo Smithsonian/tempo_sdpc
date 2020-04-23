@@ -577,6 +577,8 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    /* The first full scan actually starts at: */
    full.tstart = time_midpoint - 0.5 * full.num_repeats * full.duration;
+   /* for convenience, start on the second */
+   full.tstart = ceil(full.tstart * SEC_PER_DAY)/SEC_PER_DAY;
 
    /* Fill out the morning with sunrise scans: */
    rise.tstart = full.tstart;   /* initialization */
