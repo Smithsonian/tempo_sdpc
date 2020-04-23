@@ -124,8 +124,8 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
         if (previous_entry_tstop_tai - tstart_tai > SCAN_START_TIME_ERROR_TOLERANCE_SEC)
           {
              tell_verror (TELL_INTERNAL_ERROR,
-                          "%s: inconsistent scan start times: tstart=%0.16e is %e sec BEFORE the end of the previous scan",
-                          __func__, tstart_tai, previous_entry_tstop_tai - tstart_tai);
+                          "%s: inconsistent scan start times: tstart(TAI) =%0.16e/(%f jd_utc) is %e sec BEFORE the end of the previous scan",
+                          __func__, tstart_tai, entry->tstart, previous_entry_tstop_tai - tstart_tai);
              return -1;
           }
 
