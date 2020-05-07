@@ -28,7 +28,8 @@ COMPILE_F_CMD = $(FC) $(FCFLAGS)
 
 # ---------------------------------------------------------
 
-EXECUTABLES = tio_test time_test meta_test epoch_test tio_test_f ftest1 ppc_test history_test
+EXECUTABLES = tio_test time_test meta_test epoch_test tio_test_f ftest1 ppc_test history_test \
+              bounding_polygon
 
 all:  $(EXECUTABLES)
 
@@ -79,6 +80,9 @@ ppc_test:
 
 history_test:
 	$(COMPILE_CMD) -o history_test $(INCS) history_test.c $(LIBS)
+
+bounding_polygon:
+	$(COMPILE_CMD) -o bounding_polygon $(INCS) bounding_polygon.c ../src/simplify.c $(LIBS)
 
 tio_test_f:
 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)

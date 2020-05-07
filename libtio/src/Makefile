@@ -41,7 +41,8 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o tio_time.o tio_meta.o
+OFILES   = tio.o tio_ppc.o tio_template.o tio_l1_radiance.o tio_l1_irradiance.o tio_time.o \
+           tio_meta.o simplify.o
 ELFOBJS  = $(patsubst %.o,$(elfdir)/%.o, $(OFILES))
 TIO_TEMPLATE_INCLUDE = $(srcdir)/tio_template.h
 
@@ -220,6 +221,9 @@ $(elfdir)/tio.o:	$(srcdir)/tio.c
 
 $(elfdir)/tio_ppc.o:	$(srcdir)/tio_ppc.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_ppc.c $(LIBS)
+
+$(elfdir)/simplify.o:	$(srcdir)/simplify.c
+	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/simplify.c $(LIBS)
 
 $(elfdir)/tio_template.o:	$(srcdir)/tio_template.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_template.c $(LIBS)

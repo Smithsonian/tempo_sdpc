@@ -14,6 +14,7 @@
 #include "tio.h"
 #include "_tio.h"
 #include "tio_template.h"
+#include "simplify.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -877,9 +878,10 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    int start[3], count[3];
    int num_steps, num_xtrack, num_pixels, max_num_boundary;
    int s, x, i, n, x_first_ok, x_last_ok, s_first_ok, s_last_ok;
-   int varid, no_fill, lon_bounds_status;
+   int varid, no_fill, lon_bounds_status, num_kept;
    int status = -1;
    float fill_value = TIO_FILL_FLOAT;
+   float band_km = 5.0;      /* output bounding polygon resolution */
    float vza_max_deg = 85.0; /* avoid pixels near the Earth's limb */
    int dx=8, ds=2;            /* reduce final polygon point density */
 
@@ -1133,7 +1135,20 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
           }
      }
 
-   *num = n;
+   TIO_FREE(indices);
+   indices = NULL;
+
+   if ((num_kept = simplify_dp (lon, lat, n, band_km, &indices)) < 0)
+     goto return_status;
+
+   for (i = 0; i < num_kept; i++)
+     {
+        int k = indices[i];
+        lon[i] = lon[k];
+        lat[i] = lat[k];
+     }
+
+   *num = num_kept;
    *plon = lon;
    *plat = lat;
 
