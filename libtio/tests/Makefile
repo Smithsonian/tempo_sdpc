@@ -82,7 +82,7 @@ history_test:
 	$(COMPILE_CMD) -o history_test $(INCS) history_test.c $(LIBS)
 
 bounding_polygon:
-	$(COMPILE_CMD) -o bounding_polygon $(INCS) bounding_polygon.c ../src/simplify.c $(LIBS)
+	$(COMPILE_CMD) -o bounding_polygon $(INCS) bounding_polygon.c $(LIBS)
 
 tio_test_f:
 	$(COMPILE_F_CMD) -o tio_test_f $(INCS_F) tio_test_f.f90 $(LIBS_F)

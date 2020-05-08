@@ -4,15 +4,11 @@
 #include <tio.h>
 #include <tell.h>
 
-#include "simplify.h"
-
 static int process_file (const char *ncfile)
 {
    int ncid, grp, num, i;
    float *lon=NULL, *lat=NULL;
-   int *indices = NULL;
-   float band_km = 5.0;
-   int num_kept, status = -1;
+   int status = -1;
 
    if ((0 != TIO_open (ncfile, NC_NOWRITE, &ncid))
        || (0 != TIO_def_grp (ncid, "band_290_490_nm", &grp)))
@@ -24,23 +20,18 @@ static int process_file (const char *ncfile)
    if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat, NULL, NULL))
      goto cleanup_and_exit;
 
-   if ((num_kept = simplify_dp (lon, lat, num, band_km, &indices)) < 0)
-     goto cleanup_and_exit;
-
-   for (i = 0; i < num_kept; i++)
+   for (i = 0; i < num; i++)
      {
-        int k = indices[i];
-        fprintf (stdout, "%5d %10.7e %10.7e\n", i, lon[k], lat[k]);
+        fprintf (stdout, "%5d %10.7e %10.7e\n", i, lon[i], lat[i]);
      }
 
-   fprintf (stderr, "bounding_polygon has %d vertices\n", num_kept);
+   fprintf (stderr, "bounding_polygon has %d vertices\n", num);
 
    status = 0;
 
 cleanup_and_exit:
    if (lon) free(lon);
    if (lat) free(lat);
-   if (indices) free(indices);
    (void) TIO_close (ncid);
 
    return status;
