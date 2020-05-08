@@ -294,19 +294,6 @@ contains
         set_wmax=.true.
       endif
 
-      if (wrt_odl) then
-        version = 1
-        returnstatus = pgs_pc_getreference(mdlist_LUN,version,md_namelist)
-        if (returnstatus == 0) then
-          write(logmsg,"(A16,A)") 'metadata namelist ',trim(md_namelist)
-          call tell_log(1,logmsg)
-        else
-          call tell_error(tell_io_read_error, &
-            'initialize: unable to read metadata namelist filename from PCF', &
-            errstat)
-        endif
-      endif
-
     else  !ex=.false., PCF does not exist or environment variable not set
 
       call tell_log(1,'initialize: PCF file not found')

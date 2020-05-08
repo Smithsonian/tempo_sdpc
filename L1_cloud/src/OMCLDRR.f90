@@ -308,7 +308,6 @@ program OMCLDRR
       call md_write_geo_bounds (bdry % lons, bdry % lats, &
                                 bdry % centroid_lon, bdry % centroid_lat, errstat)
       call md_write_inputs (ninp, inputs, errstat)
-      call md_write_fixed (md_namelist, errstat)
       call md_write_prodid (filename_out_nc, processing_version, errstat)
       call md_close (errstat)
 
