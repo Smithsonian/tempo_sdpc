@@ -14,8 +14,6 @@ module m_write_odl_metadata
 
   character (len=*), parameter :: radiance_band = 'band_290_490_nm'
 
-  integer, private :: mdlist_lun  = 420102    ! LUN for metadata namelist
-
   private
   public write_odl_metadata
 
@@ -62,7 +60,6 @@ contains
 
     integer :: i, status, returnstatus, version, sdid, Fil_Lun, j
 
-    character(len=256) :: mdlist_filename
     character(LEN=PGSd_MET_GROUP_NAME_L), dimension(PGSd_MET_NUM_OF_GROUPS) :: GROUPS
     character(LEN=100), dimension(50) :: Objvalue
     character(LEN=100), dimension(ninp) :: InputPnt, supflnm
@@ -258,13 +255,6 @@ contains
       endif
     enddo
 
-    version = 1
-    returnstatus = PGS_PC_getreference (mdlist_lun, version, mdlist_filename)
-    if (returnstatus /= 0) then
-      call tell_error (tell_runtime_error, "reading namelist filename", errstat)
-      return
-    endif
-
     ! Write archive metadata attributes to netCDF file
     ! do this first since pgs_met functions apparently leave nc file open!
     call md_open (outfilnm, errstat)
@@ -272,7 +262,6 @@ contains
                               bdry % centroid_lon, &
                               bdry % centroid_lat, errstat)
     call md_write_inputs (ninp, InputPnt, errstat)
-    call md_write_fixed (mdlist_filename, errstat)
     call md_write_prodid (outfilnm, versionid, errstat)
     call md_close (errstat)
 
