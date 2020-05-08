@@ -161,7 +161,8 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    () = remove (tmpfile);
    partial_paths = array_map (String_Type, &strtrim, partial_paths, "\n");
 
-   % For each product file, make a symbolic link in $incoming_dir
+   % For each product file, trigger registration in the product
+   % database by making a symbolic link in $incoming_dir
    % in the archive directory (usually on the master node)
    variable incoming_dir = path_concat (Archive_Root_Dir, "registry/incoming");
    if (NULL == stat_file (incoming_dir))
@@ -178,6 +179,16 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         oldpath = path_concat (archive_dest_subdir, pp);
 	if (NULL == stat_file (oldpath))
 	  continue;
+
+        % insert fixed metadata
+        argv = ["insert_fixed_metadata.py", oldpath];
+        s = new_process (argv; dup2=1).wait();
+        if (s.exit_status != 0)
+          {
+             throw ApplicationError, "*** Error: inserting fixed metadata: $oldpath"$;
+          }
+
+        % create symbolic link to trigger product registration
         newpath = path_concat (incoming_dir, path_basename(pp));
         if (0 != symlink (oldpath, newpath))
           throw ApplicationError, "*** Error: creating symlink $newpath"$;
