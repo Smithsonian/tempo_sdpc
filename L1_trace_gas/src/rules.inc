@@ -117,7 +117,6 @@ $(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
-  $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/tg_names_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_fitting_aux.o: $(SDIR)/omi_pge_fitting_aux.f90 \

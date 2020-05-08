@@ -8,7 +8,6 @@ module m_write_odl_metadata
   use ISO_C_BINDING, only: C_NULL_CHAR, C_DOUBLE, C_INT, C_CHAR
   use OMSAO_indices_module, only: mcf_lun
   use OMSAO_omidata_module, only: omi_radiance_swathname
-  use OMSAO_variables_module, only: mdlist_filename
   use m_pgs_include
   use md_module
 
@@ -261,7 +260,6 @@ contains
                               bdry % centroid_lon, &
                               bdry % centroid_lat, errstat)
     call md_write_inputs (ninp, InputPnt, errstat)
-    call md_write_fixed (mdlist_filename, errstat)
     call md_write_prodid (outfilnm, versionid, errstat)
     call md_close (errstat)
 
