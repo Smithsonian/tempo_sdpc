@@ -10,6 +10,7 @@ CONTAINS
   SUBROUTINE tmpo_fitting_process  ( message, processing_version, pge_error_status )
 
     USE OMSAO_precision_module
+    use OMI_LUN_set, only : L1B_IRR_FILE_LUN, L1B_UV_FILE_LUN, L2_CLD_FILE_LUN
     USE OMSAO_parameters_module, ONLY: r4_missval, r8_missval
     USE OMSAO_variables_module,  only:num_wav_max, &
          nxtrack, ntimes, nwavel,pixnum_lim, linenum_lim, &
@@ -38,6 +39,7 @@ CONTAINS
     USE tmpo_adj_data, ONLY:adj_solar_data, adj_earthshine_data
     USE o3p_output_module
     USE tio_output_module
+    use m_write_odl_metadata
 
     IMPLICIT NONE
 
@@ -453,6 +455,18 @@ CONTAINS
       message =": failed to close "// ADJUSTL(TRIM((l2_filename)))
       RETURN
     ENDIF
+
+    ! Write metadata to L2 output file.
+    ! (Yes, we're re-opening/closing the L2 output file)
+    if (l2_hdf_flag == 4) then
+      errstat = write_odl_metadata (l1b_rad_filename, l2_filename, processing_version, &
+                                    (/ L1B_IRR_FILE_LUN, L1B_UV_FILE_LUN, L2_CLD_FILE_LUN /), 3)
+      if (errstat /= 0) then
+        pge_error_status = pge_errstat_error
+        message =": failed writing metadata to "// ADJUSTL(TRIM((l2_filename)))
+        CALL tell_error (tell_io_write_error, message, pge_error_status)
+      endif
+    endif
 
     !-----------------------------------------------------------------
     ! Deallocate any remaining arrays

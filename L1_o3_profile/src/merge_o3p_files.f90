@@ -7,7 +7,7 @@ program merge_o3p_files
   use m_read_L2_o3p_tio
   use m_o3p_params
   use tio_output_module, only: l2_tio_create, l2_tio_close, write_merged_geo, &
-       write_merged_data, copy_hdr_metadata, label_output_file
+       write_merged_data, copy_hdr_metadata, copy_l2_metadata, label_output_file
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        ozwrtvar, gaswrt, aerosol, do_lambcld
@@ -289,6 +289,7 @@ program merge_o3p_files
   ! if working with TEMPO data, copy global attributes
   if (write_global_attr) then
     call copy_hdr_metadata(input_files(1), errstat)
+    call copy_l2_metadata (input_files(1), errstat)
     call label_output_file(tempo_prod_type_o3p, processing_version, errstat)
   endif
 

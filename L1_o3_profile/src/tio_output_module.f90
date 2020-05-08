@@ -16,7 +16,7 @@ module tio_output_module
        append_diagnostic_vars
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
        write_merged_geo, write_merged_data, copy_hdr_metadata, &
-       label_output_file
+       copy_l2_metadata, label_output_file
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -2785,6 +2785,36 @@ contains
                        errstat)
     endif
   end subroutine copy_hdr_metadata
+
+  subroutine copy_l2_metadata (l2file_in, errstat)
+    implicit none
+    character (len=*), intent(in) :: l2file_in
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    type (tiof_file_type) :: l2_in
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_open (l2file_in, l2_in, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, "copy_l2_metadata: opening file "//trim(l2file_in), &
+                       errstat)
+      return
+    endif
+
+    call tiof_push_group (obj, o3p_grp_metadata, errstat)
+    call tiof_push_group (l2_in, o3p_grp_metadata, errstat)
+    call tiof_copy_attrs_all (l2_in, obj, errstat)
+    call tiof_close (l2_in, errstat)
+    call tiof_pop_group (obj, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, "copy_l2_metadata: copying from "//trim(l2file_in), &
+                       errstat)
+    endif
+  end subroutine copy_l2_metadata
 
   !> Label product type in Level 2 product file
   !! @param[in]    label   product type label to apply

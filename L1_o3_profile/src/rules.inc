@@ -339,7 +339,9 @@ $(ODIR)/tmpo_pge_process.o: $(SDIR)/tmpo_pge_process.f90 \
   $(ODIR)/m_read_cloud_tio.o \
   $(ODIR)/m_read_geo_tio.o \
   $(ODIR)/m_specfit_ozprof.o \
+  $(ODIR)/m_write_odl_metadata.o \
   $(ODIR)/O3P_output_module.o \
+  $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -883,6 +885,13 @@ $(ODIR)/m_o3p_params.o: $(SDIR)/m_o3p_params.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_o3p_params.f90 -o $(ODIR)/m_o3p_params.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
+  $(ODIR)/m_pgs_include.o \
+  $(ODIR)/o3p_names_module.o \
+  $(ODIR)/OMI_LUN_set.o \
+  $(ODIR)/OMSAO_tmpodata_module.o \
+  $(ODIR)/PGS_MET_class.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/HE5Tget_size.o:	$(SDIR)/HE5Tget_size.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/HE5Tget_size.c -o $(ODIR)/HE5Tget_size.o
 $(ODIR)/OMI_L1B_reader.o:	$(SDIR)/OMI_L1B_reader.c
