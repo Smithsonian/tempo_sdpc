@@ -118,6 +118,14 @@ private define make_l3_filename (product_files)
    return strreplace (tok[1], "_L2_", "_L3_") + ".nc";
 }
 
+define insert_fixed_metadata (path)
+{
+   variable argv = ["insert_fixed_metadata.py", path];
+   variable s = new_process (argv; dup2=1).wait();
+   if (s.exit_status != 0)
+     throw ApplicationError, "*** Error: inserting fixed metadata: $path"$;
+}
+
 define process_scan_granules (scan_dir, archive_root_dir, products)
 {
    if (products == NULL)
@@ -188,6 +196,8 @@ define process_scan_granules (scan_dir, archive_root_dir, products)
              variable from_path = path_concat (output_dir, l3_output_file);
              if (NULL == stat_file (from_path))
                continue;
+
+             insert_fixed_metadata (from_path);
 
              variable to_path = path_concat (register_dir, l3_output_file);
              if (NULL == stat_file (to_path))

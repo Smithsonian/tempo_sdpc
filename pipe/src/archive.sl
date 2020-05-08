@@ -124,6 +124,14 @@ private define get_tarfile_archive_subdir (tar_file)
    return archive_subdir;
 }
 
+define insert_fixed_metadata (path)
+{
+   variable argv = ["insert_fixed_metadata.py", path];
+   variable s = new_process (argv; dup2=1).wait();
+   if (s.exit_status != 0)
+     throw ApplicationError, "*** Error: inserting fixed metadata: $path"$;
+}
+
 define register_using_symlink (tar_file, archive_dest_subdir)
 {
    % Dump partial paths to archived data products into a temporary
@@ -186,10 +194,7 @@ define register_using_symlink (tar_file, archive_dest_subdir)
 	  continue;
 
         % insert fixed metadata
-        argv = ["insert_fixed_metadata.py", oldpath];
-        s = new_process (argv; dup2=1).wait();
-        if (s.exit_status != 0)
-          throw ApplicationError, "*** Error: inserting fixed metadata: $oldpath"$;
+        insert_fixed_metadata (oldpath);
 
         % create symbolic link to trigger product registration
         newpath = path_concat (incoming_dir, path_basename(pp));
