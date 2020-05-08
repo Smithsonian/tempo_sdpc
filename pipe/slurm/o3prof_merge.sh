@@ -49,8 +49,10 @@ EOF
   first_input_file=$(echo $input_files | cut -d' ' -f1)
   /bin/cp ${first_input_file}.met .
 
-  # make sure the merged product gets added to the product registry
+  # insert fixed metadata and, make sure the merged product
+  # gets added to the product registry
   if test -f $product_file ; then
+     insert_fixed_metadata.py $o3p_dir/$product_file
      ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
   fi
 
