@@ -176,6 +176,11 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    variable pp, product, oldpath, newpath;
    foreach pp (partial_paths)
      {
+        % some files are to be excluded:
+        variable exclude_substrs = ["TEMPO_INR", "_diag.nc"];
+        if (any(array_map (Integer_Type, &is_substr, pp, exclude_substrs)))
+          continue;
+
         oldpath = path_concat (archive_dest_subdir, pp);
 	if (NULL == stat_file (oldpath))
 	  continue;
@@ -184,9 +189,7 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         argv = ["insert_fixed_metadata.py", oldpath];
         s = new_process (argv; dup2=1).wait();
         if (s.exit_status != 0)
-          {
-             throw ApplicationError, "*** Error: inserting fixed metadata: $oldpath"$;
-          }
+          throw ApplicationError, "*** Error: inserting fixed metadata: $oldpath"$;
 
         % create symbolic link to trigger product registration
         newpath = path_concat (incoming_dir, path_basename(pp));

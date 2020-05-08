@@ -150,17 +150,7 @@ def remove_dot_prefix (name):
 def process_file (conn, filename):
 
     basename = os.path.basename (filename)
-
-    # ignore diagnostic files
-    if (basename.find('_diag.nc') >= 0):
-        return 0
-
     tok = basename.split('_')
-
-    dont_process = ["INR"]
-    if (tok[1] in dont_process):
-        return 0
-
     product_name = '{}_{}'.format(tok[1], tok[2])
 
     nc = NetCDFFile(filename, "r")
