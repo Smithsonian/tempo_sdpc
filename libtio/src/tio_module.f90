@@ -149,6 +149,16 @@ module tio_module
     end function
   end interface
 
+  interface
+    integer (c_int) function tio_f_copy_attrs_all (ncid_in, var_in, ncid, var) &
+        bind (c, name='_pTIO_copy_attrs_all')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      integer (c_int) :: ncid_in, var_in
+      integer (c_int) :: ncid, var
+    end function
+  end interface
+
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
@@ -171,6 +181,7 @@ module tio_module
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, tiof_copy_attr, &
+    tiof_copy_attrs_all, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
@@ -181,6 +192,15 @@ module tio_module
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
   include 'get_put_decl.inc'
+
+  ! Annoyingly, the netcdf library design is such that its C and Fortran
+  ! interfaces use different numbering schemes for file objects(!)
+  ! One would think that an object in a file would be language-independent,
+  ! but no. For this reason, when this fortran interface calls the C
+  ! interface layer, it is necessary to use file references appropriate
+  ! for the netcdf library C interface.  Hence, we have to use nc_global
+  ! instead of nf90_global. Arrghhh!!!
+  integer, private, parameter :: nc_global = -1
 
 contains
 
@@ -296,16 +316,9 @@ contains
     implicit none
     type (tiof_file_type), intent(in) :: obj
     integer, intent(inout) :: errstat
-    integer, parameter :: nc_global = -1
 
     if (errstat /= 0) return
-    ! Annoyingly, the netcdf library design is such that its C and Fortran
-    ! interfaces use different numbering schemes for file objects(!)
-    ! One would think that an object in a file would be language-independent,
-    ! but no. For this reason, when this fortran interface calls the C
-    ! interface layer, it is necessary to use file references appropriate
-    ! for the netcdf library C interface.  Hence, we have to use nc_global
-    ! instead of nf90_global. Arrghhh!!!
+
     errstat = tio_f_write_epoch_timestamp (obj % fileid, nc_global)
   end subroutine
 
@@ -1146,6 +1159,37 @@ contains
     enddo
 
   end subroutine tiof_copy_attr
+
+  subroutine tiof_copy_attrs_all (from_obj, to_obj, errstat, from_varid, to_varid)
+    implicit none
+    type (tiof_file_type), intent(in) :: from_obj
+    type (tiof_file_type), intent(in) :: to_obj
+    integer, intent(in), optional :: from_varid, to_varid
+    integer, intent(inout) :: errstat
+
+    integer :: status, from_var, to_var
+
+    if (errstat /= 0) return
+
+    from_var = nc_global
+    if (present(from_varid)) then
+      from_var = from_varid
+    endif
+
+    to_var = nc_global
+    if (present(to_varid)) then
+      to_var = to_varid
+    endif
+
+    status = tio_f_copy_attrs_all (from_obj % groupid, from_var, &
+                                   to_obj % groupid, to_var)
+    if (status /= 0) then
+      call tell_error (tell_io_error, &
+                       "tiof_copy_attrs_all:  copying all attributes", errstat)
+      return
+    endif
+
+  end subroutine tiof_copy_attrs_all
 
   !> Append a new variable object to a variable list
   !! @param[inout] list  Variable list object, \a type(tiof_varlist_type)
