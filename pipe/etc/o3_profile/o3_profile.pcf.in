@@ -20,7 +20,7 @@
 #400150|terrainPressure0303.he4|../tbl/V8ANC||||1
 #400151|cloud_pressure.he4|../tbl/V8ANC||||1
 #400152|v8snowice.he4|../tbl/V8ANC||||1
-410100|PROFOZ.MCF|@refdata_dir@/control||||1
+410100|SIMPLE.MCF|@etc_dir@/o3_profile||||1
 10250|MCF|||||1
 10252|GetAttr_21678|||||1
 10254|MCFWrite_21678|||||1

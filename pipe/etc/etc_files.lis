@@ -20,6 +20,7 @@ cloud/metadata.nml
 o3_total/default.pcf.in
 o3_total/SIMPLE.MCF
 o3_total/metadata.nml
+o3_profile/SIMPLE.MCF
 o3_profile/o3_profile.pcf.in
 o3_profile/default_main_control_uv.inp
 o3_profile/default_main_control_uvvis.inp

@@ -200,6 +200,8 @@ config_subdir()
    /bin/cp $control_file $subdir_name
    /bin/cp $profoz_file $subdir_name
 
+   etc_dir="$SDPC_ROOT/etc"
+
    product_dir=.
    spectra_dir=.
    cloud_dir=.
@@ -230,6 +232,7 @@ config_subdir()
     -e s,@spectra_dir@,$spectra_dir,g \
     -e s,@cloud_dir@,$cloud_dir,g \
     -e s,@product_dir@,$product_dir,g \
+    -e s,@etc_dir@,$etc_dir,g \
     -e s,@radiance_file@,$radiance_file,g \
     -e s,@irradiance_file@,$irradiance_file,g \
     -e s,@cloud_file@,$cloud_file,g \

@@ -45,6 +45,10 @@ EOF
 
   srun --ntasks=1 --output=merge.log merge_o3p_files
 
+  # The .met files should be equivalent, so any one will do
+  first_input_file=$(echo $input_files | cut -d' ' -f1)
+  /bin/cp ${first_input_file}.met .
+
   # make sure the merged product gets added to the product registry
   if test -f $product_file ; then
      ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
