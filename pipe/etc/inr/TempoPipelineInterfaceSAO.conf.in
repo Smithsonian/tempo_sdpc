@@ -599,7 +599,7 @@ fourier_terms_roll=8
 fourier_terms_pitch=8
 fourier_terms_yaw=4
 # The directory where the ScanTailoring coefficient files are being written to
-fileDir=@INR_PROCESSING_ROOT@
+fileDir=@INR_PROCESSING_ROOT@/scantailoring/
 # The interval between calculating adjacent predicted states, in seconds
 prediction_interval=900
 # The number of days ahead to calculate the predicted states
