@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <float.h>
 
 #define __USE_XOPEN   /* for strptime */
 #include <time.h>
@@ -26,6 +27,8 @@
 
 #define DEGTORAD  (M_PI/180.0)
 
+#define GEOSPATIAL_BOUNDS_CRS "EPSG:4326"
+
 struct TIO_Meta_Type
 {
    TIO_Meta_Type *next;
@@ -35,6 +38,7 @@ struct TIO_Meta_Type
    int num_alloc;
    int value_type;
    int noexpand;
+   int odl_only;
 };
 
 #define KEYNAME_VALID_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_."
@@ -791,6 +795,8 @@ int tio_meta_write_ncattr (const TIO_Meta_Type *meta, int grp)
      {
         int xtype;
 
+        if (meta->odl_only) continue;
+
         switch (meta->value_type)
           {
            case TIO_META_TYPE_UNDEFINED:
@@ -1196,15 +1202,14 @@ int __make_lev1_bounding_polygon_struct (const int *grp, struct Bounding_Polygon
 
 /*}}}*/
 
-int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int grp)
+int tio_meta_set_odl_bounding_polygon (TIO_Meta_Type *meta,
+                                       const float *lon, const float *lat, int num)
 {
-   float *lon=NULL, *lat=NULL;
+   const char *name_lons = "polygon_longitudes";
+   const char *name_lats = "polygon_latitudes";
+   const char *name_seqs = "polygon_sequence";
    int *seq = NULL;
-   float centroid_lon, centroid_lat;
-   int i, num, status = -1;
-
-   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat, &centroid_lon, &centroid_lat))
-     return -1;
+   int i, status = -1;
 
    if (NULL == (seq = (int *)TIO_MALLOC (num * sizeof(int))))
      {
@@ -1217,14 +1222,146 @@ int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int gr
         seq[i] = i+1;
      }
 
-   if ((0 != tio_meta_set (meta, "polygon_longitudes", TIO_META_TYPE_FLOAT, num, lon))
-       || (0 != tio_meta_set (meta, "polygon_latitudes", TIO_META_TYPE_FLOAT, num, lat))
-       || (0 != tio_meta_set (meta, "polygon_sequence", TIO_META_TYPE_INT, num, seq))
-       || (0 != tio_meta_set (meta, "centroid_mean_longitude", TIO_META_TYPE_FLOAT, 1, &centroid_lon))
+   /* These variables are for ODL only, and may be be obsolete */
+   if ((0 != tio_meta_set (meta, name_lons, TIO_META_TYPE_FLOAT, num, lon))
+       || (0 != tio_meta_set (meta, name_lats, TIO_META_TYPE_FLOAT, num, lat))
+       || (0 != tio_meta_set (meta, name_seqs, TIO_META_TYPE_INT, num, seq)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: setting boundary polygon vertex arrays", __func__);
+        goto return_status;
+     }
+
+   /* mark these as ODL only */
+   find_key_by_name (meta, name_lons)->odl_only = 1;
+   find_key_by_name (meta, name_lats)->odl_only = 1;
+   find_key_by_name (meta, name_seqs)->odl_only = 1;
+
+   status = 0;
+return_status:
+
+   TIO_FREE(seq);
+   return status;
+}
+
+static int make_acdd_geospatial_bounds (const float *lon, const float *lat, int num,
+                                        char **str, float lon_range[2], float lat_range[2])
+{
+   char *end_str = NULL, *p = NULL;
+   int len, i, n, c;
+
+   lon_range[0] = lat_range[0] = +FLT_MAX;
+   lon_range[1] = lat_range[1] = -FLT_MAX;
+
+   /* geospatial_bounds format:
+    * geospatial_bounds = POLYGON((lon0 lat0, lon1 lat1, ... lon0 lat0))
+    * For each lon lat pair, we need 9+9+1 = 19 characters.  This allows
+    * for 7 significant figures, plus sign, plus decimal for each value,
+    * plus a space between them.  For N vertices, we'll also have N-1 commas.
+    */
+
+   len = num*20 + 12;
+   if (NULL == (*str = (char *)TIO_MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   end_str = *str + len;
+
+   strcpy (*str, "POLYGON(");
+   p = *str + 8;
+   c = '(';
+   for (i = 0; (p < end_str) && (i < num); i++)
+     {
+        float lon_i = lon[i];
+        float lat_i = lat[i];
+        if (lon_i < lon_range[0]) lon_range[0] = lon_i;
+        if (lon_i > lon_range[1]) lon_range[1] = lon_i;
+        if (lat_i < lat_range[0]) lat_range[0] = lat_i;
+        if (lat_i > lat_range[1]) lat_range[1] = lat_i;
+        if ((n = snprintf (p, end_str-p, "%c%0.4f %0.4f", c, lon_i, lat_i)) < 0)
+          {
+             TIO_FREE(*str);
+             *str = NULL;
+             return -1;
+          }
+        c = ',';
+        p += n;
+     }
+   strcpy (p, "))");
+
+   return 0;
+}
+
+int _pTIO_write_acdd_geospatial_attrs (int grp, const float *lon, const float *lat, int num)
+{
+   char *str = NULL;
+   char *crs = GEOSPATIAL_BOUNDS_CRS;
+   float lon_range[2], lat_range[2];
+
+   if (0 != make_acdd_geospatial_bounds (lon, lat, num, &str, lon_range, lat_range))
+     return -1;
+
+   if ((0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_bounds", NC_STRING, 1, &str))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_crs", NC_STRING, 1, &crs))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_min", NC_FLOAT, 1, &lon_range[0]))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_max", NC_FLOAT, 1, &lon_range[1]))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lat_min", NC_FLOAT, 1, &lat_range[0]))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lat_max", NC_FLOAT, 1, &lat_range[1])))
+     {
+        TIO_FREE(str);
+        return -1;
+     }
+
+   TIO_FREE(str);
+
+   return 0;
+}
+
+int tio_meta_set_acdd_geospatial_bounds (TIO_Meta_Type *meta,
+                                         const float *lon, const float *lat, int num)
+{
+   char *str = NULL;
+   float lon_range[2], lat_range[2];
+
+   if (0 != make_acdd_geospatial_bounds (lon, lat, num, &str, lon_range, lat_range))
+     return -1;
+
+   if ((0 != tio_meta_set (meta, "geospatial_bounds", TIO_META_TYPE_STRING, 1, str))
+       ||(0 != tio_meta_set (meta, "geospatial_bounds_crs", TIO_META_TYPE_STRING, 1, GEOSPATIAL_BOUNDS_CRS))
+       ||(0 != tio_meta_set (meta, "geospatial_lon_min", TIO_META_TYPE_FLOAT, 1, &lon_range[0]))
+       ||(0 != tio_meta_set (meta, "geospatial_lon_max", TIO_META_TYPE_FLOAT, 1, &lon_range[1]))
+       ||(0 != tio_meta_set (meta, "geospatial_lat_min", TIO_META_TYPE_FLOAT, 1, &lat_range[0]))
+       ||(0 != tio_meta_set (meta, "geospatial_lat_max", TIO_META_TYPE_FLOAT, 1, &lat_range[1])))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: setting geospatial_bounds", __func__);
+        TIO_FREE(str);
+        return -1;
+     }
+
+   TIO_FREE(str);
+   return 0;
+}
+
+int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int grp)
+{
+   float *lon=NULL, *lat=NULL;
+   float centroid_lon, centroid_lat;
+   int num, status = -1;
+
+   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat, &centroid_lon, &centroid_lat))
+     return -1;
+
+   if (0 != tio_meta_set_odl_bounding_polygon (meta, lon, lat, num))
+     goto return_status;
+
+   if (0 != tio_meta_set_acdd_geospatial_bounds (meta, lon, lat, num))
+     goto return_status;
+
+   if ((0 != tio_meta_set (meta, "centroid_mean_longitude", TIO_META_TYPE_FLOAT, 1, &centroid_lon))
        || (0 != tio_meta_set (meta, "centroid_mean_latitude", TIO_META_TYPE_FLOAT, 1, &centroid_lat))
       )
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: setting boundary polygon metadata", __func__);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: setting boundary polygon centroid", __func__);
         goto return_status;
      }
 
@@ -1232,7 +1369,6 @@ int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int gr
 return_status:
    TIO_FREE(lon);
    TIO_FREE(lat);
-   TIO_FREE(seq);
    return status;
 }
 

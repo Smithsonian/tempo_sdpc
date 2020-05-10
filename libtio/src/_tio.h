@@ -151,6 +151,7 @@ struct TIO_Scan_Ident_Type
 
 extern void _pTIO_get_level1_compression (int *deflate, int *deflate_level, int *shuffle);
 extern int _pTIO_copy_attrs_all (int *ncid_infile, int *id_var_infile, int *ncid, int *id_var);
+extern int _pTIO_write_acdd_geospatial_attrs (int grp, const float *lon, const float *lat, int num);
 
 #if 0
 {

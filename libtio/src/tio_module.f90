@@ -159,6 +159,16 @@ module tio_module
     end function
   end interface
 
+  interface
+    integer (c_int) function tio_f_write_acdd_geospatial_attrs (grp, lon, lat, num) &
+        bind (c, name='_pTIO_write_acdd_geospatial_attrs')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      integer (c_int), value :: grp, num
+      type (c_ptr), value :: lon, lat
+    end function
+  end interface
+
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
@@ -181,7 +191,7 @@ module tio_module
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, tiof_copy_attr, &
-    tiof_copy_attrs_all, &
+    tiof_copy_attrs_all, tiof_write_acdd_geospatial_attrs, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
@@ -1631,6 +1641,33 @@ contains
     centroid_lat = bpt % centroid_lat
 
     call free_lev1_bounding_polygon_struct (c_loc(bpt))
+
+  end subroutine
+
+  !> Write ACDD geospatial bounds attributes
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] lon  Longitude coordinate of bounding polygon vertices
+  !! @param[in] lat  Latitude coordinate of bounding polygon vertices
+  !! @param[inout]  errstat  Integer error status code.
+  !! @details
+  subroutine tiof_write_acdd_geospatial_attrs (obj, lon, lat, errstat)
+    use, intrinsic :: iso_c_binding
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    real (kind=c_float), dimension(:), intent(in), target :: lon, lat
+    integer, intent(inout) :: errstat
+
+    integer status
+
+    if (errstat /= 0) return
+
+    status = tio_f_write_acdd_geospatial_attrs (obj % groupid, c_loc(lon), c_loc(lat), size(lon))
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "tiof_write_acdd_geospatial_attrs: failed", &
+                       errstat)
+      return
+    endif
 
   end subroutine
 

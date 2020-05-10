@@ -551,6 +551,11 @@ extern void tio_meta_close (TIO_Meta_Type *meta);
 extern int tio_meta_set (TIO_Meta_Type *meta, const char *name,
                          int value_type, int num_values, const void *values);
 
+extern int tio_meta_set_acdd_geospatial_bounds (TIO_Meta_Type *meta,
+                                                const float *lon, const float *lat, int num);
+extern int tio_meta_set_odl_bounding_polygon (TIO_Meta_Type *meta,
+                                              const float *lon, const float *lat, int num);
+
 /** Read a keyword value from an attribute in the \a metadata group.
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
  * @param[in]  grp    netCDF group index, open for reading
