@@ -78,23 +78,6 @@ def get_day_of_year (nc):
     day_of_year = dt.timetuple().tm_yday
     return day_of_year
 
-def get_geospatial_bounds (nc):
-    if not 'metadata' in nc.groups:
-        return {}
-    grp = nc.groups['metadata']
-    attr = grp.__dict__
-    if not 'polygon_longitudes' in attr:
-        return {}
-    poly_lon = grp.getncattr('polygon_longitudes')
-    poly_lat = grp.getncattr('polygon_latitudes')
-    bounds_dict = {
-    'longitude_min':poly_lon.min(),
-    'longitude_max':poly_lon.max(),
-    'latitude_min':poly_lat.min(),
-    'latitude_max':poly_lat.max()
-    }
-    return bounds_dict
-
 def collect_keyword_groups (mission_meta, product_meta):
     # Keywords may be labeled as either "global" or "metadata".
     # When no such label is present, the default is "metadata".
@@ -152,11 +135,8 @@ def main():
 
     # Derive metadata keywords from file content:
     with NetCDFFile(ncfile, "r") as nc:
-        meta_geo = {'day_of_year': get_day_of_year(nc)}
-        bounds = get_geospatial_bounds (nc)
-        if bounds:
-            meta_geo.update()
-    meta_global.update(meta_geo)
+        meta_ncfile = {'day_of_year': get_day_of_year(nc)}
+    meta_global.update(meta_ncfile)
 
     # Write metadata to netcdf4 file
     write_netcdf_keys (meta_global, ncfile)
