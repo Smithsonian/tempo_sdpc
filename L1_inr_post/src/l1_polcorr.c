@@ -157,23 +157,22 @@ static int update_radiance_metadata (const char *rad_file,
                                      const char *lps_file)
 {
    TIO_Meta_Type *meta = NULL;
-   int ncid, grp;
+   int ncid;
    int status = -1;
 
-   if ((0 != TIO_open (rad_file, NC_WRITE, &ncid))
-       ||( 0 != TIO_def_grp (ncid, "metadata", &grp)))
+   if (0 != TIO_open (rad_file, NC_WRITE, &ncid))
      return -1;
 
    if (NULL == (meta = tio_meta_open ()))
      goto return_status;
 
    /* It's ok if this keyword doesn't exist */
-   (void) tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
+   (void) tio_meta_ncinit (meta, ncid, "input_pointer", TIO_META_TYPE_STRING);
 
    meta_record_basename (meta, qu_file);
    meta_record_basename (meta, lps_file);
 
-   if (0 != tio_meta_write_ncattr (meta, grp))
+   if (0 != tio_meta_write_ncattr (meta, ncid))
      goto return_status;
 
    /* If no template exists, a warning will be printed,

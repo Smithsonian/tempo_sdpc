@@ -1,6 +1,5 @@
 O3P_GRP_DIAGNOSTIC,"/diagnostic"
 O3P_GRP_GEOLOCATION,"/geolocation"
-O3P_GRP_METADATA,"/metadata"
 O3P_GRP_PRODUCT,"/product"
 O3P_GRP_QA_STATS,"/qa_statistics"
 O3P_GRP_SUPPORT_DATA,"/support_data"

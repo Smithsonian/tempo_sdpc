@@ -363,7 +363,7 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
    const char *prod_name = NULL;
    const char *template_basename = NULL;
    char *template_path = NULL;
-   int grp_meta, n, status = -1;
+   int n, status = -1;
 
    switch (out->exposure_type)
      {
@@ -402,8 +402,7 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
    if (0 != tio_meta_set_datetime_range (meta, ncid_from))
      goto return_status;
 
-   if ((0 != TIO_def_grp (out->ncid, "metadata", &grp_meta))
-       || (0 != tio_meta_write_ncattr (meta, grp_meta)))
+   if (0 != tio_meta_write_ncattr (meta, out->ncid))
      goto return_status;
 
    if ((out->exposure_type == EXPREC_TYPE_RAD)

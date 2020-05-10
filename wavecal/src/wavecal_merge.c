@@ -265,7 +265,7 @@ int main (int argc, char **argv)
    IOCLib_Glob_Type *gt = NULL;
    TIO_Meta_Type *meta = NULL;
    int delete_files = 0;
-   int ncid_target, grp_meta_target;
+   int ncid_target;
    int finalize_metadata = 0;
    size_t i, num_merged;
    static struct option long_options[] =
@@ -345,8 +345,7 @@ int main (int argc, char **argv)
      goto return_status;
 
    /* Write the accumulated metadata entries */
-   if ((0 != TIO_def_grp (ncid_target, "metadata", &grp_meta_target))
-       || (0 != tio_meta_write_ncattr (meta, grp_meta_target)))
+   if (0 != tio_meta_write_ncattr (meta, ncid_target))
      goto return_status;
 
    if (finalize_metadata == 0)

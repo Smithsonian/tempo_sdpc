@@ -1,6 +1,5 @@
 TG_GRP_DIAGNOSTIC,"/diagnostic"
 TG_GRP_GEOLOCATION,"/geolocation"
-TG_GRP_METADATA,"/metadata"
 TG_GRP_PRODUCT,"/product"
 TG_GRP_QA_STATS,"/qa_statistics"
 TG_GRP_SUPPORT_DATA,"/support_data"

@@ -150,7 +150,7 @@ static int process_inputs (Granule_Type *gt, TIO_Meta_Type *meta,
 static int write_metadata (TIO_Meta_Type *meta, const char *input_file)
 {
    int ncid = 0;
-   int grp, grp_meta, status = -1;
+   int grp, status = -1;
 
    if (0 != TIO_open (input_file, NC_WRITE, &ncid))
      goto return_status;
@@ -161,8 +161,7 @@ static int write_metadata (TIO_Meta_Type *meta, const char *input_file)
    if (0 != tio_meta_set_lev1_bounding_polygon_and_centroid (meta, grp))
      goto return_status;
 
-   if ((0 != TIO_def_grp (ncid, "metadata", &grp_meta))
-       || (0 != tio_meta_write_ncattr (meta, grp_meta)))
+   if (0 != tio_meta_write_ncattr (meta, ncid))
      goto return_status;
 
    /* If no template exists, a warning will be printed,

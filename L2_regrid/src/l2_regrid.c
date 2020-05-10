@@ -616,7 +616,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
                            const TIO_Scan_Ident_Type *lst)
 {
    const char *version_string = "0.1.0"; /* FIXME */
-   int i, grp;
+   int i;
 
    if (0 != tio_meta_set_datetime_production (meta))
      return -1;
@@ -646,10 +646,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
    if (0 != meta_set_bounding_polygon (meta, dest))
      return -1;
 
-   if (0 != TIO_def_grp (ncid, "metadata", &grp))
-     return -1;
-
-   if (0 != tio_meta_write_ncattr (meta, grp))
+   if (0 != tio_meta_write_ncattr (meta, ncid))
      return -1;
 
    if (prod->metadata_template)

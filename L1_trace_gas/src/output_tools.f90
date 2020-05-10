@@ -1001,7 +1001,6 @@ contains
     call tiof_def_group (obj, tg_grp_geolocation, errstat)
     call tiof_def_group (obj, tg_grp_support_data, errstat)
     call tiof_def_group (obj, tg_grp_qa_stats, errstat)
-    call tiof_def_group (obj, tg_grp_metadata, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file:  defining groups in "//trim(filename), &

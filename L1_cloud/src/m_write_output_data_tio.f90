@@ -221,7 +221,6 @@ contains
     call tiof_def_group (obj, cld_grp_geolocation, errstat)
     call tiof_def_group (obj, cld_grp_support_data, errstat)
     call tiof_def_group (obj, cld_grp_qa_stats, errstat)
-    call tiof_def_group (obj, cld_grp_metadata, errstat)
     if (write_resid) then
       call tiof_def_group (obj, cld_grp_diagnostic, errstat)
     endif

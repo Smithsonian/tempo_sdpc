@@ -111,7 +111,6 @@ contains
     call tiof_def_group (obj, o3p_grp_geolocation, errstat)
     call tiof_def_group (obj, o3p_grp_support_data, errstat)
     call tiof_def_group (obj, o3p_grp_qa_stats, errstat)
-    call tiof_def_group (obj, o3p_grp_metadata, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "l2_tio_create:  defining groups in "//trim(filename), &
@@ -2793,6 +2792,19 @@ contains
     type (tiof_file_type), pointer :: obj
     type (tiof_file_type) :: l2_in
 
+    character (len=*), parameter, dimension(*) :: &
+      attr_names = (/'geospatial_bounds      ', &
+                     'geospatial_crs         ', &
+                     'geospatial_lon_min     ', &
+                     'geospatial_lon_max     ', &
+                     'geospatial_lat_min     ', &
+                     'geospatial_lat_max     ', &
+                     'centroid_mean_longitude', &
+                     'centroid_mean_latitude ', &
+                     'input_files            ', &
+                     'local_granule_id       ', &
+                     'version_id             '/)
+
     if (errstat /= 0) return
 
     obj => primary_output_file
@@ -2804,11 +2816,8 @@ contains
       return
     endif
 
-    call tiof_push_group (obj, o3p_grp_metadata, errstat)
-    call tiof_push_group (l2_in, o3p_grp_metadata, errstat)
-    call tiof_copy_attrs_all (l2_in, obj, errstat)
+    call tiof_copy_attr_id (l2_in, nf90_global, obj, nf90_global, attr_names, errstat)
     call tiof_close (l2_in, errstat)
-    call tiof_pop_group (obj, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_runtime_error, "copy_l2_metadata: copying from "//trim(l2file_in), &

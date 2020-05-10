@@ -571,7 +571,7 @@ int main (int argc, char **argv)
    int debug = 0;
    int apply_shift_adjust = 0;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
-   int num_wave_params, num_sf_params, start_pix, num_pix, grp_meta;
+   int num_wave_params, num_sf_params, start_pix, num_pix;
    int num_final_coeff, final_start_pix, final_num_pix;
    int fit_status_code;
    static struct option long_options[] =
@@ -905,9 +905,6 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 != TIO_def_grp (ncid_result, "metadata", &grp_meta))
-     goto return_status;
-
    for (step = beg_step; step < end_step; step++)
      {
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
@@ -966,7 +963,7 @@ int main (int argc, char **argv)
           }
      }
 
-   if (0 != tio_meta_write_ncattr (meta, grp_meta))
+   if (0 != tio_meta_write_ncattr (meta, ncid_result))
      goto return_status;
 
    status = EXIT_SUCCESS;

@@ -13,6 +13,8 @@ module md_module
 
   type (tiof_file_type), private, target :: primary_output_file
 
+  character (len=*), private, parameter :: metadata_grp_name = "/"
+
 contains
 
   !>Open level 2 netCDF file for metadata writing
@@ -129,7 +131,7 @@ contains
            errstat)
       return
     endif
-    call tiof_push_group (l2obj, "metadata", errstat)
+    call tiof_push_group (l2obj, metadata_grp_name, errstat)
     call tiof_write_acdd_geospatial_attrs (l2obj, lon(1:num), lat(1:num), errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
@@ -178,7 +180,7 @@ contains
     call tiof_attlist_append (attlist, errstat, "input_files", &
          att_text=trim(input_list))
 
-    call tiof_push_group (l2obj, "metadata", errstat)
+    call tiof_push_group (l2obj, metadata_grp_name, errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
     call tiof_attlist_free (attlist)
@@ -236,7 +238,7 @@ contains
     call tiof_attlist_append (attlist, errstat, "production_date_time", &
          att_text=prod_datetime)
 
-    call tiof_push_group (l2obj, "metadata", errstat)
+    call tiof_push_group (l2obj, metadata_grp_name, errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
     call tiof_attlist_free (attlist)
@@ -312,7 +314,7 @@ contains
     call tiof_attlist_append (attlist, errstat, "keywords", &
          att_text=trim(adjustl(keywords)))
 
-    call tiof_push_group (l2obj, "metadata", errstat)
+    call tiof_push_group (l2obj, metadata_grp_name, errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
     call tiof_attlist_free (attlist)

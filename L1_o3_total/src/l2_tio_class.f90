@@ -642,7 +642,6 @@ contains
     call tiof_def_group (obj, o3t_grp_geolocation, errstat)
     call tiof_def_group (obj, o3t_grp_support_data, errstat)
     call tiof_def_group (obj, o3t_grp_qa_stats, errstat)
-    call tiof_def_group (obj, o3t_grp_metadata, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
                        "l2_tio_create:  defining groups in "//trim(filename), &

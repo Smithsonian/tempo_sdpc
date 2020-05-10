@@ -311,7 +311,7 @@ static int create_output_file (const char *output_file, size_t num_signals,
    int num_quad = 4;
    int num_adc = 2;
    int dimid_dn, dimid_adc, dimid_quad, varid_lut, varid_frac;
-   int ncid, grp_meta, dimids_lut[3];
+   int ncid, dimids_lut[3];
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "creating %s", output_file);
 
@@ -358,8 +358,7 @@ static int create_output_file (const char *output_file, size_t num_signals,
         return -1;
      }
 
-   if ((0 != TIO_def_grp (ncid, "metadata", &grp_meta))
-       || (0 != tio_meta_write_ncattr (meta, grp_meta)))
+   if (0 != tio_meta_write_ncattr (meta, ncid))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing metadata in :%s", __func__, output_file);
         (void) TIO_close (ncid);
