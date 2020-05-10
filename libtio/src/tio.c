@@ -1557,11 +1557,6 @@ int TIO_copy_attrs (int ncid_infile, int id_var_infile,
    return 0;
 }
 
-int _pTIO_copy_attrs_all (int *ncid_infile, int *id_var_infile, int *ncid, int *id_var)
-{
-   return TIO_copy_attrs (*ncid_infile, *id_var_infile, NULL, *ncid, *id_var);
-}
-
 int TIO_inq_dimname (int grp, int dimid, char *dimname)
 {
    int status;

@@ -150,16 +150,6 @@ module tio_module
   end interface
 
   interface
-    integer (c_int) function tio_f_copy_attrs_all (ncid_in, var_in, ncid, var) &
-        bind (c, name='_pTIO_copy_attrs_all')
-      use, intrinsic :: iso_c_binding
-      implicit none
-      integer (c_int) :: ncid_in, var_in
-      integer (c_int) :: ncid, var
-    end function
-  end interface
-
-  interface
     integer (c_int) function tio_f_write_acdd_geospatial_attrs (grp, lon, lat, num) &
         bind (c, name='_pTIO_write_acdd_geospatial_attrs')
       use, intrinsic :: iso_c_binding
@@ -190,8 +180,9 @@ module tio_module
     tiof_inq_dimlen, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
-    tiof_attlist_append, tiof_attlist_free, tiof_def_atts, tiof_copy_attr, &
-    tiof_copy_attrs_all, tiof_write_acdd_geospatial_attrs, &
+    tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
+    tiof_copy_attr_id, tiof_copy_attr, &
+    tiof_write_acdd_geospatial_attrs, &
     tiof_copy_granule_ident, tiof_same_granule_ident, &
     tiof_filename_from_granule, tiof_label_product, &
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
@@ -1135,6 +1126,30 @@ contains
 
   end subroutine tiof_def_atts
 
+  subroutine tiof_copy_attr_id (from_obj, from_varid, to_obj, to_varid, att_name_array, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: from_obj
+    integer,               intent(in) :: from_varid
+    type (tiof_file_type), intent(in) :: to_obj
+    integer,               intent(in) :: to_varid
+    character (len=*), dimension(:), intent(in) :: att_name_array
+    integer, intent(inout) :: errstat
+
+    integer :: i, status
+
+    if (errstat /= 0) return
+
+    do i = 1,size(att_name_array)
+      status = nf90_copy_att (from_obj % groupid, from_varid, trim(att_name_array(i)), &
+                              to_obj % groupid, to_varid)
+      if (status /= nf90_noerr) then
+        call tell_error (tell_io_error, "copying attribute "//trim(att_name_array(i)), errstat)
+        return
+      endif
+    enddo
+
+  end subroutine tiof_copy_attr_id
+
   subroutine tiof_copy_attr (from_obj, from_var, to_obj, to_var, att_name_array, errstat)
     implicit none
     type (tiof_file_type), intent(in) :: from_obj
@@ -1144,7 +1159,7 @@ contains
     character (len=*), dimension(:), intent(in) :: att_name_array
     integer, intent(inout) :: errstat
 
-    integer :: i, from_varid, to_varid, status
+    integer :: from_varid, to_varid, status
 
     if (errstat /= 0) return
 
@@ -1159,47 +1174,9 @@ contains
       return
     endif
 
-    do i = 1,size(att_name_array)
-      status = nf90_copy_att (from_obj % groupid, from_varid, trim(att_name_array(i)), &
-                              to_obj % groupid, to_varid)
-      if (status /= nf90_noerr) then
-        call tell_error (tell_io_error, "copying attribute "//trim(att_name_array(i)), errstat)
-        return
-      endif
-    enddo
+    call tiof_copy_attr_id (from_obj, from_varid, to_obj, to_varid, att_name_array, errstat)
 
   end subroutine tiof_copy_attr
-
-  subroutine tiof_copy_attrs_all (from_obj, to_obj, errstat, from_varid, to_varid)
-    implicit none
-    type (tiof_file_type), intent(in) :: from_obj
-    type (tiof_file_type), intent(in) :: to_obj
-    integer, intent(in), optional :: from_varid, to_varid
-    integer, intent(inout) :: errstat
-
-    integer :: status, from_var, to_var
-
-    if (errstat /= 0) return
-
-    from_var = nc_global
-    if (present(from_varid)) then
-      from_var = from_varid
-    endif
-
-    to_var = nc_global
-    if (present(to_varid)) then
-      to_var = to_varid
-    endif
-
-    status = tio_f_copy_attrs_all (from_obj % groupid, from_var, &
-                                   to_obj % groupid, to_var)
-    if (status /= 0) then
-      call tell_error (tell_io_error, &
-                       "tiof_copy_attrs_all:  copying all attributes", errstat)
-      return
-    endif
-
-  end subroutine tiof_copy_attrs_all
 
   !> Append a new variable object to a variable list
   !! @param[inout] list  Variable list object, \a type(tiof_varlist_type)
