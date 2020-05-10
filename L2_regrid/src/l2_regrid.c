@@ -575,7 +575,6 @@ cleanup_and_return:
 static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
                                       const Pixel_Grid_Param_Type *dest)
 {
-   int seq[4] = {1,2,3,4};
    float lon[4], lat[4];
    float centroid_lon, centroid_lat;
 
@@ -595,13 +594,14 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
    lon[2] = dest->xmax;  lat[2] = dest->ymax;
    lon[3] = dest->xmin;  lat[3] = dest->ymax;
 
+   if ((0 != tio_meta_set_acdd_geospatial_bounds (meta, lon, lat, 4))
+       || (0 != tio_meta_set_odl_bounding_polygon (meta, lon, lat, 4)))
+     return -1;
+
    centroid_lon = 0.5 * (dest->xmin + dest->xmax);
    centroid_lat = 0.5 * (dest->ymin + dest->ymax);
 
-   if ((0 != tio_meta_set (meta, "polygon_longitudes", TIO_META_TYPE_FLOAT, 4, lon))
-       || (0 != tio_meta_set (meta, "polygon_latitudes",  TIO_META_TYPE_FLOAT, 4, lat))
-       || (0 != tio_meta_set (meta, "polygon_sequence", TIO_META_TYPE_INT, 4, seq))
-       || (0 != tio_meta_set (meta, "centroid_mean_longitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
+   if ((0 != tio_meta_set (meta, "centroid_mean_longitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
        || (0 != tio_meta_set (meta, "centroid_mean_latitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
      {
         return -1;
