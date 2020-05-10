@@ -78,28 +78,6 @@ def get_day_of_year (nc):
     day_of_year = dt.timetuple().tm_yday
     return day_of_year
 
-def collect_keyword_groups (mission_meta, product_meta):
-    # Keywords may be labeled as either "global" or "metadata".
-    # When no such label is present, the default is "metadata".
-
-    meta_global = {}
-    meta_group = {}
-
-    for d in [mission_meta, product_meta]:
-        use_default = True
-        if 'global' in d:
-            if d['global']:
-                meta_global.update(d['global'])
-                use_default = False
-        if 'metadata' in d:
-            if d['metadata']:
-                meta_group.update(d['metadata'])
-                use_default = False
-        if use_default and d:
-            meta_group.update(d)
-
-    return meta_global, meta_group
-
 def metadata_file_path (basename):
     if not Sdpc_Metadata_Dir:
         return basename
@@ -122,32 +100,30 @@ def main():
 
     ncfile = args.ncfile
 
+    meta = {}
+
+    # Derive metadata keywords from file content:
+    with NetCDFFile(ncfile, "r") as nc:
+        meta = {'day_of_year': get_day_of_year(nc)}
+
     ncfile_prefix = os.path.basename(ncfile.split('_V')[0])
 
     # Find metadata keyword files for this product
     product_yaml = metadata_file_path (ncfile_prefix + '.yaml')
     mission_yaml = metadata_file_path ("TEMPO.yaml")
 
-    # Read metadata keyword files:
+    # Read keyword files
     mission_meta = read_keyword_file (mission_yaml)
     product_meta = read_keyword_file (product_yaml)
-    meta_global, meta_group = collect_keyword_groups (mission_meta, product_meta)
 
-    # Derive metadata keywords from file content:
-    with NetCDFFile(ncfile, "r") as nc:
-        meta_ncfile = {'day_of_year': get_day_of_year(nc)}
-    meta_global.update(meta_ncfile)
+    # Merge keywords
+    if mission_meta:
+        meta.update(mission_meta)
+    if product_meta:
+        meta.update(product_meta)
 
     # Write metadata to netcdf4 file
-    write_netcdf_keys (meta_global, ncfile)
-    write_netcdf_keys (meta_group, ncfile, group='metadata')
-
-    # Merge keyword dictionaries:
-    meta = {}
-    if meta_global:
-        meta.update(meta_global)
-    if meta_group:
-        meta.update(meta_group)
+    write_netcdf_keys (meta, ncfile)
 
     process_odl (ncfile, meta)
 

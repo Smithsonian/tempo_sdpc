@@ -1,7 +1,4 @@
-global:
-
-metadata:
- collection_shortname  : TEMPO_RAD_L1
- collection_version    : 1
- keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC RADIATION>RADIATIVE FLUX
- abstract              : Abstract goes here.
+collection_shortname  : TEMPO_RAD_L1
+collection_version    : 1
+keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC RADIATION>RADIATIVE FLUX
+abstract              : Abstract goes here.
