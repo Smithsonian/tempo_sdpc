@@ -114,12 +114,15 @@ contains
          att_r4=[centroid_lat])
     call tiof_attlist_append (attlist, errstat, "centroid_mean_longitude", &
          att_r4=[centroid_lon])
-    call tiof_attlist_append (attlist, errstat, "polygon_latitudes", &
-         att_r4=[lat(1:num)])
-    call tiof_attlist_append (attlist, errstat, "polygon_longitudes", &
-         att_r4=[lon(1:num)])
-    call tiof_attlist_append (attlist, errstat, "polygon_sequence", &
-         att_i4=[seq(1:num)])
+
+    if (.false.) then
+      call tiof_attlist_append (attlist, errstat, "polygon_latitudes", &
+                                att_r4=[lat(1:num)])
+      call tiof_attlist_append (attlist, errstat, "polygon_longitudes", &
+                                att_r4=[lon(1:num)])
+      call tiof_attlist_append (attlist, errstat, "polygon_sequence", &
+                                att_i4=[seq(1:num)])
+    endif
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "md_write_geo_bounds: failed", &
@@ -127,6 +130,7 @@ contains
       return
     endif
     call tiof_push_group (l2obj, "metadata", errstat)
+    call tiof_write_acdd_geospatial_attrs (l2obj, lon(1:num), lat(1:num), errstat)
     call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
     call tiof_attlist_free (attlist)

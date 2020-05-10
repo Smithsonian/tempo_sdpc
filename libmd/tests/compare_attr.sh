@@ -11,6 +11,12 @@ $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 #comparison values
 #cmlat_in="3.276634e-07"
 #cmlon_in="-1.60647e-07"
+geospatial_bnds_in="POLYGON((10.0000 -10.0000,10.0000 10.0000,-10.0000 10.0000,-10.0000 -6.0000))"
+geospatial_crs_in="EPSG:4326"
+geospatial_lon_min_in="-10"
+geospatial_lon_max_in="10"
+geospatial_lat_min_in="-10"
+geospatial_lat_max_in="10"
 polylat_in="-10, -2, 6, 10, 10, 10, 10, 10, 10, 10, 2, -6"
 polylon_in="10, 10, 10, 10, 6, 2, -2, -6, -10, -10, -10, -10"
 polyseq_in="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
@@ -29,9 +35,12 @@ keys_in=`awk -F\" '/keywords/{print $2}' boilerplate.nml`
 #attribute values
 #cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
 #cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
-polylat_out=`cat nc_header.txt | awk -F=\  '/:polygon_latitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
-polylon_out=`cat nc_header.txt | awk -F=\  '/:polygon_longitude/{print $2}' | sed s/.f//g | sed s/\ \;//`
-polyseq_out=`cat nc_header.txt | awk -F=\  '/:polygon_sequence/{print $2}' | sed s/\ \;//`
+geospatial_bnds_out=`cat nc_header.txt | awk -F\" '/string :geospatial_bounds/{print $2}'`
+geospatial_crs_out=`cat nc_header.txt | awk -F\" '/string :geospatial_crs/{print $2}'`
+geospatial_lon_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_min/{print $3}'| sed s/.f//g`
+geospatial_lon_max_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_max/{print $3}'| sed s/.f//g`
+geospatial_lat_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lat_min/{print $3}'| sed s/.f//g`
+geospatial_lat_max_out=`cat nc_header.txt | awk -F\  '/:geospatial_lat_max/{print $3}'| sed s/.f//g`
 inputs_out=`cat nc_header.txt | awk -F\" '/:input_files/{print $2}'`
 local_gran_out=`cat nc_header.txt | awk -F\" '/:local_granule_id/{print $2}'`
 vers_out=`cat nc_header.txt | awk -F\  '/:version_id/{print $3}'`
@@ -49,9 +58,12 @@ exitstat=0
 # cmlon, cmlat are checked in the fortran code.
 #if [ "$cmlat_out" != "$cmlat_in" ] ; then exitstat=1 ; fi
 #if [ "$cmlon_out" != "$cmlon_in" ] ; then exitstat=2 ; fi
-if [ "$polylat_out" != "$polylat_in" ] ; then exitstat=3 ; fi
-if [ "$polylon_out" != "$polylon_in" ] ; then exitstat=4 ; fi
-if [ "$polyseq_out" != "$polyseq_in" ] ; then exitstat=5 ; fi
+if [ "$geospatial_bnds_out" != "$geospatial_bnds_in" ] ; then exitstat=3 ; fi
+if [ "$geospatial_crs_out" != "$geospatial_crs_in" ] ; then exitstat=1 ; fi
+if [ "$geospatial_lon_min_out" != "$geospatial_lon_min_in" ] ; then exitstat=2 ; fi
+if [ "$geospatial_lon_max_out" != "$geospatial_lon_max_in" ] ; then exitstat=2 ; fi
+if [ "$geospatial_lat_min_out" != "$geospatial_lat_min_in" ] ; then exitstat=2 ; fi
+if [ "$geospatial_lat_max_out" != "$geospatial_lat_max_in" ] ; then exitstat=2 ; fi
 if [ "$inputs_out" != "$inputs_in" ] ; then exitstat=6 ; fi
 if [ "$local_gran_out" != "$local_gran_in" ] ; then exitstat=7 ; fi
 if [ "$vers_out" != "$vers_in" ] ; then exitstat=8 ; fi

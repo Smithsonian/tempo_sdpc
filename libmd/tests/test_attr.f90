@@ -177,6 +177,8 @@ program test_attr
   call md_write_prodid (l2file,version,errstat)
   call md_close (errstat)
 
+  deallocate (bdry_lon, bdry_lat)
+
   if (errstat /= 0) then
     write(*,*)'*** test_attr: failed to write metadata'
     stop 1
