@@ -221,10 +221,10 @@ contains
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_amf_diag, errstat, "flag_meanings", &
-                              att_text = "geometric AMF, glint, snow correction, "// &
-                              "no cloud pressure, adjusted surface pressure, "// &
-                              "adjusted cloud pressure, no albedo, no cloud fraction, "// &
-                              "no gas climatology, no scattering weights, AMF disabled")
+                              att_text = "geometric_AMF glint snow_correction "// &
+                              "no_cloud_pressure adjusted_surface_pressure "// &
+                              "adjusted_cloud_pressure no_albedo no_cloud_fraction "// &
+                              "no_gas_climatology no_scattering_weights AMF_disabled")
     call tiof_attlist_append (att_amf_diag, errstat, "flag_masks", &
                               att_i4 = [1, 2, 4, 8, 16, 32, 2048, 4096, 8192, 16384, 32768])
     ! append amf variables
@@ -380,7 +380,7 @@ contains
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_meanings", &
-                              att_text = "failed, maxiter_exceeded, suspect, good")
+                              att_text = "failed maxiter_exceeded suspect good")
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_values", &
                               att_i4 = [-2,-1,0,1])
 
@@ -619,7 +619,7 @@ contains
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_main_dqf, errstat, "flag_meanings", &
-                              att_text = "normal, suspicious, bad")
+                              att_text = "normal suspicious bad")
     call tiof_attlist_append (att_main_dqf, errstat, "flag_values", &
                               att_i4 = [0,1,2])
 
@@ -627,7 +627,7 @@ contains
                               att_text = trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_meanings", &
-                              att_text = "failed, maxiter_exceeded, suspect, good")
+                              att_text = "failed maxiter_exceeded suspect good")
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_values", &
                               att_i4 = [-2,-1,0,1])
 
