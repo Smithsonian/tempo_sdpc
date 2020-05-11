@@ -323,7 +323,7 @@ contains
     endif
     ! Optional products - nongas
     if(ozwrtvar .and. nnongas > 0) then
-      call tiof_get3d_r4 (tio_l2obj, o3p_var_nongas_param_retrieve, &
+      call tiof_get3d_r4 (tio_l2obj, o3p_var_nongas_param_ret, &
            [0, 0, 0], [nstep, nxtrack, nnongas], &
            nongas(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
       call tiof_get3d_r4 (tio_l2obj, o3p_var_nongas_param_ret_prec, &
@@ -643,8 +643,8 @@ contains
     call tiof_get3d_r4 (tio_l2obj, o3p_var_avg_resid, [0, 0, 0], &
          [nstep, nxtrack, nwindow], &
          avg_resid(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
-    call tiof_get1d_i2 (tio_l2obj, o3p_var_mqf, [0], [nstep], &
-         mqf(min_step:max_step), errstat)
+    !call tiof_get1d_i2 (tio_l2obj, o3p_var_mqf, [0], [nstep], &
+    !     mqf(min_step:max_step), errstat)
     ! Optional - fit weights
     if (ozwrtsnr .and. nmax_wavs > 0) then
       call tiof_get3d_r4 (tio_l2obj, o3p_var_merr, [0, 0, 0], &

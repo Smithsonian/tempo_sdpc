@@ -673,7 +673,7 @@ contains
                               dimids = dimids_layer_xtrack_step, &
                               comment = "retrieved ozone profile", &
                               units = "DU", &
-                              valid_range = [-50.0_8, 700.0_8], &
+                              valid_range = [-100.0_8, 100.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -772,7 +772,7 @@ contains
                               dimids = dimids_xtrack_step, &
                               comment = "tropospheric ozone column", &
                               units = "DU", &
-                              valid_range = [0.0_8, 600.0_8], &
+                              valid_range = [0.0_8, 100.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -879,11 +879,11 @@ contains
     ! other variables
     if (num_param > 0 .and. ozwrtvar) then
       call tiof_varlist_append (varlist, errstat, &
-                              o3p_var_nongas_param_retrieve, &
+                              o3p_var_nongas_param_ret, &
                               nf90_float, &
                               dimids = dimids_param_xtrack_step, &
                               comment = "non-gas parameter retrieved values", &
-                              units = o3p_var_nongas_param_names, &
+                              units = "non-gas parameter units", &
                               valid_range = [-1.0E30_8, 1.0E30_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -893,8 +893,8 @@ contains
                               o3p_var_nongas_param_ret_prec, &
                               nf90_float, &
                               dimids = dimids_param_xtrack_step, &
-                              comment = "other gas retrieved vertical column density precision", &
-                              units = o3p_var_nongas_param_names, &
+                              comment = "non-gas parameter precision", &
+                              units = "non-gas parameter units", &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -904,8 +904,8 @@ contains
                               o3p_var_nongas_param_ret_err, &
                               nf90_float, &
                               dimids = dimids_param_xtrack_step, &
-                              comment = "other gas retrieved vertical column density solution error", &
-                              units = o3p_var_nongas_param_names, &
+                              comment = "non-gas parameter solution error", &
+                              units = "non-gas parameter units", &
                               valid_range = [0.0_8, 1.0E30_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1049,7 +1049,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
                               comment = "effective cloud pressure", &
-                              valid_range = [0.0_8, 1013.25_8], &
+                              valid_range = [0.0_8, 1100.0_8], &
                               units = "hPa", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1070,7 +1070,7 @@ contains
                               nf90_float, &
                               dimids = dimids_layer_xtrack_step, &
                               comment = "a priori ozone profile", &
-                              valid_range = [-50.0_8, 700.0_8], &
+                              valid_range = [0.0_8, 100.0_8], &
                               units = "DU", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1145,7 +1145,7 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "number of wavelengths used in fitting", &
-                              valid_range = [0.0_8, 1000.0_8], &
+                              valid_range = [0.0_8, 2000.0_8], &
                               fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1176,7 +1176,7 @@ contains
                               nf90_float, &
                               dimids = dimids_gas_xtrack_step, &
                               comment = "other gas a priori column density", &
-                              valid_range = [0.0_8, 1.0E38_8], &
+                              valid_range = [0.0_8, 1.0E30_8], &
                               units = "molecules cm^-2", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1187,7 +1187,7 @@ contains
                               nf90_float, &
                               dimids = dimids_gas_xtrack_step, &
                               comment = "other gas a priori column density error", &
-                              valid_range = [0.0_8, 1.0E38_8], &
+                              valid_range = [-1.0E30_8, 1.0E30_8], &
                               units = "molecules cm^-2", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1215,8 +1215,8 @@ contains
                               nf90_float, &
                               dimids = dimids_param_xtrack_step, &
                               comment = "non-gas parameter a priori", &
-                              valid_range = [-1.0E38_8, 1.0E38_8], &
-                              units = o3p_var_nongas_param_names, &
+                              valid_range = [0.0_8, 1.0E30_8], &
+                              units = "non-gas parameter units", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1226,8 +1226,8 @@ contains
                               nf90_float, &
                               dimids = dimids_param_xtrack_step, &
                               comment = "non-gas parameter a priori error", &
-                              valid_range = [-1.0E38_8, 1.0E38_8], &
-                              units = o3p_var_nongas_param_names, &
+                              valid_range = [-1.0E30_8, 1.0E30_8], &
+                              units = "non-gas parameter units", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1256,7 +1256,7 @@ contains
                               o3p_var_correl, &
                               nf90_float, &
                               dimids = dimids_fitvar_fitvar_xtrack_step, &
-                              comment = "correlation matrix", &
+                              comment = "correlation matrix (upper matrix above diagonal)", &
                               valid_range = [-1.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1414,7 +1414,7 @@ contains
                               o3p_var_wavel, &
                               nf90_float, &
                               dimids = dimids_wavmax_xtrack_step, &
-                              comment = "wavelengths used in the retrieval", &
+                              comment = "wavelength used in the retrieval", &
                               valid_range = [100.0_8, 1000.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1457,7 +1457,7 @@ contains
                               nf90_float, &
                               dimids = dimids_wavmax_xtrack_step, &
                               comment = "observed normalized radiance, I/F", &
-                              valid_range = [0.0_8, 10.0_8], &
+                              valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1467,7 +1467,7 @@ contains
                               nf90_float, &
                               dimids = dimids_wavmax_xtrack_step, &
                               comment = "simulated normalized radiance, I/F", &
-                              valid_range = [0.0_8, 10.0_8], &
+                              valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1506,6 +1506,7 @@ contains
   !! @param[inout] errstat    error status variable
   subroutine append_qa_vars(obj, dimlist, errstat)
 
+    use OMSAO_variables_module, only : max_itnum_rad
     implicit none
 
     type (tiof_file_type), intent(in) :: obj
@@ -1543,18 +1544,19 @@ contains
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(o3p_var_longitude) &
                               //' '//trim(o3p_var_latitude))
-    call tiof_varlist_append (varlist, errstat, &
-                              o3p_var_mqf, &
-                              nf90_ushort, &
-                              dimids = [dimids_xtrack_step(2)], &
-                              comment = "measurement quality flags", &
-                              valid_range = [0.0_8, 254.0_8], &
-                              fillvalue = fill_uint1)
+    !call tiof_varlist_append (varlist, errstat, &
+    !                          o3p_var_mqf, &
+    !                          nf90_ushort, &
+    !                          dimids = [dimids_xtrack_step(2)], &
+    !                          comment = "measurement quality flags", &
+    !                          valid_range = [0.0_8, 254.0_8], &
+    !                          fillvalue = fill_uint1)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_exit_stat, &
                               nf90_short, &
                               dimids = dimids_xtrack_step, &
-                              comment = "retrieval exit status", &
+                              comment = "retrieval exit status (0=not converged, 1-99 converged, "// &
+                              "100-110 converged but with negative ozone value)", &
                               valid_range = [-10.0_8, 110.0_8], &
                               fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
@@ -1565,7 +1567,7 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "number of iterations", &
-                              valid_range = [0.0_8, 20.0_8], &
+                              valid_range = [0.0_8, max_itnum_rad * 1.0_8], &
                               fillvalue = fill_uint1, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1575,7 +1577,7 @@ contains
                               nf90_float, &
                               dimids = dimids_window_xtrack_step, &
                               comment = "ratio of fitting residual to measurement error", &
-                              valid_range = [0.0_8, 1.0_8], &
+                              valid_range = [0.0_8, 100.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1839,7 +1841,7 @@ contains
     endif
     ! non-gas fitted params
     if (num_param > 0 .and. ozwrtvar) then
-      call tiof_put1d_r4 (obj, o3p_var_nongas_param_retrieve, &
+      call tiof_put1d_r4 (obj, o3p_var_nongas_param_ret, &
          [iline, ipix, 0], [1,1,num_param], &
          real(fitvar_rad(mask_fitvar_rad(fothvarpos(1:num_param))), kind=4),&
          errstat)
@@ -2078,8 +2080,8 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_avg_resid, &
          [iline, ipix, 0], [1,1,nwindow], &
          real(allavgres(1:nwindow), kind=4), errstat)
-    call tiof_put1d_i2 (obj, o3p_var_mqf, &
-         [iline], [1], [omi_Mflg(iline)], errstat)
+    !call tiof_put1d_i2 (obj, o3p_var_mqf, &
+    !     [iline], [1], [omi_Mflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
       call tiof_put1d_r4 (obj, o3p_var_merr, &
@@ -2197,7 +2199,7 @@ contains
      endif
     ! non-gas fitted params
     if (num_param > 0 .and. ozwrtvar) then
-      call tiof_put1d_r4 (obj, o3p_var_nongas_param_retrieve, &
+      call tiof_put1d_r4 (obj, o3p_var_nongas_param_ret, &
          [iline, ipix, 0], [1,1,num_param], &
          tmp1D_fitvar(1:num_param), errstat)
       call tiof_put1d_r4 (obj, o3p_var_nongas_param_ret_prec, &
@@ -2364,8 +2366,8 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_avg_resid, &
          [iline, ipix, 0], [1,1,nwindow], &
          tmp1D_numwin(1:nwindow), errstat)
-    call tiof_put1d_i2 (obj, o3p_var_mqf, & ! there should always be an mflag
-         [iline], [1], [omi_Mflg(iline)], errstat)
+    !call tiof_put1d_i2 (obj, o3p_var_mqf, & ! there should always be an mflag
+    !     [iline], [1], [omi_Mflg(iline)], errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
       call tiof_put1d_r4 (obj, o3p_var_merr, [iline, ipix, 0], &
@@ -2552,7 +2554,7 @@ contains
     endif
     ! non-gas fitted params
     if (nnongas > 0 .and. ozwrtvar) then
-      call tiof_put3d_r4 (obj, o3p_var_nongas_param_retrieve, &
+      call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], &
                           nongas(1:nnongas,1:nxtrack,1:nstep), errstat)
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_ret_prec, &
@@ -2739,7 +2741,7 @@ contains
          [nstep, nxtrack, nfitwins], rms(1:nfitwins,1:nxtrack,1:nstep), errstat)
     call tiof_put3d_r4 (obj, o3p_var_avg_resid, [min_step, min_xtrack, 0], &
          [nstep, nxtrack, nfitwins], avg_resid(1:nfitwins,1:nxtrack,1:nstep), errstat)
-    call tiof_put1d_i2 (obj, o3p_var_mqf, [min_step], [nstep], mqf, errstat)
+    !call tiof_put1d_i2 (obj, o3p_var_mqf, [min_step], [nstep], mqf, errstat)
     !Optional param - relative measurement error
     if (ozwrtsnr) then
       call tiof_put3d_r4 (obj, o3p_var_merr, [min_step, min_xtrack, 0], &

@@ -6,7 +6,7 @@ O3P_DIM_STEP,"mirror_step","mirror step"
 #L2 dimensions
 O3P_DIM_CORNER, "corner", "pixel corners"
 O3P_DIM_LAYER, "layer", "atmospheric layer (top down)"
-O3P_DIM_LAYERP1, "layer_plus1", "atmospheric and surface layer (top down)"
+O3P_DIM_LAYERP1, "level", "atmospheric and surface layer (top down)"
 O3P_DIM_FITVAR, "fit_variables", "fit variables"
 O3P_DIM_PARAM, "non_gas_variables", "non-gas fit variables"
 O3P_DIM_WINDOWS, "fitting_windows", "fitting windows"
