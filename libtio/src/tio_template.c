@@ -157,7 +157,7 @@ int tio_define_granule_flag_var (int ncid)
    static _pText_Attr_Type granule_flag_attrs[] =
      {
         {"flag_meanings",
-             "is_first_granule_of_scan, is_last_granule_of_scan, is_telemetry_only"},
+             "is_first_granule_of_scan is_last_granule_of_scan is_telemetry_only"},
         _pTEXT_ATTRS_END
      };
    int flag_masks[] = {

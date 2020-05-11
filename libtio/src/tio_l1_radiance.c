@@ -576,7 +576,7 @@ static int emit_radiance_status_flag (int grp)
 {
    _pText_Attr_Type text_attrs[] =
      {
-        {"flag_meanings", "polarization, straylight"},
+        {"flag_meanings", "polarization straylight"},
         {"comment", "Bit settings indicate which corrections have been applied"},
         _pTEXT_ATTRS_END
      };
