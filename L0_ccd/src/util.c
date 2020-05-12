@@ -301,6 +301,9 @@ int meta_record_basename (TIO_Meta_Type *meta, const char *path)
 {
    const char *path_basename;
 
+   if (path == NULL)
+     return 0;
+
    if (NULL != (path_basename = strrchr (path, '/')))
      {
         path_basename++;

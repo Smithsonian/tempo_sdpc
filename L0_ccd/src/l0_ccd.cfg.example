@@ -41,6 +41,9 @@ calibration:
      bb_kernel = "$SDPC_REFDATA_DIR/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
      psf       = "$SDPC_REFDATA_DIR/instrument/TEMPO_Dmat_Ainv4intrachannel_SLCorrection.h5";
    };
+
+   trend_rcoef = "";
+   trend_btdf  = "";
 };
 
 metadata:

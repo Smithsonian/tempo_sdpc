@@ -22,6 +22,8 @@
 
 typedef struct
 {
+   int is_reference_diffuser;
+
    int num_waves;
    float *waves;
    /* [nm] wavelength */
@@ -40,6 +42,11 @@ typedef struct
 
    float *btdfe_lut;
    /* [dimensionless] (num_waves,num_aov) Effective BTDF, averaged over pixel FOV */
+
+   float *trend;
+   /* [dimensionless] (row,col) BTDF trend multiplicative correction factor
+    * row = xtrack index, col = spectral index (fastest varying)
+    */
 }
 BTDF_Type;
 
@@ -145,7 +152,66 @@ close_and_return:
    return 0;
 }
 
-static int read_radcal_coeffs (Calibration_Type *cal, const char *file)
+static int apply_radcal_trend_correction (Calibration_Type *cal, const char *file)
+{
+   const char var_name[] = "radcal_coeffs_trend_correction";
+   size_t num_waves, num_xpos, len, i;
+   float *trend_corr = NULL;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s (%s)", file, var_name);
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
+       || (0 != TIO_inq_dim (ncid, "Xpos", &dimid, &num_xpos)))
+     goto close_and_return;
+
+   if (((int) num_waves != cal->num_waves)
+       || ((int) num_xpos != cal->num_xpos))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: mismatched array dimensions: %s (expected wave=%d, Xpos=%d)",
+                     __func__, file, cal->num_waves, cal->num_xpos);
+        goto close_and_return;
+     }
+
+   len = num_waves * num_xpos;
+
+   if (NULL == (trend_corr = (float *)MALLOC (len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_xpos;
+
+   if (0 != TIO_get_var_section (ncid, var_name, start, count, TIO_FLOAT, trend_corr))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading %s: %s", __func__, var_name, file);
+        goto close_and_return;
+     }
+
+   for (i = 0; i < len; i++)
+     {
+        cal->radcal_coeffs[i] *= trend_corr[i];
+     }
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+   FREE(trend_corr);
+
+   return status;
+}
+
+static int read_radcal_coeffs (Calibration_Type *cal, const char *file,
+                              const char *trend_file)
 {
    size_t num_waves, num_xpos, len, i;
    int start[2], count[2];
@@ -200,6 +266,12 @@ static int read_radcal_coeffs (Calibration_Type *cal, const char *file)
                    count_invalid, file);
      }
 
+   if (trend_file)
+     {
+        if (0 != apply_radcal_trend_correction (cal, trend_file))
+          goto close_and_return;
+     }
+
    status = 0;
 close_and_return:
    (void) TIO_close (ncid);
@@ -209,7 +281,7 @@ close_and_return:
         cal->radcal_coeffs = NULL;
      }
 
-   return 0;
+   return status;
 }
 
 static int cal_apply_radcal_coeffs (const Calibration_Type *cal, Image_Type *img)
@@ -249,6 +321,7 @@ static void btdf_free (BTDF_Type *btdf)
    FREE(btdf->aov);
    FREE(btdf->slope_aoi);
    FREE(btdf->btdfe_lut);
+   FREE(btdf->trend);
    FREE(btdf);
 }
 
@@ -280,6 +353,76 @@ static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope
    return btdf;
 }
 
+static int init_btdf_trend_correction (BTDF_Type *btdf, int num_xpos, int num_waves,
+                                       const char *trend_file)
+{
+   const char *var_name = NULL;
+   size_t num_waves_file, num_xpos_file, len, i;
+   int start[2], count[2];
+   int ncid, dimid, status = -1;
+
+   len = num_waves * num_xpos;
+
+   if (NULL == (btdf->trend = (float *)MALLOC (len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   if (trend_file == NULL)
+     {
+        for (i = 0; i < len; i++)
+          {
+             btdf->trend[i] = 1.0;
+          }
+        return 0;
+     }
+
+   if (btdf->is_reference_diffuser)
+     {
+        var_name = "BTDF_ref_trend_correction";
+     }
+   else
+     {
+        var_name = "BTDF_work_trend_correction";
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s (%s)", trend_file, var_name);
+
+   if (0 != TIO_open (trend_file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves_file))
+       || (0 != TIO_inq_dim (ncid, "Xpos", &dimid, &num_xpos_file)))
+     goto close_and_return;
+
+   if ((num_waves != (int) num_waves_file)
+       || (num_xpos != (int) num_xpos_file))
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: mismatched array dimensions: %s (expected wave=%d, Xpos=%d)",
+                     __func__, trend_file, num_waves, num_xpos);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_waves;
+   count[1] = num_xpos;
+
+   if (0 != TIO_get_var_section (ncid, var_name, start, count, TIO_FLOAT, btdf->trend))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading %s: %s", __func__, var_name, trend_file);
+        goto close_and_return;
+     }
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+
+   return status;
+}
+
 static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file)
 {
    BTDF_Type *btdf = NULL;
@@ -301,6 +444,8 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
 
    if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_slope_aoi)))
      goto close_and_return;
+
+   btdf->is_reference_diffuser = is_reference_diffuser;
 
    if (is_reference_diffuser)
      {
@@ -351,6 +496,7 @@ close_and_return:
      {
         (void) TIO_close (ncid);
      }
+
    if (status)
      {
         btdf_free (btdf);
@@ -360,12 +506,20 @@ close_and_return:
    return btdf;
 }
 
-static int read_btdf (Calibration_Type *cal, const char *path)
+static int read_btdf (Calibration_Type *cal, const char *path, const char *trend_file)
 {
    if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path)))
-       ||(NULL == (cal->diffuser_ref = read_btdf_parameters (1, path))))
+       || (0 != init_btdf_trend_correction (cal->diffuser_wrk, cal->num_xpos, cal->num_waves, trend_file)))
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: reading BTDF parameters from %s",
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading working BTDF parameters from %s",
+                     __func__, path);
+        return -1;
+     }
+
+   if ((NULL == (cal->diffuser_ref = read_btdf_parameters (1, path)))
+       || (0 != init_btdf_trend_correction (cal->diffuser_ref, cal->num_xpos, cal->num_waves, trend_file)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading reference BTDF parameters from %s",
                      __func__, path);
         return -1;
      }
@@ -490,7 +644,7 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 
              btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
 
-             img_pixels[s] /= btdfe_s;
+             img_pixels[s] /= btdfe_s * bt->trend[s];
           }
      }
 
@@ -1421,12 +1575,31 @@ static int config_straylight_method (Calibration_Type *cal, config_t *cfg)
    return -1;
 }
 
+static int optional_config_path (config_setting_t *s, const char *name, char **path)
+{
+   const char *str = NULL;
+
+   *path = NULL;
+
+   /* no such setting, or empty string is ok */
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, name, &str))
+       || (*str == 0))
+     return 0;
+
+   if (NULL == (*path = expand_string (str)))
+     return -1;
+
+   return 0;
+}
+
 Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
+   char *radcal_trend_file = NULL;
+   char *btdf_trend_file = NULL;
 
    int status = -1;
 
@@ -1447,14 +1620,17 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
         tell_verror (TELL_IO_READ_ERROR, "%s: reading sensorcal_file", __func__);
         return NULL;
      }
-
    if (NULL == (path = expand_string (sensorcal_file)))
      return NULL;
+
+   if ((0 != optional_config_path (s, "trend_rcoef", &radcal_trend_file))
+       || (0 != optional_config_path (s, "trend_btdf", &btdf_trend_file)))
+     goto free_and_return;
 
    if (NULL == (cal = (Calibration_Type *)MALLOC (sizeof *cal)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
+        goto free_and_return;
      }
    memset ((char *)cal, 0, sizeof(*cal));
 
@@ -1463,16 +1639,18 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_apply_btdf = cal_apply_btdf;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
-   if ((0 != read_radcal_coeffs (cal, path))
+   if ((0 != read_radcal_coeffs (cal, path, radcal_trend_file))
        || (0 != read_wavelength_grid (cal, path))
-       || (0 != meta_record_basename (meta, path)))
+       || (0 != meta_record_basename (meta, path))
+       || (0 != meta_record_basename (meta, radcal_trend_file)))
      {
         goto free_and_return;
      }
 
    if (enable_state_query_bool (ENABLE_BTDF) > 0)
      {
-        if (0 != read_btdf (cal, path))
+        if ((0 != read_btdf (cal, path, btdf_trend_file))
+            || (0 != meta_record_basename (meta, btdf_trend_file)))
           goto free_and_return;
      }
 
@@ -1482,6 +1660,8 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    status = 0;
 free_and_return:
    FREE(path);
+   FREE(radcal_trend_file);
+   FREE(btdf_trend_file);
    if (status)
      {
         cal_delete(cal);
