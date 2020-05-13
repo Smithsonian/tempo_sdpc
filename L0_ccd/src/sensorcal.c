@@ -564,6 +564,12 @@ static int cal_apply_btdf (const Calibration_Type *cal,
                      __func__, img->num_cols, cal->num_xpos);
         return -1;
      }
+   if (img->num_rows != cal->num_waves)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: image size mismatch: img->num_rows=%d (expected %d)",
+                     __func__, img->num_rows, cal->num_waves);
+        return -1;
+     }
 
    bt = is_reference_diffuser ? cal->diffuser_ref : cal->diffuser_wrk;
 
@@ -583,6 +589,7 @@ static int cal_apply_btdf (const Calibration_Type *cal,
      {
         Image_Pixel_Type *img_pixels = img->pixels + p * img->num_cols;
         float *waves = cal->wavelength_grid + p * cal->num_xpos;
+        float *bt_trend = bt->trend + p * cal->num_xpos;
         for (s = 0; s < img->num_cols; s++)
           {
              float *lut_w0, *lut_w1;
@@ -644,7 +651,7 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 
              btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
 
-             img_pixels[s] /= btdfe_s * bt->trend[s];
+             img_pixels[s] /= btdfe_s * bt_trend[s];
           }
      }
 
