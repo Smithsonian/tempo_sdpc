@@ -94,7 +94,7 @@ int tio_set_earth_sun_distance (int grp, double earth_sun_distance)
    _pText_Attr_Type earth_sun_distance_attrs[] =
      {
         {"units", "m"},
-        {"comment", "Earth sun distance"},
+        {"long_name", "Earth-sun distance"},
         _pTEXT_ATTRS_END
      };
    const char name[] = TEMPO_VAR_EARTH_SUN_DISTANCE;
@@ -119,24 +119,17 @@ int tio_set_earth_sun_distance (int grp, double earth_sun_distance)
 
 static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
-   int status, varid, dims[TIO_MAX_VAR_DIMS];
+   int varid, dims[TIO_MAX_VAR_DIMS];
 
    /* coordinate variables */
-   dims[0] = dim_table->step.id;
-   status = nc_def_var (grp, TEMPO_DIM_STEP, NC_INT, 1, dims, NULL);
-   if (NC_NOERR != status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining coordinate variable %s (%s)",
-                     __func__, TEMPO_DIM_STEP, nc_strerror(status));
-        return -1;
-     }
+   if (0 != tio_define_dim_step_var (grp, dim_table->step.id))
+     return -1;
 
    /* time */
      {
         static _pText_Attr_Type time_attrs[] =
           {
-             {"comment", "Exposure start time"},
+             {"long_name", "exposure start time"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -150,7 +143,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
         static _pText_Attr_Type exposure_time_attrs[] =
           {
              {"units", "seconds"},
-             {"comment", "Exposure duration"},
+             {"long_name", "exposure duration"},
              _pTEXT_ATTRS_END
           };
         static _pFloat_Attr_Type exposure_time_float_attrs[] =
@@ -205,7 +198,7 @@ static int define_global_attrs (int grp)
 {
    static _pText_Attr_Type text_attrs[] =
      {
-        {"Conventions", TIO_CF_CONVENTION_VERSION},
+        {"Conventions", TIO_FORMAT_CONVENTIONS},
         {"inr_status", TIO_INR_NONE},   /* text for consistency with processing_level */
         _pTEXT_ATTRS_END
      };
@@ -252,7 +245,7 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
 {
    static _pText_Attr_Type pqf_attrs[] =
      {
-        {"comment", "Pixel quality flag"},
+        {"long_name", "pixel quality flag"},
         _pTEXT_ATTRS_END
      };
    int status, varid, dims[3], num_masks, len;
@@ -379,7 +372,7 @@ static int emit_var_ground_pixel_quality_flag (int grp, const int *dims, int num
 {
    static _pText_Attr_Type gpqf_attrs[] =
      {
-        {"comment", "Ground pixel quality flag"},
+        {"long_name", "ground pixel quality flag"},
         {"coordinates", "longitude latitude"},
         _pTEXT_ATTRS_END
      };
@@ -734,7 +727,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"units", _pTIO_PHOTON_UNITS},
              {"coordinates", "longitude latitude spectral_channel"},
-             {"comment", "Radiance error"},
+             {"long_name", "radiance error"},
              _pTEXT_ATTRS_END
           };
         float radiance_error_fill = TIO_FILL_RADIANCE_ERROR;
@@ -797,7 +790,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"units", "degrees_east"},
              {"long_name", TEMPO_VAR_LONGITUDE},
-             {"comment", "Longitude at pixel center"},
+             {"comment", "longitude at pixel center"},
              {"bounds", TEMPO_VAR_LONGITUDE_BOUNDS},
              _pTEXT_ATTRS_END
           };
@@ -815,7 +808,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"units", "degrees_north"},
              {"long_name", TEMPO_VAR_LATITUDE},
-             {"comment", "Latitude at pixel center"},
+             {"comment", "latitude at pixel center"},
              {"bounds", TEMPO_VAR_LATITUDE_BOUNDS},
              _pTEXT_ATTRS_END
           };
@@ -833,7 +826,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"units", "m"},
              {"long_name", TEMPO_VAR_ELL_ALTITUDE},
-             {"comment", "Ellipsoid altitude at pixel center"},
+             {"comment", "ellipsoid altitude at pixel center"},
              {"bounds", TEMPO_VAR_ELL_ALTITUDE_BOUNDS},
              {"coordinates", "longitude latitude"},
              _pTEXT_ATTRS_END

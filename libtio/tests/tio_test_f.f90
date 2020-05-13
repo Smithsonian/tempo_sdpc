@@ -622,7 +622,7 @@ contains
 
     call tiof_push_group (obj, "band_290_490_nm", errstat)
     call tiof_copy_attr (obj, "ground_pixel_quality_flag", obj_to, "var", &
-                         (/"comment      ", &
+                         (/"long_name    ", &
                           "flag_meanings", &
                           "flag_values  "/), errstat)
     call tiof_pop_group (obj, errstat)

@@ -16,7 +16,7 @@ extern "C" {
 /* L1 File format version number */
 #define TIO_L1_FORMAT_VERSION  2
 
-#define TIO_CF_CONVENTION_VERSION   "CF-1.6"
+#define TIO_FORMAT_CONVENTIONS   "CF-1.6, ACDD-1.3"
 
 #define TEMPO_BAND_NAME_UV   "band_290_490_nm"
 #define TEMPO_BAND_NAME_VIS  "band_540_740_nm"
@@ -97,6 +97,8 @@ extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps
 extern int tio_define_granule_flag_var (int ncid);
 extern int tio_write_granule_flag_var (int ncid, int granule_flag);
 extern int tio_copy_granule_flag_var (int ncid_from, int ncid_to);
+
+extern int tio_define_dim_step_var (int grp, int dimid);
 
 enum TIO_Scan_Type
 {

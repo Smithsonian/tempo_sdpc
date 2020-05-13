@@ -55,24 +55,17 @@ static int define_irradiance_group_dims (int grp, _pDim_Table_Type *dim_table)
 
 static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
 {
-   int status, varid, dims[TIO_MAX_VAR_DIMS];
+   int varid, dims[TIO_MAX_VAR_DIMS];
 
    /* coordinate variables */
-   dims[0] = dim_table->step.id;
-   status = nc_def_var (grp, TEMPO_DIM_STEP, NC_INT, 1, dims, NULL);
-   if (NC_NOERR != status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining coordinate variable %s (%s)",
-                     __func__, TEMPO_DIM_STEP, nc_strerror(status));
-        return -1;
-     }
+   if (0 != tio_define_dim_step_var (grp, dim_table->step.id))
+     return -1;
 
    /* time */
      {
         static _pText_Attr_Type time_attrs[] =
           {
-             {"comment", "Exposure start time"},
+             {"long_name", "exposure start time"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -86,7 +79,7 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
         static _pText_Attr_Type exposure_time_attrs[] =
           {
              {"units", "seconds"},
-             {"comment", "Exposure duration"},
+             {"long_name", "exposure duration"},
              _pTEXT_ATTRS_END
           };
         static _pFloat_Attr_Type exposure_time_float_attrs[] =
@@ -136,7 +129,7 @@ static int define_global_attrs (int grp)
 {
    static _pText_Attr_Type text_attrs[] =
      {
-        {"Conventions", TIO_CF_CONVENTION_VERSION},
+        {"Conventions", TIO_FORMAT_CONVENTIONS},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
@@ -296,7 +289,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type irradiance_error_attrs[] =
           {
              {"units", _pTIO_PHOTON_UNITS},
-             {"comment", "Irradiance error"},
+             {"long_name", "irradiance error"},
              _pTEXT_ATTRS_END
           };
         float irradiance_error_fill = TIO_FILL_IRRADIANCE_ERROR;

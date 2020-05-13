@@ -124,10 +124,29 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    return 0;
 }
 
+int tio_define_dim_step_var (int grp, int dimid)
+{
+   static _pText_Attr_Type text_attrs[] =
+     {
+        {"long_name", "scan mirror position index"},
+        _pTEXT_ATTRS_END
+     };
+
+   if (0 != _pTIO_define_var_with_text_attrs (grp, TEMPO_DIM_STEP, NC_INT, 1, &dimid, text_attrs, NULL))
+     {
+        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining coordinate variable %s",
+                     __func__, TEMPO_DIM_STEP);
+        return -1;
+     }
+
+   return 0;
+}
+
 int tio_define_granule_flag_var (int ncid)
 {
    static _pText_Attr_Type granule_flag_attrs[] =
      {
+        {"long_name", "granule processing label"},
         {"flag_meanings",
              "is_first_granule_of_scan is_last_granule_of_scan is_telemetry_only"},
         _pTEXT_ATTRS_END
