@@ -765,7 +765,7 @@ contains
     if (errstat /= 0) return
 
     obj => primary_output_file
-    call tiof_label_product (obj, label, processing_version, errstat)
+    call tiof_label_product (obj, label, 2, processing_version, errstat)
   end subroutine l2_tio_label_output_file
 
   !> Write calibration adjustment variables to Level 2 product file

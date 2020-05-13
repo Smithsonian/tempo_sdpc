@@ -418,7 +418,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
         return -1;
      }
 
-   if (0 != TIO_label_product (ncid, product_type, process_get_version()))
+   if (0 != TIO_label_product (ncid, product_type, 1, process_get_version()))
      return -1;
 
    if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))

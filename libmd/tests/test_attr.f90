@@ -142,7 +142,7 @@ program test_attr
     stop 1
   endif
 
-  call tiof_label_product (obj, "test", 1, errstat)
+  call tiof_label_product (obj, "test", 2, 1, errstat)
   call tiof_close (obj, errstat)
 
   if (errstat /= 0) then

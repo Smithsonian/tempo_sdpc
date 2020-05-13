@@ -2841,7 +2841,7 @@ contains
 
     obj => primary_output_file
 
-    call tiof_label_product (obj, label, processing_version, errstat)
+    call tiof_label_product (obj, label, 2, processing_version, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_error, "label_output_file failed", errstat)
     endif

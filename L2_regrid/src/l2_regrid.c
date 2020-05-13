@@ -681,7 +681,7 @@ static int make_l3_product (const Product_Type *prod,
        && (-1 == TIO_write_scan_ident (ncid, lst)))
      goto return_status;
 
-   if (-1 == TIO_label_product (ncid, prod->name, prod->processing_version))
+   if (-1 == TIO_label_product (ncid, prod->name, 3, prod->processing_version))
      goto return_status;
 
    if (0 != write_metadata (meta, ncid, prod, dest, lst))

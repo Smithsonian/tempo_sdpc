@@ -1127,7 +1127,7 @@ contains
     if (errstat /= 0) return
 
     obj => primary_output_file
-    call tiof_label_product (obj, label, processing_version, errstat)
+    call tiof_label_product (obj, label, 2, processing_version, errstat)
   end subroutine label_output_file
 
 end module m_write_output_data_tio

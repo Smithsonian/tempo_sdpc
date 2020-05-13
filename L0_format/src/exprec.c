@@ -207,7 +207,7 @@ static int define_outfile_vars (Process_Method_Type *pmt,
                           NC_CHAR, len, pmt->exprec_type_string))
      return -1;
 
-   if (0 != TIO_label_product (ncid, pmt->product_type, pmt->processing_version))
+   if (0 != TIO_label_product (ncid, pmt->product_type, 0, pmt->processing_version))
      return -1;
 
    if (identp)
