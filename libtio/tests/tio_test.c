@@ -845,8 +845,6 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    double *dbl_err=NULL;
    int data_size = ntracks * nxtrack * ny;
    int start[3], count[3], sub_grp;
-   int processing_level;
-   int processing_level_type;
    TIO_Scan_Group_Type sgrps[] =
      {
         {"band_290_490_nm", 0, 0},
@@ -974,15 +972,6 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
           }
      }
 
-   /* test writing to enum attributes */
-   processing_level = TIO_PROC_LEVEL_1A;
-   if ((-1 == TIO_inq_att (ncid, NC_GLOBAL, "processing_level", &processing_level_type, NULL))
-       || (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_level", processing_level_type, 1, &processing_level)))
-     {
-        fprintf (stderr, "*** error writing to enum attribute\n");
-        goto cleanup;
-     }
-
    /* test writing a timestamp */
    test_timestamp_out = 5.e8;
    if (0 != TIO_write_timestamp (ncid, NC_GLOBAL, "test_timestamp", test_timestamp_out))
@@ -1064,19 +1053,6 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
         goto cleanup;
      }
 
-   /* test reading enum attributes */
-   if (-1 == TIO_get_att (ncid, NC_GLOBAL, "processing_level", processing_level_type, &processing_level))
-     {
-        fprintf (stderr, "*** error reading enum attribute\n");
-        goto cleanup;
-     }
-   if (processing_level != TIO_PROC_LEVEL_1A)
-     {
-        fprintf (stderr, "*** error:  processing_level=%u expected %u\n",
-                 processing_level, TIO_PROC_LEVEL_1A);
-        goto cleanup;
-     }
-
    /* test variable input */
    if (-1 == TIO_get_var_section (grp, data_name, start, count, field_type, data_in))
      {
@@ -1143,7 +1119,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    if (-1 == tio_copy_granule_flag_var (ncid, target_ncid))
      goto cleanup;
 
-   if (-1 == TIO_label_product (target_ncid, "just testing", 1))
+   if (-1 == TIO_label_product (target_ncid, "just testing", 1, 1))
      {
         fprintf (stderr, "*** Error labeling granule %s\n", namebuf);
         goto cleanup;

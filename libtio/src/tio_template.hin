@@ -39,21 +39,10 @@ extern "C" {
 #define TIO_FILL_RADIANCE_ERROR (-TIO_FILL_FLOAT)
 #define TIO_FILL_IRRADIANCE_ERROR (-TIO_FILL_FLOAT)
 
-enum TIO_INR_Status
-{
-   TIO_INR_NONE    = 0,
-   TIO_INR_INITIAL = 1,
-   TIO_INR_FINAL   = 2
-};
-
-enum TIO_Processing_Level
-{
-   TIO_PROC_LEVEL_0,
-   TIO_PROC_LEVEL_1A,
-   TIO_PROC_LEVEL_1B,
-   TIO_PROC_LEVEL_2,
-   TIO_PROC_LEVEL_3
-};
+#define TIO_INR_ERROR  "-1"
+#define TIO_INR_NONE    "0"
+#define TIO_INR_INITIAL "1"
+#define TIO_INR_FINAL   "2"
 
 typedef struct
 {
@@ -202,12 +191,13 @@ extern int __tio_filename_string (char *buf, int bufsize,
                                   double tstart, const char *label, int level, int version);
 
 /** Write product_type and processing version metadata to a netcdf header
- * @param  ncid          Index of destination netcdf file
- * @param  product_type  Product type string, e.g. "RAD"
- * @param  version       Processing version number
+ * @param  ncid              Index of destination netcdf file
+ * @param  product_type      Product type string, e.g. "RAD"
+ * @param  processing_level  Processing level number, e.g. 0,1,2,3
+ * @param  version           Processing version number
  * @return 0 on success, -1 on error
  */
-extern int TIO_label_product (int ncid, const char *product_type, int version);
+extern int TIO_label_product (int ncid, const char *product_type, int level, int version);
 
 /** Allocate a new TIO_Scan_Ident_Type object
  * @return TIO_Scan_Ident_Type pointer on success,

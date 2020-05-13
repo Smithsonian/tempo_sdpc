@@ -583,7 +583,7 @@ contains
       return
     endif
 
-    call tiof_label_product (obj_to, "XXX", 2, errstat)
+    call tiof_label_product (obj_to, "XXX", 1, 2, errstat)
     if (errstat /= 0) then
       write(*,*)'*** Error: labeling granule'
       return

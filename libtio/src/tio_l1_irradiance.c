@@ -137,13 +137,11 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"product_type", TEMPO_PROD_TYPE_IRR},
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
      {
         MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
-        MAKE_INT_ATTR1("processing_version", 0),
         _pINT_ATTRS_END
      };
 
@@ -157,7 +155,7 @@ static int define_global_attrs (int grp)
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
      return -1;
 
-   if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1A))
+   if (0 != TIO_label_product (grp, TEMPO_PROD_TYPE_IRR, 1, 0))
      return -1;
 
    return 0;

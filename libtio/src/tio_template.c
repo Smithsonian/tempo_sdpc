@@ -79,34 +79,6 @@ int tio_time_sat_local_day_number (double taix, double *sat_day)
    return 0;
 }
 
-int _pTIO_define_processing_level (int grp, int level)
-{
-   int status, enum_typeid;
-   static TIO_Enum_Type enum_table[] =
-     {
-        {"level-0",  TIO_PROC_LEVEL_0},
-        {"level-1a", TIO_PROC_LEVEL_1A},
-        {"level-1b", TIO_PROC_LEVEL_1B},
-        {"level-2",  TIO_PROC_LEVEL_2},
-        {"level-3",  TIO_PROC_LEVEL_3},
-        TIO_ENUM_TABLE_END
-     };
-
-   if (-1 == TIO_define_enum_table (grp, "processing_level_enum", NC_INT, enum_table, &enum_typeid))
-     return -1;
-   status = nc_put_att (grp, NC_GLOBAL,
-                        "processing_level", enum_typeid, 1, &level);
-   if (NC_NOERR != status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR,
-                     "%s: defining processing_level attribute (%s)",
-                     __func__, nc_strerror(status));
-        return -1;
-     }
-
-   return 0;
-}
-
 static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
    int attid;
@@ -469,14 +441,28 @@ int TIO_filename_from_granule (int ncid, const char *label, int level, int versi
    return _pTIO_filename_from_granule_ident (&gid, label, level, version, buf, bufsize);
 }
 
-int TIO_label_product (int ncid, const char *product_type, int version)
+int TIO_label_product (int ncid, const char *product_type, int processing_level, int version)
 {
+   const char processing_level_names[] = "0123";
+   const char *level_name;
+
    if (product_type != NULL)
      {
         size_t len = strlen (product_type) + 1;
         if (-1 == TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, len, product_type))
           return -1;
      }
+
+   /* ACDD metadata convention requires processing_level to be a text value */
+   if ((processing_level < 0) || (processing_level > 3))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: processing_level = %d", __func__, processing_level);
+        return -1;
+     }
+
+   level_name = processing_level_names + processing_level;
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_level", NC_CHAR, 1, level_name))
+     return -1;
 
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_version", NC_INT, 1, &version))
      return -1;
@@ -873,8 +859,8 @@ FCALLSCFUN2(INT, TIO_same_granule_ident, TIO_F_SAME_GRANULE_IDENT, tio_f_same_gr
             INT, INT)
 FCALLSCFUN6(INT, TIO_filename_from_granule, TIO_F_FILENAME_FROM_GRANULE, tio_f_filename_from_granule,
             INT, STRING, INT, INT, PSTRING, INT)
-FCALLSCFUN3(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
-            INT, STRING, INT)
+FCALLSCFUN4(INT, TIO_label_product, TIO_F_LABEL_PRODUCT, tio_f_label_product,
+            INT, STRING, INT, INT)
 FCALLSCFUN5(INT, tio_time_taix_to_utc_caldate, TIO_F_TAIX_TIME_TO_UTC_CALDATE, tio_f_taix_time_to_utc_caldate,
             DOUBLE, PINT,PINT,PINT,PDOUBLE)
 FCALLSCFUN1(INT, tio_use_file_epoch, TIO_F_USE_FILE_EPOCH, tio_f_use_file_epoch,

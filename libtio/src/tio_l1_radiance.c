@@ -174,31 +174,6 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
    return 0;
 }
 
-static int define_inr_status (int grp, int inr_status)
-{
-   int status, enum_typeid;
-   static TIO_Enum_Type enum_table[] =
-     {
-        {"none", TIO_INR_NONE},
-        {"initial", TIO_INR_INITIAL},
-        {"final", TIO_INR_FINAL},
-        TIO_ENUM_TABLE_END
-     };
-
-   if (-1 == TIO_define_enum_table (grp, "inr_status_enum", NC_INT, enum_table, &enum_typeid))
-     return -1;
-   status = nc_put_att (grp, NC_GLOBAL, "inr_status", enum_typeid, 1,
-                        &inr_status);
-   if (NC_NOERR != status)
-     {
-        Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining inr_status attribute (%s)",
-                     __func__, nc_strerror(status));
-        return -1;
-     }
-
-   return 0;
-}
-
 static int define_radiance_granule_global_ident (int grp)
 {
    _pTIO_Granule_Ident_Type gid = {0};
@@ -231,13 +206,12 @@ static int define_global_attrs (int grp)
    static _pText_Attr_Type text_attrs[] =
      {
         {"Conventions", TIO_CF_CONVENTION_VERSION},
-        {"product_type", TEMPO_PROD_TYPE_RAD},
+        {"inr_status", TIO_INR_NONE},   /* text for consistency with processing_level */
         _pTEXT_ATTRS_END
      };
    static _pInt_Attr_Type int_attrs[] =
      {
         MAKE_INT_ATTR1("format_version", TIO_L1_FORMAT_VERSION),
-        MAKE_INT_ATTR1("processing_version", 0),
         _pINT_ATTRS_END
      };
 
@@ -251,10 +225,7 @@ static int define_global_attrs (int grp)
    if (0 != define_radiance_granule_global_ident (grp))
      return -1;
 
-   if (-1 == _pTIO_define_processing_level (grp, TIO_PROC_LEVEL_1A))
-     return -1;
-
-   if (-1 == define_inr_status (grp, TIO_INR_NONE))
+   if (0 != TIO_label_product (grp, TEMPO_PROD_TYPE_RAD, 1, 0))
      return -1;
 
    return 0;

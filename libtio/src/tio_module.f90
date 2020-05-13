@@ -386,18 +386,18 @@ contains
     endif
   end subroutine
 
-  subroutine tiof_label_product (obj, product_type, version, errstat)
+  subroutine tiof_label_product (obj, product_type, level, version, errstat)
     use iso_c_binding, only : c_null_char
     implicit none
     type (tiof_file_type), intent(in) :: obj
     character (len=*), intent(in) :: product_type
-    integer, intent(in) :: version
+    integer, intent(in) :: level, version
     integer, intent(inout):: errstat
 
     if (errstat /= 0) return
     errstat = tio_f_label_product (obj % fileid, &
                                    trim(adjustl(product_type))//c_null_char, &
-                                   version)
+                                   level, version)
   end subroutine
 
   !> write a 1d array of strings as a 2D array of characters
