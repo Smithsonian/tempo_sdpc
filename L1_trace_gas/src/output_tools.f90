@@ -1807,7 +1807,7 @@ contains
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_copy_attr (l1b, tg_var_gpqf, obj, tg_var_gpqf, &
-                         (/"comment      ", &
+                         (/"long_name    ", &
                           "flag_meanings", &
                           "flag_values  "/), errstat)
     call tiof_pop_group (obj, errstat)
