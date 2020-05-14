@@ -35,8 +35,8 @@ keys_in=`awk -F\" '/keywords/{print $2}' boilerplate.nml`
 #attribute values
 #cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
 #cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
-geospatial_bnds_out=`cat nc_header.txt | awk -F\" '/string :geospatial_bounds/{print $2}'`
-geospatial_crs_out=`cat nc_header.txt | awk -F\" '/string :geospatial_crs/{print $2}'`
+geospatial_bnds_out=`cat nc_header.txt | awk -F\" '/:geospatial_bounds/{print $2}'`
+geospatial_crs_out=`cat nc_header.txt | awk -F\" '/:geospatial_crs/{print $2}'`
 geospatial_lon_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_min/{print $3}'| sed s/.f//g`
 geospatial_lon_max_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_max/{print $3}'| sed s/.f//g`
 geospatial_lat_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lat_min/{print $3}'| sed s/.f//g`
