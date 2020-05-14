@@ -38,8 +38,8 @@ GROUP                  = INVENTORYMETADATA
   GROUP                  = INPUTGRANULE
 
     OBJECT                 = INPUTPOINTER
-      NUM_VAL              = ${#input_pointer}
-      VALUE                = ${input_pointer}
+      NUM_VAL              = ${#input_files}
+      VALUE                = ${input_files}
     END_OBJECT             = INPUTPOINTER
 
   END_GROUP              = INPUTGRANULE

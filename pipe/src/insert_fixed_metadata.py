@@ -37,7 +37,7 @@ def write_netcdf_keys (meta, filename, group=None):
 
 def write_netcdf_coremetadata (filename, str):
     with NetCDFFile(filename, "r+") as nc:
-        nc.setncattr_string ("coremetadata", str)
+        nc.setncattr ("coremetadata", str)
 
 def read_odl (granule_met_file):
     with open(granule_met_file, 'r') as stream:
