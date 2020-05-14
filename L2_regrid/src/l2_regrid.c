@@ -639,7 +639,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
           {
              basename = p + 1;
           }
-        if (0 != tio_meta_append_string (meta, "input_pointer", basename))
+        if (0 != tio_meta_append_string (meta, "input_files", basename))
           return -1;
      }
 
