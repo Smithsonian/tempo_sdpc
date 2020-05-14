@@ -414,7 +414,7 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
          * For irradiance files, input_pointer gets expanded after
          * wavelength calibration.
          */
-        tio_meta_set_noexpand (meta, "input_pointer", 1);
+        tio_meta_set_noexpand (meta, "input_files", 1);
      }
 
    if ((out->metadata_template_dir != NULL)

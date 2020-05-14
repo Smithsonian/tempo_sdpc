@@ -310,5 +310,5 @@ int meta_record_basename (TIO_Meta_Type *meta, const char *path)
      }
    else path_basename = path;
 
-   return tio_meta_append_string (meta, "input_pointer", path_basename);
+   return tio_meta_append_string (meta, "input_files", path_basename);
 }

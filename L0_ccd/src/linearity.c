@@ -305,8 +305,8 @@ static int alloc_lin_corr (int num_signals, Lin_Corr_Type *lin)
 static int create_output_file (const char *output_file, size_t num_signals,
                                TIO_Meta_Type *meta, int *pncid)
 {
-   const char *comment_string_array[] =
-     {"dimensions: ADC=(0,1) -> (odd,even); quad=(0,1,2,3) -> (A,B,C,D)"};
+   const char *comment_string =
+     "dimensions: ADC=(0,1) -> (odd,even); quad=(0,1,2,3) -> (A,B,C,D)";
    int num_dn = num_signals;
    int num_quad = 4;
    int num_adc = 2;
@@ -333,7 +333,7 @@ static int create_output_file (const char *output_file, size_t num_signals,
         return -1;
      }
 
-   if (0 != TIO_put_att (ncid, NC_GLOBAL, "comment", NC_STRING, 1, comment_string_array))
+   if (0 != TIO_put_att (ncid, NC_GLOBAL, "comment", NC_CHAR, 1+strlen(comment_string), comment_string))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing comment attribute: %s", __func__, output_file);
         (void) TIO_close (ncid);
