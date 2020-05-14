@@ -826,7 +826,7 @@ static int write_band_geolocation (const Granule_Type *gt, const char *band_name
         return -1;
      }
 
-   if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_STRING, 1, &yes))
+   if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_CHAR, 1+strlen(yes), yes))
      return -1;
 
    return 0;
@@ -1207,6 +1207,7 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
    Geoid_Data_Type gdt = {0};
    const char *geoid_dem_setting;
    char *geoid_dem_path = NULL;
+   char *geoid_dem_basename;
    int i, status = -1;
 
    if ((NULL == (s = config_lookup (cfg, "parallax_correction")))
@@ -1231,7 +1232,13 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
    if (0 != write_geolocation (gt))
      goto free_and_return;
 
-   tio_meta_append_string (meta, "input_pointer", geoid_dem_path);
+   if (NULL == (geoid_dem_basename = strrchr (geoid_dem_path, '/')))
+     {
+        geoid_dem_basename = geoid_dem_path;
+     }
+   else geoid_dem_basename += 1;
+
+   tio_meta_append_string (meta, "input_files", geoid_dem_basename);
 
    status = 0;
 free_and_return:
@@ -1340,24 +1347,6 @@ static int read_ecef_geometry (Granule_Type *gt)
    return 0;
 }
 
-static int maybe_init_metadata_keywords (int ncid, TIO_Meta_Type *meta)
-{
-   int grp, status;
-
-   /* It's ok if the group doesn't exist */
-   tell_push_queue();
-   status = TIO_inq_grp (ncid, "metadata", &grp);
-   tell_pop_queue(1);
-
-   if (status != 0)
-     return 0;
-
-   /* It's ok if the keyword doesn't exist */
-   (void) tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
-
-   return 0;
-}
-
 Granule_Type *granule_open (const char *file, int correct_parallax,
                             TIO_Meta_Type *meta, config_t *cfg)
 {
@@ -1372,7 +1361,11 @@ Granule_Type *granule_open (const char *file, int correct_parallax,
         return NULL;
      }
 
-   (void) maybe_init_metadata_keywords (gt->ncid, meta);
+   if (0 != tio_meta_ncinit (meta, gt->ncid, "input_files", TIO_META_TYPE_CHAR))
+     {
+        gt->gt_close (gt);
+        return NULL;
+     }
 
    if (0 != read_geolocation (gt))
      {
