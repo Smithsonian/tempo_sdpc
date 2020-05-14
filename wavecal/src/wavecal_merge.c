@@ -237,18 +237,12 @@ close_and_return:
 
 static int read_metadata (TIO_Meta_Type *meta, const char *file)
 {
-   int ncid, grp, status;
+   int ncid, status;
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return -1;
 
-   tell_push_queue();
-   status = TIO_inq_grp (ncid, "metadata", &grp);
-   tell_pop_queue(1);
-   if (status == 0)
-     {
-        status = tio_meta_ncinit (meta, grp, "input_pointer", TIO_META_TYPE_STRING);
-     }
+   status = tio_meta_ncinit (meta, ncid, "input_files", TIO_META_TYPE_CHAR);
 
    (void) TIO_close (ncid);
 
@@ -350,7 +344,7 @@ int main (int argc, char **argv)
 
    if (finalize_metadata == 0)
      {
-        tio_meta_set_noexpand (meta, "input_pointer", 1);
+        tio_meta_set_noexpand (meta, "input_files", 1);
      }
 
    /* If no template exists, a warning will be printed,
