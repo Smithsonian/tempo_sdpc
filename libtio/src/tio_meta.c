@@ -170,6 +170,7 @@ static int invalid_metadata_entry (const char *name, int value_type, int num_val
       case TIO_META_TYPE_FLOAT:
       case TIO_META_TYPE_INT:
       case TIO_META_TYPE_UINT:
+      case TIO_META_TYPE_CHAR:
       case TIO_META_TYPE_STRING:
         break;
      }
@@ -180,6 +181,7 @@ static int invalid_metadata_entry (const char *name, int value_type, int num_val
 static int meta_write_value_ascii (const TIO_Meta_Type *m, int want_num_values, FILE *fp)
 {
    int i;
+   char *cp = (char *)m->values;
    int *ip = (int *)m->values;
    unsigned int *uip = (unsigned int *)m->values;
    double *dp = (double *)m->values;
@@ -199,6 +201,11 @@ static int meta_write_value_ascii (const TIO_Meta_Type *m, int want_num_values, 
 
    switch (m->value_type)
      {
+      case TIO_META_TYPE_CHAR:
+        /* This is assumed to be a text string of NC_CHAR type for fortran compatibility */
+        fprintf (fp, "\"%s\"", cp);
+        break;
+
       case TIO_META_TYPE_INT:
         fprintf (fp, "%d", ip[0]);
         for (i = 1; i < m->num_values; i++)
@@ -279,6 +286,7 @@ static TIO_Meta_Type *meta_new (const char *name, int value_type, int num_values
         value_num_bytes = 4;
         break;
 
+      case TIO_META_TYPE_CHAR:
       case TIO_META_TYPE_STRING:
         value_num_bytes = 1;
         break;
@@ -398,7 +406,28 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
    /* If the keyword isn't found, create it */
    if (NULL == (meta = find_key_by_name (lst, name)))
      {
-        return tio_meta_set (lst, name, TIO_META_TYPE_STRING, 1, str);
+        /* Default to NC_CHAR type since that's Fortran compatible */
+        return tio_meta_set (lst, name, TIO_META_TYPE_CHAR, 1+strlen(str), str);
+     }
+
+   if (meta->value_type == TIO_META_TYPE_CHAR)
+     {
+        /* 2 strings, plus a space delimiter, plus null char */
+        int len = 2 + strlen(str) + strlen ((char *)meta->values);
+        int status;
+        if (NULL == (s = TIO_MALLOC (len * sizeof(char))))
+          {
+             tell_verror(TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             return -1;
+          }
+        /* Strings appended to char array will be space delimited.
+         * It's not totally general, but this is intended for a particular
+         * application -- char arrays for metadata will normally contain text,
+         * so inserting a space delimiter is a reasonable default. */
+        snprintf (s, len, "%s %s", (char *)meta->values, str);
+        status = tio_meta_set (meta, name, TIO_META_TYPE_CHAR, 1+strlen(s), s);
+        TIO_FREE(s);
+        return status;
      }
 
    if (meta->value_type != TIO_META_TYPE_STRING)
@@ -461,9 +490,10 @@ int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_t
    char **atts = NULL;
    int status = 0;
 
-   if (value_type != TIO_META_TYPE_STRING)
+   if ((value_type != TIO_META_TYPE_STRING)
+       && (value_type != TIO_META_TYPE_CHAR))
      {
-        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: reading non-string metadata attribute from netcdf",
+        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: invalid metadata attribute type",
                      __func__);
         return -1;
      }
@@ -472,10 +502,12 @@ int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_t
    if (NC_NOERR != nc_inq_att (grp, varid, name, &att_type, &att_len))
      return 0;
 
-   if (att_type != NC_STRING)
+   if (((value_type == TIO_META_TYPE_STRING) && (att_type != NC_STRING))
+       || ((value_type == TIO_META_TYPE_CHAR) && (att_type != NC_CHAR)))
      {
-        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: attribute %s is not of type NC_STRING (type=%d)",
-                     __func__, name, att_type);
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: attribute type mismatch: %s (att_type=%d, value_type=%d)",
+                     __func__, name, att_type, value_type);
         return -1;
      }
 
@@ -492,17 +524,25 @@ int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_t
         return -1;
      }
 
-   for (i = 0; i < att_len; i++)
+   if (att_type == NC_STRING)
      {
-        if (0 != tio_meta_append_string (meta, name, atts[i]))
+        for (i = 0; i < att_len; i++)
           {
-             status = -1;
-             break;
+             if (0 != tio_meta_append_string (meta, name, atts[i]))
+               {
+                  status = -1;
+                  break;
+               }
           }
+        /* free space allocated on string input */
+        (void) nc_free_string (att_len, (char **)atts);
+     }
+   else
+     {
+        if (0 != tio_meta_set (meta, name, TIO_META_TYPE_CHAR, att_len, atts))
+          status = -1;
      }
 
-   /* free space allocated on string input */
-   (void) nc_free_string (att_len, (char **)atts);
    TIO_FREE(atts);
 
    return status;
@@ -810,6 +850,8 @@ int tio_meta_write_ncattr (const TIO_Meta_Type *meta, int grp)
            case TIO_META_TYPE_DOUBLE: xtype = NC_DOUBLE;
              break;
            case TIO_META_TYPE_STRING: xtype = NC_STRING;
+             break;
+           case TIO_META_TYPE_CHAR: xtype = NC_CHAR;
              break;
            default:
              tell_verror (TELL_RUNTIME_ERROR, "%s: invalid metadata type: %d",
@@ -1301,8 +1343,8 @@ int _pTIO_write_acdd_geospatial_attrs (int grp, const float *lon, const float *l
    if (0 != make_acdd_geospatial_bounds (lon, lat, num, &str, lon_range, lat_range))
      return -1;
 
-   if ((0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_bounds", NC_STRING, 1, &str))
-       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_crs", NC_STRING, 1, &crs))
+   if ((0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_bounds", NC_CHAR, 1 + strlen(str), str))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_crs", NC_CHAR, 1 + strlen(crs), crs))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_min", NC_FLOAT, 1, &lon_range[0]))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_max", NC_FLOAT, 1, &lon_range[1]))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lat_min", NC_FLOAT, 1, &lat_range[0]))
@@ -1322,12 +1364,13 @@ int tio_meta_set_acdd_geospatial_bounds (TIO_Meta_Type *meta,
 {
    char *str = NULL;
    float lon_range[2], lat_range[2];
+   int len_crs = 1 + strlen(GEOSPATIAL_BOUNDS_CRS);
 
    if (0 != make_acdd_geospatial_bounds (lon, lat, num, &str, lon_range, lat_range))
      return -1;
 
-   if ((0 != tio_meta_set (meta, "geospatial_bounds", TIO_META_TYPE_STRING, 1, str))
-       ||(0 != tio_meta_set (meta, "geospatial_bounds_crs", TIO_META_TYPE_STRING, 1, GEOSPATIAL_BOUNDS_CRS))
+   if ((0 != tio_meta_set (meta, "geospatial_bounds", TIO_META_TYPE_CHAR, 1+strlen(str), str))
+       ||(0 != tio_meta_set (meta, "geospatial_bounds_crs", TIO_META_TYPE_CHAR, len_crs, GEOSPATIAL_BOUNDS_CRS))
        ||(0 != tio_meta_set (meta, "geospatial_lon_min", TIO_META_TYPE_FLOAT, 1, &lon_range[0]))
        ||(0 != tio_meta_set (meta, "geospatial_lon_max", TIO_META_TYPE_FLOAT, 1, &lon_range[1]))
        ||(0 != tio_meta_set (meta, "geospatial_lat_min", TIO_META_TYPE_FLOAT, 1, &lat_range[0]))
@@ -1400,8 +1443,8 @@ static int meta_set_datetime (TIO_Meta_Type *meta, const char *str, const char *
         return -1;
      }
 
-   if ((0 != tio_meta_set (meta, date_key, TIO_META_TYPE_STRING, 1, date_str))
-       ||(0 != tio_meta_set (meta, time_key, TIO_META_TYPE_STRING, 1, time_str)))
+   if ((0 != tio_meta_set (meta, date_key, TIO_META_TYPE_CHAR, 1+strlen(date_str), date_str))
+       ||(0 != tio_meta_set (meta, time_key, TIO_META_TYPE_CHAR, 1+strlen(time_str), time_str)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: setting date/time metadata keywords", __func__);
         return -1;
@@ -1484,7 +1527,7 @@ int tio_meta_set_datetime_production (TIO_Meta_Type *meta)
         return -1;
      }
 
-   if (0 != tio_meta_set (meta, "production_date_time", TIO_META_TYPE_STRING, 1, time_str))
+   if (0 != tio_meta_set (meta, "production_date_time", TIO_META_TYPE_CHAR, 1+strlen(time_str), time_str))
      return -1;
 
    return 0;
@@ -1504,16 +1547,16 @@ int tio_meta_set_standard (TIO_Meta_Type *meta,
      }
    else basename = product_file_name;
 
-   if ((0 != tio_meta_set (meta, "local_granule_id", TIO_META_TYPE_STRING, 1, basename))
+   if ((0 != tio_meta_set (meta, "local_granule_id", TIO_META_TYPE_CHAR, 1+strlen(basename), basename))
        || (0 != tio_meta_set (meta, "version_id", TIO_META_TYPE_INT, 1, &product_versionid))
-       || (0 != tio_meta_set (meta, "pge_version", TIO_META_TYPE_STRING, 1, pge_version_string)))
+       || (0 != tio_meta_set (meta, "pge_version", TIO_META_TYPE_CHAR, 1+strlen(pge_version_string), pge_version_string)))
      {
         return -1;
      }
 
    if (product_short_name != NULL)
      {
-        if (0 != tio_meta_set (meta, "shortname", TIO_META_TYPE_STRING, 1, product_short_name))
+        if (0 != tio_meta_set (meta, "shortname", TIO_META_TYPE_CHAR, 1+strlen(product_short_name), product_short_name))
           return -1;
      }
 

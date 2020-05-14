@@ -60,7 +60,7 @@ int main (void)
                           sizeof(meta_str_array)/sizeof(char *), meta_str_array))
      goto cleanup_and_exit;
 
-   if (0 != tio_meta_set (meta, "STR_KEYWORD2", TIO_META_TYPE_STRING, 1, "Just one string"))
+   if (0 != tio_meta_set (meta, "STR_KEYWORD2", TIO_META_TYPE_CHAR, 16, "Just one string"))
      goto cleanup_and_exit;
 
    if (0 != tio_meta_set (meta, "STR_APPEND", TIO_META_TYPE_STRING, 1, "The first string"))
@@ -128,7 +128,7 @@ int main (void)
         goto cleanup_and_exit;
      }
 
-   if (0 != tio_meta_ncinit (meta, grp, "STR_KEYWORD2", TIO_META_TYPE_STRING))
+   if (0 != tio_meta_ncinit (meta, grp, "STR_KEYWORD2", TIO_META_TYPE_CHAR))
      goto cleanup_and_exit;
 
    if (0 != tio_meta_append_string (meta, "STR_KEYWORD2", "and another one"))
