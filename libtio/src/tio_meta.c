@@ -414,8 +414,12 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
      {
         /* 2 strings, plus a space delimiter, plus null char */
         int len = 2 + strlen(str) + strlen ((char *)meta->values);
-        int status;
-        if (NULL == (s = TIO_MALLOC (len * sizeof(char))))
+
+        /* silently ignore duplicates */
+        if (NULL != strstr ((char *)meta->values, str))
+          return 0;
+
+        if (NULL == (s = (char *) TIO_MALLOC (len * sizeof(char))))
           {
              tell_verror(TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
              return -1;
@@ -425,9 +429,11 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
          * application -- char arrays for metadata will normally contain text,
          * so inserting a space delimiter is a reasonable default. */
         snprintf (s, len, "%s %s", (char *)meta->values, str);
-        status = tio_meta_set (meta, name, TIO_META_TYPE_CHAR, 1+strlen(s), s);
-        TIO_FREE(s);
-        return status;
+        TIO_FREE(meta->values);
+        meta->values = s;
+        meta->num_values = len;
+        meta->num_alloc = len;
+        return 0;
      }
 
    if (meta->value_type != TIO_META_TYPE_STRING)
@@ -482,70 +488,103 @@ int tio_meta_set_noexpand (TIO_Meta_Type *lst, const char *name, int noexpand)
    return 0;
 }
 
-int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_type)
+static int append_att_chars (TIO_Meta_Type *meta, int grp, int varid,
+                             const char *name, int att_len)
 {
-   int varid = NC_GLOBAL;
-   nc_type att_type;
-   size_t i, att_len;
-   char **atts = NULL;
-   int status = 0;
+   char *att = NULL;
+   int status = -1;
 
-   if ((value_type != TIO_META_TYPE_STRING)
-       && (value_type != TIO_META_TYPE_CHAR))
-     {
-        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: invalid metadata attribute type",
-                     __func__);
-        return -1;
-     }
-
-   /* It's ok if the attribute doesn't exist */
-   if (NC_NOERR != nc_inq_att (grp, varid, name, &att_type, &att_len))
-     return 0;
-
-   if (((value_type == TIO_META_TYPE_STRING) && (att_type != NC_STRING))
-       || ((value_type == TIO_META_TYPE_CHAR) && (att_type != NC_CHAR)))
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: attribute type mismatch: %s (att_type=%d, value_type=%d)",
-                     __func__, name, att_type, value_type);
-        return -1;
-     }
-
-   if (NULL == (atts = TIO_MALLOC (att_len * sizeof(char *))))
+   if (NULL == (att = (char *)TIO_MALLOC (att_len * sizeof(char))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
 
-   if (NC_NOERR != nc_get_att (grp, varid, name, atts))
+   if (NC_NOERR != nc_get_att_text (grp, varid, name, att))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading attribute %s", __func__, name);
-        TIO_FREE(atts);
+        goto return_status;
+     }
+
+   if (0 != tio_meta_append_string (meta, name, att))
+     goto return_status;
+
+   status = 0;
+return_status:
+   TIO_FREE(att);
+   return status;
+}
+
+static int append_att_strings (TIO_Meta_Type *meta, int grp, int varid,
+                               const char *name, int att_len)
+{
+   char **atts = NULL;
+   int i, status = -1;
+
+   if (NULL == (atts = (char **)TIO_MALLOC (att_len * sizeof(char *))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
 
-   if (att_type == NC_STRING)
+   if (NC_NOERR != nc_get_att_string (grp, varid, name, atts))
      {
-        for (i = 0; i < att_len; i++)
-          {
-             if (0 != tio_meta_append_string (meta, name, atts[i]))
-               {
-                  status = -1;
-                  break;
-               }
-          }
-        /* free space allocated on string input */
-        (void) nc_free_string (att_len, (char **)atts);
-     }
-   else
-     {
-        if (0 != tio_meta_set (meta, name, TIO_META_TYPE_CHAR, att_len, atts))
-          status = -1;
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading attribute %s", __func__, name);
+        goto return_status;
      }
 
+   for (i = 0; i < att_len; i++)
+     {
+        if (0 != tio_meta_append_string (meta, name, atts[i]))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   /* free space allocated on string input */
+   if (atts) (void) nc_free_string (att_len, atts);
    TIO_FREE(atts);
-
    return status;
+}
+
+int tio_meta_ncinit (TIO_Meta_Type *meta, int grp, const char *name, int value_type)
+{
+   int is_char, varid = NC_GLOBAL;
+   nc_type att_type;
+   size_t att_len;
+
+   switch (value_type)
+     {
+      case TIO_META_TYPE_STRING:
+        is_char = 0;
+        break;
+
+      case TIO_META_TYPE_CHAR:
+        is_char = 1;
+        break;
+
+      default:
+        tell_verror (TELL_UNSUPPORTED_ERROR, "%s: invalid metadata attribute type", __func__);
+        return -1;
+     }
+
+   /* When the attribute doesn't exist, return silently */
+   if (NC_NOERR != nc_inq_att (grp, varid, name, &att_type, &att_len))
+     return 0;
+
+   if ((is_char == 1) && (att_type == NC_CHAR))
+     {
+        return append_att_chars (meta, grp, varid, name, att_len);
+     }
+   else if ((is_char == 0) && (att_type == NC_STRING))
+     {
+        return append_att_strings (meta, grp, varid, name, att_len);
+     }
+
+   tell_verror (TELL_RUNTIME_ERROR,
+                "%s: attribute type mismatch: %s (att_type=%d, value_type=%d)",
+                __func__, name, att_type, value_type);
+   return -1;
 }
 
 static int key_search (const char *s, size_t slen, char **pos, size_t *len)
