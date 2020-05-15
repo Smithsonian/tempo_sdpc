@@ -1230,14 +1230,16 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
      }
 
    if (0 != write_geolocation (gt))
-     goto free_and_return;
-
-   if (NULL == (geoid_dem_basename = strrchr (geoid_dem_path, '/')))
      {
-        geoid_dem_basename = geoid_dem_path;
+        tell_verror (TELL_RUNTIME_ERROR, "%s: writing parallax corrected geolocation", __func__);
+        goto free_and_return;
      }
-   else geoid_dem_basename += 1;
 
+   if (NULL != (geoid_dem_basename = strrchr (geoid_dem_path, '/')))
+     {
+        geoid_dem_basename++;
+     }
+   else geoid_dem_basename = geoid_dem_path;
    tio_meta_append_string (meta, "input_files", geoid_dem_basename);
 
    status = 0;
