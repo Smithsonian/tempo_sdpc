@@ -491,7 +491,7 @@ extern int tio_def_var_radiance_status_flag (int grp);
  * @return 0 on success, -1 on error
  */
 extern int tio_append_history (int ncid, const char *str);
-extern int tio_push_cmdline (int argc, char **argv);
+extern int tio_set_cmdline (int argc, char **argv);
 extern int tio_history_append_cmdline (int ncid);
 
 /** Concatenate string tokens

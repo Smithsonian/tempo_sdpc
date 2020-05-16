@@ -498,10 +498,11 @@ char *tio_concat_argv (int argc, char **argv, char *pstr, size_t len_pstr)
 static int _pTIO_Argc;
 static char **_pTIO_Argv;
 
-int tio_push_cmdline (int argc, char **argv)
+int tio_set_cmdline (int argc, char **argv)
 {
    _pTIO_Argc = argc;
    _pTIO_Argv = argv;
+   return 0;
 }
 
 int tio_history_append_cmdline (int ncid)

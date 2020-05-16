@@ -66,6 +66,8 @@ program tio_test
     stop 2
   endif
 
+  call tiof_history_append_cmdline (obj)
+
   call tiof_use_file_epoch (obj, errstat)
   if (errstat /= 0) then
     stop 2

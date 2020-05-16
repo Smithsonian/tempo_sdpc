@@ -159,6 +159,16 @@ module tio_module
     end function
   end interface
 
+  interface
+    integer (c_int) function tio_f_append_history (ncid, str) &
+        bind (c, name='tio_append_history')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      integer (c_int), value :: ncid
+      character (kind=c_char) :: str(*)
+    end function
+  end interface
+
   integer :: tiof_get_var_section, tiof_put_var_section, tio_f_put_git_hash, &
     tio_f_def_grp, tio_f_get_fill_value, &
     tio_f_copy_granule_ident, tio_f_same_granule_ident, &
@@ -188,7 +198,7 @@ module tio_module
     tiof_taix_time_to_utc_caldate, tiof_use_file_epoch, &
     tiof_make_lev1_bounding_polygon, &
     tiof_utcstr_to_taix_time, tiof_time_set_taix_epoch, &
-    tiof_write_epoch_timestamp, tiof_mktimestamp_str
+    tiof_write_epoch_timestamp, tiof_mktimestamp_str, tiof_history_append_cmdline
 
   public tiof_put1d_text, tiof_get1d_text
   public tiof_put1d_string, tiof_get1d_string
@@ -1646,6 +1656,29 @@ contains
       return
     endif
 
+  end subroutine
+
+  subroutine tiof_history_append_cmdline (obj, errstat)
+    use, intrinsic :: iso_c_binding, only: c_char, c_null_char
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    integer, intent(inout), optional :: errstat
+
+    character (kind=c_char, len=:), allocatable :: cmdline
+    integer :: num, status
+
+    if (present (errstat)) then
+      if (errstat/= 0) return
+    endif
+
+    call get_command(length=num)
+    allocate (character (len=num)::cmdline)
+    call get_command (command=cmdline, status=status)
+    if (status == 0) then
+      status= tio_f_append_history (obj % fileid, trim(cmdline)//c_null_char)
+    endif
+
+    if (present (errstat)) errstat = status
   end subroutine
 
 end module tio_module
