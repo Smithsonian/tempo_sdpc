@@ -368,9 +368,9 @@ int tio_append_history (int ncid, const char *str)
    const char *history_attr = "history";
    char buf[TIMESTAMP_BUFLEN];
    time_t now;
+   struct tm tm = {0};
    int status, nctype;
    char *att = NULL;
-   char *newline;
    size_t len, hlen, entry_len;
    int have_attribute = 0;
    int offset = 0;
@@ -378,20 +378,26 @@ int tio_append_history (int ncid, const char *str)
    if ((str == NULL) || (*str == 0))
      return 0;
 
+   if (NULL != getenv ("TIO_HISTORY_OFF"))
+     return 0;
+
    now = time(NULL);
-   ctime_r (&now, buf);
+   gmtime_r (&now, &tm);
+   strftime (buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm);
 
-   /* truncate time string at trailing newline */
-   newline = strchr(buf, '\n');
-   if (newline) *newline=0;
-
-   /* <time>: <str>\n */
-   entry_len = strlen(buf) + strlen(str) + 4;
+   /* <time>:<str>\n */
+   entry_len = strlen(buf) + strlen(str) + 3;
    len = entry_len;
 
    status = nc_inq_att (ncid, NC_GLOBAL, history_attr, &nctype, &hlen);
    if (status == NC_NOERR)
      {
+        if (nctype != NC_CHAR)
+          {
+             tell_verror (TELL_UNSUPPORTED_ERROR, "%s: attribute %s is not of type NC_CHAR",
+                          __func__, history_attr);
+             return -1;
+          }
         have_attribute++;
         len += hlen;
      }
@@ -405,18 +411,17 @@ int tio_append_history (int ncid, const char *str)
 
    if (have_attribute)
      {
-        if (NC_NOERR != (status = nc_get_att (ncid, NC_GLOBAL, history_attr, att)))
+        if (NC_NOERR != (status = nc_get_att_text (ncid, NC_GLOBAL, history_attr, att)))
           {
              tell_verror (TELL_IO_READ_ERROR, "%s: reading history attribute (%s)",
                           __func__, nc_strerror (status));
              goto return_status;
           }
         offset = strlen(att);
-        sprintf (att + offset, "\n");
-        offset++;
      }
 
-   sprintf (att + offset, "%s:%s", buf, str);
+   /* history entry ends with \n */
+   sprintf (att + offset, "%s:%s\n", buf, str);
 
    if (NC_NOERR != (status = nc_put_att (ncid, NC_GLOBAL, history_attr, NC_CHAR, len, att)))
      {

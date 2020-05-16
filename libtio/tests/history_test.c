@@ -9,7 +9,7 @@ static int try_history (const char *filename, const char *str, const char *label
 {
    int ncid, status = -1;
 
-   if (0 != TIO_create (filename, NC_WRITE, &ncid))
+   if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
      goto return_status;
 
    /* test creating a global history attribute */
