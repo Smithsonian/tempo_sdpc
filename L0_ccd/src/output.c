@@ -101,7 +101,7 @@ static int create_file (Output_Type *out)
         return -1;
      }
 
-   return 0;
+   return tio_history_append_cmdline (out->ncid);
 }
 
 static void

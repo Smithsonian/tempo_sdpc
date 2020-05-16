@@ -84,6 +84,9 @@ Radiance_Type *radiance_open (const char *file)
    if (0 != TIO_open (file, NC_WRITE, &r->ncid))
      goto return_error;
 
+   if (0 != tio_history_append_cmdline (r->ncid))
+     goto return_error;
+
    if (0 != tio_use_file_epoch (r->ncid))
      goto return_error;
 

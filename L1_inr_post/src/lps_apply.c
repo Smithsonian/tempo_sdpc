@@ -309,7 +309,7 @@ return_status:
    return status;
 }
 
-int lps_apply (Lps_Type *lps, const char *rad_file, const char *cmdline)
+int lps_apply (Lps_Type *lps, const char *rad_file)
 {
    static int bands[] = {TEMPO_BAND_UV, TEMPO_BAND_VIS};
    unsigned int i, num_bands = sizeof(bands)/sizeof(*bands);
@@ -318,7 +318,7 @@ int lps_apply (Lps_Type *lps, const char *rad_file, const char *cmdline)
    if (0 != TIO_open (rad_file, NC_WRITE, &ncid))
      return -1;
 
-   if (0 != tio_append_history (ncid, cmdline))
+   if (0 != tio_history_append_cmdline (ncid))
      goto return_status;
 
    for (i = 0; i < num_bands; i++)

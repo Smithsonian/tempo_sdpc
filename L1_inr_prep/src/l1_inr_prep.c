@@ -532,6 +532,8 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
+   tio_push_cmdline (argc, argv);
+
    if (ephemeris_file == NULL)
      {
         fprintf (stderr, "*** Ephemeris file not specified\n");

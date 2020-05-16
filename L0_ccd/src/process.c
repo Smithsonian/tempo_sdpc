@@ -562,6 +562,8 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Opening output file: %s", ctrl->output_file);
    if (0 != TIO_create (ctrl->output_file, NC_NETCDF4, &ncid))
      goto return_status;
+   if (0 != tio_history_append_cmdline (ncid))
+     goto return_status;
    ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
    if (0 != create_current_file (ncid, num_exprecs, num_parallel_active_full, num_serial_active_full, exposure_type))
      goto return_status;

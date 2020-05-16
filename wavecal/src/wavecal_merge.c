@@ -308,6 +308,8 @@ int main (int argc, char **argv)
 
    results_dir = argv[optind];
 
+   tio_push_cmdline (argc, argv);
+
    if (NULL == (pattern = ioclib_pathconcat (results_dir, "*.nc")))
      goto return_status;
 
@@ -336,6 +338,9 @@ int main (int argc, char **argv)
    (void) read_metadata (meta, gt->files[0]);
 
    if (0 != TIO_open (target_file, NC_WRITE, &ncid_target))
+     goto return_status;
+
+   if (0 != tio_history_append_cmdline (ncid_target))
      goto return_status;
 
    /* Write the accumulated metadata entries */

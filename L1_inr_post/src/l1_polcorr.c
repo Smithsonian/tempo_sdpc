@@ -23,8 +23,6 @@
 #include "lps.h"
 #include "lps_apply.h"
 
-static char *_pCommand_Line;
-
 enum
 {
    TASK_LPS_CORRECT = 0,
@@ -162,6 +160,9 @@ static int update_radiance_metadata (const char *rad_file,
 
    if (0 != TIO_open (rad_file, NC_WRITE, &ncid))
      return -1;
+
+   if (0 != tio_history_append_cmdline (ncid))
+     goto return_status;
 
    if (NULL == (meta = tio_meta_open ()))
      goto return_status;
@@ -303,7 +304,7 @@ static int process_inputs (config_t *cfg, const char *rad_file, int task,
         break;
 
       case TASK_LPS_APPLY:
-        status = lps_apply (pt.lps, rad_file, _pCommand_Line);
+        status = lps_apply (pt.lps, rad_file);
         break;
 
       default:
@@ -351,8 +352,7 @@ int main (int argc, char **argv)
    if (argc < 2)
      usage();
 
-   /* NULL return is ok */
-   _pCommand_Line = tio_concat_argv (argc, argv, NULL, 0);
+   tio_push_cmdline (argc, argv);
 
    tell_open (appname, -1, 0);
 

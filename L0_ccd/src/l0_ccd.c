@@ -8,6 +8,7 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <tio.h>
 
 #include "config.h"
 #include "control.h"
@@ -188,6 +189,8 @@ int main (int argc, char **argv)
           }
         fprintf (stdout, "\n");
      }
+
+   (void) tio_push_cmdline (argc, argv);
 
    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
 
