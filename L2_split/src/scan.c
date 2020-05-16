@@ -972,6 +972,9 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
    if (0 != TIO_open (gr->file, NC_WRITE, &ncid))
      return -1;
 
+   if (0 != tio_history_append_cmdline (ncid))
+     goto close_and_return;
+
    if (0 != TIO_inq_grp (ncid, "support_data", &grp))
      goto close_and_return;
 

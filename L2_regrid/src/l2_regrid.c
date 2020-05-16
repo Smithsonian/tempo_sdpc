@@ -671,6 +671,9 @@ static int make_l3_product (const Product_Type *prod,
    if (-1 == TIO_create (prod->outfile, NC_NETCDF4, &ncid))
      return -1;
 
+   if (0 != tio_history_append_cmdline (ncid))
+     goto return_status;
+
    if (NULL == (meta = tio_meta_open ()))
      goto return_status;
 
@@ -848,6 +851,8 @@ int main (int argc, char **argv)
           }
         fprintf (stdout, "\n");
      }
+
+   (void) tio_set_cmdline (argc, argv);
 
    if (-1 == parse_param_file (param_file, &dest, &product_list))
      goto return_status;

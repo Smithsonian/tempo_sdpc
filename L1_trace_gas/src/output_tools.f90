@@ -994,6 +994,7 @@ contains
       return
     endif
 
+    call tiof_history_append_cmdline (obj)
     call tiof_put_git_commit_hash (obj, errstat)
 
     ! Create default groups.

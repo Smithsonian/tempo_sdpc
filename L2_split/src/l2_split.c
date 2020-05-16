@@ -8,6 +8,7 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <tio.h>
 
 #include "config.h"
 #include "process.h"
@@ -101,6 +102,8 @@ int main (int argc, char **argv)
 
    if (optind == argc)
      usage();
+
+   tio_set_cmdline (argc, argv);
 
    if (0 != process_files (&cfg, argc-optind, &argv[optind]))
      {
