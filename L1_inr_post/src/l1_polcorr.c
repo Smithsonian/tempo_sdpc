@@ -352,7 +352,7 @@ int main (int argc, char **argv)
    if (argc < 2)
      usage();
 
-   tio_push_cmdline (argc, argv);
+   tio_set_cmdline (argc, argv);
 
    tell_open (appname, -1, 0);
 

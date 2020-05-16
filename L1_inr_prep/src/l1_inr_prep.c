@@ -532,7 +532,7 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
-   tio_push_cmdline (argc, argv);
+   tio_set_cmdline (argc, argv);
 
    if (ephemeris_file == NULL)
      {

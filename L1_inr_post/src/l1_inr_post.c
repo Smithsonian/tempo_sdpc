@@ -283,7 +283,7 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
-   tio_push_cmdline (argc, argv);
+   tio_set_cmdline (argc, argv);
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", input_file);
 

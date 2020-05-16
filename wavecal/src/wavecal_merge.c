@@ -308,7 +308,7 @@ int main (int argc, char **argv)
 
    results_dir = argv[optind];
 
-   tio_push_cmdline (argc, argv);
+   tio_set_cmdline (argc, argv);
 
    if (NULL == (pattern = ioclib_pathconcat (results_dir, "*.nc")))
      goto return_status;
