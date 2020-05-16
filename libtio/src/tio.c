@@ -495,6 +495,27 @@ char *tio_concat_argv (int argc, char **argv, char *pstr, size_t len_pstr)
    return str;
 }
 
+static int _pTIO_Argc;
+static char **_pTIO_Argv;
+
+int tio_push_cmdline (int argc, char **argv)
+{
+   _pTIO_Argc = argc;
+   _pTIO_Argv = argv;
+}
+
+int tio_history_append_cmdline (int ncid)
+{
+   char *str;
+   int status;
+
+   if (NULL == (str = tio_concat_argv (_pTIO_Argc, _pTIO_Argv, NULL, 0)))
+     return -1;
+   status = tio_append_history (ncid, str);
+   TIO_FREE(str);
+   return status;
+}
+
 int tio_inq_varid (int grp, const char *name, int *varid)
 {
    return nc_inq_varid (grp, name, varid);
