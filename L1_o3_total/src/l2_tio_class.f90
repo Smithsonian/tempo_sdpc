@@ -574,11 +574,15 @@ contains
 
     ! netcdf coordinate variables:
     call tiof_varlist_append (varlist, errstat, o3t_dim_xtrack, nf90_int, &
-                             dimids=[dimids(1)])
+                              dimids=[dimids(1)], &
+                              long_name = "pixel index along slit")
     call tiof_varlist_append (varlist, errstat, o3t_dim_step, nf90_int, &
-                             dimids=[dimids(2)])
-    call tiof_varlist_append (varlist, errstat, o3t_dim_layer, nf90_int, &
-                             dimids=[dimids(3)])
+                              dimids=[dimids(2)], &
+                              long_name = "scan mirror position index")
+    if (.false.) then
+      call tiof_varlist_append (varlist, errstat, o3t_dim_layer, nf90_int, &
+                                dimids=[dimids(3)])
+    endif
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
 
@@ -590,8 +594,10 @@ contains
     xtrack_indices = [(i, i=0,num_xtrack-1)]
     call tiof_put1d_i4 (obj, o3t_dim_xtrack, [0], [num_xtrack], xtrack_indices, errstat)
 
-    layer_indices = [(i, i=0,num_layers-1)]
-    call tiof_put1d_i4 (obj, o3t_dim_layer, [0], [num_layers], layer_indices, errstat)
+    if (.false.) then
+      layer_indices = [(i, i=0,num_layers-1)]
+      call tiof_put1d_i4 (obj, o3t_dim_layer, [0], [num_layers], layer_indices, errstat)
+    endif
 
   end subroutine write_coordinate_vars
 

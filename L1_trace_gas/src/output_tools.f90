@@ -117,9 +117,11 @@ contains
 
     ! netcdf coordinate variables:
     call tiof_varlist_append (varlist, errstat, tg_dim_xtrack, nf90_int, &
-                             dimids=[dimids(1)])
+                             dimids=[dimids(1)], &
+                             long_name = "pixel index along slit")
     call tiof_varlist_append (varlist, errstat, tg_dim_step, nf90_int, &
-                             dimids=[dimids(2)])
+                             dimids=[dimids(2)], &
+                             long_name = "scan mirror position index")
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
 

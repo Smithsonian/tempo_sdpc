@@ -334,12 +334,14 @@ contains
          o3p_dim_param, o3p_dim_windows], dimids(1:8), errstat)
     ! Make the baseline variable list
     call tiof_varlist_append(varlist, errstat, o3p_dim_xtrack, nf90_int, &
-                             dimids=[dimids(1)])
+                             dimids=[dimids(1)], &
+                             long_name = "pixel index along slit")
     call tiof_varlist_append (varlist, errstat, o3p_dim_step, nf90_int, &
-                             dimids=[dimids(2)])
-    call tiof_varlist_append (varlist, errstat, o3p_dim_corner, nf90_int, &
-                             dimids=[dimids(3)])
+                              dimids=[dimids(2)], &
+                              long_name = "scan mirror position index")
     if (.false.) then
+      call tiof_varlist_append (varlist, errstat, o3p_dim_corner, nf90_int, &
+                                dimids=[dimids(3)])
       call tiof_varlist_append (varlist, errstat, o3p_dim_layer, nf90_int, &
                                 dimids=[dimids(4)])
       call tiof_varlist_append (varlist, errstat, o3p_dim_layerp1, nf90_int, &
@@ -397,11 +399,11 @@ contains
     call tiof_put1d_i4 (obj, o3p_dim_xtrack, [0], [num_xtrack], &
          xtrack_indices, errstat)
 
-    corner_indices = [(i, i=0,num_corners-1)]
-    call tiof_put1d_i4 (obj, o3p_dim_corner, [0], [num_corners], &
-         corner_indices, errstat)
-
     if (.false.) then
+      corner_indices = [(i, i=0,num_corners-1)]
+      call tiof_put1d_i4 (obj, o3p_dim_corner, [0], [num_corners], &
+                          corner_indices, errstat)
+
       layer_indices = [(i, i=0,num_layer-1)]
       call tiof_put1d_i4 (obj, o3p_dim_layer, [0], [num_layer], &
                           layer_indices, errstat)
@@ -2796,7 +2798,7 @@ contains
 
     character (len=*), parameter, dimension(*) :: &
       attr_names = (/'geospatial_bounds      ', &
-                     'geospatial_crs         ', &
+                     'geospatial_bounds_crs  ', &
                      'geospatial_lon_min     ', &
                      'geospatial_lon_max     ', &
                      'geospatial_lat_min     ', &

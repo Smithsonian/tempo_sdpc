@@ -12,7 +12,7 @@ $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 #cmlat_in="3.276634e-07"
 #cmlon_in="-1.60647e-07"
 geospatial_bnds_in="POLYGON((10.0000 -10.0000,10.0000 10.0000,-10.0000 10.0000,-10.0000 -6.0000))"
-geospatial_crs_in="EPSG:4326"
+geospatial_bnds_crs_in="EPSG:4326"
 geospatial_lon_min_in="-10"
 geospatial_lon_max_in="10"
 geospatial_lat_min_in="-10"
@@ -35,8 +35,8 @@ keys_in=`awk -F\" '/keywords/{print $2}' boilerplate.nml`
 #attribute values
 #cmlat_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_latitude/{print $2}' | cut -f1 -df`
 #cmlon_out=`cat nc_header.txt | awk -F=\  '/:centroid_mean_longitude/{print $2}' | cut -f1 -df`
-geospatial_bnds_out=`cat nc_header.txt | awk -F\" '/:geospatial_bounds/{print $2}'`
-geospatial_crs_out=`cat nc_header.txt | awk -F\" '/:geospatial_crs/{print $2}'`
+geospatial_bnds_out=`cat nc_header.txt | awk -F\" '/:geospatial_bounds /{print $2}'`
+geospatial_bnds_crs_out=`cat nc_header.txt | awk -F\" '/:geospatial_bounds_crs/{print $2}'`
 geospatial_lon_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_min/{print $3}'| sed s/.f//g`
 geospatial_lon_max_out=`cat nc_header.txt | awk -F\  '/:geospatial_lon_max/{print $3}'| sed s/.f//g`
 geospatial_lat_min_out=`cat nc_header.txt | awk -F\  '/:geospatial_lat_min/{print $3}'| sed s/.f//g`
@@ -59,7 +59,7 @@ exitstat=0
 #if [ "$cmlat_out" != "$cmlat_in" ] ; then exitstat=1 ; fi
 #if [ "$cmlon_out" != "$cmlon_in" ] ; then exitstat=2 ; fi
 if [ "$geospatial_bnds_out" != "$geospatial_bnds_in" ] ; then exitstat=3 ; fi
-if [ "$geospatial_crs_out" != "$geospatial_crs_in" ] ; then exitstat=1 ; fi
+if [ "$geospatial_bnds_crs_out" != "$geospatial_bnds_crs_in" ] ; then exitstat=1 ; fi
 if [ "$geospatial_lon_min_out" != "$geospatial_lon_min_in" ] ; then exitstat=2 ; fi
 if [ "$geospatial_lon_max_out" != "$geospatial_lon_max_in" ] ; then exitstat=2 ; fi
 if [ "$geospatial_lat_min_out" != "$geospatial_lat_min_in" ] ; then exitstat=2 ; fi
