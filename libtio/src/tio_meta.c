@@ -1383,7 +1383,7 @@ int _pTIO_write_acdd_geospatial_attrs (int grp, const float *lon, const float *l
      return -1;
 
    if ((0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_bounds", NC_CHAR, 1 + strlen(str), str))
-       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_crs", NC_CHAR, 1 + strlen(crs), crs))
+       || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_bounds_crs", NC_CHAR, 1 + strlen(crs), crs))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_min", NC_FLOAT, 1, &lon_range[0]))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lon_max", NC_FLOAT, 1, &lon_range[1]))
        || (0 != TIO_put_att (grp, NC_GLOBAL, "geospatial_lat_min", NC_FLOAT, 1, &lat_range[0]))
