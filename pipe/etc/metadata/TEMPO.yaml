@@ -5,3 +5,4 @@ institution        : Smithsonian Astrophysical Observatory
 creator_url        : http://tempo.si.edu
 access_description : Test data, not for public release. Numerical access_values not yet defined.
 access_value       : 0
+Conventions        : CF-1.6, ACDD-1.3
