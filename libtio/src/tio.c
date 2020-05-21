@@ -399,7 +399,8 @@ int tio_append_history (int ncid, const char *str)
              return -1;
           }
         have_attribute++;
-        len += hlen;
+        /* plus one in case we need to add \n at the end of the existing attribute */
+        len += hlen + 1;
      }
 
    if (NULL == (att = (char *)TIO_MALLOC (len * sizeof(char))))
@@ -418,10 +419,16 @@ int tio_append_history (int ncid, const char *str)
              goto return_status;
           }
         offset = strlen(att);
+        /* ensure that the existing comment ends with \n */
+        if (att[offset-1] != '\n')
+          {
+             att[offset++] = '\n';
+          }
      }
 
    /* history entry ends with \n */
    sprintf (att + offset, "%s:%s\n", buf, str);
+   len = strlen (att) + 1;
 
    if (NC_NOERR != (status = nc_put_att (ncid, NC_GLOBAL, history_attr, NC_CHAR, len, att)))
      {
