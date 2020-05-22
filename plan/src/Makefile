@@ -18,7 +18,7 @@ PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 SLNOVAS_LIBPATHS = -Wl,-rpath=$(SLNOVAS_LIB) -L$(SLNOVAS_LIB)
 
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
-               -lTempoGeospatial -llapacke $(INROTS_EXTRA_LIBS)
+               -lTempoGeospatial -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
 EXTRA_INCS = -I$(PROJ_INC) -I$(SLNOVAS_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj $(SLNOVAS_LIBPATHS) -llibnovas

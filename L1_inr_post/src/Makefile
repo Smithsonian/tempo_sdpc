@@ -24,7 +24,7 @@ GEOTIFF_LIBPATHS = -Wl,-rpath=$(GEOTIFF_LIB) -L$(GEOTIFF_LIB)
 PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
-               -lTempoGeospatial -llapacke $(INROTS_EXTRA_LIBS)
+               -lTempoGeospatial -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj
