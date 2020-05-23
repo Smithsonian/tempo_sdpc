@@ -223,7 +223,8 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = st->st_integration_time (st);
-   entry->num_repeats = ceil ((limit_times->jd_utc_end - limit_times->jd_utc_beg)
+   /* use floor() to stay within safety constraints */
+   entry->num_repeats = floor ((limit_times->jd_utc_end - limit_times->jd_utc_beg)
                               / time_full_scan);
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -597,7 +598,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    /* Fill out the afternoon with sunset scans: */
    set.tstart = full.tstart + full.num_repeats * full.duration;
-   set.num_repeats = ceil((limit_times->jd_utc_end - set.tstart)
+   set.num_repeats = floor((limit_times->jd_utc_end - set.tstart)
                          / set.duration);
    /* impose sun_angle safety constraint */
    while (set.num_repeats > 0)

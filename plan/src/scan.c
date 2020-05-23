@@ -532,6 +532,10 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
         return -1;
      }
 
+   fprintf (stderr, "max scan duration: selected = %0.3f hr (safe = %0.3f hr)\n",
+            (slt->jd_utc_end      - slt->jd_utc_beg     ) * SEC_PER_DAY / 3600.0,
+            (slt->jd_utc_end_safe - slt->jd_utc_beg_safe) * SEC_PER_DAY / 3600.0);
+
    jd_utc_midpoint = 0.5 * (slt->jd_utc_beg + slt->jd_utc_end);
 
    /* Full illumination is defined to begin when SZA=max(SZA)

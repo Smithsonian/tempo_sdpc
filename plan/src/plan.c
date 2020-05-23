@@ -50,6 +50,8 @@
 
 #define MIN_SCAN_DURATION_SEC (2 * 60.0)
 
+static double __Unix_Epoch_JD;
+
 enum
 {
    PARTIAL_SCAN_END = 0,
@@ -81,6 +83,16 @@ typedef struct
    int num_sza_days;
 }
 Optional_Output_Type;
+
+static double get_unix_epoch_jd (void)
+{
+   return __Unix_Epoch_JD;
+}
+
+static void set_unix_epoch_jd (void)
+{
+   __Unix_Epoch_JD = novas_julian_date (1970,1,1,0.0);
+}
 
 static void usage (void)
 {
@@ -522,7 +534,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
                                       const char *filename)
 {
    double delta = 15.0 * 60.0 / SEC_PER_DAY;
-   double unix_epoch_jd;
+   double unix_epoch_jd = get_unix_epoch_jd();
    int i, n;
    FILE *fp;
 
@@ -536,8 +548,6 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
 
    if (n <= 0)
      return 0;
-
-   unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
    if (NULL == (fp = fopen (filename, "w")))
      {
@@ -576,6 +586,49 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, doub
    return fclose (fp);
 }
 
+static int violates_sun_angle_constraint (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                                          double jd_utc)
+{
+   double unix_epoch_jd = get_unix_epoch_jd();
+   double min_sun_angle = st->st_min_sun_angle (st);
+   double angle, t_utc, taix;
+
+   if (0 != solar_geom->sgt_sat_sun_position (solar_geom, jd_utc, &angle, NULL, NULL))
+     return -1;
+
+   t_utc = (jd_utc - unix_epoch_jd) * SEC_PER_DAY;
+   if (0 != tio_time_utc_to_taix (t_utc, &taix))
+     return -1;
+
+   if (angle < min_sun_angle)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: scan violates sun-angle safety constraint: jd_utc = %f days (taix = %f sec since epoch) angle = %f deg (min_sun_angle = %f deg)",
+                     __func__, jd_utc, taix, angle, min_sun_angle);
+        return 1;
+     }
+
+   return 0;
+}
+
+static int verify_safety_constraints (Solar_Geom_Type *solar_geom, const Scan_Type *st,
+                                      const Plan_List_Type *plan_list)
+{
+   const Plan_List_Type *entry;
+
+   for (entry = plan_list; entry != NULL; entry = entry->next)
+     {
+        double jd_utc_start = entry->tstart;
+        double jd_utc_end = entry->tstart + entry->num_repeats * entry->scan_duration / SEC_PER_DAY;
+
+        if ((0 != violates_sun_angle_constraint (st, solar_geom, jd_utc_start))
+            || (0 != violates_sun_angle_constraint (st, solar_geom, jd_utc_end)))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Type *solar_geom, const Scan_Type *scan,
                             const char *scan_method, const Plan_List_Type *plan_list)
 {
@@ -601,11 +654,9 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)
 {
    const char header[] = "time,solar_theta,solar_phi,timestamp\n";
-   double unix_epoch_jd;
+   double unix_epoch_jd = get_unix_epoch_jd();
    double jd_utc0, jd_utc1, jd_utc;
    double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
-
-   unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
    jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
    jd_utc1 = jd_utc0 + num_days;
@@ -1165,6 +1216,8 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
+   set_unix_epoch_jd ();
+
    if (fp_master)
      {
         if (0 != generate_master_scan_table (&cfg, NULL, fp_master))
@@ -1233,6 +1286,9 @@ int main (int argc, char **argv)
      goto return_status;
 
    if (0 != include_maneuvers (plan_list, maneuver_file))
+     goto return_status;
+
+   if (0 != verify_safety_constraints (solar_geom, scan, plan_list))
      goto return_status;
 
    if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list))
