@@ -93,22 +93,21 @@ sbatch --wait --job-name=$job_prep_l2 --chdir $l1_run_dir \
 
 log_message "finished level2_prep.sh: $SDPC_GRANULE_LABEL"
 
+# If no Level 2 products were requested, we're done
+if test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
+  exit 0
+fi
+
+# When Level 2 products have been requested, a tar file notice
+# should have been created.  The tar file provides the data
+# products necessary to generate Level2 data products
+
 # The --wait above ensures that we don't get to here until
 # this tar file notice has been created -- and there's no point in
 # proceeding further if we don't have it.
 tar_file_notice="$SDPC_RUN_DIR_MASTER/L2/incoming/${rad_basename}.tar"
 if ! test -f "$tar_file_notice" ; then
   error_exit "*** Error: level2_prep.sh failed: $rad_basename"
-fi
-
-# Since the tar file notice exists, we're confident that the final L1b radiance
-# file has been archived, so we can now delete the L1a radiance file that was
-# provided as input to INR:
-/bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
-
-# If no level 2 products were requested, we're done
-if test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
-  exit 0
 fi
 
 level2_dispatch.sh $tar_file_notice

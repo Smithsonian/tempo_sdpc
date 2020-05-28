@@ -162,6 +162,10 @@ tar_l1_radiance_to_dest()
 
    /bin/rm -f $granule_dir/log_inr_post.txt $tiepoint_file \
               $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
+
+   # Now that the final L1b radiance file has been archived, we can
+   # delete the L1a radiance file that was provided as input to INR:
+   /bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
 }
 
 . $SDPC_ROOT/bin/wavecal.sh
@@ -316,11 +320,32 @@ run_inr_post ${rad_basename}.nc
 
 /bin/cp $irr_file ${irr_basename}.nc
 (run_cloud)
-
 create_file_listing
 
-trap - EXIT
+catch()
+{
+  if test "$1" != "0" ; then
+    echo "Error $1 occurred on $2"
+  fi
+}
+trap 'catch $? $LINENO' EXIT
+
 tar_granule_dir_to_dest "$l1_out_dir"
-notify_granule_ready "$l2_incoming"
+
+# When level 2 products are to be generated next, put a tar notice file
+# in $l2_incoming in preparation for the next processing stage.
+# Using a notice file instead of the tar file itself minimizes data
+# movement and should improve efficiency.
+# When no further processing is intended, put the tar file itself in
+# $l2_incoming so that the required input for the next stage is collected
+# in one place on the master node.
+
+if ! test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
+   notify_granule_ready "$l2_incoming"
+else
+   local_tar_file="${l1_out_dir}/${rad_basename}.tar"
+   /bin/cp "$local_tar_file" "$l2_incoming"
+   /bin/rm "$local_tar_file"
+fi
 
 perform_cleanup
