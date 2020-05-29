@@ -300,6 +300,7 @@ cat <<EOF > $dir/.$tarfile_basename
 tar_host="$this_hostname_sans_domain"
 tar_host_file_path="${l1_out_dir}/$tarfile_basename"
 granule_arch_dir_path="$SDPC_ARCHIVE_DIR/L2/$granule_subdir"
+level2_products="$SDPC_LEVEL2_PRODUCTS"
 EOF
   /bin/mv "$dir/.$tarfile_basename" "$dir/$tarfile_basename"
 }

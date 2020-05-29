@@ -41,17 +41,22 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 
 l2_run_dir="${SDPC_RUN_DIR}/L2"
 
-# Sourcing the tar file notice defines the variables
+# Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
 # granule_arch_dir_path = path to L2 archive directory for this granule
+# level2_products = comma-delimited list of product tokens, e.g. "HCHO,O3TOT,NO2"
 . $tar_file_notice
 
 tar_file_basename_sans_extname="$(basename $tar_host_file_path .tar)"
 : "${SDPC_GRANULE_LABEL:=$tar_file_basename_sans_extname}"
 export SDPC_GRANULE_LABEL
 
-product_list_tokens="$(echo $SDPC_LEVEL2_PRODUCTS | tr , ' ')"
+if test -z "$level2_products" ; then
+   error_exit "$LINENO: empty Level 2 products list"
+fi
+
+product_list_tokens="$(echo $level2_products | tr , ' ')"
 
 have_o3p=""
 product_list_sans_o3p=''
