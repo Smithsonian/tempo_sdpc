@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/sh -vx
 #SBATCH --cpus-per-task=4
 #SBATCH --output=/dev/null
 
@@ -11,6 +11,14 @@ set -e
 # exit upon any usage of an undefined variable
 set -u
 ulimit -s unlimited
+
+catch()
+{
+  if test "$1" != "0" ; then
+    echo "Error $1 occurred on $2"
+  fi
+}
+trap 'catch $? $LINENO' EXIT
 
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="level2_entry"
+INCDIR=".."
+
+. $INCDIR/finish.inc

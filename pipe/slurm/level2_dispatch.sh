@@ -49,6 +49,7 @@ l2_run_dir="${SDPC_RUN_DIR}/L2"
 
 tar_file_basename_sans_extname="$(basename $tar_host_file_path .tar)"
 : "${SDPC_GRANULE_LABEL:=$tar_file_basename_sans_extname}"
+export SDPC_GRANULE_LABEL
 
 product_list_tokens="$(echo $SDPC_LEVEL2_PRODUCTS | tr , ' ')"
 

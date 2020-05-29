@@ -71,6 +71,7 @@ etc_dir="$SDPC_ROOT/etc"
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
 l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
 l2_incoming="$SDPC_RUN_DIR/L2/incoming"
+l2_inputs="$SDPC_RUN_DIR/L2/inputs"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
@@ -337,14 +338,17 @@ tar_granule_dir_to_dest "$l1_out_dir"
 # Using a notice file instead of the tar file itself minimizes data
 # movement and should improve efficiency.
 # When no further processing is intended, put the tar file itself in
-# $l2_incoming so that the required input for the next stage is collected
+# $l2_inputs so that the required input for the next stage is collected
 # in one place on the master node.
 
 if ! test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
    notify_granule_ready "$l2_incoming"
 else
+   if ! test -h "$l2_inputs" ; then
+      ln -s "$SDPC_RUN_DIR_MASTER/L2/inputs" "$l2_inputs"
+   fi
    local_tar_file="${l1_out_dir}/${rad_basename}.tar"
-   /bin/cp "$local_tar_file" "$l2_incoming"
+   /bin/cp "$local_tar_file" "$l2_inputs"
    /bin/rm "$local_tar_file"
 fi
 
