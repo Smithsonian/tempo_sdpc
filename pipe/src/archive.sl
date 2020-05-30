@@ -84,12 +84,6 @@ define copy_file (file_path, dest_dir)
 private define get_tarfile_archive_subdir (tar_file)
 {
    % Extract the archive_subdir file.
-   %
-   % To avoid granule-specific directory name collisions when
-   % multiple processes simultaneously archive data products,
-   % we dump the data via stdout to a unique temporary file
-   % Tar options are chosen to ensure that no existing files are
-   % overwritten
 
    variable dir = path_dirname (tar_file);
    variable tar_file_basename = path_basename (tar_file);
@@ -97,31 +91,21 @@ private define get_tarfile_archive_subdir (tar_file)
    variable name_fields = strtok (tar_file_basename, ".");
    variable granule_name = name_fields[0];
 
-   variable temp_subdir_file = path_concat (dir, tar_file_basename
-                                            + "_" + Archive_Subdir_File);
-
    variable argv = ["tar", "-x", "-f", tar_file, "--to-stdout",
                     path_concat (granule_name, Archive_Subdir_File)];
-   variable s = new_process(argv; stdout=temp_subdir_file).wait();
+
+   variable obj = new_process(argv; write=1);
+   variable archive_subdir = fgetslines (obj.fp1);
+   variable s = obj.wait();
    if (s.exit_status != 0)
      {
         throw ApplicationError,
           "*** Error: extracting ${Archive_Subdir_File} from tar archive: $tar_file"$;
      }
+   () = fclose (obj.fp1);
 
-   variable fp = fopen (temp_subdir_file, "r");
-   if (fp == NULL)
-     throw IOError, "opening file $temp_subdir_file for reading"$;
-   variable archive_subdir;
-   if (fgets (&archive_subdir, fp) < 0)
-     throw IOError, "reading file $temp_subdir_file"$;
-   () = fclose (fp);
-
-   % Now delete the temporary file
-   if (0 != remove (temp_subdir_file))
-     throw ApplicationError, "*** Error removing $temp_subdir_file"$;
-
-   return archive_subdir;
+   archive_subdir = array_map (String_Type, &strtrim, archive_subdir, "\n");
+   return archive_subdir[0];
 }
 
 define insert_fixed_metadata (path)
@@ -134,40 +118,29 @@ define insert_fixed_metadata (path)
 
 define register_using_symlink (tar_file, archive_dest_subdir)
 {
-   % Dump partial paths to archived data products into a temporary
-   % file on the local machine (usually a compute node), ideally on
-   % a RAM disk.
+   % Extract partial paths to archived data products.
    % Some tar files contain block_??? subdirectories with .nc files
    % that will eventually be merged to generate the final product.
    % These block .nc files should not be entered in the product
    % database, so we filter them out of this query.
-   variable tmpfile_dir = "/var/tmp/$USER/$SDPC_PIPE_NAME"$;
-   () = mkdir_p (tmpfile_dir);
-   variable tmpfile = sprintf ("%s/register_symlink.%d", tmpfile_dir, getpid());
    variable argv = ["tar", "tf", tar_file,
 		    "--exclude=block_*", "--strip-components=1",
                     "--show-transformed-names", "--wildcards",
                     "--no-anchored", "TEMPO_*.nc"];
    %vmessage (strjoin (argv, " "));
-   variable s = new_process(argv; stdout=tmpfile, dup2=1).wait();
+   variable obj = new_process(argv; write=1);
+   variable partial_paths = fgetslines (obj.fp1);
+   variable s = obj.wait();
    if (s.exit_status != 0)
      {
-        throw ApplicationError, "*** Error: creating file:$tmpfile"$;
+        throw ApplicationError, "*** Error: reading product file names from: $tar_file"$;
      }
+   () = fclose (obj.fp1);
 
-   % Read the partial paths from the temporary file.
+   partial_paths = array_map (String_Type, &strtrim, partial_paths, "\n");
+
    % "partial_path" means something like
    %      HCHO/TEMPO_HCHO_L2_V01_20130715T165956Z_S002G01.nc
-   % (and remember that this temporary file may not contain anything
-   % relevant).
-   variable partial_paths;
-   variable fp = fopen (tmpfile, "r");
-   if (fp == NULL)
-     throw ApplicationError, "*** Error: reading file:$tmpfile"$;
-   partial_paths = fgetslines (fp);
-   () = fclose(fp);
-   () = remove (tmpfile);
-   partial_paths = array_map (String_Type, &strtrim, partial_paths, "\n");
 
    % For each product file, trigger registration in the product
    % database by making a symbolic link in $incoming_dir
@@ -308,7 +281,6 @@ define slsh_main ()
 {
    Delete_Tarfiles = 0;
    variable archive_root_dir = getenv ("SDPC_ARCHIVE_DIR");
-   variable sdpc_root_dir = getenv ("SDPC_ROOT");
    variable archive_level = NULL;
 
    variable c = cmdopt_new (&error_routine);
@@ -321,9 +293,6 @@ define slsh_main ()
 
    if (__argc - __i < 1)
      usage();
-
-   if (sdpc_root_dir == NULL)
-     throw ApplicationError, "*** Error: SDPC_ROOT is not set";
 
    if (archive_root_dir == NULL)
      throw ApplicationError,
