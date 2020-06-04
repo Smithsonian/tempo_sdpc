@@ -38,21 +38,23 @@ define process_file (types, path_nc)
    if (st_nc == NULL)
      return;
 
-   variable path_met = path_nc + ".met";
-   variable st_met = stat_file (path_met);
-   if (st_met == NULL)
-     return;
-
    variable basename_nc = path_basename (path_nc);
    variable tok = strtok (basename_nc, "_");
    variable product_type = sprintf ("%s_%s_%s", tok[1], tok[2], tok[3]);
    variable data_version = strtrim_beg (tok[3], "V");
+   variable nc_entry = make_file_entry (path_nc, st_nc, 1);
+
+   variable path_met = path_nc + ".met";
+   variable st_met = stat_file (path_met);
+   variable met_entry = NULL;
+   if (st_met != NULL)
+     met_entry = make_file_entry (path_met, st_met, 0);
 
    variable group = struct
      {
         data_version = data_version,
-        nc_entry = make_file_entry (path_nc, st_nc, 1),
-        met_entry = make_file_entry (path_met, st_met, 0)
+        nc_entry = nc_entry,
+        met_entry = met_entry
      };
 
    if (assoc_key_exists (types, product_type))
@@ -78,41 +80,46 @@ define read_file_list (list_file)
    return array_map (String_Type, &strtrim, lst, "\n\t");
 }
 
+define entry_string (entry, target_dir)
+{
+   variable
+     id = entry.file_id,
+     size = entry.file_size,
+     type = entry.file_type,
+     chksum = entry.file_chksum,
+     chksum_type = entry.file_chksum_type;
+
+   variable str =
+` OBJECT = FILE_SPEC;
+    DIRECTORY_ID = $target_dir;
+    FILE_ID = $id;
+    FILE_TYPE = $type;
+    FILE_SIZE = $size;
+    FILE_CKSUM_TYPE = $chksum_type;
+    FILE_CKSUM_VALUE = "$chksum";
+  END_OBJECT = FILE_SPEC;`$;
+
+   return str;
+}
+
 define write_file_group (fp, g, target_dir)
 {
    variable data_version = g.data_version;
-   variable
-     ncfile_id = g.nc_entry.file_id,
-     ncfile_size = g.nc_entry.file_size,
-     ncfile_chksum = g.nc_entry.file_chksum,
-     ncfile_chksum_type = g.nc_entry.file_chksum_type;
-   variable
-     metfile_id = g.met_entry.file_id,
-     metfile_size = g.met_entry.file_size,
-     metfile_chksum = g.met_entry.file_chksum,
-     metfile_chksum_type = g.met_entry.file_chksum_type;
+
+   variable entries = entry_string (g.nc_entry, target_dir);
+
+   if (g.met_entry != NULL)
+     {
+        variable met_str = entry_string (g.met_entry, target_dir);
+        entries = sprintf ("%s\n%s", entries, met_str);
+     }
 
    variable str =
 `OBJECT = FILE_GROUP;
   DATA_TYPE = TEMPO;
   DATA_VERSION = $data_version;
   NODE_NAME = $Node_Name;
-  OBJECT = FILE_SPEC;
-    DIRECTORY_ID = $target_dir;
-    FILE_ID = $ncfile_id;
-    FILE_TYPE = SCIENCE;
-    FILE_SIZE = $ncfile_size;
-    FILE_CKSUM_TYPE = $ncfile_chksum_type;
-    FILE_CKSUM_VALUE = "$ncfile_chksum";
-  END_OBJECT = FILE_SPEC;
-  OBJECT = FILE_SPEC;
-    DIRECTORY_ID = $target_dir;
-    FILE_ID = $metfile_id;
-    FILE_TYPE = METADATA;
-    FILE_SIZE = $metfile_size;
-    FILE_CKSUM_TYPE = $metfile_chksum_type;
-    FILE_CKSUM_VALUE = "$metfile_chksum";
-  END_OBJECT = FILE_SPEC;
+  $entries
 END_OBJECT = FILE_GROUP;
 `$;
 
@@ -144,6 +151,11 @@ TOTAL_FILE_COUNT = $num_files
      throw IOError, "closing $filename"$;
 }
 
+define make_target_dir ()
+{
+   return strftime ("tempo_test_submission_%Y-%m-%d", gmtime(_time()));
+}
+
 define write_lftp_script (dest, types, pdr_files, script_file)
 {
    variable fp = fopen (script_file, "w");
@@ -152,7 +164,8 @@ define write_lftp_script (dest, types, pdr_files, script_file)
 
    () = fprintf (fp, "open --user %s --password %s sftp://%s\n",
                  dest.user, dest.password, dest.host);
-   () = fputs ("cd ingest\n", fp);
+   () = fprintf (fp, "mkdir %s\n", dest.target_dir);
+   () = fprintf (fp, "cd %s\n", dest.target_dir);
 
    variable f, g, t;
 
@@ -166,7 +179,10 @@ define write_lftp_script (dest, types, pdr_files, script_file)
         foreach g (types[t])
           {
              () = fprintf (fp, "put %s\n", g.nc_entry.path);
-             () = fprintf (fp, "put %s\n", g.met_entry.path);
+             if (g.met_entry != NULL)
+               {
+                  () = fprintf (fp, "put %s\n", g.met_entry.path);
+               }
           }
      }
 
@@ -271,6 +287,7 @@ define slsh_main ()
      usage();
 
    variable dest = read_netrc_file (netrc_file);
+   dest.target_dir = path_concat (dest.target_dir, make_target_dir ());
 
    variable nc_file_list_file = __argv[i];
 
