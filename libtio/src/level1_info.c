@@ -23,7 +23,8 @@ enum
 {
    TASK_UNKNOWN,
    TASK_PRINT_DIR,
-   TASK_PRINT_MONTH
+   TASK_PRINT_MONTH,
+   TASK_PRINT_SCANID
 };
 
 static void usage (int argc, char **argv)
@@ -33,6 +34,7 @@ static void usage (int argc, char **argv)
    fprintf (stderr, "Options:\n");
    fprintf (stderr, "  -d | --dir    Print the archive sub-directory path for this file\n");
    fprintf (stderr, "  -m | --month  Print the calendar month when this file started\n");
+   fprintf (stderr, "  -s | --scanid Print the unique scan id number for this file\n");
 }
 
 static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char *product_type)
@@ -82,6 +84,33 @@ static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char
    return 0;
 }
 
+static int print_scan_id (const _pTIO_Granule_Ident_Type *gid)
+{
+   double sat_day;
+   long scan_id;
+
+   /* All radiance products will have scan_num >= 0. */
+
+   if (gid->scan_num < 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported product: scan_num = %d", __func__, gid->scan_num);
+        return -1;
+     }
+
+   if (0 != tio_time_sat_local_day_number (gid->tstart, &sat_day))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: computing satellite-local day number", __func__);
+        return -1;
+     }
+
+   scan_id = 1000L * ((long) sat_day) + gid->scan_num;
+
+   if (fprintf (stdout, "%ld", scan_id) < 0)
+     return -1;
+
+   return 0;
+}
+
 static int print_product_month (const _pTIO_Granule_Ident_Type *gid)
 {
    struct tm tstart;
@@ -113,6 +142,7 @@ int main (int argc, char **argv)
      {
         {"dir",   no_argument, 0, 'd'},
         {"month", no_argument, 0, 'm'},
+        {"scanid",no_argument, 0, 's'},
 	{"help",  no_argument, 0, 'h'},
         {0,0,0,0}
      };
@@ -120,7 +150,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "dm", long_options, &option_index);
+        int c = getopt_long (argc, argv, "dms", long_options, &option_index);
         if (c == -1) break;
 
         switch (c)
@@ -131,6 +161,10 @@ int main (int argc, char **argv)
 
            case 'm':
              task = TASK_PRINT_MONTH;
+             break;
+
+           case 's':
+             task = TASK_PRINT_SCANID;
              break;
 
            case '?':
@@ -190,6 +224,10 @@ int main (int argc, char **argv)
 
       case TASK_PRINT_MONTH:
         status = print_product_month (&gid);
+        break;
+
+      case TASK_PRINT_SCANID:
+        status = print_scan_id (&gid);
         break;
 
       default:
