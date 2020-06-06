@@ -7,6 +7,7 @@ import os, sys
 import time
 import sqlite3
 from datetime import date
+from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 
 Radiance_Files = ["RAD_L1a", "RAD_L1b"]
@@ -55,6 +56,7 @@ def init_radiance_table (table_name):
     define_common_fields (fields)
     fields["scan_type"] = "integer not null"
     fields["scan_num"] = "integer not null"
+    fields["scan_id"] = "integer not null"
     fields["granule_num"] = "integer not null"
     fields["time_coverage_start_since_epoch"] = "float not null"
     fields["time_coverage_end_since_epoch"] = "float not null"
@@ -66,6 +68,7 @@ def init_radiance_table (table_name):
 def init_radiance_product_table (table_name):
     fields = {}
     define_common_fields (fields)
+    fields["scan_id"] = "integer not null"
     quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1b')
     return Table_Type(table_name, fields, quals)
 
@@ -147,6 +150,10 @@ def remove_dot_prefix (name):
     else:
         return name
 
+def get_scan_id (path):
+    scan_id = check_output (["level1_info", "-s", path])
+    return int(scan_id)
+
 def process_file (conn, filename):
 
     basename = os.path.basename (filename)
@@ -180,9 +187,11 @@ def process_file (conn, filename):
     keys["size"] = st.st_size
 
     if (product_name in Radiance_Files):
+        keys["scan_id"] = get_scan_id (final_path)
         get_radiance_keys (nc, keys)
         status = insert_radiance_entry (conn, product_name, keys)
     elif (product_name in Radiance_Derived_Files):
+        keys["scan_id"] = get_scan_id (final_path)
         status = insert_radiance_product_entry (conn, product_name, keys)
     elif (product_name == "DRK_L1"):
         get_dark_keys (nc, keys)
