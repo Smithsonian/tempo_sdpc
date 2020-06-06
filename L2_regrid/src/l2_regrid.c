@@ -879,6 +879,9 @@ int main (int argc, char **argv)
 
    for (prod = product_list; prod != NULL; prod = prod->next)
      {
+        /* Don't overwrite an existing file */
+        if (0 == access (prod->outfile, F_OK))
+          continue;
         if ((expect_scan_ident != 0)
             && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name))))
           goto return_status;
