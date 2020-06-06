@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
 # for eprint definition
 from __future__ import print_function
@@ -21,7 +21,7 @@ def get_db_path():
         sys.exit(1)
 
     db_dir = os.path.join (arch_dir, "registry")
-    db_basename = date.today().strftime("production_%Y%m.db")
+    db_basename = date.today().strftime("production_%Y%m.sqlite")
     db_path = os.path.join (db_dir, db_basename)
 
     return db_path

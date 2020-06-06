@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
 # for eprint definition
 from __future__ import print_function
@@ -100,28 +100,35 @@ def insert_radiance_entry (conn, table_name, entry):
             return -1
 
 def insert_product_entry (conn, product_name, init_product_table, entry):
-    with conn:
-        c = conn.cursor()
-        p = init_product_table (product_name)
-        p.create(c)
-        keys = p.field_defs.keys()
-        key_values = [entry[k] for k in keys]
-        try:
-            p.new_entry (c, keys, key_values)
-            conn.commit()
-            return 0
-        except sqlite3.IntegrityError:
-            eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
-            return -1
+    c = conn.cursor()
+    p = init_product_table (product_name)
+    p.create(c)
+    keys = p.field_defs.keys()
+    key_values = [entry[k] for k in keys]
+    try:
+        p.new_entry (c, keys, key_values)
+        conn.commit()
+        return 0
+    except sqlite3.IntegrityError:
+        eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+        return -1
 
 def insert_radiance_product_entry (conn, product_name, entry):
-    return insert_product_entry (conn, product_name, init_radiance_product_table, entry)
+    with conn:
+        status = insert_product_entry (conn, product_name, init_radiance_product_table, entry)
+        if status == 0:
+            maybe_handle_scan_completion (conn, product_name, entry["scan_id"])
+    return status
 
 def insert_dark_product_entry (conn, product_name, entry):
-    return insert_product_entry (conn, product_name, init_dark_product_table, entry)
+    with conn:
+        status = insert_product_entry (conn, product_name, init_dark_product_table, entry)
+    return status
 
 def insert_other_product_entry (conn, product_name, entry):
-    return insert_product_entry (conn, product_name, init_other_product_table, entry)
+    with conn:
+        status = insert_product_entry (conn, product_name, init_other_product_table, entry)
+    return status
 
 def get_dark_keys (nc, keys):
     variables_to_average = ["exposure_time_per_coadd", "fpa_temp"]
@@ -153,6 +160,61 @@ def remove_dot_prefix (name):
 def get_scan_id (path):
     scan_id = check_output (["level1_info", "-s", path])
     return int(scan_id)
+
+def make_l3_path (l2_path):
+    # l3_scan_dir
+    product_dir = os.path.dirname(l2_path)
+    granule_dir = os.path.dirname(product_dir)
+    scan_dir = os.path.dirname (granule_dir)
+    l3_scan_dir = scan_dir.replace ('/L2/', '/L3/')
+    # l3_filename
+    l3_filename = os.path.basename(l2_path)
+    g_index = l3_filename.rfind('G')
+    l3_filename = l3_filename[0:g_index].replace ('_L2_', '_L3_')
+    # l3_path
+    l3_path = os.path.join (l3_scan_dir, l3_filename) + '.nc'
+    return l3_path
+
+def write_pathlist (file_basename, pathlist):
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    target_dir = os.path.join (arch_dir, "registry/scans")
+    os.makedirs (target_dir, exist_ok=True)
+    hidden_path = os.path.join (target_dir, '.' + file_basename)
+    fp = open (hidden_path, 'w')
+    fp.write (pathlist)
+    fp.close ()
+    # ensure that the output file appears atomicly
+    os.rename (hidden_path, os.path.join (target_dir, file_basename))
+
+def handle_complete_scan (cur, product_name, scan_id):
+    cur.execute ("select path from {} where scan_id == {} order by path".format(product_name, scan_id));
+    paths = [item for t in cur.fetchall() for item in t]
+    l3_path = make_l3_path (paths[0])
+    pathlist = """product_name={}
+l3_path={}
+read -r -d '' l2_paths <<'EOF'
+{}
+EOF
+""".format (product_name, l3_path, '\n'.join(paths))
+    write_pathlist (os.path.basename (paths[0]), pathlist)
+
+def maybe_handle_scan_completion (conn, product_name, scan_id):
+    if not "L2" in product_name:
+        return
+    c = conn.cursor()
+    # This approach assumes that all of the RAD_L1a files have been archived
+    # by the time the associated L2 products start appearing.  This should be
+    # true for normal processing (because no L2 processing starts until the
+    # INR 2nd pass is finished). However, this may not be true if near-real-time
+    # processing occurs without the INR 2nd pass.
+    c.execute ("select count(scan_id) from RAD_L1a where scan_id == {}".format(scan_id))
+    num_granules = c.fetchone()[0]
+    c.execute ("select count(scan_id) from {} where scan_id == {}".format(product_name, scan_id));
+    num_products = c.fetchone()[0]
+    # FIXME: How to handle the case when a granule never arrives (e.g. bad data)?
+    #        This should be a rare case -- maybe it's a job for the human operator.
+    if (num_products == num_granules):
+        handle_complete_scan (c, product_name, scan_id)
 
 def process_file (conn, filename):
 
@@ -205,7 +267,7 @@ def process_file (conn, filename):
     return status
 
 def make_db_path (arch_dir):
-    db_basename = date.today().strftime("production_%Y%m.db")
+    db_basename = date.today().strftime("production_%Y%m.sqlite")
     db_dir = os.path.join (arch_dir, "registry")
     if not os.path.isdir(db_dir):
         os.makedirs(db_dir)

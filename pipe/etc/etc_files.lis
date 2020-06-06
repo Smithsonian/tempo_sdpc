@@ -3,6 +3,7 @@ iocpull.rc
 level1a_cachemon.cfg
 level2_cachemon.cfg
 level2_entry_cachemon.cfg
+level3_cachemon.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 trace_gas/synth.control.NO2.in
