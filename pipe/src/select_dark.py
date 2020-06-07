@@ -20,8 +20,12 @@ def get_db_path():
         eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
         sys.exit(1)
 
+    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if (db_basename == None):
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
+
     db_dir = os.path.join (arch_dir, "registry")
-    db_basename = date.today().strftime("production_%Y%m.sqlite")
     db_path = os.path.join (db_dir, db_basename)
 
     return db_path

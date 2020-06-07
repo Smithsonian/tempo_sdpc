@@ -229,6 +229,10 @@ def process_file (conn, filename):
         eprint ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
+    # We use a count of the RAD_L1a files to determine the number
+    # of Level 2 granule data products expected from each scan.
+    # This count then triggers end-of-scan processing of Level 2
+    # data products e.g. by L2_split and L2_regrid
     if (product_name == 'RAD_L1'):
         if attr["inr_status"] == "2":
             product_name = product_name + 'b'
@@ -238,15 +242,15 @@ def process_file (conn, filename):
     final_basename = remove_dot_prefix (basename)
     final_path = os.readlink (filename)
     dirname = os.path.dirname (final_path)
+    st = os.stat(filename)
 
     # define common keys
     keys = {}
-    keys["istart"] = int(attr["time_coverage_start_since_epoch"])
     keys["filename"] = final_basename
-    keys["path"] = final_path
-    st = os.stat(filename)
-    keys["mtime"] = st.st_mtime
-    keys["size"] = st.st_size
+    keys["path"]     = final_path
+    keys["size"]     = st.st_size
+    keys["mtime"]    = st.st_mtime
+    keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
 
     if (product_name in Radiance_Files):
         keys["scan_id"] = get_scan_id (final_path)
@@ -267,7 +271,11 @@ def process_file (conn, filename):
     return status
 
 def make_db_path (arch_dir):
-    db_basename = date.today().strftime("production_%Y%m.sqlite")
+    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if (db_basename == None):
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
+
     db_dir = os.path.join (arch_dir, "registry")
     if not os.path.isdir(db_dir):
         os.makedirs(db_dir)
