@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import os, sys
+import signal
 import time
 import sqlite3
 from datetime import date
@@ -179,16 +180,26 @@ def write_pathlist (file_basename, pathlist):
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     target_dir = os.path.join (arch_dir, "registry/scans")
     os.makedirs (target_dir, exist_ok=True)
+    # Ensure that the output file appears atomicly
+    # write file to hidden_path, then rename to target_path
     hidden_path = os.path.join (target_dir, '.' + file_basename)
+    target_path = os.path.join (target_dir, file_basename)
     fp = open (hidden_path, 'w')
     fp.write (pathlist)
     fp.close ()
-    # ensure that the output file appears atomicly
-    os.rename (hidden_path, os.path.join (target_dir, file_basename))
+    os.rename (hidden_path, target_path)
 
-def handle_complete_scan (cur, product_name, scan_id):
+def collect_granule_paths (cur, product_name, scan_id):
     cur.execute ("select path from {} where scan_id == {} order by path".format(product_name, scan_id));
     paths = [item for t in cur.fetchall() for item in t]
+    return paths
+
+def count_archived_granules (cur, product_name, scan_id):
+    cur.execute ("select count(scan_id) from {} where scan_id == {}".format(product_name, scan_id));
+    return cur.fetchone()[0]
+
+def handle_complete_scan (cur, product_name, scan_id):
+    paths = collect_granule_paths (cur, product_name, scan_id)
     l3_path = make_l3_path (paths[0])
     pathlist = """product_name={}
 l3_path={}
@@ -201,20 +212,18 @@ EOF
 def maybe_handle_scan_completion (conn, product_name, scan_id):
     if not "L2" in product_name:
         return
-    c = conn.cursor()
-    # This approach assumes that all of the RAD_L1a files have been archived
+    # This approach assumes that all of the RAD_L1a files will have been archived
     # by the time the associated L2 products start appearing.  This should be
-    # true for normal processing (because no L2 processing starts until the
-    # INR 2nd pass is finished). However, this may not be true if near-real-time
-    # processing occurs without the INR 2nd pass.
-    c.execute ("select count(scan_id) from RAD_L1a where scan_id == {}".format(scan_id))
-    num_granules = c.fetchone()[0]
-    c.execute ("select count(scan_id) from {} where scan_id == {}".format(product_name, scan_id));
-    num_products = c.fetchone()[0]
-    # FIXME: How to handle the case when a granule never arrives (e.g. bad data)?
-    #        This should be a rare case -- maybe it's a job for the human operator.
-    if (num_products == num_granules):
-        handle_complete_scan (c, product_name, scan_id)
+    # true for normal processing because no L2 product generation starts until the
+    # INR 2nd pass is finished, and the INR 2nd pass cannot finish until after all
+    # of the RAD_L1a files have been delivered to INR.
+    # However, this condition may not hold if near-real-time processing occurs
+    # without the INR 2nd pass.
+    cur = conn.cursor()
+    num_radiance = count_archived_granules (cur, "RAD_L1a", scan_id)
+    num_products = count_archived_granules (cur, product_name, scan_id)
+    if num_products == num_radiance:
+        handle_complete_scan (cur, product_name, scan_id)
 
 def process_file (conn, filename):
 
@@ -229,11 +238,11 @@ def process_file (conn, filename):
         eprint ("WARNING: missing attribute time_coverage_start_since_epoch; file={}".format (filename))
         return -1
 
-    # We use a count of the RAD_L1a files to determine the number
-    # of Level 2 granule data products expected from each scan.
-    # This count then triggers end-of-scan processing of Level 2
-    # data products e.g. by L2_split and L2_regrid
-    if (product_name == 'RAD_L1'):
+    # We use a count of the RAD_L1a granules to determine the number
+    # of each Level 2 product type to expect from each scan.
+    # That number of Level 2 products then triggers end-of-scan processing
+    # for each Level 2 product type e.g. by L2_split and L2_regrid
+    if product_name == 'RAD_L1':
         if attr["inr_status"] == "2":
             product_name = product_name + 'b'
         else:
@@ -252,14 +261,14 @@ def process_file (conn, filename):
     keys["mtime"]    = st.st_mtime
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
 
-    if (product_name in Radiance_Files):
+    if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)
         get_radiance_keys (nc, keys)
         status = insert_radiance_entry (conn, product_name, keys)
-    elif (product_name in Radiance_Derived_Files):
+    elif product_name in Radiance_Derived_Files:
         keys["scan_id"] = get_scan_id (final_path)
         status = insert_radiance_product_entry (conn, product_name, keys)
-    elif (product_name == "DRK_L1"):
+    elif product_name == "DRK_L1":
         get_dark_keys (nc, keys)
         status = insert_dark_product_entry (conn, product_name, keys)
     else:
@@ -269,17 +278,6 @@ def process_file (conn, filename):
         eprint('ERROR: processing file {}'.format(filename))
 
     return status
-
-def make_db_path (arch_dir):
-    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if (db_basename == None):
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
-
-    db_dir = os.path.join (arch_dir, "registry")
-    if not os.path.isdir(db_dir):
-        os.makedirs(db_dir)
-    return os.path.join (db_dir, db_basename)
 
 def register_files (db_path, filenames):
 
@@ -295,33 +293,69 @@ def register_files (db_path, filenames):
     # Operate only on symbolic links!
 
     for fn in filenames:
-        if (os.path.islink(fn)):
+        if os.path.islink(fn):
             status = process_file (conn, fn)
-            if (status != 0):
+            if status != 0:
                 eprint('Error processing file: {}'.format(fn))
             os.remove(fn)
 
     conn.close()
 
-def main():
+def collect_filenames (dir):
+    filenames = []
+    for f in os.listdir(dir):
+        path = os.path.join(dir, f)
+        if os.path.isfile(path):
+            filenames.append (path)
+    return filenames
 
+class Registry:
+    def __init__ (self, incoming_dir, file_path):
+        self.incoming_dir = incoming_dir
+        self.file_path = file_path
+
+def init_registry ():
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    if (arch_dir == None):
+    if arch_dir == None:
         eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
         sys.exit(1)
 
-    dir = os.path.join (arch_dir, 'registry/incoming')
-    if not os.path.isdir (dir):
-        os.makedirs(dir)
+    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_basename == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
 
-    db_path = make_db_path (arch_dir)
+    incoming_dir = os.path.join (arch_dir, 'registry/incoming')
+    if not os.path.isdir (incoming_dir):
+        os.makedirs(incoming_dir)
 
-    while True:
-        filenames = [os.path.join(dir,f) for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f))]
-        register_files (db_path, filenames)
+    file_path = os.path.join (arch_dir, os.path.join ("registry", db_basename))
+    return Registry (incoming_dir, file_path)
+
+class Signal_Catcher:
+  kill_now = False
+  signum = None
+  def __init__(self):
+    signal.signal(signal.SIGINT, self.exit_gracefully)
+    signal.signal(signal.SIGHUP, self.exit_gracefully)
+    signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+  def exit_gracefully(self,signum, frame):
+    self.kill_now = True
+    self.signum = signum
+
+def main():
+
+    reg = init_registry()
+    sig = Signal_Catcher()
+
+    while not sig.kill_now:
+        filenames = collect_filenames (reg.incoming_dir)
+        if len(filenames) > 0:
+            register_files (reg.file_path, filenames)
         time.sleep (30)
 
-    #sys.exit(status)
+    print ("Exiting: caught signal = {}".format(sig.signum))
 
 if __name__ == "__main__":
     main()
