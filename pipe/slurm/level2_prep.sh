@@ -106,7 +106,7 @@ get_tiepoint_file()
    rad_path_basename_sans_ext=$(basename $rad_path .nc | sed -e s"/^[.]//")
    rad_path_dir=$(dirname $rad_path)
 
-   tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Internal.nc"
+   tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Smoothed.Internal.nc"
 
    if test -f "$tiepoint_path" ; then
       tiepoint_file=$(printf "$lev1_file_fmt" INR)
@@ -167,6 +167,17 @@ tar_l1_radiance_to_dest()
    # Now that the final L1b radiance file has been archived, we can
    # delete the L1a radiance file that was provided as input to INR:
    /bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
+
+   # Move INR performance reports to the archive:
+   inr_report="$SDPC_INR_RUN_DIR/Output/${rad_basename}.PerformanceReport.nc"
+   if test -f "$inr_report" ; then
+      scan_dir=$(dirname $SDPC_ARCHIVE_DIR/L1/$granule_subdir)
+      inr_dir=$(dirname $scan_dir)/inr
+      if ! test -d "$inr_dir" ; then
+         mkdir -p $inr_dir
+      fi
+      /bin/mv $inr_report $inr_dir
+   fi
 }
 
 . $SDPC_ROOT/bin/wavecal.sh
