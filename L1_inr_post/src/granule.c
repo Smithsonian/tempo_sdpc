@@ -1369,7 +1369,7 @@ Granule_Type *granule_open (const char *file, int correct_parallax,
         return NULL;
      }
 
-   if (0 != tio_meta_ncinit (meta, gt->ncid, "input_files", TIO_META_TYPE_CHAR))
+   if (0 != tio_meta_ncinit (meta, gt->ncid, "input_files", TIO_META_TYPE_STRING))
      {
         gt->gt_close (gt);
         return NULL;
