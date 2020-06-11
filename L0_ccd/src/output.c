@@ -388,7 +388,7 @@ static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_fro
         break;
      }
 
-   n = snprintf (shortname, SHORTNAME_BUFSIZE, "TEMPO_%s", prod_name);
+   n = snprintf (shortname, SHORTNAME_BUFSIZE, "TEMPO_%s_L1", prod_name);
    if (n < 0 || n >= SHORTNAME_BUFSIZE)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: error generating shortname for %s", __func__, prod_name);
