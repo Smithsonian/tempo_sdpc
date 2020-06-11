@@ -128,7 +128,15 @@ END_OBJECT = FILE_GROUP;
 
 define write_manifest (dest, lst, filename)
 {
-   variable num_files = 2 * length(lst);
+   variable g, num_files = 0;
+
+   foreach g (lst)
+     {
+        if (g.met_entry == NULL)
+          num_files += 1;
+        else
+          num_files += 2;
+     }
 
    variable hdr =
 `ORIGINATING_SYSTEM = TEMPO;
@@ -141,7 +149,6 @@ TOTAL_FILE_COUNT = $num_files
 
    () = fputs (hdr, fp);
 
-   variable g;
    foreach g (lst)
      {
         write_file_group (fp, g, dest.target_dir);
