@@ -242,7 +242,7 @@ static int read_metadata (TIO_Meta_Type *meta, const char *file)
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return -1;
 
-   status = tio_meta_ncinit (meta, ncid, "input_files", TIO_META_TYPE_CHAR);
+   status = tio_meta_ncinit (meta, ncid, "input_files", TIO_META_TYPE_STRING);
 
    (void) TIO_close (ncid);
 
