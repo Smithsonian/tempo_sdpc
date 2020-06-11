@@ -6,16 +6,18 @@ require ("cmdopt");
 
 private variable Node_Name = "$HOST"$;
 
-define make_file_entry (path, st, extname_is_nc)
+define make_file_entry (path, data_type, st, extname_is_nc)
 {
    variable s = struct
      {
         path = path,
+        data_type,
         file_id,
         file_type, file_size,
         file_chksum, file_chksum_type
      };
 
+   s.data_type = data_type;
    s.file_type = extname_is_nc ? "SCIENCE" : "METADATA";
    s.file_id = path_basename (path);
    s.file_size = st.st_size;
@@ -40,15 +42,16 @@ define process_file (types, path_nc)
 
    variable basename_nc = path_basename (path_nc);
    variable tok = strtok (basename_nc, "_");
-   variable product_type = sprintf ("%s_%s_%s", tok[1], tok[2], tok[3]);
-   variable data_version = strtrim_beg (tok[3], "V");
-   variable nc_entry = make_file_entry (path_nc, st_nc, 1);
+   variable data_type = strjoin (tok[[0:2]], "_");
+   variable product_type = strjoin (tok[[1:3]], "_");
+   variable data_version = atoi(strtrim_beg (tok[3], "V"));
+   variable nc_entry = make_file_entry (path_nc, data_type, st_nc, 1);
 
    variable path_met = path_nc + ".met";
    variable st_met = stat_file (path_met);
    variable met_entry = NULL;
    if (st_met != NULL)
-     met_entry = make_file_entry (path_met, st_met, 0);
+     met_entry = make_file_entry (path_met, data_type, st_met, 0);
 
    variable group = struct
      {
@@ -105,6 +108,7 @@ define entry_string (entry, target_dir)
 define write_file_group (fp, g, target_dir)
 {
    variable data_version = g.data_version;
+   variable data_type = g.nc_entry.data_type;
 
    variable entries = entry_string (g.nc_entry, target_dir);
 
@@ -116,7 +120,7 @@ define write_file_group (fp, g, target_dir)
 
    variable str =
 `OBJECT = FILE_GROUP;
-  DATA_TYPE = TEMPO;
+  DATA_TYPE = $data_type;
   DATA_VERSION = $data_version;
   NODE_NAME = $Node_Name;
   $entries
