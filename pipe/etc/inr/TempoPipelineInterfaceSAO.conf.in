@@ -510,8 +510,8 @@ filename=@INR_REFDATA_DIR@/jpleph2000-2060.dat
 
 [Logging]
 
-filename=logs/tempo_ui.log
-alarmDir=sandbox/
+filename=@INR_PROCESSING_ROOT@/logs/tempo_ui.log
+alarmDir=@INR_PROCESSING_ROOT@/sandbox/
 
 ## Parameters for controlling the performance evaluation
 
