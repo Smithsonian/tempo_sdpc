@@ -187,6 +187,7 @@ static int meta_write_value_ascii (const TIO_Meta_Type *m, int want_num_values, 
    double *dp = (double *)m->values;
    float *sp = (float *)m->values;
    char **spp = (char **)m->values;
+   int need_parens;
 
    if (want_num_values)
      {
@@ -194,7 +195,10 @@ static int meta_write_value_ascii (const TIO_Meta_Type *m, int want_num_values, 
         return 0;
      }
 
-   if (m->num_values > 1)
+   need_parens = ((m->num_values > 1)
+                  && (m->value_type != TIO_META_TYPE_CHAR));
+
+   if (need_parens)
      {
         fputs ("(", fp);
      }
@@ -252,7 +256,7 @@ static int meta_write_value_ascii (const TIO_Meta_Type *m, int want_num_values, 
         return -1;
      }
 
-   if (m->num_values > 1)
+   if (need_parens)
      {
         fputs (")", fp);
      }
@@ -406,8 +410,7 @@ int tio_meta_append_string (TIO_Meta_Type *lst, const char *name, const char *st
    /* If the keyword isn't found, create it */
    if (NULL == (meta = find_key_by_name (lst, name)))
      {
-        /* Default to NC_CHAR type since that's Fortran compatible */
-        return tio_meta_set (lst, name, TIO_META_TYPE_CHAR, 1+strlen(str), str);
+        return tio_meta_set (lst, name, TIO_META_TYPE_STRING, 1, str);
      }
 
    if (meta->value_type == TIO_META_TYPE_CHAR)

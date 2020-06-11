@@ -12,7 +12,7 @@
     VALUE   =     ("The", "Sun", "Also", "Rises")
 
     NUM_VAL =     16
-    VALUE   =     ("Just one string")
+    VALUE   =     "Just one string"
 
     NUM_VAL =     6
     VALUE   =     ("The first string", "append 1", "append 2", "append A", "append B", "append C")
@@ -21,7 +21,7 @@
 
     VALUE   =     "Another string"
 
-    LOCALGRANULEID =   ("product_file_name.nc")
+    LOCALGRANULEID =   "product_file_name.nc"
     VERSIONID      =   1
-    PGEVERSION     =   ("v1.2.3")
-    SHORTNAME      =   ("product_short_name")
+    PGEVERSION     =   "v1.2.3"
+    SHORTNAME      =   "product_short_name"
