@@ -116,6 +116,14 @@ define insert_fixed_metadata (path)
      throw ApplicationError, "*** Error: inserting fixed metadata: $path"$;
 }
 
+define fix_met_file_format (path)
+{
+   variable argv = ["fix_met_format.py", path];
+   variable s = new_process (argv; dup2=1).wait();
+   if (s.exit_status != 0)
+     throw ApplicationError, "*** Error: fixing met file format $path"$;
+}
+
 define register_using_symlink (tar_file, archive_dest_subdir)
 {
    % Extract partial paths to archived data products.
@@ -173,6 +181,11 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         newpath = path_concat (incoming_dir, path_basename(pp));
         if (0 != symlink (oldpath, newpath))
           throw ApplicationError, "*** Error: creating symlink $newpath"$;
+
+        % fix formatting of .met file
+        variable metfile_path = oldpath + ".met";
+        if (NULL != stat_file (metfile_path))
+          fix_met_file_format (metfile_path);
      }
 
    return 0;

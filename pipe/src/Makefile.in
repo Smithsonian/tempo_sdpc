@@ -14,6 +14,7 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh inr_refdata.sh \
 SCRIPT_FILES = cachemon.sl archive.sl o3p_partition.sl move_file_stream.sl \
                sdpcrun.sh sdpcpipe.sh make_tar_notice.sh \
                select_dark.py register.py insert_fixed_metadata.py \
+               fix_met_format.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES =# ../doc/help/daemon.hlp
