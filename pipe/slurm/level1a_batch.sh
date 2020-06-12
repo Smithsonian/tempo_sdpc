@@ -156,6 +156,14 @@ esac
 
 trap - EXIT
 
+catch()
+{
+  if test "$1" != "0" ; then
+    echo "Error $1 occurred on $2"
+  fi
+}
+trap 'catch $? $LINENO' EXIT
+
 if test x"$l0_out_dir" != x ; then
    tar_product_to_dest_dir "$l0_out_dir"
    tarfile_path="$l0_out_dir/${work_dir_tarfile}"
