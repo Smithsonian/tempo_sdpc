@@ -51,6 +51,8 @@ def define_common_fields (fields):
     fields["path"] = "text"
     fields["mtime"] = "float"
     fields["size"] = "integer"
+    fields["versionid"] = "integer"
+    fields["asdc_status"] = "integer"     # 0=not uploaded, 1=uploaded, 2=accepted
 
 def init_radiance_table (table_name):
     fields = {}
@@ -230,6 +232,7 @@ def process_file (conn, filename):
     basename = os.path.basename (filename)
     tok = basename.split('_')
     product_name = '{}_{}'.format(tok[1], tok[2])
+    versionid = int(tok[3].strip('V'))
 
     nc = NetCDFFile(filename, "r")
     attr = nc.__dict__
@@ -260,6 +263,8 @@ def process_file (conn, filename):
     keys["size"]     = st.st_size
     keys["mtime"]    = st.st_mtime
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
+    keys["versionid"] = versionid
+    keys["asdc_status"] = 0
 
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)
