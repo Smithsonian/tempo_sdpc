@@ -83,20 +83,26 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
    int attid;
 
-   /* When granule ident indices aren't present, we assume this granule doesn't need them.
-    * In this case, we set the indices to zero to indicate that they aren't used.
+   /* When an index isn't present, we assume this granule doesn't need them,
+    * so set the indices to zero to indicate that they aren't used.
     */
-   if (NC_ENOTATT == nc_inq_attid (ncid, NC_GLOBAL, "granule_num", &attid))
+   if (NC_ENOTATT == nc_inq_attid (ncid, NC_GLOBAL, "scan_num", &attid))
      {
         gid->scan_num = 0;
-        gid->granule_num = 0;
-        return 0;
+     }
+   else if (-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &gid->scan_num))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading scan_num attribute from file", __func__);
+        return -1;
      }
 
-   if ((-1 == TIO_get_att (ncid, NC_GLOBAL, "scan_num", NC_INT, &gid->scan_num))
-       ||(-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num)))
+   if (NC_ENOTATT == nc_inq_attid (ncid, NC_GLOBAL, "granule_num", &attid))
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading scan_num, granule_num attributes from file", __func__);
+        gid->granule_num = 0;
+     }
+   else if (-1 == TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &gid->granule_num))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading granule_num attribute from file", __func__);
         return -1;
      }
 
@@ -105,9 +111,6 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 
 int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
-   if (0 != read_granule_ident_indices (ncid, gid))
-     return -1;
-
    memset (gid->tstart_str, 0, MAX_ISOTIME_LEN);
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start", NC_CHAR, gid->tstart_str))
      return -1;
@@ -119,6 +122,9 @@ int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &gid->tstart))
      return -1;
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &gid->tend))
+     return -1;
+
+   if (0 != read_granule_ident_indices (ncid, gid))
      return -1;
 
    return 0;
