@@ -106,7 +106,9 @@ get_tiepoint_file()
    rad_path_basename_sans_ext=$(basename $rad_path .nc | sed -e s"/^[.]//")
    rad_path_dir=$(dirname $rad_path)
 
-   tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Smoothed.Internal.nc"
+   # Since the original radiance path is XXXX.Smoothed.nc
+   #    we want the tie point file named XXXX.Smoothed.Internal.nc
+   tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Internal.nc"
 
    if test -f "$tiepoint_path" ; then
       tiepoint_file=$(printf "$lev1_file_fmt" INR)
