@@ -46,7 +46,6 @@ CCD_Object_Type;
 struct CCD_Select_Type
 {
    Image_Pixel_Type *pixels;
-   double *prob;
    size_t num_pixels;
    int *row_offset;
    int *col_offset;
