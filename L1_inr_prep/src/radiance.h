@@ -88,22 +88,26 @@ extern int radiance_interval (Radiance_Type *r,
  *
  * @param[in] r    Pointer to a @c Radiance_Type struct associated with an
  *                 an open Level 1 radiance file
+ * @param[in] meta Pointer to @c TIO_Meta_Type struct associated with an open
+ *                 Level 1 radiance file
  * @param[in] rst  Pointer to a @c Row_Select_Type object referencing
  *                 the relevant gyroscope time series data
  * @return 0 on success, -1 on error
  */
-extern int radiance_copy_iru (Radiance_Type *r,
+extern int radiance_copy_iru (Radiance_Type *r, TIO_Meta_Type *meta,
                               const Row_Select_Type *rst);
 
 /** Copy scan mechanism controller (SMC) time series data into a Level 1 radiance file
  *
  * @param[in] r    Pointer to a @c Radiance_Type struct associated with an
  *                 an open Level 1 radiance file
+ * @param[in] meta Pointer to @c TIO_Meta_Type struct associated with an open
+ *                 Level 1 radiance file
  * @param[in] rst  Pointer to a @c Row_Select_Type object referencing
  *                 the relevant SMC time series data
  * @return 0 on success, -1 on error
  */
-extern int radiance_copy_smc (Radiance_Type *r,
+extern int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta,
                               const Row_Select_Type *rst);
 
 /** Copy ephemeris time series data into a Level 1 radiance file

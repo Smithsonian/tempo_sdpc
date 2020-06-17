@@ -21,6 +21,25 @@
    int created_for_inr_status_update;
 #include "radiance.h"
 
+static int meta_record_basename (TIO_Meta_Type *meta, const char *path)
+{
+   const char *path_basename;
+
+   if (meta == NULL)
+     return 0;
+
+   if (path == NULL)
+     return 0;
+
+   if (NULL != (path_basename = strrchr (path, '/')))
+     {
+        path_basename++;
+     }
+   else path_basename = path;
+
+   return tio_meta_append_string (meta, "input_files", path_basename);
+}
+
 static void free_radiance_type (Radiance_Type *r)
 {
    if (r == NULL)
@@ -336,7 +355,7 @@ static Var_Name_Type IRU_Bias_Vars[] =
    VAR_TABLE_END
 };
 
-static int radiance_copy_vars (const Row_Select_Type *rst_head,
+static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *meta,
                                Var_Name_Type *v, int to_grp, int copy_all)
 {
    const Row_Select_Type *rst;
@@ -348,6 +367,8 @@ static int radiance_copy_vars (const Row_Select_Type *rst_head,
      {
         int from_ncid, rows_copied;
         if (0 != TIO_open (rst->file, NC_NOWRITE, &from_ncid))
+          goto free_and_return;
+        if (0 != meta_record_basename (meta, rst->file))
           goto free_and_return;
         rows_copied = copy_file_var (rst, &buf, v->from, from_ncid, copy_all,
                                      v->to, to_grp, to_start);
@@ -363,7 +384,7 @@ free_and_return:
    return status;
 }
 
-int radiance_copy_smc (Radiance_Type *r, const Row_Select_Type *rst_head)
+int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, const Row_Select_Type *rst_head)
 {
    Var_Name_Type *v;
    int grp;
@@ -376,14 +397,14 @@ int radiance_copy_smc (Radiance_Type *r, const Row_Select_Type *rst_head)
 
    for (v = SMC_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, v, grp, 0))
+        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 0))
           return -1;
      }
 
    return 0;
 }
 
-int radiance_copy_iru (Radiance_Type *r, const Row_Select_Type *rst_head)
+int radiance_copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, const Row_Select_Type *rst_head)
 {
    Var_Name_Type *v;
    int grp;
@@ -396,13 +417,13 @@ int radiance_copy_iru (Radiance_Type *r, const Row_Select_Type *rst_head)
 
    for (v = IRU_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, v, grp, 0))
+        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 0))
           return -1;
      }
 
    for (v = IRU_Bias_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, v, grp, 1))
+        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 1))
           return -1;
      }
 

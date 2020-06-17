@@ -125,7 +125,7 @@ static int read_common_params (config_t *cfg, const char *setting_name,
    return 0;
 }
 
-static int copy_iru (Radiance_Type *r, config_t *cfg,
+static int copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type iru = {0};
@@ -141,7 +141,7 @@ static int copy_iru (Radiance_Type *r, config_t *cfg,
 
    if (iru.rst)
      {
-        if (0 != radiance_copy_iru (r, iru.rst))
+        if (0 != radiance_copy_iru (r, meta, iru.rst))
           goto return_status;
      }
 
@@ -151,7 +151,7 @@ return_status:
    return status;
 }
 
-static int copy_smc (Radiance_Type *r, config_t *cfg,
+static int copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type smc = {0};
@@ -167,7 +167,7 @@ static int copy_smc (Radiance_Type *r, config_t *cfg,
 
    if (smc.rst)
      {
-        if (0 != radiance_copy_smc (r, smc.rst))
+        if (0 != radiance_copy_smc (r, meta, smc.rst))
           goto return_status;
      }
 
@@ -309,6 +309,7 @@ static int process_inputs (config_t *cfg,
                            int processing_version)
 {
    Radiance_Type *r = NULL;
+   TIO_Meta_Type *meta = NULL;
    Rename_Path_Type rpt = {0};
    const char *logmsg_filename = NULL;
    int radiance_is_telemetry_only = 0;
@@ -322,6 +323,10 @@ static int process_inputs (config_t *cfg,
         if (NULL == (r = radiance_open (radiance_file)))
           return -1;
         if (0 != radiance_interval (r, &time_beg, &time_end))
+          goto return_status;
+        if (NULL == (meta = tio_meta_open ()))
+          goto return_status;
+        if (0 != tio_meta_ncinit (meta, r->ncid, "input_files", TIO_META_TYPE_STRING))
           goto return_status;
      }
    else
@@ -351,10 +356,10 @@ static int process_inputs (config_t *cfg,
     * of additional files.
     */
 
-   if (0 != copy_smc (r, cfg, time_beg, time_end, pad_enable))
+   if (0 != copy_smc (r, meta, cfg, time_beg, time_end, pad_enable))
      goto return_status;
 
-   if (0 != copy_iru (r, cfg, time_beg, time_end, pad_enable))
+   if (0 != copy_iru (r, meta, cfg, time_beg, time_end, pad_enable))
      goto return_status;
 
    /* Copy subset of ephemeris */
@@ -374,6 +379,11 @@ static int process_inputs (config_t *cfg,
           goto return_status;
         logmsg_filename = rpt.final_path;
      }
+   else
+     {
+        if (0 != tio_meta_write_ncattr (meta, r->ncid))
+          goto return_status;
+     }
 
    status = 0;
 return_status:
@@ -381,6 +391,7 @@ return_status:
               status, logmsg_filename ? logmsg_filename : "(null)");
    radiance_close (r);
    free_rename_path_type (&rpt);
+   tio_meta_close (meta);
 
    return status;
 }
