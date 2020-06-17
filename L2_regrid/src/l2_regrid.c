@@ -576,7 +576,6 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
                                       const Pixel_Grid_Param_Type *dest)
 {
    float lon[4], lat[4];
-   float centroid_lon, centroid_lat;
 
    /* The following standard keyword values are set:
     * @verbatim
@@ -584,8 +583,6 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
     *   polygon_latitudes       boundary polygon latitudes
     *   polygon_sequence        integer indices giving the sequence in which the
     *                           (lon,lat) points trace the boundary in CCW order
-    *   centroid_mean_longitude longitude of the polygon centroid
-    *   centroid_mean_latitude  latitude of the polygon centroid
     * @endverbatim
     */
 
@@ -597,15 +594,6 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
    if ((0 != tio_meta_set_acdd_geospatial_bounds (meta, lon, lat, 4))
        || (0 != tio_meta_set_odl_bounding_polygon (meta, lon, lat, 4)))
      return -1;
-
-   centroid_lon = 0.5 * (dest->xmin + dest->xmax);
-   centroid_lat = 0.5 * (dest->ymin + dest->ymax);
-
-   if ((0 != tio_meta_set (meta, "centroid_mean_longitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lon))
-       || (0 != tio_meta_set (meta, "centroid_mean_latitude",  TIO_META_TYPE_FLOAT, 1, &centroid_lat)))
-     {
-        return -1;
-     }
 
    return 0;
 }
