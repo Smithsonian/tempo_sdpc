@@ -1240,7 +1240,7 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
         geoid_dem_basename++;
      }
    else geoid_dem_basename = geoid_dem_path;
-   tio_meta_append_string (meta, "input_files", geoid_dem_basename);
+   if (0) tio_meta_append_string (meta, "input_files", geoid_dem_basename);
 
    status = 0;
 free_and_return:

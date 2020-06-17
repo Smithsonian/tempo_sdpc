@@ -113,7 +113,7 @@ static int set_ground_pixel_quality_flags (Granule_Type *gt, TIO_Meta_Type *meta
         snow_file_basename++;
      }
    else snow_file_basename = snow_file;
-   tio_meta_append_string (meta, "input_files", snow_file_basename);
+   if (0) tio_meta_append_string (meta, "input_files", snow_file_basename);
 
    if (NULL == (land_cover = land_cover_init (cfg)))
      goto return_status;
@@ -158,7 +158,7 @@ static int write_metadata (TIO_Meta_Type *meta, const char *input_file)
    if (0 != TIO_inq_grp (ncid, "band_290_490_nm", &grp))
      goto return_status;
 
-   if (0 != tio_meta_set_lev1_bounding_polygon_and_centroid (meta, grp))
+   if (0 != tio_meta_set_lev1_bounding_polygon (meta, grp))
      goto return_status;
 
    if (0 != tio_meta_write_ncattr (meta, ncid))

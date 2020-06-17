@@ -170,8 +170,11 @@ static int update_radiance_metadata (const char *rad_file,
    /* It's ok if this keyword doesn't exist */
    (void) tio_meta_ncinit (meta, ncid, "input_files", TIO_META_TYPE_STRING);
 
-   meta_record_basename (meta, qu_file);
-   meta_record_basename (meta, lps_file);
+   if (0)
+     {
+        meta_record_basename (meta, qu_file);
+        meta_record_basename (meta, lps_file);
+     }
 
    if (0 != tio_meta_write_ncattr (meta, ncid))
      goto return_status;
