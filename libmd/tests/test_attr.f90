@@ -32,7 +32,6 @@ program test_attr
   integer (kind=4), dimension (nxtrack,nstep) :: inrqf
   integer(kind=4), dimension(2) :: dimid_2d
   real (kind=4), dimension(:), allocatable :: bdry_lon, bdry_lat
-  real (kind=4) :: centroid_lon, centroid_lat
 
   type (tiof_dimlist_type) :: dimlist
   type (tiof_varlist_type) :: varlist
@@ -152,7 +151,7 @@ program test_attr
 
   call tiof_open (l2file, obj, nf90_write, errstat)
   call tiof_push_group (obj, grp_geo, errstat)
-  call tiof_make_lev1_bounding_polygon (obj, bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
+  call tiof_make_lev1_bounding_polygon (obj, bdry_lon, bdry_lat, errstat)
   call tiof_close (obj, errstat)
 
   if (errstat /= 0) then
@@ -160,18 +159,9 @@ program test_attr
     stop 1
   endif
 
-  if (abs(centroid_lon) > 1.e-4) then
-    write(*,*)'*** test_attr:  unexpected centroid_lon = ', centroid_lon
-    stop 1
-  endif
-  if (abs(centroid_lat) > 1.e-4) then
-    write(*,*)'*** test_attr:  unexpected centroid_lat = ', centroid_lat
-    stop 1
-  endif
-
   ! add the metadata
   call md_open (l2file, errstat)
-  call md_write_geo_bounds (bdry_lon, bdry_lat, centroid_lon, centroid_lat, errstat)
+  call md_write_geo_bounds (bdry_lon, bdry_lat, errstat)
   call md_write_inputs (ninp, inputs, errstat)
   call md_write_fixed (nlfile,errstat)
   call md_write_prodid (l2file,version,errstat)

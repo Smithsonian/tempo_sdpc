@@ -71,31 +71,27 @@ contains
 
   end subroutine md_close
 
-  !>Write geographic bounding polygon and centroid values
+  !>Write geographic bounding polygon
   !-----------------------------------------------------------------------
   !
   !> @param[in]  lon           Bounding polygon longitude coordinates
   !> @param[in]  lat           Bounding polygon latitude coordinates
-  !> @param[in]  centroid_lon  Bounding polygon centroid longitude
-  !> @param[in]  centroid_lat  Bounding polygon centroid latitude
   !> @param[in/out]  errstat error tracking code, non-zero indicates problem
   !
   !> @author E. O'Sullivan  March 2018
   !> @author J. Houck,  March 2019
   !-----------------------------------------------------------------------
-  subroutine md_write_geo_bounds (lon, lat, centroid_lon, centroid_lat, errstat)
+  subroutine md_write_geo_bounds (lon, lat, errstat)
 
     implicit none
 
     !input variables
     real (kind=4), dimension(:), intent(in) :: lon, lat
-    real (kind=4), intent(in) :: centroid_lat, centroid_lon
     integer (kind=4), intent (inout) :: errstat
 
     !local variables
     integer (kind=4), allocatable, dimension(:) :: seq
     type (tiof_file_type), pointer :: l2obj
-    type (tiof_attlist_type) :: attlist
     integer status, i, num
 
     if (errstat /= 0) return
@@ -111,31 +107,9 @@ contains
 
     seq(1:num) = (/(i, i=1,num)/)
 
-    !write to l2obj
-    call tiof_attlist_append (attlist, errstat, "centroid_mean_latitude", &
-         att_r4=[centroid_lat])
-    call tiof_attlist_append (attlist, errstat, "centroid_mean_longitude", &
-         att_r4=[centroid_lon])
-
-    if (.false.) then
-      call tiof_attlist_append (attlist, errstat, "polygon_latitudes", &
-                                att_r4=[lat(1:num)])
-      call tiof_attlist_append (attlist, errstat, "polygon_longitudes", &
-                                att_r4=[lon(1:num)])
-      call tiof_attlist_append (attlist, errstat, "polygon_sequence", &
-                                att_i4=[seq(1:num)])
-    endif
-
-    if (errstat /= 0) then
-      call tell_error (tell_io_write_error, "md_write_geo_bounds: failed", &
-           errstat)
-      return
-    endif
     call tiof_push_group (l2obj, metadata_grp_name, errstat)
     call tiof_write_acdd_geospatial_attrs (l2obj, lon(1:num), lat(1:num), errstat)
-    call tiof_def_atts (l2obj, attlist, nf90_global, errstat)
     call tiof_pop_group (l2obj, errstat)
-    call tiof_attlist_free (attlist)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "md_write_geo_bounds: failed", &
