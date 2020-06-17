@@ -1401,15 +1401,17 @@ PROGRAM O3T_mainNVAdj
   ENDIF
 
   if (write_odl .and. use_tio_in .and. (.not. have_omi_data)) then
-    LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
-                            O3_CLIM_LUN,     TM_CLIM_LUN,       &
-                            TERRAINPRES_LUN, CLOUDPRES_LUN,     &
-                            OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
-                            OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
+    !LUNinputPointer(1:11)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN,  &
+    !                        O3_CLIM_LUN,     TM_CLIM_LUN,       &
+    !                        TERRAINPRES_LUN, CLOUDPRES_LUN,     &
+    !                        OMCLDRR_L2_LUN, OMTO3_NVAL_LUN,     &
+    !                        OMTO3_DNDX_LUN,    nvCORR_LUN, ANOMFLG3_LUN /)
+    LUNinputPointer(1:3)= (/ L1B_UV_FILE_LUN, USED_L1BIRR_LUN, &
+                            OMCLDRR_L2_LUN /)
     status = write_odl_metadata (UV_filename, nc_l2_filename, &
                                  processing_version, &
                                  nXtrack_rad, nTimes_rad, &
-                                 tempo_mcfLUN, LUNinputPointer(1:11), 11)
+                                 tempo_mcfLUN, LUNinputPointer(1:3), 3)
   endif
 
   !! Read the input file names from the PCF file and
