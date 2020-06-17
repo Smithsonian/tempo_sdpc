@@ -343,7 +343,7 @@ CONTAINS
     USE OMSAO_prefitcol_module,    ONLY : yn_o3_prefit, yn_bro_prefit,&
       yn_lqh2o_prefit
     USE OMSAO_indices_module,      ONLY: &
-      pge_oclo_idx, pge_bro_idx, pge_hcho_idx, pge_o3_idx,    &
+      pge_oclo_idx, pge_bro_idx, pge_hcho_idx, pge_no2_idx, pge_o3_idx,    &
       pge_gly_idx, l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
       o3_prefit_lun, bro_prefit_lun, lqh2o_prefit_lun,                        &
       voc_amf_luns, voc_omicld_idx, pge_h2o_idx
@@ -451,6 +451,13 @@ CONTAINS
         lun_input(n_lun_inp) = lqh2o_prefit_lun
       END IF
     CASE (pge_h2o_idx)
+      ! -----------------
+      ! Add the Cloud LUN
+      ! -----------------
+      n_lun_inp            = n_lun_inp + 1
+      lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
+
+    CASE (pge_no2_idx)
       ! -----------------
       ! Add the Cloud LUN
       ! -----------------
