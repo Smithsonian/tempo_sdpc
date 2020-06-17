@@ -105,7 +105,7 @@ int main (void)
    if (0 != TIO_inq_grp (ncid, "band_290_490_nm", &uv_grp))
      goto cleanup_and_exit;
 
-   if (0 != tio_meta_set_lev1_bounding_polygon_and_centroid (meta, uv_grp))
+   if (0 != tio_meta_set_lev1_bounding_polygon (meta, uv_grp))
      goto cleanup_and_exit;
 
    if (0 != tio_meta_write_ncattr (meta, grp))

@@ -733,13 +733,11 @@ extern int tio_meta_set_datetime_production (TIO_Meta_Type *meta);
  *   polygon_latitudes       boundary polygon latitudes
  *   polygon_sequence        integer indices giving the sequence in which the
  *                           (lon,lat) points trace the boundary in CCW order
- *   centroid_mean_longitude longitude of the polygon centroid
- *   centroid_mean_latitude  latitude of the polygon centroid
  * @endverbatim
  *
  * @see __tio_make_lev1_bounding_polygon
  */
-extern int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int grp);
+extern int tio_meta_set_lev1_bounding_polygon (TIO_Meta_Type *meta, int grp);
 
 /** Construct the geospatial bounding polygon
  * @param[in]  grp   Integer device code for reading from the group in a netCDF4/HDF5
@@ -750,19 +748,14 @@ extern int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta,
  *                   order around the polygon boundary.
  * @param[out] plat  Pointer to an allocated array of latitude coordinates, in CCW
  *                   order around the polygon boundary.
- * @param[out] lon_centroid  Polygon centroid longitude coordinate
- * @param[out] lat_centroid  Polygon centroid latitude coordinate
  * @return 0 on success, -1 on error
  *
  * The \a longitude and \a latitude coordinates in the file are processed to derive
  * the coordinates of a polygon that bounds the region with valid coordinates.
- * The centroid of the region is also computed.  The centroid is defined to be
- * the point at the mean 3-D vector position, with all positions weighted equally.
  *
- * @see tio_meta_set_lev1_bounding_polygon_and_centroid
+ * @see tio_meta_set_lev1_bounding_polygon
  */
-extern int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat,
-                                             float *lon_centroid, float *lat_centroid);
+extern int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat);
 
 /** Write metadata keywords as attributes in a specified netCDF4/HDF5 group
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open

@@ -126,8 +126,6 @@ module tio_module
     type(c_ptr) :: lon
     type(c_ptr) :: lat
     integer (c_int) :: num
-    real (kind=c_float) :: centroid_lon  !< centroid longitude
-    real (kind=c_float) :: centroid_lat  !< centroid latitude
   end type
 
   interface
@@ -1586,16 +1584,13 @@ contains
   !! @param[in] obj  File type object, \a type(tiof_file_type)
   !! @param[inout] lon  Longitude coordinate of bounding polygon vertices (allocatable)
   !! @param[inout] lat  Latitude coordinate of bounding polygon vertices (allocatable)
-  !! @param[out] centroid_lon  Longitude of bounding polygon centroid
-  !! @param[out] centroid_lat  Latitude of bounding polygon centroid
   !! @param[inout]  errstat  Integer error status code.
   !! @details
-  subroutine tiof_make_lev1_bounding_polygon (obj, lon, lat, centroid_lon, centroid_lat, errstat)
+  subroutine tiof_make_lev1_bounding_polygon (obj, lon, lat, errstat)
     use, intrinsic :: iso_c_binding
     implicit none
     type (tiof_file_type), intent(in) :: obj
     real (kind=r4), dimension(:), allocatable, intent(inout) :: lon, lat
-    real (kind=r4), intent(out) :: centroid_lon, centroid_lat
     integer, intent(inout) :: errstat
 
     type (tiof_bounding_polygon_type), target :: bpt
@@ -1624,8 +1619,6 @@ contains
 
     lon(1:bpt%num) = bpt_lon(1:bpt%num)
     lat(1:bpt%num) = bpt_lat(1:bpt%num)
-    centroid_lon = bpt % centroid_lon
-    centroid_lat = bpt % centroid_lat
 
     call free_lev1_bounding_polygon_struct (c_loc(bpt))
 

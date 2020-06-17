@@ -17,7 +17,7 @@ static int process_file (const char *ncfile)
         goto cleanup_and_exit;
      }
 
-   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat, NULL, NULL))
+   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat))
      goto cleanup_and_exit;
 
    for (i = 0; i < num; i++)

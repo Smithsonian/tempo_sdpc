@@ -908,45 +908,6 @@ int tio_meta_write_ncattr (const TIO_Meta_Type *meta, int grp)
    return 0;
 }
 
-static int compute_centroid (const float *lon2d, const float *lat2d, const int *inrqf, int num_pixels,
-                             float *lon_centroid, float *lat_centroid)
-{
-   float x, y, z, phi, theta;
-   int i, n;
-
-   /* NULL means these values aren't wanted */
-   if ((lon_centroid == NULL) || (lat_centroid == NULL))
-     return 0;
-
-   x = y = z = 0.0;
-   n = 0;
-
-   for (i = 0; i < num_pixels; i++)
-     {
-        if (inrqf[i] == 0)
-          {
-             float sin_theta;
-             phi = lon2d[i] * DEGTORAD;
-             theta = M_PI_2 - lat2d[i] * DEGTORAD;
-             sin_theta = sin(theta);
-
-             x += sin_theta * cos(phi);
-             y += sin_theta * sin(phi);
-             z += cos(theta);
-             n++;
-          }
-     }
-
-   x /= n;
-   y /= n;
-   z /= n;
-
-   *lon_centroid = atan2 (y, x) / DEGTORAD;
-   *lat_centroid = atan2 (z, hypot (x, y)) / DEGTORAD;
-
-   return 0;
-}
-
 static inline float merge_coordinates (float corner1, float corner2, float center, float fill_value)
 {
    if (corner1 == fill_value)
@@ -957,8 +918,7 @@ static inline float merge_coordinates (float corner1, float corner2, float cente
    return (corner2 == fill_value) ? corner1 : 0.5 * (corner1 + corner2);
 }
 
-int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat,
-                                      float *lon_centroid, float *lat_centroid)
+int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat)
 {
    TIO_Var_Info_Type info;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
@@ -1038,16 +998,10 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
           goto return_status;
      }
 
-   if (0 != compute_centroid (lon2d, lat2d, inrqf, num_pixels, lon_centroid, lat_centroid))
-     goto return_status;
-
    /* Points with valid (lon,lat) coordinates have inrqf == 0.
     * We want the boundary of this region.
     * Find the boundary points by scanning each row and each column
     * to find the outermost endpoints of the region with inrqf==0.
-    *
-    * NOTE: The centroid ignores VZA, so the bounding polygon is clipped
-    * relative to the centroid
     */
 
    bs1 = indices;
@@ -1268,8 +1222,6 @@ struct Bounding_Polygon_Type
    float *lon;
    float *lat;
    int num;
-   float centroid_lon;
-   float centroid_lat;
 };
 void __free_lev1_bounding_polygon_struct (struct Bounding_Polygon_Type *bpt)
 {
@@ -1280,8 +1232,7 @@ void __free_lev1_bounding_polygon_struct (struct Bounding_Polygon_Type *bpt)
 }
 int __make_lev1_bounding_polygon_struct (const int *grp, struct Bounding_Polygon_Type *bpt)
 {
-   return __tio_make_lev1_bounding_polygon (*grp, &bpt->num, &bpt->lon, &bpt->lat,
-                                            &bpt->centroid_lon, &bpt->centroid_lat);
+   return __tio_make_lev1_bounding_polygon (*grp, &bpt->num, &bpt->lon, &bpt->lat);
 }
 
 /*}}}*/
@@ -1427,13 +1378,12 @@ int tio_meta_set_acdd_geospatial_bounds (TIO_Meta_Type *meta,
    return 0;
 }
 
-int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int grp)
+int tio_meta_set_lev1_bounding_polygon (TIO_Meta_Type *meta, int grp)
 {
    float *lon=NULL, *lat=NULL;
-   float centroid_lon, centroid_lat;
    int num, status = -1;
 
-   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat, &centroid_lon, &centroid_lat))
+   if (0 != __tio_make_lev1_bounding_polygon (grp, &num, &lon, &lat))
      return -1;
 
    if (0 != tio_meta_set_odl_bounding_polygon (meta, lon, lat, num))
@@ -1441,14 +1391,6 @@ int tio_meta_set_lev1_bounding_polygon_and_centroid (TIO_Meta_Type *meta, int gr
 
    if (0 != tio_meta_set_acdd_geospatial_bounds (meta, lon, lat, num))
      goto return_status;
-
-   if ((0 != tio_meta_set (meta, "centroid_mean_longitude", TIO_META_TYPE_FLOAT, 1, &centroid_lon))
-       || (0 != tio_meta_set (meta, "centroid_mean_latitude", TIO_META_TYPE_FLOAT, 1, &centroid_lat))
-      )
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: setting boundary polygon centroid", __func__);
-        goto return_status;
-     }
 
    status = 0;
 return_status:
