@@ -15,7 +15,6 @@ module m_write_odl_metadata
   type, public :: boundary_polygon_type
     real (kind=4), dimension(:), allocatable :: lons, lats
     integer (kind=4), dimension(:), allocatable :: seq
-    real (kind=4) :: centroid_lat, centroid_lon
   end type
 
   public write_odl_metadata, make_bounding_polygon
@@ -37,10 +36,9 @@ contains
 
     call tiof_open (filename_in_nc, tio_l1obj, nf90_nowrite, errstat)
 
-    ! Bounding polygon and centroid
+    ! Bounding polygon
     call tiof_push_group (tio_l1obj, trim(nc_swathname), errstat)
-    call tiof_make_lev1_bounding_polygon (tio_l1obj, bdry % lons, bdry % lats, &
-                                          bdry % centroid_lon, bdry % centroid_lat, errstat)
+    call tiof_make_lev1_bounding_polygon (tio_l1obj, bdry % lons, bdry % lats, errstat)
     call tiof_pop_group (tio_l1obj, errstat)
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) then
@@ -85,10 +83,10 @@ contains
 
     !local variables
     integer, parameter :: INVENTORY=2
-    integer, parameter :: ninp = 9
+    integer, parameter :: ninp = 2
     integer, parameter :: ninvname=5
 
-    integer :: pgs_MET_setAttr_s, pgs_MET_setAttr_i, pgs_MET_setmultiAttr_s, &
+    integer :: pgs_MET_setAttr_s, pgs_MET_setmultiAttr_s, &
          pgs_MET_setmultiAttr_d, pgs_MET_setmultiAttr_i
     integer :: pgs_met_init,pgs_met_write, pgs_pc_getreference, &
          pgs_met_sfstart, pgs_met_sfend, pgs_met_remove
@@ -108,10 +106,6 @@ contains
          "RANGEBEGINNINGDATE               ", &
          "RANGEBEGINNINGTIME               "/)
     character (kind=C_CHAR) :: NULL = C_NULL_CHAR
-
-    ! Additional attributes
-    integer, parameter :: nadd = 2
-    character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
 
     integer :: ncerr, npts
     character (len=32) :: cov_start_string, cov_end_string
@@ -135,12 +129,6 @@ contains
            "write_odl_metadata: failed to open L1 radiance file", errstat)
       return
     endif
-
-    ! Centroid values classed as additional attributes
-    AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
-    AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
-    write(AddAttrVal(1),'(f10.5)') bdry % centroid_lon
-    write(AddAttrVal(2),'(f10.5)') bdry % centroid_lat
 
     ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, &
          "time_coverage_start", cov_start_string)
@@ -253,21 +241,6 @@ contains
            "write_odl_metadata: failed to set bounding polygon", errstat)
       return
     endif
-
-    do i=1,nadd
-      write(buf,*) i
-      buf=adjustl(buf)
-      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
-           "ADDITIONALATTRIBUTENAME."//trim(buf),AddAttrNam(i))
-      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
-           "PARAMETERVALUE."//trim(buf),AddAttrVal(i))
-      if (returnstatus /= 0) then
-        call tell_error(tell_io_error, &
-             "write_odl_metadata: failed to set additional attr "//trim(buf), &
-             errstat)
-        return
-      endif
-    enddo
 
     version =1
 
