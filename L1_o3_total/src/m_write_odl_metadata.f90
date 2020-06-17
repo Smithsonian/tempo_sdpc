@@ -53,7 +53,7 @@ contains
     integer, parameter :: INVENTORY=2
     integer, parameter :: ninvname=5
 
-    integer :: pgs_MET_setAttr_s, pgs_MET_setAttr_i, pgs_MET_setmultiAttr_s, &
+    integer :: pgs_MET_setAttr_s, pgs_MET_setmultiAttr_s, &
          pgs_MET_setmultiAttr_d, pgs_MET_setmultiAttr_i
     integer :: pgs_met_init,pgs_met_write, pgs_pc_getreference, &
          pgs_met_sfstart, pgs_met_sfend, pgs_met_remove
@@ -73,15 +73,10 @@ contains
          "RANGEBEGINNINGTIME               "/)
     character (kind=C_CHAR) :: NULL = C_NULL_CHAR
 
-    ! Additional attributes
-    integer, parameter :: nadd = 2
-    character (len=32), dimension(nadd) :: AddAttrNam, AddAttrVal
-
     ! bounding polgon / footprint parameters
     type boundary_type
       real (kind=4), dimension(:), allocatable :: lats, lons
       integer (kind=4), dimension(:), allocatable :: seq
-      real (kind=4) :: centroid_lat, centroid_lon
     end type
     type(boundary_type) :: bdry
 
@@ -129,13 +124,11 @@ contains
     read(cov_end_string,'(a10,1x,a8)') Objvalue(2), Objvalue(3)
     read(cov_start_string,'(a10,1x,a8)') Objvalue(4), Objvalue(5)
 
-    ! Bounding polygon and centroid
+    ! Bounding polygon
     call tiof_push_group (tio_l1obj, radiance_band, errstat)
     call tiof_make_lev1_bounding_polygon (tio_l1obj, &
                                           bdry % lons, &
-                                          bdry % lats, &
-                                          bdry % centroid_lon, &
-                                          bdry % centroid_lat, errstat)
+                                          bdry % lats, errstat)
     call tiof_pop_group (tio_l1obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
@@ -161,16 +154,6 @@ contains
     do i=1,npts
       bdry % seq(i) = i
     enddo
-
-    ! Centroid values classed as additional attributes
-    AddAttrNam(1) = 'CENTROID_MEAN_LONGITUDE'
-    AddAttrNam(2) = 'CENTROID_MEAN_LATITUDE'
-    write(AddAttrVal(1),'(f10.5)') bdry % centroid_lon
-    write(AddAttrVal(2),'(f10.5)') bdry % centroid_lat
-
-    ! FIXME - at present the code only includes a very limited set of input
-    ! files (RAD, IRRAD, RADREF, PREFITS). It should really include all the
-    ! reference datasets used
 
     ! Input files
     do i=1,ninp
@@ -240,27 +223,10 @@ contains
       return
     endif
 
-    do i=1,nadd
-      write(buf,*) i
-      buf=adjustl(buf)
-      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
-           "ADDITIONALATTRIBUTENAME."//trim(buf),AddAttrNam(i))
-      returnstatus = pgs_met_setAttr_i(GROUPS(INVENTORY), &
-           "PARAMETERVALUE."//trim(buf),AddAttrVal(i))
-      if (returnstatus /= 0) then
-        call tell_error(tell_io_error, &
-             "write_odl_metadata: failed to set additional attr "//trim(buf), &
-             errstat)
-        return
-      endif
-    enddo
-
     ! Write archive metadata attributes to netCDF file
     ! do this first since pgs_met functions apparently leave nc file open!
     call md_open (outfilnm, errstat)
-    call md_write_geo_bounds (bdry % lons, bdry % lats, &
-                              bdry % centroid_lon, &
-                              bdry % centroid_lat, errstat)
+    call md_write_geo_bounds (bdry % lons, bdry % lats, errstat)
     call md_write_inputs (ninp, InputPnt, errstat)
     call md_write_prodid (outfilnm, versionid, errstat)
     call md_close (errstat)
