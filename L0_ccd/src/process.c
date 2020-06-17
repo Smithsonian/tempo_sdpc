@@ -546,8 +546,11 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
      goto return_status;
-   if (0 != meta_record_basename (meta, ctrl->bpix_file))
-     goto return_status;
+   if (0)
+     {
+        if (0 != meta_record_basename (meta, ctrl->bpix_file))
+          goto return_status;
+     }
 
    if (is_dark)
      {
@@ -617,6 +620,9 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
                goto return_status;
           }
      }
+
+   if (0 != tio_meta_write_ncattr (meta, ncid))
+     goto return_status;
 
    /* FIXME: eventually, we may write out an updated badpix map */
 
@@ -1058,8 +1064,12 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    if (NULL == (bpixmap = bpix_read (ctrl->bpix_file)))
      goto return_status;
-   if (0 != meta_record_basename (meta, ctrl->bpix_file))
-     goto return_status;
+
+   if (0)
+     {
+        if (0 != meta_record_basename (meta, ctrl->bpix_file))
+          goto return_status;
+     }
 
    if (NULL == (cal = sensorcal_init (cfg, meta)))
      goto return_status;
@@ -1320,6 +1330,8 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      goto return_status;
 
    if (NULL == (gr = granule_open (ctrl->input_file)))
+     goto return_status;
+   if (0 != meta_record_basename (meta, ctrl->input_file))
      goto return_status;
 
    if (0 != gr->granule_type (gr, &exposure_type))

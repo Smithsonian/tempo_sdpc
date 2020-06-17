@@ -2056,8 +2056,11 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
        || (0 != read_crosstalk_matrix (ccd, path)))
      goto return_status;
 
-   if (0 != meta_record_basename (meta, path))
-     goto return_status;
+   if (0)
+     {
+        if (0 != meta_record_basename (meta, path))
+          goto return_status;
+     }
 
    if (NULL == (setting = config_lookup (cfg, "pixel_quality_flag_params")))
      goto return_status;

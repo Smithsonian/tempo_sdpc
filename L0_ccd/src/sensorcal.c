@@ -1647,11 +1647,16 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
    if ((0 != read_radcal_coeffs (cal, path, radcal_trend_file))
-       || (0 != read_wavelength_grid (cal, path))
-       || (0 != meta_record_basename (meta, path))
-       || (0 != meta_record_basename (meta, radcal_trend_file)))
+       || (0 != read_wavelength_grid (cal, path)))
      {
         goto free_and_return;
+     }
+
+   if (0)
+     {
+        if ((0 != meta_record_basename (meta, path))
+            || (0 != meta_record_basename (meta, radcal_trend_file)))
+          goto free_and_return;
      }
 
    if (enable_state_query_bool (ENABLE_BTDF) > 0)
