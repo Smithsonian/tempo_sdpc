@@ -2803,8 +2803,6 @@ contains
                      'geospatial_lon_max     ', &
                      'geospatial_lat_min     ', &
                      'geospatial_lat_max     ', &
-                     'centroid_mean_longitude', &
-                     'centroid_mean_latitude ', &
                      'input_files            ', &
                      'local_granule_id       ', &
                      'version_id             '/)
