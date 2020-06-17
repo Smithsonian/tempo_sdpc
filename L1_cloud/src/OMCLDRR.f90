@@ -48,7 +48,7 @@ program OMCLDRR
   !>@param filename_in_nc netCDF input filename
   character(len=255) :: logmsg
   integer (kind=4) :: n, j, returnstatus, dummy_version
-  integer (kind=4), parameter :: ninp=9 ! number of input files
+  integer (kind=4), parameter :: ninp=2 ! number of input files
   integer (kind=4), dimension(ninp) :: input_luns
   character (len=128), dimension(ninp) :: inputs
   character (len=256) :: buf
@@ -287,8 +287,9 @@ program OMCLDRR
 
     ! Proof-of-concept example of ODL ASCII and netCDF metadata
     if (wrt_odl) then
-      input_luns=(/ L1B_LUN, IRR1B_file, terr_prs_id, chl_id, oc_ram_id, &
-           ring_id, thresh_id, resid_id_late, refl_id /)
+      !input_luns=(/ L1B_LUN, IRR1B_file, terr_prs_id, chl_id, oc_ram_id, &
+      !     ring_id, thresh_id, resid_id_late, refl_id /)
+      input_luns=(/ L1B_LUN, IRR1B_file /)
       do n=1,ninp
         dummy_version = 1
         returnstatus = PGS_PC_GetReference( input_luns(n), dummy_version, buf )
@@ -305,8 +306,7 @@ program OMCLDRR
       call make_bounding_polygon (bdry, errstat)
 
       call md_open (filename_out_nc, errstat)
-      call md_write_geo_bounds (bdry % lons, bdry % lats, &
-                                bdry % centroid_lon, bdry % centroid_lat, errstat)
+      call md_write_geo_bounds (bdry % lons, bdry % lats, errstat)
       call md_write_inputs (ninp, inputs, errstat)
       call md_write_prodid (filename_out_nc, processing_version, errstat)
       call md_close (errstat)
