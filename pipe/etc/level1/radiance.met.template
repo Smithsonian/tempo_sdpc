@@ -128,54 +128,6 @@ GROUP                  = INVENTORYMETADATA
 
   END_GROUP              = PGEVERSIONCLASS
 
-  GROUP                  = ADDITIONALATTRIBUTES
-
-    OBJECT                 = ADDITIONALATTRIBUTESCONTAINER
-      CLASS                = "1"
-
-      OBJECT                 = ADDITIONALATTRIBUTENAME
-        CLASS                = "1"
-        NUM_VAL              = 1
-        VALUE                = "CENTROID_MEAN_LONGITUDE"
-      END_OBJECT             = ADDITIONALATTRIBUTENAME
-
-      GROUP                  = INFORMATIONCONTENT
-        CLASS                = "1"
-
-        OBJECT                 = PARAMETERVALUE
-          NUM_VAL              = 1
-          CLASS                = "1"
-          VALUE                = ${centroid_mean_longitude}
-        END_OBJECT             = PARAMETERVALUE
-
-      END_GROUP              = INFORMATIONCONTENT
-
-    END_OBJECT             = ADDITIONALATTRIBUTESCONTAINER
-
-    OBJECT                 = ADDITIONALATTRIBUTESCONTAINER
-      CLASS                = "2"
-
-      OBJECT                 = ADDITIONALATTRIBUTENAME
-        CLASS                = "2"
-        NUM_VAL              = 1
-        VALUE                = "CENTROID_MEAN_LATITUDE"
-      END_OBJECT             = ADDITIONALATTRIBUTENAME
-
-      GROUP                  = INFORMATIONCONTENT
-        CLASS                = "2"
-
-        OBJECT                 = PARAMETERVALUE
-          NUM_VAL              = 1
-          CLASS                = "2"
-          VALUE                = ${centroid_mean_latitude}
-        END_OBJECT             = PARAMETERVALUE
-
-      END_GROUP              = INFORMATIONCONTENT
-
-    END_OBJECT             = ADDITIONALATTRIBUTESCONTAINER
-
-  END_GROUP              = ADDITIONALATTRIBUTES
-
 END_GROUP              = INVENTORYMETADATA
 
 END
