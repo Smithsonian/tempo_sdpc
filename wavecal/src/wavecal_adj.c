@@ -160,8 +160,11 @@ Wadj_Type *wadj_open (config_t *cfg, const char *group, TIO_Meta_Type *meta)
    if (0 != read_table_file_path (cfg, &path))
      return NULL;
 
-   if (0 != meta_record_basename (meta, path))
-     goto return_error;
+   if (0)
+     {
+        if (0 != meta_record_basename (meta, path))
+          goto return_error;
+     }
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      goto return_error;

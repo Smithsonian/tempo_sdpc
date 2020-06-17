@@ -1014,8 +1014,11 @@ static int read_irr_reference (Reference_Irr_Type *irr, TIO_Meta_Type *meta, int
         Num_Warnings--;
      }
 
-   if (0 != meta_record_basename (meta, file->path))
-     return -1;
+   if (0)
+     {
+        if (0 != meta_record_basename (meta, file->path))
+          return -1;
+     }
 
    /* FIXME better to allocate a buffer once, and re-use it */
    FREE(irr->wavelen);
@@ -1150,8 +1153,11 @@ static int read_rad_reference (Term_Type *terms, TIO_Meta_Type *meta, int xtrack
                                       &term->refspec.file, xtrack))
           return -1;
 
-        if (0 != meta_record_basename (meta, term->refspec.file.path))
-          return -1;
+        if (0)
+          {
+             if (0 != meta_record_basename (meta, term->refspec.file.path))
+               return -1;
+          }
      }
 
    return 0;
@@ -1445,9 +1451,12 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
      {
         if (NULL == (wct->sf_table = sf_table_open (sf_ctrl.sf_path, sf_ctrl.cal_path, cfg_name)))
           goto error_return;
-        if ((0 != meta_record_basename (meta, sf_ctrl.sf_path))
-            || (0 != meta_record_basename (meta, sf_ctrl.cal_path)))
-          goto error_return;
+        if (0)
+          {
+             if ((0 != meta_record_basename (meta, sf_ctrl.sf_path))
+                 || (0 != meta_record_basename (meta, sf_ctrl.cal_path)))
+               goto error_return;
+          }
      }
 
    if (s_rad)
