@@ -22,7 +22,7 @@ define make_file_entry (path, data_type, st, extname_is_nc)
    s.file_id = path_basename (path);
    s.file_size = st.st_size;
    s.file_chksum_type = "MD5";
-   s.file_chksum = md5sum (path);
+   s.file_chksum = md5sum_file (path);
 
    return s;
 }
