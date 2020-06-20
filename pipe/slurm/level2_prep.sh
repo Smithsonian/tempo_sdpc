@@ -153,6 +153,11 @@ tar_l1_radiance_to_dest()
       EXTRA_FILES="$granule_dir/log_polcorr.txt"
    fi
 
+   wavecal_logs="$granule_dir/wavecal_logs.tar.gz"
+   if test -f $wavecal_logs ; then
+      EXTRA_FILES="$EXTRA_FILES $wavecal_logs"
+   fi
+
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
        $granule_dir/archive_subdir \

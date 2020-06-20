@@ -45,6 +45,5 @@ ARGS="$adjust -g $BAND_NAME -b $block_spec -c ${etc_dir}/wavecal.cfg"
 
 result_file $INPUT_FILE
 
-#wavecal_driver -v $ARGS $INPUT_FILE $RESULT_FILE > ${RESULT_FILE}.log 2>&1
-wavecal_driver $ARGS $INPUT_FILE $RESULT_FILE
+wavecal_driver $ARGS $INPUT_FILE $RESULT_FILE > ${RESULT_FILE}.log 2>&1
 
