@@ -6,6 +6,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <math.h>
 #include <float.h>
 
@@ -22,6 +24,127 @@
 #define _pTIO_STR(s) #s
 
 #define TIMESTAMP_BUFLEN 26
+
+/*{{{ I/O Tracing facility */
+
+static int _pTIO_TRACING = -1;
+static char _pTIO_TRACE_PREFIX[128];
+
+/* This is linux-specific, but for the current purpose that's ok */
+static void program_basename (char *name, size_t namesize)
+{
+   const char proc_self[] = "/proc/self/exe";
+   char buf[1024];
+   char *p;
+   ssize_t len;
+
+   if ((0 != access (proc_self, F_OK | R_OK))
+       || ((len = readlink (proc_self, buf, sizeof(buf))) < 0))
+     {
+        name[0] = 0;
+        return;
+     }
+
+   buf[len] = 0;
+
+   if (NULL != (p = strrchr (buf, '/')))
+     {
+        p++;
+     }
+   else p = buf;
+
+   (void) snprintf (name, namesize, "%s", p);
+}
+
+static void trace_make_prefix (void)
+{
+   char pgm_basename[64];
+   program_basename (pgm_basename, sizeof(pgm_basename));
+   if (pgm_basename[0] != 0)
+     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE[%s,%d]:", pgm_basename, getpid());
+   else
+     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE[%d]:", getpid());
+}
+
+static void trace_init (void)
+{
+   if (_pTIO_TRACING == -1)
+     {
+        /* Do this only once for each process id */
+        if (NULL == getenv ("TIO_ENABLE_TRACING"))
+          {
+             _pTIO_TRACING = 1; /* off */
+          }
+        else
+          {
+             _pTIO_TRACING = 0; /* on */
+             trace_make_prefix();
+          }
+     }
+}
+
+void _pTIO_trace_close (int ncid)
+{
+   if (_pTIO_TRACING) return;
+   (void) fprintf (stderr, "%s CLOSED: ncid=%d\n", _pTIO_TRACE_PREFIX, ncid);
+}
+
+void _pTIO_trace_open (int ncid, const char *file)
+{
+   trace_init();
+   if (_pTIO_TRACING) return;
+   (void) fprintf (stderr, "%s OPENED: ncid=%d file= %s\n", _pTIO_TRACE_PREFIX, ncid, file ? file : "(null)");
+}
+
+void _pTIO_trace_create (int ncid, const char *file)
+{
+   trace_init();
+   if (_pTIO_TRACING) return;
+   (void) fprintf (stderr, "%s CREATED: ncid=%d file= %s\n", _pTIO_TRACE_PREFIX, ncid, file ? file : "(null)");
+}
+
+void _pTIO_trace_group (int parent_ncid, const char *path, int grp)
+{
+   if (_pTIO_TRACING) return;
+   (void) fprintf (stderr, "%s GROUP: path=%s parent_ncid=%d grp=%d\n", _pTIO_TRACE_PREFIX, path, parent_ncid, grp);
+}
+
+static int trace_var_io (const char *action, int grp, const char *name, int dim, const size_t *start, const size_t *count)
+{
+   size_t size;
+   int i;
+   if (_pTIO_TRACING) return 0;
+   size = 1;
+   for (i = 0 ; i < dim; i++)
+     {
+        size *= count[i];
+     }
+   (void) fprintf (stderr, "%s %s: var=%s size=%ld grp=%d", _pTIO_TRACE_PREFIX, action, name, size, grp);
+   if (dim <= 0)
+     fputs ("\n", stderr);
+   else
+     {
+        fprintf (stderr, " dim=%d start=[%ld", dim, start[0]);
+        for (i = 1; i < dim; i++) fprintf (stderr, ", %ld", start[i]);
+        fprintf (stderr, "] count=[%ld", count[0]);
+        for (i = 1; i < dim; i++) fprintf (stderr, ", %ld", count[i]);
+        fprintf (stderr, "]\n");
+     }
+
+   return 0;
+}
+
+static void trace_get_var (int grp, const char *name, int dim, const size_t *start, const size_t *count)
+{
+   (void) trace_var_io ("READ", grp, name, dim, start, count);
+}
+
+static void trace_put_var (int grp, const char *name, int dim, const size_t *start, const size_t *count)
+{
+   (void) trace_var_io ("WROTE", grp, name, dim, start, count);
+}
+
+/*}}}*/
 
 int _pTIOMake_Name_UInt_Arrays (_pName_UInt_Pair_Type *array,
                                 int *pnum_values, char **pnames,
@@ -309,6 +432,7 @@ int TIO_create (const char *path, int cmode, int *ncid)
                      __func__, path, nc_strerror(status));
         return -1;
      }
+   _pTIO_trace_create (*ncid, path);
 
    return 0;
 }
@@ -329,6 +453,7 @@ int TIO_open (const char *path, int omode, int *ncid)
                      __func__, path, nc_strerror(status));
         return -1;
      }
+   _pTIO_trace_open (*ncid, path);
 
    _pTIO_warn_about_time_reference_mismatch (*ncid);
 
@@ -345,6 +470,7 @@ int TIO_close (int ncid)
                      __func__, ncid, nc_strerror(status));
         return -1;
      }
+   _pTIO_trace_close (ncid);
 
    return 0;
 }
@@ -708,6 +834,8 @@ static int put_float_nsd (int grp, const int *istart, const int *icount,
         goto free_and_return;
      }
 
+   trace_put_var (grp, name, info.ndims, start, count);
+
    return_status = 0;
 free_and_return:
    if (malloced_temp_float) TIO_FREE(float_error);
@@ -798,6 +926,8 @@ static int read_wavecal_params (int grp, const int *start, const int *count,
         TIO_FREE(params);
         return -1;
      }
+
+   trace_get_var (grp, TEMPO_VAR_WAVECAL_PARAM, info.ndims, pstart, pcount);
 
    ct->a = start_pix;
    ct->b = start_pix + num_pix - 1;
@@ -893,6 +1023,8 @@ static int get_wavelength_nominal (int grp, const int *start, const int *count,
                      __func__, TEMPO_VAR_WAVELEN_NOMINAL, nc_strerror (status));
         return -1;
      }
+
+   trace_get_var (grp, TEMPO_VAR_WAVELEN_NOMINAL, 1, &wave_start, &wave_count);
 
    wavelen_offset = 0;
 
@@ -1142,6 +1274,8 @@ int TIO_##action##_var_section (int grp, const char *name, \
                      __func__, name, grp, nc_strerror(status)); \
         return -1; \
      } \
+   \
+   trace_##action##_var (grp, name, ndims, start, count); \
  \
    return 0; \
 }
@@ -1334,6 +1468,7 @@ int TIO_inq_grp (int parent_ncid, const char *path, int *grp)
                      __func__, path, nc_strerror(status));
         return -1;
      }
+   _pTIO_trace_group (parent_ncid, path, *grp);
 
    return 0;
 }
@@ -1360,6 +1495,7 @@ int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
                           __func__, nc_strerror (status));
              return -1;
           }
+        _pTIO_trace_group (parent_ncid, path, *new_ncid);
         return 0;
      }
 
@@ -1411,6 +1547,8 @@ int TIO_def_grp (int parent_ncid, const char *path, int *new_ncid)
         parent_ncid = ncid;
         *new_ncid = ncid;
      }
+
+   _pTIO_trace_group (parent_ncid, path, *new_ncid);
 
    return 0;
 }

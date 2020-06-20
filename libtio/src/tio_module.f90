@@ -211,6 +211,45 @@ module tio_module
   ! instead of nf90_global. Arrghhh!!!
   integer, private, parameter :: nc_global = -1
 
+  interface
+    subroutine tio_f_trace_create (ncid, file) &
+        bind (C, name="_pTIO_trace_create")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer (c_int), value :: ncid
+    character (kind=c_char) :: file(*)
+    end subroutine
+  end interface
+
+  interface
+    subroutine tio_f_trace_open (ncid, file) &
+        bind (C, name="_pTIO_trace_open")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer (c_int), value :: ncid
+    character (kind=c_char) :: file(*)
+    end subroutine
+  end interface
+
+  interface
+    subroutine tio_f_trace_close (ncid) &
+        bind (C, name="_pTIO_trace_close")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer (c_int), value :: ncid
+    end subroutine
+  end interface
+
+  interface
+    subroutine tio_f_trace_group (parent_ncid, path, grp) &
+      bind (C, name="_pTIO_trace_group")
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer (c_int), value :: parent_ncid, grp
+    character (kind=c_char) :: path(*)
+    end subroutine
+  end interface
+
 contains
 
   include 'get_put_code.inc'
@@ -597,6 +636,8 @@ contains
       return
     endif
 
+    call tio_f_trace_create (fileid, trim(file)//c_null_char)
+
     obj % fileid = fileid
     obj % groupid = fileid
     obj % grp_stack_depth = 0
@@ -629,6 +670,8 @@ contains
       return
     endif
 
+    call tio_f_trace_open (fileid, trim(file)//c_null_char)
+
     obj % fileid = fileid
     obj % groupid = fileid
     obj % grp_stack_depth = 0
@@ -651,6 +694,7 @@ contains
       if (status /= nf90_noerr) then
         call tell_error (tell_io_error, "closing file ("//trim(nf90_strerror(status))//")", errstat)
       endif
+      call tio_f_trace_close (obj % fileid)
       obj % fileid = -1
       obj % groupid = -1
       obj % grp_stack_depth = 0
@@ -687,6 +731,8 @@ contains
       return
     endif
 
+    call tio_f_trace_group (obj % groupid, trim(grpname)//c_null_char, grp)
+
     if (present(groupid)) groupid = grp
 
   end subroutine tiof_def_group
@@ -719,6 +765,8 @@ contains
       call tell_error (tell_io_read_error, "accessing group "//grpname//" ("//trim(nf90_strerror(status))//")", errstat)
       return
     endif
+
+    call tio_f_trace_group (obj % groupid, trim(grpname)//c_null_char, grp)
 
     obj % groupid = grp
     obj % grp_stack_depth = 0  ! reset the stack
@@ -757,6 +805,7 @@ contains
       return
     endif
 
+    call tio_f_trace_group (obj % groupid, trim(grpname)//c_null_char, grp)
     call push_group (obj, grp, errstat)
 
   end subroutine tiof_push_group
