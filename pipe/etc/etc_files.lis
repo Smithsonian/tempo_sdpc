@@ -30,7 +30,8 @@ level3/simple.met.template
 l0_format.cfg
 tempo_tpinfo_r9.csv
 l0_ccd.cfg
-wavecal.cfg
+wavecal_irr.cfg
+wavecal_rad.cfg
 l1_inr_prep.cfg
 l1_inr_post.cfg
 l2_split.cfg

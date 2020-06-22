@@ -134,7 +134,7 @@ case "${granule_basename}" in
   *IRR* )
   output_file=$(mkgranule_name -L 1 -p IRR -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
-  run_wavecal $output_file "0-4"
+  run_wavecal $output_file "0-9"
   ;;
 
   *RAD* )
