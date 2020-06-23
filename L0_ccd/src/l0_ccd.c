@@ -86,6 +86,33 @@ static int read_config_file (const char *config_file,
    return 0;
 }
 
+static int check_env (Control_Type *ctrl)
+{
+   const char *env = "SDPC_DIAGNOSTIC_MIRROR_STEP";
+   char *val;
+
+   if (NULL == (val = getenv (env)))
+     {
+        ctrl->diagnostic_mirror_step = -1;
+        return 0;
+     }
+
+   /* setting it to "OFF" means "not set" */
+   if (0 == strcasecmp (val, "OFF"))
+     return 0;
+
+   if (1 != sscanf (val, "%d", &ctrl->diagnostic_mirror_step))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading environment variable %s = %s",
+                     __func__, env, val);
+        return -1;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s = %d", env, ctrl->diagnostic_mirror_step);
+
+   return 0;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "L0_ccd";
@@ -193,6 +220,8 @@ int main (int argc, char **argv)
    (void) tio_set_cmdline (argc, argv);
 
    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
+
+   check_env (&ctrl);
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "start %s", ctrl.input_file);
 

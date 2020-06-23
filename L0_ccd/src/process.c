@@ -82,6 +82,129 @@ int process_get_version (void)
    return _pProcessing_Version;
 }
 
+/*{{{ Diagnostic image output */
+
+static struct
+{
+   int mirror_step;
+   int ncid;
+}
+Diagnostic_Controls;
+
+static int want_diagnostic_output (int mirror_step)
+{
+   return (mirror_step == Diagnostic_Controls.mirror_step);
+}
+
+static int close_diagnostic_file (void)
+{
+   if (Diagnostic_Controls.mirror_step < 0)
+     return 0;
+   return TIO_close (Diagnostic_Controls.ncid);
+}
+
+static int create_diagnostic_file (const Control_Type *ctrl, int num_parallel_active_full, int num_serial_active_full,
+                                   int enabled_straylight_correction, int is_irradiance)
+{
+   const char *suffix = "_diag.nc";
+   const char *output_file = ctrl->output_file;
+   int img_dimids[2];
+   char *diag_file = NULL;
+   char *dot;
+   size_t len;
+   int varid, ncid;
+   int status = -1;
+
+   Diagnostic_Controls.mirror_step = ctrl->diagnostic_mirror_step;
+   if (ctrl->diagnostic_mirror_step < 0)
+     return 0;
+
+   len = strlen(output_file) + strlen(suffix);
+   if (NULL == (diag_file = (char *)MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   strncpy (diag_file, output_file, len);
+   if (NULL != (dot = strrchr (diag_file, '.')))
+     {
+        sprintf (dot, "%s", suffix);
+     }
+   else strncat (diag_file, suffix, len);
+
+   if (0 != TIO_create (diag_file, NC_NETCDF4, &ncid))
+     goto return_status;
+
+   if ((0 != TIO_def_dim (ncid, "row", num_parallel_active_full, &img_dimids[0]))
+       || (0 != TIO_def_dim (ncid, "col", num_serial_active_full, &img_dimids[1])))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining file array dimensions", __func__);
+        goto return_status;
+     }
+
+   if ((0 != TIO_def_var (ncid, "dark", TIO_FLOAT, 2, img_dimids, &varid))
+       ||(0 != TIO_def_var (ncid, "img_before_dark_subtract", TIO_FLOAT, 2, img_dimids, &varid))
+       ||(0 != TIO_def_var (ncid, "img_after_dark_subtract", TIO_FLOAT, 2, img_dimids, &varid))
+      )
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining dark variables", __func__);
+        goto return_status;
+     }
+
+   if ((0 != TIO_def_var (ncid, "img_before_radiometric_correction", TIO_FLOAT, 2, img_dimids, &varid))
+       ||(0 != TIO_def_var (ncid, "img_after_radiometric_correction", TIO_FLOAT, 2, img_dimids, &varid)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining radiometric variables", __func__);
+        goto return_status;
+     }
+
+   if (enabled_straylight_correction)
+     {
+        if ((0 != TIO_def_var (ncid, "img_before_straylight_correction", TIO_FLOAT, 2, img_dimids, &varid))
+            ||(0 != TIO_def_var (ncid, "img_after_straylight_correction", TIO_FLOAT, 2, img_dimids, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining straylight variables", __func__);
+             goto return_status;
+          }
+     }
+
+   if (is_irradiance)
+     {
+        if ((0 != TIO_def_var (ncid, "img_before_btdf_correction", TIO_FLOAT, 2, img_dimids, &varid))
+            ||(0 != TIO_def_var (ncid, "img_after_btdf_correction", TIO_FLOAT, 2, img_dimids, &varid)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining irradiance variables", __func__);
+             goto return_status;
+          }
+     }
+
+   Diagnostic_Controls.ncid = ncid;
+
+   status = 0;
+return_status:
+   FREE(diag_file);
+
+   return status;
+}
+
+static int write_diagnostic_image (const Image_Type *img, const char *varname)
+{
+   int ncid = Diagnostic_Controls.ncid;
+   int start[2], count[2];
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = img->num_rows;
+   count[1] = img->num_cols;
+
+   if (0 != TIO_put_var_section (ncid, varname, start, count, TIO_FLOAT, img->pixels))
+     return -1;
+
+   return 0;
+}
+
+/*}}}*/
+
 static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 {
    config_setting_t *s, *sub;
@@ -692,9 +815,20 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
 
+   if (want_diagnostic_output (xr->exprec->curr_mirror_step))
+     {
+        (void) write_diagnostic_image (tmp_img, "dark");
+        (void) write_diagnostic_image (exprec->img, "img_before_dark_subtract");
+     }
+
    /* subtract the dark current image, leaving the result in place */
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
+
+   if (want_diagnostic_output (xr->exprec->curr_mirror_step))
+     {
+        (void) write_diagnostic_image (exprec->img, "img_after_dark_subtract");
+     }
 
    return 0;
 }
@@ -720,16 +854,28 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
    if (cal->cal_straylight_correction)
      {
+        if (want_diagnostic_output(exprec->curr_mirror_step))
+          (void) write_diagnostic_image (exprec->img, "img_before_straylight_correction");
+
         if (0 != cal->cal_straylight_correction (cal, exprec->img))
           return -1;
+
+        if (want_diagnostic_output(exprec->curr_mirror_step))
+          (void) write_diagnostic_image (exprec->img, "img_after_straylight_correction");
      }
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "radiometric correction");
+
+   if (want_diagnostic_output(exprec->curr_mirror_step))
+     (void) write_diagnostic_image (exprec->img, "img_before_radiometric_correction");
 
    /* Multiplicative factor converts e/s to photons/s */
    if ((0 != cal->cal_apply_radcal_coeffs (cal, exprec->img))
        || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
      return -1;
+
+   if (want_diagnostic_output(exprec->curr_mirror_step))
+     (void) write_diagnostic_image (exprec->img, "img_after_radiometric_correction");
 
    /* For the irradiance, we need the angular position of the sun
     * relative to the boresight, and the earth-sun distance.
@@ -747,9 +893,15 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
+        if (want_diagnostic_output(exprec->curr_mirror_step))
+          (void) write_diagnostic_image (exprec->img, "img_before_btdf_correction");
+
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
             || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
           return -1;
+
+        if (want_diagnostic_output(exprec->curr_mirror_step))
+          (void) write_diagnostic_image (exprec->img, "img_after_btdf_correction");
      }
 
    return 0;
@@ -1087,6 +1239,11 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    if (NULL == (tmp_img = image_new (num_parallel_active_full, num_serial_active_full)))
      goto return_status;
 
+   if (0 != create_diagnostic_file (ctrl, num_parallel_active_full, num_serial_active_full,
+                                    (cal->cal_straylight_correction != NULL),
+                                    EXPREC_TYPE_IS_IRRADIANCE(exposure_type)))
+     goto return_status;
+
    /* Dimension the output file to hold num_exprecs trimmed frames,
     * split into two wavelength bands, with wavelength the fastest
     * varying dimension. */
@@ -1231,6 +1388,7 @@ return_status:
         (void) out->out_close (out);
         out->out_free (out);
      }
+   close_diagnostic_file ();
 
    return status;
 }
