@@ -131,6 +131,9 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    % that will eventually be merged to generate the final product.
    % These block .nc files should not be entered in the product
    % database, so we filter them out of this query.
+   % Note that these tar options will yield a list of partial paths
+   % that contain basenames like *TEMPO_*.nc so we will need to filter
+   % out any files with undesired prefixes.
    variable argv = ["tar", "tf", tar_file,
 		    "--exclude=block_*", "--strip-components=1",
                     "--show-transformed-names", "--wildcards",
@@ -165,9 +168,13 @@ define register_using_symlink (tar_file, archive_dest_subdir)
    variable pp, product, oldpath, newpath;
    foreach pp (partial_paths)
      {
-        % some files are to be excluded:
+        % Some files are to be excluded.
+        %  => skip basenames with unwanted prefixes:
+        variable pp_basename = path_basename (pp);
+        if (0 != strncmp (pp_basename, "TEMPO_", 6))
+          continue;
         variable exclude_substrs = ["TEMPO_INR", "_diag.nc"];
-        if (any(array_map (Integer_Type, &is_substr, pp, exclude_substrs)))
+        if (any(array_map (Integer_Type, &is_substr, pp_basename, exclude_substrs)))
           continue;
 
         oldpath = path_concat (archive_dest_subdir, pp);
@@ -178,7 +185,7 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         insert_fixed_metadata (oldpath);
 
         % create symbolic link to trigger product registration
-        newpath = path_concat (incoming_dir, path_basename(pp));
+        newpath = path_concat (incoming_dir, pp_basename);
         if (0 != symlink (oldpath, newpath))
           throw ApplicationError, "*** Error: creating symlink $newpath"$;
 

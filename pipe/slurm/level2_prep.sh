@@ -44,6 +44,10 @@ ulimit -s unlimited
 # To turn off polarization correction, set it to anything else.
 : "${RADIANCE_POLCORR:=ON}"
 
+# If SDPC_DIAGNOSTIC_MIRROR_STEP is not set, define it to be OFF
+# To turn on this diagnostic feature, set it to a valid mirror step index
+: "${SDPC_DIAGNOSTIC_MIRROR_STEP:=OFF}"
+
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
 test -d $SDPC_RUN_DIR || exit 1
@@ -151,6 +155,9 @@ tar_l1_radiance_to_dest()
    EXTRA_FILES=""
    if test x"$RADIANCE_POLCORR" = x"ON"; then
       EXTRA_FILES="$granule_dir/log_polcorr.txt"
+      if test x"$SDPC_DIAGNOSTIC_MIRROR_STEP" != x"OFF" ; then
+         EXTRA_FILES="$EXTRA_FILES $granule_dir/polcorr_*${rad_basename}.nc"
+      fi
    fi
 
    wavecal_logs="$granule_dir/wavecal_logs.tar.gz"
@@ -202,8 +209,22 @@ run_inr_post()
 
    # polarization correction
    if test x"$RADIANCE_POLCORR" = x"ON"; then
+
+      # Intentionally avoid TEMPO prefix for diagnostic output files,
+      # so those files won't be treated as data products.
+      if test x"$SDPC_DIAGNOSTIC_MIRROR_STEP" != x"OFF" ; then
+         copy_level1_mirror_step.py $SDPC_DIAGNOSTIC_MIRROR_STEP \
+               $radiance_file polcorr_before_${rad_basename}.nc
+      fi
+
+      # perform polarization correction
       srun --ntasks=1 --output=log_polcorr.txt \
        L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
+
+      if test x"$SDPC_DIAGNOSTIC_MIRROR_STEP" != x"OFF" ; then
+         copy_level1_mirror_step.py $SDPC_DIAGNOSTIC_MIRROR_STEP \
+               $radiance_file polcorr_after_${rad_basename}.nc
+      fi
    fi
 
    # compress before archiving
