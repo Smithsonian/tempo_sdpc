@@ -13,14 +13,8 @@ def define_target_group (dest, grpname, varname, cube):
     var_rad = grp.createVariable (varname, 'f4', ('xtrack', 'spectral_channel'))
     var_rad[:,:] = cube[:,:]
 
-def copy_mirror_step (step, srcpath, destpath):
+def copy_frame (index, srcpath, destpath):
     src = Dataset (srcpath, 'r')
-    mirror_step = src.variables['mirror_step'][:]
-    result = np.where (mirror_step == step)
-    if len(result[0]) == 0:
-        print('*** Error: mirror step {} not found, file = {}'.format(step, srcpath))
-        sys.exit(1)
-    k = result[0][0]
 
     uv_group = 'band_290_490_nm'
     vis_group = 'band_540_740_nm'
@@ -35,27 +29,34 @@ def copy_mirror_step (step, srcpath, destpath):
         print ('*** Error: unsupported file: {}'.format(srcpath))
         sys.exit(1)
 
+    uv_var = uv.variables[varname]
+    dims = uv_var.shape
+    if (dims[0] <= index):
+        print ('copy_level1_frame.py: no frame with index={} ({} dims={})'.format(index, varname, dims))
+        sys.exit(0)
+
     dest = Dataset (destpath, "w", format="NETCDF4")
     dest.setncattr ('source_file', srcpath)
-    dest.setncattr ('mirror_step', step)
-    slab = uv.variables[varname][k, :,:]
+    dest.setncattr ('index', index)
+
+    slab = uv.variables[varname][index, :,:]
     define_target_group (dest, uv_group, varname, slab)
 
     vis = src.groups[vis_group]
-    slab = vis.variables[varname][k, :,:]
+    slab = vis.variables[varname][index, :,:]
     define_target_group (dest, vis_group, varname, slab)
 
     dest.close()
     src.close()
 
 def main():
-    parser = argparse.ArgumentParser(description='extract spectral arrays for one mirror step')
-    parser.add_argument('mirror_step', help="mirror_step index")
+    parser = argparse.ArgumentParser(description='extract spectral arrays for one frame')
+    parser.add_argument('index', help="frame index")
     parser.add_argument('infile', help="netCDF4 Level 1 file name")
     parser.add_argument('outfile', help="netCDF4 output file name")
     args = parser.parse_args()
 
-    copy_mirror_step (int(args.mirror_step), args.infile, args.outfile)
+    copy_frame (int(args.index), args.infile, args.outfile)
 
 if __name__ == '__main__':
     main()
