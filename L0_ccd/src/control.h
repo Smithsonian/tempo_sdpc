@@ -10,7 +10,7 @@ typedef struct
    const char *instr_status_file;
    const char *instr_glob;
    int limit_num_granules;
-   int diagnostic_mirror_step;
+   int diagnostic_index;
 }
 Control_Type;
 

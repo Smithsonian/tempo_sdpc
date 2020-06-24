@@ -86,19 +86,19 @@ int process_get_version (void)
 
 static struct
 {
-   int mirror_step;
+   int index;
    int ncid;
 }
 Diagnostic_Controls;
 
-static int want_diagnostic_output (int mirror_step)
+static int want_diagnostic_output (int index)
 {
-   return (mirror_step == Diagnostic_Controls.mirror_step);
+   return (index == Diagnostic_Controls.index);
 }
 
 static int close_diagnostic_file (void)
 {
-   if (Diagnostic_Controls.mirror_step < 0)
+   if (Diagnostic_Controls.index < 0)
      return 0;
    return TIO_close (Diagnostic_Controls.ncid);
 }
@@ -115,8 +115,8 @@ static int create_diagnostic_file (const Control_Type *ctrl, int num_parallel_ac
    int varid, ncid;
    int status = -1;
 
-   Diagnostic_Controls.mirror_step = ctrl->diagnostic_mirror_step;
-   if (ctrl->diagnostic_mirror_step < 0)
+   Diagnostic_Controls.index = ctrl->diagnostic_index;
+   if (ctrl->diagnostic_index < 0)
      return 0;
 
    len = strlen(output_file) + strlen(suffix);
@@ -815,7 +815,7 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
    if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
      return -1;
 
-   if (want_diagnostic_output (xr->exprec->curr_mirror_step))
+   if (want_diagnostic_output (xr->index))
      {
         (void) write_diagnostic_image (tmp_img, "dark");
         (void) write_diagnostic_image (exprec->img, "img_before_dark_subtract");
@@ -825,7 +825,7 @@ static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type
    if (0 != subtract_dark_current_img (exprec->img, tmp_img))
      return -1;
 
-   if (want_diagnostic_output (xr->exprec->curr_mirror_step))
+   if (want_diagnostic_output (xr->index))
      {
         (void) write_diagnostic_image (exprec->img, "img_after_dark_subtract");
      }
@@ -854,19 +854,19 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
    if (cal->cal_straylight_correction)
      {
-        if (want_diagnostic_output(exprec->curr_mirror_step))
+        if (want_diagnostic_output(xr->index))
           (void) write_diagnostic_image (exprec->img, "img_before_straylight_correction");
 
         if (0 != cal->cal_straylight_correction (cal, exprec->img))
           return -1;
 
-        if (want_diagnostic_output(exprec->curr_mirror_step))
+        if (want_diagnostic_output(xr->index))
           (void) write_diagnostic_image (exprec->img, "img_after_straylight_correction");
      }
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "radiometric correction");
 
-   if (want_diagnostic_output(exprec->curr_mirror_step))
+   if (want_diagnostic_output(xr->index))
      (void) write_diagnostic_image (exprec->img, "img_before_radiometric_correction");
 
    /* Multiplicative factor converts e/s to photons/s */
@@ -874,7 +874,7 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
        || (0 != cal->cal_apply_radcal_coeffs (cal, xr->img_err)))
      return -1;
 
-   if (want_diagnostic_output(exprec->curr_mirror_step))
+   if (want_diagnostic_output(xr->index))
      (void) write_diagnostic_image (exprec->img, "img_after_radiometric_correction");
 
    /* For the irradiance, we need the angular position of the sun
@@ -893,14 +893,14 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
-        if (want_diagnostic_output(exprec->curr_mirror_step))
+        if (want_diagnostic_output(xr->index))
           (void) write_diagnostic_image (exprec->img, "img_before_btdf_correction");
 
         if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
             || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
           return -1;
 
-        if (want_diagnostic_output(exprec->curr_mirror_step))
+        if (want_diagnostic_output(xr->index))
           (void) write_diagnostic_image (exprec->img, "img_after_btdf_correction");
      }
 

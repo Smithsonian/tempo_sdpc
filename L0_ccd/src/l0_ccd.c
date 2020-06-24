@@ -88,12 +88,12 @@ static int read_config_file (const char *config_file,
 
 static int check_env (Control_Type *ctrl)
 {
-   const char *env = "SDPC_DIAGNOSTIC_MIRROR_STEP";
+   const char *env = "SDPC_DIAGNOSTIC_INDEX";
    char *val;
 
    if (NULL == (val = getenv (env)))
      {
-        ctrl->diagnostic_mirror_step = -1;
+        ctrl->diagnostic_index = -1;
         return 0;
      }
 
@@ -101,14 +101,14 @@ static int check_env (Control_Type *ctrl)
    if (0 == strcasecmp (val, "OFF"))
      return 0;
 
-   if (1 != sscanf (val, "%d", &ctrl->diagnostic_mirror_step))
+   if (1 != sscanf (val, "%d", &ctrl->diagnostic_index))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading environment variable %s = %s",
                      __func__, env, val);
         return -1;
      }
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s = %d", env, ctrl->diagnostic_mirror_step);
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s = %d", env, ctrl->diagnostic_index);
 
    return 0;
 }
