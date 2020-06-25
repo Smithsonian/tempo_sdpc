@@ -29,7 +29,7 @@ static void usage (void)
    fprintf (stderr, "   -p | --parallaxoff     Turn off the parallax correction\n");
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -h | --help            Print this usage message\n");
-   fprintf (stderr, "   -v | --verbose lev     Logging verbosity\n");
+   fprintf (stderr, "   -v | --verbose         Logging verbosity (use -vvv to increase verbosity)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -193,6 +193,7 @@ int main (int argc, char **argv)
    TIO_Meta_Type *meta = NULL;
    char *input_file = NULL;
    char *snow_file = NULL;
+   int log_level = 0;
    int status = EXIT_FAILURE;
    int correct_parallax = 1;    /* apply the correction by default */
    static struct option long_options[] =
@@ -201,7 +202,7 @@ int main (int argc, char **argv)
         {"snow",        required_argument, 0, 's'},
         {"config",      required_argument, 0, 'c'},
         {"help",        no_argument,       0, 'h'},
-        {"verbose",     optional_argument, 0, 'v'},
+        {"verbose",     no_argument, 0, 'v'},
         {0,0,0,0}
      };
 
@@ -223,7 +224,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hpc:s:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hpc:s:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -255,14 +256,12 @@ int main (int argc, char **argv)
                goto return_status;
              break;
            case 'v':
-               {
-                  int log_level;
-                  if (1 == sscanf (optarg, "%d", &log_level))
-                    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
-               }
+             log_level++;
              break;
           }
      }
+
+   (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
 
    if (optind == argc)
      {
