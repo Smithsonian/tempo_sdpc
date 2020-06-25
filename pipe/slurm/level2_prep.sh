@@ -202,7 +202,7 @@ run_inr_post()
 
    # INR post
    srun --ntasks=1 --output=log_inr_post.txt \
-    L1_inr_post -c ${etc_dir}/l1_inr_post.cfg \
+    L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
    run_wavecal $radiance_file "0-4"
