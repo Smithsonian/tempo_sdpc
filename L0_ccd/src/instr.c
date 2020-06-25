@@ -310,41 +310,52 @@ enum
    FILTER_HALTS_SEARCH = 2
 };
 
-static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file)
+static int filter_excludes_file (const Instr_Filter_Type *flt, const char *file,
+                                 int *flag, double *delta_t)
 {
    double file_tstart, file_tend;
-   int ncid, status;
+   int ncid;
 
    tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: looking at %s", __func__, file);
 
-   status = FILTER_ERROR;
+   *flag = FILTER_ERROR;
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
-     return FILTER_ERROR;
+     return -1;
 
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &file_tstart))
-     goto return_status;
+     {
+        TIO_close(ncid);
+        return -1;
+     }
 
    if (flt->tend < file_tstart)
      {
-        status = FILTER_HALTS_SEARCH;
-        goto return_status;
+        *flag = FILTER_HALTS_SEARCH;
+        *delta_t = file_tstart - flt->tend;
+        TIO_close(ncid);
+        return 0;
      }
 
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_end_since_epoch", NC_DOUBLE, &file_tend))
-     goto return_status;
+     {
+        TIO_close(ncid);
+        return -1;
+     }
 
    if (file_tend < flt->tstart)
      {
-        status = FILTER_EXCLUDES_FILE;
-        goto return_status;
+        *flag = FILTER_EXCLUDES_FILE;
+        *delta_t = flt->tstart - file_tend;
+     }
+   else
+     {
+        *flag = FILTER_INCLUDES_FILE;
+        *delta_t = 0.0;
      }
 
-   status = FILTER_INCLUDES_FILE;
-
-return_status:
    (void) TIO_close (ncid);
-   return status;
+   return 0;
 }
 
 static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const Instr_Filter_Type *flt)
@@ -353,6 +364,8 @@ static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const In
    Instr_Type **tail = NULL;
    char *glob_path = NULL;
    unsigned int i;
+   double min_delta_t = DBL_MAX;
+   int nearest = -1;
    int status_flag = -1;
 
    if (flt->glob_basename == NULL)
@@ -377,13 +390,23 @@ static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const In
    for (i = 0; i < g->num_files; i++)
      {
         Instr_Type *instr;
-        int status = filter_excludes_file (flt, g->files[i]);
+        double delta_t;
+        int flag;
 
-        if (status < 0)
+        if (filter_excludes_file (flt, g->files[i], &flag, &delta_t) < 0)
           goto return_status;
-        else if (status == FILTER_EXCLUDES_FILE)
+
+        if (delta_t < min_delta_t)
+          {
+             min_delta_t = delta_t;
+             nearest = i;
+          }
+
+        if (flag == FILTER_ERROR)
+          goto return_status;
+        else if (flag == FILTER_EXCLUDES_FILE)
           continue;
-        else if (status == FILTER_HALTS_SEARCH)
+        else if (flag == FILTER_HALTS_SEARCH)
           break;
 
         if (NULL == (instr = read_instr1 (g->files[i])))
@@ -401,8 +424,15 @@ static Instr_Type *read_instr_glob (Instr_Type *head, const char *path, const In
 
    if (head == NULL)
      {
-	tell_vwarn (0, "%s: no files match selection criteria: %s",
+        tell_vwarn (0, "%s: no files match selection criteria: %s",
                     __func__, glob_path);
+        if (nearest >= 0)
+          {
+             if (NULL == (head = read_instr1 (g->files[nearest])))
+               goto return_status;
+             tell_vwarn (0, "%s: using nearest match (delta_t=%f sec): %s",
+                         __func__, min_delta_t, g->files[nearest]);
+          }
      }
 
    status_flag = 0;
