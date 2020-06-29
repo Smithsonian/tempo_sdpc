@@ -1256,7 +1256,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
      goto return_status;
 
    ncid_from = gr->granule_ncid (gr);
-   ncid_to = out->out_ncid (out);
+   ncid_to = out->out_root_ncid (out);
 
    processing_version = process_get_version();
    if (0 != TIO_put_att (ncid_to, NC_GLOBAL, "processing_version", NC_INT, 1, &processing_version))
@@ -1368,6 +1368,9 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
      }
 
    if (0 != out->out_std_metadata (out, meta, ncid_from))
+     goto return_status;
+
+   if (0 != out->out_finalize (out))
      goto return_status;
 
    status = 0;

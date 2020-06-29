@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "process.h"
+#include "image.h"
 
 #define NUM_BANDS 2
 
@@ -26,10 +27,23 @@
    int num_waves; \
    int formatted_file_exists; \
    int ncid; \
+   int ncid_irr_frames; \
    double tstart; \
    double tend;
 #include "output.h"
 #include "util.h"
+
+static int out_frames_ncid (const Output_Type *out)
+{
+   if (out->exposure_type == EXPREC_TYPE_IRR_WRK)
+     return out->ncid_irr_frames;
+   else return out->ncid;
+}
+
+static int out_root_ncid (const Output_Type *out)
+{
+   return out->ncid;
+}
 
 static int out_set_file (Output_Type *out, const char *file)
 {
@@ -105,7 +119,7 @@ static int create_file (Output_Type *out)
 }
 
 static void
-define_tio_bands (Output_Type *out,
+define_tio_bands (const Output_Type *out,
                   TIO_Scan_Group_Type tio_bands[NUM_BANDS])
 {
    tio_bands[0].name = TEMPO_BAND_NAME_UV;
@@ -120,17 +134,14 @@ define_tio_bands (Output_Type *out,
 typedef int TIO_Template_Method (int, size_t, int, TIO_Scan_Group_Type *);
 
 static int
-create_file_of_type (Output_Type *out,
+create_file_of_type (Output_Type *out, int ncid, int num_recs,
                      TIO_Template_Method *tmpl_method)
 {
    TIO_Scan_Group_Type tio_bands[NUM_BANDS];
 
-   if (0 != create_file (out))
-     return -1;
-
    define_tio_bands (out, tio_bands);
 
-   if (0 != (*tmpl_method) (out->ncid, out->num_recs, NUM_BANDS, tio_bands))
+   if (0 != (*tmpl_method) (ncid, num_recs, NUM_BANDS, tio_bands))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: creating %s",
                      __func__, out->file);
@@ -145,12 +156,30 @@ create_file_of_type (Output_Type *out,
 
 static int create_irr_file (Output_Type *out)
 {
-   return create_file_of_type (out, TIO_l1_irradiance_template);
+   if (0 != create_file (out))
+     return -1;
+
+   if (out->exposure_type != EXPREC_TYPE_IRR_WRK)
+     {
+        return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_irradiance_template);
+     }
+
+   /* The irradiance file used for processing has a single frame at the
+    * top level to store the average irradiance.  The individual frames
+    * are stored in the /frames group, which has the same uv/vis band structure
+    */
+   if (0 != create_file_of_type (out, out->ncid, 1, TIO_l1_irradiance_template))
+     return -1;
+   if (0 != TIO_def_grp (out->ncid, "frames", &out->ncid_irr_frames))
+     return -1;
+   return create_file_of_type (out, out->ncid_irr_frames, out->num_recs, TIO_l1_irradiance_template);
 }
 
 static int create_rad_file (Output_Type *out)
 {
-   return create_file_of_type (out, TIO_l1_radiance_template);
+   if (0 != create_file (out))
+     return -1;
+   return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_radiance_template);
 }
 
 static void out_free (Output_Type *out)
@@ -172,12 +201,14 @@ write_rec_band1 (Output_Type *out, int index, int w_nwg,
                  const Spectral_Data_Type *sdt,
                  const char *name_var, const char *name_var_err)
 {
-   int grp, start[3], count[3];
+   int grp, ncid, start[3], count[3];
 
    if (sdt == NULL)
      return 0;
 
-   if (0 != TIO_inq_grp (out->ncid, sdt->name, &grp))
+   ncid = out_frames_ncid (out);
+
+   if (0 != TIO_inq_grp (ncid, sdt->name, &grp))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: accessing group %s in %s",
                      __func__, sdt->name, out->file);
@@ -224,6 +255,20 @@ write_rec_band1 (Output_Type *out, int index, int w_nwg,
                           __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
              return -1;
           }
+
+        /* Yes, this is a particularly ugly hack */
+        if (out->exposure_type == EXPREC_TYPE_IRR_WRK)
+          {
+             int avg_grp;
+             if ((0 != TIO_inq_grp (out->ncid, sdt->name, &avg_grp))
+                 || (0 != TIO_put_var_section (avg_grp, TEMPO_VAR_WAVELEN_NOMINAL, &start[2], &count[2], TIO_DOUBLE,
+                                               sdt->wave)))
+               {
+                  tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                               __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
+                  return -1;
+               }
+          }
      }
 
    return 0;
@@ -258,7 +303,9 @@ static void update_coverage_time_range (Output_Type *out,
 static int write_rec_meta (Output_Type *out, int index,
                            const Output_Metadata_Type *meta)
 {
-   int grp, start, count;
+   int ncid, start, count;
+
+   ncid = out_frames_ncid (out);
 
    update_coverage_time_range (out, meta);
 
@@ -268,21 +315,14 @@ static int write_rec_meta (Output_Type *out, int index,
    if (out->tstart == meta->start_time)
      {
         /* header value is in meters, computed value is in km */
-        if (0 != tio_set_earth_sun_distance (out->ncid, meta->earth_sun_distance * 1.e3))
+        if (0 != tio_set_earth_sun_distance (ncid, meta->earth_sun_distance * 1.e3))
           return -1;
-     }
-
-   if (0 != TIO_inq_grp (out->ncid, "/", &grp))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: accessing group / in %s",
-                     __func__, out->file);
-        return -1;
      }
 
    start = index;
    count = 1;
 
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_TIME, &start, &count, TIO_DOUBLE,
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_TIME, &start, &count, TIO_DOUBLE,
                                  &meta->start_time))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
@@ -290,7 +330,7 @@ static int write_rec_meta (Output_Type *out, int index,
         return -1;
      }
 
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_EXPOSURE_TIME, &start, &count, TIO_DOUBLE,
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_EXPOSURE_TIME, &start, &count, TIO_DOUBLE,
                                  &meta->exposure_time))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
@@ -298,7 +338,7 @@ static int write_rec_meta (Output_Type *out, int index,
         return -1;
      }
 
-   if (0 != TIO_put_var_section (out->ncid, TEMPO_DIM_STEP, &start, &count, TIO_INT,
+   if (0 != TIO_put_var_section (ncid, TEMPO_DIM_STEP, &start, &count, TIO_INT,
                                  &meta->mirror_step))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
@@ -349,11 +389,6 @@ static int write_rad_rec (Output_Type *out,
    return write_rec_bands (out, index, rec,
                            TEMPO_VAR_RADIANCE,
                            TEMPO_VAR_RADIANCE_ERROR);
-}
-
-static int out_get_ncid (const Output_Type *out)
-{
-   return out->ncid;
 }
 
 static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_from)
@@ -433,6 +468,207 @@ return_status:
    return status;
 }
 
+static int band_average_irradiance (Output_Type *out, const char *band_name)
+{
+   int src_grp, dest_grp;
+   float *irr = NULL;
+   float *irr_err = NULL;
+   float *tmp_irr = NULL;
+   float *tmp_irr_err = NULL;
+   float *exptime = NULL;
+   double *obstime = NULL;
+   double obstime_avg, tot_obstime, tot_exptime;
+   float exptime_avg, earth_sun_distance;
+   unsigned short *pqf = NULL;
+   unsigned short *tmp_pqf = NULL;
+   int i, k, len, start[3], count[3], n_obstime, n_exptime;
+   int processing_version;
+   int *num = NULL;
+   int status = -1;
+
+   /* average over frames stored in /frames/$band_name */
+   if (0 != TIO_inq_grp (out->ncid_irr_frames, band_name, &src_grp))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: accessing group %s in %s",
+                     __func__, band_name, out->file);
+        return -1;
+     }
+
+   /* store averages in /$band_name */
+   if (0 != TIO_inq_grp (out->ncid, band_name, &dest_grp))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: accessing group %s in %s",
+                     __func__, band_name, out->file);
+        return -1;
+     }
+
+   len = out->num_xtrack * out->num_waves;
+   if ((NULL == (irr = (float *)MALLOC (2*len * sizeof(float))))
+       || (NULL == (tmp_irr = (float *)MALLOC (2*len * sizeof(float))))
+       || (NULL == (pqf = (unsigned short *)MALLOC (2*len * sizeof(unsigned short))))
+       || (NULL == (num = (int *)MALLOC (len * sizeof(int))))
+       || (NULL == (obstime = (double *)MALLOC (out->num_recs * sizeof(double))))
+       || (NULL == (exptime = (float *)MALLOC (out->num_recs * sizeof(float))))
+      )
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc error", __func__);
+        goto return_status;
+     }
+   memset ((char *)irr, 0, 2*len * sizeof(float));
+   memset ((char *)tmp_irr, 0, 2*len * sizeof(float));
+   memset ((char *)pqf, 0, 2*len * sizeof(unsigned short));
+   memset ((char *)num, 0, len * sizeof(int));
+
+   irr_err = irr + len;
+   tmp_irr_err = tmp_irr + len;
+   tmp_pqf = pqf + len;
+
+   for (i = 0; i < out->num_recs; i++)
+     {
+        start[0] = i;
+        start[1] = 0;
+        start[2] = 0;
+        count[0] = 1;
+        count[1] = out->num_xtrack;
+        count[2] = out->num_waves;
+
+        if ((0 != TIO_get_var_section (src_grp, TEMPO_VAR_PQF, start, count, TIO_USHORT, tmp_pqf))
+            || (0 != TIO_get_var_section (src_grp, TEMPO_VAR_IRRADIANCE, start, count, TIO_FLOAT, tmp_irr))
+            || (0 != TIO_get_var_section (src_grp, TEMPO_VAR_IRRADIANCE_ERROR, start, count, TIO_FLOAT, tmp_irr_err)))
+          goto return_status;
+
+        for (k = 0; k < len; k++)
+          {
+             if (tmp_pqf[k] == 0)
+               {
+                  num[k]     += 1;
+                  irr[k]     += tmp_irr[k];
+                  irr_err[k] += tmp_irr_err[k] * tmp_irr_err[k];
+               }
+             else
+               {
+                  pqf[k] |= tmp_pqf[k];
+               }
+          }
+     }
+
+   for (k = 0; k < len; k++)
+     {
+        if (num[k] > 0)
+          {
+             irr[k] /= num[k];
+             irr_err[k] = sqrt(irr_err[k] /num[k]);
+          }
+        else
+          {
+             irr[k] = IMAGE_PIXEL_FILL_VALUE;
+             irr_err[k] = IMAGE_PIXEL_FILL_VALUE;
+          }
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = 1;
+   count[1] = out->num_xtrack;
+   count[2] = out->num_waves;
+
+   if (0 != TIO_put_var_section (dest_grp, TEMPO_VAR_PQF, start, count, TIO_USHORT, pqf))
+     goto return_status;
+   if (0 != TIO_put_var_section (dest_grp, TEMPO_VAR_IRRADIANCE, start, count, TIO_FLOAT, irr))
+     goto return_status;
+   if (0 != TIO_put_var_section (dest_grp, TEMPO_VAR_IRRADIANCE_ERROR, start, count, TIO_FLOAT, irr_err))
+     goto return_status;
+
+   start[0] = 0;
+   count[0] = out->num_recs;
+   if ((0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, obstime))
+       ||(0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, exptime)))
+     goto return_status;
+
+   tot_obstime = 0.0;
+   tot_exptime = 0.0;
+   n_obstime = 0;
+   n_exptime = 0;
+   for (i = 0; i < out->num_recs; i++)
+     {
+        if (obstime[i] != TIO_FILL_DOUBLE)
+          {
+             tot_obstime += obstime[i];
+             n_obstime++;
+          }
+        if (exptime[i] != TIO_FILL_FLOAT)
+          {
+             tot_exptime += exptime[i];
+             n_exptime++;
+          }
+     }
+   obstime_avg = n_obstime ? (tot_obstime / n_obstime) : TIO_FILL_DOUBLE;
+   exptime_avg = n_exptime ? (tot_exptime / n_exptime) : TIO_FILL_FLOAT;
+
+   start[0] = 0;
+   count[0] = 1;
+   if ((0 != TIO_put_var_section (out->ncid, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, &obstime_avg))
+       ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, &exptime_avg)))
+     goto return_status;
+
+   i = 1;
+   if (0 != TIO_put_var_section (out->ncid, TEMPO_DIM_STEP, start, count, TIO_INT, &i))
+     goto return_status;
+
+   if (0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_EARTH_SUN_DISTANCE, start, count, TIO_FLOAT, &earth_sun_distance))
+     goto return_status;
+   if (0 != TIO_put_var_section (out->ncid, TEMPO_VAR_EARTH_SUN_DISTANCE, start, count, TIO_FLOAT, &earth_sun_distance))
+     goto return_status;
+
+   if ((0 != TIO_write_timestamp (out->ncid_irr_frames, NC_GLOBAL, "time_coverage_start", out->tstart))
+       ||(0 != TIO_write_timestamp (out->ncid_irr_frames, NC_GLOBAL, "time_coverage_end", out->tend)))
+     {
+        tell_vwarn (0, "%s: writing coverage time stamps to frames group", __func__);
+     }
+
+   /* We don't need this, but since it's in the file, let's try to get it right */
+   processing_version = process_get_version();
+   if (0 != TIO_put_att (out->ncid_irr_frames, NC_GLOBAL, "processing_version", NC_INT, 1, &processing_version))
+     {
+        tell_vwarn (0, "%s: writing processing_version to frames group", __func__);
+     }
+
+   status = 0;
+return_status:
+   FREE(irr);
+   FREE(tmp_irr);
+   FREE(pqf);
+   FREE(num);
+   FREE(obstime);
+   FREE(exptime);
+
+   return status;
+}
+
+static int generate_average_irradiance (Output_Type *out)
+{
+   if ((0 != band_average_irradiance (out, TEMPO_BAND_NAME_UV))
+       || (0 != band_average_irradiance (out, TEMPO_BAND_NAME_VIS)))
+     return -1;
+
+   return 0;
+}
+
+static int out_finalize (Output_Type *out)
+{
+   switch (out->exposure_type)
+     {
+      case EXPREC_TYPE_IRR_WRK:
+        return generate_average_irradiance (out);
+
+      default:
+        break;
+     }
+
+   return 0;
+}
+
 static int read_params (Output_Type *out, config_t *cfg)
 {
    config_setting_t *setting;
@@ -484,8 +720,9 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->out_file_exists = out_file_exists;
    out->tstart = nan_value;
    out->tend = nan_value;
-   out->out_ncid = out_get_ncid;
+   out->out_root_ncid = out_root_ncid;
    out->out_std_metadata = out_std_metadata;
+   out->out_finalize = out_finalize;
 
    if (0 != read_params (out, cfg))
      {

@@ -68,7 +68,17 @@ struct Output_Type
     */
    int (*out_create)(Output_Type *);
 
-   int (*out_ncid)(const Output_Type *);
+   /** finalize the output file
+    * @param out  non-NULL pointer to an Output_Type object
+    * @return 0 on success, -1 on error
+    */
+   int (*out_finalize)(Output_Type *);
+
+   /** Get the root ncid of the output file ("/")
+    * @param out  non-NULL pointer to an Output_Type object
+    * @return 0 on success, -1 on error
+    */
+   int (*out_root_ncid)(const Output_Type *);
 
    /** query whether or not the formatted output file exists
     * @param out  non-NULL pointer to an Output_Type object
