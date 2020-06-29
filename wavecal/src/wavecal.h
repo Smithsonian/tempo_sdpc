@@ -48,6 +48,7 @@ typedef struct
    const double *residuals;    /**< weighted fit residuals */
    double bestnorm;    /**< best fit statistic */
    int num_fit;        /**< number of pixels fitted */
+   int start_pix;      /**< index of first pixel in the fit window */
    int nfev;           /**< number of objective function evaluations */
    int opt_status;     /**< optimizer status code */
 }
@@ -87,11 +88,11 @@ extern Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta
  */
 extern int wavecal_num_wave_params (const Wavecal_Type *wct);
 
-/** Query the number of slit function parameters
+/** Query whether slit function parameters are being fitted
  * @param  wct   Pointer to \a Wavecal_Type object initialized by \a wavecal_open
- * @return the number of slit function parameters on success, -1 on error.
+ * @return >=0 on success, -1 on error.
  */
-extern int wavecal_num_sf_params (const Wavecal_Type *wct);
+extern int wavecal_fitting_sf_params (const Wavecal_Type *wct);
 
 /** Query the fit window offset and width
  * @param  wct        Pointer to \a Wavecal_Type object initialized by \a wavecal_open

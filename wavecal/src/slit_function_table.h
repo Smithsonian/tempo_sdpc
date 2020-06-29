@@ -14,7 +14,6 @@ struct SF_Table_Type
 #endif
 };
 
-extern SF_Table_Type *sf_table_open (const char *sf_file, const char *cal_file,
-                                     const char *band_name);
+extern SF_Table_Type *sf_table_open (const char *sf_file, const char *band_name);
 
 #endif

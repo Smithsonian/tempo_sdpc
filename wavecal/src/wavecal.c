@@ -48,7 +48,6 @@ enum
 typedef struct
 {
    char *sf_path;           /**< slit function lookup table */
-   char *cal_path;          /**< calibration file containing wavelength grid for slit function table */
    double *initial_params;  /**< initial slit function parameter values for fit. (optional - null is ok) */
    double *param_step;      /**< slit function parameter step values for numerical derivatives when fitting. (optional - null is ok) */
    int num_params;
@@ -321,22 +320,10 @@ static int config_slit_function (config_setting_t *s, SF_Control_Type *sf_ctrl)
    if (CONFIG_TRUE != config_setting_lookup_string (s, "sf_path", &path))
      {
         sf_ctrl->sf_path = NULL;
-        sf_ctrl->cal_path = NULL;
      }
    else
      {
         if (NULL == (sf_ctrl->sf_path = expand_path (path)))
-          return -1;
-
-        if (CONFIG_TRUE != config_setting_lookup_string (s, "cal_path", &path))
-          {
-             tell_verror (TELL_INVALID_PARM_ERROR,
-                          "%s: reading config setting 'cal_path' (%s:%d)",
-                          __func__, config_setting_source_file (s),
-                          config_setting_source_line (s));
-             return -1;
-          }
-        if (NULL == (sf_ctrl->cal_path = expand_path (path)))
           return -1;
      }
 
@@ -751,7 +738,6 @@ static void free_sf_ctrl (SF_Control_Type *sf_ctrl)
    FREE(sf_ctrl->initial_params);
    FREE(sf_ctrl->param_step);
    FREE(sf_ctrl->sf_path);
-   FREE(sf_ctrl->cal_path);
 }
 
 static void free_wavecal (Wavecal_Type *wct)
@@ -1303,11 +1289,11 @@ int wavecal_num_wave_params (const Wavecal_Type *wct)
    return wct->window.num_wave_params;
 }
 
-int wavecal_num_sf_params (const Wavecal_Type *wct)
+int wavecal_fitting_sf_params (const Wavecal_Type *wct)
 {
    if (wct == NULL)
      return -1;
-   return wct->sf_ctrl.num_params;
+   return (wct->sf_ctrl.mode == SF_MODE_FIT);
 }
 
 int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
@@ -1362,7 +1348,7 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
      {
         s_slit = config_setting_get_member (s_irr, slit_function_setting);  /* NULL is ok */
 
-        /* For irradiance, use the default feature window and
+        /* FIXME: For irradiance, use the default feature window and
          * operate on the entire spectrum */
      }
    else
@@ -1449,12 +1435,11 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
 
    if (sf_ctrl.sf_path)
      {
-        if (NULL == (wct->sf_table = sf_table_open (sf_ctrl.sf_path, sf_ctrl.cal_path, cfg_name)))
+        if (NULL == (wct->sf_table = sf_table_open (sf_ctrl.sf_path, cfg_name)))
           goto error_return;
         if (0)
           {
-             if ((0 != meta_record_basename (meta, sf_ctrl.sf_path))
-                 || (0 != meta_record_basename (meta, sf_ctrl.cal_path)))
+             if (0 != meta_record_basename (meta, sf_ctrl.sf_path))
                goto error_return;
           }
      }
@@ -2241,6 +2226,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         result->residuals = win->residuals;
         result->bestnorm = fit_result.bestnorm;
         result->num_fit = win->num_wave;
+        result->start_pix = win->start_pix;
         result->nfev = fit_result.nfev;
         result->opt_status = mp_status;
         if (0) write_params (stderr, params, num_params);

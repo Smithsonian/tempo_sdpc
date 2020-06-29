@@ -120,134 +120,67 @@ static SF_Table_Type *sf_table_new (int num_params)
    return stt;
 }
 
-static int read_table_var (int ncid, const char *band_name, const char *name,
-                           Table_Var_Type *tv)
+static int read_table_var (int grp, const char *name, Table_Var_Type *tv)
 {
    TIO_Var_Info_Type info = {0};
    int start[2], count[2];
-   double *vars_for_wave_i = NULL;
-   int num_xtrack, num_waves;
-   int beg_row, end_row, k, i;
-   size_t len;
 
    memset ((char *)tv, 0, sizeof (*tv));
 
-   if (0 != TIO_inq_var (ncid, name, &info))
+   if (0 != TIO_inq_var (grp, name, &info))
      return -1;
 
-   num_waves = info.dimlens[0];
-   num_xtrack = info.dimlens[1];  /* fastest varying index in the file */
+   tv->num_xtrack = info.dimlens[0];
+   tv->num_waves = info.dimlens[1]; /* fastest varying index in the file */
 
-   /* Parameters are are stored like so:
-    * -----------------------------  290 nm: wave_index=2056-1
-    * |             |             |
-    * |             |             |
-    * |   D         |   C         |    <- UV
-    * |             |             |
-    * |             |             |  490 nm
-    * -----------------------------
-    * |             |             |  540 nm
-    * |             |             |
-    * |   A         |   B         |    <- VIS
-    * |             |             |
-    * |             |             |
-    * -----------------------------  740 nm: wave_index=0
-    * north                     south
-    * xtrack=0                  xtrack=2048-1
-    */
-   if (0 == strcmp (band_name, TEMPO_BAND_NAME_VIS))
-     {
-        beg_row = 0;
-        end_row = num_waves/2;
-     }
-   else if (0 == strcmp (band_name, TEMPO_BAND_NAME_UV))
-     {
-        beg_row = num_waves/2;
-        end_row = num_waves;
-     }
-   else
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: unrecognized band name: %s", __func__, band_name);
-        return -1;
-     }
-
-   tv->num_waves = num_waves/2;
-   tv->num_xtrack = num_xtrack;
-
-   len = tv->num_waves * tv->num_xtrack;
-
-   if ((NULL == (tv->var = (double *)MALLOC (len * sizeof(double))))
-       || (NULL == (vars_for_wave_i = (double *)MALLOC (num_xtrack * sizeof(double)))))
+   if (NULL == (tv->var = (double *)MALLOC (tv->num_waves * tv->num_xtrack * sizeof(double))))
      {
         free_table_var (tv);
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
 
-   /* When using the parameters, we want to use a wavelength index that goes
-    * from 0->(N-1) within a single band, with wavelengths in increasing order.
-    * To achieve this, we re-order the array on input.
-    */
-
-   count[0] = 1;
+   start[0] = 0;
    start[1] = 0;
-   count[1] = num_xtrack;
+   count[0] = tv->num_xtrack;
+   count[1] = tv->num_waves;
 
-   for (k=beg_row, i=tv->num_waves-1; (k<end_row) && (i >= 0); k++, i--)
+   if (0 != TIO_get_var_section (grp, name, start, count, TIO_DOUBLE, tv->var))
      {
-        int j;
-        start[0] = k;
-        if (0 != TIO_get_var_section (ncid, name, start, count, TIO_DOUBLE, vars_for_wave_i))
-          {
-             tell_verror (TELL_IO_READ_ERROR, "%s: reading variable %s", __func__, name);
-             free_table_var (tv);
-             FREE(vars_for_wave_i);
-             return -1;
-          }
-
-        /* tv->var has dimensions [xtrack, wave] with wave varying fastest so */
-        for (j = 0; j < num_xtrack; j++)
-          {
-             tv->var[i + j * tv->num_waves] = vars_for_wave_i[j];
-          }
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading variable %s", __func__, name);
+        free_table_var (tv);
+        return -1;
      }
-
-   FREE(vars_for_wave_i);
 
    return 0;
 }
 
-SF_Table_Type *sf_table_open (const char *sf_file, const char *cal_file,
-                              const char *band_name)
+SF_Table_Type *sf_table_open (const char *sf_file, const char *band_name)
 {
    SF_Table_Type *stt = NULL;
    int num_params = 3;
-   int ncid = 0;
+   int grp, ncid = 0;
 
    if (NULL == (stt = sf_table_new (num_params)))
      return NULL;
 
-   if (0 != TIO_open (sf_file, NC_NOWRITE, &ncid))
+   if ((0 != TIO_open (sf_file, NC_NOWRITE, &ncid))
+       || (0 != TIO_inq_grp (ncid, band_name, &grp)))
      {
         sf_table_free (stt);
         return NULL;
      }
 
-   if ((0 != read_table_var (ncid, band_name, "W", &stt->width))
-       || (0 != read_table_var (ncid, band_name, "K", &stt->power))
-       || (0 != read_table_var (ncid, band_name, "A", &stt->asym)))
+   if ((0 != read_table_var (grp, "sf_hw1e", &stt->width))
+       || (0 != read_table_var (grp, "sf_shape", &stt->power))
+       || (0 != read_table_var (grp, "sf_asym", &stt->asym)))
      {
         sf_table_free (stt);
         TIO_close (ncid);
         return NULL;
      }
 
-   if (0 != TIO_open (cal_file, NC_NOWRITE, &ncid))
-     {
-        sf_table_free (stt);
-        return NULL;
-     }
-   if (0 != read_table_var (ncid, band_name, "wavelength_grid", &stt->waves))
+   if (0 != read_table_var (grp, "sf_wavelength", &stt->waves))
      {
         sf_table_free (stt);
         TIO_close (ncid);
@@ -274,7 +207,7 @@ static int dbl_cmp (double a, double b, double tol)
    return fabs(diff) > (fabs(mean) * tol);
 }
 
-static int test_table (const char *sf_file, const char *cal_file,
+static int test_table (const char *sf_file,
                        const char *band_name, SF_Test_Type *test_cases)
 {
    SF_Table_Type *stt = NULL;
@@ -283,7 +216,7 @@ static int test_table (const char *sf_file, const char *cal_file,
    int status = -1;
    int num_errors, nw, nx, np;
 
-   if (NULL == (stt = sf_table_open (sf_file, cal_file, band_name)))
+   if (NULL == (stt = sf_table_open (sf_file, band_name)))
      return -1;
 
    if (0 != stt->stt_size (stt, &nx, &nw, &np))
@@ -322,27 +255,26 @@ return_status:
 
 int main (void)
 {
-   const char *sf_file = "/data/tempo/sdpc/refdata/instrument/TEMPO_Slit_Function_10_29_2019_V1.h5";
-   const char *cal_file = "/data/tempo/sdpc/refdata/instrument/TEMPO_senscal_larc_update_V2_04242019_v1.1.nc";
+   const char *sf_file = "/data/tempo/sdpc/refdata/instrument/TEMPO_Slit_Function_Nischal10292019_V1.nc";
    SF_Test_Type vis_tests[] =
      {
-        {   0, 537.2, {0.30453, 3.4585,  0.0059415}},  /* e.g.  h5dump -d W -s 1027,0 -c 1,2048 $FILE */
-        {2047, 537.2, {0.31403, 3.4443, -0.0025236}},  /* e.g.  h5dump -d W -s 1027,0 -c 1,2048 $FILE */
-        {2047, 742.6, {0.28651, 2.4118, -0.0027844}},  /* e.g.  h5dump -d W -s 0,0    -c 1,2048 $FILE */
+        {   0, 537.2, {0.30453, 3.4585,  0.0059415}},
+        {2047, 537.2, {0.31403, 3.4443, -0.0025236}},
+        {2047, 742.6, {0.28651, 2.4118, -0.0027844}},
         {-1,-1,{0,0,0}}
      };
    SF_Test_Type uv_tests[] =
      {
-        {   0, 291.8, {0.30254, 3.8627, 7.46e-05}},  /* e.g.  h5dump -d W -s 2055,0 -c 1,2048 $FILE */
-        {2047, 291.8, {0.30658, 3.6683, -0.00445}},  /* e.g.  h5dump -d W -s 2055,0 -c 1,2048 $FILE */
-        {2047, 497.2, {0.30796, 3.5532, -0.00308}},  /* e.g.  h5dump -d W -s 1028,0 -c 1,2048 $FILE */
+        {   0, 291.8, {0.30254, 3.8627, 7.46e-05}},
+        {2047, 291.8, {0.30658, 3.6683, -0.00445}},
+        {2047, 497.2, {0.30796, 3.5532, -0.00308}},
         {-1,-1,{0,0,0}}
      };
 
-   if (0 != test_table (sf_file, cal_file, TEMPO_BAND_NAME_VIS, vis_tests))
+   if (0 != test_table (sf_file, TEMPO_BAND_NAME_VIS, vis_tests))
      return EXIT_FAILURE;
 
-   if (0 != test_table (sf_file, cal_file, TEMPO_BAND_NAME_UV, uv_tests))
+   if (0 != test_table (sf_file, TEMPO_BAND_NAME_UV, uv_tests))
      return EXIT_FAILURE;
 
    return EXIT_SUCCESS;

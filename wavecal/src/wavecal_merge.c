@@ -13,6 +13,48 @@
 #include <tio.h>
 #include <tio_template.h>
 
+typedef struct
+{
+   float *hw1e;
+   float *shape;
+   float *asym;
+   int num_xtrack;
+   int num_channel;
+}
+SlitFun_Type;
+
+static void sf_free (SlitFun_Type *sf)
+{
+   if (sf == NULL)
+     return;
+   FREE(sf->hw1e);
+   FREE(sf->asym);
+   FREE(sf->shape);
+   return;
+}
+
+static SlitFun_Type *sf_alloc (int num_xtrack, int num_channel)
+{
+   SlitFun_Type *sf = NULL;
+   int len = num_xtrack * num_channel;
+   if (NULL == (sf = (SlitFun_Type *)MALLOC (sizeof *sf)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc error", __func__);
+        return NULL;
+     }
+   memset ((char *)sf, 0, sizeof(*sf));
+
+   if ((NULL == (sf->hw1e = (float *)MALLOC (len * sizeof(float))))
+       || (NULL == (sf->shape = (float *)MALLOC (len * sizeof(float))))
+       || (NULL == (sf->asym = (float *)MALLOC (len * sizeof(float)))))
+     {
+        sf_free(sf);
+        return NULL;
+     }
+
+   return sf;
+}
+
 static void usage (void)
 {
    fprintf (stderr, "Usage: wavecal_merge -t <target-file> <wavecal-results-dir>\n");
@@ -29,19 +71,18 @@ static void usage (void)
 static int perform_merge (int ncid_target, const char *file)
 {
    const char *params_varname = TEMPO_VAR_WAVECAL_PARAM;
-   const char *sf_params_varname = TEMPO_VAR_SLITFUN_PARAM;
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
    int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;
-   int step_dimlen_src, step_dimid, xtrack_dimid, dest_varid;
+   int step_dimlen_src, step_dimid, xtrack_dimid, channel_dimid, dest_varid;
    int have_sf;
    int start[3], count[3];
-   size_t step_dimlen, xtrack_dimlen, xtrack_dimlen_src;
+   size_t step_dimlen, xtrack_dimlen, channel_dimlen, xtrack_dimlen_src;
    size_t params_dimlen_src, len_params, len_slab;
-   size_t sf_params_dimlen_src, len_sf_params, len_sf_slab;
+   size_t channel_dimlen_src;
    size_t i;
    float *wavecal_params = NULL;
-   float *sf_params = NULL;
+   SlitFun_Type *sf = NULL;
    int *mirror_step = NULL;
    int status = -1;
 
@@ -59,17 +100,17 @@ static int perform_merge (int ncid_target, const char *file)
    xtrack_dimlen_src = info.dimlens[1];
    params_dimlen_src = info.dimlens[2];
 
-   if (0 == tio_inq_varid (ncid_src, sf_params_varname, &have_sf))
+   if (0 == tio_inq_varid (ncid_src, "sf_hw1e", &have_sf))
      {
         TIO_Var_Info_Type sf_info = {0};
-        if (0 != TIO_inq_var (ncid_src, sf_params_varname, &sf_info))
+        if (0 != TIO_inq_var (ncid_src, "sf_hw1e", &sf_info))
           goto close_and_return;
-        sf_params_dimlen_src = sf_info.dimlens[2];
+        channel_dimlen_src = sf_info.dimlens[2];
      }
    else
      {
         have_sf = 0;
-        sf_params_dimlen_src = 0;
+        channel_dimlen_src = 0;
      }
 
    if (0 != TIO_inq_dim (ncid_target, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
@@ -82,6 +123,12 @@ static int perform_merge (int ncid_target, const char *file)
      goto close_and_return;
 
    if (0 != TIO_inq_dim (grp_target, TEMPO_DIM_XTRACK, &xtrack_dimid, &xtrack_dimlen))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading xtrack dimension size", __func__);
+        goto close_and_return;
+     }
+
+   if (0 != TIO_inq_dim (grp_target, TEMPO_DIM_CHANNEL, &channel_dimid, &channel_dimlen))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading xtrack dimension size", __func__);
         goto close_and_return;
@@ -113,12 +160,8 @@ static int perform_merge (int ncid_target, const char *file)
 
    if (have_sf)
      {
-        len_sf_params = step_dimlen_src * xtrack_dimlen_src * sf_params_dimlen_src;
-        if (NULL == (sf_params = MALLOC (len_sf_params * sizeof(float))))
-          {
-             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-             goto close_and_return;
-          }
+        if (NULL == (sf = sf_alloc (xtrack_dimlen_src, channel_dimlen_src)))
+          goto close_and_return;
      }
 
    start[0] = 0;
@@ -147,10 +190,11 @@ static int perform_merge (int ncid_target, const char *file)
         start[2] = 0;
         count[0] = info.dimlens[0];
         count[1] = xtrack_dimlen_src;
-        count[2] = sf_params_dimlen_src;
+        count[2] = channel_dimlen_src;
 
-        if (0 != TIO_get_var_section (ncid_src, sf_params_varname, start, count,
-                                      TIO_FLOAT, sf_params))
+        if ((0 != TIO_get_var_section (ncid_src, "sf_hw1e", start, count, TIO_FLOAT, sf->hw1e))
+            ||(0 != TIO_get_var_section (ncid_src, "sf_shape", start, count, TIO_FLOAT, sf->shape))
+            ||(0 != TIO_get_var_section (ncid_src, "sf_asym", start, count, TIO_FLOAT, sf->asym)))
           goto close_and_return;
      }
 
@@ -179,26 +223,21 @@ static int perform_merge (int ncid_target, const char *file)
      }
 
    if ((have_sf != 0)
-       && (0 != tio_inq_varid (grp_target, sf_params_varname, &dest_varid)))
+       && (0 != tio_inq_varid (grp_target, "sf_hw1e", &dest_varid)))
      {
-        const char *sf_params_dimname = TEMPO_DIM_SLITFUN_PARAM;
-        size_t sf_params_dimlen;
-        int sf_params_dimid, sf_params_dimid_list[3];
-        if (0 != TIO_inq_dim (grp_target, sf_params_dimname, &sf_params_dimid, &sf_params_dimlen))
-          {
-             if (0 != TIO_def_dim (grp_target, sf_params_dimname, sf_params_dimlen_src, &sf_params_dimid))
-               goto close_and_return;
-          }
-        sf_params_dimid_list[0] = step_dimid;
-        sf_params_dimid_list[1] = xtrack_dimid;
-        sf_params_dimid_list[2] = sf_params_dimid;
-
-        if (0 != TIO_def_var (grp_target, sf_params_varname, TIO_FLOAT, 3, sf_params_dimid_list, &dest_varid))
+        int sf_dimids[3];
+        sf_dimids[0] = step_dimid;
+        sf_dimids[1] = xtrack_dimid;
+        sf_dimids[2] = channel_dimid;
+        if (0 != TIO_def_var (grp_target, "sf_hw1e", TIO_FLOAT, 3, sf_dimids, &dest_varid))
+          goto close_and_return;
+        if (0 != TIO_def_var (grp_target, "sf_shape", TIO_FLOAT, 3, sf_dimids, &dest_varid))
+          goto close_and_return;
+        if (0 != TIO_def_var (grp_target, "sf_asym", TIO_FLOAT, 3, sf_dimids, &dest_varid))
           goto close_and_return;
      }
 
    len_slab = xtrack_dimlen_src * params_dimlen_src;
-   len_sf_slab = xtrack_dimlen_src * sf_params_dimlen_src;
 
    for (i = 0; i < info.dimlens[0]; i++)
      {
@@ -217,10 +256,15 @@ static int perform_merge (int ncid_target, const char *file)
 
         if (have_sf)
           {
-             float *sf_param_slab_i = sf_params + i * len_sf_slab;
-             count[2] = sf_params_dimlen_src;
-             if (0 != TIO_put_var_section (grp_target, sf_params_varname, start, count,
-                                           TIO_FLOAT, sf_param_slab_i))
+             start[0] = mirror_step[i];
+             start[1] = 0;
+             start[2] = 0;
+             count[0] = 1;
+             count[1] = xtrack_dimlen_src;
+             count[2] = channel_dimlen_src;
+             if ((0 != TIO_put_var_section (grp_target, "sf_hw1e", start, count, TIO_FLOAT, sf->hw1e))
+                 || (0 != TIO_put_var_section (grp_target, "sf_shape", start, count, TIO_FLOAT, sf->shape))
+                 || (0 != TIO_put_var_section (grp_target, "sf_asym", start, count, TIO_FLOAT, sf->asym)))
                goto close_and_return;
           }
      }
@@ -229,7 +273,7 @@ static int perform_merge (int ncid_target, const char *file)
 close_and_return:
    TIO_close(ncid_src);
    FREE(wavecal_params);
-   FREE(sf_params);
+   sf_free (sf);
    FREE(mirror_step);
 
    return status;
