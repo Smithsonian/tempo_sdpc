@@ -248,12 +248,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float irradiance_fill = TIO_FILL_IRRADIANCE;
 
-        /* Motivation for making the irradiance a 3D object:
-         * In practice, we expect the irradiance measurement will occur at only
-         * a single mirror step position, so the irradiance is naturally a 2D object.
-         * However, by making the radiance and irradiance have the same dimensionality,
-         * we can enable re-use of some radiance code for processing irradiances.
-         */
+        /* It's convenient to make the irradiance a 3D object */
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
@@ -294,12 +289,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           };
         float irradiance_error_fill = TIO_FILL_IRRADIANCE_ERROR;
 
-        /* Motivation for making the irradiance a 3D object:
-         * In practice, we expect the irradiance measurement will occur at only
-         * a single mirror step position, so the irradiance is naturally a 2D object.
-         * However, by making the radiance and irradiance have the same dimensionality,
-         * we can enable re-use of some radiance code for processing irradiances.
-         */
+        /* It's convenient to make the irradiance a 3D object */
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         dims[2] = dim_table->channel.id;
