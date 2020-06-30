@@ -761,7 +761,7 @@ int main (int argc, char **argv)
 
    wavecal_config.fill_value = nan_value;
 
-   if (0 != TIO_open (input_file, NC_WRITE, &ncid))
+   if (0 != TIO_open (input_file, NC_NOWRITE, &ncid))
      goto return_status;
 
    if (0 != TIO_inq_grp (ncid, group_name, &grp))
