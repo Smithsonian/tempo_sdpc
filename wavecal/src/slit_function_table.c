@@ -29,6 +29,7 @@ Table_Var_Type;
 static void free_table_var (Table_Var_Type *tv)
 {
    FREE(tv->var);
+   tv->var = NULL;
 }
 
 static void sf_table_free (SF_Table_Type *stt)
@@ -136,6 +137,7 @@ static int read_table_var (int grp, const char *name, Table_Var_Type *tv)
    if (NULL == (tv->var = (double *)MALLOC (tv->num_waves * tv->num_xtrack * sizeof(double))))
      {
         free_table_var (tv);
+        tv = NULL;
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
      }
@@ -149,8 +151,85 @@ static int read_table_var (int grp, const char *name, Table_Var_Type *tv)
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading variable %s", __func__, name);
         free_table_var (tv);
+        tv = NULL;
         return -1;
      }
+
+   return 0;
+}
+
+static int read_sf_table (int grp, SF_Table_Type *stt)
+{
+   if ((0 != read_table_var (grp, "sf_hw1e", &stt->width))
+       || (0 != read_table_var (grp, "sf_shape", &stt->power))
+       || (0 != read_table_var (grp, "sf_asym", &stt->asym)))
+     {
+        return -1;
+     }
+
+   if (0 != read_table_var (grp, "sf_wavelength", &stt->waves))
+     return -1;
+
+   return 0;
+}
+
+static int read_irr_table_var (int grp, const char *name,
+                               TIO_Var_Info_Type *info, Table_Var_Type *tv)
+{
+   int start[3], count[3];
+
+   memset ((char *)tv, 0, sizeof (*tv));
+
+   if (info->ndims == 0)
+     {
+        /* The wavelength grid won't be explicitly defined in the irradiance file
+         * so for that variable, we take the dimension sizes from a previously
+         * read SF parameter. libtio will automatically construct the grid upon request.
+         */
+        if (0 != TIO_inq_var (grp, name, info))
+          return -1;
+     }
+
+   tv->num_xtrack = info->dimlens[1];
+   tv->num_waves = info->dimlens[2]; /* fastest varying index in the file */
+
+   if (NULL == (tv->var = (double *)MALLOC (tv->num_waves * tv->num_xtrack * sizeof(double))))
+     {
+        free_table_var (tv);
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = 1;
+   count[1] = tv->num_xtrack;
+   count[2] = tv->num_waves;
+
+   if (0 != TIO_get_var_section (grp, name, start, count, TIO_DOUBLE, tv->var))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading variable %s", __func__, name);
+        free_table_var (tv);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int read_irr_sf_table (int grp, SF_Table_Type *stt)
+{
+   TIO_Var_Info_Type info = {0};
+
+   if ((0 != read_irr_table_var (grp, "sf_hw1e", &info, &stt->width))
+       || (0 != read_irr_table_var (grp, "sf_shape", &info, &stt->power))
+       || (0 != read_irr_table_var (grp, "sf_asym", &info, &stt->asym)))
+     {
+        return -1;
+     }
+
+   if (0 != read_irr_table_var (grp, TEMPO_VAR_WAVELENGTH, &info, &stt->waves))
+     return -1;
 
    return 0;
 }
@@ -159,33 +238,36 @@ SF_Table_Type *sf_table_open (const char *sf_file, const char *band_name)
 {
    SF_Table_Type *stt = NULL;
    int num_params = 3;
-   int grp, ncid = 0;
+   int grp, varid, status, is_sf_table, ncid = 0;
 
-   if (NULL == (stt = sf_table_new (num_params)))
+   if (0 != TIO_open (sf_file, NC_NOWRITE, &ncid))
      return NULL;
 
-   if ((0 != TIO_open (sf_file, NC_NOWRITE, &ncid))
-       || (0 != TIO_inq_grp (ncid, band_name, &grp)))
+   if ((0 != TIO_inq_grp (ncid, band_name, &grp))
+       || (NULL == (stt = sf_table_new (num_params))))
      {
-        sf_table_free (stt);
-        return NULL;
-     }
-
-   if ((0 != read_table_var (grp, "sf_hw1e", &stt->width))
-       || (0 != read_table_var (grp, "sf_shape", &stt->power))
-       || (0 != read_table_var (grp, "sf_asym", &stt->asym)))
-     {
-        sf_table_free (stt);
         TIO_close (ncid);
         return NULL;
      }
 
-   if (0 != read_table_var (grp, "sf_wavelength", &stt->waves))
+   /* The slit function may come from in an irradiance file */
+   if (0 == tio_inq_varid (grp, TEMPO_VAR_IRRADIANCE, &varid))
+     is_sf_table = 0;
+   else
+     is_sf_table = 1;
+
+   if (is_sf_table)
+     status = read_sf_table (grp, stt);
+   else
+     status = read_irr_sf_table (grp, stt);
+
+   if (status)
      {
         sf_table_free (stt);
-        TIO_close (ncid);
-        return NULL;
+        stt = NULL;
      }
+
+   TIO_close (ncid);
 
    return stt;
 }
