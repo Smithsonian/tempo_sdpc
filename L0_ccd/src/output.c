@@ -468,6 +468,16 @@ return_status:
    return status;
 }
 
+static int insert_comment (int grp, const char *varname, const char *comment)
+{
+   int varid;
+   if (0 != tio_inq_varid (grp, varname, &varid))
+     return -1;
+   if (0 != TIO_put_att (grp, varid, "comment", NC_CHAR, 1+strlen(comment), comment))
+     return -1;
+   return 0;
+}
+
 static int band_average_irradiance (Output_Type *out, const char *band_name)
 {
    int src_grp, dest_grp;
@@ -481,6 +491,7 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
    float exptime_avg, earth_sun_distance;
    unsigned short *pqf = NULL;
    unsigned short *tmp_pqf = NULL;
+   char comment_string[1024];
    int i, k, len, start[3], count[3], n_obstime, n_exptime;
    int processing_version;
    int *num = NULL;
@@ -580,6 +591,16 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
    if (0 != TIO_put_var_section (dest_grp, TEMPO_VAR_IRRADIANCE_ERROR, start, count, TIO_FLOAT, irr_err))
      goto return_status;
 
+   snprintf (comment_string, sizeof(comment_string), "Logical OR of /frames/%s/%s", band_name, TEMPO_VAR_PQF);
+   if (0 != insert_comment (dest_grp, TEMPO_VAR_PQF, comment_string))
+     goto return_status;
+   snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s/%s", band_name, TEMPO_VAR_IRRADIANCE);
+   if (0 != insert_comment (dest_grp, TEMPO_VAR_IRRADIANCE, comment_string))
+     goto return_status;
+   snprintf (comment_string, sizeof(comment_string), "Root mean square of /frames/%s/%s", band_name, TEMPO_VAR_IRRADIANCE_ERROR);
+   if (0 != insert_comment (dest_grp, TEMPO_VAR_IRRADIANCE_ERROR, comment_string))
+     goto return_status;
+
    start[0] = 0;
    count[0] = out->num_recs;
    if ((0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, obstime))
@@ -610,6 +631,13 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
    count[0] = 1;
    if ((0 != TIO_put_var_section (out->ncid, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, &obstime_avg))
        ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, &exptime_avg)))
+     goto return_status;
+
+   snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_TIME);
+   if (0 != insert_comment (out->ncid, TEMPO_VAR_TIME, comment_string))
+     goto return_status;
+   snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_EXPOSURE_TIME);
+   if (0 != insert_comment (out->ncid, TEMPO_VAR_EXPOSURE_TIME, comment_string))
      goto return_status;
 
    i = 1;
