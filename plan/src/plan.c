@@ -78,7 +78,6 @@ Cal_Date_Type;
 
 typedef struct
 {
-   const char *scan_tailoring_file;
    const char *vis_output_file;
    int num_sza_days;
 }
@@ -115,7 +114,7 @@ static void usage (void)
    fprintf (stderr, "                            the solar illumination at the start of each scan\n\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "  For testing:\n");
-   fprintf (stderr, "   -T | --tailor FILE       Output a 'nominal' scan tailoring file [default=none]\n");
+   fprintf (stderr, "   -T | --tailor FILE       Output ONLY a 'nominal' scan tailoring file\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -530,16 +529,20 @@ attach_twilight_scans (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
    return entry;
 }
 
-static int print_scan_tailoring_file (Solar_Geom_Type *sgt, double jd_utc0, double jd_utc1,
-                                      const char *filename)
+static int print_scan_tailoring_file (Solar_Geom_Type *sgt, const Cal_Date_Type *t0,
+                                      int num_plan_days, const char *filename)
 {
    double delta = 15.0 * 60.0 / SEC_PER_DAY;
    double unix_epoch_jd = get_unix_epoch_jd();
+   double jd_utc0, jd_utc1;
    int i, n;
    FILE *fp;
 
    if (filename == NULL)
-     return 0;
+     return -1;
+
+   jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
+   jd_utc1 = jd_utc0 + num_plan_days;
 
    jd_utc0 = floor (jd_utc0) + 0.5;
    jd_utc1 = ceil (jd_utc1) + 0.5;
@@ -697,8 +700,7 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
                                            const Cal_Date_Type *t0, int num_plan_days,
                                            Twilight_Scan_Type *twilight_scan,
-                                           Split_Scan_Type *split_scan,
-                                           const Optional_Output_Type *oot)
+                                           Split_Scan_Type *split_scan)
 {
    Plan_List_Type *plan_list = NULL;
    double jd_utc, jd_utc0, jd_utc1;
@@ -714,9 +716,6 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
                  jd_utc0, num_plan_days);
         return NULL;
      }
-
-   if (0 != print_scan_tailoring_file (solar_geom, jd_utc0, jd_utc1, oot->scan_tailoring_file))
-     return NULL;
 
    for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
      {
@@ -1051,9 +1050,9 @@ int main (int argc, char **argv)
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
    const char *maneuver_file = NULL;
+   const char *scan_tailoring_file = NULL;
    Optional_Output_Type oot =
      {
-        .scan_tailoring_file = NULL,
         .vis_output_file = NULL,
         .num_sza_days = DEFAULT_NUM_SZA_DAYS,
      };
@@ -1198,7 +1197,7 @@ int main (int argc, char **argv)
                }
              break;
            case 'T':
-             oot.scan_tailoring_file = optarg;
+             scan_tailoring_file = optarg;
              break;
            case 'z':
              oot.vis_output_file = optarg;
@@ -1252,6 +1251,13 @@ int main (int argc, char **argv)
        || (NULL == (solar_geom = solar_geom_init (&cfg))))
      goto return_status;
 
+   if (scan_tailoring_file)
+     {
+        if (0 == print_scan_tailoring_file (solar_geom, &t0, num_plan_days, scan_tailoring_file))
+          status = EXIT_SUCCESS;
+        goto return_status;
+     }
+
    if (fp_irr)
      {
         if (0 != write_irradiance_plan (fp_irr, solar_geom, &t0, num_plan_days))
@@ -1281,7 +1287,7 @@ int main (int argc, char **argv)
      }
 
    plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
-                                   twilight_scan, split_scan, &oot);
+                                   twilight_scan, split_scan);
    if (NULL == plan_list)
      goto return_status;
 
