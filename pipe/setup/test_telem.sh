@@ -22,6 +22,8 @@ assert_dir_exists()
 
 assert_dir_exists $_src_dir
 
+printf "Populating $SDPC_ARCHIVE_DIR with Level 0 test data (HK, IRU, SMC)\n"
+
 for d in HK IRU SMC ; do
    mkdir -p $_target_dir/$d
    ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*.nc

@@ -15,6 +15,8 @@ export SDPC_PIPE_NAME=$_pipe_name
 
 . $_root_dir/etc/sdpc_env.sh
 
+printf "Creating pipeline directory: $SDPC_RUN_DIR_MASTER\n"
+
 pipe_mkdirs_master.sh
 pipe_mkdirs_archive.sh
 
