@@ -140,10 +140,18 @@ void _pTIO_trace_group (int parent_ncid, const char *path, int grp)
 static int trace_var_io (const char *action, int grp, const char *name, int dim, const size_t *start, const size_t *count)
 {
    char file[TRACE_PATH_BUFSIZE];
+   char grppath[128];
+   char varpath[256];
    char rest[128];
    size_t size;
    int i, parent_ncid;
    if (_pTIO_TRACING) return 0;
+   if ((NC_NOERR == nc_inq_grpname_full (grp, NULL, grppath))
+       && (strlen(grppath) > 1))
+     {
+        (void) snprintf (varpath, sizeof(varpath), "%s/%s", grppath, name);
+     }
+   else strncpy (varpath, name, sizeof(varpath));
    if (NC_NOERR != nc_inq_grp_parent (grp, &parent_ncid))
      parent_ncid = grp;
    trace_filename (parent_ncid, file, sizeof(file));
@@ -180,7 +188,7 @@ static int trace_var_io (const char *action, int grp, const char *name, int dim,
      }
    else strcpy (rest, "\n");
 
-   trace_print (action, parent_ncid, file, grp, name, size, rest);
+   trace_print (action, parent_ncid, file, grp, varpath, size, rest);
 
    return 0;
 }
