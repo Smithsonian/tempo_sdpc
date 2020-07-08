@@ -30,6 +30,8 @@
 static int _pTIO_TRACING = -1;
 static char _pTIO_TRACE_PREFIX[128];
 
+#define TRACE_PATH_BUFSIZE 1024
+
 /* This is linux-specific, but for the current purpose that's ok */
 static void program_basename (char *name, size_t namesize)
 {
@@ -61,9 +63,23 @@ static void trace_make_prefix (void)
    char pgm_basename[64];
    program_basename (pgm_basename, sizeof(pgm_basename));
    if (pgm_basename[0] != 0)
-     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE[%s,%d]:", pgm_basename, getpid());
+     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE|%d:%s", getpid(), pgm_basename);
    else
-     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE[%d]:", getpid());
+     snprintf (_pTIO_TRACE_PREFIX, sizeof (_pTIO_TRACE_PREFIX), "TIO_TRACE|%d", getpid());
+}
+
+static void trace_filename (int ncid, char *file, size_t len)
+{
+   unsigned int n = 2;
+   while (n-- > 0)
+     {
+        int grp;
+        if (NC_NOERR == nc_inq_path (ncid, NULL, file))
+          return;
+        grp = ncid;
+        (void) nc_inq_grp_parent (grp, &ncid);
+     }
+   (void) snprintf (file, len, "unknown");
 }
 
 static void trace_init (void)
@@ -83,53 +99,88 @@ static void trace_init (void)
      }
 }
 
+static void trace_print (const char *action, int parent_ncid, const char *file,
+                         int grp, const char *name, size_t size, const char *rest)
+{
+   (void) fprintf (stderr, "%s|%s|%d|%s|%d|%s|%ld|%s",
+                   _pTIO_TRACE_PREFIX, action, parent_ncid,
+                   file ? file : "null", grp,
+                   name ? name : "", size,
+                   rest ? rest : "\n");
+}
+
 void _pTIO_trace_close (int ncid)
 {
    if (_pTIO_TRACING) return;
-   (void) fprintf (stderr, "%s CLOSED: ncid=%d\n", _pTIO_TRACE_PREFIX, ncid);
+   trace_print ("CLOSED", ncid, "", 0, NULL, 0, NULL);
 }
 
 void _pTIO_trace_open (int ncid, const char *file)
 {
    trace_init();
    if (_pTIO_TRACING) return;
-   (void) fprintf (stderr, "%s OPENED: ncid=%d file= %s\n", _pTIO_TRACE_PREFIX, ncid, file ? file : "(null)");
+   trace_print ("OPENED", ncid, file, 0, NULL, 0, NULL);
 }
 
 void _pTIO_trace_create (int ncid, const char *file)
 {
    trace_init();
    if (_pTIO_TRACING) return;
-   (void) fprintf (stderr, "%s CREATED: ncid=%d file= %s\n", _pTIO_TRACE_PREFIX, ncid, file ? file : "(null)");
+   trace_print ("CREATED", ncid, file, 0, NULL, 0, NULL);
 }
 
 void _pTIO_trace_group (int parent_ncid, const char *path, int grp)
 {
+   char file[TRACE_PATH_BUFSIZE];
    if (_pTIO_TRACING) return;
-   (void) fprintf (stderr, "%s GROUP: path=%s parent_ncid=%d grp=%d\n", _pTIO_TRACE_PREFIX, path, parent_ncid, grp);
+   trace_filename (parent_ncid, file, sizeof(file));
+   trace_print ("GROUP", parent_ncid, file, grp, path, 0, NULL);
 }
 
 static int trace_var_io (const char *action, int grp, const char *name, int dim, const size_t *start, const size_t *count)
 {
+   char file[TRACE_PATH_BUFSIZE];
+   char rest[128];
    size_t size;
-   int i;
+   int i, parent_ncid;
    if (_pTIO_TRACING) return 0;
+   if (NC_NOERR != nc_inq_grp_parent (grp, &parent_ncid))
+     parent_ncid = grp;
+   trace_filename (parent_ncid, file, sizeof(file));
    size = 1;
    for (i = 0 ; i < dim; i++)
      {
         size *= count[i];
      }
-   (void) fprintf (stderr, "%s %s: var=%s size=%ld grp=%d", _pTIO_TRACE_PREFIX, action, name, size, grp);
-   if (dim <= 0)
-     fputs ("\n", stderr);
-   else
+   if (dim > 0)
      {
-        fprintf (stderr, " dim=%d start=[%ld", dim, start[0]);
-        for (i = 1; i < dim; i++) fprintf (stderr, ", %ld", start[i]);
-        fprintf (stderr, "] count=[%ld", count[0]);
-        for (i = 1; i < dim; i++) fprintf (stderr, ", %ld", count[i]);
-        fprintf (stderr, "]\n");
+        size_t len = sizeof(rest);
+        char *p = rest;
+        int n = snprintf (p, len, "dim=%d,start=[%ld", dim, start[0]);
+        p   += n;
+        len -= n;
+        for (i = 1; i < dim; i++)
+          {
+             n = snprintf (p, len, ",%ld", start[i]);
+             p   += n;
+             len -= n;
+          }
+        n = snprintf (p, len, "],count=[%ld", count[0]);
+        p   += n;
+        len -= n;
+        for (i = 1; i < dim; i++)
+          {
+             n = snprintf (p, len, ",%ld", count[i]);
+             p   += n;
+             len -= n;
+          }
+        n = snprintf (p, len, "]\n");
+        p   += n;
+        len -= n;
      }
+   else strcpy (rest, "\n");
+
+   trace_print (action, parent_ncid, file, grp, name, size, rest);
 
    return 0;
 }
