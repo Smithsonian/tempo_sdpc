@@ -4,17 +4,6 @@ $(ODIR)/slitfunction.o: $(SDIR)/slitfunction.f90 \
   $(ODIR)/slitfunction_asym_gaussian.o \
   $(ODIR)/slitfunction_super_gaussian.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction.f90 -o $(ODIR)/slitfunction.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/slitfunction_omi.o: $(SDIR)/slitfunction_omi.f90 \
-  $(ODIR)/arrayutils.o \
-  $(ODIR)/ezspline_interpolation.o \
-  $(ODIR)/integration_routines.o \
-  $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
-  $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/sao_pge_utils.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_omi.f90 -o $(ODIR)/slitfunction_omi.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/slitfunction_asym_gaussian.o: $(SDIR)/slitfunction_asym_gaussian.f90 \
   $(ODIR)/integration_routines.o \
   $(ODIR)/OMSAO_precision_module.o \

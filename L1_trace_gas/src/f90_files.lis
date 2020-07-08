@@ -1,5 +1,4 @@
 slitfunction.f90
-slitfunction_omi.f90
 slitfunction_asym_gaussian.f90
 slitfunction_super_gaussian.f90
 slitfunction_tempo.f90
