@@ -27,6 +27,13 @@ $(ODIR)/slitfunction_super_gaussian.o: $(SDIR)/slitfunction_super_gaussian.f90 \
   $(ODIR)/sao_pge_utils.o \
   $(ODIR)/SLATEC_davint.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_super_gaussian.f90 -o $(ODIR)/slitfunction_super_gaussian.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/slitfunction_tempo.o: $(SDIR)/slitfunction_tempo.f90 \
+  $(ODIR)/l1bread_utils.o \
+  $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_precision_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/slitfunction_super_gaussian.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_tempo.f90 -o $(ODIR)/slitfunction_tempo.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/cache_module.o: $(SDIR)/cache_module.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/cache_module.f90 -o $(ODIR)/cache_module.o $(MODOUTFLG) $(ODIR)
@@ -253,7 +260,7 @@ $(ODIR)/OMSAO_main.o: $(SDIR)/OMSAO_main.f90 \
   $(ODIR)/pcf_file_module.o \
   $(ODIR)/read_reference_spectra.o \
   $(ODIR)/slitfunction.o \
-  $(ODIR)/slitfunction_omi.o
+  $(ODIR)/slitfunction_tempo.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_main.f90 -o $(ODIR)/OMSAO_main.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_median_module.o: $(SDIR)/OMSAO_median_module.f90 \
   $(ODIR)/OMSAO_precision_module.o

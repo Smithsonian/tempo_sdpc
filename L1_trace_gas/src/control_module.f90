@@ -599,8 +599,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
         fitvar_rad_str (i) = TRIM(ADJUSTL(tmpchar))
         lo_radbnd (i) = lotmp ; up_radbnd (i) = uptmp
         IF ( (ridx == us1_idx .OR. ridx == us2_idx) .AND. &
-          ANY ( (/ vartmp,lotmp,uptmp /) /= 0.0_r8 ) ) have_undersampling(ridx) = .TRUE.
-
+          ANY ( (/ vartmp,lotmp,uptmp /) /= 0.0_r8 ) ) &
+          have_undersampling(ridx) = .TRUE.
         ! --------------------------------------------------
         ! Check for on-line Common Mode spectrum computation
         ! --------------------------------------------------

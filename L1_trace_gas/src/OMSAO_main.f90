@@ -28,7 +28,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   use optimizer_interface_module, only : optimizer_set_default_method
   use elsunc_interface_module, only : elsunc_optimizer
   use slitfunction, only : slitfunction_select, slitfunction_open
-  use slitfunction_omi, only : omi_slitfunc_read, omi_slitfunc_convolve
+  use slitfunction_tempo, only : tempo_slitfunc_read, tempo_slitfunc_convolve
   use ctrlvars, only: yn_use_labslitfunc, yn_do_he5_output, yn_wrt_odl, &
        yn_omi_data
   use OMSAO_omidata_module, only : initialize_omidata_structs, &
@@ -130,7 +130,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   if (errstat /= 0) return
 
   call optimizer_set_default_method (elsunc_optimizer)
-  call slitfunction_select (omi_slitfunc_read, omi_slitfunc_convolve)
+  call slitfunction_select (tempo_slitfunc_read, tempo_slitfunc_convolve)
 
   !errstat = pge_errstat_ok
   CALL read_pcf_file (pge_idx, pge_name, errstat )
