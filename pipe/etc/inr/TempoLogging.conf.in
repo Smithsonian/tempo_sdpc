@@ -21,7 +21,7 @@
    PERFORMANCE_TRACKING =  true
 
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 *INFO:
    ENABLED              =  true
 * DEBUG:
@@ -41,7 +41,7 @@
    TO_FILE              =  true
    TO_STANDARD_OUTPUT   =  false
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 * INFO:
    ENABLED              =  true
 * DEBUG:
@@ -55,7 +55,7 @@
    TO_FILE              =  true
    TO_STANDARD_OUTPUT   =  false
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 * INFO:
    ENABLED              =  true
 * DEBUG:
@@ -69,7 +69,7 @@
    TO_FILE              =  true
    TO_STANDARD_OUTPUT   =  false
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 * INFO:
    ENABLED              =  true
 * DEBUG:
@@ -83,7 +83,7 @@
    TO_FILE              =  true
    TO_STANDARD_OUTPUT   =  false
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 * INFO:
    ENABLED              =  true
 * DEBUG:
@@ -97,7 +97,7 @@
    TO_FILE              =  false
    TO_STANDARD_OUTPUT   =  false
 * TRACE:
-   ENABLED              =  true
+   ENABLED              =  false
 * INFO:
    ENABLED              =  true
 * DEBUG:
