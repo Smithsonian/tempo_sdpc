@@ -6,6 +6,7 @@ level2_entry_cachemon.cfg
 level3_cachemon.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
+inr/TempoMockLogging.conf.in
 trace_gas/synth.control.NO2.in
 trace_gas/synth.pcf.NO2.in
 trace_gas/synth.control.HCHO.in

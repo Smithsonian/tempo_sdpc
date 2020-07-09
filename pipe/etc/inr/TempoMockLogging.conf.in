@@ -1,0 +1,37 @@
+##
+## Please see LICENSE for copyright information
+
+##
+## @file log.conf
+##
+## Official logging configuration for the TEMPO MockPipeline.
+##
+## @author Joseph Fox-Rabinovitz : jfox@carrastro.com
+## @version jfox: 20 Oct 2014: Initial coding.
+##
+
+--default
+* GLOBAL:
+   FORMAT               =  "%datetime [%logger] %thread %level %msg"
+   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/mockPL.log"
+   ENABLED              =  false
+   TO_FILE              =  true
+   TO_STANDARD_OUTPUT   =  false
+   MILLISECONDS_WIDTH   =  6
+   PERFORMANCE_TRACKING =  true
+   MAX_LOG_FILE_SIZE    =  2097152 ## 2MB - Comment starts with two hashes (##)
+   LOG_FLUSH_THRESHOLD  =  100 ## Flush after every 100 logs
+
+* TRACE:
+    ENABLED             =  false
+* DEBUG:
+    ENABLED             =  true
+* INFO:
+    ENABLED             =  true
+    TO_STANDARD_OUTPUT  =  true
+* WARNING:
+    ENABLED             =  true
+    TO_STANDARD_OUTPUT  =  true
+* ERROR:
+    ENABLED             =  true
+    TO_STANDARD_OUTPUT  =  true
