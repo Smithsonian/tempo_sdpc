@@ -398,11 +398,13 @@ CONTAINS
     END DO XTrackWavCal
 
     ! CCM Write splined/convolved databases if necessary
-    IF( yn_diagnostic_run .and. yn_do_he5_output) THEN
+    IF(yn_diagnostic_run) THEN
+      if (yn_do_he5_output) then
       ! omi_database maybe omi_database_wvl?
-      CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &
+        CALL he5_write_omi_database(omi_database(1:adj_num,1:nxtrack_max,1:max_rs_idx), &
                                   omi_database_wvl(1:adj_num, 1:nxtrack_max), &
                                   max_rs_idx, adj_num, nxtrack_max, errstat)
+      endif
       ! JCH:  I don't think adj_num should be used to define the subarrays that
       ! get written out because it's value might have changed with each
       ! pass through the above loop.  I added adj_num_max and will use that.
