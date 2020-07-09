@@ -358,7 +358,7 @@ def main():
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:
             register_files (reg.file_path, filenames)
-        time.sleep (30)
+        time.sleep (10)
 
     print ("Exiting: caught signal = {}".format(sig.signum))
 
