@@ -231,7 +231,9 @@
 # tpk> which are used by the PGE to determine the slit function shape at
 # tpk> all wavelengths in the UV2 channel.
 # =======================================================================
-700050|OMSAO_SlitFunction_HyperPar.dat|@refdata_dir@/trace_gas/data||||1
+#700050|OMSAO_SlitFunction_HyperPar.dat|@refdata_dir@/trace_gas/data||||1
+700050|TEMPO_Slit_Function_0.6nmGaussian_V1.nc|@refdata_dir@/instrument||||1
+#700050|@irradiance_file@|@spectra_dir@||||1
 # =======================================================================
 # tpk> This should be the place to list all the reference spectra. Needs
 # tpk> some thought on which spectra can occurr in the fitting. BUT we
