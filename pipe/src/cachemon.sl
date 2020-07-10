@@ -4,7 +4,7 @@ require ("cmdopt");
 require ("process");
 require ("sysconf");
 require ("rand");
-require ("pcre");
+%require ("pcre");
 
 $1 = path_dirname (__FILE__);
 prepend_to_slang_load_path (path_concat ($1, "../share/slsh/local-packages"));
