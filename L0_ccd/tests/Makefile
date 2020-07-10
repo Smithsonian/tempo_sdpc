@@ -38,12 +38,12 @@ TEST_OUTPUT_FILES = img_dup_pixels.arr img_dup_pqf.arr dark_table_test.nc \
 
 check:	all
 	@./test_image && echo "test_image ok"
-	@./test_ccd && echo "test_ccd ok"
+#	@./test_ccd && echo "test_ccd ok"
 #	@./test_dark sdc && echo "test_dark sdc ok"
 #	@./test_dark fptemp && echo "test_dark fptemp ok"
 #	@./test_dark exptime && echo "test_dark exptime ok"
 	@./test_pixelqf && echo "test_pixelqf ok"
-	@./test_bpix && echo "test_bpix ok"
+#	@./test_bpix && echo "test_bpix ok"
 	-$(RM) -f $(TEST_OUTPUT_FILES)
 
 GCDA_FILES_DIR = "../src/gnuobjs"
