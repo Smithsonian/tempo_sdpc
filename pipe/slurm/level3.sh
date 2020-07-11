@@ -41,6 +41,31 @@ error_exit()
    exit 1
 }
 
+public_mirror_symlink()
+{
+   src_paths=$1
+
+   mirror_dir="$SDPC_RUN_DIR_MASTER/public_mirror"
+
+   for src in $src_paths ; do
+       bn=$(basename $src)
+       case $bn in
+         *_L2_*)
+            level_dir=L2
+         ;;
+         *_L3_*)
+            level_dir=L3
+         ;;
+       esac
+       day=$(level1_info --localday $src)
+       target_dir="$mirror_dir/$day/${level_dir}"
+       if ! test -d $target_dir ; then
+          mkdir -p $target_dir
+       fi
+       ln -s $src $target_dir/$bn || error_exit "public_mirror_symlink failed: $bn"
+   done
+}
+
 # loading $pathlist_file defines these variables:
 # product_name = e.g. HCHO_L2
 # l3_path = path to target Level 3 data product to be generated
@@ -51,6 +76,7 @@ error_exit()
 
 if test x"$product_name" = x"NO2_L2" ; then
    L2_split -c $SDPC_ROOT/etc/l2_split.cfg $l2_paths || error_exit "L2_split failed"
+   public_mirror_symlink "$l2_paths"
 fi
 
 # Run L2_regrid on all L2 data products
@@ -78,5 +104,7 @@ insert_fixed_metadata.py $l3_path
 
 register_symlink="$SDPC_ARCHIVE_DIR/registry/incoming/$l3_basename"
 ln -s $l3_path $register_symlink
+
+public_mirror_symlink $l3_path
 
 /bin/rm -f $pathlist_file

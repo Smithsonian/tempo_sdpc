@@ -124,6 +124,63 @@ define fix_met_file_format (path)
      throw ApplicationError, "*** Error: fixing met file format $path"$;
 }
 
+define make_public_mirror_symlink (oldpath)
+{
+   variable basename = path_basename (oldpath);
+   variable argv, obj, s, result;
+
+   % Filter out selected data products, either because we don't
+   % release them at all, or because we release them elsewhere.
+  if (is_substr (basename, "TEMPO_DRK_L1"))
+     {
+        % TEMPO_DRK_L1 isn't useful without Level 0 imagery.
+        return;
+     }
+    if (is_substr (basename, "TEMPO_NO2_L2"))
+     {
+        % TEMPO_NO2_L2 files are released after L2_split runs
+        return;
+     }
+   else if (is_substr (basename, "TEMPO_RAD_L1"))
+     {
+        % TEMPO_RAD_L1 files are released after INR processing
+        argv = ["radiance_inr_status.py", oldpath];
+        obj = new_process (argv; write=1);
+        result = fgetslines (obj.fp1);
+        s = obj.wait();
+        if (s.exit_status != 0)
+          {
+             throw ApplicationError, "*** Error: examining L1 radiance file: $oldpath"$;
+          }
+        variable inr_status = eval(result[0]);
+        if (inr_status < 1)
+          return;
+     }
+
+   % Construct the target directory path:
+   argv = ["level1_info", "--localday", oldpath];
+   obj = new_process (argv; write=1);
+   result = fgetslines (obj.fp1);
+   s = obj.wait();
+   if (s.exit_status != 0)
+     {
+        throw ApplicationError, "*** Error: constructing target directory path: $oldpath"$;
+     }
+   variable sat_local_day = result[0];
+   variable name_fields = strtok (basename, "_");
+   % name_fields[2] = L1 | L2 | L3
+   variable target_dir = sprintf ("$SDPC_RUN_DIR_MASTER/public_mirror/%s/%s"$, sat_local_day, name_fields[2]);
+   if (0 != mkdir_p (target_dir))
+     {
+        throw ApplicationError, "*** Error: creating $target_dir"$;
+     }
+
+   % Create the symbolic link
+   variable newpath = path_concat (target_dir, basename);
+   if (0 != symlink (oldpath, newpath))
+     throw ApplicationError, "*** Error: creating symlink $newpath"$;
+}
+
 define register_using_symlink (tar_file, archive_dest_subdir)
 {
    % Extract partial paths to archived data products.
@@ -184,15 +241,18 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         % insert fixed metadata
         insert_fixed_metadata (oldpath);
 
+        % fix formatting of .met file
+        variable metfile_path = oldpath + ".met";
+        if (NULL != stat_file (metfile_path))
+          fix_met_file_format (metfile_path);
+
         % create symbolic link to trigger product registration
         newpath = path_concat (incoming_dir, pp_basename);
         if (0 != symlink (oldpath, newpath))
           throw ApplicationError, "*** Error: creating symlink $newpath"$;
 
-        % fix formatting of .met file
-        variable metfile_path = oldpath + ".met";
-        if (NULL != stat_file (metfile_path))
-          fix_met_file_format (metfile_path);
+        % create symbolic link for public mirror
+        make_public_mirror_symlink (oldpath);
      }
 
    return 0;
