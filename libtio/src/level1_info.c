@@ -24,6 +24,7 @@ enum
    TASK_UNKNOWN,
    TASK_PRINT_DIR,
    TASK_PRINT_MONTH,
+   TASK_PRINT_SATDAY_DIR,
    TASK_PRINT_SCANID
 };
 
@@ -32,9 +33,26 @@ static void usage (int argc, char **argv)
    (void) argc;
    fprintf (stderr, "Usage: %s <option> <level1-product-file>\n", argv[0]);
    fprintf (stderr, "Options:\n");
-   fprintf (stderr, "  -d | --dir    Print the archive sub-directory path for this file\n");
-   fprintf (stderr, "  -m | --month  Print the calendar month when this file started\n");
-   fprintf (stderr, "  -s | --scanid Print the unique scan id number for this file\n");
+   fprintf (stderr, "  -d | --dir       Print the archive sub-directory path for this file\n");
+   fprintf (stderr, "  -l | --localday  Print satellite-local day subdirectory name\n");
+   fprintf (stderr, "  -m | --month     Print the calendar month when this file started\n");
+   fprintf (stderr, "  -s | --scanid    Print the unique scan id number for this file\n");
+}
+
+static int print_sat_local_day_number (const _pTIO_Granule_Ident_Type *gid)
+{
+   double sat_day;
+
+   if (0 != tio_time_sat_local_day_number (gid->tstart, &sat_day))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: computing satellite-local day number", __func__);
+        return -1;
+     }
+
+   if (fprintf (stdout, "D%05d", (int) sat_day) < 0)
+     return -1;
+
+   return 0;
 }
 
 static int print_archive_subdir (const _pTIO_Granule_Ident_Type *gid, const char *product_type)
@@ -140,23 +158,28 @@ int main (int argc, char **argv)
    size_t len;
    static struct option long_options[] =
      {
-        {"dir",   no_argument, 0, 'd'},
-        {"month", no_argument, 0, 'm'},
-        {"scanid",no_argument, 0, 's'},
-	{"help",  no_argument, 0, 'h'},
+        {"dir",      no_argument, 0, 'd'},
+        {"localday", no_argument, 0, 'l'},
+        {"month",    no_argument, 0, 'm'},
+        {"scanid",   no_argument, 0, 's'},
+	{"help",     no_argument, 0, 'h'},
         {0,0,0,0}
      };
 
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "dms", long_options, &option_index);
+        int c = getopt_long (argc, argv, "dlms", long_options, &option_index);
         if (c == -1) break;
 
         switch (c)
           {
            case 'd':
              task = TASK_PRINT_DIR;
+             break;
+
+           case 'l':
+             task = TASK_PRINT_SATDAY_DIR;
              break;
 
            case 'm':
@@ -224,6 +247,10 @@ int main (int argc, char **argv)
 
       case TASK_PRINT_MONTH:
         status = print_product_month (&gid);
+        break;
+
+      case TASK_PRINT_SATDAY_DIR:
+        status = print_sat_local_day_number (&gid);
         break;
 
       case TASK_PRINT_SCANID:
