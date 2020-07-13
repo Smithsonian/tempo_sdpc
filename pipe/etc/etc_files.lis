@@ -1,5 +1,4 @@
 sdpc_env.sh
-iocpull.rc
 level1a_cachemon.cfg
 level2_cachemon.cfg
 level2_entry_cachemon.cfg

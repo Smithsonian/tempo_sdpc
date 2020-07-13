@@ -8,12 +8,15 @@ then
   exit 1
 fi
 
-. "$SDPC_ROOT/etc/iocpull.rc"
+# When SDPC_IOC_LIVESTREAM_DIR is set, use that, otherwise use this default
+: "${SDPC_IOC_LIVESTREAM_DIR:=/tempo/ioc/sciroot/l0spool}"
+
+sdpc_dest_dir="$SDPC_RUN_DIR/l0spool"
 
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir
 fi
 
-echo "iocpull $ioc_src_dir -> $sdpc_dest_dir"
+echo "iocpull $SDPC_IOC_LIVESTREAM_DIR -> $sdpc_dest_dir"
 
-exec move_file_stream.sl $ioc_src_dir $sdpc_dest_dir
+exec move_file_stream.sl $SDPC_IOC_LIVESTREAM_DIR $sdpc_dest_dir
