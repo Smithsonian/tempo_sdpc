@@ -21,7 +21,7 @@ private define usage ()
 Options:
     -h|--help             Show usage message
     -d|--dir DIR          Root directory
-    -w|--when YYYY/MM/DD  Date (year/month/day)
+    -w|--when YYYY-MM-DD  Date (year-month-day)
 `;
    () = fprintf (stderr, msg);
    exit (0);
@@ -311,9 +311,9 @@ define slsh_main()
      }
    else
      {
-        if (3 != sscanf (year_month_day, "%d/%d/%d", &year, &month, &day))
+        if (3 != sscanf (year_month_day, "%d-%d-%d", &year, &month, &day))
           usage();
-        vmessage ("downloading data for $year/$month/$day"$);
+        vmessage ("downloading data for %d-%02d-%02d", year, month, day);
      }
 
    variable status = nise_download_date (dir_pending, year, month, day);

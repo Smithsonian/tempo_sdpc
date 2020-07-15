@@ -392,7 +392,7 @@ define slsh_main ()
 
    variable streams = {};
    %list_append (streams, new_stream ("rap130", "$dest_dir/rap130"$));
-   %list_append (streams, new_stream ("nam221", "$dest_dir/nam221"$));
+   list_append (streams, new_stream ("nam221", "$dest_dir/nam221"$));
    list_append (streams, new_stream ("nam227", "$dest_dir/nam227"$));
 
    variable e, s, fail_count = 0;
