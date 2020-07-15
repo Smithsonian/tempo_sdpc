@@ -388,7 +388,7 @@ define slsh_main ()
    when.day = ts.tm_mday;
    when.hours_past_midnight = ts.tm_hour;
 
-   variable dest_dir = path_concat (root_dir, "ancillary/met");
+   variable dest_dir = path_concat (root_dir, "met");
 
    variable streams = {};
    %list_append (streams, new_stream ("rap130", "$dest_dir/rap130"$));

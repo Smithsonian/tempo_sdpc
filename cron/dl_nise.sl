@@ -88,10 +88,10 @@ private define write_callback (fp, data)
 
 define download_file (from_url, to_file)
 {
-   variable cookie_file = "${Root_Dir}/ancillary/nise/etc/nsidc.cookies"$;
+   variable cookie_file = "${Root_Dir}/nise/etc/nsidc.cookies"$;
    variable netrc_file = "${HOME}/.netrc"$;
-   variable dest_dir = "${Root_Dir}/ancillary/nise/data"$;
-   variable log_file = "${Root_Dir}/ancillary/nise/log"$;
+   variable dest_dir = "${Root_Dir}/nise/data"$;
+   variable log_file = "${Root_Dir}/nise/log"$;
 
    if (NULL == stat_file (dest_dir))
      {
@@ -295,7 +295,7 @@ define slsh_main()
    if (0 != mkdir_p (Root_Dir))
      throw UsageError, "Directory $Root_Dir does not exist"$;
 
-   dir_pending = "${Root_Dir}/ancillary/nise/pending"$;
+   dir_pending = "${Root_Dir}/nise/pending"$;
 
    if (0 != mkdir_p (dir_pending))
      throw UsageError, "Directory $dir_pending does not exist"$;

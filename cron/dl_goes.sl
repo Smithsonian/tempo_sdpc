@@ -123,8 +123,8 @@ private define read_file_list (file_list)
 
 private define curl_ssl_get (url, file)
 {
-   variable netrc_file = "${Root_Dir}/ancillary/etc/netrc_pda"$;
-   variable log_file = "${Root_Dir}/ancillary/goes/log"$;
+   variable netrc_file = "${Root_Dir}/etc/netrc_pda"$;
+   variable log_file = "${Root_Dir}/goes/log"$;
 
    if (NULL == stat_file (netrc_file))
      {
@@ -221,7 +221,7 @@ define slsh_main()
      usage();
 
    variable pda_root_url = "ftp://140.90.190.143/PDAFileLinks/";
-   variable dest_root_dir = path_concat (Root_Dir, "ancillary/goes");
+   variable dest_root_dir = path_concat (Root_Dir, "goes");
 
    variable status;
    variable d, subdir_list = ["cmi_ch01", "cmi_ch02"];
