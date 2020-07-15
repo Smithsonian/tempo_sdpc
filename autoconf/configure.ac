@@ -305,7 +305,9 @@ AC_CONFIG_FILES([\
  Makefile.defines:autoconf/Makefile.defines.in \
  pipe/src/Makefile:pipe/src/Makefile.in \
  pipe/slurm/Makefile:pipe/slurm/Makefile.in \
- pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in
+ pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in \
+ cron/crontab:cron/crontab.in \
+ cron/pda_lftp.script:cron/pda_lftp.script.in
 ])
 AC_OUTPUT
 

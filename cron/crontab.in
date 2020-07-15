@@ -1,0 +1,19 @@
+#
+MAILTO=jhouck@cfa.harvard.edu
+SDPC_ANCILLARY_ROOT=@ANCILLARY_DATA_DIR@
+#
+# fields: min,hr,day_of_month,month,day_of_week
+
+@reboot	echo "temposdpc00 rebooted" | mailx -s reboot jhouck@cfa.harvard.edu
+
+# met data: 4 times per day at 15 after the hour
+15 4-16/4 * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh MET >> $SDPC_ANCILLARY_ROOT/log/met.log 2>&1
+
+# snow cover: 3x daily
+10 6,10,2 * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh SNOW >> $SDPC_ANCILLARY_ROOT/log/snow.log 2>&1
+
+# GOES data: Mode 6 updates every 10 min
+5-59/10 * * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh GOES >> $SDPC_ANCILLARY_ROOT/log/goes.log 2>&1
+
+# GOES deleter:
+#*/15 * * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh CLEANUP >> $SDPC_ANCILLARY_ROOT/log/goes_del.log 2>&1
