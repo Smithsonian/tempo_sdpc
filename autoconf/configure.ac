@@ -306,6 +306,7 @@ AC_CONFIG_FILES([\
  pipe/src/Makefile:pipe/src/Makefile.in \
  pipe/slurm/Makefile:pipe/slurm/Makefile.in \
  pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in \
+ cron/Makefile:cron/Makefile.in \
  cron/crontab:cron/crontab.in \
  cron/pda_lftp.script:cron/pda_lftp.script.in
 ])

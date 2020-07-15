@@ -1,0 +1,29 @@
+# -*- sh -*-
+
+SDPC_ANCILLARY_ROOT = @ANCILLARY_DATA_DIR@
+
+all:
+	@echo "targets: install"
+
+SCRIPT_FILES = crontab crontab.sh dl_met.sl dl_nise.sl pda_lftp.script
+
+SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/src
+
+INSTALL = @INSTALL@
+MKINSDIR = ../autoconf/mkinsdir.sh
+
+install_directories:
+	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
+
+install_scripts:
+	@for X in $(SCRIPT_FILES); \
+	do \
+		echo $(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		$(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install:	install_directories install_scripts
+

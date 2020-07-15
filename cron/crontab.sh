@@ -3,6 +3,8 @@
 set -u
 
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
+: "${SDPC_ROOT:?SDPC_ROOT not set}"
+: "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
 
 if ! test -d "$SDPC_ANCILLARY_ROOT" ; then
    printf "*** Error: cannot access directory: $SDPC_ANCILLARY_ROOT"
@@ -11,10 +13,7 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-home_bin="$HOME/sys/linux-x86_64/bin"
-sdpc_root="/soft/tempo/sdpc/install/v1_gnu"
-
-export PATH="${home_bin}:${sdpc_root}/sdpc/bin:${sdpc_root}/ots/bin:$PATH"
+export PATH="$HOME/sys/linux-x86_64/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 tstamp=$(date -u +%Y%m%d%H%M%SZ)
 tbeg=$(date +%s)

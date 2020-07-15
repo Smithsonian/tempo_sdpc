@@ -1,6 +1,8 @@
 #
 MAILTO=jhouck@cfa.harvard.edu
 SDPC_ANCILLARY_ROOT=@ANCILLARY_DATA_DIR@
+SDPC_ROOT=@prefix@
+SDPC_OTS_ROOT=@OTS_ROOT@
 #
 # fields: min,hr,day_of_month,month,day_of_week
 
