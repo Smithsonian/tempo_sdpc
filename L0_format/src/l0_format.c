@@ -241,6 +241,14 @@ static int open_processed_file_log (Processed_File_Log_Type *flt)
    return new_processed_file_log (flt);
 }
 
+static int flush_processed_file_log (Processed_File_Log_Type *flt)
+{
+   if (flt == NULL)
+     return 0;
+
+   return fflush (flt->fp);
+}
+
 static int log_processed_file (Processed_File_Log_Type *flt, const char *path, int status)
 {
    struct timeval tv = {0};
@@ -272,6 +280,11 @@ static int log_processed_file (Processed_File_Log_Type *flt, const char *path, i
      }
 
    flt->curr_num_file_entries++;
+
+   if (0 == (flt->curr_num_file_entries % 10))
+     {
+        (void) flush_processed_file_log (flt);
+     }
 
    return 0;
 }
@@ -844,6 +857,7 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
              if (0 != flush_caches (tbl, tpinfo))
                goto return_status;
              may_have_cached_files = 0;
+             (void) flush_processed_file_log (ctrl->log_incoming);
           }
      }
 
@@ -853,6 +867,7 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
    tell_vinfo (0, "flush caches on exit");
    if (0 != flush_caches (tbl, tpinfo))
      goto return_status;
+   (void) flush_processed_file_log (ctrl->log_incoming);
 
    status = 0;
 return_status:
@@ -919,6 +934,7 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
    tell_vinfo (0, "flush caches on exit");
    if (0 != flush_caches (tbl, tpinfo))
      goto return_status;
+   (void) flush_processed_file_log (ctrl->log_incoming);
 
    status = 0;
 return_status:
