@@ -347,12 +347,16 @@ private define forecast_download (grib2_url, dest_dir)
      throw IOError, "closing $tmp_grib2_file"$;
 #endif
 
-   filter_mime_headers (tmp_grib2_file, grib2_file);
+   variable tmp_grib2_file_filtered = grib2_file + ".filtered";
+   filter_mime_headers (tmp_grib2_file, tmp_grib2_file_filtered);
 
    if (remove (tmp_grib2_file) != 0)
      throw ApplicationError, "removing $tmp_grib2_file"$;
    if (remove (index_file) != 0)
      throw ApplicationError, "removing $index_file"$;
+
+   if (rename (tmp_grib2_file_filtered, grib2_file) != 0)
+     throw ApplicationError, "renaming $tmp_grib2_file_filtered"$;
 
    vmessage ("%s: downloaded %s",
              strftime ("%Y%m%dT%H%M%S %Z", localtime(_time)),

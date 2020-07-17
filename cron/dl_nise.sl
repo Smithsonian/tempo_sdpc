@@ -112,6 +112,9 @@ define download_file (from_url, to_file)
    % already exists (locally) causes http error 416
    % "Requested Range not satisfiable".
 
+   variable out_file = path_concat (dest_dir, to_file);
+   variable tmp_file = out_file + ".tmp";
+
 #iftrue
    variable argv = ["curl",
                     "-sS",     % show errors, but no progress meter
@@ -122,14 +125,18 @@ define download_file (from_url, to_file)
                     "-c", cookie_file,
                     "--netrc-file", netrc_file,
                     "-L", from_url,
-                    "-o", path_concat (dest_dir, to_file)];
+                    "-o", tmp_file];
 
    vmessage (strjoin (argv, " "));
    variable s = new_process (argv; stdout=">>$log_file"$, dup2=1).wait();
-   log_entry (log_file, "downloaded $to_file"$);
+   if (NULL != stat_file (tmp_file))
+     {
+        if (rename (tmp_file, out_file) != 0)
+          throw IOError, "renaming $tmp_file"$;
+        log_entry (log_file, "downloaded $to_file"$);
+     }
    return s.exit_status;
 #else
-   variable out_file = path_concat (dest_dir, to_file);
    variable fp = fopen (out_file, "wb");
    if (fp == NULL)
      throw IOError, "opening $out_file"$;
