@@ -115,6 +115,9 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "  For testing:\n");
    fprintf (stderr, "   -T | --tailor FILE       Output ONLY a 'nominal' scan tailoring file\n");
+   fprintf (stderr, "   -Z | --Zenith STR        Check solar zenith angle calculation\n");
+   fprintf (stderr, "                            where STR=\"LON,LAT,YYYY-MM-DDTHH:MM:SSZ\"\n");
+   fprintf (stderr, "                            and LON,LAT are in degrees\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -1031,6 +1034,40 @@ static FILE *handle_outfile_arg (const char *arg, const char *mode)
      return fopen (arg, mode);
 }
 
+static int perform_sza_check (Solar_Geom_Type *solar_geom,
+                              const char *sza_check_string)
+{
+   double jd_utc, lon, lat, sza;
+   char *utc_str = NULL;
+   char *p = NULL;
+
+   if (2 != sscanf (sza_check_string, "%le,%le,", &lon, &lat))
+     {
+        fprintf (stderr, "*** Error: parsing string: %s\n",
+                 sza_check_string ? sza_check_string : "(null)");
+        return -1;
+     }
+
+   if (NULL == (p = strrchr (sza_check_string, ',')))
+     {
+        fprintf (stderr, "*** Error: parsing string: %s\n",
+                 sza_check_string ? sza_check_string : "(null)");
+        return -1;
+     }
+
+   utc_str = p + 1;
+
+   if (0 != utcstr_to_jd_utc (utc_str, &jd_utc))
+     return -1;
+
+   if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, jd_utc, lon, lat, &sza))
+     return -1;
+
+   (void) fprintf (stdout, "%f\n", sza);
+
+   return 0;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "plan";
@@ -1051,6 +1088,7 @@ int main (int argc, char **argv)
    int ndays_since_epoch = 0;
    const char *maneuver_file = NULL;
    const char *scan_tailoring_file = NULL;
+   const char *sza_check_string = NULL;
    Optional_Output_Type oot =
      {
         .vis_output_file = NULL,
@@ -1071,6 +1109,7 @@ int main (int argc, char **argv)
         {"tailor",       required_argument, 0, 'T'},
         {"maneuver",     required_argument, 0, 'M'},
         {"master",       no_argument,       0, 'm'},
+        {"Zenith",       required_argument, 0, 'Z'},
         {0,0,0,0}
      };
    config_t cfg = {0};
@@ -1100,7 +1139,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNM:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNZ:M:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1119,6 +1158,9 @@ int main (int argc, char **argv)
              config_file = optarg;
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
+             break;
+           case 'Z':
+             sza_check_string = optarg;
              break;
            case 'd':
              if (NULL == strchr(optarg, '-'))
@@ -1216,6 +1258,17 @@ int main (int argc, char **argv)
      }
 
    set_unix_epoch_jd ();
+
+   if (sza_check_string)
+     {
+        if ((0 != read_epoch (&cfg))
+            || (0 != ephem_open (&cfg, &eph))
+            || (NULL == (solar_geom = solar_geom_init (&cfg))))
+          goto return_status;
+        if (0 == perform_sza_check (solar_geom, sza_check_string))
+          status = EXIT_SUCCESS;
+        goto return_status;
+     }
 
    if (fp_master)
      {
