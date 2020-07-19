@@ -40,6 +40,8 @@ static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
 static double Cache_Start_Time = 0.0;
 
+static const char *Public_Mirror_Root_Dir = NULL;
+
 static int Processing_Version = 1;
 
 static Process_Method_Type *Exprec_Process_Method;
@@ -93,6 +95,7 @@ static void usage (void)
    fprintf (stderr, "   -h | --help              Print this usage message\n");
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
+   fprintf (stderr, "   -m | --mirror DIR        Public mirror files in directory DIR\n");
    fprintf (stderr, "   -L | --logdir DIR        Log processed files in directory DIR\n");
    fprintf (stderr, "   -r | --register          Perform database registration of archived files\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
@@ -143,6 +146,11 @@ static void set_archive_root_dir (const char *dir)
 static const char *get_archive_root_dir (void)
 {
    return Archive_Root_Dir;
+}
+
+static void set_public_mirror_root_dir (const char *dir)
+{
+   Public_Mirror_Root_Dir = dir;
 }
 
 static int close_processed_file_log (Processed_File_Log_Type *flt)
@@ -1323,6 +1331,79 @@ return_status:
    return status;
 }
 
+static int read_time_coverage_start (const char *path, double *timestamp_start)
+{
+   int ncid, status;
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
+     return -1;
+   status = TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, timestamp_start);
+   (void) TIO_close (ncid);
+   return status ? -1 : 0;
+}
+
+static int release_with_symlink (const char *dir, const char *basename)
+{
+   char *archived_path = NULL;
+   char *symlink_path = NULL;
+   char *symlink_dir = NULL;
+   int len, n, status = -1;
+   double sec_since_epoch, sat_day;
+
+   if (Public_Mirror_Root_Dir == NULL)
+     return 0;
+
+   if (NULL == (archived_path = ioclib_pathconcat (dir, basename)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed", __func__);
+        goto return_status;
+     }
+
+   if (0 != read_time_coverage_start (archived_path, &sec_since_epoch))
+     goto return_status;
+
+   if (0 != tio_time_sat_local_day_number (sec_since_epoch, &sat_day))
+     goto return_status;
+
+   len = strlen(Public_Mirror_Root_Dir) + 11;
+
+   if (NULL == (symlink_dir = (char *)MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+   n = snprintf (symlink_dir, len, "%s/D%05d/L0", Public_Mirror_Root_Dir, (int) sat_day);
+   if ((n < 0) || (n >= len))
+     {
+        tell_verror (TELL_APPLICATION_ERROR,
+                     "%s: error generating path to public mirror copy", __func__);
+        return -1;
+     }
+
+   if (0 != ioclib_mkdir (symlink_dir, 0))
+     goto return_status;
+
+   if (NULL == (symlink_path = ioclib_pathconcat (symlink_dir, basename)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed", __func__);
+        goto return_status;
+     }
+
+   if (0 != symlink (archived_path, symlink_path))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: symlink failed: %s -> %s",
+                     __func__, archived_path, symlink_path);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   ioclib_free (archived_path);
+   ioclib_free (symlink_dir);
+   ioclib_free (symlink_path);
+   return status;
+}
+
 int copy_hidden (const char *dirname, const char *basename, const char *copydir)
 {
    char hidden_basename[MAX_BASENAME_SIZE];
@@ -1345,6 +1426,9 @@ int copy_hidden (const char *dirname, const char *basename, const char *copydir)
      goto return_status;
 
    if (0 != register_with_symlink (copydir, basename))
+     goto return_status;
+
+   if (0 != release_with_symlink (copydir, basename))
      goto return_status;
 
    status = 0;
@@ -1435,6 +1519,7 @@ int main (int argc, char **argv)
      {
         {"help",     no_argument,       0, 'h'},
         {"archive",  required_argument, 0, 'a'},
+        {"mirror",   required_argument, 0, 'm'},
         {"cache",    required_argument, 0, 'c'},
         {"logdir",   required_argument, 0, 'L'},
         {"tstart",   required_argument, 0, 't'},
@@ -1450,7 +1535,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ha:c:eL:rvV:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:m:c:eL:rvV:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1464,6 +1549,9 @@ int main (int argc, char **argv)
              break;
            case 'a':
              set_archive_root_dir (optarg);
+             break;
+           case 'm':
+             set_public_mirror_root_dir (optarg);
              break;
            case 'L':
              incoming_log_info.logdir = optarg;
