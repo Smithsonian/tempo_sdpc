@@ -1346,10 +1346,16 @@ static int release_with_symlink (const char *dir, const char *basename)
    char *archived_path = NULL;
    char *symlink_path = NULL;
    char *symlink_dir = NULL;
+   struct stat st = {0};
    int len, n, status = -1;
    double sec_since_epoch, sat_day;
 
    if (Public_Mirror_Root_Dir == NULL)
+     return 0;
+
+   /* Silent return when directory Public_Mirror_Root_Dir does not exist */
+   if ((0 != stat (Public_Mirror_Root_Dir, &st))
+       || (0 == S_ISDIR(st.st_mode)))
      return 0;
 
    if (NULL == (archived_path = ioclib_pathconcat (dir, basename)))
