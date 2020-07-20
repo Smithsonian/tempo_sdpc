@@ -47,6 +47,11 @@ public_mirror_symlink()
 
    mirror_dir="$SDPC_RUN_DIR_MASTER/public_mirror"
 
+   # Do nothing when the mirror directory is absent
+   if ! test -d $mirror_dir ; then
+      return 0
+   fi
+
    for src in $src_paths ; do
        bn=$(basename $src)
        case $bn in

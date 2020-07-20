@@ -126,16 +126,16 @@ define fix_met_file_format (path)
 
 define make_public_mirror_symlink (oldpath)
 {
+   % If the mirror directory does not exist, do nothing.
+   variable mirror_dir = "$SDPC_RUN_DIR_MASTER/public_mirror"$;
+   if (NULL == stat_file (mirror_dir))
+     return;
+
    variable basename = path_basename (oldpath);
    variable argv, obj, s, result;
 
    % Filter out selected data products, either because we don't
    % release them at all, or because we release them elsewhere.
-  if (is_substr (basename, "TEMPO_DRK_L1"))
-     {
-        % TEMPO_DRK_L1 isn't useful without Level 0 imagery.
-        return;
-     }
     if (is_substr (basename, "TEMPO_NO2_L2"))
      {
         % TEMPO_NO2_L2 files are released after L2_split runs
@@ -169,7 +169,7 @@ define make_public_mirror_symlink (oldpath)
    variable sat_local_day = result[0];
    variable name_fields = strtok (basename, "_");
    % name_fields[2] = L1 | L2 | L3
-   variable target_dir = sprintf ("$SDPC_RUN_DIR_MASTER/public_mirror/%s/%s"$, sat_local_day, name_fields[2]);
+   variable target_dir = sprintf ("%s/%s/%s", mirror_dir, sat_local_day, name_fields[2]);
    if (0 != mkdir_p (target_dir))
      {
         throw ApplicationError, "*** Error: creating $target_dir"$;
