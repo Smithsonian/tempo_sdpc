@@ -15,6 +15,7 @@ SCRIPT_FILES = cachemon.sl archive.sl o3p_partition.sl move_file_stream.sl \
                asdc_mkscript.sl sdpcrun.sh sdpcpipe.sh make_tar_notice.sh \
                select_dark.py register.py insert_fixed_metadata.py \
                fix_met_format.py copy_level1_frame.py radiance_inr_status.py \
+               update_public_mirror.sh \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES =# ../doc/help/daemon.hlp
