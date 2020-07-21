@@ -39,3 +39,7 @@ _dirs=$(find $_source_root_dir -maxdepth 1 -mindepth 1 -type d -mtime -1)
 for _d in $_dirs; do
     rsync $rsync_test -rLptv -e 'ssh -o ForwardX11=no' $_d $PUBLIC_URL
 done
+
+INDEX_GEN="/data/www/cgi/sao_atmos/index_generator.py"
+
+ssh ${PUBLIC_USER}@${PUBLIC_HOST} python $INDEX_GEN $PUBLIC_DIR
