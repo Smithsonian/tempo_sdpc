@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="sdpccron"
+INCDIR=".."
+
+. $INCDIR/finish.inc
