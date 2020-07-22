@@ -8,4 +8,4 @@ if test -z "$SDPC_RUN_DIR_MASTER" ; then
    exit 1
 fi
 
-exec s6-log -p -b n20 s1000000 t $SDPC_RUN_DIR_MASTER/log/$SERVICE
+exec s6-log -p -b s15000000 t $SDPC_RUN_DIR_MASTER/log/$SERVICE
