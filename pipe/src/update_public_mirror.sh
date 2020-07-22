@@ -22,7 +22,7 @@ fi
 
 PUBLIC_HOST=waps.cfa.harvard.edu
 PUBLIC_USER=jhouck
-PUBLIC_DIR=/data/www/cgi/sao_atmos/data/tempo_sdpc
+PUBLIC_DIR=/data/www/cgi/sao_atmos/data/tempo_sdpc/
 PUBLIC_URL="${PUBLIC_USER}@${PUBLIC_HOST}:${PUBLIC_DIR}"
 
 # find top-level subdirectories of $_source_root_dir changed within the last 24hrs
@@ -37,9 +37,9 @@ _dirs=$(find $_source_root_dir -maxdepth 1 -mindepth 1 -type d -mtime -1)
 #  -e = specific ssh command to use
 
 for _d in $_dirs; do
-    rsync $rsync_test -rLptv -e 'ssh -o ForwardX11=no' $_d $PUBLIC_URL
+    rsync $rsync_test -rLptv --out-format="%l %f" -e 'ssh -o ForwardX11=no' $_d $PUBLIC_URL
 done
 
 INDEX_GEN="/data/www/cgi/sao_atmos/index_generator.py"
 
-ssh ${PUBLIC_USER}@${PUBLIC_HOST} python $INDEX_GEN $PUBLIC_DIR
+ssh -o ForwardX11=no ${PUBLIC_USER}@${PUBLIC_HOST} python $INDEX_GEN $PUBLIC_DIR
