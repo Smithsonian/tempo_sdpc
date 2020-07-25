@@ -64,4 +64,17 @@ export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"
 #  Command search path, etc.
 #---------------------------
 
-export PATH="$SDPC_ROOT/bin:$SDPC_OTS_ROOT/bin:$PATH"
+_sdpc_paths="$SDPC_OTS_ROOT/bin $SDPC_ROOT/bin"
+
+# Prepend SDPC path entries only if they are not already present
+for x in $_sdpc_paths ; do
+  case ":$PATH:" in
+    *":$x:"*)
+       # already in the path, do nothing
+    ;;
+    *)
+       PATH="$x:$PATH"
+    ;;
+  esac
+done
+export PATH
