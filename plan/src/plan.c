@@ -538,6 +538,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, const Cal_Date_Type 
    double delta = 15.0 * 60.0 / SEC_PER_DAY;
    double unix_epoch_jd = get_unix_epoch_jd();
    double jd_utc0, jd_utc1;
+   char epoch[32];
    int i, n;
    FILE *fp;
 
@@ -555,6 +556,9 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, const Cal_Date_Type 
    if (n <= 0)
      return 0;
 
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch, sizeof(epoch)))
+     return -1;
+
    if (NULL == (fp = fopen (filename, "w")))
      {
         fprintf (stderr, "*** Error: opening %s for writing\n", filename);
@@ -567,6 +571,7 @@ static int print_scan_tailoring_file (Solar_Geom_Type *sgt, const Cal_Date_Type 
    fprintf (fp, "# xoff: Mirror pointing offset in the East/West direction [degrees]\n");
    fprintf (fp, "# yoff: Mirror pointing offset in the North/South direction [degrees]\n");
    fprintf (fp, "# solar_boresight_angle: Angle between the sun and the TEMPO boresight [degrees]\n");
+   fprintf (fp, "# Epoch = %s\n", epoch);
    fprintf (fp, "time,xoff,yoff,solar_boresight_angle\n");
 
    for (i = 0; i < n; i++)
