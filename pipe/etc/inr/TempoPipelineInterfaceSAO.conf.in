@@ -590,9 +590,11 @@ blue_factor=12.0542
 target_lat=34.267307178526053
 target_lon=-90.804907121282682
 # Fundamental period for Fourier model of repeating attitude offsets in hours
-num_hours_per_period=24
+#### ORIGINAL VALUE -> num_hours_per_period=24
+num_hours_per_period=1
 # Number of roll, pitch, and yaw states to use in model fitting each granule
-samples_per_granule=1
+#### ORIGINAL VALUE -> samples_per_granule=1
+samples_per_granule=4
 # Order of the Fourier model for each attitude state
 # TODO item is to adjust in orbit
 fourier_terms_roll=8
