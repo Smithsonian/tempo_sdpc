@@ -48,6 +48,8 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 all:	 $(objdir) $(objdir)/$(THIS_MODULE)
 
+tests:	$(objdir)/solar_test
+
 $(objdir):
 	-mkdir -p $(objdir)
 
@@ -84,6 +86,10 @@ distclean: clean
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
+
+$(objdir)/solar_test:	$(srcdir)/solar.c
+	$(COMPILE_CMD) -o $(objdir)/solar_test -DUNIT_TEST $(srcdir)/solar.c \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
 
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \

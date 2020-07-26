@@ -41,6 +41,7 @@ Times_Type;
    double bs_elevation_angle; /* radians */ \
    double bs_azimuth_angle; /* radians */ \
    double sat_pos[3]; \
+   double bs_pos[3]; \
    double xpole; \
    double ypole; \
    double ut1_utc; \
@@ -191,7 +192,8 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
-   double sat_gcrs[3];
+   double sun_gcrs[3], sun_itrs[3];
+   double sat_gcrs[3], sat_pos[3];
    double bs_gcrs[3], bs_gcrs_vel[3];
    double bs_sat[3], sun_sat[3];
    double tilt_angle = sgt->bs_elevation_angle; /* radians */
@@ -208,6 +210,54 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
 
    if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
+
+#if 1
+   /* The simplest way to compute the solar-boresight angle should be to compute
+    * the solar position in GCRS and convert that to ITRS which is equivalent to
+    * ECEF coordinates (e.g. WGS84, earth-centered, earth-fixed).
+    * The other two points of interest are already known in the ECEF coordinates.
+    */
+   /* returns GCRS sun_place.dis [AU] */
+   if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
+                             tt.delta_t, coord_sys, sgt->accuracy,
+                             &sun_place)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
+                     __func__, error);
+        return -1;
+     }
+
+   r_sun = sun_place.dis * KM_PER_AU;
+   for (i = 0; i < 3; i++)
+     {
+        sun_gcrs[i] = r_sun * sun_place.r_hat[i];
+     }
+
+   /* convert sun position from GCRS to ITRS system
+    * returns sun_itrs [km] */
+   if ((error = novas_cel2ter (tt.jd_ut1, 0.0, tt.delta_t,
+                               method, sgt->accuracy, option,
+                               sgt->xpole, sgt->ypole, sun_gcrs,
+                               sun_itrs)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_cel2ter",
+                     __func__, error);
+        return -1;
+     }
+
+   for (i = 0; i < 3; i++)
+     {
+        bs_sat[i] = sgt->bs_pos[i] - sgt->sat_pos[i];
+        sun_sat[i] = sun_itrs[i] - sgt->sat_pos[i];
+        /* sat_pos is used in the phi calculation below */
+        sat_pos[i] = sgt->sat_pos[i];
+     }
+#else
+   /* It should be equivalent to do the calculation in GCRS coordinates,
+    * but it's more complicated because the boresight point and satellite
+    * point must be rotated from ITRS to GCRS.
+    * The end results aren't quite identical, but I'm not sure what's wrong
+    */
 
    /* convert sat position from ITRS to GCRS system
     * returns sat_gcrs [km] */
@@ -251,7 +301,14 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
         double sat_gcrs_i = sat_gcrs[i];
         bs_sat[i] = bs_gcrs[i] - sat_gcrs_i;
         sun_sat[i] = sun_gcrs_i - sat_gcrs_i;
+        /* Copy into sat_pos for use below.
+         * This is hack to keep the phi calculation independent
+         * of the theta calculation method, until I understand why
+         * these two theta methods give slightly different results.
+         */
+        sat_pos[i] = sat_gcrs[i];
      }
+#endif
 
    *ptheta = vec_angle (bs_sat, sun_sat) / DEGTORAD;
 
@@ -297,7 +354,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
         hat_z[0] = 0.0;
         hat_z[1] = 0.0;
         hat_z[2] = 1.0;                                     /* \z */
-        vec_norm (sat_gcrs, hat_sat);                       /* \h */
+        vec_norm (sat_pos, hat_sat);                        /* \h */
         vec_cross (hat_z, hat_sat, hat_vel);                /* \v */
         vec_rotate (hat_z, hat_vel, tilt_angle, hat_slit);  /* \l */
         cos_phi = vec_dot (hat_u, hat_slit);                /* \u dot \l */
@@ -406,7 +463,7 @@ static int read_iers_params (Solar_Geom_Type *sgt, config_t *cfg)
    return 0;
 }
 
-static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
+static int sgt_initialize (Solar_Geom_Type *sgt)
 {
    Novas_cat_entry_t dummy_star;
    double a = GEO_SAT_RADIUS / EARTH_MEAN_RADIUS;
@@ -429,9 +486,6 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
 
    novas_make_observer_at_geocenter (&sgt->geocenter);
 
-   if (0 != read_sat_config (cfg, &sgt->sat_longitude, &sgt->bs_longitude, &sgt->bs_latitude))
-     return -1;
-
    /* Elevation and azimuth angles to point boresight at specified (lat,lon). */
    tan_elev = sin(sgt->bs_latitude) / (a - cos(sgt->bs_latitude));
    sgt->bs_elevation_angle = atan(tan_elev); /* radians */
@@ -443,7 +497,12 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
    /* WGS84 coordinates of geostationary satellite */
    sgt->sat_pos[0] = GEO_SAT_RADIUS * cos(sgt->sat_longitude);  /* X */
    sgt->sat_pos[1] = GEO_SAT_RADIUS * sin(sgt->sat_longitude);  /* Y */
-   sgt->sat_pos[2] = 0.0;                            /* Z */
+   sgt->sat_pos[2] = 0.0;                                       /* Z */
+
+   /* WGS84 coordinates of boresight point */
+   sgt->bs_pos[0] = EARTH_MEAN_RADIUS * cos(sgt->bs_longitude) * cos(sgt->bs_latitude);  /* X */
+   sgt->bs_pos[1] = EARTH_MEAN_RADIUS * sin(sgt->bs_longitude) * cos(sgt->bs_latitude);  /* Y */
+   sgt->bs_pos[2] = EARTH_MEAN_RADIUS * sin(sgt->bs_latitude);                           /* Z */
 
    novas_make_observer_on_surface (sgt->bs_latitude, sgt->bs_longitude, DEFAULT_HEIGHT,
                                    DEFAULT_TEMPERATURE, DEFAULT_PRESSURE,
@@ -452,7 +511,7 @@ static int sgt_initialize (Solar_Geom_Type *sgt, config_t *cfg)
    /* NOVAS accuracy parameter (0=full) */
    sgt->accuracy = 0;
 
-   return read_iers_params (sgt, cfg);
+   return 0;
 }
 
 static void sgt_delete (Solar_Geom_Type *sgt)
@@ -462,7 +521,19 @@ static void sgt_delete (Solar_Geom_Type *sgt)
    FREE(sgt);
 }
 
-Solar_Geom_Type *solar_geom_init (config_t *cfg)
+static int init_method_cfg (Solar_Geom_Type *sgt, void *pv)
+{
+   config_t *cfg = (config_t *)pv;
+
+   if ((0 != read_sat_config (cfg, &sgt->sat_longitude, &sgt->bs_longitude, &sgt->bs_latitude))
+        || (0 != read_iers_params (sgt, cfg)))
+     return -1;
+
+   return 0;
+}
+
+static Solar_Geom_Type *solar_geom_init_using_method (int (*init_method)(Solar_Geom_Type *, void *),
+                                                      void *pv)
 {
    Solar_Geom_Type *sgt = NULL;
 
@@ -482,7 +553,13 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
    sgt->sgt_boresight_angles = sgt_boresight_angles;
    sgt->sgt_print_params = sgt_print_params;
 
-   if (0 != sgt_initialize (sgt, cfg))
+   if (0 != init_method (sgt, pv))
+     {
+        sgt_delete (sgt);
+        return NULL;
+     }
+
+   if (0 != sgt_initialize (sgt))
      {
         sgt_delete (sgt);
         return NULL;
@@ -490,3 +567,111 @@ Solar_Geom_Type *solar_geom_init (config_t *cfg)
 
    return sgt;
 }
+
+Solar_Geom_Type *solar_geom_init (config_t *cfg)
+{
+   return solar_geom_init_using_method (init_method_cfg, cfg);
+}
+
+#ifdef UNIT_TEST
+
+typedef struct
+{
+   double sat_longitude;
+   double bs_longitude;
+   double bs_latitude;
+   double xpole;
+   double ypole;
+   double ut1_utc;
+   double hour;
+   short int year;
+   short int month;
+   short int day;
+}
+Sat_Config_Type;
+
+static int init_method_test (Solar_Geom_Type *sgt, void *pv)
+{
+   Sat_Config_Type *sct = (Sat_Config_Type *)pv;
+
+   sgt->sat_longitude = sct->sat_longitude * DEGTORAD;
+   sgt->bs_longitude = sct->bs_longitude * DEGTORAD;
+   sgt->bs_latitude = sct->bs_latitude * DEGTORAD;
+   sgt->xpole = sct->xpole;
+   sgt->ypole = sct->ypole;
+   sgt->ut1_utc =sct->ut1_utc;
+
+   return 0;
+}
+
+static Sat_Config_Type Config_Table[] =
+{  /* sat_lon, bs_lon,bs_lat, xpole,ypole, ut1_utc, hr,year,month,day */
+   {  0.0,    0.0,0.0,  0.0,0.0, 0.0,  0.0,2019,3,21},
+   {  0.0,    0.0,0.0,  0.0,0.0, 0.0, 12.0,2019,3,21},
+   {-90.0,  -90.0,0.0,  0.0,0.0, 0.0,  0.0,2019,3,21},
+   {  0.0,    0.0,0.0,  0.0,0.0, 0.0,  0.0,2019,6,21},
+   {-90.0,  -90.0,0.0,  0.0,0.0, 0.0,  0.0,2019,6,21},
+   {  0.0,    0.0,0.0,  0.0,0.0, 0.0,  0.0,2019,7,15},
+   {-90.0,  -90.0,0.0,  0.0,0.0, 0.0,  0.0,2019,7,15},
+   {-90.0,  -90.0,0.0,  0.0,0.0, 0.0,  5.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,  0.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,  1.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,  2.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,  3.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,  4.0,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,    5.3361,2019,7,15},
+   {-100.0, -100.0,0.0, 0.0,0.0, 0.0,    5.3361,2013,7,15},  /* Xiong's IRR simulation? e.g. omitted boresight tilt? */
+   {-100.0, -94.44,0.0, 0.0,0.0, 0.0,    5.3361,2019,7,15},
+   {-100.0, -94.44,34.095, 0.0,0.0, 0.0, 5.3361,2019,7,15},
+   {-100.0, -94.44,34.095, 0.0,0.0, 0.0, 5.0715,2019,7,15},
+   {-100.0, -100.0,34.095, 0.0,0.0, 0.0, 5.0185,2019,7,15},
+};
+
+int main (void)
+{
+   Solar_Geom_Type *sgt = NULL;
+   double jd_begin, jd_end;
+   short int de_number, error;
+   int i, n;
+
+   n = sizeof(Config_Table)/sizeof(Config_Table[0]);
+
+   tio_time_set_taix_epoch ("2000-01-01T12:00:00Z");
+
+   if ((error = novas_ephem_open ("/soft/tempo/sdpc/install/v1_gnu/ots/share/libnovas/JPLEPH",
+                                  &jd_begin, &jd_end,
+                                  &de_number)) != 0)
+     {
+        fprintf (stderr, "*** Error %d while opening ephemeris", error);
+        return 1;
+     }
+
+   for (i = 0; i < n; i++)
+     {
+        double jd_utc, theta, phi, dist;
+        Sat_Config_Type *sct = &Config_Table[i];
+
+        if (NULL == (sgt = solar_geom_init_using_method (init_method_test, sct)))
+          {
+             fprintf (stderr, "*** initialization failed (case = %d)\n", i);
+             return 1;
+          }
+        jd_utc = novas_julian_date (sct->year, sct->month, sct->day, sct->hour);
+        if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &theta, &phi, &dist))
+          {
+             fprintf (stderr, "*** sgt_sat_sun_position failed (case = %d)\n", i);
+             return 1;
+          }
+        fprintf (stdout, "M-D-H: %d-%d-%f  sat=%f  bs:%f,%f  => theta=%f  phi=%f, dist=%g\n",
+                 sct->month, sct->day, sct->hour,
+                 sgt->sat_longitude/DEGTORAD,
+                 sgt->bs_longitude/DEGTORAD, sgt->bs_latitude/DEGTORAD,
+                 theta, phi, dist);
+        sgt->sgt_delete (sgt);
+     }
+
+   (void) novas_ephem_close();
+
+   return 0;
+}
+#endif
