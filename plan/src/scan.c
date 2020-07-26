@@ -410,11 +410,11 @@ static int find_safe_limit_time (Solar_Geom_Type *sgt,
    if (is_morning)
      {
         jd_utc1 = jd_utc - 4.0/24;
-        jd_utc2 = jd_utc + 0.5/24;
+        jd_utc2 = jd_utc + 1.0/24;
      }
    else
      {
-        jd_utc1 = jd_utc - 0.5/24;;
+        jd_utc1 = jd_utc - 1.0/24;;
         jd_utc2 = jd_utc + 4.0/24;
      }
 
