@@ -58,6 +58,18 @@ Times_Type;
 #define DEFAULT_TEMPERATURE  15.0   /* temperature [Celsius] */
 #define DEFAULT_PRESSURE   1010.0   /* pressure [millibars] */
 
+#define USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE 1
+/* In principle, the angle between the boresight direction and the sun
+ * could be computed in either the ITRS or GCRS frames, and the answer
+ * should be the same.  The ITRS frame should be simplest because two of
+ * three relevant points (sat position and boresight point) are already
+ * known in that frame.  Sadly, when I compute the angle both ways, the
+ * answers are slightly different and I don't understand why.
+ * The ITRS frame is used by default because that's simplest and it seems
+ * less likely that something could go wrong.  But the GCRS calculation
+ * really ought to match.
+ */
+
 static int times_eval (Times_Type *tt, double jd_utc,
                        int leap_secs, double ut1_utc)
 {
@@ -192,9 +204,12 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
+#ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE
    double sun_gcrs[3], sun_itrs[3];
-   double sat_gcrs[3], sat_pos[3];
-   double bs_gcrs[3], bs_gcrs_vel[3];
+#else
+   double bs_gcrs[3], bs_gcrs_vel[3], sat_gcrs[3];
+#endif
+   double sat_pos[3];
    double bs_sat[3], sun_sat[3];
    double tilt_angle = sgt->bs_elevation_angle; /* radians */
    double r_sun;
@@ -211,7 +226,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
    if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
 
-#if 1
+#ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE
    /* The simplest way to compute the solar-boresight angle should be to compute
     * the solar position in GCRS and convert that to ITRS which is equivalent to
     * ECEF coordinates (e.g. WGS84, earth-centered, earth-fixed).
@@ -308,7 +323,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
          */
         sat_pos[i] = sat_gcrs[i];
      }
-#endif
+#endif  /* ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE */
 
    *ptheta = vec_angle (bs_sat, sun_sat) / DEGTORAD;
 
