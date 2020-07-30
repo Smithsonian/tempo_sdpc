@@ -106,6 +106,7 @@ fi
 (cd $l3_target_dir && L2_regrid $l2_regrid_cfg) || error_exit "L2_regrid failed"
 
 insert_fixed_metadata.py $l3_path
+fix_met_format.py ${l3_path}.met
 
 register_symlink="$SDPC_ARCHIVE_DIR/registry/incoming/$l3_basename"
 ln -s $l3_path $register_symlink

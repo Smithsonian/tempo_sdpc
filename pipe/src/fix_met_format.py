@@ -4,9 +4,15 @@ import sys
 import re
 import argparse
 
-def fix_parens (name, text):
+def impose_paren_state (name, parens_required, text):
     """
-    Remove parentheses from ODL scalar value for variable 'name'
+    Impose a specified paren state on the ODL value for variable 'name'.
+    Some ODL values are defined as scalar and will fail if parens are used.
+    Other ODL values are defined as array and will fail if parens are not used.
+    The two possible states are parens_required and parens_illegal.
+    If parens are missing, but needed, insert them.
+    If parens are present, but not wanted, remove them.
+    Otherwise, do nothing.
     """
     # find the object
     beg = re.search ('OBJECT[ ]*=[ ]*{}'.format(name), text)
@@ -20,10 +26,20 @@ def fix_parens (name, text):
     b += value.end()
     eol = b + text[b:e].find('\n')
     s = text[b:eol]
-    if s.find(')') >= 0:
-        s = s.rsplit(')',1)[0]
-    if s.find('(') >= 0:
-        s = " " + s.split('(',1)[1]
+    if parens_required:
+        s = s.strip()
+        r = text[b:eol]
+        if s[0] != '(':
+            r = ' (' + r
+        if s[-1] != ')':
+            r = r + ' )'
+        s = r
+    else:
+        if s.find(')') >= 0:
+            s = s.rsplit(')',1)[0]
+        if s.find('(') >= 0:
+            s = " " + s.split('(',1)[1]
+
     return text[:b] + s + text[eol:]
 
 def process_file (metfile):
@@ -31,10 +47,12 @@ def process_file (metfile):
     with open (metfile, 'r') as fp:
         text = fp.read()
 
-    name_list = {'VERSIONID', 'PGEVERSION'}
+    # True means parens required -- insert parens if they don't exist
+    # False means parens illegal -- remove parens if they exist
+    paren_states = {'VERSIONID': False, 'PGEVERSION': False, 'INPUTPOINTER': True}
 
-    for n in name_list:
-        text = fix_parens (n, text)
+    for name,state in paren_states.items():
+        text = impose_paren_state (name, state, text)
 
     with open (metfile, 'w') as fp:
         fp.write(text)
