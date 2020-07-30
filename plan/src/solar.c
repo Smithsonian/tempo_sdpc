@@ -59,15 +59,12 @@ Times_Type;
 #define DEFAULT_PRESSURE   1010.0   /* pressure [millibars] */
 
 #define USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE 1
-/* In principle, the angle between the boresight direction and the sun
- * could be computed in either the ITRS or GCRS frames, and the answer
- * should be the same.  The ITRS frame should be simplest because two of
+/* The angle between the boresight direction and the sun can be computed
+ * in either the ITRS or GCRS frames, and the answer should be essentially
+ * the same.  The ITRS frame calculation is simplest because two of
  * three relevant points (sat position and boresight point) are already
- * known in that frame.  Sadly, when I compute the angle both ways, the
- * answers are slightly different and I don't understand why.
- * The ITRS frame is used by default because that's simplest and it seems
- * less likely that something could go wrong.  But the GCRS calculation
- * really ought to match.
+ * known in that frame.  The ITRS frame is used by default because it's
+ * simplest.  The code for the GCRS calculation is available for comparison.
  */
 
 static int times_eval (Times_Type *tt, double jd_utc,
@@ -227,7 +224,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
      return -1;
 
 #ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE
-   /* The simplest way to compute the solar-boresight angle should be to compute
+   /* The simplest way to compute the solar-boresight angle is to compute
     * the solar position in GCRS and convert that to ITRS which is equivalent to
     * ECEF coordinates (e.g. WGS84, earth-centered, earth-fixed).
     * The other two points of interest are already known in the ECEF coordinates.
@@ -268,10 +265,10 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
         sat_pos[i] = sgt->sat_pos[i];
      }
 #else
-   /* It should be equivalent to do the calculation in GCRS coordinates,
-    * but it's more complicated because the boresight point and satellite
-    * point must be rotated from ITRS to GCRS.
-    * The end results aren't quite identical, but I'm not sure what's wrong
+   /* The solar boresight angle can also be done in GCRS coordinates,
+    * but it's more complicated than in ITRS coordinates because the
+    * boresight point and satellite point must be rotated from ITRS to GCRS.
+    * The end result should be similar enough that it makes no difference.
     */
 
    /* convert sat position from ITRS to GCRS system
@@ -519,8 +516,9 @@ static int sgt_initialize (Solar_Geom_Type *sgt)
    sgt->bs_pos[1] = EARTH_MEAN_RADIUS * sin(sgt->bs_longitude) * cos(sgt->bs_latitude);  /* Y */
    sgt->bs_pos[2] = EARTH_MEAN_RADIUS * sin(sgt->bs_latitude);                           /* Z */
 
-   novas_make_observer_on_surface (sgt->bs_latitude, sgt->bs_longitude, DEFAULT_HEIGHT,
-                                   DEFAULT_TEMPERATURE, DEFAULT_PRESSURE,
+   novas_make_observer_on_surface (sgt->bs_latitude/DEGTORAD,
+                                   sgt->bs_longitude/DEGTORAD,
+                                   DEFAULT_HEIGHT, DEFAULT_TEMPERATURE, DEFAULT_PRESSURE,
                                    &sgt->boresight_surface);
 
    /* NOVAS accuracy parameter (0=full) */
