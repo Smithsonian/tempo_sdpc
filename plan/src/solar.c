@@ -58,7 +58,7 @@ Times_Type;
 #define DEFAULT_TEMPERATURE  15.0   /* temperature [Celsius] */
 #define DEFAULT_PRESSURE   1010.0   /* pressure [millibars] */
 
-#define USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE 1
+static int Compute_Boresight_Sun_Angle_In_ITRS_Frame = 1;
 /* The angle between the boresight direction and the sun can be computed
  * in either the ITRS or GCRS frames, and the answer should be essentially
  * the same.  The ITRS frame calculation is simplest because two of
@@ -201,11 +201,8 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
 {
    Times_Type tt;
    Novas_sky_pos_t sun_place;
-#ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE
    double sun_gcrs[3], sun_itrs[3];
-#else
    double bs_gcrs[3], bs_gcrs_vel[3], sat_gcrs[3];
-#endif
    double sat_pos[3];
    double bs_sat[3], sun_sat[3];
    double tilt_angle = sgt->bs_elevation_angle; /* radians */
@@ -223,100 +220,103 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
    if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
      return -1;
 
-#ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE
-   /* The simplest way to compute the solar-boresight angle is to compute
-    * the solar position in GCRS and convert that to ITRS which is equivalent to
-    * ECEF coordinates (e.g. WGS84, earth-centered, earth-fixed).
-    * The other two points of interest are already known in the ECEF coordinates.
-    */
-   /* returns GCRS sun_place.dis [AU] */
-   if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
-                             tt.delta_t, coord_sys, sgt->accuracy,
-                             &sun_place)) != 0)
+   if (Compute_Boresight_Sun_Angle_In_ITRS_Frame)
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
-                     __func__, error);
-        return -1;
-     }
+        /* The simplest way to compute the solar-boresight angle is to compute
+         * the solar position in GCRS and convert that to ITRS which is equivalent to
+         * ECEF coordinates (e.g. WGS84, earth-centered, earth-fixed).
+         * The other two points of interest are already known in the ECEF coordinates.
+         */
+        /* returns GCRS sun_place.dis [AU] */
+        if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
+                                  tt.delta_t, coord_sys, sgt->accuracy,
+                                  &sun_place)) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
+                          __func__, error);
+             return -1;
+          }
 
-   r_sun = sun_place.dis * KM_PER_AU;
-   for (i = 0; i < 3; i++)
-     {
-        sun_gcrs[i] = r_sun * sun_place.r_hat[i];
-     }
+        r_sun = sun_place.dis * KM_PER_AU;
+        for (i = 0; i < 3; i++)
+          {
+             sun_gcrs[i] = r_sun * sun_place.r_hat[i];
+          }
 
-   /* convert sun position from GCRS to ITRS system
-    * returns sun_itrs [km] */
-   if ((error = novas_cel2ter (tt.jd_ut1, 0.0, tt.delta_t,
-                               method, sgt->accuracy, option,
-                               sgt->xpole, sgt->ypole, sun_gcrs,
-                               sun_itrs)) != 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_cel2ter",
-                     __func__, error);
-        return -1;
-     }
+        /* convert sun position from GCRS to ITRS system
+         * returns sun_itrs [km] */
+        if ((error = novas_cel2ter (tt.jd_ut1, 0.0, tt.delta_t,
+                                    method, sgt->accuracy, option,
+                                    sgt->xpole, sgt->ypole, sun_gcrs,
+                                    sun_itrs)) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_cel2ter",
+                          __func__, error);
+             return -1;
+          }
 
-   for (i = 0; i < 3; i++)
-     {
-        bs_sat[i] = sgt->bs_pos[i] - sgt->sat_pos[i];
-        sun_sat[i] = sun_itrs[i] - sgt->sat_pos[i];
-        /* sat_pos is used in the phi calculation below */
-        sat_pos[i] = sgt->sat_pos[i];
+        for (i = 0; i < 3; i++)
+          {
+             bs_sat[i] = sgt->bs_pos[i] - sgt->sat_pos[i];
+             sun_sat[i] = sun_itrs[i] - sgt->sat_pos[i];
+             /* sat_pos is used in the phi calculation below */
+             sat_pos[i] = sgt->sat_pos[i];
+          }
      }
-#else
-   /* The solar boresight angle can also be done in GCRS coordinates,
-    * but it's more complicated than in ITRS coordinates because the
-    * boresight point and satellite point must be rotated from ITRS to GCRS.
-    * The end result should be similar enough that it makes no difference.
-    */
+   else
+     {
+        /* The solar boresight angle can also be done in GCRS coordinates,
+         * but it's more complicated than in ITRS coordinates because the
+         * boresight point and satellite point must be rotated from ITRS to GCRS.
+         * The end result should be similar enough that it makes no difference.
+         */
 
-   /* convert sat position from ITRS to GCRS system
-    * returns sat_gcrs [km] */
-   if ((error = novas_ter2cel (tt.jd_ut1, 0.0, tt.delta_t,
-                               method, sgt->accuracy, option,
-                               sgt->xpole, sgt->ypole, sgt->sat_pos,
-                               sat_gcrs)) != 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_ter2cel",
-                     __func__, error);
-        return -1;
-     }
+        /* convert sat position from ITRS to GCRS system
+         * returns sat_gcrs [km] */
+        if ((error = novas_ter2cel (tt.jd_ut1, 0.0, tt.delta_t,
+                                    method, sgt->accuracy, option,
+                                    sgt->xpole, sgt->ypole, sgt->sat_pos,
+                                    sat_gcrs)) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_ter2cel",
+                          __func__, error);
+             return -1;
+          }
 
-   /* returns bs_gcrs [AU], bs_gcrs_vel [AU/day] */
-   if ((error = novas_geo_posvel (tt.jd_tt, tt.delta_t, sgt->accuracy,
-                                  &sgt->boresight_surface, bs_gcrs, bs_gcrs_vel)) != 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_geo_posvel",
-                     __func__, error);
-        return -1;
-     }
-   for (i = 0; i < 3; i++)
-     {
-        bs_gcrs[i] *= KM_PER_AU;
-     }
+        /* returns bs_gcrs [AU], bs_gcrs_vel [AU/day] */
+        if ((error = novas_geo_posvel (tt.jd_tt, tt.delta_t, sgt->accuracy,
+                                       &sgt->boresight_surface, bs_gcrs, bs_gcrs_vel)) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_geo_posvel",
+                          __func__, error);
+             return -1;
+          }
+        for (i = 0; i < 3; i++)
+          {
+             bs_gcrs[i] *= KM_PER_AU;
+          }
 
-   /* returns sun_place.dis [AU] */
-   if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
-                             tt.delta_t, coord_sys, sgt->accuracy,
-                             &sun_place)) != 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
-                     __func__, error);
-        return -1;
-     }
+        /* returns sun_place.dis [AU] */
+        if ((error = novas_place (tt.jd_tt, &sgt->sun, &sgt->geocenter,
+                                  tt.delta_t, coord_sys, sgt->accuracy,
+                                  &sun_place)) != 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
+                          __func__, error);
+             return -1;
+          }
 
-   r_sun = sun_place.dis * KM_PER_AU;
-   for (i = 0; i < 3; i++)
-     {
-        double sun_gcrs_i = r_sun * sun_place.r_hat[i];
-        double sat_gcrs_i = sat_gcrs[i];
-        bs_sat[i] = bs_gcrs[i] - sat_gcrs_i;
-        sun_sat[i] = sun_gcrs_i - sat_gcrs_i;
-        /* Copy into sat_pos for use below. */
-        sat_pos[i] = sat_gcrs[i];
-     }
-#endif  /* ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE */
+        r_sun = sun_place.dis * KM_PER_AU;
+        for (i = 0; i < 3; i++)
+          {
+             double sun_gcrs_i = r_sun * sun_place.r_hat[i];
+             double sat_gcrs_i = sat_gcrs[i];
+             bs_sat[i] = bs_gcrs[i] - sat_gcrs_i;
+             sun_sat[i] = sun_gcrs_i - sat_gcrs_i;
+             /* Copy into sat_pos for use below. */
+             sat_pos[i] = sat_gcrs[i];
+          }
+     } /* if (Compute_Boresight_Sun_Angle_In_ITRS_Frame) */
 
    *ptheta = vec_angle (bs_sat, sun_sat) / DEGTORAD;
 
@@ -636,13 +636,28 @@ static Sat_Config_Type Config_Table[] =
    {-100.0, -100.0,34.095, 0.0,0.0, 0.0, 5.0185,2019,7,15},
 };
 
+struct sun_pos_type
+{
+   double theta, phi, dist;
+};
+
+static int fprint_sun_pos (FILE *fp, const Solar_Geom_Type *sgt, const Sat_Config_Type *sct,
+                           const char *method_label, const struct sun_pos_type *pos)
+{
+   return fprintf (fp, "M-D-H: %02d-%02d-%7.3f  sat=%8.4f  bs:%8.4f,%8.4f  %s=> theta=%8.4f  phi=%8.4f, dist=%9.5e\n",
+                   sct->month, sct->day, sct->hour,
+                   sgt->sat_longitude/DEGTORAD,
+                   sgt->bs_longitude/DEGTORAD, sgt->bs_latitude/DEGTORAD,
+                   method_label, pos->theta, pos->phi, pos->dist);
+}
+
 int main (void)
 {
    Solar_Geom_Type *sgt = NULL;
    double jd_begin, jd_end;
    short int de_number, error;
    int i, n;
-
+   struct sun_pos_type itrs_method, gcrs_method;
    n = sizeof(Config_Table)/sizeof(Config_Table[0]);
 
    tio_time_set_taix_epoch ("2000-01-01T12:00:00Z");
@@ -657,7 +672,7 @@ int main (void)
 
    for (i = 0; i < n; i++)
      {
-        double jd_utc, theta, phi, dist;
+        double jd_utc;
         Sat_Config_Type *sct = &Config_Table[i];
 
         if (NULL == (sgt = solar_geom_init_using_method (init_method_test, sct)))
@@ -666,16 +681,25 @@ int main (void)
              return 1;
           }
         jd_utc = novas_julian_date (sct->year, sct->month, sct->day, sct->hour);
-        if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &theta, &phi, &dist))
+
+        Compute_Boresight_Sun_Angle_In_ITRS_Frame = 1;
+        if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &itrs_method.theta, &itrs_method.phi, &itrs_method.dist))
           {
              fprintf (stderr, "*** sgt_sat_sun_position failed (case = %d)\n", i);
              return 1;
           }
-        fprintf (stdout, "M-D-H: %d-%d-%f  sat=%f  bs:%f,%f  => theta=%f  phi=%f, dist=%g\n",
-                 sct->month, sct->day, sct->hour,
-                 sgt->sat_longitude/DEGTORAD,
-                 sgt->bs_longitude/DEGTORAD, sgt->bs_latitude/DEGTORAD,
-                 theta, phi, dist);
+        Compute_Boresight_Sun_Angle_In_ITRS_Frame = 0;
+        if (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &gcrs_method.theta, &gcrs_method.phi, &gcrs_method.dist))
+          {
+             fprintf (stderr, "*** sgt_sat_sun_position failed (case = %d)\n", i);
+             return 1;
+          }
+        (void) fprint_sun_pos (stdout, sgt, sct, "ITRS", &itrs_method);
+        (void) fprint_sun_pos (stdout, sgt, sct, "GCRS", &gcrs_method);
+        fprintf (stdout, "(GCRS-ITRS) delta:  theta = %f arcmin\n",
+                 (gcrs_method.theta - itrs_method.theta) * 60.0);
+        fprintf (stdout, "(GCRS-ITRS) delta:    phi = %f arcmin\n",
+                 (gcrs_method.phi - itrs_method.phi) * 60.0);
         sgt->sgt_delete (sgt);
      }
 
