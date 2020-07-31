@@ -3,7 +3,7 @@ all:
 	cd src && $(MAKE) all
 
 check:
-	@-cd tests && $(MAKE) check
+	@cd tests && $(MAKE) check
 
 docs:
 	-cd doc && $(MAKE) docs

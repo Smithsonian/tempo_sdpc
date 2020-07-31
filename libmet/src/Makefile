@@ -106,7 +106,7 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS_F)
 test_met:	$(ELFDIR_ELF_LIB) test_met.c
 	$(COMPILE_CMD) -o test_met test_met.c $(MET_LIBPATHS) -lmet $(LIBS)
 
-ftest_met:	$(ELFDIR_ELF_F_LIB) ftest_met.f90
+ftest_met:	$(ELFDIR_ELF_F_LIB) $(ELFDIR_ELF_LIB) ftest_met.f90
 	$(FC) $(FCFLAGS) -o ftest_met ftest_met.f90 -I$(elfdir) -L$(elfdir) $(MET_LIBPATHS) -lmet_f -lmet $(LIBS_F)
 
 .PHONY: clean distclean tags all install check \

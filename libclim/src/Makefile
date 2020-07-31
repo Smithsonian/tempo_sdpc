@@ -71,7 +71,7 @@ ELFOBJS_F = $(patsubst %.o,$(elfdir)/%.o, $(OFILES_F))
 
 EXECUTABLES = test_clim
 
-all:	elf $(EXECUTABLES)
+all:	elf
 elf:	$(elfdir) $(ELFDIR_F_ELF_LIB) # $(ELFDIR_ELF_LIB)
 
 tags:

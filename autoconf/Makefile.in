@@ -5,41 +5,27 @@ include ./Makefile.defines
 
 RM = /bin/rm
 
-DIR_LIST = libtio libmet libmd libclim \
-           L1_trace_gas L1_cloud L1_o3_total L1_o3_profile \
-           L2_regrid L0_format L0_ccd wavecal L1_inr_prep L1_inr_post L2_split \
-           plan pipe
+TARGETS := all check docs install clean distclean
 
-all:
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) all) || exit; \
-	done
+BASE_LIBS   = libtio
+OTHER_LIBS  = libmet libmd libclim
 
-check:
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) check) || exit; \
-	done
+LIBRARIES   = $(BASE_LIBS) $(OTHER_LIBS)
 
-docs:
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) docs) || exit; \
-	done
+PROGRAMS    = L1_trace_gas L1_cloud L1_o3_total L1_o3_profile L2_regrid L2_split \
+              L0_format L0_ccd wavecal L1_inr_prep L1_inr_post plan pipe
 
-install:
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) install) || exit; \
-	done
+$(OTHER_LIBS):	$(BASE_LIBS)
+$(PROGRAMS):	$(LIBRARIES)
 
-clean:
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) clean) || exit; \
-	done
+SUBDIRS :=  $(LIBRARIES) $(PROGRAMS)
 
-distclean:	clean
-	for dir in $(DIR_LIST) ; do \
-	  (cd $$dir ; $(MAKE) distclean) || exit; \
-	done
-	$(MAKE) confclean
+.PHONY:	$(TARGETS) $(SUBDIRS)
+
+$(TARGETS):	 $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 confclean:
 	-$(RM) Makefile Makefile.defines config.status config.log
