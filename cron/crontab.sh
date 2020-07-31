@@ -13,7 +13,7 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-export PATH="$HOME/sys/linux-x86_64/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
+export PATH="${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 tstamp=$(date -u +%Y%m%d%H%M%SZ)
 tbeg=$(date +%s)
