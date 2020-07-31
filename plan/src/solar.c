@@ -34,7 +34,6 @@ Times_Type;
    Times_Type *times; \
    Novas_object_t sun; \
    Novas_observer_t geocenter; \
-   Novas_observer_t boresight_surface; \
    double sat_longitude; /* radians */ \
    double bs_longitude; /* radians */ \
    double bs_latitude; /* radians */ \
@@ -202,7 +201,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
    Times_Type tt;
    Novas_sky_pos_t sun_place;
    double sun_gcrs[3], sun_itrs[3];
-   double bs_gcrs[3], bs_gcrs_vel[3], sat_gcrs[3];
+   double bs_gcrs[3], sat_gcrs[3];
    double sat_pos[3];
    double bs_sat[3], sun_sat[3];
    double tilt_angle = sgt->bs_elevation_angle; /* radians */
@@ -283,17 +282,16 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
              return -1;
           }
 
-        /* returns bs_gcrs [AU], bs_gcrs_vel [AU/day] */
-        if ((error = novas_geo_posvel (tt.jd_tt, tt.delta_t, sgt->accuracy,
-                                       &sgt->boresight_surface, bs_gcrs, bs_gcrs_vel)) != 0)
+        /* convert boresight position from ITRS to GCRS system
+         * returns bs_gcrs [km] */
+        if ((error = novas_ter2cel (tt.jd_ut1, 0.0, tt.delta_t,
+                                    method, sgt->accuracy, option,
+                                    sgt->xpole, sgt->ypole, sgt->bs_pos,
+                                    bs_gcrs)) != 0)
           {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_geo_posvel",
+             tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_ter2cel",
                           __func__, error);
              return -1;
-          }
-        for (i = 0; i < 3; i++)
-          {
-             bs_gcrs[i] *= KM_PER_AU;
           }
 
         /* returns sun_place.dis [AU] */
@@ -390,8 +388,8 @@ static int sgt_print_params (const Solar_Geom_Type *sgt, const char *pprefix, FI
    const char *prefix = pprefix ? pprefix : "";
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = instrument boresight point\n",
                    prefix,
-                   sgt->boresight_surface.on_surf.longitude /DEGTORAD,
-                   sgt->boresight_surface.on_surf.latitude /DEGTORAD);
+                   sgt->bs_longitude /DEGTORAD,
+                   sgt->bs_latitude /DEGTORAD);
    (void) fprintf (fp, "%s (%8.3f,%7.3f) = satellite nadir point \n",
                    prefix, sgt->sat_longitude /DEGTORAD, 0.0);
    return 0;
@@ -511,11 +509,6 @@ static int sgt_initialize (Solar_Geom_Type *sgt)
    sgt->bs_pos[0] = EARTH_MEAN_RADIUS * cos(sgt->bs_longitude) * cos(sgt->bs_latitude);  /* X */
    sgt->bs_pos[1] = EARTH_MEAN_RADIUS * sin(sgt->bs_longitude) * cos(sgt->bs_latitude);  /* Y */
    sgt->bs_pos[2] = EARTH_MEAN_RADIUS * sin(sgt->bs_latitude);                           /* Z */
-
-   novas_make_observer_on_surface (sgt->bs_latitude/DEGTORAD,
-                                   sgt->bs_longitude/DEGTORAD,
-                                   DEFAULT_HEIGHT, DEFAULT_TEMPERATURE, DEFAULT_PRESSURE,
-                                   &sgt->boresight_surface);
 
    /* NOVAS accuracy parameter (0=full) */
    sgt->accuracy = 0;
