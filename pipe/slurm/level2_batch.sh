@@ -49,7 +49,7 @@ etc_dir="$SDPC_ROOT/etc"
 tar_file_basename=$(basename $tar_host_file_path)
 this_host=$(uname -n | cut -d. -f1)
 if test x"$tar_host" != x"$this_host" ; then
-   scp $tar_host:$tar_host_file_path .
+   scp -o StrictHostKeyChecking=no $tar_host:$tar_host_file_path .
    tar xf $tar_file_basename
    /bin/rm $tar_file_basename
 else
