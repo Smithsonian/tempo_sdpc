@@ -313,11 +313,7 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
         double sat_gcrs_i = sat_gcrs[i];
         bs_sat[i] = bs_gcrs[i] - sat_gcrs_i;
         sun_sat[i] = sun_gcrs_i - sat_gcrs_i;
-        /* Copy into sat_pos for use below.
-         * This is hack to keep the phi calculation independent
-         * of the theta calculation method, until I understand why
-         * these two theta methods give slightly different results.
-         */
+        /* Copy into sat_pos for use below. */
         sat_pos[i] = sat_gcrs[i];
      }
 #endif  /* ifdef USE_ITRS_FRAME_FOR_BORESIGHT_SUN_ANGLE */
