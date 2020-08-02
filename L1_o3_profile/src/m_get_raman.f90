@@ -109,12 +109,12 @@ contains
 
      o3%do_shiwf = .false. ; o3%do_tmpwf = .false. ; o3%do_pslwf = .false.
      CALL geto3_crs(swavs(1:nsol_ring), nsol_ring, nsol_ring,nflay, ts(1:nflay), o3, problems)
-     abscrs(1:nsol_ring, 1:nflay) = o3%crs(1:nsol_ring, 1:nflay)
-     ozabs_convl = .true.
      IF (problems) THEN
         WRITE(www_lun, *) modulename, ': Problems in reading trace gas absorption!!!'
         do_bandavg = do_bandavg_sav; errstat = pge_errstat_error; RETURN
      ENDIF
+     abscrs(1:nsol_ring, 1:nflay) = o3%crs(1:nsol_ring, 1:nflay)
+     ozabs_convl = .true.
      do_bandavg = do_bandavg_sav
 
      DO i = 1, nsol_ring
