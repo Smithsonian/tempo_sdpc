@@ -12,6 +12,32 @@ fi
 #. ../ctrl/sdpc_setup.sh
 export PATH="$SDPC_ROOT/bin:$PATH"
 
+error_exit()
+{
+   printf "*** Error: o3prof_merge.sh: $1"
+   exit 1
+}
+
+public_mirror_symlink()
+{
+   src=$1
+
+   mirror_dir="$SDPC_RUN_DIR_MASTER/public_mirror"
+
+   # Do nothing when the mirror directory is absent
+   if ! test -d $mirror_dir ; then
+      return 0
+   fi
+
+   bn=$(basename $src)
+   day=$(level1_info --localday $src)
+   target_dir="$mirror_dir/$day/L2"
+   if ! test -d $target_dir ; then
+      mkdir -p $target_dir
+   fi
+   ln -s $src $target_dir/$bn || error_exit "public_mirror_symlink failed: $bn"
+}
+
 perform_merge()
 {
   granule_arch_dir_path="$1"
@@ -53,10 +79,11 @@ EOF
   fix_met_format.py $met_file
 
   # insert fixed metadata and, make sure the merged product
-  # gets added to the product registry
+  # gets added to the product registry, and the public mirror
   if test -f $product_file ; then
      insert_fixed_metadata.py $o3p_dir/$product_file
      ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
+     public_mirror_symlink $o3p_dir/$product_file
   fi
 
   block_tarfile_name=$(basename $product_file .nc)
