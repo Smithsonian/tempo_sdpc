@@ -1661,9 +1661,14 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 
    if (enable_state_query_bool (ENABLE_BTDF) > 0)
      {
-        if ((0 != read_btdf (cal, path, btdf_trend_file))
-            || (0 != meta_record_basename (meta, btdf_trend_file)))
+        if (0 != read_btdf (cal, path, btdf_trend_file))
           goto free_and_return;
+
+        if (0)
+          {
+             if (0 != meta_record_basename (meta, btdf_trend_file))
+               goto free_and_return;
+          }
      }
 
    if (0 != config_straylight_method (cal, cfg))
