@@ -26,6 +26,9 @@ def impose_paren_state (name, parens_required, text):
     b += value.end()
     eol = b + text[b:e].find('\n')
     s = text[b:eol]
+    # If a '$' is present, the field has an unexpanded macro, so nothing
+    if s.find('$') >= 0:
+        return text
     if parens_required:
         s = s.strip()
         r = text[b:eol]
