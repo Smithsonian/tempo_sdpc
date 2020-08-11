@@ -47,6 +47,8 @@ class Table_Type:
 
 def define_common_fields (fields):
     fields["istart"] = "integer not null"
+    fields["time_coverage_start_since_epoch"] = "float not null"
+    fields["time_coverage_end_since_epoch"] = "float not null"
     fields["filename"] = "text"
     fields["path"] = "text"
     fields["mtime"] = "float"
@@ -61,8 +63,6 @@ def init_radiance_table (table_name):
     fields["scan_num"] = "integer not null"
     fields["scan_id"] = "integer not null"
     fields["granule_num"] = "integer not null"
-    fields["time_coverage_start_since_epoch"] = "float not null"
-    fields["time_coverage_end_since_epoch"] = "float not null"
     fields["mirror_pos_beg"] = "integer not null"
     fields["mirror_pos_end"] = "integer not null"
     quals = "primary key(istart), unique(istart)"
@@ -265,6 +265,8 @@ def process_file (conn, filename):
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
     keys["versionid"] = versionid
     keys["asdc_status"] = 0
+    keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
+    keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)
