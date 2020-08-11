@@ -71,7 +71,7 @@ def main():
         hks = select_matching_hk (c, level0_keys)
 
     if len(hks) == 0:
-        print("")
+        print("NONE")
     else:
         path_list = list(map (' '.join, hks))
         basenames = [os.path.basename(p) for p in path_list]

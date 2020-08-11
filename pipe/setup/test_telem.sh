@@ -24,9 +24,13 @@ assert_dir_exists $_src_dir
 
 printf "Populating $SDPC_ARCHIVE_DIR with Level 0 test data (HK, IRU, SMC)\n"
 
+_registry_dir="$SDPC_ARCHIVE_DIR/registry/incoming"
+mkdir -p $_registry_dir
+
 for d in HK IRU SMC ; do
    mkdir -p $_target_dir/$d
    ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*_2013*.nc
+   ln -s -t $_registry_dir $_target_dir/$d/TEMPO_${d}*_2013*.nc
 done
 
 # another stupid hack (because the DRK and IRR files have the wrong times,
@@ -35,7 +39,12 @@ _target_dir="$SDPC_ARCHIVE_DIR/L0/D07134/HK"
 mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T051005Z.nc
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T052010Z.nc
+ln -s -t $_registry_dir \
+                   $_target_dir/TEMPO_HK_L0_V00_20190715T051005Z.nc \
+                   $_target_dir/TEMPO_HK_L0_V00_20190715T052010Z.nc
 
 _target_dir="$SDPC_ARCHIVE_DIR/L0/D07135/HK"
 mkdir -p $_target_dir
 ln -s -t $_target_dir $_src_dir/TEMPO_HK_L0_V00_20190715T081005Z.nc
+ln -s -t $_registry_dir \
+                   $_target_dir/TEMPO_HK_L0_V00_20190715T081005Z.nc

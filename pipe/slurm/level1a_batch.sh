@@ -101,8 +101,18 @@ run_l0_ccd()
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
+# Try to find HK files that cover the time interval of this dataset.
+# If none exist, let L0_ccd search the archive for something suitable.
+   hk_paths=$(select_hk.py $granule_basename)
+   if test x"$hk_paths" != xNONE ; then
+      printf '%s\n' "${hk_paths[@]}" > hk.lis
+      lookup_option="-i @hk.lis"
+   else
+      lookup_option=""
+   fi
+
    srun --ntasks=1 --output=log_l0_ccd.txt \
-   L0_ccd -vv --Version $SDPC_PROCESSING_VERSION \
+   L0_ccd -vv --Version $SDPC_PROCESSING_VERSION $lookup_option \
           -o $output_file $dark_option \
           $granule_basename
 }
