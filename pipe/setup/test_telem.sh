@@ -26,7 +26,7 @@ printf "Populating $SDPC_ARCHIVE_DIR with Level 0 test data (HK, IRU, SMC)\n"
 
 for d in HK IRU SMC ; do
    mkdir -p $_target_dir/$d
-   ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*.nc
+   ln -s -t $_target_dir/$d $_src_dir/TEMPO_${d}*_2013*.nc
 done
 
 # another stupid hack (because the DRK and IRR files have the wrong times,
