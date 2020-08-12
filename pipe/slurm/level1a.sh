@@ -102,9 +102,9 @@ esac
 # Create file-list file
 file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
-  granule_path=${granule_path}
-  dark_file_path=${dark_file_path}
-  ephem_file_path=${ephem_file_path}
+granule_path=${granule_path}
+dark_file_path=${dark_file_path}
+ephem_file_path=${ephem_file_path}
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
