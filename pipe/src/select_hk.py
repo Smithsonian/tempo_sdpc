@@ -39,10 +39,10 @@ def get_level0_keys (filename):
     return keys
 
 def select_matching_hk (c, keys):
-    itstart = int(keys["time_coverage_start_since_epoch"])
-    itend = int(keys["time_coverage_end_since_epoch"])
+    tstart = keys["time_coverage_start_since_epoch"]
+    tend = keys["time_coverage_end_since_epoch"]
     cmd = "select path from 'HK_L0' where {} < time_coverage_end_since_epoch AND \
-                                    time_coverage_start_since_epoch < {};".format(itstart, itend)
+                                    time_coverage_start_since_epoch < {};".format(tstart, tend)
     c.execute(cmd)
     rows = c.fetchall()
     rows = [r for r in rows if None not in r]
