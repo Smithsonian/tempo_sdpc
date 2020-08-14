@@ -142,7 +142,9 @@ case "${granule_basename}" in
   ;;
 
   *IRR* )
-  output_file=$(mkgranule_name -L 1 -p IRR -v $SDPC_PROCESSING_VERSION $granule_basename)
+  # Use irr_type to distinguish IRR (working diffuser) and IRRR (reference diffuser)
+  irr_type=$(echo $granule_basename | cut -f2 -d_)
+  output_file=$(mkgranule_name -L 1 -p $irr_type -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   run_wavecal $output_file "0"
   ;;
