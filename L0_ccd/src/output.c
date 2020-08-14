@@ -159,20 +159,33 @@ static int create_irr_file (Output_Type *out)
    if (0 != create_file (out))
      return -1;
 
-   if (out->exposure_type != EXPREC_TYPE_IRR_WRK)
+   switch (out->exposure_type)
      {
-        return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_irradiance_template);
+      case EXPREC_TYPE_IRR_REF:
+        return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_ref_irradiance_template);
+
+      case EXPREC_TYPE_IRR_WRK:
+        /* The irradiance file used for processing has a single frame at the
+         * top level to store the average irradiance.  The individual frames
+         * are stored in the /frames group, which has the same uv/vis band structure
+         */
+        if (0 != create_file_of_type (out, out->ncid, 1, TIO_l1_wrk_irradiance_template))
+          return -1;
+        if (0 != TIO_def_grp (out->ncid, "frames", &out->ncid_irr_frames))
+          return -1;
+        return create_file_of_type (out, out->ncid_irr_frames, out->num_recs, TIO_l1_wrk_irradiance_template);
+
+      default:
+        /* No other Level 1 irradiance types are expected.
+         * Irradiance data acquired for checking/correcting linearity
+         * will not be processed beyond Level 0.
+         */
+        break;
      }
 
-   /* The irradiance file used for processing has a single frame at the
-    * top level to store the average irradiance.  The individual frames
-    * are stored in the /frames group, which has the same uv/vis band structure
-    */
-   if (0 != create_file_of_type (out, out->ncid, 1, TIO_l1_irradiance_template))
-     return -1;
-   if (0 != TIO_def_grp (out->ncid, "frames", &out->ncid_irr_frames))
-     return -1;
-   return create_file_of_type (out, out->ncid_irr_frames, out->num_recs, TIO_l1_irradiance_template);
+   tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure type: %d",
+                __func__, out->exposure_type);
+   return -1;
 }
 
 static int create_rad_file (Output_Type *out)
