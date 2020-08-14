@@ -81,15 +81,25 @@ extern int tio_def_var_ground_pixel_quality_flag (int grp);
  */
 extern int tio_set_earth_sun_distance (int grp, double earth_sun_distance);
 
-/** Create a template Level 1 irradiance data file
+/** Create a template Level 1 working irradiance data file
  * @param  ncid          Index returned by nc_create
  * @param  num_steps     Number of mirror steps
  * @param  num_sgrps     Number of scan groups
  * @param  sgrps         Array of TIO_Scan_Group_Type structs
  * @return 0 on success, -1 on error
  */
-extern int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
-                                       TIO_Scan_Group_Type *sgrps);
+extern int TIO_l1_wrk_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                           TIO_Scan_Group_Type *sgrps);
+
+/** Create a template Level 1 reference irradiance data file
+ * @param  ncid          Index returned by nc_create
+ * @param  num_steps     Number of mirror steps
+ * @param  num_sgrps     Number of scan groups
+ * @param  sgrps         Array of TIO_Scan_Group_Type structs
+ * @return 0 on success, -1 on error
+ */
+extern int TIO_l1_ref_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                           TIO_Scan_Group_Type *sgrps);
 
 #define TEMPO_GRANULE_FLAG_IS_FIRST           0x1
 #define TEMPO_GRANULE_FLAG_IS_LAST            0x2

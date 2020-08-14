@@ -125,7 +125,7 @@ report_error:
    return -1;
 }
 
-static int define_global_attrs (int grp)
+static int define_global_attrs (int grp, const char *product_type)
 {
    static _pText_Attr_Type text_attrs[] =
      {
@@ -148,7 +148,7 @@ static int define_global_attrs (int grp)
    if (-1 == _pTIO_define_int_attrs (grp, NC_GLOBAL, int_attrs))
      return -1;
 
-   if (0 != TIO_label_product (grp, TEMPO_PROD_TYPE_IRR, 1, 0))
+   if (0 != TIO_label_product (grp, product_type, 1, 0))
      return -1;
 
    return 0;
@@ -352,8 +352,9 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    return 0;
 }
 
-int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
-                                TIO_Scan_Group_Type *sgrps)
+static int l1_irradiance_template_of_type (int ncid, size_t num_steps, int num_sgrps,
+                                           const char *product_type,
+                                           TIO_Scan_Group_Type *sgrps)
 {
    _pDim_Table_Type dim_table;
    int i;
@@ -366,7 +367,7 @@ int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
     */
    dim_table.step.len = num_steps;
 
-   if ((-1 == define_global_attrs (ncid))
+   if ((-1 == define_global_attrs (ncid, product_type))
        || (-1 == define_global_dims (ncid, &dim_table))
        || (-1 == define_global_vars (ncid, &dim_table)))
      {
@@ -386,4 +387,18 @@ int TIO_l1_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
      }
 
    return 0;
+}
+
+int TIO_l1_wrk_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                    TIO_Scan_Group_Type *sgrps)
+{
+   return l1_irradiance_template_of_type (ncid, num_steps, num_sgrps,
+                                          TEMPO_PROD_TYPE_IRR, sgrps);
+}
+
+int TIO_l1_ref_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
+                                    TIO_Scan_Group_Type *sgrps)
+{
+   return l1_irradiance_template_of_type (ncid, num_steps, num_sgrps,
+                                          TEMPO_PROD_TYPE_IRR_REF, sgrps);
 }
