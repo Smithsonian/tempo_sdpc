@@ -329,6 +329,11 @@ static int compute_current_and_trim (CCD_Type *ccd,
      return -1;
    exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
 
+   if ((exposure_time_per_frame <= 0.0) || (0 == isfinite (exposure_time_per_frame)))
+     {
+        tell_vwarn (0, "%s: exposure time per frame = %f", __func__, exposure_time_per_frame);
+     }
+
    if (0) (void) image_write_raw (exprec->img, "coadd");
 
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))

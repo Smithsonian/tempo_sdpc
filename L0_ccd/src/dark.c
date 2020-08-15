@@ -99,11 +99,11 @@ static int read_image (int ncid, int k, Image_Type *img)
    return 0;
 }
 
-static int image_add (Image_Type *img, Image_Type *count, const Image_Type *tmp)
+static int image_add_weighted (Image_Type *img, Image_Type *weights, double weight, const Image_Type *tmp)
 {
    const Image_Pqf_Bitmap_Type *pqf = tmp->pixel_quality_flags;
    const Image_Pixel_Type *pix = tmp->pixels;
-   Image_Pixel_Type *num = count->pixels;
+   Image_Pixel_Type *wt = weights->pixels;
    Image_Pixel_Type *sum = img->pixels;
    size_t i, n = img->num_rows * img->num_cols;
 
@@ -111,28 +111,70 @@ static int image_add (Image_Type *img, Image_Type *count, const Image_Type *tmp)
      {
         if (pqf[i] == 0)
           {
-             sum[i] += pix[i];
-             num[i] += 1.0;
+             sum[i] += pix[i] * weight;
+             wt[i] += weight;
           }
      }
 
    return 0;
 }
 
-static int image_divide (Image_Type *img, const Image_Type *count)
+static int image_divide (Image_Type *img, const Image_Type *denom)
 {
-   const Image_Pixel_Type *num = count->pixels;
+   const Image_Pixel_Type *den = denom->pixels;
    Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
    Image_Pixel_Type *pix = img->pixels;
    size_t i, n = img->num_rows * img->num_cols;
 
    for (i = 0; i < n; i++)
      {
-        if (num[i] > 0.0)
+        if (pix[i] != IMAGE_PIXEL_FILL_VALUE)
           {
-             pix[i] /= num[i];
+             if (isfinite(den[i]) && (den[i] != 0.0))
+               {
+                  pix[i] /= den[i];
+               }
+             else
+               {
+                  pix[i] = IMAGE_PIXEL_FILL_VALUE;
+                  pqf[i] |= IMAGE_PQF_BAD_PIXEL;
+               }
           }
-        else pqf[i] |= IMAGE_PQF_BAD_PIXEL;
+     }
+
+   return 0;
+}
+
+static int get_averaging_weights (int ncid, int num, double *wt)
+{
+   int k, start, count, num_zero_exposures;
+
+   /* Assume all exposure times are >= 0.
+    * If all exposure_times are zero, then weight equally when computing the mean.
+    * If any exposure_times are non-zero, then weight by exposure time so that the
+    *                               terms with exposure_times=0 contribute nothing.
+    * If the data are packaged so that all images in a single file have the same exposure
+    * time, then this should do the right thing whether the exposure time is zero or not.
+    * If exposure times vary within a single file, then this also seems the right approach.
+    */
+
+   start = 0;
+   count = num;
+   if (0 != TIO_get_var_section (ncid, "exposure_time", &start, &count, TIO_DOUBLE, wt))
+     return -1;
+
+   num_zero_exposures = 0;
+   for (k = 0; k < num; k++)
+     {
+        if (wt[k] == 0.0) num_zero_exposures++;
+     }
+
+   if (num == num_zero_exposures)
+     {
+        for (k = 0; k < num; k++)
+          {
+             wt[k] = 1.0;
+          }
      }
 
    return 0;
@@ -143,14 +185,15 @@ static Image_Type *compute_image_mean (int ncid)
    TIO_Var_Info_Type info = {0};
    Image_Type *img = NULL;
    Image_Type *tmp = NULL;
-   Image_Type *count = NULL;
+   Image_Type *weights = NULL;
+   double *wt = NULL;
    int k, num, status = -1;
 
    if (0 != TIO_inq_var (ncid, "image", &info))
      return NULL;
 
    if ((NULL == (img = image_new (info.dimlens[1], info.dimlens[2])))
-       || (NULL == (count = image_dup (img)))
+       || (NULL == (weights = image_dup (img)))
        || (NULL == (tmp = image_dup (img))))
      goto return_status;
 
@@ -158,15 +201,24 @@ static Image_Type *compute_image_mean (int ncid)
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "averaging %d dark frames...", num);
 
+   if (NULL == (wt = (double *)MALLOC (num * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+   if (0 != get_averaging_weights (ncid, num, wt))
+     goto return_status;
+
    for (k = 0; k < num; k++)
      {
         if (0 != read_image (ncid, k, tmp))
           goto return_status;
-        if (0 != image_add (img, count, tmp))
+        if (0 != image_add_weighted (img, weights, wt[k], tmp))
           goto return_status;
      }
 
-   if (0 != image_divide (img, count))
+   if (0 != image_divide (img, weights))
      goto return_status;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "done");
@@ -175,12 +227,13 @@ static Image_Type *compute_image_mean (int ncid)
 
 return_status:
    image_free (tmp);
-   image_free (count);
+   image_free (weights);
    if (status)
      {
         image_free (img);
         img = NULL;
      }
+   FREE(wt);
 
    return img;
 }

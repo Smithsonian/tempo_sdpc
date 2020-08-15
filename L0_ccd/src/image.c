@@ -170,10 +170,20 @@ void image_scale (Image_Type *img, double s)
    Image_Pixel_Type *pixels = img->pixels;
    int i, n = img->num_rows * img->num_cols;
 
-   for (i = 0; i < n; i++)
+   if (isfinite(s))
      {
-        if (pixels[i] != IMAGE_PIXEL_FILL_VALUE)
-          pixels[i] *= s;
+        for (i = 0; i < n; i++)
+          {
+             if (pixels[i] != IMAGE_PIXEL_FILL_VALUE)
+               pixels[i] *= s;
+          }
+     }
+   else
+     {
+        for (i = 0; i < n; i++)
+          {
+             pixels[i] = IMAGE_PIXEL_FILL_VALUE;
+          }
      }
 }
 
