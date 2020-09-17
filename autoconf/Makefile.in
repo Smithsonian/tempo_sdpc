@@ -5,7 +5,7 @@ include ./Makefile.defines
 
 RM = /bin/rm
 
-TARGETS := all check docs install clean distclean
+TARGETS := all check docs clean distclean
 
 BASE_LIBS   = libtio
 OTHER_LIBS  = libmet libmd libclim
@@ -20,9 +20,14 @@ $(PROGRAMS):	$(LIBRARIES)
 
 SUBDIRS :=  $(LIBRARIES) $(PROGRAMS)
 
-.PHONY:	$(TARGETS) $(SUBDIRS)
+.PHONY:	$(TARGETS) install install-version $(SUBDIRS)
 
 $(TARGETS):	 $(SUBDIRS)
+install:	 $(SUBDIRS) install-version
+
+install-version:
+	./utils/get_sdpc_version.sh > sdpc_version && \
+	$(INSTALL_DATA) sdpc_version $(prefix)/etc
 
 $(SUBDIRS):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
