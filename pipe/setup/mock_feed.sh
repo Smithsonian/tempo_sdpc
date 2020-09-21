@@ -1,6 +1,7 @@
 #! /bin/sh
 
 : "${SDPC_INRSW_ROOT:?SDPC_INRSW_ROOT not set, run this with sdpcrun.sh}"
+: "${SDPC_MOCK_SPEEDUP:=1.0}"
 
 set -u
 set -e
@@ -19,4 +20,4 @@ sed -e s,@INR_PROCESSING_ROOT@,$SDPC_INR_RUN_DIR,g \
        $INR_CONFIG_SRCDIR/${MOCK_LOGGING_CONF_FILE}.in > $MOCK_LOGGING_CONF_FILE
 
 _pgm="${SDPC_INRSW_ROOT}/bin/TempoMockPipeline"
-exec $_pgm $INR_MOCK_FEED_CFG > feed.log 2>&1 &
+exec $_pgm -s $SDPC_MOCK_SPEEDUP $INR_MOCK_FEED_CFG > feed.log 2>&1 &
