@@ -711,6 +711,9 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         outfile_erec_count++;
         outfile_cumulative_erec_count++;
 
+        if (0 != record_source_file_contribution (pmt->ncid, path, 1))
+          goto return_status;
+
         iocsdpc_exprec_close (erec);
         erec = NULL;
 

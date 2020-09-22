@@ -439,6 +439,9 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (0 != write_iru_records (pmt, iru, rec_array))
      goto return_status;
 
+   if (0 != record_source_file_contribution (pmt->ncid, file, iru->num_records))
+     goto return_status;
+
    iocsdpc_iru_close (iru);
    ioclib_fd_close (fd);
    FREE(rec_array);

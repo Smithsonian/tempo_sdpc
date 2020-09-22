@@ -1508,6 +1508,43 @@ int annotate_var (int grp, int varid, const char *descr, const char *units)
    return 0;
 }
 
+int record_source_file_contribution (int grp, const char *source_file, int num_records)
+{
+   TIO_Meta_Type *meta = NULL;
+   const char *varname = "level0_source";
+   char *basename = NULL;
+   char buf[128];
+   int bufsize = sizeof(buf);
+   int n, status = -1;
+
+   if (NULL == (basename = ioclib_basename (source_file)))
+     return -1;
+
+   n = snprintf (buf, bufsize, "%s|%d", basename, num_records);
+   if ((n < 0) || (n >= bufsize))
+     {
+        tell_vwarn (0, "%s: updating metadata variable %s", __func__, varname);
+        return -1;
+     }
+
+   if (NULL == (meta = tio_meta_open ()))
+     return -1;
+
+   if (0 != tio_meta_ncinit (meta, grp, varname, TIO_META_TYPE_STRING))
+     goto return_status;
+
+   if (0 != tio_meta_append_string (meta, varname, buf))
+     goto return_status;
+
+   if (0 != tio_meta_write_ncattr (meta, grp))
+     goto return_status;
+
+   status = 0;
+return_status:
+   tio_meta_close (meta);
+   return status;
+}
+
 int main (int argc, char **argv)
 {
    const char *appname = "L0_format";

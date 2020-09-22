@@ -405,6 +405,9 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (0 != write_avg_sample_freq_attr (pmt, smc->num_records, rec_array))
      goto return_status;
 
+   if (0 != record_source_file_contribution (pmt->ncid, file, smc->num_records))
+     goto return_status;
+
    iocsdpc_smc_close (smc);
    ioclib_fd_close (fd);
    FREE(rec_array);

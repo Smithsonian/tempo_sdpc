@@ -160,6 +160,9 @@ extern int remove_hidden (const char *dirname, const char *basename);
 /** Write comment and units attributes to a specified netCDF file variable */
 extern int annotate_var (int grp, int varid, const char *descr, const char *units);
 
+/** Write source file contribution in each target file */
+extern int record_source_file_contribution (int grp, const char *source_file, int num_entries);
+
 typedef struct Process_Method_Type Process_Method_Type;
 typedef int Process_Method_Callback_Function (Process_Method_Type *, void *);
 

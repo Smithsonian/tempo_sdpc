@@ -479,7 +479,7 @@ return_status:
 
 static int process_tpsec_row_list
 (Process_Method_Type *pmt, const IOCSDPC_TPSec_Type *s,
-    const TPInfo_Type *tpinfo, IOCSDPC_TPSec_Row_Type **row_list)
+    const TPInfo_Type *tpinfo, IOCSDPC_TPSec_Row_Type **row_list, const char *file)
 {
    int grp;
 
@@ -487,6 +487,9 @@ static int process_tpsec_row_list
      return -1;
 
    if (-1 == write_tpsec_row_list (pmt, s, tpinfo, grp, row_list))
+     return -1;
+
+   if (0 != record_source_file_contribution (grp, file, s->num_rows))
      return -1;
 
    return 0;
@@ -550,7 +553,7 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
           }
      }
 
-   if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list))
+   if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list, file))
      goto return_error;
 
    free_tpsec_row_list (row_list, nrows);
