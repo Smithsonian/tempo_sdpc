@@ -257,7 +257,8 @@ static int flush_processed_file_log (Processed_File_Log_Type *flt)
    return fflush (flt->fp);
 }
 
-static int log_processed_file (Processed_File_Log_Type *flt, const char *path, int status)
+static int log_processed_file (Processed_File_Log_Type *flt, const char *path,
+                               time_t mtime_tv_sec, int status)
 {
    struct timeval tv = {0};
 
@@ -281,7 +282,8 @@ static int log_processed_file (Processed_File_Log_Type *flt, const char *path, i
 
    (void) gettimeofday (&tv, NULL);
 
-   if (fprintf (flt->fp, "%ld,%06ld,%d,%s\n", tv.tv_sec, tv.tv_usec, status, ioclib_basename (path)) < 0)
+   if (fprintf (flt->fp, "%ld,%06ld,%d,%s,%ld\n",
+                tv.tv_sec, tv.tv_usec, status, ioclib_basename (path), mtime_tv_sec) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing to log file: %s", __func__, flt->path);
         return -1;
@@ -595,7 +597,11 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
 {
    Process_Method_Type *pmt;
    IOCSDPC_Common_Header_Type chdr = {0};
+   struct stat st = {0};
    int fd, filetype, status;
+
+   if (0 != lstat (file, &st))
+     return -1;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
@@ -619,7 +625,7 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
    status = pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
 
    /* Complain when logging fails, but don't stop processing */
-   (void) log_processed_file (ctrl->log_incoming, file, status);
+   (void) log_processed_file (ctrl->log_incoming, file, st.st_mtim.tv_sec, status);
 
    return status;
 }
