@@ -391,7 +391,10 @@ static int read_instr_list (Instr_Type *instr, const char *path)
           *newline = 0;
 
         if (0 != read_instr1 (instr, buf))
-          return -1;
+          {
+             fclose (fp);
+             return -1;
+          }
      }
 
    fclose (fp);
