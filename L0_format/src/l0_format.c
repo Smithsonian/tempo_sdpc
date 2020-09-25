@@ -100,6 +100,8 @@ static void usage (void)
    fprintf (stderr, "   -r | --register          Perform database registration of archived files\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
    fprintf (stderr, "                            e.g. --cache 'd710[1-4]/h[0-2][0-9]'\n");
+   fprintf (stderr, "                            If DIR begins with '@', it's the path\n");
+   fprintf (stderr, "                            to a file containing a regex list\n");
    fprintf (stderr, "   -t | --tstart SEC        Process cache files newer than SEC since the TEMPO epoch\n");
    fprintf (stderr, "   -V | --Version N         Processing version number\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity (-vv is more verbose)\n");
@@ -891,9 +893,9 @@ return_status:
    return status;
 }
 
-static int process_cache_dirs (Process_Method_Table_Type *tbl,
-                               const TPInfo_Type *tpinfo, Control_Type *ctrl,
-                               const char *cache_dir_pattern)
+static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
+                                      const TPInfo_Type *tpinfo, Control_Type *ctrl,
+                                      const char *cache_dir_pattern)
 {
    IOCLib_Glob_Type *gt = NULL;
    char **files = NULL;
@@ -945,11 +947,6 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
         num_files = 0;
      }
 
-   tell_vinfo (0, "flush caches on exit");
-   if (0 != flush_caches (tbl, tpinfo))
-     goto return_status;
-   (void) flush_processed_file_log (ctrl->log_incoming);
-
    status = 0;
 return_status:
    ioclib_glob_free (gt);
@@ -957,6 +954,56 @@ return_status:
    ioclib_free (path);
 
    return status;
+}
+
+static int process_cache_dirs (Process_Method_Table_Type *tbl,
+                               const TPInfo_Type *tpinfo, Control_Type *ctrl,
+                               const char *cache_dir_arg)
+{
+   if (*cache_dir_arg != '@')
+     {
+        if (0 != process_cache_dir_pattern (tbl, tpinfo, ctrl, cache_dir_arg))
+          return -1;
+     }
+   else
+     {
+        FILE *fp = NULL;
+        const char *path = cache_dir_arg + 1;
+
+        if (NULL == (fp = fopen (path, "r")))
+          {
+             tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s", __func__, path);
+             return -1;
+          }
+
+        for (;;)
+          {
+             char *newline;
+             char buf[1024];
+
+             if (NULL == fgets (buf, sizeof(buf), fp))
+               break;
+             /* Assume no leading whitespace, no line-breaks within regex,
+              * each line ends with a single newline
+              */
+             if (NULL != (newline = strchr (buf, '\n')))
+               *newline = 0;
+
+             if (0 != process_cache_dir_pattern (tbl, tpinfo, ctrl, buf))
+               {
+                  fclose (fp);
+                  return -1;
+               }
+          }
+
+        fclose (fp);
+     }
+
+   tell_vinfo (0, "flush caches on exit");
+   if (0 != flush_caches (tbl, tpinfo))
+     return -1;
+   (void) flush_processed_file_log (ctrl->log_incoming);
+   return 0;
 }
 
 int verify_epoch (time_t epoch)
