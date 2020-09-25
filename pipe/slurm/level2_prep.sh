@@ -75,7 +75,7 @@ etc_dir="$SDPC_ROOT/etc"
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
 l1_repro_dir="$SDPC_RUN_DIR_MASTER/L1/repro"
 l2_incoming="$SDPC_RUN_DIR_MASTER/L2/incoming"
-l2_inputs="$SDPC_RUN_DIR/L2/inputs"
+l2_inputs="$SDPC_RUN_DIR_MASTER/L2/inputs"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
@@ -384,9 +384,6 @@ tar_granule_dir_to_dest "$l1_out_dir"
 if ! test x"$SDPC_LEVEL2_PRODUCTS" = x"NONE"; then
    notify_granule_ready "$l2_incoming"
 else
-   if ! test -h "$l2_inputs" ; then
-      ln -s "$SDPC_RUN_DIR_MASTER/L2/inputs" "$l2_inputs"
-   fi
    local_tar_file="${l1_out_dir}/${rad_basename}.tar"
    /bin/cp "$local_tar_file" "$l2_inputs"
    /bin/rm "$local_tar_file"
