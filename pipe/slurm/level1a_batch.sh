@@ -58,7 +58,7 @@ etc_dir="$SDPC_ROOT/etc"
 l0_repro_dir="$SDPC_RUN_DIR_MASTER/L0/repro"
 l0_out_dir="$SDPC_RUN_DIR/L0/out"
 
-inr_input_cache="$SDPC_RUN_DIR/L1/radiance_inr_staging"
+inr_input_cache="$SDPC_INR_RUN_DIR/Staging/Granules"
 
 # Make a working directory with a local copy of the granule file.
 work_dir=$(basename $granule_basename .nc)
