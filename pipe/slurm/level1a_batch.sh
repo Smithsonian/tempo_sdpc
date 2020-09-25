@@ -55,7 +55,7 @@ file_list_file="$2"
 export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
-l0_repro_dir="$SDPC_RUN_DIR/L0/repro"
+l0_repro_dir="$SDPC_RUN_DIR_MASTER/L0/repro"
 l0_out_dir="$SDPC_RUN_DIR/L0/out"
 
 inr_input_cache="$SDPC_RUN_DIR/L1/radiance_inr_staging"

@@ -73,7 +73,7 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
-l1_repro_dir="$SDPC_RUN_DIR/L1/repro"
+l1_repro_dir="$SDPC_RUN_DIR_MASTER/L1/repro"
 l2_incoming="$SDPC_RUN_DIR/L2/incoming"
 l2_inputs="$SDPC_RUN_DIR/L2/inputs"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"

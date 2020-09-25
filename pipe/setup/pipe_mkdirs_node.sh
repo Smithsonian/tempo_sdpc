@@ -74,7 +74,4 @@ link_existing_dir $SDPC_REFDATA_DIR $SDPC_RUN_DIR/refdata
 link_existing_dir $SDPC_RUN_DIR_MASTER/ancillary $SDPC_RUN_DIR/ancillary
 link_existing_dir $SDPC_RUN_DIR_MASTER/L2/incoming $SDPC_RUN_DIR/L2/incoming
 link_existing_dir $SDPC_RUN_DIR_MASTER/L2/inputs $SDPC_RUN_DIR/L2/inputs
-link_existing_dir $SDPC_RUN_DIR_MASTER/L2/repro $SDPC_RUN_DIR/L2/repro
-link_existing_dir $SDPC_RUN_DIR_MASTER/L1/repro $SDPC_RUN_DIR/L1/repro
-link_existing_dir $SDPC_RUN_DIR_MASTER/L0/repro $SDPC_RUN_DIR/L0/repro
 link_existing_dir $SDPC_INR_RUN_DIR/Staging/Granules $SDPC_RUN_DIR/L1/radiance_inr_staging
