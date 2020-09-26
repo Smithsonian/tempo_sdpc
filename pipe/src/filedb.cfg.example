@@ -1,13 +1,13 @@
 nam227:
 {
-    root_dir = "$SDPC_ROOT/ancillary/met/nam227" ;
+    root_dir = "$SDPC_ANCILLARY_ROOT/met/nam227" ;
     basename_pattern = "*.grib2" ;
     lookup_table = "$SDPC_ROOT/var/nam227.db" ;
 };
 
 nsidc:
 {
-    root_dir = "$SDPC_ROOT/ancillary/snow/nsidc" ;
+    root_dir = "$SDPC_ANCILLARY_ROOT/snow/nsidc" ;
     basename_pattern = "NISE_SSMISF*.HDFEOS" ;
     lookup_table = "$SDPC_ROOT/var/nsidc.db" ;
 };
