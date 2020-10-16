@@ -61,6 +61,7 @@ static void usage (void)
    fprintf (stderr, "   -c | --config FILE     Use this configuration file\n");
    fprintf (stderr, "   -i | --ignore          Ignore scan metadata fields\n");
    fprintf (stderr, "   -d | --diagnostic      Generate diagnostic output\n");
+   fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -184,6 +185,9 @@ static int init_dest_grid (const config_setting_t *setting,
    if ((NULL == (s = config_setting_get_member (setting, "latitude")))
        || (-1 == lookup_grid_spec (s, &dest->ny, &dest->ymin, &dest->ymax, &dest->num_extra_ypoints)))
      return -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "target grid longitude: [%7.3f, %7.3f, %4d]", dest->xmin, dest->xmax, dest->nx);
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "target grid latitude:  [%7.3f, %7.3f, %4d]", dest->ymin, dest->ymax, dest->ny);
 
    return 0;
 }
@@ -700,6 +704,8 @@ static int make_l3_product (const Product_Type *prod,
                continue;
              goto return_status;
           }
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "regridded variable: %s (in) -> %s (out)",
+                   prod->in_var_names[i],  prod->out_var_names[i]);
         if (-1 == Var_write_values (ncid, vb, prod->out_var_names[i],
                                     prod->var_qa_labels[i],
                                     ncid_infile, prod->in_var_names[i]))
@@ -786,6 +792,7 @@ int main (int argc, char **argv)
    int src_num_steps, src_num_xtrack;
    int expect_scan_ident = 1;
    int status = 1;
+   int log_level = 0;
    int want_diagnostic_output = 0;
    static struct option long_options[] =
      {
@@ -793,13 +800,14 @@ int main (int argc, char **argv)
         {"config",     required_argument, 0, 'c'},
         {"ignore",     no_argument,       0, 'i'},
         {"diagnostic", no_argument,       0, 'd'},
+        {"verbose",    no_argument,       0, 'v'},
         {0,0,0,0}
      };
 
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "dhic:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "dhivc:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -819,6 +827,9 @@ int main (int argc, char **argv)
              break;
            case 'd':
              want_diagnostic_output++;
+             break;
+           case 'v':
+             log_level++;
              break;
           }
      }
@@ -841,6 +852,7 @@ int main (int argc, char **argv)
      }
 
    (void) tio_set_cmdline (argc, argv);
+   (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
 
    if (-1 == parse_param_file (param_file, &dest, &product_list))
      goto return_status;
@@ -857,6 +869,8 @@ int main (int argc, char **argv)
                     prod->in_lonlat_grp);
    if (NULL == r)
      goto return_status;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "initialized regrid mapping");
 
    Pixel_regrid_get_srcdims (r, &src_num_steps, &src_num_xtrack);
 
@@ -875,11 +889,14 @@ int main (int argc, char **argv)
           goto return_status;
         if (0 != read_processing_version (prod->input_files[0], &prod->processing_version))
           goto return_status;
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "making L3 product: %s", prod->name);
         if (-1 == make_l3_product (prod, &dest, r, vb, lst))
           goto return_status;
         TIO_free_scan_ident (lst);
         lst = NULL;
      }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "done");
 
    status = 0;
 return_status:

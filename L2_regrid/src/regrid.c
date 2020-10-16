@@ -391,6 +391,8 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
      return -1;
    Pixel_regrid_grow_srcdims (r, max_num_step, max_num_xtrack);
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "map granule pixels to target mesh:");
+
    for (i = 0; i < num_files; i++)
      {
         int num_overlaps;
@@ -428,6 +430,7 @@ find_all_pixel_overlaps (Pixel_Regrid_Type *r, char **files, int num_files,
                           "%s: no contribution to target grid from %s",
                           __func__, files[i]);
           }
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "finished: %s", files[i]);
      }
 
    free_spv_type (spv);
