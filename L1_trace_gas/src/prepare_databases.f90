@@ -190,6 +190,7 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   ! Local variables
   ! ---------------
   INTEGER (KIND=i4) :: j !, locerrstat
+  character (len=256) :: logmsg
 
   if (errstat /= 0) return
 
@@ -206,11 +207,16 @@ SUBROUTINE prep_databases (xtrack_pix, n_sol_wvl, sol_wvl, sol_spc, &
   ! -----------------------------------
   ! Calculate the undersampled spectrum
   ! -----------------------------------
-  IF ( ANY (have_undersampling) ) &
+  IF ( ANY (have_undersampling) ) then
+    write (logmsg, '(a,i5)')"calculate undersampling spectrum: xtrack=", xtrack_pix
+    call tell_log (0, logmsg)
     CALL undersample_spectrum (xtrack_pix, n_rad_wvl, &
-    curr_rad_wvl(1:n_rad_wvl), Slit_Half_Width_1e, Slit_Asym_Factor, &
-    Slit_Shape_Factor, Undersample_Phase, errstat) ! locerrstat )
-  if (errstat /= 0) return
+                               curr_rad_wvl(1:n_rad_wvl), &
+                               Slit_Half_Width_1e, Slit_Asym_Factor, &
+                               Slit_Shape_Factor, Undersample_Phase, &
+                               errstat) ! locerrstat )
+    if (errstat /= 0) return
+  endif
   !errstat = MAX ( errstat, locerrstat )
   !IF ( errstat >= pge_errstat_error ) RETURN
 
