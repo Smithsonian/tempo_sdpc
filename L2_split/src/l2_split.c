@@ -19,7 +19,7 @@ static void usage (void)
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help            print this usage message\n");
    fprintf (stderr, "   -c | --config FILE     configuration file\n");
-   fprintf (stderr, "   -v | --verbose lev     logging level\n");
+   fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -42,12 +42,13 @@ int main (int argc, char **argv)
    const char appname[] = "L2_split";
    char *config_file = "l2_split.cfg";
    config_t cfg;
+   int log_level = 0;
    int status = EXIT_FAILURE;
    static struct option long_options[] =
      {
         {"config",  required_argument, 0, 'c'},
         {"help",    no_argument,       0, 'h'},
-        {"verbose", required_argument, 0, 'v'},
+        {"verbose", no_argument,       0, 'v'},
         {0,0,0,0}
      };
 
@@ -69,7 +70,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hc:v:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hc:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -92,11 +93,8 @@ int main (int argc, char **argv)
              usage();
              break;
            case 'v':
-             {
-                int log_level;
-                if (1 == sscanf (optarg, "%d", &log_level))
-                  (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
-             }
+             log_level++;
+             break;
           }
      }
 
@@ -104,6 +102,7 @@ int main (int argc, char **argv)
      usage();
 
    tio_set_cmdline (argc, argv);
+   (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
 
    if (0 != process_files (&cfg, argc-optind, &argv[optind]))
      {

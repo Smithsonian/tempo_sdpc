@@ -623,6 +623,8 @@ Scan_Type *scan_read_granules (int num_files, char **files, config_t *cfg)
           }
         st->granules[i]  = gr;
 
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "read %s", files[i]);
+
         /* record scan dimensions */
         for (j = 0; j < gr->num_xtrack; j++)
           {
@@ -804,6 +806,8 @@ scan_init_regrid (const Scan_Type *st, const Pixel_Grid_Param_Type *mesh)
      }
    Pixel_regrid_grow_srcdims (r, st->max_step+1, st->max_xtrack+1);
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "map granule pixels to working mesh:");
+
    for (i = 0; i < st->num_granules; i++)
      {
         if (0 != find_granule_overlaps (r, st->granules[i]))
@@ -811,6 +815,7 @@ scan_init_regrid (const Scan_Type *st, const Pixel_Grid_Param_Type *mesh)
              tell_verror (TELL_RUNTIME_ERROR, "%s: unexpected error", __func__);
              goto free_and_return;
           }
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "finished: %s", st->granules[i]->file);
      }
 
    status = 0;
@@ -1047,6 +1052,7 @@ int scan_write_split (const Scan_Type *st, double fill_value,
                           __func__, gr->file);
              return -1;
           }
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "wrote strat/trop split: %s", gr->file);
      }
 
    return 0;

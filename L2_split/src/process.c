@@ -66,6 +66,9 @@ static int init_mesh (config_t *cfg, Pixel_Grid_Param_Type *mesh)
        || (-1 == lookup_grid_spec (s, &mesh->ny, &mesh->ymin, &mesh->ymax, &mesh->num_extra_ypoints)))
      return -1;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "working mesh longitude: [%7.3f, %7.3f, %4d]", mesh->xmin, mesh->xmax, mesh->nx);
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "working mesh latitude:  [%7.3f, %7.3f, %4d]", mesh->ymin, mesh->ymax, mesh->ny);
+
    return 0;
 }
 
@@ -183,6 +186,8 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
         return NULL;
      }
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "mapped filtered vertical strat column onto granule pixels");
+
    num_scan_pixels = sv->num_steps * sv->num_xtrack;
 
    /* Compute the tropospheric vertical column on the native scan pixel grid */
@@ -195,6 +200,8 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
           }
         else vert_trop[i] = nan_value;
      }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "computed vertical trop column in granule pixels");
 
    /* Mask strat/trop variables using original data quality flag */
    for (i = 0; i < num_scan_pixels; i++)
@@ -291,9 +298,13 @@ int process_files (config_t *cfg, int num_files, char **files)
    if (NULL == (mesh_vert_strat = map_vert_strat_to_mesh (sv, &mesh, r_mesh)))
      goto free_and_return;
 
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "regridded vertical strat column onto working mesh");
+
    /* Filter stratospheric vertical column estimate */
    if (0 != filter_vert_strat (&mesh, mesh_vert_strat, cfg))
      goto free_and_return;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "filtered vertical strat column (on working mesh)");
 
    /* Perform strat/trop separation on native scan grid */
    if (NULL == (split = perform_split (sv, r_mesh, mesh_vert_strat)))
@@ -302,6 +313,8 @@ int process_files (config_t *cfg, int num_files, char **files)
    /* Write strat/trop variables to corresponding granule files */
    if (0 != write_split (st, split))
      goto free_and_return;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "done");
 
    status = 0;
 free_and_return:
