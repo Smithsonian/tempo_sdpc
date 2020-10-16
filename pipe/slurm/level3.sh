@@ -80,7 +80,10 @@ public_mirror_symlink()
 # Run L2_split on NO2_L2 data products
 
 if test x"$product_name" = x"NO2_L2" ; then
-   L2_split -c $SDPC_ROOT/etc/l2_split.cfg $l2_paths || error_exit "L2_split failed"
+   # put log file in the the first granule directory
+   first_granule=$(echo $l2_paths | cut -d' ' -f1)
+   logdir=$(dirname $first_granule)
+   L2_split -v -c $SDPC_ROOT/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
 fi
 
@@ -103,7 +106,7 @@ else
    l2_regrid_cfg="${SDPC_ROOT}/etc/l3.cfg"
 fi
 
-(cd $l3_target_dir && L2_regrid $l2_regrid_cfg) || error_exit "L2_regrid failed"
+(cd $l3_target_dir && L2_regrid -v $l2_regrid_cfg > log_regrid_${product_name}.txt 2>&1 ) || error_exit "L2_regrid failed"
 
 insert_fixed_metadata.py $l3_path
 fix_met_format.py ${l3_path}.met
