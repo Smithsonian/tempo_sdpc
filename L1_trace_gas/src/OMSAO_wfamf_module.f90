@@ -117,8 +117,9 @@ CONTAINS
       write_scattering_weights, write_amf_correction
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
-    use ctrlvars, only : yn_stratrop
+    use ctrlvars, only : yn_stratrop, yn_gems
     use clim_module
+    use m_read_gems, only: gems_read_cld
     IMPLICIT NONE
 
     ! ---------------
@@ -260,7 +261,11 @@ CONTAINS
        ! ---------------------
        cloud_file = voc_amf_filenames(voc_omicld_idx)
        call tell_log (1, 'amf_calculation: read cloud-top pressure, cloud fraction from '//trim(cloud_file))
-       call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+       if (.not. yn_gems) then !TEMPO
+         call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+       else !GEMS
+         call gems_read_cld (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+       endif
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
           return

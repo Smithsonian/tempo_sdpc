@@ -189,7 +189,8 @@ CONTAINS
     use tio_module
     use tg_names_module
     use netcdf, only : nf90_nowrite
-    use ctrlvars, only : yn_omi_data
+    use ctrlvars, only : yn_omi_data, yn_gems
+    use m_read_gems, only: gems_read_radiance_lines
 
     IMPLICIT NONE
 
@@ -214,67 +215,53 @@ CONTAINS
     INTEGER   (KIND=i2), DIMENSION (nwavel_ccd,nxtrack,0:nloop-1) :: tmp_flg
     character (len=256) :: logmsg
 
-    !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
-
-    !omi_radiance_errstat(:) = pge_errstat_ok
 
     write (logmsg, '(a,i4,a)')'omi_read_radiance_lines: iline=',iline, &
       ' reading swathname='//trim(omi_radiance_swathname)//' file='//trim(l1bfile)
     call tell_log (2, logmsg)
 
-    ! let errstat flow
-    !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
-    !call l1bread_get1d_r8 (l1bobj, "Time", iline, nloop, omi_time, errstat)
-    !call l1bread_get1d_r4 (l1bobj, "SpacecraftAltitude", iline, nloop, omi_auraalt, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "Latitude", iline, nloop, omi_latitude, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "Longitude", iline, nloop, omi_longitude, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "SolarZenithAngle", iline, nloop, omi_szenith, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "SolarAzimuthAngle", iline, nloop, omi_sazimuth, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "ViewingZenithAngle", iline, nloop, omi_vzenith, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "ViewingAzimuthAngle", iline, nloop, omi_vazimuth, errstat)
-    !call l1bread_get2d_i2 (l1bobj, "TerrainHeight", iline, nloop, omi_height, errstat)
-    !call l1bread_get2d_i2 (l1bobj, "GroundPixelQualityFlags", iline, nloop, omi_geoflg, errstat)
-    !call l1bread_get2d_i1 (l1bobj, "XTrackQualityFlags", iline, nloop, omi_xtrflg_l1b, errstat)
-    !call l1bread_get3d_r4 (l1bobj, "Radiance", iline, nloop, tmp_spc, errstat)
-    !call l1bread_get3d_i2 (l1bobj, "PixelQualityFlags", iline, nloop, tmp_flg, errstat)
-    !call l1bread_get3d_r4 (l1bobj, "Wavelength", iline, nloop, tmp_wvl, errstat)
-    !call l1bread_close (l1bobj)
-    call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time, errstat)
-    call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [iline,0], [nloop,nxtrack], &
-                        omi_latitude(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_longitude, [iline,0], [nloop,nxtrack], &
-                        omi_longitude(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_sz_angle, [iline,0], [nloop,nxtrack], &
-                        omi_szenith(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_sa_angle, [iline,0], [nloop,nxtrack], &
-                        omi_sazimuth(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_vz_angle, [iline,0], [nloop,nxtrack], &
-                        omi_vzenith(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_r4 (tio_l1obj, tg_var_va_angle, [iline,0], [nloop,nxtrack], &
-                        omi_vazimuth(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_i2 (tio_l1obj, tg_var_terrain_height, [iline,0], [nloop,nxtrack], &
-                        omi_height(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get2d_ui4 (tio_l1obj, tg_var_gpqf, [iline,0], [nloop,nxtrack], &
-                        omi_geoflg(1:nxtrack,0:nloop-1), errstat)
-    call tiof_get3d_r4 (tio_l1obj, tg_var_radiance, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
-                        tmp_spc(:,1:nxtrack,0:nloop-1), errstat)
-    call tiof_get3d_i2 (tio_l1obj, tg_var_pqf, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
-                        tmp_flg(:,1:nxtrack,0:nloop-1), errstat)
-    call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], [nloop,nxtrack,nwavel_ccd], &
-                        tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
-    if (yn_omi_data) then
-      call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], &
-           [nloop], omi_auraalt, errstat)
-      call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], &
-           [nloop,nxtrack], omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
-    else
-      !No need to set omi_auraalt as it is only used when writing HE5
-      omi_xtrflg_l1b(1:nxtrack,0:nloop-1) = 0
-    endif
-    call tiof_close (tio_l1obj, errstat)
+    if (yn_gems) then !GEMS data
+      call gems_read_radiance_lines (l1bfile, iline, nxtrack, nloop, &
+           nwavel_ccd, tmp_spc, tmp_wvl, tmp_flg, errstat)
+    else !TEMPO
+      call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
+      call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time,&
+           errstat)
+      call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [iline,0], &
+           [nloop,nxtrack], omi_latitude(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_longitude, [iline,0], &
+           [nloop,nxtrack], omi_longitude(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_sz_angle, [iline,0], &
+           [nloop,nxtrack], omi_szenith(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_sa_angle, [iline,0], &
+           [nloop,nxtrack], omi_sazimuth(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_vz_angle, [iline,0], &
+           [nloop,nxtrack], omi_vzenith(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_r4 (tio_l1obj, tg_var_va_angle, [iline,0], &
+           [nloop,nxtrack], omi_vazimuth(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_i2 (tio_l1obj, tg_var_terrain_height, [iline,0], &
+           [nloop,nxtrack], omi_height(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get2d_ui4 (tio_l1obj, tg_var_gpqf, [iline,0], &
+           [nloop,nxtrack], omi_geoflg(1:nxtrack,0:nloop-1), errstat)
+      call tiof_get3d_r4 (tio_l1obj, tg_var_radiance, [iline,0,0], &
+           [nloop,nxtrack,nwavel_ccd], tmp_spc(:,1:nxtrack,0:nloop-1), errstat)
+      call tiof_get3d_i2 (tio_l1obj, tg_var_pqf, [iline,0,0], &
+           [nloop,nxtrack,nwavel_ccd], tmp_flg(:,1:nxtrack,0:nloop-1), errstat)
+      call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], &
+           [nloop,nxtrack,nwavel_ccd], tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
+      if (yn_omi_data) then
+        call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], &
+             [nloop], omi_auraalt, errstat)
+        call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [iline,0], &
+             [nloop,nxtrack], omi_xtrflg_l1b(1:nxtrack,0:nloop-1), errstat)
+      else
+        !No need to set omi_auraalt as it is only used when writing HE5
+        omi_xtrflg_l1b(1:nxtrack,0:nloop-1) = 0
+      endif
+      call tiof_close (tio_l1obj, errstat)
+    endif !TEMPO/GEMS
 
     if (errstat /= 0) return
 

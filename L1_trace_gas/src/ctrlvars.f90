@@ -52,4 +52,7 @@ module ctrlvars
   ! FIXME JCH temporary switches for tempo development
   logical, public :: yn_disable_omi_features, yn_do_he5_output
 
+  !GEMS data flag, set by command line switch, true = GEMS
+  logical, public :: yn_gems
+
 end module

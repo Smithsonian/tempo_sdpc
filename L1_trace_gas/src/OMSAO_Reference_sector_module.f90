@@ -48,7 +48,8 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
     use OMSAO_indices_module, only : pge_hcho_idx
     use output_tools, only : write_reference_sector_corrected_column
-    use ctrlvars, only : yn_do_he5_output
+    use ctrlvars, only : yn_do_he5_output, yn_gems
+    use m_read_gems, only : gems_read_l1_rad_info
     !USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
     ! This subroutine is a wrapper for the Reference Background corre
@@ -109,8 +110,12 @@ CONTAINS
     ! ---------------------------------------------------
     !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, &
     !                            rpt_rr, errstat)
-    call read_l1_radiance_info (l1b_radref_filename, l1b_channel, &
+    if (.not. yn_gems) then !TEMPO
+      call read_l1_radiance_info (l1b_radref_filename, l1b_channel, &
                                 rpt_rr, errstat)
+    else ! GEMS
+      call gems_read_l1_rad_info (l1b_radref_filename, rpt_rr, errstat)
+    endif
     if (errstat /= 0) return
 
     nTimesRadRR  = rpt_rr%ntimes
@@ -344,7 +349,8 @@ CONTAINS
     USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_error
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname, &
       retrieval_type, alloc_retrieval_type, dealloc_retrieval_type
-    use ctrlvars, only: yn_disable_omi_features
+    use ctrlvars, only: yn_disable_omi_features, yn_gems
+    use m_read_gems, only: gems_read_latitude, gems_read_ice_glint
 
     IMPLICIT NONE
 
@@ -453,10 +459,15 @@ CONTAINS
     ! ---------------------------------
     ! Read radiance reference latitudes
     ! ---------------------------------
-    CALL read_latitude ( &
-      TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-      0, nTimesRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
-      errstat)
+    if (.not. yn_gems) then !TEMPO
+      CALL read_latitude ( TRIM(ADJUSTL(l1b_rad_filename)), &
+           TRIM(ADJUSTL(omi_radiance_swathname)), &
+           0, nTimesRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), &
+           errstat)
+    else
+      call gems_read_latitude (trim(adjustl(l1b_rad_filename)), 0, &
+           nTimesRadRR, rt%latitude(1:nXtrackRadRR,0:nTimesRadRR-1), errstat)
+    endif
     if (errstat /= 0) &
       return
 
@@ -526,9 +537,14 @@ CONTAINS
     ! ----------------------------------
     ! Read L1b glint and snow/ice flags
     ! ----------------------------------
-    CALL omi_read_glint_ice_flags ( &
-      l1b_radref_filename, nXtrackRadRR, nTimesRadRR, mem_snow, &
-      mem_glint, locerrstat )
+    if (.not. yn_gems) then !TEMPO
+      CALL omi_read_glint_ice_flags ( &
+           l1b_radref_filename, nXtrackRadRR, nTimesRadRR, mem_snow, &
+           mem_glint, locerrstat )
+    else !GEMS
+      call gems_read_ice_glint(l1b_radref_filename, nXtrackRadRR, nTimesRadRR,&
+           mem_snow, mem_glint, locerrstat)
+    endif
 
     ! --------------------
     ! OMI zoom mode or not

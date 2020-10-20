@@ -136,6 +136,7 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
   $(ODIR)/he5_output_tools.o \
   $(ODIR)/irradiance_data.o \
   $(ODIR)/l1bread_utils.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/m_write_odl_metadata.o \
   $(ODIR)/metadata_tools.o \
   $(ODIR)/omi_pge_fitting_aux.o \
@@ -159,6 +160,7 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
 $(ODIR)/omi_pge_postprocessing.o: $(SDIR)/omi_pge_postprocessing.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/he5_output_tools.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_read_l1b_data.o \
   $(ODIR)/OMSAO_destriping_module.o \
@@ -191,6 +193,7 @@ $(ODIR)/omi_parameters_module.o: $(SDIR)/omi_parameters_module.f90 \
 $(ODIR)/omi_read_l1b_data.o: $(SDIR)/omi_read_l1b_data.f90 \
   $(ODIR)/angle_sat2toa.o \
   $(ODIR)/ctrlvars.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -286,6 +289,7 @@ $(ODIR)/OMSAO_radiance_ref_module.o: $(SDIR)/OMSAO_radiance_ref_module.f90 \
   $(ODIR)/cache_module.o \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/irradiance_data.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_read_l1b_data.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -305,6 +309,7 @@ $(ODIR)/OMSAO_Reference_sector_module.o: $(SDIR)/OMSAO_Reference_sector_module.f
   $(ODIR)/datafields.o \
   $(ODIR)/ezspline_interpolation.o \
   $(ODIR)/l1bread_utils.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_read_l1b_data.o \
   $(ODIR)/OMSAO_errstat_module.o \
@@ -346,6 +351,7 @@ $(ODIR)/OMSAO_variables_module.o: $(SDIR)/OMSAO_variables_module.f90 \
 $(ODIR)/OMSAO_wfamf_module.o: $(SDIR)/OMSAO_wfamf_module.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/ezspline_interpolation.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \
   $(ODIR)/OMSAO_indices_module.o \
@@ -474,6 +480,7 @@ $(ODIR)/irradiance_data.o: $(SDIR)/irradiance_data.f90 \
   $(ODIR)/arrayutils.o \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/l1bread_utils.o \
+  $(ODIR)/m_read_gems.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \

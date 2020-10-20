@@ -41,7 +41,8 @@ CONTAINS
     USE omi_pge_fitting_aux, ONLY: find_swathline_by_latitude, read_latitude
     USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
     USE arrayutils, only: array_locate_r8
-    use ctrlvars, only: yn_disable_omi_features
+    use ctrlvars, only: yn_disable_omi_features, yn_gems
+    use m_read_gems, only: gems_read_latitude
     IMPLICIT NONE
 
     ! ------------------------------
@@ -104,8 +105,12 @@ CONTAINS
       return
     endif
 
-    CALL read_latitude (rpt_rr%l1bfilename, rpt_rr%swathname, &
+    if (.not. yn_gems) then !TEMPO
+      CALL read_latitude (rpt_rr%l1bfilename, rpt_rr%swathname, &
                         0, ntrr, latr4, errstat)
+    else !GEMS
+      call gems_read_latitude (rpt_rr%l1bfilename, 0, ntrr, latr4, errstat)
+    endif
     if (errstat /= 0) &
       return
 

@@ -15,12 +15,13 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   !USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
     l1b_radref_filename, l1b_channel
-  use ctrlvars, only: yn_radiance_reference
+  use ctrlvars, only: yn_radiance_reference, yn_gems
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
   USE omi_read_l1b_data, ONLY: read_earth_sun_distance !L1Bga_EarthSunDistance
   !use l1bread, only: l1bread_radiance_info
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
+  use m_read_gems, only: gems_read_l1_rad_info, gems_read_latitude
   IMPLICIT NONE
 
   ! ---------------
@@ -61,7 +62,11 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   ! -----------------------------------------------------------------------------------
   !errstat = pge_errstat_ok
   !CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
-  call read_l1_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+  if (.not. yn_gems) then
+    call read_l1_radiance_info(l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+  else ! GEMS
+    call gems_read_l1_rad_info (l1b_rad_filename, rpt_rad, errstat)
+  endif
   if (errstat /= 0) goto 666
 
   !EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
@@ -84,7 +89,12 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
     rpt_rr%swathname = rpt_rad%swathname
   ELSE
     !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
-    call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
+    if (.not. yn_gems) then !TEMPO
+      call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, &
+           errstat)
+    else !GEMS
+      call gems_read_l1_rad_info (l1b_radref_filename, rpt_rr, errstat)
+    endif
     if (errstat /= 0) goto 666
   ENDIF
 
@@ -141,7 +151,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        radiance_reference_lnums, l1b_radref_filename, common_mode_spec
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
        yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, &
-       yn_do_he5_output, yn_wrt_odl
+       yn_do_he5_output, yn_wrt_odl, yn_gems
   USE OMSAO_he5_module,       ONLY:  pge_swath_name, n_lun_inp, lun_input
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
@@ -173,6 +183,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE irradiance_data, only: irradiance_data_init
   use m_write_odl_metadata
   use OMSAO_casestring_module, only : upper_case
+  use m_read_gems, only: gems_read_latitude
 
   IMPLICIT NONE
 
@@ -513,10 +524,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       return
     endif
 
-    CALL read_latitude ( &
+    if (.not. yn_gems) then !TEMPO
+      CALL read_latitude ( &
          TRIM(ADJUSTL(l1b_rad_filename)), &
          TRIM(ADJUSTL(omi_radiance_swathname)), &
          0, ntimes_rad, l1b_rad_latitudes, errstat)
+    else !GEMS
+      call gems_read_latitude (trim(adjustl(l1b_rad_filename)), &
+           0, ntimes_rad, l1b_rad_latitudes, errstat)
+    endif
 
     if (errstat /= 0) return
 

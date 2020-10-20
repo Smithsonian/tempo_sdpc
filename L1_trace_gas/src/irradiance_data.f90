@@ -216,9 +216,9 @@ contains
     USE OMSAO_variables_module,  ONLY: &
       l1b_irrad_filename, l1b_channel
     USE arrayutils, only: array_locate_r4
-    use ctrlvars, only: yn_disable_omi_features
+    use ctrlvars, only: yn_disable_omi_features, yn_gems
+    use m_read_gems, only: gems_read_irrad_data
 
-    !use l1bread
     use l1bread_utils
     use tio_module
     use netcdf, only : nf90_nowrite
@@ -233,6 +233,7 @@ contains
     real (kind=r8), dimension(:,:), allocatable :: &
       wavelengths, spectrum
     integer (kind=i2), dimension (:,:,:), allocatable :: tmp_qflags
+    integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags_2d
     character (len=64) :: swathname
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
@@ -240,76 +241,71 @@ contains
     if (errstat /= 0) return
 
     ! Allow errstat to flow
+    if (yn_gems) then
+      call gems_read_irrad_data (nwavel, nxtrack, wavelengths, spectrum, &
+           tmp_qflags_2d, errstat)
+    else !TEMPO
+      call tell_log (1, 'reading irradiances = '//trim(l1b_irrad_filename))
+      call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
+      call lookup_swathname (l1b_channel, swathname, errstat)
+      call tiof_inq_group (tio_l1obj, swathname, errstat)
+      call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
+      call tiof_inq_dimlen (tio_l1obj, "spectral_channel", nwavel, errstat)
+      if (errstat /= 0) return
 
-    call tell_log (1, 'reading irradiances = '//trim(l1b_irrad_filename))
-
-    !call l1bread_swathname (l1b_irrad_filename, l1b_channel, swathname, errstat)
-    !call l1bread_open_swath (l1b_irrad_filename, swathname, l1bobj, errstat)
-    call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
-    call lookup_swathname (l1b_channel, swathname, errstat)
-    call tiof_inq_group (tio_l1obj, swathname, errstat)
-    call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
-    call tiof_inq_dimlen (tio_l1obj, "spectral_channel", nwavel, errstat)
-    if (errstat /= 0) return
-
-    !nwavel = l1bobj%num_wavelengths
-    !nxtrack = l1bobj%num_xtrack
-
-    allocate (tmp_wavelengths(nwavel, nxtrack,1), &
+      allocate (tmp_wavelengths(nwavel, nxtrack,1), &
               tmp_spectrum(nwavel, nxtrack,1), &
               tmp_qflags (nwavel, nxtrack,1), &
               wavelengths (nwavel, nxtrack), &
               spectrum (nwavel, nxtrack), &
               stat=locerrstat)
-    if (locerrstat /= 0) then
-      call tell_error (tell_malloc_error, "read_irradiance_data: allocate failed", errstat)
-      return
-    endif
+      if (locerrstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "read_irradiance_data: allocate failed", errstat)
+        return
+      endif
 
-    ! Allow errstat to flow through
-    !call l1bread_get2d_r4 (l1bobj, "Irradiance", 0, 1, tmp_spectrum, errstat)
-    !call l1bread_get2d_i2 (l1bobj, "PixelQualityFlags", 0, 1, tmp_qflags, errstat)
-    !call l1bread_get2d_r4 (l1bobj, "Wavelength", 0, 1, tmp_wavelengths, errstat)
-    !call l1bread_close (l1bobj)
-    call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], [1,nxtrack,nwavel], &
-                        tmp_spectrum(:,1:nxtrack,1:1), errstat)
-    call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], [1,nxtrack,-1], &
-                        tmp_qflags(:,1:nxtrack,1:1), errstat)
-    call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,nxtrack,nwavel], &
-                        tmp_wavelengths(:,1:nxtrack,1:1), errstat)
-    call tiof_close (tio_l1obj, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_runtime_error, "read_irradiance_data:  failed reading irradiance data", &
-                       errstat)
-      return
-    endif
+      call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], &
+           [1,nxtrack,nwavel], tmp_spectrum(:,1:nxtrack,1:1), errstat)
+      call tiof_get3d_i2 (tio_l1obj, "pixel_quality_flag", [0,0,0], &
+           [1,nxtrack,-1], tmp_qflags(:,1:nxtrack,1:1), errstat)
+      call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], &
+           [1,nxtrack,nwavel], tmp_wavelengths(:,1:nxtrack,1:1), errstat)
+      call tiof_close (tio_l1obj, errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_runtime_error, &
+             "read_irradiance_data:  failed reading irradiance data",  errstat)
+        return
+      endif
 
-    ! -------------------------------
-    ! Reverse arrays for UV-1 channel.
-    !   Why?  Are they stored in descending order?  --JED
-    ! -------------------------------
-    if (.not.yn_disable_omi_features) then
-    IF ( l1b_channel == 'UV1' ) THEN
-      DO ix = 1, nxtrack
-        tmp_wavelengths(nwavel:1:-1, ix,1) = tmp_wavelengths(1:nwavel,ix,1)
-        tmp_spectrum(nwavel:1:-1, ix,1) = tmp_spectrum(1:nwavel,ix,1)
-        tmp_qflags(nwavel:1:-1, ix,1) = tmp_qflags(1:nwavel,ix,1)
-      END DO
-    END IF
-    endif
+      ! -------------------------------
+      ! Reverse arrays for UV-1 channel.
+      !   Why?  Are they stored in descending order?  --JED
+      ! -------------------------------
+      if (.not.yn_disable_omi_features) then
+        IF ( l1b_channel == 'UV1' ) THEN
+          DO ix = 1, nxtrack
+            tmp_wavelengths(nwavel:1:-1, ix,1) = tmp_wavelengths(1:nwavel,ix,1)
+            tmp_spectrum(nwavel:1:-1, ix,1) = tmp_spectrum(1:nwavel,ix,1)
+            tmp_qflags(nwavel:1:-1, ix,1) = tmp_qflags(1:nwavel,ix,1)
+          END DO
+        END IF
+      endif
 
-    wavelengths = real (tmp_wavelengths(:,:,1), kind=r8)
-    spectrum = real (tmp_spectrum(:,:,1), kind=r8)
-    deallocate (tmp_wavelengths, stat=errstat)
-    if (errstat == 0) deallocate (tmp_spectrum, stat=errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_malloc_error, &
-           "read_irradiance_data: deallocate failed", errstat)
-      return
-    endif
+      wavelengths = real (tmp_wavelengths(:,:,1), kind=r8)
+      spectrum = real (tmp_spectrum(:,:,1), kind=r8)
+      deallocate (tmp_wavelengths, stat=errstat)
+      if (errstat == 0) deallocate (tmp_spectrum, stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             "read_irradiance_data: deallocate failed", errstat)
+        return
+      endif
+      tmp_qflags_2d = tmp_qflags(:,:,1)
+    endif ! TEMPO/GEMS
 
     call package_irradiance_data (nwavel, nxtrack, &
-                                  wavelengths, spectrum, tmp_qflags(:,:,1), &
+                                  wavelengths, spectrum, tmp_qflags_2d, &
                                   errstat)
 
     return

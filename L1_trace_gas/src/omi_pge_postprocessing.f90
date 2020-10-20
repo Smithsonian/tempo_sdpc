@@ -25,7 +25,8 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
   !USE OMSAO_errstat_module
-  use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output
+  use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output, &
+       yn_gems
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
   USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
   USE OMSAO_wfamf_module, ONLY: amf_calculation, &
@@ -37,6 +38,7 @@ SUBROUTINE omi_pge_postprocess ( &
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
+  use m_read_gems, only: gems_read_ice_glint, gems_read_geofields
   !use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
   IMPLICIT NONE
 
@@ -89,19 +91,28 @@ SUBROUTINE omi_pge_postprocess ( &
 !  CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
 !  CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
 !  CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
-  call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
-       sza, vza, saa, vaa, thg, time, errstat)
+  if (.not. yn_gems) then !TEMPO
+    call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
+         sza, vza, saa, vaa, thg, time, errstat)
+  else !GEMS
+    call gems_read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
+         sza, vza, saa, vaa, thg, time, errstat)
+  endif
   if (errstat /= 0) return
 
-  call copy_metadata (l1bfile, errstat)
-  if (errstat /= 0) return
+  if (.not. yn_gems) then !TEMPO
+    call copy_metadata (l1bfile, errstat)
+    if (errstat /= 0) return
 
-  call copy_gpqf_attributes (l1bfile, omi_radiance_swathname, errstat)
-  if (errstat /= 0) return
+    call copy_gpqf_attributes (l1bfile, omi_radiance_swathname, errstat)
+    if (errstat /= 0) return
 
-  call copy_pixel_corners (l1bfile, omi_radiance_swathname, &
-                           ntimes, nXtrack, corners_copied, errstat)
-  if (errstat /= 0) return
+    call copy_pixel_corners (l1bfile, omi_radiance_swathname, &
+         ntimes, nXtrack, corners_copied, errstat)
+    if (errstat /= 0) return
+  else!GEMS
+    corners_copied = .false.
+  endif
   if (.not.corners_copied) then
     CALL compute_pixel_corners ( ntimes, nXtrack, lat, lon, is_szoom, errstat)
     if (errstat /= 0) return
@@ -116,8 +127,13 @@ SUBROUTINE omi_pge_postprocess ( &
   ! ----------------------------------
   ! Read L1b glint and snow/ice flags
   ! ----------------------------------
-  CALL omi_read_glint_ice_flags ( &
-    l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, errstat )
+  if (.not. yn_gems) then !TEMPO
+    CALL omi_read_glint_ice_flags ( &
+         l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, errstat )
+  else !GEMS
+    call gems_read_ice_glint (l1bfile, nxtrack, ntimes, snow_ice_flg, &
+         glint_flg, errstat)
+  endif
   if (errstat /= 0) return
 
   ! -----------

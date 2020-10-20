@@ -266,7 +266,7 @@ contains
 
     USE OMSAO_omidata_module,  ONLY: omi_height, omi_geoflg, omi_latitude,&
       omi_longitude, omi_szenith, omi_sazimuth, omi_vzenith, omi_vazimuth, &
-      omi_time
+      omi_time, omi_xtrflg_l1b
 
     implicit none
 
@@ -361,6 +361,9 @@ contains
     do n=1,nloop-1
       tmp_wvl(:,:,n)=tmp_wvl(:,:,0)
     enddo
+
+    !For now set omi_xtrflg_l1b to zero, since GEMS xtrflg is undefined as yet
+    omi_xtrflg_l1b(1:nxtrack,0:nloop-1)=0
 
     deallocate(tmp_rad, tmp_pqf, stat=errstat)
 
@@ -514,8 +517,6 @@ contains
     endwhere
 
   end subroutine gems_read_cld
-
-
 
 
 end module m_read_gems
