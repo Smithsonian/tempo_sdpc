@@ -511,6 +511,12 @@ $(ODIR)/arrayutils.o: $(SDIR)/arrayutils.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/arrayutils.f90 -o $(ODIR)/arrayutils.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_pgs_include.o: $(SDIR)/m_pgs_include.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_pgs_include.f90 -o $(ODIR)/m_pgs_include.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_gems.o: $(SDIR)/m_read_gems.f90 \
+  $(ODIR)/OMSAO_omidata_module.o \
+  $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/tg_names_module.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_gems.f90 -o $(ODIR)/m_read_gems.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMI_SMF_setmsg.o:	$(SDIR)/OMI_SMF_setmsg.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(OMI_SMF_setmsg_INCS) $(OMI_SMF_setmsg_DEFINES) $(SDIR)/OMI_SMF_setmsg.c -o $(ODIR)/OMI_SMF_setmsg.o
 $(ODIR)/unbufferSTDOUT.o:	$(SDIR)/unbufferSTDOUT.c
