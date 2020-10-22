@@ -10,7 +10,7 @@ module m_read_gems
   private
   public gems_read_l1_rad_info, gems_read_irrad_data, gems_read_latitude, &
        gems_read_ice_glint, gems_read_radiance_lines, gems_read_geofields, &
-       gems_read_cld
+       gems_read_cld, gems_read_earth_sun_distance
 
 contains
 
@@ -41,7 +41,8 @@ contains
     rpt%l1bchannel = "UV2"
 
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
-    call tiof_use_file_epoch (tio_l1obj, errstat)
+    !call tiof_use_file_epoch (tio_l1obj, errstat)
+    call tiof_time_set_taix_epoch("2000-01-01T00:00:00Z",errstat)
     call tiof_inq_dimlen (tio_l1obj, "dim_image_x", rpt%ntimes, errstat)
     call tiof_inq_dimlen (tio_l1obj, "dim_image_y", rpt%nxtrack, errstat)
     call tiof_inq_dimlen (tio_l1obj, "dim_image_band", rpt%nwavel_ccd, errstat)
@@ -163,18 +164,18 @@ contains
     lxtrack=size(latitude,1)
     lstep=size(latitude,2)
 
-    allocate (tmp_lat(ntimes, nxtrack), stat=errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_malloc_error, &
-           "gems_read_latitude: allocate failed", errstat)
-      return
-    endif
-
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_dimlen (tio_l1obj, "dim_image_y", nxtrack, errstat)
     if (errstat /= 0 .or. nxtrack /= lxtrack) then
       call tell_error (tell_io_read_error, &
            "gems_read_latitude: xtrack dimension mismatch", errstat)
+      return
+    endif
+
+    allocate (tmp_lat(ntimes, lxtrack), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "gems_read_latitude: allocate failed", errstat)
       return
     endif
 
@@ -189,7 +190,7 @@ contains
     call tiof_close(tio_l1obj, errstat)
 
     latitude = reshape(tmp_lat, (/nxtrack,ntimes/),order=flip)
-    deallocate( tmp_lat, stat=errstat)
+    deallocate (tmp_lat, stat=errstat)
 
   end subroutine gems_read_latitude
 
@@ -351,15 +352,15 @@ contains
     omi_geoflg(1:nxtrack,0:nloop-1) = &
          reshape(tmp_gpqf,(/nxtrack,nloop/),order=flip)
     ! variables below output via subroutine interface
-    tmp_spc(:,1:nxtrack,0:nloop-1) = &
+    tmp_spc(:,1:nxtrack,1:nloop) = &
          reshape(tmp_rad,(/nwavel_ccd,nxtrack,nloop/),order=flip3d)
-    tmp_flg(:,1:nxtrack,0:nloop-1) = &
+    tmp_flg(:,1:nxtrack,1:nloop) = &
          reshape(tmp_pqf,(/nwavel_ccd,nxtrack,nloop/),order=flip3d)
-    tmp_wvl(:,1:nxtrack,0) = &
+    tmp_wvl(:,1:nxtrack,1) = &
          reshape(tmp_wvl2,(/nwavel_ccd,nxtrack/),order=flip)
     !There has to be a better way to do this:
-    do n=1,nloop-1
-      tmp_wvl(:,:,n)=tmp_wvl(:,:,0)
+    do n=2,nloop
+      tmp_wvl(:,:,n)=tmp_wvl(:,:,1)
     enddo
 
     !For now set omi_xtrflg_l1b to zero, since GEMS xtrflg is undefined as yet
@@ -438,13 +439,13 @@ contains
     endif
 
     ! flip array axes
-    lat(1:nxtrack,0:ntimes-1) = reshape(tmp_lat,(/nxtrack,ntimes/),order=flip)
-    lon(1:nxtrack,0:ntimes-1) = reshape(tmp_lon,(/nxtrack,ntimes/),order=flip)
-    sza(1:nxtrack,0:ntimes-1) = reshape(tmp_sza,(/nxtrack,ntimes/),order=flip)
-    saa(1:nxtrack,0:ntimes-1) = reshape(tmp_saa,(/nxtrack,ntimes/),order=flip)
-    vza(1:nxtrack,0:ntimes-1) = reshape(tmp_vza,(/nxtrack,ntimes/),order=flip)
-    vaa(1:nxtrack,0:ntimes-1) = reshape(tmp_vaa,(/nxtrack,ntimes/),order=flip)
-    thgt(1:nxtrack,0:ntimes-1) = reshape(tmp_hgt,(/nxtrack,ntimes/),order=flip)
+    lat = reshape(tmp_lat,(/nxtrack,ntimes/),order=flip)
+    lon = reshape(tmp_lon,(/nxtrack,ntimes/),order=flip)
+    sza = reshape(tmp_sza,(/nxtrack,ntimes/),order=flip)
+    saa = reshape(tmp_saa,(/nxtrack,ntimes/),order=flip)
+    vza = reshape(tmp_vza,(/nxtrack,ntimes/),order=flip)
+    vaa = reshape(tmp_vaa,(/nxtrack,ntimes/),order=flip)
+    thgt = reshape(tmp_hgt,(/nxtrack,ntimes/),order=flip)
 
   end subroutine gems_read_geofields
 
@@ -517,6 +518,54 @@ contains
     endwhere
 
   end subroutine gems_read_cld
+
+
+  !> Read Earth-sun distance from GEMS L1C radiance file
+  !------------------------------------------------------------------------
+  !
+  ! @param[in]  l1bfile   L1 radiance file name
+  ! @param[out] dist      Earth-sun distance in m
+  ! @param      errstat   error tracking integer
+  !
+  ! @author E. O'Sullivan October 2020
+  !------------------------------------------------------------------------
+  subroutine gems_read_earth_sun_distance (l1bfile, dist, errstat)
+
+    use netcdf, only: nf90_nowrite, nf90_noerr, nf90_global, nf90_get_att
+
+    implicit none
+
+    !input variables
+    character (len=*), intent(in) :: l1bfile
+    !output variables
+    real (kind=4), intent(out) :: dist
+    integer (kind=4), intent(inout) :: errstat
+    !local variables
+    type (tiof_file_type) :: tio_l1obj
+    integer :: ncerr
+    real (kind=8) :: localdist
+
+    if (errstat /= 0) return
+
+    call tiof_open(l1bfile, tio_l1obj, nf90_nowrite, errstat)
+    ncerr = nf90_get_att (tio_l1obj%fileid, nf90_global, "earth_sun_distance",&
+         localdist)
+    call tiof_close(tio_l1obj, errstat)
+    if (errstat /= 0 .or. ncerr /= nf90_noerr) then
+      call tell_error (tell_io_read_error, &
+           "gems_read_erath_sun_distance: failed", errstat)
+      return
+    endif
+
+    !Looks like value can be empty in early files, so just in case:
+    if (localdist < 100.0d0) then
+      dist=149957870700.0
+    else
+      dist=real(localdist,kind=4)
+    endif
+
+  end subroutine gems_read_earth_sun_distance
+
 
 
 end module m_read_gems

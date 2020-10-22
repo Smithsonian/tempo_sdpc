@@ -21,7 +21,8 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   USE omi_read_l1b_data, ONLY: read_earth_sun_distance !L1Bga_EarthSunDistance
   !use l1bread, only: l1bread_radiance_info
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
-  use m_read_gems, only: gems_read_l1_rad_info, gems_read_latitude
+  use m_read_gems, only: gems_read_l1_rad_info, gems_read_latitude, &
+       gems_read_earth_sun_distance
   IMPLICIT NONE
 
   ! ---------------
@@ -69,8 +70,12 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   endif
   if (errstat /= 0) goto 666
 
-  !EarthSunDistance = L1Bga_EarthSunDistance( l1b_rad_filename, rpt_rad%swathname )
-  call read_earth_sun_distance (l1b_rad_filename, EarthSunDistance, errstat)
+  if (.not. yn_gems) then
+    call read_earth_sun_distance (l1b_rad_filename, EarthSunDistance, errstat)
+  else
+    call gems_read_earth_sun_distance(l1b_rad_filename, EarthSunDistance, &
+         errstat)
+  endif
   if (errstat /= 0) goto 666
   omi_radiance_swathname = rpt_rad%swathname
 
@@ -337,7 +342,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   ! Should radiance and radiance-ref swathnames be equal?  The original
   ! code did not have this restriction.  --JED
-  if (trim(omi_radiance_swathname) /= trim(rpt_rr%swathname)) then
+  if (.not.yn_gems .and. trim(omi_radiance_swathname) /= trim(rpt_rr%swathname)) then
     write (*,*) "swathnames are not equal: ", trim(omi_radiance_swathname), &
          " /= ", trim(rpt_rr%swathname)
     write (*,*) "modify omi_get_radiance_reference to use omi_radiance_swathname"
@@ -530,7 +535,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
          TRIM(ADJUSTL(omi_radiance_swathname)), &
          0, ntimes_rad, l1b_rad_latitudes, errstat)
     else !GEMS
-      call gems_read_latitude (trim(adjustl(l1b_rad_filename)), &
+       call gems_read_latitude (trim(adjustl(l1b_rad_filename)), &
            0, ntimes_rad, l1b_rad_latitudes, errstat)
     endif
 
@@ -763,13 +768,15 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !    (2) Compute AMFs
   !    (3) Apply cross-track destriping correction
   ! ---------------------------------------
-  call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
-  CALL omi_pge_postprocess ( &
+  if (.not. yn_gems) then
+    call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
+    CALL omi_pge_postprocess ( &
        l1b_rad_filename, omi_radiance_swathname, pge_idx, &
        ntimes_rad, nxtrack_rad, &
        do_radfit_range, omi_xtrpix_range, &
        omi_is_szoom, n_max_rspec, fit_stats, errstat )
-  if (errstat /= 0) return
+    if (errstat /= 0) return
+  endif
 
   call tell_log (1, 'omi_fitting:  writing output...')
   ! ---------------------

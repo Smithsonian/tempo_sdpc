@@ -241,6 +241,7 @@ CONTAINS
     use OMSAO_indices_module, only : l1b_radiance_lun
     use OMSAO_he5_module, only : granule_year, granule_month, granule_day
     use OMSAO_parameters_module, only : MAX_STR_LEN
+    use ctrlvars, only: yn_gems
     use netcdf
     use tio_module
     use tell_module
@@ -272,15 +273,30 @@ CONTAINS
       return
     endif
 
-    ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, "time_coverage_start", rbd_string)
-    if (ncerr /= nf90_noerr) then
-      call tell_error (tell_io_read_error, "*** reading global attribute time_coverage_start", errstat)
-      return
+    if (.not. yn_gems) then !TEMPO
+      ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, &
+           "time_coverage_start", rbd_string)
+      if (ncerr /= nf90_noerr) then
+        call tell_error (tell_io_read_error, &
+             "*** reading global attribute time_coverage_start", errstat)
+        return
+      endif
+      read (rbd_string, '(i4,1x,i2,1x,i2)') granule_year, granule_month, &
+           granule_day
+    else ! GEMS
+      ncerr = nf90_get_att (tio_l1obj % fileid, nf90_global, &
+           "mission_reference_time", rbd_string)
+      if (ncerr /= nf90_noerr) then
+        call tell_error (tell_io_read_error, &
+             "*** reading global attribute mission_reference_time", errstat)
+        return
+      endif
+      read (rbd_string, '(i4,i2,i2,7x)') granule_year, granule_month, &
+           granule_day
     endif
+
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) return
-
-    read (rbd_string, '(i4,1x,i2,1x,i2)') granule_year, granule_month, granule_day
 
     write(*,*)'metadata_tools::init_metadata: granule_month = ',granule_month
 

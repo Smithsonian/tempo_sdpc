@@ -97,6 +97,7 @@ $(ODIR)/integration_routines.o: $(SDIR)/integration_routines.f90 \
   $(ODIR)/OMSAO_precision_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/integration_routines.f90 -o $(ODIR)/integration_routines.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/metadata_tools.o: $(SDIR)/metadata_tools.f90 \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/OMSAO_casestring_module.o \
   $(ODIR)/OMSAO_errstat_module.o \

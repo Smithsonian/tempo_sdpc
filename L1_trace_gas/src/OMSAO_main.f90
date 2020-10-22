@@ -159,7 +159,6 @@ SUBROUTINE OMSAO_main ( exit_value )
   !IF ( pge_error_status >= pge_errstat_fatal ) GOTO 666
   call slitfunction_open (errstat, use_table=yn_use_labslitfunc)
   if (errstat /= 0) return
-
   ! ---------------------------------------------
   ! Set number of InputPointers and InputVersions
   ! ---------------------------------------------

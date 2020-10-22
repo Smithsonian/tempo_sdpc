@@ -17,7 +17,7 @@ CONTAINS
     use tio_module
     use tg_names_module
     use netcdf, only : nf90_nowrite
-    use ctrlvars, only : yn_omi_data
+    use ctrlvars, only : yn_omi_data, yn_gems
 
     IMPLICIT NONE
 
@@ -40,9 +40,12 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    write (logmsg, '(a, i5)')"DEBUG: In omi_read_binning_factor, l1bfile="// &
-      TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", ntimes=", ntimes
-    call tell_log (1, logmsg)
+    if (.not. yn_gems) then
+      write (logmsg, '(a, i5)')"DEBUG: In omi_read_binning_factor, &
+           l1bfile="//TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", &
+           ntimes=", ntimes
+      call tell_log (1, logmsg)
+    endif
 
     ! Allow error to flow
     !call l1bread_open_swath (l1bfile, l1bswath, l1bobj, errstat)
@@ -217,14 +220,17 @@ CONTAINS
 
     type (tiof_file_type) :: tio_l1obj
 
-    write (logmsg, '(a,i4,a)')'omi_read_radiance_lines: iline=',iline, &
-      ' reading swathname='//trim(omi_radiance_swathname)//' file='//trim(l1bfile)
-    call tell_log (2, logmsg)
 
     if (yn_gems) then !GEMS data
+      write(logmsg, '(a,i4,a)') "omi_read_radiance_lines: iline=",iline, &
+           " GEMS file="//trim(l1bfile)
+      call tell_log(2,logmsg)
       call gems_read_radiance_lines (l1bfile, iline, nxtrack, nloop, &
            nwavel_ccd, tmp_spc, tmp_wvl, tmp_flg, errstat)
     else !TEMPO
+      write (logmsg, '(a,i4,a)')'omi_read_radiance_lines: iline=',iline, &
+      ' reading swathname='//trim(omi_radiance_swathname)//' file='//trim(l1bfile)
+      call tell_log (2, logmsg)
       call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
       call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time,&
            errstat)

@@ -224,6 +224,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     call tell_log (1, "using GEMS mode")
     yn_disable_omi_features = .true.
     yn_gems = .true.
+    yn_omi_data = .false.
   else
     yn_disable_omi_features = .false.
   endif

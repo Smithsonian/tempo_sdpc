@@ -853,6 +853,7 @@ CONTAINS
                                    errstat, amfdiag)
     use clim_module
     use omsao_indices_module, only: sao_molecule_names
+    use ctrlvars, only: yn_gems
     implicit none
 
     type (clim_pres_type), intent(inout) :: cpt
@@ -894,6 +895,11 @@ CONTAINS
     bounds % lon_max = maxval(lon, lon /= r4_missval)
     bounds % lat_min = minval(lat, lat /= r4_missval)
     bounds % lat_max = maxval(lat, lat /= r4_missval)
+
+    if (yn_gems) then
+      call tell_log(1,"WARNING: FORCING MONTH=7 IN AMF CALC")
+      month=7
+    endif
 
     call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
     if (errstat /= 0) return
