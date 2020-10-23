@@ -13,7 +13,7 @@ OTHER_LIBS  = libmet libmd libclim
 LIBRARIES   = $(BASE_LIBS) $(OTHER_LIBS)
 
 PROGRAMS    = L1_trace_gas L1_cloud L1_o3_total L1_o3_profile L2_regrid L2_split \
-              L0_format L0_ccd wavecal L1_inr_prep L1_inr_post plan pipe
+              L0_format L0_ccd wavecal L1_inr_prep L1_inr_post plan pipe utils
 
 $(OTHER_LIBS):	$(BASE_LIBS)
 $(PROGRAMS):	$(LIBRARIES)

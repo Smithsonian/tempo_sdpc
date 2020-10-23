@@ -308,7 +308,8 @@ AC_CONFIG_FILES([\
  pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in \
  cron/Makefile:cron/Makefile.in \
  cron/crontab:cron/crontab.in \
- cron/pda_lftp.script:cron/pda_lftp.script.in
+ cron/pda_lftp.script:cron/pda_lftp.script.in \
+ utils/Makefile:utils/Makefile.in
 ])
 AC_OUTPUT
 

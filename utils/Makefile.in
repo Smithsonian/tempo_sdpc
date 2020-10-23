@@ -1,0 +1,39 @@
+# -*- sh -*-
+
+prefix = @prefix@
+
+all:
+	@echo "targets: install"
+
+SCRIPT_FILES = plot_iru.py plot_smc.py plot_image.py
+
+SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
+
+INSTALL = @INSTALL@
+MKINSDIR = ../autoconf/mkinsdir.sh
+
+install_directories:
+	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
+
+install_scripts:
+	@for X in $(SCRIPT_FILES); \
+	do \
+		echo $(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		$(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install:	install_directories install_scripts
+
+check:
+
+docs:
+
+clean:
+
+distclean:
+
+
+

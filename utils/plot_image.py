@@ -1,0 +1,88 @@
+#! /usr/bin/env python3
+
+import os
+import socket
+import sys
+import subprocess
+import math
+import argparse
+import netCDF4
+import numpy as np
+
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+
+plt.rc('text', usetex=True)
+
+def read_image (filename, path, slab):
+    nc = netCDF4.Dataset (filename, 'r')
+    var = nc[path]
+    num_dims = len(var.dimensions)
+    if num_dims == 3:
+        img = var[slab,:,:]
+    elif num_dims == 2:
+        img = var[:,:]
+    else:
+        print ("*** Error: not supported: {} has dimension {}".format(path, num_dims))
+        raise
+    nc.close()
+    return img
+
+def main():
+    parser = argparse.ArgumentParser(description='plot image')
+    parser.add_argument('--min', help="min pixel value (for color scale)", default=None, type=float)
+    parser.add_argument('--max', help="max pixel value (for color scale)", default=None, type=float)
+    parser.add_argument('--outfile', help="output filename")
+    parser.add_argument('--index', help="image index (in 3D array)", type=int, default=0)
+    parser.add_argument('varpath', help="variable path")
+    parser.add_argument('filepath', help="file path")
+    #parser.add_argument('step', help="mirror_step index")
+    if len(sys.argv)==1:
+        parser.print_usage(sys.stderr)
+        sys.exit(0)
+    args = parser.parse_args()
+
+    img = read_image (args.filepath, args.varpath, args.index)
+
+    plt_filename = args.outfile
+    pdf = PdfPages(plt_filename)
+
+    fig, ax = plt.subplots (1, 1)
+    fig.set_size_inches([7,10])
+    #plt.subplots_adjust (hspace=0, wspace=0)
+    fig = plt.figure(1)
+    the_fontsize = 15
+
+    if not args.min is None:
+        vmin = args.min
+    else:
+        vmin = np.quantile(img, 0.025)
+
+    if not args.max is None:
+        vmax = args.max
+    else:
+        vmax = np.quantile(img, 0.975)
+
+    ax.tick_params(labelsize=the_fontsize)
+    im = ax.imshow(img, vmin=vmin, vmax=vmax)
+    cbar = fig.colorbar (im, ax=ax)
+    cbar.ax.tick_params(labelsize=the_fontsize)
+    cbar.ax.yaxis.offsetText.set_fontsize(the_fontsize)  # Seriously? Good lord.
+
+    title_var = "\\verb|%s[%d]|" % (args.varpath, args.index)
+
+    title_file = "\\verb|%s|" % (os.path.basename(args.filepath))
+
+    fig.suptitle (title_file, y=0.95, fontsize=the_fontsize)
+    ax.set_title (title_var, fontsize=the_fontsize)
+
+    pdf.savefig(fig)
+    plt.close(fig)
+
+    pdf.close()
+
+if __name__ == '__main__':
+    main()
