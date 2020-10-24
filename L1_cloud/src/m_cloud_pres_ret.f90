@@ -116,7 +116,7 @@ contains
          using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
          wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
          write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask, &
-         read_gems
+         read_gems, gems_snow_index, have_omi_data
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -218,7 +218,10 @@ contains
         ! Add check for extreme viewing zenith angles
         if (sat_zen(ip,iLine) > sat_zen_max) qc(ip,iLine)=IBSET(qc(ip,iLine),1)
 
-        if (BTEST(geoflg(ip+1,iLine),6)) qc(ip,iLine)=IBSET(qc(ip,iLine),15)
+        !FIXME - suspect this gpqf check is only needed for OMI
+        if (have_omi_data) then
+          if (BTEST(geoflg(ip+1,iLine),6)) qc(ip,iLine)=IBSET(qc(ip,iLine),15)
+        endif
 
         bad_pix = BTEST(qc(ip,iLine),15) .or. &
              BTEST(meas_qual_flg(iLine),1) .or. &
@@ -555,7 +558,11 @@ contains
 
         !set qc if snow/ice
         !====================
-        NISE = IBITS( geoflg(ip+1, iLine), 8, 7)
+        if (.not. read_gems) then
+          NISE = IBITS( geoflg(ip+1, iLine), 8, 7)
+        else
+          NISE = gems_snow_index(ip+1, iLine)
+        endif
         if( NISE >= 50 .and. NISE <= 103) qc(ip, iLine) = IBSET(qc(ip, iLine),5)
 
         if (no_ret_ps .and. .not. shift .and. .not. squeeze) then

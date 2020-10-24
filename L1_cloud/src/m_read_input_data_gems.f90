@@ -251,7 +251,7 @@ contains
 
     use m_vars, only: time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
-         azimuth, fill_value
+         azimuth, fill_value, gems_snow_index
 
     implicit none
     !input variables
@@ -261,7 +261,7 @@ contains
     !local variables
     real (kind=4), dimension(nLines,nXtrack) :: tmp_lat, tmp_lon, tmp_sza, &
          tmp_saa, tmp_vza, tmp_vaa
-    integer (kind=2), dimension(nLines,nXtrack) :: tmp_hgt, tmp_gflg
+    integer (kind=2), dimension(nLines,nXtrack) :: tmp_hgt, tmp_gflg, tmp_snow
     integer (kind=1), dimension(nLines,nXtrack) :: tmp_xtqf
     integer, dimension(1:2), parameter :: flip = (/2,1/)
     type (tiof_file_type) :: tio_l1obj
@@ -287,6 +287,8 @@ contains
          [nXtrack,nLines], tmp_hgt, errstat)
     call tiof_get2d_i2 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
          [nXtrack,nLines], tmp_gflg, errstat)
+    call tiof_get2d_i2 (tio_l1obj, "snow_index", [0,0], &
+         [nXtrack,nLines], tmp_snow, errstat)
     call tiof_get2d_i1 (tio_l1obj, "xtrack_quality_flag", [0,0], &
          [nXtrack,nLines], tmp_xtqf, errstat)
     !No main data quality flag
@@ -310,6 +312,7 @@ contains
     terr_height = reshape(tmp_hgt,(/nXtrack,nLines/),order=flip)
     ! FIXME - flag translation!!!!
     anomflg = reshape(tmp_xtqf,(/nXtrack,nLines/),order=flip)
+    gems_snow_index = reshape(tmp_snow,(/nXtrack,nLines/),order=flip)
     geoflg = int(reshape(tmp_gflg,(/nXtrack,nLines/),order=flip), kind=4)
 
 

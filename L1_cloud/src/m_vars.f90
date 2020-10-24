@@ -104,6 +104,7 @@ module m_vars
   logical, allocatable, dimension (:) :: land_flg ! pixel on land?
   INTEGER (KIND=4), DIMENSION(:,:), allocatable :: geoflg ! geolocation flags
   INTEGER (KIND=1), DIMENSION(:,:), allocatable :: anomflg ! cross-track
+  integer (kind=2), dimension(:,:), allocatable :: gems_snow_index
   ! quality flags
   INTEGER (KIND=2), dimension(:), allocatable :: mflg ! measurement 
   ! quality flag from L1B data

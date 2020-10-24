@@ -605,7 +605,7 @@ contains
          reflect_cld, eff_cld_frac, eff_cld_frac2, rad_cld_frac, cld_pres2, & 
          chlorophyll, biases, biases2, stds, stds2, chi_sqr, chi_sqr2, &
          land_flg, chlcl, qc, qc2, fill, shifts, shifts2, squeezes, &
-         nXtrack, nLines, nWavel, fill_value
+         nXtrack, nLines, nWavel, fill_value, gems_snow_index
 
     implicit none
     integer (kind=4), intent (inout) :: errstat
@@ -621,6 +621,7 @@ contains
          terr_height(nXtrack,nLines), &
          geoflg(nXtrack,nLines), &
          anomflg(nXtrack,nLines), &
+         gems_snow_index(nXtrack,nLines), &
          mflg(nLines), &
          quality_flagL(nWavel,nXtrack), &
          w12d(0:nWavel-1,0:nXtrack-1), &
@@ -663,6 +664,7 @@ contains
 
     geoflg=0 
     anomflg=0
+    gems_snow_index=0
     quality_flagL=0
     w12d = 0.0
     f12d=0.
