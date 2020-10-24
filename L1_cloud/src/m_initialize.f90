@@ -116,6 +116,11 @@ contains
         read_he4 = .false.
         write_he5 = .false.
         have_omi_data = .false.
+      else if (trim(arg) == "-gems") then
+        read_he4 = .false.
+        write_he5 = .false.
+        have_omi_data = .false.
+        read_gems = .true.
       else if (trim(arg) == "-noret") then
         noret = .true.
       ! FIXME - temporary flag for proof-of-concept ODL ASCII test
@@ -357,7 +362,8 @@ contains
     print *, '-he4_in     read HDFEOS4 input'
     print *, '-he5_out    write HDFEOS5 output'
     print *
-    print *, '-tempo      expect TEMPO-fortmat netCDF input'
+    print *, '-tempo      expect TEMPO-format netCDF input'
+    print *, '-gems       expect GEMS netCDF input'
     print *
     print *, "Last Revised: 22 September 2017      (E. O'Sullivan)  "
     print *

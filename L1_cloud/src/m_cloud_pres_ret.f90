@@ -99,6 +99,7 @@ contains
     use m_pgs_include
     use tell_module
     use m_cloud_pres_mod
+    use m_read_input_data_gems, only: bad_rad_lambda_gems
     use m_vars, ONLY: azimuth, bad_obs_flag, biases, & 
          chi_sqr, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
          cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
@@ -114,7 +115,8 @@ contains
          squeezes, stds, sza, theta, theta_oc, using_resid, & 
          using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
          wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
-         write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask
+         write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask, &
+         read_gems
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -245,7 +247,11 @@ contains
 
         !check for bad radiances
         !=======================
-        call bad_rad_lambda(ip, iLine, errstat)
+        if (.not. read_gems) then
+          call bad_rad_lambda(ip, iLine, errstat)
+        else
+          call bad_rad_lambda_gems (ip, iLine, errstat)
+        endif
         if (check_solar) then
           if (btest(qc(ip,iLine),11)) then
             do i=0, nobs-1

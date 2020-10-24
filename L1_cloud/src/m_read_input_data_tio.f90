@@ -6,9 +6,8 @@ module m_read_input_data_tio
   use netcdf, only : nf90_nowrite
   use m_read_metadata_tio
 
-  public read_input_data_tio
-  private read_cld_dimensions, read_cld_geo_data, read_cld_rad_data, &
-       alloc_scan
+  public read_input_data_tio, alloc_scan
+  private read_cld_dimensions, read_cld_geo_data, read_cld_rad_data
 
 contains
 

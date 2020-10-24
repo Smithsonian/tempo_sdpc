@@ -9,6 +9,7 @@ program OMCLDRR
   use m_initialize
   use m_read_input_data
   use m_read_input_data_tio
+  use m_read_input_data_gems
   use m_read_tables_tio
   use m_read_ocean_table_tio
   use m_write_output_data
@@ -123,7 +124,11 @@ program OMCLDRR
 !    ext_index=index(filename,'.he4')
 !    filename_in_nc=filename(1:ext_index-1)//'.nc'
     if (read_he4) iLine=iLine-1 
-    call read_input_data_tio(filename_in_nc, errstat)
+    if (.not. read_gems) then
+      call read_input_data_tio(filename_in_nc, errstat)
+    else
+      call read_input_data_gems(filename_in_nc, errstat)
+    endif
   endif
   if (errstat /= 0) then
     call tell_error (tell_io_error, &
@@ -152,7 +157,11 @@ program OMCLDRR
       endif
       !netCDF version
       if (read_nc) then
-        call read_input_data_tio(filename_in_nc, errstat)
+        if (.not. read_gems) then
+          call read_input_data_tio(filename_in_nc, errstat)
+        else
+          call read_input_data_gems(filename_in_nc, errstat)
+        endif
         if(errstat /= 0) goto 999
       endif
 
@@ -268,8 +277,10 @@ program OMCLDRR
            "create_output_file: failed", &
            errstat)
     endif
-    call copy_pixel_corners (filename_in_nc, nTimes, nXtrack, errstat)
-    call copy_hdr_metadata (filename_in_nc, errstat)
+    if (.not. read_gems) then
+      call copy_pixel_corners (filename_in_nc, nTimes, nXtrack, errstat)
+      call copy_hdr_metadata (filename_in_nc, errstat)
+    endif
     call label_output_file (tempo_prod_type_cldrr, processing_version, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "failed writing metadata", &

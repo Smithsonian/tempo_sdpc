@@ -78,6 +78,7 @@ module m_vars
   logical :: write_nc=.true. ! write netCDF output files?
   logical :: do_cloud_mask=.true. ! create cloud mask product?
   logical :: have_omi_data=.true. ! are we using OMI or TEMPO data?
+  logical :: read_gems=.false.
 
   ! FILENAMES and PATHS
   character(len=255) :: solar_path='../out/' ! path used by write_solar

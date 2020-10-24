@@ -51,6 +51,7 @@ m_HDFEOS_attr.f90
 m_read_input_data.f90
 m_read_input_data_tio.f90
 m_read_solar_data_tio.f90
+m_read_input_data_gems.f90
 m_read_solar_flux.f90
 m_read_metadata_tio.f90
 m_write_HDFEOS_attr.f90
