@@ -57,7 +57,7 @@ def main():
 
     fig, ax = plt.subplots (1, 1)
     # fig.set_size_inches([7,10])
-    #plt.subplots_adjust (hspace=0, wspace=0)
+    plt.subplots_adjust (hspace=0, wspace=0)
     fig = plt.figure(1)
     the_fontsize = 15
 
@@ -86,10 +86,12 @@ def main():
 
     title_file = "\\verb|%s|" % (os.path.basename(args.filepath))
 
-    fig.suptitle (title_file, y=0.98, fontsize=the_fontsize)
-    ax.set_title (title_var, fontsize=the_fontsize)
+    #fig.suptitle (title_file, fontsize=the_fontsize)
+    ax.set_title (title_file + "\n" + title_var, fontsize=the_fontsize)
 
-    pdf.savefig(fig)
+    plt.tight_layout()
+
+    pdf.savefig(fig, bbox_inches='tight')
     plt.close(fig)
 
     pdf.close()
