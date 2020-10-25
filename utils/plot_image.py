@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
@@ -37,6 +38,7 @@ def main():
     parser.add_argument('--max', help="max pixel value (for color scale)", default=None, type=float)
     parser.add_argument('--outfile', help="output filename")
     parser.add_argument('--index', help="image index (in 3D array)", type=int, default=0)
+    parser.add_argument('--rot90', help="rotate image for display, ROT90*90 degrees; ROT90>0 is counter-clockwise, ROT90<0 is clockwise", type=int, default=0)
     parser.add_argument('varpath', help="variable path")
     parser.add_argument('filepath', help="file path")
     #parser.add_argument('step', help="mirror_step index")
@@ -47,11 +49,14 @@ def main():
 
     img = read_image (args.filepath, args.varpath, args.index)
 
+    if not args.rot90 == 0:
+        img = np.rot90(img, k=args.rot90, axes=(0,1))
+
     plt_filename = args.outfile
     pdf = PdfPages(plt_filename)
 
     fig, ax = plt.subplots (1, 1)
-    fig.set_size_inches([7,10])
+    # fig.set_size_inches([7,10])
     #plt.subplots_adjust (hspace=0, wspace=0)
     fig = plt.figure(1)
     the_fontsize = 15
@@ -67,8 +72,13 @@ def main():
         vmax = np.quantile(img, 0.975)
 
     ax.tick_params(labelsize=the_fontsize)
-    im = ax.imshow(img, vmin=vmin, vmax=vmax)
-    cbar = fig.colorbar (im, ax=ax)
+    im = ax.imshow(img, vmin=vmin, vmax=vmax, origin='lower')
+
+    # create an axes on the right side of ax. The width of cax will be 5%
+    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = fig.colorbar (im, cax=cax)
     cbar.ax.tick_params(labelsize=the_fontsize)
     cbar.ax.yaxis.offsetText.set_fontsize(the_fontsize)  # Seriously? Good lord.
 
@@ -76,7 +86,7 @@ def main():
 
     title_file = "\\verb|%s|" % (os.path.basename(args.filepath))
 
-    fig.suptitle (title_file, y=0.95, fontsize=the_fontsize)
+    fig.suptitle (title_file, y=0.98, fontsize=the_fontsize)
     ax.set_title (title_var, fontsize=the_fontsize)
 
     pdf.savefig(fig)

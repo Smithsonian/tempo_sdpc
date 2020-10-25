@@ -19,30 +19,27 @@ plt.rc('text', usetex=True)
 
 plt.rc('lines', linewidth=0.5)
 
-class SMC_Series (object):
-    def __init__(self, t=None, proc_meas_x=None, proc_meas_y=None):
+class HK_Series (object):
+    def __init__(self, t=None, var=None):
         self.time = t
-        self.proc_meas_x = proc_meas_x
-        self.proc_meas_y = proc_meas_y
+        self.var = var
 
     def append(self, s):
         if self.time is None:
             self.time = s.time
-            self.proc_meas_x = s.proc_meas_x
-            self.proc_meas_y = s.proc_meas_y
+            self.var = s.var
         else:
             self.time = np.append (self.time, s.time)
-            self.proc_meas_x = np.append (self.proc_meas_x, s.proc_meas_x)
-            self.proc_meas_y = np.append (self.proc_meas_y, s.proc_meas_y)
+            self.var = np.append (self.var, s.var)
 
-def read_smc_series (filename):
+def read_hk_series (filename, varpath):
     nc = netCDF4.Dataset (filename, 'r')
-    t = nc.variables['time'][:]
-    proc_meas_x = nc.variables['proc_meas_x'][:]
-    proc_meas_y = nc.variables['proc_meas_y'][:]
-    s = SMC_Series (t, proc_meas_x, proc_meas_y)
+    timevarpath = "{}/time".format(os.path.dirname(varpath))
+    t = nc[timevarpath][:]
+    var = nc[varpath][:]
+    hk = HK_Series (t, var)
     nc.close()
-    return s
+    return hk
 
 def autoscale_ylim (ax, x, y):
     xlim = ax.get_xlim()
@@ -53,10 +50,11 @@ def autoscale_ylim (ax, x, y):
     ax.set_ylim (ymin - pad, ymax + pad)
 
 def main():
-    parser = argparse.ArgumentParser(description='plot SMC')
+    parser = argparse.ArgumentParser(description='plot HK')
     parser.add_argument('--tmin', help="start time [sec]", default=None, type=float)
     parser.add_argument('--tmax', help="end time [sec]", default=None, type=float)
     parser.add_argument('--outfile', help="output filename")
+    parser.add_argument('varpath', help="variable path")
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     #parser.add_argument('step', help="mirror_step index")
     if len(sys.argv)==1:
@@ -64,25 +62,25 @@ def main():
         sys.exit(0)
     args = parser.parse_args()
 
-    smc = SMC_Series()
+    hk = HK_Series()
     for f in args.filenames:
-        smc.append(read_smc_series (f))
+        hk.append(read_hk_series (f, args.varpath))
 
-    t0 = smc.time[0]
-    t_last = smc.time[-1]
+    t0 = hk.time[0]
+    t_last = hk.time[-1]
 
-    if args.tmin:
-        tmin = args.tmin
-    else:
+    if args.tmin == None:
         tmin = t0
+    else:
+        tmin = args.tmin
 
     if tmin < t0:
         print ('WARNING: tmin precedes first data point: t0 = {}'.format(t0))
 
-    if args.tmax:
-        tmax = args.tmax
-    else:
+    if args.tmax == None:
         tmax = t_last
+    else:
+        tmax = args.tmax
 
     if tmax > t_last:
         print ('WARNING: tmax lies beyond the last data point: t_last = {}'.format(t_last))
@@ -90,26 +88,23 @@ def main():
     plt_filename = args.outfile
     pdf = PdfPages(plt_filename)
 
-    fig, axs = plt.subplots (2, 1, sharex='row')
+    fig, axs = plt.subplots (1, 1)
     plt.subplots_adjust (hspace=0, wspace=0)
-    (ax1, ax2) = axs
     fig = plt.figure(1)
 
-    ax1.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
+    ax = axs
+    
+    varpath_label = "\\verb|{}|".format(args.varpath)
+    fig.suptitle (varpath_label)
+    ax.set_title ('t=[{},{}]'.format(tmin, tmax))
 
-    t = smc.time-t0
+    t = hk.time - t0
 
-    ax1.set_xlim (tmin-t0, tmax-t0)
-    autoscale_ylim (ax1, t, smc.proc_meas_x)
-    ax1.plot(t, smc.proc_meas_x)
-    ax1.set_ylabel ('proc\_meas\_x [$\mu$rad]')
-    ax1.set_title ('SMC, t=[{},{}]'.format(tmin, tmax))
-
-    ax2.set_xlim (tmin-t0, tmax-t0)
-    autoscale_ylim (ax2, t, smc.proc_meas_y)
-    ax2.plot(t, smc.proc_meas_y)
-    ax2.set_ylabel ('proc\_meas\_y [$\mu$rad]')
-    ax2.set_xlabel ('elapsed time [sec]')
+    ax.set_xlim (tmin-t0, tmax-t0)
+    autoscale_ylim (ax, t, hk.var[:])
+    ax.plot(t, hk.var[:])
+    ax.set_ylabel (varpath_label)
+    ax.set_xlabel ('elapsed time [sec]')
 
     pdf.savefig(fig)
     plt.close(fig)

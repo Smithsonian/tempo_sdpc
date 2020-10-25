@@ -5,7 +5,7 @@ prefix = @prefix@
 all:
 	@echo "targets: install"
 
-SCRIPT_FILES = plot_iru.py plot_smc.py plot_image.py
+SCRIPT_FILES = plot_iru.py plot_smc.py plot_image.py plot_hk.py
 
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
 

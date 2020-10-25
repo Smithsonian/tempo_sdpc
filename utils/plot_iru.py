@@ -40,6 +40,14 @@ def read_iru_series (filename):
     nc.close()
     return iru
 
+def autoscale_ylim (ax, x, y):
+    xlim = ax.get_xlim()
+    i = np.where ((xlim[0] < x) & (x < xlim[1]))[0]
+    ymin = y[i].min()
+    ymax = y[i].max()
+    pad = 0.02 * (ymax - ymin)
+    ax.set_ylim (ymin - pad, ymax + pad)
+
 def main():
     parser = argparse.ArgumentParser(description='plot IRU')
     parser.add_argument('--tmin', help="start time [sec]", default=None, type=float)
@@ -89,8 +97,11 @@ def main():
     for i in range(4):
         ax = axs[i]
         ax.set_xlim (tmin-t0, tmax-t0)
+        autoscale_ylim (ax, t, iru.gyro_output[:,i])
         ax.plot(t, iru.gyro_output[:,i])
         ax.set_ylabel ('gyro\_output[{}]'.format(i))
+        if i < 3:
+            ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 
     axs[3].set_xlabel ('elapsed time [sec]')
 
