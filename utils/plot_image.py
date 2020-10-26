@@ -71,7 +71,7 @@ def main():
     # fig.set_size_inches([7,10])
     plt.subplots_adjust (hspace=0, wspace=0)
     fig = plt.figure(1)
-    the_fontsize = 15
+    the_fontsize = 12
 
     if not args.min is None:
         vmin = args.min
