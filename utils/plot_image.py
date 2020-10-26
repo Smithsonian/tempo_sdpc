@@ -19,9 +19,10 @@ import matplotlib.colors as colors
 plt.rc('text', usetex=True)
 
 class Img_Type (object):
-    def __init__(self, img, dimensions):
+    def __init__(self, img, dimensions, units):
         self.image = img
         self.dimensions = dimensions
+        self.units = units
 
 def read_image (filename, path, slab):
     nc = netCDF4.Dataset (filename, 'r')
@@ -36,8 +37,12 @@ def read_image (filename, path, slab):
     else:
         print ("*** Error: not supported: {} has dimension {}".format(path, num_dims))
         raise
+    if 'units' in var.__dict__:
+        units = var.units
+    else:
+        units = ''
     nc.close()
-    return Img_Type (img, dims)
+    return Img_Type (img, dims, units)
 
 def main():
     parser = argparse.ArgumentParser(description='plot image')
@@ -86,12 +91,13 @@ def main():
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = fig.colorbar (im, cax=cax)
+    cbar.set_label (r"\verb|%s|" % (img.units), fontsize=the_fontsize)
     cbar.ax.tick_params(labelsize=the_fontsize)
     cbar.ax.yaxis.offsetText.set_fontsize(the_fontsize)  # Seriously? Good lord.
 
-    title_var = "\\verb|%s[%d]|" % (args.varpath, args.index)
+    title_var = r"\verb|%s[%d]|" % (args.varpath, args.index)
 
-    title_file = "\\verb|%s|" % (os.path.basename(args.filepath))
+    title_file = r"\verb|%s|" % (os.path.basename(args.filepath))
 
     #fig.suptitle (title_file, fontsize=the_fontsize)
     ax.set_title (title_file + "\n" + title_var, fontsize=the_fontsize)
@@ -102,8 +108,8 @@ def main():
     else:
         y_index = 1
         x_index = 0
-    ax.set_ylabel ("\\verb|%s| index" % (img.dimensions[y_index]), fontsize=the_fontsize)
-    ax.set_xlabel ("\\verb|%s| index" % (img.dimensions[x_index]), fontsize=the_fontsize)
+    ax.set_ylabel (r"\verb|%s| index" % (img.dimensions[y_index]), fontsize=the_fontsize)
+    ax.set_xlabel (r"\verb|%s| index" % (img.dimensions[x_index]), fontsize=the_fontsize)
 
     plt.tight_layout()
 

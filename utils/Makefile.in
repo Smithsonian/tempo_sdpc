@@ -6,7 +6,7 @@ all:
 	@echo "targets: install"
 
 SCRIPT_FILES = plot_iru.py plot_smc.py plot_image.py plot_hk.py \
-               sdpc_panoply.sh
+               plot_level2.py plot_level3.py sdpc_panoply.sh
 
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
 
