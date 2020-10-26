@@ -18,19 +18,26 @@ import matplotlib.colors as colors
 
 plt.rc('text', usetex=True)
 
+class Img_Type (object):
+    def __init__(self, img, dimensions):
+        self.image = img
+        self.dimensions = dimensions
+
 def read_image (filename, path, slab):
     nc = netCDF4.Dataset (filename, 'r')
     var = nc[path]
     num_dims = len(var.dimensions)
     if num_dims == 3:
         img = var[slab,:,:]
+        dims = var.dimensions[1:]
     elif num_dims == 2:
         img = var[:,:]
+        dims = var.dimensions[:]
     else:
         print ("*** Error: not supported: {} has dimension {}".format(path, num_dims))
         raise
     nc.close()
-    return img
+    return Img_Type (img, dims)
 
 def main():
     parser = argparse.ArgumentParser(description='plot image')
@@ -50,7 +57,7 @@ def main():
     img = read_image (args.filepath, args.varpath, args.index)
 
     if not args.rot90 == 0:
-        img = np.rot90(img, k=args.rot90, axes=(0,1))
+        img.image = np.rot90(img.image, k=args.rot90, axes=(0,1))
 
     plt_filename = args.outfile
     pdf = PdfPages(plt_filename)
@@ -64,15 +71,15 @@ def main():
     if not args.min is None:
         vmin = args.min
     else:
-        vmin = np.quantile(img, 0.025)
+        vmin = np.quantile(img.image, 0.025)
 
     if not args.max is None:
         vmax = args.max
     else:
-        vmax = np.quantile(img, 0.975)
+        vmax = np.quantile(img.image, 0.975)
 
     ax.tick_params(labelsize=the_fontsize)
-    im = ax.imshow(img, vmin=vmin, vmax=vmax, origin='lower')
+    im = ax.imshow(img.image, vmin=vmin, vmax=vmax, origin='lower')
 
     # create an axes on the right side of ax. The width of cax will be 5%
     # of ax and the padding between cax and ax will be fixed at 0.05 inch.
@@ -88,6 +95,15 @@ def main():
 
     #fig.suptitle (title_file, fontsize=the_fontsize)
     ax.set_title (title_file + "\n" + title_var, fontsize=the_fontsize)
+
+    if (args.rot90 % 2) == 0:
+        y_index = 0
+        x_index = 1
+    else:
+        y_index = 1
+        x_index = 0
+    ax.set_ylabel ("\\verb|%s| index" % (img.dimensions[y_index]), fontsize=the_fontsize)
+    ax.set_xlabel ("\\verb|%s| index" % (img.dimensions[x_index]), fontsize=the_fontsize)
 
     plt.tight_layout()
 
