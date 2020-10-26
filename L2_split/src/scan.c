@@ -940,7 +940,8 @@ typedef struct
 }
 Name_Type;
 
-static int write_vertical_column_attributes (int grp, double fill_value, const Name_Type *vcol)
+static int write_vertical_column_attributes (int grp, double fill_value, const char *units,
+                                             const Name_Type *vcol)
 {
    const char coordinate_string[] = "longitude latitude";
 
@@ -948,7 +949,8 @@ static int write_vertical_column_attributes (int grp, double fill_value, const N
      return -1;
 
    if ((0 != TIO_put_att (grp, vcol->varid, "coordinates", TIO_CHAR, sizeof(coordinate_string), coordinate_string))
-       || (0 != TIO_put_att (grp, vcol->varid, "long_name", TIO_CHAR, 1+strlen(vcol->long_name), vcol->long_name)))
+       || (0 != TIO_put_att (grp, vcol->varid, "long_name", TIO_CHAR, 1+strlen(vcol->long_name), vcol->long_name))
+       || (0 != TIO_put_att (grp, vcol->varid, "units", TIO_CHAR, 1 + strlen(units), units)))
      return -1;
 
    return 0;
@@ -970,9 +972,10 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
         .long_name = "stratosphere nitrogen dioxide vertical column",
         .varid = 0
      };
+   char units_slant_col[256] = {0};
    int start[2], count[2];
-   int i, num_steps, num_xtrack;
-   int ncid, grp, status = -1;
+   int i, num_steps, num_xtrack, varid_slant_col;
+   int ncid, grp_support, grp_product, status = -1;
 
    if (0 != TIO_open (gr->file, NC_WRITE, &ncid))
      return -1;
@@ -980,28 +983,32 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
    if (0 != tio_history_append_cmdline (ncid))
      goto close_and_return;
 
-   if (0 != TIO_inq_grp (ncid, "support_data", &grp))
+   if (0 != TIO_inq_grp (ncid, "support_data", &grp_support))
      goto close_and_return;
 
-   if (-1 == TIO_inq_var (grp, "vertical_column_total", &vi))
+   if (-1 == TIO_inq_var (grp_support, "vertical_column_total", &vi))
      goto close_and_return;
 
-   if (0 != TIO_inq_grp (ncid, "product", &grp))
+   if ((0 != tio_inq_varid (grp_support, "fitted_slant_column", &varid_slant_col))
+       || (0 != TIO_get_att (grp_support, varid_slant_col, "units", TIO_CHAR, units_slant_col)))
      goto close_and_return;
 
-   if (0 != tio_inq_varid (grp, vtrop.name, &vtrop.varid))
+   if (0 != TIO_inq_grp (ncid, "product", &grp_product))
+     goto close_and_return;
+
+   if (0 != tio_inq_varid (grp_product, vtrop.name, &vtrop.varid))
      {
-        if (0 != TIO_def_var (grp, vtrop.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vtrop.varid))
+        if (0 != TIO_def_var (grp_product, vtrop.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vtrop.varid))
           goto close_and_return;
-        if (0 != write_vertical_column_attributes (grp, fill_value, &vtrop))
+        if (0 != write_vertical_column_attributes (grp_product, fill_value, units_slant_col, &vtrop))
           goto close_and_return;
      }
 
-   if (0 != tio_inq_varid (grp, vstrat.name, &vstrat.varid))
+   if (0 != tio_inq_varid (grp_product, vstrat.name, &vstrat.varid))
      {
-        if (0 != TIO_def_var (grp, vstrat.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vstrat.varid))
+        if (0 != TIO_def_var (grp_product, vstrat.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vstrat.varid))
           goto close_and_return;
-        if (0 != write_vertical_column_attributes (grp, fill_value, &vstrat))
+        if (0 != write_vertical_column_attributes (grp_product, fill_value, units_slant_col, &vstrat))
           goto close_and_return;
      }
 
@@ -1018,8 +1025,8 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
         count[0] = 1;
         count[1] = num_xtrack;
 
-        if ((0 != TIO_put_var_section (grp, vtrop.name, start, count, TIO_DOUBLE, vtrop_i))
-            || (0 != TIO_put_var_section (grp, vstrat.name, start, count, TIO_DOUBLE, vstrat_i)))
+        if ((0 != TIO_put_var_section (grp_product, vtrop.name, start, count, TIO_DOUBLE, vtrop_i))
+            || (0 != TIO_put_var_section (grp_product, vstrat.name, start, count, TIO_DOUBLE, vstrat_i)))
           {
              goto close_and_return;
           }
