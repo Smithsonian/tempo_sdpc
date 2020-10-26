@@ -557,6 +557,7 @@ contains
     !       errstat)
     !  return
     !endif
+    call tell_log (0,"Earth-Sun distance correction not implemented yet!")
     dist_irrad=149597870000.0
 
     call read_earth_sun_dist_gems(filename_in_nc,dist_rad,errstat)
