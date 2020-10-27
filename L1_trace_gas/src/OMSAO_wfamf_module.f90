@@ -261,11 +261,12 @@ CONTAINS
        ! ---------------------
        cloud_file = voc_amf_filenames(voc_omicld_idx)
        call tell_log (1, 'amf_calculation: read cloud-top pressure, cloud fraction from '//trim(cloud_file))
-       if (.not. yn_gems) then !TEMPO
+       call tell_log(1,"WARNING: EXPECTING TEMPO-FORMAT CLOUD FILE!")
+!       if (.not. yn_gems) then !TEMPO
          call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
-       else !GEMS
-         call gems_read_cld (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
-       endif
+!       else !GEMS
+!         call gems_read_cld (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
+!       endif
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, "reading cloud file: "//trim(cloud_file), errstat)
           return
@@ -875,6 +876,8 @@ CONTAINS
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
     real (kind=r4) :: hour_f, lon_f, lat_f
     character (len=6) :: clim_db_molecule_name
+    real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
+
 
     if (errstat /= 0) return
 
@@ -889,21 +892,24 @@ CONTAINS
     call tio_f_taix_time_to_utc_caldate (t_beg, year(1), month(1), day(1), hour_beg)
     call tio_f_taix_time_to_utc_caldate (t_end, year(2), month(2), day(2), hour_end)
 
+    if (yn_gems) then
+      call tell_log (1,"WARNING: CALIBRATION NOT IN PLACE FOR GEMS, FUDGING LAT & LON LIMITS")
+      fudge_lon = 0.0-lon
+      fudge_lat = lat+10.0
+    else
+      fudge_lon=lon
+      fudge_lat=lat
+    endif
+
     bounds % hour_beg = real (hour_beg, kind=r4)
     bounds % hour_end = real (hour_end, kind=r4)
-    bounds % lon_min = minval(lon, lon /= r4_missval)
-    bounds % lon_max = maxval(lon, lon /= r4_missval)
-    bounds % lat_min = minval(lat, lat /= r4_missval)
-    bounds % lat_max = maxval(lat, lat /= r4_missval)
-
-    if (yn_gems) then
-      call tell_log(1,"WARNING: FORCING MONTH=7 IN AMF CALC")
-      month=7
-    endif
+    bounds % lon_min = minval(fudge_lon, fudge_lon /= r4_missval)
+    bounds % lon_max = maxval(fudge_lon, fudge_lon /= r4_missval)
+    bounds % lat_min = minval(fudge_lat, fudge_lat /= r4_missval)
+    bounds % lat_max = maxval(fudge_lat, fudge_lat /= r4_missval)
 
     call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
     if (errstat /= 0) return
-
     nz = clim_pres_nz (cpt)
     nlayers = nz - 1
     allocate (pres(nz), vmr(nlayers), partial_column(nlayers))
@@ -941,8 +947,8 @@ CONTAINS
           call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
           hour_f = real (hour, kind=r4)
           
-          lon_f = lon(ixtrack,itimes)
-          lat_f = lat(ixtrack,itimes)
+          lon_f = fudge_lon(ixtrack,itimes)
+          lat_f = fudge_lat(ixtrack,itimes)
 
           ! FIXME - this is just temporary
           cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
@@ -964,7 +970,7 @@ CONTAINS
           ! Compute partical columns
           call clim_partial_column (pres, vmr, partial_column, errstat)
           if (errstat /= 0) then
-             call tell_error (tell_runtime_error, "libclim_climatology: calculating partiacl column", errstat)
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
              cycle
           end if

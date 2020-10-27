@@ -768,7 +768,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   !    (2) Compute AMFs
   !    (3) Apply cross-track destriping correction
   ! ---------------------------------------
-  if (.not. yn_gems) then
     call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
     CALL omi_pge_postprocess ( &
        l1b_rad_filename, omi_radiance_swathname, pge_idx, &
@@ -776,7 +775,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        do_radfit_range, omi_xtrpix_range, &
        omi_is_szoom, n_max_rspec, fit_stats, errstat )
     if (errstat /= 0) return
-  endif
 
   call tell_log (1, 'omi_fitting:  writing output...')
   ! ---------------------
