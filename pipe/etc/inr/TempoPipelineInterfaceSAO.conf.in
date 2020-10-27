@@ -39,6 +39,8 @@ statusReportTime=0
 granuleTime=360
 # The regular expression for filename to determine whether a file is a granule
 filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})(\.\w+)??\.nc$
+# The regular expression for GOES reference imagery
+referenceRegex=^OR_ABI-(L\w{1,2})-(\w{4,})-(M\d)(C\d{2})_(G\d{2})_s(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})_e(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})_c(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})\.nc$
 
 ## The actual time bounds of GNA cutout relatively to start time of Full Disk
 
