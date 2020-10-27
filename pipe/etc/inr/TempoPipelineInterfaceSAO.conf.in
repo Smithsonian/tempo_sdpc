@@ -38,7 +38,7 @@ statusReportTime=0
 # The amount of time each granule covers, in seconds
 granuleTime=360
 # The regular expression for filename to determine whether a file is a granule
-filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})\.nc$
+filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})(\.\w+)??\.nc$
 
 ## The actual time bounds of GNA cutout relatively to start time of Full Disk
 
