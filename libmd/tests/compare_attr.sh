@@ -11,7 +11,7 @@ $OTS_ROOT/bin/ncdump -h $ncfile >| nc_header.txt
 #comparison values
 #cmlat_in="3.276634e-07"
 #cmlon_in="-1.60647e-07"
-geospatial_bnds_in="POLYGON((10.0000 -10.0000,10.0000 10.0000,-10.0000 10.0000,-10.0000 -6.0000))"
+geospatial_bnds_in="POLYGON((-10.0000 10.0000,10.0000 10.0000,10.0000 -10.0000,-6.0000 -10.0000))"
 geospatial_bnds_crs_in="EPSG:4326"
 geospatial_lon_min_in="-10"
 geospatial_lon_max_in="10"

@@ -1288,8 +1288,9 @@ static int make_acdd_geospatial_bounds (const float *lon, const float *lat, int 
    lon_range[1] = lat_range[1] = -FLT_MAX;
 
    /* geospatial_bounds format:
-    * geospatial_bounds = POLYGON((lon0 lat0, lon1 lat1, ... lon0 lat0))
-    * For each lon lat pair, we need 9+9+1 = 19 characters.  This allows
+    * geospatial_bounds = POLYGON((lat0 lon0, lat1 lon1, ... lat0 lon0))
+    * Coordinates of each point _must_ be ordered as lat_i lon_i.
+    * For each lat lon pair, we need 9+9+1 = 19 characters.  This allows
     * for 7 significant figures, plus sign, plus decimal for each value,
     * plus a space between them.  For N vertices, we'll also have N-1 commas.
     */
@@ -1313,7 +1314,8 @@ static int make_acdd_geospatial_bounds (const float *lon, const float *lat, int 
         if (lon_i > lon_range[1]) lon_range[1] = lon_i;
         if (lat_i < lat_range[0]) lat_range[0] = lat_i;
         if (lat_i > lat_range[1]) lat_range[1] = lat_i;
-        if ((n = snprintf (p, end_str-p, "%c%0.4f %0.4f", c, lon_i, lat_i)) < 0)
+        /* Coordinates of each point _must_ be ordered as lat_i lon_i */
+        if ((n = snprintf (p, end_str-p, "%c%0.4f %0.4f", c, lat_i, lon_i)) < 0)
           {
              TIO_FREE(*str);
              *str = NULL;
