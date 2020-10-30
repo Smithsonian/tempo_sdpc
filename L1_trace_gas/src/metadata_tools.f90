@@ -333,7 +333,7 @@ CONTAINS
 
     locerrstat = pge_errstat_ok
 
-    write(*,*)'called metadata_tools::check_metadata_consistency - DISABLED - IMMEDIATE RETURN ***'
+    !write(*,*)'called metadata_tools::check_metadata_consistency - DISABLED - IMMEDIATE RETURN ***'
     return
 
     ! -----------------------------------------------------------
@@ -453,7 +453,7 @@ CONTAINS
 
     locerrstat = pge_errstat_ok
 
-    write(*,*)'called metadata_tools::set_l2_metadata - DISABLED - IMMEDIATE RETURN ***'
+    !write(*,*)'called metadata_tools::set_l2_metadata - DISABLED - IMMEDIATE RETURN ***'
     return
 
     ! ----------------
@@ -1115,7 +1115,7 @@ CONTAINS
     INTEGER   (KIND=i4) :: ipgos
     CHARACTER (LEN=3)   :: pstr, sstr
 
-    write(*,*)'called metadata_tools::set_automatic_quality_flag - DISABLED - IMMEDIATE RETURN ***'
+!    write(*,*)'called metadata_tools::set_automatic_quality_flag - DISABLED - IMMEDIATE RETURN ***'
     return
 
     write (pstr, '(i0)') qa_percent_passed

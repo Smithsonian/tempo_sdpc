@@ -261,7 +261,9 @@ CONTAINS
        ! ---------------------
        cloud_file = voc_amf_filenames(voc_omicld_idx)
        call tell_log (1, 'amf_calculation: read cloud-top pressure, cloud fraction from '//trim(cloud_file))
-       call tell_log(1,"WARNING: EXPECTING TEMPO-FORMAT CLOUD FILE!")
+       if (yn_gems) then
+         call tell_log(1,"WARNING: EXPECTING TEMPO-FORMAT CLOUD FILE!")
+       endif
 !       if (.not. yn_gems) then !TEMPO
          call read_cloud_params (cloud_file, nt, nx, l2cfr, l2ctp, errstat)
 !       else !GEMS
