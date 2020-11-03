@@ -6,6 +6,9 @@ require ("cmdopt");
 
 private variable Node_Name = "$HOST"$;
 
+private variable Upload_Subdir = "ingest/tempo";
+%private variable Upload_Subdir = strftime ("tempo_test_%Y-%m-%d", gmtime(_time()));
+
 define make_file_entry (path, data_type, st, extname_is_nc)
 {
    variable s = struct
@@ -162,9 +165,14 @@ TOTAL_FILE_COUNT = $num_files
      throw IOError, "closing $filename"$;
 }
 
-define make_target_dir ()
+define append_target_subdir (dir)
 {
-   return strftime ("tempo_test_submission_%Y-%m-%d", gmtime(_time()));
+   if (Upload_Subdir != NULL)
+     {
+        return path_concat (dir, Upload_Subdir);
+     }
+
+   return dir;
 }
 
 define write_lftp_script (dest, types, pdr_files, script_file)
@@ -176,8 +184,15 @@ define write_lftp_script (dest, types, pdr_files, script_file)
    () = fprintf (fp, "open --user %s --password %s sftp://%s\n",
                  dest.user, dest.password, dest.host);
    () = fprintf (fp, "set xfer:log-file lftp_log.%s\n", strftime ("%Y%m%dT%H%M%SZ", gmtime(_time)));
-   () = fprintf (fp, "mkdir %s\n", dest.target_dir);
-   () = fprintf (fp, "cd %s\n", dest.target_dir);
+
+   if (Upload_Subdir != NULL)
+     {
+        % The mkdir is commented out because it generates an error
+        % message when the directory exists.  The -f option would
+        % suppress the message, but that's too heavy-handed.
+        %() = fprintf (fp, "mkdir -p %s\n", dest.target_dir);
+        () = fprintf (fp, "cd %s\n", dest.target_dir);
+     }
 
    variable f, g, t;
 
@@ -299,7 +314,7 @@ define slsh_main ()
      usage();
 
    variable dest = read_netrc_file (netrc_file);
-   dest.target_dir = path_concat (dest.target_dir, make_target_dir ());
+   dest.target_dir = append_target_subdir (dest.target_dir);
 
    variable nc_file_list_file = __argv[i];
 
