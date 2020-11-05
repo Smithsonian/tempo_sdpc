@@ -563,15 +563,12 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
 
         for (k = 0; k < len; k++)
           {
-             if (tmp_pqf[k] == 0)
+             if (isfinite(tmp_irr[k]) && (tmp_irr[k] != IMAGE_PIXEL_FILL_VALUE))
                {
                   num[k]     += 1;
                   irr[k]     += tmp_irr[k];
                   irr_err[k] += tmp_irr_err[k] * tmp_irr_err[k];
-               }
-             else
-               {
-                  pqf[k] |= tmp_pqf[k];
+                  pqf[k]     |= tmp_pqf[k];
                }
           }
      }
