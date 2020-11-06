@@ -2,7 +2,7 @@
 #SBATCH --output=/dev/null
 
 # exit on error
-set -e
+#set -e
 # exit upon any usage of an undefined variable
 set -u
 ulimit -s unlimited
@@ -20,5 +20,10 @@ srun --ntasks=1 --cpus-per-task=1 --exclusive \
      L1_o3_profile
 
 exit_status="$?"
+
+if test X"$exit_status" != X0 ; then
+   printf "\nsrun exit_status=$exit_status\n" >> log_o3_profile.txt
+fi
+
 echo $exit_status > exit_status
 exit $exit_status
