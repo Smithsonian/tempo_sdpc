@@ -1623,12 +1623,14 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
           {
              int num_xfer_s, num_xfer1, num_xfer2;
              float ctesq;
+#if 0
              if (pqf[s] != 0)
                {
                   /* Presumably we don't need uncertainties for bad pixels */
                   pnsq[s] = IMAGE_PIXEL_FILL_VALUE;
                   continue;
                }
+#endif
              num_xfer_s = (sstep < 0) ? (1+s) : (se - s);
              num_xfer1 = num_xfer_p + num_xfer_smear + num_xfer_s;
              num_xfer2 = num_xfer_p + num_xfer1;
