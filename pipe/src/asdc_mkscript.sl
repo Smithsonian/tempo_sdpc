@@ -95,19 +95,9 @@ define entry_string (entry, target_dir)
      chksum = entry.file_chksum,
      chksum_type = entry.file_chksum_type;
 
-% FIXME (2020 Nov 5):
-% The ASDC ingest system is currently a bit confused.
-% Apparently the directory path that's visible to me is
-% different from the directory path that the ingest system
-% sees, so if I the PDR file contains the absolute path,
-% the ingest system fails, and we get "FILE NOT FOUND".
-% As a workaround, instead of using this:
-%    DIRECTORY_ID = $target_dir;
-% we will temporarily use this:
-%    DIRECTORY_ID = .;
    variable str =
 ` OBJECT = FILE_SPEC;
-    DIRECTORY_ID = .;
+    DIRECTORY_ID = $target_dir;
     FILE_ID = $id;
     FILE_TYPE = $type;
     FILE_SIZE = $size;
