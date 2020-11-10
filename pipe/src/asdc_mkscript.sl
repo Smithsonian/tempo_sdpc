@@ -47,7 +47,7 @@ define process_file (types, path_nc)
    variable tok = strtok (basename_nc, "_");
    variable data_type = strjoin (tok[[0:2]], "_");
    variable product_type = strjoin (tok[[1:3]], "_");
-   variable data_version = atoi(strtrim_beg (tok[3], "V"));
+   variable data_version = tok[3];
    variable nc_entry = make_file_entry (path_nc, data_type, st_nc, 1);
 
    variable path_met = path_nc + ".met";
