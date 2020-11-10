@@ -187,11 +187,16 @@ define write_lftp_script (dest, types, pdr_files, script_file)
 
    if (Upload_Subdir != NULL)
      {
+#iffalse
         % The mkdir is commented out because it generates an error
         % message when the directory exists.  The -f option would
         % suppress the message, but that's too heavy-handed.
         %() = fprintf (fp, "mkdir -p %s\n", dest.target_dir);
         () = fprintf (fp, "cd %s\n", dest.target_dir);
+#else
+        % Use a relative path to work around some confusion at ASDC
+        () = fprintf (fp, "cd %s\n", Upload_Subdir);
+#endif
      }
 
    variable f, g, t;
