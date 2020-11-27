@@ -42,8 +42,8 @@ CONTAINS
 
     if (.not. yn_gems) then
       write (logmsg, '(a, i5)')"DEBUG: In omi_read_binning_factor, &
-           l1bfile="//TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", &
-           ntimes=", ntimes
+           &l1bfile="//TRIM(l1bfile)//", l1bswath="//TRIM(l1bswath)//", &
+           &ntimes=", ntimes
       call tell_log (1, logmsg)
     endif
 

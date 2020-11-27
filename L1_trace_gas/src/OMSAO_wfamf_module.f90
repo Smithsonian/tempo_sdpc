@@ -8,6 +8,8 @@ MODULE OMSAO_wfamf_module
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, i4_missval, r4_missval, r8_missval
   use tell_module
+  use tio_module
+  use ctrlvars, only: yn_gems
   USE OMSAO_he5_module, ONLY: pge_swath_id, &
     he5_start_4d, he5_edge_4d, he5_stride_4d, &
     he5_start_3d, he5_edge_3d, he5_stride_3d, &
@@ -820,8 +822,17 @@ CONTAINS
     ! Local variables
     integer :: year, month, day
     integer (kind=i4) :: ix, it
-    real (kind=r8) :: hour
+    real (kind=r8) :: hour, tai93_offset
     real (kind=r4) :: pressure
+    ! If gems, need to offset for different epoch
+    tai93_offset=0.0d0
+    if (yn_gems) then
+      call tiof_time_set_taix_epoch ("1993-01-01T00:00:00Z", errstat)
+      if (errstat == 0) then
+        call tiof_utcstr_to_taix_time ("2000-01-01T00:00:00Z", tai93_offset, &
+             errstat)
+      endif
+    endif
     ! ---------------------------------------------------------------
     ! Check if we have cloud information from satellite retrievals.
     ! If pressure is incomplete (or below 10 hPa assuming no clouds
@@ -834,10 +845,11 @@ CONTAINS
          l2ctp(1:nx,0:nt-1) > real(maxval(lut_srf),kind=r8) )
        amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_cld_cli)
     endwhere
+    !reset epoch if gems data is in use
     do ix=1,nx
        do it=0,nt-1
           if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
-             call tio_f_taix_time_to_utc_caldate (time(it), year, month, day, hour)
+             call tio_f_taix_time_to_utc_caldate (time(it)-tai93_offset, year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
              if (errstat /= 0) then
                 call tell_error (tell_io_read_error, 'reading cloud pressure climatology', errstat)
@@ -874,7 +886,7 @@ CONTAINS
     type (clim_species_type) :: cst
     integer :: year(2), month(2), day(2)
     integer :: nz, nlayers, itimes, ixtrack
-    real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end
+    real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end, tai93_offset
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
     real (kind=r4) :: hour_f, lon_f, lat_f
     character (len=6) :: clim_db_molecule_name
@@ -883,8 +895,18 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    t_beg = minval(time, time /= r8_missval)
-    t_end = maxval(time, time /= r8_missval)
+    ! If gems, need to offset for different epoch
+    tai93_offset=0.0d0
+    if (yn_gems) then
+      call tiof_time_set_taix_epoch ("1993-01-01T00:00:00Z", errstat)
+      if (errstat == 0) then
+        call tiof_utcstr_to_taix_time ("2000-01-01T00:00:00Z", tai93_offset, &
+             errstat)
+      endif
+    endif
+
+    t_beg = minval(time-tai93_offset, time /= r8_missval)
+    t_end = maxval(time-tai93_offset, time /= r8_missval)
 
     if (t_end - t_beg > 86400.0) then
       call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
@@ -946,7 +968,7 @@ CONTAINS
           end if
 
           ! Work out hour of interest
-          call tio_f_taix_time_to_utc_caldate (time(itimes), year(1), month(1), day(1), hour)
+          call tio_f_taix_time_to_utc_caldate (time(itimes)-tai93_offset, year(1), month(1), day(1), hour)
           hour_f = real (hour, kind=r4)
           
           lon_f = fudge_lon(ixtrack,itimes)

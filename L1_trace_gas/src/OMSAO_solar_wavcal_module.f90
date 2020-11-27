@@ -204,9 +204,10 @@ CONTAINS
         wvl_good(ngood) = adj_wvl(i)
       END IF
     END DO
-    if (ngood == 0) THEN
+
+    if (ngood <= 2) THEN ! Need >2 for intrepolation routines to work.
       do_skip_pix = .TRUE.
-    else  IF ( nbad > 0 ) THEN
+    else  IF ( nbad > 2 ) THEN
       CALL ezspline_1d_interpolation (                      &
         ngood, wvl_good(1:ngood), spc_good(1:ngood),     &
         nbad, wvl_bad(1:nbad), spc_bad(1:nbad), errstat) !locerrstat )
@@ -470,14 +471,15 @@ CONTAINS
       saved_shift = -1.0e+30_r8 ; saved_squeeze = -1.0e+30_r8
 
       ! Set up generic fitting arrays
+      locerrstat = errstat
       CALL adjust_irradiance_data ( &
         Irr_Data, ipix, &
         omi_irradiance_ccdpix(1:n_irradwvl,ipix), &
         adj_wvl, adj_spec, adj_wgts, &
         curr_sol_wav_avg, &
-        do_skip_pix, errstat) !locerrstat )
+        do_skip_pix, locerrstat) !locerrstat )
 
-      IF ( do_skip_pix .OR. errstat /= 0) then !locerrstat >= pge_errstat_error ) THEN
+      IF ( do_skip_pix .OR. locerrstat /= 0) then !locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
@@ -496,7 +498,7 @@ CONTAINS
         adj_wvl, adj_spec, adj_wgts, adj_resid, &
         Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
         solcal_exval, solcal_itnum, chisquav, &
-        is_bad_pixel, errstat) ! locerrstat )
+        is_bad_pixel, locerrstat )
       ! solar_fit modifies the following variables:
       !   adj_wvl, adj_spec, adj_wgts, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
       !   solcal_itnum, chisquav, is_bad_pixel, locerrstat
@@ -506,7 +508,7 @@ CONTAINS
         save_resid(1:n_irradwvl,ipix) = adj_resid(1:n_irradwvl)
       endif
 
-      IF ( is_bad_pixel .OR. errstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
+      IF ( is_bad_pixel .OR. locerrstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
         omi_cross_track_skippix (ipix) = .TRUE.
         addmsg = ''
