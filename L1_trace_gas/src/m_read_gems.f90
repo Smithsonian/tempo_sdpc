@@ -482,30 +482,43 @@ contains
     integer (kind=4), intent(inout) :: errstat
     !local variables
     type (tiof_file_type) :: cld
-    character (len=128) :: logmsg
+    character (len=22) :: cf_name, cp_name, group_name
+    real(kind=4), dimension(ntimes, nxtrack) :: gems_cp, gems_cf
+    integer, dimension(1:2), parameter :: flip=(/2, 1/)
 
     if (errstat /= 0) return
 
-    ! For now, just return empty arrays
-    cloud_fraction = r8_missval
-    cloud_pressure = r8_missval
-    return
+    cf_name="EffectiveCloudFraction"
+    cp_name="CloudCentroidPressure"
+    group_name="/Data Fields"
+
+    call tell_log (1, "Reading GEMS cloud file "//trim(cloud_file) )
 
     ! Outline code for when GEMS cloud product available
     call tiof_open (cloud_file, cld, nf90_nowrite, errstat)
-    write (logmsg,'(a,i6,i6,a)') "Reading GEMS cloud file, ntimes,nxtrack=", &
-         ntimes, nxtrack, " file = "//trim(cloud_file)
-    call tell_log (1,logmsg)
-    call tiof_get2d_r8 (cld, "cloud_pressure_for_O3", [0,0], &
-         [ntimes, nxtrack], cloud_pressure, errstat, replace_fill=r8_missval)
-    call tiof_get2d_r8 (cld, "cloud_fraction_for_O3", [0,0], &
-         [ntimes, nxtrack], cloud_fraction, errstat, replace_fill=r8_missval)
+    call tiof_push_group (cld, trim(group_name), errstat)
+    call tiof_get2d_r4 (cld, trim(cp_name), [0,0], [nxtrack,ntimes], &
+         gems_cp, errstat)
+    call tiof_get2d_r4 (cld, trim(cf_name), [0,0], [nxtrack,ntimes], &
+         gems_cf, errstat)
     call tiof_close (cld, errstat)
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "gems_read_cld: failed", errstat)
       return
     endif
+
+    ! Reshape to match TEMPO dimension order, deal with undeclared fill values
+    cloud_pressure(1:nxtrack,0:ntimes-1) = &
+         reshape (gems_cp,(/nxtrack,ntimes/),order=flip)
+    where (cloud_pressure <= -998.0d0)
+      cloud_pressure = r8_missval
+    endwhere
+    cloud_fraction(1:nxtrack,0:ntimes-1) = &
+         reshape (gems_cf,(/nxtrack,ntimes/),order=flip)
+    where (cloud_fraction <= -998.0d0)
+      cloud_fraction = r8_missval
+    endwhere
 
     ! Force cloud params into physical bounds, ignoring missing values
     where (cloud_fraction > r8_missval .and. cloud_fraction < 0.0d0)
