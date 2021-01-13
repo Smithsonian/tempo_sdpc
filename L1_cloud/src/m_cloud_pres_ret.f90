@@ -100,7 +100,8 @@ contains
     use tell_module
     use m_cloud_pres_mod
     use m_read_input_data_gems, only: bad_rad_lambda_gems
-    use m_vars, ONLY: azimuth, bad_obs_flag, biases, & 
+    use m_read_pres_clim, only: get_tomsv8_ctp
+    use m_vars, ONLY: azimuth, bad_obs_flag, biases, month, day, & 
          chi_sqr, chlcl, chlorophyll, cld_frac_min, cld_pres2, &
          cloud_fr_corr, cloud_mask, cloud_pres, do_alloc, do_chl, &
          do_LER, do_mler, do_o3, do_short_wave, eff_cld_frac, &
@@ -116,7 +117,7 @@ contains
          using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
          wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
          write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask, &
-         read_gems, gems_snow_index, have_omi_data
+         read_gems, gems_snow_index, have_omi_data, use_pres_clim
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -126,6 +127,7 @@ contains
     !local vraiables
     character (len=128) :: logmsg
     integer :: polyfit_status
+    real (kind=8) :: clim_ctp
 
     if (errstat /= 0) return
 
@@ -1128,6 +1130,20 @@ contains
           fill(ip,iLine) = fill(ip,iLine)/real(elastic, kind=4)
           !print *,'filling-in wavelength ',waves(ind1), fill(ip,iLine)
         endif
+
+        ! If desired, replace retrieved cloud pressure with climatology 
+        if (use_pres_clim) then
+          call get_tomsv8_ctp(month, day, real(lon(ip+1,iLine), kind=8), &
+               real(lat(ip+1,iLine), kind=8), clim_ctp, errstat)
+          if (errstat /= 0) then
+            call tell_error (tell_runtime_error, &
+                 "unable to read cloud pres climatology", errstat)
+            return
+          endif
+          cloud_pres(ip,iLine) = real(clim_ctp, kind=4)
+          cld_pres2(ip,iLine) = real(clim_ctp, kind=4)
+        endif
+
 
       enddo    ! profile loop
     else ! noret=.true. so we're only testing IO

@@ -64,6 +64,7 @@ $(ODIR)/m_cloud_pres_ret.o: $(SDIR)/m_cloud_pres_ret.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_poly_fit.o \
   $(ODIR)/m_read_input_data_gems.o \
+  $(ODIR)/m_read_pres_clim.o \
   $(ODIR)/m_sigma.o \
   $(ODIR)/m_spline.o \
   $(ODIR)/m_trilin.o \
@@ -136,6 +137,10 @@ $(ODIR)/m_read_ocean_table_tio.o: $(SDIR)/m_read_ocean_table_tio.f90 \
   $(ODIR)/m_pgs_include.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_ocean_table_tio.f90 -o $(ODIR)/m_read_ocean_table_tio.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_pres_clim.o: $(SDIR)/m_read_pres_clim.f90 \
+  $(ODIR)/m_LUN_set.o \
+  $(ODIR)/m_pgs_include.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_pres_clim.f90 -o $(ODIR)/m_read_pres_clim.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_resid.o: $(SDIR)/m_read_resid.f90 \
   $(ODIR)/m_LUN_set.o \
   $(ODIR)/m_pgs_include.o \

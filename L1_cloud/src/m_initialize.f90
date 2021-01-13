@@ -282,6 +282,15 @@ contains
         call tell_log(1,logmsg)
       endif
 
+      returnstatus = pgs_pc_getconfigdata(use_pres_clim_LUN,buf)
+      IF(returnstatus == 0 ) THEN
+        read(buf,*) pcf_int
+        use_pres_clim = pcf_int == 1
+        write(logmsg,"(A36,L1)") 'initialize: setting use_pres_clim = ', &
+             use_pres_clim
+        call tell_log(1,logmsg)
+      endif
+
       returnstatus = pgs_pc_getconfigdata(wmin_LUN,buf)
       IF(returnstatus == 0 ) THEN
         read(buf,*) wmin
