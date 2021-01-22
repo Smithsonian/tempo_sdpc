@@ -25,9 +25,11 @@ SUBDIRS :=  $(LIBRARIES) $(PROGRAMS)
 $(TARGETS):	 $(SUBDIRS)
 install:	 $(SUBDIRS) install-version
 
+VERSION_FILE = sdpc-release
+
 install-version:
-	./utils/get_sdpc_version.sh > sdpc_version && \
-	$(INSTALL_DATA) sdpc_version $(prefix)/etc
+	./utils/get_sdpc_version.sh > $(VERSION_FILE) && \
+	$(INSTALL_DATA) $(VERSION_FILE) $(prefix)/etc
 
 $(SUBDIRS):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
