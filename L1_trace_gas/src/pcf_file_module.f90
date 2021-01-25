@@ -112,7 +112,7 @@ CONTAINS
     USE control_module, ONLY: read_fitting_control_file
     USE sao_pge_utils, ONLY: get_pge_ident
     USE strutils, ONLY: remove_quotes
-    use ctrlvars, only: yn_wrt_odl
+    !use ctrlvars, only: yn_wrt_odl
 
     IMPLICIT NONE
 

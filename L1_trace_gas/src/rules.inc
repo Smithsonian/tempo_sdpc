@@ -418,7 +418,6 @@ $(ODIR)/control_module.o: $(SDIR)/control_module.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/control_module.f90 -o $(ODIR)/control_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/pcf_file_module.o: $(SDIR)/pcf_file_module.f90 \
   $(ODIR)/control_module.o \
-  $(ODIR)/ctrlvars.o \
   $(ODIR)/metadata_tools.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_he5_module.o \

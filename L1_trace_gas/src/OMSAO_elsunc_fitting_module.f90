@@ -83,6 +83,7 @@ MODULE OMSAO_elsunc_fitting_module
 
   ! COMMON /negdir/ ifree,indic
   INTEGER, SAVE    :: ifree,indic
+  logical :: fail
 
   PUBLIC elsunc
 CONTAINS
@@ -361,7 +362,7 @@ CONTAINS
     ! START of code
 
     !     VALIDATE SOME INPUT PARAMETERS
-
+    fail = .false.
     EXIT=0
     ! IF(p(4) >= 0 .AND. mdw < 6*n + 3*m+6) EXIT=-1
     ! IF(p(4) < 0 .AND. mdw < n*n + 5*n + 3*m + 6) EXIT=-1
@@ -408,6 +409,8 @@ CONTAINS
 !      ip,f,c,diag,w(6),jp,dx,g,w0,w1,w2,w3,v,gmat)
       ip,f,c,diag,w(6),jp,dx,g,w0,w3,v)
 
+    ! Check to see if we hit the prank bug in mindim
+    if (fail) exit = -10
     IF(EXIT < 0) RETURN
     IF(MOD(EXIT,10) == 1 .AND. p(1) > 0 .AND. p(2) > 0) WRITE(p(2),1000)
     1000 FORMAT(//t21, 31('*')/ t21, '* pseudo-rank of the jacobian *'/  &
@@ -2467,6 +2470,7 @@ CONTAINS
           else
             rank = 1
           endif
+          fail = .true.
           write(*,*)'*** We must set rank to something here, so we guess and hope: rank=',rank
         endif
       endif
