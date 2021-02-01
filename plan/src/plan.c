@@ -14,7 +14,10 @@
 #include <wordexp.h>
 
 #include <libconfig.h>
+
 #include <tell.h>
+#include <ioclib.h>
+
 #include <tio.h>
 #include <tio_template.h>
 
@@ -25,6 +28,8 @@
 #include "plan_list.h"
 #include "scan_methods.h"
 #include "vis.h"
+
+int Plan_Verbose;
 
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
@@ -106,13 +111,16 @@ static void usage (void)
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
-   fprintf (stderr, "   -M | --maneuver FILE     Read maneuver times from FILE\n");
+   fprintf (stderr, "   -M | --maneuver SOURCE   Read maneuver windows from SOURCE.\n");
+   fprintf (stderr, "                                SOURCE may be a file or a directory.\n");
+   fprintf (stderr, "                                SOURCE=@FILE indicates FILE contains a list of files.\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -I | --irr FILE          Generate irradiance plan output file\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize\n");
    fprintf (stderr, "                            the solar illumination at the start of each scan\n\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
+   fprintf (stderr, "   -v | --verbose           Increase verbosity\n");
    fprintf (stderr, "  For testing:\n");
    fprintf (stderr, "   -T | --tailor FILE       Output ONLY a 'nominal' scan tailoring file\n");
    fprintf (stderr, "   -Z | --Zenith STR        Check solar zenith angle calculation\n");
@@ -821,6 +829,12 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
         if (mnv_end < entry_beg)
           return 0;
 
+        if (Plan_Verbose)
+          {
+             fprintf (stderr, "maneuver window=(%f,%f) overlaps radiance scan=(%f,%f)\n",
+                      mnv_beg, mnv_end, entry_beg, entry_end);
+          }
+
         if ((mnv_beg < entry_beg) && (entry_end < mnv_end))
           {
              /* Entire plan entry is lost */
@@ -941,71 +955,481 @@ static int utcstr_to_jd_utc (const char *utc_str, double *jd_utc)
    return 0;
 }
 
-static int read_maneuver_interval (FILE *fp, double *mnv_beg, double *mnv_end)
+static int utc_to_jd_utc (double utc_time, double *jd_utc)
 {
-#define MNV_BUFSIZE (80)
-   char buf[MNV_BUFSIZE];
-   const char *delim = ",";
-   char *str;
-   double duration_min;
-   double min_per_day = 24.0*60.0;
+   Cal_Date_Type t0 = {0};
+   double taix_sec, hour;
+   int year, month, day;
 
-   buf[0] = 0;
-   do
-     {
-        if (NULL == fgets (buf, sizeof(buf), fp))
-          {
-             if (feof(fp)) return 1;
-             goto return_error;
-          }
-     }
-   while (*buf == '#');
+   if ((0 != tio_time_utc_to_taix (utc_time, &taix_sec))
+       || (0 != tio_time_taix_to_utc_caldate (taix_sec, &year, &month, &day, &hour)))
+     return -1;
 
-   if ((NULL == (str = strtok (buf, delim)))
-       || (0 != utcstr_to_jd_utc (str, mnv_beg)))
-     goto return_error;
-
-   if ((NULL == (str = strtok (NULL, delim)))
-       || (1 != sscanf (str, "%le", &duration_min)))
-     goto return_error;
-
-   if (duration_min < 0.0)
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR, "%s: invalid maneuver duration (%s)",
-                     __func__, str);
-        goto return_error;
-     }
-
-   *mnv_end = *mnv_beg + duration_min / min_per_day;
+   t0.year = year;
+   t0.month = month;
+   t0.day = day;
+   t0.hour = hour;
+   *jd_utc = novas_julian_date (t0.year, t0.month, t0.day, t0.hour);
 
    return 0;
-return_error:
-   tell_verror (TELL_IO_READ_ERROR, "%s: reading maneuver time intervals", __func__);
-   return -1;
 }
 
-static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_file)
+typedef struct Maneuver_Window_Type Maneuver_Window_Type;
+struct Maneuver_Window_Type
+{
+   Maneuver_Window_Type *next;
+   double beg_timet;
+   double end_timet;
+};
+
+static void free_maneuver_window (Maneuver_Window_Type *mw)
+{
+   if (mw == NULL)
+     return;
+   FREE (mw);
+}
+
+static void free_maneuver_window_list (Maneuver_Window_Type *lst)
+{
+   while (lst)
+     {
+        Maneuver_Window_Type *next = lst->next;
+        free_maneuver_window (lst);
+        lst = next;
+     }
+}
+
+static void append_maneuver_window_list (Maneuver_Window_Type *lst, Maneuver_Window_Type *x)
+{
+   Maneuver_Window_Type *w;
+
+   for (w = lst; w != NULL; w = w->next)
+     {
+        if (w->next == NULL)
+          {
+             w->next = x;
+             break;
+          }
+     }
+}
+
+static Maneuver_Window_Type *new_maneuver_window1 (double beg_timet, double end_timet)
+{
+   Maneuver_Window_Type *mw = NULL;
+
+   if (NULL == (mw = (Maneuver_Window_Type *) MALLOC (sizeof *mw)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   mw->beg_timet = beg_timet;
+   mw->end_timet = end_timet;
+   mw->next = NULL;
+
+   return mw;
+}
+
+typedef struct
+{
+   Maneuver_Window_Type *lst;
+   double table_beg_timet;
+   double table_end_timet;
+}
+Maneuver_Table_Type;
+#define MANEUVER_TABLE_DEFAULT_INIT {NULL, -1.0, -1.0}
+
+static void free_maneuver_table (Maneuver_Table_Type *mt)
+{
+   if (mt == NULL)
+     return;
+   free_maneuver_window_list (mt->lst);
+}
+
+/* The newest maneuver plan always supercedes prior maneuver plans,
+ * therefore we process the maneuver files from newest to oldest,
+ * halting either when we run out of files, or when we've
+ * covered the target observing plan time interval.
+ * It follows that each additional (prior) maneuver file may only
+ * prepend or append maneuver windows.
+ */
+static int merge_prior_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_file,
+                                      double plan_beg_timet, double plan_end_timet)
+{
+   IOCLib_String_Table_Type *st = NULL;
+   IOCLib_KV_Table_Type *kv = NULL;
+   Maneuver_Window_Type *head = NULL;
+   Maneuver_Window_Type *win = NULL;
+   Maneuver_Window_Type *prefix = NULL;
+   Maneuver_Window_Type *suffix = NULL;
+   double table_beg_timet, table_end_timet, beg_timet, end_timet;
+   double mt_table_beg_timet, mt_table_end_timet;
+   double last_end = -1.0;
+   const char *column_names[] = {"window_start_time", "window_end_time"};
+   unsigned int i, num_columns = sizeof(column_names) / sizeof (*column_names);
+   unsigned int beg_col = 0, end_col = 1;
+   int status = -1;
+
+   if (NULL == (st = ioclib_csv_read_string_table (maneuver_file, column_names, num_columns)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading maneuver times from: %s", __func__, maneuver_file);
+        return -1;
+     }
+
+   if (NULL == (kv = ioclib_extract_csv_metadata (st)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
+        goto return_status;
+     }
+
+   if ((0 != ioclib_kv_table_get_double (kv, "table_begin_time", &table_beg_timet))
+       || (0 != ioclib_kv_table_get_double (kv, "table_end_time", &table_end_timet)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
+        goto return_status;
+     }
+
+   /* Does this maneuver table overlap the target plan interval?
+    * If not, do nothing.
+    */
+   if ((table_end_timet < plan_beg_timet)
+       || (plan_end_timet < table_beg_timet))
+     {
+        status = 0;
+        goto return_status;
+     }
+
+   if (Plan_Verbose) fprintf (stderr, "using maneuver table: %s\n", maneuver_file);
+
+   /* Validate maneuver table */
+   for (i = 0; i < st->num_rows; i++)
+     {
+        if (*st->data[0][i] == ':')
+          continue;
+        if ((0 != ioclib_string_to_double (st->data[beg_col][i], &beg_timet))
+            || (0 != ioclib_string_to_double (st->data[end_col][i], &end_timet)))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: error parsing maneuver window start/end times: row %d: %s",
+                          __func__, i, maneuver_file);
+             goto return_status;
+          }
+        if ((0 == isfinite(beg_timet))
+            || (0 == isfinite(end_timet))
+            || (beg_timet < table_beg_timet)
+            || (table_end_timet < end_timet)
+            || (end_timet < beg_timet))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: invalid maneuver table: %s", __func__, maneuver_file);
+             goto return_status;
+          }
+        if (last_end < 0)
+          {
+             last_end = end_timet;
+          }
+        else if (beg_timet < last_end)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: invalid maneuver table: %s", __func__, maneuver_file);
+             goto return_status;
+          }
+     }
+
+   /* This time range has been finalized.  The new table may only append or prepend to it. */
+   mt_table_beg_timet = (mt->table_beg_timet < 0) ? 0.0 : mt->table_beg_timet;
+   mt_table_end_timet = (mt->table_end_timet < 0) ? 0.0 : mt->table_end_timet;
+
+   head = mt->lst;
+
+   /* Process the new table */
+   for (i = 0; i < st->num_rows; i++)
+     {
+        if (*st->data[0][i] == ':')
+          continue;
+
+        if ((0 != ioclib_string_to_double (st->data[beg_col][i], &beg_timet))
+            || (0 != ioclib_string_to_double (st->data[end_col][i], &end_timet)))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: error parsing maneuver window start/end times: row %d: %s",
+                          __func__, i, maneuver_file);
+             goto return_status;
+          }
+
+        /* Skip maneuver windows outside the target plan interval */
+        if (end_timet < plan_beg_timet)
+          continue;
+        if (plan_end_timet < beg_timet)
+          break;
+
+        /* When the very first table is processed, we'll have
+         * head=NULL, and 0=mt_table_beg_timet=mt_table_end_timet,
+         * so that the first window will define 'head' and
+         * the remaining windows will define a suffix list.
+         */
+        if (head == NULL)
+          {
+             if (NULL == (head = new_maneuver_window1 (beg_timet, end_timet)))
+               goto return_status;
+             continue;
+          }
+
+        /* Accumulate prefix and suffix lists, skipping maneuver windows
+         * that overlap the already finalized time interval.
+         */
+        if (end_timet < mt_table_beg_timet)
+          {
+             if (NULL == (win = new_maneuver_window1 (beg_timet, end_timet)))
+               goto return_status;
+             if (prefix)
+               {
+                  append_maneuver_window_list (prefix, win);
+               }
+             else prefix = win;
+          }
+        else if (beg_timet > mt_table_end_timet)
+          {
+             if (NULL == (win = new_maneuver_window1 (beg_timet, end_timet)))
+               goto return_status;
+             if (suffix)
+               {
+                  append_maneuver_window_list (suffix, win);
+               }
+             else suffix = win;
+          }
+     }
+
+   /* Connect prefix and suffix lists */
+   append_maneuver_window_list (head, suffix);
+   if (prefix)
+     {
+        append_maneuver_window_list (prefix, head);
+        mt->lst = prefix;
+     }
+   else mt->lst = head;
+
+   /* Update finalized time range */
+   if ((mt->table_beg_timet < 0) || (table_beg_timet < mt->table_beg_timet))
+     {
+        mt->table_beg_timet = table_beg_timet;
+     }
+   if ((mt->table_end_timet < 0) || (mt->table_end_timet < table_end_timet))
+     {
+        mt->table_end_timet = table_end_timet;
+     }
+
+   status = 0;
+return_status:
+   ioclib_free_string_table (st);
+   ioclib_kv_table_free (kv);
+   if (status)
+     {
+        free_maneuver_window_list (prefix);
+        free_maneuver_window_list (suffix);
+     }
+
+   return status;
+}
+
+typedef struct Line_Type Line_Type;
+struct Line_Type
+{
+   Line_Type *next;
+   char *text;
+};
+
+#define MT_BUFSIZE 1024
+
+static void free_line1 (Line_Type *lt)
+{
+   if (lt == NULL)
+     return;
+   FREE(lt->text);
+   FREE(lt);
+}
+
+static void free_line_list (Line_Type *lt)
+{
+   if (lt == NULL)
+     return;
+
+   while (lt)
+     {
+        Line_Type *next = lt->next;
+        free_line1 (lt);
+        lt = next;
+     }
+}
+
+static Line_Type *new_line (const char *s)
+{
+   Line_Type *lt = NULL;
+   char buf[MT_BUFSIZE];
+
+   /* use sscanf to filter whitespace */
+   if (1 != sscanf (s, "%s", buf))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error parsing text: %s", __func__, s);
+        return NULL;
+     }
+
+   if (NULL == (lt = (Line_Type *)MALLOC (sizeof *lt)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   lt->next = NULL;
+
+   if (NULL == (lt->text = strdup (buf)))
+     {
+        FREE(lt);
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   return lt;
+}
+
+static Line_Type *read_lines_and_reverse_order (const char *file)
 {
    FILE *fp = NULL;
+   Line_Type *rlines = NULL;
+   Line_Type *lt;
+   char buf[MT_BUFSIZE];
+
+   if (NULL == (fp = fopen (file, "r")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening file for reading: %s", __func__, file);
+        return NULL;
+     }
+
+   for (;;)
+     {
+        if (NULL == fgets (buf, sizeof(buf), fp))
+          break;
+
+        if (NULL == (lt = new_line (buf)))
+          {
+             free_line_list (rlines);
+             rlines = NULL;
+             break;
+          }
+
+        if (rlines == NULL)
+          {
+             rlines = lt;
+          }
+        else
+          {
+             /* final line list will contain the lines in reverse order */
+             lt->next = rlines;
+             rlines = lt;
+          }
+     }
+
+   fclose (fp);
+   return rlines;
+}
+
+static int process_maneuver_file_dir (Maneuver_Table_Type *mt, const char *maneuver_file_dir,
+                                      double plan_beg_timet, double plan_end_timet)
+{
+   IOCLib_Listdir_Type *lst = NULL;
+   int status = -1;
+   size_t i;
+
+   if (NULL == (lst = ioclib_listdir (maneuver_file_dir, IOCLIB_LISTDIR_SORT)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: listdir failed: %s", __func__, maneuver_file_dir);
+        return -1;
+     }
+
+   /* Files are in ascending order. The maneuver file naming scheme
+    * ensures that this corresponds to time order, so the last file
+    * is the newest.  Process the files from newest to oldest:
+    */
+   i = lst->num_files;
+   while (i-- > 0)
+     {
+        char buf[MT_BUFSIZE];
+        int n;
+        n = snprintf (buf, MT_BUFSIZE, "%s/%s", maneuver_file_dir, lst->files[i]);
+        if ((n < 0) || (n >= MT_BUFSIZE))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: file path exceeds buffer size", __func__);
+             goto return_status;
+          }
+        if (0 != merge_prior_maneuver_file (mt, buf, plan_beg_timet, plan_end_timet))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   ioclib_listdir_free (lst);
+   return status;
+}
+
+static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_file,
+                                 double plan_beg_timet, double plan_end_timet)
+{
+   /* '@' indicates the maneuver_file contains a list of maneuver files,
+    * assumed to be sorted in time order, oldest first.
+    */
+   if (*maneuver_file == '@')
+     {
+        Line_Type *rlines = NULL;
+        Line_Type *lt;
+        maneuver_file++;
+        if (NULL == (rlines = read_lines_and_reverse_order (maneuver_file)))
+          return -1;
+        for (lt = rlines; lt != NULL; lt = lt->next)
+          {
+             if (0 != merge_prior_maneuver_file (mt, lt->text, plan_beg_timet, plan_end_timet))
+               {
+                  free_line_list (rlines);
+                  return -1;
+               }
+          }
+        free_line_list (rlines);
+        return 0;
+     }
+
+   if (1 == ioclib_isdir (maneuver_file, "r"))
+     {
+        return process_maneuver_file_dir (mt, maneuver_file, plan_beg_timet, plan_end_timet);
+     }
+
+   return merge_prior_maneuver_file (mt, maneuver_file, plan_beg_timet, plan_end_timet);
+}
+
+static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_file,
+                              const Cal_Date_Type *t0, int num_plan_days)
+{
+   Maneuver_Table_Type mt = MANEUVER_TABLE_DEFAULT_INIT;
+   Maneuver_Window_Type *win;
+   double jd_utc0, jd_utc1, plan_beg_timet, plan_end_timet;
+   double unix_epoch_jd = get_unix_epoch_jd();
    int status = -1;
 
    if (maneuver_file == NULL)
      return 0;
 
-   if (NULL == (fp = fopen (maneuver_file, "r")))
-     {
-        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s for reading", __func__, maneuver_file);
-        return -1;
-     }
+   /* Set target plan time interval */
 
-   for (;;)
+   jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
+   jd_utc1 = jd_utc0 + num_plan_days;
+
+   plan_beg_timet = (jd_utc0 - unix_epoch_jd) * SEC_PER_DAY;
+   plan_end_timet = (jd_utc1 - unix_epoch_jd) * SEC_PER_DAY;
+
+   if (0 != process_maneuver_file (&mt, maneuver_file, plan_beg_timet, plan_end_timet))
+     return -1;
+
+   for (win = mt.lst; win != NULL; win = win->next)
      {
         double mnv_beg, mnv_end;
-        int eof;
 
-        if ((eof = read_maneuver_interval (fp, &mnv_beg, &mnv_end)) < 0)
+        if (0 != utc_to_jd_utc (win->beg_timet, &mnv_beg))
           goto return_status;
-        if (eof) break;
+        if (0 != utc_to_jd_utc (win->end_timet, &mnv_end))
+          goto return_status;
 
         if (0 != insert_maneuver_gap (plan_list, mnv_beg, mnv_end))
           goto return_status;
@@ -1013,7 +1437,7 @@ static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_fi
 
    status = 0;
 return_status:
-   if (fp) fclose (fp);
+   free_maneuver_table (&mt);
    return status;
 }
 
@@ -1114,6 +1538,7 @@ int main (int argc, char **argv)
         {"tailor",       required_argument, 0, 'T'},
         {"maneuver",     required_argument, 0, 'M'},
         {"master",       no_argument,       0, 'm'},
+        {"verbose",      no_argument,       0, 'v'},
         {"Zenith",       required_argument, 0, 'Z'},
         {0,0,0,0}
      };
@@ -1144,7 +1569,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNZ:M:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNvZ:M:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1191,6 +1616,9 @@ int main (int argc, char **argv)
              break;
            case 'N':
              enable_twilight_scan++;
+             break;
+           case 'v':
+             Plan_Verbose++;
              break;
            case 'm':
              master_outfile = optarg;
@@ -1349,7 +1777,7 @@ int main (int argc, char **argv)
    if (NULL == plan_list)
      goto return_status;
 
-   if (0 != include_maneuvers (plan_list, maneuver_file))
+   if (0 != include_maneuvers (plan_list, maneuver_file, &t0, num_plan_days))
      goto return_status;
 
    if (0 != verify_safety_constraints (solar_geom, scan, plan_list))

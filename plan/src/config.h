@@ -7,6 +7,7 @@
 
 #define SEC_PER_DAY        86400.0
 
+extern int Plan_Verbose;
 extern int mkjdtimestr (double jd_utc, char *buf, int bufsize);
 
 #endif

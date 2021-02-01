@@ -532,9 +532,15 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
         return -1;
      }
 
-   fprintf (stderr, "max scan duration: selected = %0.3f hr (safe = %0.3f hr)\n",
-            (slt->jd_utc_end      - slt->jd_utc_beg     ) * SEC_PER_DAY / 3600.0,
-            (slt->jd_utc_end_safe - slt->jd_utc_beg_safe) * SEC_PER_DAY / 3600.0);
+   if (Plan_Verbose)
+     {
+        char buf[32];
+        if (0 != mkjdtimestr (jd_utc, buf, sizeof(buf)))
+          return -1;
+        fprintf (stderr, "%s max scan %0.3f hr (max safe = %0.3f hr)\n", buf,
+                 (slt->jd_utc_end      - slt->jd_utc_beg     ) * SEC_PER_DAY / 3600.0,
+                 (slt->jd_utc_end_safe - slt->jd_utc_beg_safe) * SEC_PER_DAY / 3600.0);
+     }
 
    jd_utc_midpoint = 0.5 * (slt->jd_utc_beg + slt->jd_utc_end);
 
