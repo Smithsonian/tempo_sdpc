@@ -146,24 +146,26 @@ static int read_config_file (const char *config_file, config_t *cfg)
 int mkjdtimestr (double jd_utc, char *buf, int bufsize)
 {
    Cal_Date_Type t0;
-   double fhour, sec;
-   int hour, min, status;
+   int num_msec, hour, min, sec, msec, status;
+   div_t div_sec, div_min, div_hr;
 
-   /* Try to avoid printing silly things like: 16:59:60Z or 16:60:00Z */
+   /* Avoid printing silly things like: 16:59:60Z or 16:60:00Z. */
 
    novas_cal_date (jd_utc, &t0.year, &t0.month, &t0.day, &t0.hour);
-   /* round at msec resolution */
-   fhour = round (t0.hour * 3600.0e3)/3600.0e3;
-   hour =   fhour;
-   min  =  (fhour - hour)*60;
-   sec  = ((fhour - hour)*60 - min)*60;
-   /* truncate at msec resolution */
-   sec = round (sec * 1.e3) / 1.e3;
 
-   /* Seconds should be printed with no more precision than the above calculation,
-    * e.g. compute to msec, and print msec */
-   if (((status = snprintf (buf, bufsize, "%4d-%02d-%02dT%02d:%02d:%06.3fZ",
-                            t0.year, t0.month, t0.day, hour, min, sec)) < 0)
+   num_msec = round(t0.hour * 3600.0e3);
+
+   div_sec = div (num_msec, 1000);
+   div_min = div (div_sec.quot, 60);
+   div_hr  = div (div_min.quot, 60);
+
+   hour = div_hr.quot;
+   min  = div_hr.rem;
+   sec  = div_min.rem;
+   msec = div_sec.rem;
+
+   if (((status = snprintf (buf, bufsize, "%4d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+                            t0.year, t0.month, t0.day, hour, min, sec, msec) < 0))
        || (status >= bufsize))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed (status=%d)",
