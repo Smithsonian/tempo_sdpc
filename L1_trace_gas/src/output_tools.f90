@@ -294,7 +294,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "cloud fraction", &
-                              comment = "cloud fraction for AMF computation", &
+                              comment = "cloud radiance fraction for AMF computation", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = -1.0_r8, &
                               attlist = att_coord)
@@ -1016,7 +1016,9 @@ contains
     call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_corner, 4, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
-    call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
+    if (yn_diagnostic_run) then
+      call tiof_dimlist_append (dimlist, tg_dim_pair, 2, errstat)
+    endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
