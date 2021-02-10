@@ -674,16 +674,20 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
 
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)
 {
-   const char header[] = "time,solar_theta,solar_phi,timestamp\n";
    double unix_epoch_jd = get_unix_epoch_jd();
    double jd_utc0, jd_utc1, jd_utc;
    double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
+   char epoch_str[32];
+
+   /* Write out scan plan */
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
+     return -1;
 
    jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
    jd_utc1 = jd_utc0 + num_days;
 
    timestamp_created (fp);
-   if (fprintf (fp, header) < 0)
+   if (fprintf (fp, "# Epoch = %s\ntime,solar_theta,solar_phi,timestamp\n", epoch_str) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
         return -1;
