@@ -15,6 +15,7 @@ enum
    TASK_UNKNOWN,
    TASK_PRINT_TIMES,
    TASK_PRINT_TIMESTAMP,
+   TASK_PRINT_SAT_LOCAL_DAY,
    TASK_FIX_FILE
 };
 
@@ -39,6 +40,7 @@ static void usage (void)
    fprintf (stderr, "  -z | --zone h       Spacecraft local time-zone offset from UTC. Must be in range [-12,12].\n");
    fprintf (stderr, "                      [default: %d]\n", sc_timezone_default);
    fprintf (stderr, "  -f | --fix FILE     Fix header timestamps in TEMPO netcdf4/HDF5 file\n");
+   fprintf (stderr, "  -d | --day FILE     Print satellite-local day number for file\n");
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
@@ -87,6 +89,31 @@ static int fix_header_timestamp (const char *path, const char *grp_path,
      return -1;
 
    return 0;
+}
+
+static int print_sat_local_day (const char *path)
+{
+   int ncid, status = -1;
+   double tstart, flocal_day;
+
+   if (0 != TIO_open (path, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (0 != tio_use_file_epoch (ncid))
+     goto return_status;
+
+   if (0 != TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start_since_epoch", NC_DOUBLE, &tstart))
+     goto return_status;
+
+   if (0 != tio_time_sat_local_day_number (tstart, &flocal_day))
+     goto return_status;
+
+   fprintf (stdout, "%d\n", (int) flocal_day);
+
+   status = 0;
+return_status:
+   TIO_close (ncid);
+   return status;
 }
 
 static int print_ioc_string (double taix_sec)
@@ -263,7 +290,7 @@ int main (int argc, char **argv)
      {
         {"utc",   required_argument, 0, 'u'},
         {"sec",   required_argument, 0, 's'},
-        {"delim", no_argument,       0, 'd'},
+        {"day",   required_argument, 0, 'd'},
         {"write", no_argument,       0, 'w'},
         {"epoch", required_argument, 0, 'e'},
         {"zone",  required_argument, 0, 'z'},
@@ -296,7 +323,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "we:f:g:i:s:T:u:v:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "wd:e:f:g:i:s:T:u:v:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -309,6 +336,10 @@ int main (int argc, char **argv)
              break;
            case 'g':
              grp = optarg;
+             break;
+           case 'd':
+             path = optarg;
+	     task = TASK_PRINT_SAT_LOCAL_DAY;
              break;
            case 'f':
              path = optarg;
@@ -364,6 +395,12 @@ int main (int argc, char **argv)
      }
    else if (0 != _pTIO_get_sc_timezone (&sc_timezone))
      {
+        goto error_return;
+     }
+
+   if (task == TASK_PRINT_SAT_LOCAL_DAY)
+     {
+        status = print_sat_local_day (path);
         goto error_return;
      }
 
