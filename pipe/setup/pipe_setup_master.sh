@@ -22,7 +22,6 @@ pipe_mkdirs_archive.sh
 
 inr_mkdirs.sh
 inr_config.sh
-inr_refdata.sh
 
 # FIXME - During operations, cron jobs will do this.
 #         For testing purposes, do it here.
