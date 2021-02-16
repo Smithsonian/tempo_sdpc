@@ -50,6 +50,7 @@
 510012|ler354_cox_munk.txt|||||1
 #510012|reflec_cal_3941.txt|||||1
 510013|reflec_cal_3941.txt|||||1
+510014|omcldrr_clim_rev.dat|||||1
 ?   SUPPORT OUTPUT FILES 
 ! @product_dir@
 10100|LogPGE|||||1
@@ -91,6 +92,7 @@
 200308|wmax|354.5
 200309|do_o3|1
 200310|Threshold orbit|00000
+200314|Use cloud pressure climatology|1
 10109|TransmitFlag; 1=transmit,0=disable|0
 10106|RemoteHost|sandcrab
 10107|RemotePath|/usr/kwan/test/PC/data
