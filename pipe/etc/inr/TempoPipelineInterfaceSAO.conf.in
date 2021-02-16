@@ -28,7 +28,7 @@ imgDir=@INR_PROCESSING_ROOT@/Staging/Granules/
 # Granule output directory
 outDir=@INR_PROCESSING_ROOT@/Output/
 # Nominal TEMPO longitude in degrees
-refLon=-100
+refLon=-91.0
 # The amount of time the server will wait for new granules before producing a warning, in seconds.
 timeoutPeriod=900
 # The maximum difference in time for two adjacent granules to be considered continuous, in milliseconds.
@@ -248,14 +248,14 @@ telescopeOffset=13
 numPixUpper=2048
 numPixLower=2048
 # Nominal number of column in a full scan
-numCol=1283
+numCol=1226
 # Angular sampling distance for long and short wavelength bands in radians
-angularSamplingEW=1.19100e-04
-angularSamplingNSUpper=4.1790e-05
-angularSamplingNSLower=4.1790e-05
+angularSamplingEW=1.23000e-04
+angularSamplingNSUpper=4.1490e-05
+angularSamplingNSLower=4.1490e-05
 # Nominal instantaneous geometric field of view in radians
-IGFOVew=119.1e-6
-IGFOVns=41.79e-6
+IGFOVew=123.0e-6
+IGFOVns=41.49e-6
 # Engineering term to weight individual tie points for binocular pairs in raidans
 # Sets in accordance with INR error requirements for reference image
 measWeight=42e-6
@@ -264,8 +264,8 @@ farrenkopf=6.80387520069123e-07
 # The uncertainty in acceleration due to solar radiation pressure in km/s^2
 srp_uncertainty=7e-11
 # The scan mechanism shimming bias in radians
-ewbias=3.608437987387753
-nsbias=0.096881405922446
+ewbias=3.590972610656502
+nsbias=0.095274420715921
 # The 3-sigma ephemeris position error in km
 ephPosErr=1.5
 # The 3-sigma ephemeris velocity error in km/s
@@ -589,8 +589,10 @@ blue_factor=12.0542
 
 # Target latitude and longitude for the center of the Field of Regard in degrees
 # TODO item is to adjust to match MRD spec when Host station is known
-target_lat=34.267307178526053
-target_lon=-90.804907121282682
+##target_lat=34.267307178526053
+##target_lon=-90.804907121282682
+target_lat=33.7220
+target_lon=-92.7366
 # Fundamental period for Fourier model of repeating attitude offsets in hours
 #### ORIGINAL VALUE -> num_hours_per_period=24
 num_hours_per_period=1
