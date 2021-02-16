@@ -817,6 +817,7 @@ static PSF_Matrix_Type *alloc_psf_matrix_type (size_t num_waves)
 static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 {
    config_setting_t *s, *m;
+   gsl_matrix_float_view Ainv;
    PSF_Matrix_Type *psf = NULL;
    const char *path_str;
    char *path = NULL;
@@ -862,7 +863,7 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      goto return_status;
 
-   if (0 != TIO_inq_dim (ncid, "phony_dim_0", &dimid, &num_waves))
+   if (0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
      goto return_status;
 
    if (NULL == (psf = alloc_psf_matrix_type (num_waves)))
@@ -876,7 +877,14 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
    count[0] = num_waves;
    count[1] = num_waves;
 
-   if (0 != TIO_get_var_section (ncid, "AINV", start, count, TIO_FLOAT, psf->Ainv))
+   /* After this read, psf->Ainv actually holds transpose(Ainv).
+    * Immediately after the read, we'll transpose the array in-place. */
+   if (0 != TIO_get_var_section (ncid, "PSF_1dSpectral_AInv", start, count, TIO_FLOAT, psf->Ainv))
+     goto return_status;
+
+   /* Transpose psf->Ainv in place */
+   Ainv = gsl_matrix_float_view_array (psf->Ainv, psf->num_waves, psf->num_waves);
+   if (0 != gsl_matrix_float_transpose (&Ainv.matrix))
      goto return_status;
 
    free_psf_matrix_type (cal->sl_psf);
