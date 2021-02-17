@@ -19,8 +19,8 @@ module types_module
   !! Wavelength limits [nm] spanning the full TEMPO band,
   !! and a bit more to be on the safe side.
   real (kind=r8), parameter :: &
-    lut_wav_min = 285.0, &
-    lut_wav_max = 745.0
+    lut_wav_min = 290.0, &
+    lut_wav_max = 743.0
 
   !> Data type for storing diagnostic output
   type, public :: diag_output_type

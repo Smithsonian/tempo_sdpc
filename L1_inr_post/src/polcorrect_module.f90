@@ -253,14 +253,14 @@ contains
       cld_wave_index = 5   ! 367 nm
       ctp_wave_indices = (/10, 11, 12/)
       oz_wave_indices = (/1, 2, 5/)
-      qu_range % min = 285.0
-      qu_range % max = 745.0
+      qu_range % min = 290.0
+      qu_range % max = 743.0
     else if (band_id == tempo_band_uv) then
       swav_limits = (/pt % uv_beg, pt % uv_end/)
       cld_wave_index = 5   ! 367 nm
       ctp_wave_indices = (/10, 11, 12/)
       oz_wave_indices = (/1, 2, 5/)
-      qu_range % min = 285.0
+      qu_range % min = 290.0
       qu_range % max = 495.0
     else if (band_id == tempo_band_vis) then
       swav_limits = (/pt % vis_beg, pt % vis_end/)
@@ -268,7 +268,7 @@ contains
       ctp_wave_indices = (/8, 9, 10/)
       oz_wave_indices = (/3, 4, 6/)
       qu_range % min = 535.0
-      qu_range % max = 745.0
+      qu_range % max = 743.0
     endif
 
     call read_radiance_fmonth (rad_s, fmonth, errstat)
