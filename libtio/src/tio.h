@@ -14,6 +14,14 @@ extern "C" {
 #include <stddef.h>
 #include <netcdf.h>
 
+/* Number of dimensions in the nominal_wavelength array.
+ * In SDPCv2, num_dims=1 -> nominal_wavelength(spectral_channel)
+ * In SDPCv3, num_dims=2 -> nominal_wavelength(xtrack,spectral_channel)
+ */
+#ifndef TIO_NOMINAL_WAVELEN_NUM_DIMS
+# define TIO_NOMINAL_WAVELEN_NUM_DIMS 1
+#endif
+
 /* Maximum number of array dimensions */
 #define TIO_MAX_VAR_DIMS   7
 

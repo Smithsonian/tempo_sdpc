@@ -304,7 +304,7 @@ static int create_float_waves (float w0, size_t num_waves, float **pwaves) /*{{{
 
 /*}}}*/
 
-/* Initial condition: group contains only 1D 'nominal_wavelength'
+/* Initial condition: group contains only 'nominal_wavelength'
  * Read 'wavelength' 3D and verify that the result is 'nominal_wavelength'.
  */
 static int test_wavelength_nominal (int ncid) /*{{{*/
@@ -352,11 +352,25 @@ static int test_wavelength_nominal (int ncid) /*{{{*/
         return -1;
      }
 
-   start[0] = 0;
-   count[0] = num_chan;
-
-   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, NC_FLOAT, nominal_waves))
-     goto return_status;
+   if (TIO_NOMINAL_WAVELEN_NUM_DIMS == 1)
+     {
+        start[0] = 0;
+        count[0] = num_chan;
+        if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, NC_FLOAT, nominal_waves))
+          goto return_status;
+     }
+   else
+     {
+        count[0] = 1;
+        count[1] = num_chan;
+        for (xtrack = 0; xtrack < num_xtrack; xtrack++)
+          {
+             start[0] = xtrack;
+             start[1] = 0;
+             if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, NC_FLOAT, nominal_waves))
+               goto return_status;
+          }
+     }
 
    start[0] = 0;
    start[1] = 0;

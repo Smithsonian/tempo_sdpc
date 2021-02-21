@@ -777,8 +777,19 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              {_FillValue, TIO_FILL_FLOAT},
              _pFLOAT_ATTRS_END
           };
-        dims[0] = dim_table->channel.id;
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELEN_NOMINAL, NC_FLOAT, 1, dims, wavelength_attrs, &varid))
+        int num_dims = TIO_NOMINAL_WAVELEN_NUM_DIMS;
+        switch (num_dims)
+          {
+           case 1:
+             dims[0] = dim_table->channel.id;
+             break;
+           default:
+             num_dims = 2;
+             dims[0] = dim_table->xtrack.id;
+             dims[1] = dim_table->channel.id;
+             break;
+          }
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_WAVELEN_NOMINAL, NC_FLOAT, num_dims, dims, wavelength_attrs, &varid))
           return -1;
         if (-1 == _pTIO_define_float_attrs (grp, varid, wavelength_float_attrs))
           return -1;
