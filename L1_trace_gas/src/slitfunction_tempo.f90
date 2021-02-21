@@ -45,8 +45,7 @@ CONTAINS
     logical :: preflight
     real (kind=4), dimension(nwl, nxtrack) :: sf_asym, sf_hw1e, sf_shape, &
          sf_wavelength
-    real (kind=4), dimension(nwl, nxtrack,1) :: tmp_asym, tmp_hw1e, tmp_shape
-    real (kind=4), dimension(nwl) :: tmp_wl
+    real (kind=4), dimension(nwl, nxtrack,1) :: tmp_asym, tmp_hw1e, tmp_shape, tmp_wl
     real (kind=4) :: minwl, maxwl
     logical, dimension(nwl, nxtrack) :: mask
     
@@ -107,7 +106,7 @@ CONTAINS
            tmp_hw1e, errstat)
       call tiof_get3d_r4 (tio_l1obj, "sf_shape", [0,0,0], [1,nxtrack,nwl], &
            tmp_shape, errstat)
-      call tiof_get1d_r4 (tio_l1obj, "nominal_wavelength", [0], [nwl], &
+      call tiof_get3d_r4 (tio_l1obj, "wavelength", [0,0,0], [1,nxtrack,nwl], &
            tmp_wl, errstat)
       if (errstat /= 0) then
         call tell_error (tell_io_read_error, &
@@ -119,9 +118,7 @@ CONTAINS
       sf_asym = tmp_asym(:,:,1)
       sf_hw1e = tmp_hw1e(:,:,1)
       sf_shape = tmp_shape(:,:,1)
-      do n=1,nxtrack
-        sf_wavelength(:,n) = tmp_wl(:)
-      enddo
+      sf_wavelength = tmp_wl(:,:,1)
     endif
 
     ! determine the mean variable values in the wavelength window
