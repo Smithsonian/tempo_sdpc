@@ -85,7 +85,7 @@ def main():
 
     # UV narrow band
     iuv0 = 513   # 508  # 510
-    nuv0 = 60
+    nuv0 = 61
 
     # Vis narrow band
     ivis0 = 242  # 259 # 245
