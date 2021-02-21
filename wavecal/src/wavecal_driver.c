@@ -147,26 +147,37 @@ return_error:
    return status;
 }
 
-static double *read_nominal_wavelength (int grp, size_t num_waves)
+static int read_nominal_wavelength (int grp, int xtrack, size_t num_waves, double *y)
 {
-   double *y = NULL;
-   int start, count;
+   TIO_Var_Info_Type info = {0};
+   int start[2], count[2];
 
-   if (NULL == (y = (double *)MALLOC (num_waves * sizeof(double))))
+   if (0 != TIO_inq_var (grp, TEMPO_VAR_WAVELEN_NOMINAL, &info))
+     return -1;
+
+   if (1 == info.ndims)
      {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
+        start[0] = 0;
+        count[0] = num_waves;
+     }
+   else if (2 == info.ndims)
+     {
+        start[0] = xtrack;
+        start[1] = 0;
+        count[0] = 1;
+        count[1] = num_waves;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported array shape: %s",
+                     __func__, TEMPO_VAR_WAVELEN_NOMINAL);
+        return -1;
      }
 
-   start = 0;
-   count = num_waves;
-   if (0 != TIO_get_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, &start, &count, TIO_DOUBLE, y))
-     {
-        FREE(y);
-        return NULL;
-     }
+   if (0 != TIO_get_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, TIO_DOUBLE, y))
+     return -1;
 
-   return y;
+   return 0;
 }
 
 static void free_geoloc_type (Geoloc_Type *g)
@@ -812,8 +823,11 @@ int main (int argc, char **argv)
    if (alloc_spectrum (&spec, channel_dimlen))
      goto return_status;
 
-   if (NULL == (y0 = read_nominal_wavelength (grp, channel_dimlen)))
-     goto return_status;
+   if (NULL == (y0 = (double *)MALLOC (channel_dimlen * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
 
    if (0 == is_irradiance)
      {
@@ -965,6 +979,9 @@ int main (int argc, char **argv)
              Wavecal_Result_Type *wrt;
 
              wrt = NULL;
+
+             if (0 != read_nominal_wavelength (grp, xtrack, channel_dimlen, y0))
+               goto return_status;
 
              /* Calibrate each spectrum that meets the filter criteria */
              if ((0 != is_irradiance)
