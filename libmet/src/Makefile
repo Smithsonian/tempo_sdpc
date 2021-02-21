@@ -14,7 +14,6 @@ TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_di
 TIO_INC          = $(config_dir)/libtio/src
 PROJ_LIBPATHS    = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 ECCODES_LIBPATH  = -Wl,-rpath=$(ECCODES_LIB) -L$(ECCODES_LIB)
-GSL_LIBPATHS     = -lgsl -lgslcblas
 
 MET_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 

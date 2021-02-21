@@ -128,6 +128,21 @@ fi
 AC_SUBST(ECCODES_LIB)
 AC_SUBST(ECCODES_INC)
 
+AC_ARG_WITH(atlasblas,
+  [  --with-atlasblas[=DIR]      Use atlas library installed in DIR],
+  [jh_with_atlasblas=$withval],
+  [jh_with_atlasblas=no])
+if test "x$jh_with_atlasblas" = "xno"; then
+   GSL_BLAS="-lgslcblas"
+else
+   if test x"$jh_with_atlasblas" = xyes ; then
+      GSL_BLAS="-L/usr/lib64/atlas -lsatlas"
+   else
+      GSL_BLAS="-L$jh_with_atlasblas -lsatlas"
+   fi
+fi
+AC_SUBST(GSL_BLAS)
+
 AC_ARG_WITH(refdata,
   [  --with-refdata[=DIR]       Use refdata directory=DIR],
   [jh_with_refdata=$withval],

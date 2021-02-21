@@ -130,8 +130,6 @@ $(objdir)/ezlhconv.o:	$(srcdir)/ezlhconv.c
 
 # -----------------------------------------------------------------------
 
-GSL_LIBPATHS = -lgsl -lgslcblas
-
 POLCORR_F_OFILES = ndinterp_module.o types_module.o polpredict_module.o polcorrect_module.o
 POLCORR_C_OFILES = l1_polcorr.o lps.o spline.o lps_apply.o
 POLCORR_OFILES = $(POLCORR_C_OFILES) $(POLCORR_F_OFILES)

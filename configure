@@ -661,6 +661,7 @@ INR_LIB
 S6_ROOT_DIR
 ANCILLARY_DATA_DIR
 REFDATA_DIR
+GSL_BLAS
 ECCODES_INC
 ECCODES_LIB
 LIBCONFIG_INC
@@ -754,6 +755,7 @@ with_proj
 with_slnovas
 with_libconfig
 with_eccodes
+with_atlasblas
 with_refdata
 with_ancdata
 with_s6root
@@ -1405,6 +1407,7 @@ Optional Packages:
   --with-slnovas=DIR      Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-eccodes=DIR      Use eccodes library installed in DIR
+  --with-atlasblas=DIR      Use atlas library installed in DIR
   --with-refdata=DIR       Use refdata directory=DIR
   --with-ancdata=DIR       Use ancillary data directory=DIR
   --with-s6root=DIR       Use s6 supervisor installed in DIR
@@ -2721,6 +2724,25 @@ else
    ECCODES_INC="$jh_with_eccodes/include"
 fi
 
+
+
+
+# Check whether --with-atlasblas was given.
+if test "${with_atlasblas+set}" = set; then :
+  withval=$with_atlasblas; jh_with_atlasblas=$withval
+else
+  jh_with_atlasblas=no
+fi
+
+if test "x$jh_with_atlasblas" = "xno"; then
+   GSL_BLAS="-lgslcblas"
+else
+   if test x"$jh_with_atlasblas" = xyes ; then
+      GSL_BLAS="-L/usr/lib64/atlas -lsatlas"
+   else
+      GSL_BLAS="-L$jh_with_atlasblas -lsatlas"
+   fi
+fi
 
 
 
