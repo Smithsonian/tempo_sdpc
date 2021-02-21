@@ -1452,16 +1452,16 @@ static int cal_nominal_wavelength_grid (const Calibration_Type *cal, int band_in
         return -1;
      }
 
-   /* Define the "nominal" wavelength grid to be the wavelength grid
-    * across the middle of the chip
-    */
-   ix = cal->num_xpos/2;
    num_waves = cal->num_waves/2;
 
-   for (iw = 0; iw < num_waves; iw++)
+   for (ix = 0; ix < cal->num_xpos; ix++)
      {
-        float *cal_wavelen = cal->wavelength_grid + (iw0 - iw - 1) * cal->num_xpos;
-        pwaves[iw] = cal_wavelen[ix];
+        double *pwaves_x = pwaves + ix * num_waves;
+        for (iw = 0; iw < num_waves; iw++)
+          {
+             float *cal_wavelen = cal->wavelength_grid + (iw0 - iw - 1) * cal->num_xpos;
+             pwaves_x[iw] = cal_wavelen[ix];
+          }
      }
 
    return 0;
@@ -1724,7 +1724,7 @@ static Spectral_Data_Type *sdt_alloc (int num_xtrack, int num_channels)
 
    if ((NULL == (sdt->img = (double *)MALLOC (2 * img_size * sizeof(double))))
        || (NULL == (sdt->pqf = (Image_Pqf_Bitmap_Type *)MALLOC (img_size * sizeof(Image_Pqf_Bitmap_Type))))
-       || (NULL == (sdt->wave = (double *)MALLOC (num_channels * sizeof(double)))))
+       || (NULL == (sdt->wave = (double *)MALLOC (img_size * sizeof(double)))))
      {
         sdt_free (sdt);
         return NULL;

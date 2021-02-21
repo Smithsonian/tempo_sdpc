@@ -209,6 +209,34 @@ static int out_file_exists (const Output_Type *out)
    return out->formatted_file_exists ? 1 : 0;
 }
 
+static int write_nominal_wavelengths (Output_Type *out, const Spectral_Data_Type *sdt,
+                                      int grp, const int *start, const int *count)
+{
+   if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, TIO_DOUBLE,
+                                 sdt->wave))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                     __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
+        return -1;
+     }
+
+   /* Yes, this is a particularly ugly hack */
+   if (out->exposure_type == EXPREC_TYPE_IRR_WRK)
+     {
+        int avg_grp;
+        if ((0 != TIO_inq_grp (out->ncid, sdt->name, &avg_grp))
+            || (0 != TIO_put_var_section (avg_grp, TEMPO_VAR_WAVELEN_NOMINAL, start, count, TIO_DOUBLE,
+                                          sdt->wave)))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                          __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
+             return -1;
+          }
+     }
+
+   return 0;
+}
+
 static int
 write_rec_band1 (Output_Type *out, int index, int w_nwg,
                  const Spectral_Data_Type *sdt,
@@ -259,29 +287,25 @@ write_rec_band1 (Output_Type *out, int index, int w_nwg,
         return -1;
      }
 
+   /* this routine is called for each index, but the nominal wavelengths
+    * should only be written out once */
    if (w_nwg)
      {
-        if (0 != TIO_put_var_section (grp, TEMPO_VAR_WAVELEN_NOMINAL, &start[2], &count[2], TIO_DOUBLE,
-                                      sdt->wave))
+        int w_start[2], w_count[2];
+        if (1 == TIO_NOMINAL_WAVELEN_NUM_DIMS)
           {
-             tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
-                          __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
-             return -1;
+             w_start[0] = start[2];
+             w_count[0] = count[2];
           }
-
-        /* Yes, this is a particularly ugly hack */
-        if (out->exposure_type == EXPREC_TYPE_IRR_WRK)
+        else
           {
-             int avg_grp;
-             if ((0 != TIO_inq_grp (out->ncid, sdt->name, &avg_grp))
-                 || (0 != TIO_put_var_section (avg_grp, TEMPO_VAR_WAVELEN_NOMINAL, &start[2], &count[2], TIO_DOUBLE,
-                                               sdt->wave)))
-               {
-                  tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
-                               __func__, TEMPO_VAR_WAVELEN_NOMINAL, out->file);
-                  return -1;
-               }
+             w_start[0] = start[1];
+             w_start[1] = start[2];
+             w_count[0] = count[1];
+             w_count[1] = count[2];
           }
+        if (0 != write_nominal_wavelengths (out, sdt, grp, w_start, w_count))
+          return -1;
      }
 
    return 0;
