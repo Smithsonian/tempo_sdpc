@@ -69,7 +69,7 @@ contains
                               o3t_var_radiative_cloudfrac, &
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
-                              comment = "radiative cloud fraction = fc*Ic331/Im331", &
+                              comment = "cloud radiance fraction = fc*Ic331/Im331", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
@@ -78,7 +78,7 @@ contains
                               o3t_var_cloudfrac_param, &
                               nf90_float, &
                               dimids = dimids_xtrack_step, &
-                              comment = "mixed LER model (cloud fraction) parameter", &
+                              comment = "effective cloud fraction (mixed LER model)", &
                               valid_range = [0.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
