@@ -290,6 +290,15 @@ contains
                               fillvalue = -1.0_r8, &
                               attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
+                              tg_var_eff_cld_frac, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "effective cloud fraction", &
+                              comment = "effective cloud fraction from cloud retrieval", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = -1.0_r8, &
+                              attlist = att_coord)
+    call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_cloud_fraction, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -1402,10 +1411,11 @@ contains
   !! @param[in] amf_corr_column_uncertainty  Uncertainty in AMF-corrected column density
   !! @param[in] yn_write_cloud_variables   If \a .true., write cloud variables
   !!                                      to Level 2 product file
+  !! @param[in] crfrc cloud radiance fraction 2D array
   !! @param[inout] errstat  Error status variable
   subroutine write_amf_correction (nxtrack, ntimes, amf_corr, &
                                    amf_corr_column, amf_corr_column_uncertainty, &
-                                   yn_write_cloud_variables, errstat)
+                                   yn_write_cloud_variables, crfrc, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
     use OMSAO_indices_module, only : pge_no2_idx
     implicit none
@@ -1413,7 +1423,7 @@ contains
     integer, intent(in) :: nxtrack, ntimes
     type (amf_correction_type), intent(in) :: amf_corr
     real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column
-    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column_uncertainty
+    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: amf_corr_column_uncertainty, crfrc
     logical, intent(in) :: yn_write_cloud_variables
     integer, intent(inout) :: errstat
 
@@ -1439,8 +1449,10 @@ contains
     end if
 
     if (yn_write_cloud_variables) then
-      call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], [ntimes,nxtrack], &
-                          amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
+      call tiof_put2d_r8 (obj, tg_var_amf_cloud_fraction, [0,0], &
+           [ntimes,nxtrack], crfrc (1:nxtrack, 0:ntimes-1), errstat)
+      call tiof_put2d_r8 (obj, tg_var_eff_cld_frac, [0,0], [ntimes,nxtrack], &
+           amf_corr % cloud_fraction (1:nxtrack, 0:ntimes-1), errstat)
       !call tiof_put2d_r8 (obj, tg_var_amf_cloud_pressure, [0,0], [ntimes,nxtrack], &
       !                    amf_corr % cloud_pressure (1:nxtrack, 0:ntimes-1), errstat)
       ! FIXME: netcdf error will occur if cloud_pressure is not representable as a float

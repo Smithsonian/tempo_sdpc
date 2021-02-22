@@ -149,6 +149,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
+    real    (kind=r8), dimension (1:nx,0:nt-1)       :: crfrc
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
     REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: climatology
     REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: scattw
@@ -315,7 +316,7 @@ CONTAINS
        call tell_log (1, 'amf_calculation: compute scattering weights')
        CALL compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-            lat, lon, xtrange, amfdiag, scattw)
+            lat, lon, xtrange, amfdiag, scattw, crfrc)
 
        ! -----------------------------------------------------------------
        ! Work out the AMF using the scattering weights and the climatology
@@ -372,7 +373,7 @@ CONTAINS
       amf_corr % eta_b => eta_b
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
-                                 yn_write_cloud_variables, errstat)
+                                 yn_write_cloud_variables, crfrc, errstat)
       if (errstat /= 0) then
          call tell_error (tell_io_read_error, 'writting amf correction to L2 file', errstat)
          return
@@ -1299,7 +1300,7 @@ CONTAINS
 
   SUBROUTINE compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
                             terrain_height, surface_pressure, cli_wgh_ozo_pro, cli_idx_ozo_pro, &
-                            lat, lon, xtrange, amfdiag, scattw)
+                            lat, lon, xtrange, amfdiag, scattw, crfrc)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -1326,6 +1327,7 @@ CONTAINS
     REAL (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1), INTENT (INOUT) :: scattw
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: surface_pressure
+    real (kind=r8), dimension (1:nx,0:nt-1), intent(inout) :: crfrc
 
     ! ----------------
     ! output variables
@@ -1777,6 +1779,8 @@ CONTAINS
 
           ! Convert effective cloud fraction to radiance cloud fraction
           local_cfr = local_cfr * Radiance_cld / ( local_cfr * Radiance_cld + (1.0 - local_cfr) * Radiance_clr)
+          ! write to crfrc for output as cloud radiance fraction
+          crfrc(ixtrack,itime) = local_cfr
 
           ! ---------------------------------------------------------------------------------
           ! Boersma et al. 2011 AMT, 4, 2011
