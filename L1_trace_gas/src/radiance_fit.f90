@@ -282,14 +282,15 @@ CONTAINS
                                 fitspec(1:n_rad_wvl_loc), fitvar_rad)
 
       n_nozero_wgt = MAX ( INT ( ANINT ( SUM(Spec%weights(1:n_rad_wvl_loc)) ) ), 1 )
-      mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
-      sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
-      loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
-
+      !check number of degrees of freedom is > 0
+      IF ( n_nozero_wgt > 0 .and. &
+           n_nozero_wgt-n_fitvar_rad+n_prefit_vars > 0) THEN
+        mean         = SUM  ( fitres(1:n_rad_wvl_loc) )                 / REAL(n_nozero_wgt, KIND=r8)
+        sdev         = SQRT ( SUM ( (fitres(1:n_rad_wvl_loc)-mean)**2 ) / REAL(n_nozero_wgt-1, KIND=r8) )
+        loclim       = mean + REAL(fitres_range, KIND=r8)*sdev
       ! ----------------------
       ! Fitting RMS and CHI**2
       ! ----------------------
-      IF ( n_nozero_wgt > 0 ) THEN
         rms     = SQRT ( SUM ( fitres(1:n_rad_wvl_loc)**2 ) / REAL(n_nozero_wgt, KIND=r8) )
         ! ---------------------------------------------
         ! This gives the same CHI**2 as the NR routines
@@ -299,6 +300,9 @@ CONTAINS
         if (.not.ieee_is_finite (rms) .or. rms > 1.e30) rms = r8_missval
         if (.not.ieee_is_finite (chisquav) .or. chisquav > 1.e30) chisquav = r8_missval
       ELSE
+        mean = r8_missval
+        sdev = r8_missval
+        loclim = r8_missval
         rms      = r8_missval
         chisquav = r8_missval
       END IF
@@ -632,6 +636,9 @@ CONTAINS
     !     OMI data.
 
     errstat = 0 !pge_errstat_ok
+
+    ! set fit array to zero in case we hit an error and return early
+    fit = 0.0_r8
 
     ! ----------------------------------------------------------------------------
     ! Here is a logical to determine whether we need to compute a "sythetic"
