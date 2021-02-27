@@ -29,6 +29,8 @@
 /* #define OUTPUT_PARALLAX_SHIFT 1 */
 #undef OUTPUT_PARALLAX_SHIFT
 
+#define ALWAYS_SORT_POLYGONS 1
+
 typedef struct
 {
    double *lon;
@@ -799,17 +801,10 @@ static int write_band_geolocation (const Granule_Type *gt, const char *band_name
 {
    const char *attname = "terrain_referenced_coordinates";
    const char *yes = "yes";
-   int grp, idp, start[3], count[3];
+   int grp, start[3], count[3];
 
    if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
      return -1;
-
-   if (NC_NOERR == nc_inq_attid (grp, NC_GLOBAL, attname, &idp))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: file coordinates are already terrain-referenced",
-                     __func__);
-        return -1;
-     }
 
    start[0] = 0;
    start[1] = 0;
@@ -826,26 +821,13 @@ static int write_band_geolocation (const Granule_Type *gt, const char *band_name
         return -1;
      }
 
+#ifdef OUTPUT_PARALLAX_SHIFT
+   if (0 != write_shift (gt, band_name, geoloc))
+     return -1;
+#endif
+
    if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_CHAR, 1+strlen(yes), yes))
      return -1;
-
-   return 0;
-}
-
-static int write_geolocation (const Granule_Type *gt)
-{
-   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
-   int i;
-
-   for (i = 0; i < NUM_BANDS; i++)
-     {
-#ifdef OUTPUT_PARALLAX_SHIFT
-        if (0 != write_shift (gt, band_names[i], &gt->geoloc[i]))
-          return -1;
-#endif
-        if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
-          return -1;
-     }
 
    return 0;
 }
@@ -891,6 +873,7 @@ static __inline__ double compute_shift (double lat0, double lon0, double lat1, d
    return delta * 6371.0088;
 }
 
+#ifndef ALWAYS_SORT_POLYGONS
 static int isconvex_polygon (const double *x, const double *y, int n)
 {
    double wsign=0;
@@ -986,6 +969,7 @@ static int isconvex_polygon (const double *x, const double *y, int n)
    /* This is a convex polygon */
    return 1;
 }
+#endif
 
 /* This code will only ever process polygons with 4 vertices,
  * so use static temporary arrays for the sort. */
@@ -1149,7 +1133,7 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
 
              if (num_valid_points == geoloc->num_corner)
                {
-#if 1
+#ifdef ALWAYS_SORT_POLYGONS
                   /* Just always sort CCW.  It's slower, but catches the corner case
                    * when the points end up in CW order.
                    */
@@ -1193,6 +1177,21 @@ return_status:
    return s;
 }
 
+static int have_terrain_referenced_coordinates (const Granule_Type *gt, const char *band_name)
+{
+   const char *attname = "terrain_referenced_coordinates";
+   int idp, grp;
+
+   if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
+     return -1;
+
+   /* If the attribute is present, the file coordinates are terrain-referenced */
+   if (NC_NOERR == nc_inq_attid (grp, NC_GLOBAL, attname, &idp))
+     return 1;
+
+   return 0;
+}
+
 /* INR lon-lat coordinates are referenced to the WGS84 ellipsoid. This means that features
  * that sit at a significant vertical offset from the ellipsoid (e.g. mountain-tops, cloud-tops)
  * are assigned the coordinates of the point where the line of sight from the spacecraft
@@ -1205,10 +1204,23 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
 {
    config_setting_t *s;
    Geoid_Data_Type gdt = {0};
+   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
    const char *geoid_dem_setting;
    char *geoid_dem_path = NULL;
    char *geoid_dem_basename;
+   int num_to_correct, have_corrected[NUM_BANDS];
    int i, status = -1;
+
+   num_to_correct = NUM_BANDS;
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        if ((have_corrected[i] = have_terrain_referenced_coordinates (gt, band_names[i])) < 0)
+          return -1;
+        if (have_corrected[i]) num_to_correct--;
+     }
+
+   if (num_to_correct == 0)
+     return 0;
 
    if ((NULL == (s = config_lookup (cfg, "parallax_correction")))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "altitude_file", &geoid_dem_setting)))
@@ -1225,14 +1237,13 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
 
    for (i = 0; i < NUM_BANDS; i++)
      {
-        if (0 != correct_band_geolocation_for_parallax (&gdt, &gt->sat, &gt->geoloc[i]))
-          goto free_and_return;
-     }
-
-   if (0 != write_geolocation (gt))
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: writing parallax corrected geolocation", __func__);
-        goto free_and_return;
+        if (0 == have_corrected[i])
+          {
+             if (0 != correct_band_geolocation_for_parallax (&gdt, &gt->sat, &gt->geoloc[i]))
+               goto free_and_return;
+             if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
+               goto free_and_return;
+          }
      }
 
    if (NULL != (geoid_dem_basename = strrchr (geoid_dem_path, '/')))
