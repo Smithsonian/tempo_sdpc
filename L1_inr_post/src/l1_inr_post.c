@@ -47,6 +47,20 @@ static int read_config_file (const char *config_file, config_t *cfg)
    return 0;
 }
 
+static int set_snow_ice_fraction (Granule_Type *gt, const char *snow_file)
+{
+   Snow_Type *snow;
+   int status;
+
+   if (NULL == (snow = snow_init (snow_file)))
+     return -1;
+
+   status = gt->gt_set_snow_ice_fraction (gt, snow);
+   snow->sn_delete (snow);
+
+   return status;
+}
+
 static int set_elevation (Granule_Type *gt, config_t *cfg)
 {
    Elevation_Type *et;
@@ -93,45 +107,32 @@ static int read_angles (config_t *cfg, double *max_glint_angle_deg,
    return 0;
 }
 
-static int set_ground_pixel_quality_flags (Granule_Type *gt, TIO_Meta_Type *meta,
-                                           config_t *cfg, const char *snow_file)
+static int set_ground_pixel_quality_flags (Granule_Type *gt, config_t *cfg)
 {
-   Snow_Type *snow = NULL;
    Land_Cover_Type *land_cover = NULL;
    double max_glint_angle, max_eclipse_angle;
-   const char *snow_file_basename;
    int status = -1;
 
    if (0 != read_angles (cfg, &max_glint_angle, &max_eclipse_angle))
      return -1;
 
-   if (NULL == (snow = snow_init (snow_file)))
-     return -1;
-
-   if (NULL != (snow_file_basename = strrchr (snow_file, '/')))
-     {
-        snow_file_basename++;
-     }
-   else snow_file_basename = snow_file;
-   if (0) tio_meta_append_string (meta, "input_files", snow_file_basename);
-
    if (NULL == (land_cover = land_cover_init (cfg)))
      goto return_status;
 
-   status = gt->gt_set_ground_pixel_flags (gt, max_glint_angle, max_eclipse_angle,
-                                           snow, land_cover);
+   status = gt->gt_set_ground_pixel_flags (gt, max_glint_angle, max_eclipse_angle, land_cover);
 
    status = 0;
 return_status:
-   if (snow) snow->sn_delete (snow);
    if (land_cover) land_cover->lc_delete (land_cover);
 
    return status;
 }
 
-static int process_inputs (Granule_Type *gt, TIO_Meta_Type *meta,
-                           config_t *cfg, const char *snow_file)
+static int process_inputs (Granule_Type *gt, config_t *cfg, const char *snow_file)
 {
+   if (0 != set_snow_ice_fraction (gt, snow_file))
+     return -1;
+
    if (0 != set_elevation (gt, cfg))
      return -1;
 
@@ -141,7 +142,7 @@ static int process_inputs (Granule_Type *gt, TIO_Meta_Type *meta,
    if (0 != gt->gt_set_earth_sun_distance (gt))
      return -1;
 
-   if (0 != set_ground_pixel_quality_flags (gt, meta, cfg, snow_file))
+   if (0 != set_ground_pixel_quality_flags (gt, cfg))
      return -1;
 
    return 0;
@@ -293,7 +294,7 @@ int main (int argc, char **argv)
 
    if (gt)
      {
-        status = process_inputs (gt, meta, &cfg, snow_file);
+        status = process_inputs (gt, &cfg, snow_file);
         gt->gt_close (gt);
         if (status != 0)
           goto return_status;

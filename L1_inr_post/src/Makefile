@@ -47,7 +47,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = l1_inr_post.o map.o elevation.o land_cover.o granule.o snow.o ezlhconv.o
+OFILES   = l1_inr_post.o map.o elevation.o land_cover.o granule.o snow.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 ELF_FCFLAGS = $(FCFLAGS) -fPIC
@@ -124,9 +124,6 @@ $(objdir)/granule.o:	$(srcdir)/granule.c
 
 $(objdir)/snow.o:	$(srcdir)/snow.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/snow.c
-
-$(objdir)/ezlhconv.o:	$(srcdir)/ezlhconv.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ezlhconv.c
 
 # -----------------------------------------------------------------------
 

@@ -20,16 +20,19 @@ depend on geolocation.
 
 @section snow Snow and Ice cover
 
-Snow and ice cover information is obtained from the Near-Real-Time
-SSM/I-SSMIS EASE-Grid Daily Global Ice Concentration and Snow Extent
-data set from the NASA National Snow and Ice Data Center Distributed
-Active Archive Center (NSIDC DAAC).
+Snow and ice cover information is obtained from the IMS Daily Northern
+Hemisphere Snow and Ice Analysis 1km resolution data set from the NASA
+National Snow and Ice Data Center Distributed Active Archive Center
+(NSIDC DAAC).
 
-The NISE file name must be provided on the command line.
+The IMS snow product labels each pixel as either outside the coverage
+area (0), sea (1), land without snow (2), sea ice (3), or snow covered
+land (4).  For each TEMPO pixel, \c L1_inr_post computes the fractional
+area of that pixel covered by IMS product pixels labeled as 3 or 4.
+The fractional area covered by snow and/or ice is written to the
+\c snow_ice_fraction variable in the geolocated radiance file.
 
-Although the NISE data product is in HDF4 format, \c L1_inr_post reads
-it using the \c netcdf4 library interface.  For this reason, the
-netcdf4 must be compiled with HDF4 support enabled.
+The snow data product file name must be provided on the command line.
 
 @section inr_post_param_file Parameter file
 

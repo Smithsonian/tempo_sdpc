@@ -287,6 +287,83 @@ return_error:
    return status;
 }
 
+static int def_snow_ice_fraction_var (Geoloc_Type *geoloc)
+{
+   TIO_Var_Info_Type info;
+   TIO_Attr_Text_Type text_attrs[] =
+     {
+        {"units", ""},
+        {"long_name", TEMPO_VAR_SNOWICE_FRACTION},
+        {"comment", "Fraction of pixel area covered by snow and/or ice"},
+        {"coordinates", "longitude latitude"},
+        {NULL, NULL}
+     };
+   float fill_value = TIO_FILL_FLOAT;
+   int varid, status;
+
+   tell_push_queue();
+   status = TIO_inq_var (geoloc->group, TEMPO_VAR_SNOWICE_FRACTION, &info);
+   tell_pop_queue(1);
+   if (status != 0)
+     {
+        if ((0 != TIO_def_var (geoloc->group, TEMPO_VAR_SNOWICE_FRACTION, NC_FLOAT, 2, geoloc->dimids, &varid))
+            || (0 != TIO_def_var_fill (geoloc->group, varid, 0, &fill_value))
+            || (0 != TIO_put_text_attrs (geoloc->group, varid, text_attrs)))
+          return -1;
+     }
+
+   return 0;
+}
+
+static int set_snow_ice_fraction (Granule_Type *gt, Snow_Type *sn)
+{
+   Geoloc_Type *geoloc;
+   float *snow_ice_fraction = NULL;
+   size_t num_pixels;
+   int start[3], count[3];
+   int i, status;
+
+   geoloc = &gt->geoloc[0];
+   num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+
+   if (NULL == (snow_ice_fraction = (float *) MALLOC (num_pixels * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        geoloc = &gt->geoloc[i];
+
+        if (0 != sn->sn_regrid (sn, num_pixels, geoloc->lon_cnr, geoloc->lat_cnr,
+                                snow_ice_fraction))
+          goto return_error;
+
+        if (0 != def_snow_ice_fraction_var (geoloc))
+          goto return_error;
+
+        start[0] = 0;
+        start[1] = 0;
+        count[0] = geoloc->num_mirror_step;
+        count[1] = geoloc->num_xtrack;
+
+        if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_SNOWICE_FRACTION,
+                                       start, count, TIO_FILL_FLOAT, snow_ice_fraction))
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: setting pixel snow/ice fraction", __func__);
+             goto return_error;
+          }
+     }
+
+   status = 0;
+
+return_error:
+   FREE(snow_ice_fraction);
+   return status;
+}
+
 /* Derivation of the solar glint angle:
  * Notation:
  * Polar unit vector:  u(theta,phi) = Xhat * sin(theta)*cos(phi)
@@ -448,13 +525,12 @@ static int set_solar_eclipse_bit (const Geoloc_Type *geoloc,
 static int set_ground_pixel_flags (Granule_Type *gt,
                                    double max_glint_angle,
                                    double max_eclipse_angle,
-                                   const Snow_Type *sn,
                                    const Land_Cover_Type *lc)
 {
    Geoloc_Type *geoloc;
    unsigned int *ground_flags = NULL;
    unsigned char *ubytes = NULL;
-   unsigned char *snow_flags, *lc_type1, *lc_typeqc, *illum_flags;
+   unsigned char *lc_type1, *lc_typeqc, *illum_flags;
    int *inr_quality_flag = NULL;
    size_t num_pixels, ubytes_size;
    int start[2], count[2];
@@ -473,7 +549,6 @@ static int set_ground_pixel_flags (Granule_Type *gt,
      }
    memset ((char *)ubytes, 0, ubytes_size);
 
-   snow_flags  = ubytes;
    lc_type1    = ubytes + num_pixels;
    lc_typeqc   = ubytes + num_pixels * 2;
    illum_flags = ubytes + num_pixels * 3;
@@ -504,9 +579,6 @@ static int set_ground_pixel_flags (Granule_Type *gt,
                                       start, count, TIO_INT, inr_quality_flag))
           goto return_error;
 
-        if (0 != sn->sn_lookup (sn, num_pixels, geoloc->lon, geoloc->lat, snow_flags))
-          goto return_error;
-
         if ((0 != lc->lc_lookup_type1 (lc, num_pixels, geoloc->lon, geoloc->lat, lc_type1))
             || (0 != lc->lc_lookup_typeqc (lc, num_pixels, geoloc->lon, geoloc->lat, lc_typeqc)))
           goto return_error;
@@ -521,8 +593,7 @@ static int set_ground_pixel_flags (Granule_Type *gt,
          * bit 4-5 are illumination flags (bit 4=sun glint possibility,
          *                                 bit 5=solar eclipse possibility).
          * bit 6 is the INR quality flag
-         * bit 7 is currently unused.
-         * bits 8-15 are snow & ice flags.
+         * bits 7-15 are currently unused.
          * bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1.
          */
 
@@ -535,7 +606,6 @@ static int set_ground_pixel_flags (Granule_Type *gt,
              BITMASK_SET(flags,   lc_typeqc[j] >> 4);
              BITMASK_SET(flags, illum_flags[j] << 4);
              BITMASK_SET(flags, (inr_quality_flag[j] & 0x01) << 6);
-             BITMASK_SET(flags,  snow_flags[j] << 8);
              BITMASK_SET(flags,    lc_type1[j] << 16);
 
              ground_flags[j] = flags;
@@ -757,6 +827,7 @@ static Granule_Type *new_granule_type (void)
 
    gt->gt_close = delete_granule_type;
    gt->gt_set_elevation = set_elevation;
+   gt->gt_set_snow_ice_fraction = set_snow_ice_fraction;
    gt->gt_set_object_angles = set_object_angles;
    gt->gt_set_ground_pixel_flags = set_ground_pixel_flags;
    gt->gt_set_earth_sun_distance = set_earth_sun_distance;

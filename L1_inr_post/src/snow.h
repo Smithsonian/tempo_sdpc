@@ -15,14 +15,14 @@ struct Snow_Type
     * @param[in]  sn  pointer to Snow_Type object from \c snow_init
     */
 
-   int (*sn_lookup)(const Snow_Type *, unsigned int,
-                    const double *, const double *, unsigned char *);
-   /**<  Nearest-neighbor snow and ice mask lookup
+   int (*sn_regrid)(Snow_Type *, unsigned int,
+                    const double *, const double *, float *);
+   /**<  Regrid snow and ice mask to derive the fractional area covered by snow and/or ice
     * @param[in]  sn   pointer to Snow_Type object from \c snow_init
     * @param[in]  num  number of lon,lat points to process
     * @param[in]  lon  pointer to longitude coordinates
     * @param[in]  lat  pointer to latitude coordinates
-    * @param[out] mask  pointer to nearest-neighbor snow and ice mask values
+    * @param[out] frac  fraction of pixel area covered by snow and/or ice
     * @return 0 on success, -1 on error
     */
 
@@ -32,7 +32,7 @@ struct Snow_Type
 };
 
 /**  Initialize Snow_Type object
- * @param[in] file  path to EASE-Grid NISE file
+ * @param[in] file  path to IMS product file
  * @return pointer to initialized Snow_Type on success, NULL on error
  */
 extern Snow_Type *snow_init (const char *file);

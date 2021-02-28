@@ -9,8 +9,8 @@
 #include <libconfig.h>
 
 #include "elevation.h"
-#include "snow.h"
 #include "land_cover.h"
+#include "snow.h"
 
 typedef struct Granule_Type Granule_Type;
 
@@ -19,6 +19,13 @@ struct Granule_Type
    void (*gt_close)(Granule_Type *);
    /**<  Free resources associated with Granule_Type object
     * @param[in]  et  pointer to Granule_Type object from granule_open
+    */
+
+   int (*gt_set_snow_ice_fraction)(Granule_Type *, Snow_Type *);
+   /**< Set snow_ice_fraction variable
+    * @param[in]  gt   pointer to Granule_Type object from granule_open
+    * @param[in]  sn   pointer to Snow_Type object from snow_init
+    * @return 0 on success, -1 on error
     */
 
    int (*gt_set_elevation)(Granule_Type *, const Elevation_Type *);
@@ -35,7 +42,6 @@ struct Granule_Type
     */
 
    int (*gt_set_ground_pixel_flags)(Granule_Type *, double, double,
-                                    const Snow_Type *,
                                     const Land_Cover_Type *);
    /**<  Set ground pixel flags
     * @param[in]  gt  pointer to Granule_Type object from granule_open
@@ -44,7 +50,6 @@ struct Granule_Type
     *                  the glint possibility flag should be set.
     * @param[in]  max_eclipse_angle  Maximum angle between sun and moon
     *                  for which the eclipse flag should be set.
-    * @param[in]  sn  pointer to Snow_Type object from snow_init
     * @param[in]  lc  pointer to Land_Cover_Type object from land_cover_init
     * @return 0 on success, -1 on error
     */
