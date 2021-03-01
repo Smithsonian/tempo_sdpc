@@ -26,7 +26,7 @@ case $_task in
    ;;
 
    SNOW )
-   ./src/dl_nise.sl
+   ./src/dl_snow_ims.sl
    ;;
 
    GOES )
