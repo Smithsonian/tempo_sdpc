@@ -8,7 +8,7 @@ nam227:
 nsidc:
 {
     root_dir = "$SDPC_ANCILLARY_ROOT/snow/nsidc" ;
-    basename_pattern = "NISE_SSMISF*.HDFEOS" ;
+    basename_pattern = "ims*_1km_GIS_v*.tif.gz" ;
     lookup_table = "$SDPC_ROOT/var/nsidc.db" ;
 };
 

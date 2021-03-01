@@ -25,18 +25,18 @@ static int parse_timestamp (const char *basename, struct tm *tm)
    char *p;
 
    len = strlen(basename);
-   if (len != 29)
+   if (len < 22)
      {
         fprintf (stderr, "**** Error: basename appears too short: %s (strlen = %ld)\n",
                  basename, len);
         return -1;
      }
 
-   /* e.g. NISE_SSMISF18_YYYYMMDD.HDFEOS */
-   tstamp_start = basename + 14;
-   p = strptime (tstamp_start, "%Y%m%d", tm);
+   /* e.g. ims2020182_1km_GIS_v1.3.tif */
+   tstamp_start = basename + 3;
+   p = strptime (tstamp_start, "%Y%j", tm);
    len = p - tstamp_start;
-   if (len == 8)
+   if (len == 7)
      return 0;
 
    fprintf (stderr, "*** Error: parsing %s\n", basename);

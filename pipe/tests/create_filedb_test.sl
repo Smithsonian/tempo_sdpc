@@ -85,7 +85,7 @@ define slsh_main ()
    variable irr = make_series_struct (tt0 - 12*hour, 1, 0*hour,
                                       "$archive_root/L1/IRR/%Y/%m/%d/TEMPO_IRR_L1_V01_%Y%m%dT%H%M%SZ.nc"$);
    variable snow = make_series_struct (tt0, 1, 0*hour,
-                                       "$ancillary_root/snow/nsidc/%Y/%m/NISE_SSMISF18_%Y%m%d.HDFEOS"$);
+                                       "$ancillary_root/snow/nsidc/%Y/%m/ims%Y%j_1km_GIS_v1.3.tif.gz"$);
    variable nam227 = make_series_struct (tt0, 12, hour,
                                          "$ancillary_root/met/nam227/%Y/%m/%d/%Y%m%d%H.nam.tffz.conusnest.hiresf%H.tm00.grib2"$);
 
