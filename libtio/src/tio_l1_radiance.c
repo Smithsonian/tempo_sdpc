@@ -336,15 +336,7 @@ static _pName_UInt_Pair_Type GPQF_Pairs[] =
    /* bits 4-7 = misc */
   {1<<4,   "sun_glint_possibility"},
   {1<<5,   "solar_eclipse_possibility"},
-   /* bits 8-15 = 8-bit NISE SSM/I-SSMIS EASE-grid snow/ice flags */
-  { 0,     "snow_free_land"},
-  /* (1-100) = sea ice concentration (%) */
-  {101<<8, "permanent_ice"},
-  {103<<8, "snow"},
-  {252<<8, "mixed_pixels_at_coastline"},
-  {253<<8, "suspect_ice_value"},
-  {254<<8, "corners_undefined"},
-  {255<<8, "ocean"},
+   /* bits 8-15 = unused */
    /* bits 16-23 = 8-bit MODIS yearly land cover flags, MCD12Q1, IGBP Type 1 */
   {  0,       "water"},
   {  1<<16,   "evergreen_needleleaf_forest"},
