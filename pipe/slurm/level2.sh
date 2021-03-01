@@ -66,9 +66,27 @@ export SDPC_GRANULE_LABEL="${rad_basename}"
 # For testing, we'll update it here, because the irr file may be newly created
 filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:irr --update
 
+cache_uncompressed_snow_file()
+{
+   path=$1
+
+   file_sans_gz=$(basename $path .gz)
+
+   cache_dir="$SDPC_RUN_DIR_MASTER/cache/snow"
+   if ! test -d $cache_dir ; then
+      mkdir -p $cache_dir || error_exit "$LINENO: cannot create directory: $cache_dir"
+   fi
+
+   snow_file="$cache_dir/$file_sans_gz"
+   if ! test -f "$snow_file" ; then
+      gunzip -c $path > "$snow_file" || error_exit "$LINENO: uncompressing file into $cache_dir"
+   fi
+}
+
 # Generate file list file on master node
 irr_file=$(filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:irr --find --header "$rad_path")
 snow_file=$(filedb -c $SDPC_ROOT/etc/filedb.cfg snow --find --header "$rad_path")
+cache_uncompressed_snow_file $snow_file
 met_file_path_synth=$(filedb -c $SDPC_ROOT/etc/filedb.cfg met:synth --find --header "$rad_path")
 met_file_path_hires=$(filedb -c $SDPC_ROOT/etc/filedb.cfg met:hires --find --header "$rad_path")
 met_file_path_lores=$(filedb -c $SDPC_ROOT/etc/filedb.cfg met:lores --find --header "$rad_path")
