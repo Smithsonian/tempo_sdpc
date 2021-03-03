@@ -323,8 +323,6 @@ static int regrid_polar_stereographic_src (Snow_Type *sn, unsigned int num_pixel
         double sum_area;
         int pixel_status;
 
-        snow_ice_fraction[i] = 0.0;
-
         /* Next 4 (lon,lat) pixel corners: */
         lon_cnr = lon_cnrp + cnr;
         lat_cnr = lat_cnrp + cnr;
@@ -337,7 +335,12 @@ static int regrid_polar_stereographic_src (Snow_Type *sn, unsigned int num_pixel
 
         /* skip invalid coordinates */
         if (pixel_status != 0)
-          continue;
+          {
+             snow_ice_fraction[i] = TIO_FILL_FLOAT;
+             continue;
+          }
+
+        snow_ice_fraction[i] = 0.0;
 
         /* Make a modifiable copy of the pixel's vertex coordinates */
         memcpy ((char *)x0, (char *)lon_cnr, 4 * sizeof(double));
