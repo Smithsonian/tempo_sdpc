@@ -12,7 +12,7 @@ module output_tools
   use tg_names_module
   use OMSAO_precision_module
   use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights, &
-       yn_stratrop
+       yn_stratrop, yn_gems
   use sao_pge_utils, only: calc_relaz_angle
 
   implicit none
@@ -839,6 +839,17 @@ contains
                               units = "molec/cm^2", &
                               fillvalue = fill_double, &
                               attlist=att_coord)
+    if (.not.yn_gems) then
+      call tiof_varlist_append (varlist_supp, errstat, &
+                                tg_var_snowice_fraction, &
+                                nf90_float, &
+                                dimids = dimids_xtrack_step,  &
+                                long_name = "Fraction of pixel area covered by snow and/or ice", &
+                                units = "", &
+                                valid_range = [0.0_r8, 1.0_r8], &
+                                fillvalue = fill_float, &
+                                attlist=att_coord)
+    endif
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_terrain_height, &
                               nf90_short, &
@@ -1189,6 +1200,10 @@ contains
     call tiof_pop_group (obj, errstat)
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
+    if (.not.yn_gems) then
+      call tiof_put2d_r4 (obj, tempo_var_snowice_fraction, [iline,0], [nblock,nxtrack], &
+                          input_vars % snow_ice_fraction (1:nxtrack, 0:nblock-1), errstat)
+    endif
     call tiof_put2d_i2 (obj, tg_var_terrain_height, [iline,0], [nblock,nxtrack], &
                         input_vars % terrain_height (1:nxtrack, 0:nblock-1), errstat)
     call tiof_put2d_i4 (obj, tg_var_gpqf, [iline,0], [nblock,nxtrack], &

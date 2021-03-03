@@ -35,6 +35,7 @@ MODULE OMSAO_omidata_module
     real (kind=r4), dimension(:,:), pointer :: solar_azimuth => null()
     real (kind=r4), dimension(:,:), pointer :: viewing_zenith => null()
     real (kind=r4), dimension(:,:), pointer :: viewing_azimuth => null()
+    real (kind=r4), dimension(:,:), pointer :: snow_ice_fraction => null()
     integer (kind=i2), dimension(:,:), pointer :: terrain_height => null()
     integer (kind=i4), dimension(:,:), pointer :: ground_pixel_quality_flag => null()
   end type input_vars_type
@@ -133,6 +134,7 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_latitude, omi_longitude
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_szenith, omi_sazimuth
   REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: omi_vzenith, omi_vazimuth
+  REAL    (KIND=r4), DIMENSION (nxtrack_max,0:nlines_max-1), target    :: snow_ice_fraction
   !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_spec
   REAL    (KIND=r8), DIMENSION (:,:,:), allocatable :: omi_radiance_spec
   !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max,0:nlines_max-1) :: omi_radiance_wavl
@@ -330,6 +332,7 @@ contains
     input_vars % solar_azimuth => omi_sazimuth
     input_vars % viewing_zenith => omi_vzenith
     input_vars % viewing_azimuth => omi_vazimuth
+    input_vars % snow_ice_fraction => snow_ice_fraction
     input_vars % terrain_height => omi_height
     input_vars % ground_pixel_quality_flag => omi_geoflg
     

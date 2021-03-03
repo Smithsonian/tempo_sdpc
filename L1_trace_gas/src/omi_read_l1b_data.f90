@@ -81,7 +81,6 @@ CONTAINS
       is_szoom = .false.
     endif
 
-
     RETURN
   END SUBROUTINE omi_read_binning_factor
 
@@ -183,6 +182,7 @@ CONTAINS
       omi_radiance_swathname, omi_radiance_spec,  &
       omi_radiance_wavl, omi_radiance_qflg, omi_height, omi_geoflg, omi_latitude,             &
       omi_longitude, omi_szenith, omi_sazimuth, omi_vzenith, omi_vazimuth,                    &
+      snow_ice_fraction, &
       omi_razimuth, omi_auraalt, omi_time, omi_nwav_rad, & !omi_radiance_errstat,                &
       rad_ccdpix_selection,                                                                   &
       omi_xtrflg_l1b, omi_xtrflg
@@ -191,7 +191,7 @@ CONTAINS
     !use l1bread
     use tio_module
     use tg_names_module
-    use netcdf, only : nf90_nowrite
+    use netcdf, only : nf90_nowrite, nf90_noerr, nf90_inq_varid
     use ctrlvars, only : yn_omi_data, yn_gems
     use m_read_gems, only: gems_read_radiance_lines
 
@@ -219,7 +219,10 @@ CONTAINS
     character (len=256) :: logmsg
 
     type (tiof_file_type) :: tio_l1obj
+    logical :: have_snowice_fraction
+    integer :: status, varid
 
+    have_snowice_fraction = .false.
 
     if (yn_gems) then !GEMS data
       write(logmsg, '(a,i4,a)') "omi_read_radiance_lines: iline=",iline, &
@@ -257,6 +260,13 @@ CONTAINS
            [nloop,nxtrack,nwavel_ccd], tmp_flg(:,1:nxtrack,0:nloop-1), errstat)
       call tiof_get3d_r4 (tio_l1obj, tg_var_wavelength, [iline,0,0], &
            [nloop,nxtrack,nwavel_ccd], tmp_wvl(:,1:nxtrack,0:nloop-1), errstat)
+      ! Look for snow_ice_fraction
+      status = nf90_inq_varid (tio_l1obj % groupid, tempo_var_snowice_fraction, varid)
+      if (status == nf90_noerr) then
+        call tiof_get2d_r4 (tio_l1obj, tempo_var_snowice_fraction, [iline,0], &
+                            [nloop,nxtrack], snow_ice_fraction(1:nxtrack,0:nloop-1), errstat)
+        have_snowice_fraction = .true.
+      endif
       if (yn_omi_data) then
         call tiof_get1d_r4 (tio_l1obj, "SpacecraftAltitude", [iline], &
              [nloop], omi_auraalt, errstat)
@@ -291,12 +301,18 @@ CONTAINS
       WHERE ( ABS(omi_longitude(1:nxtrack,iloop)) > max_longitude )
         omi_longitude(1:nxtrack,iloop) = r4_missval
       ENDWHERE
+      if (have_snowice_fraction) then ! TEMPO
+        where (snow_ice_fraction(1:nxtrack,iloop) < 0.0 .or. &
+               snow_ice_fraction(1:nxtrack,iloop) > 1.0)
+          snow_ice_fraction(1:nxtrack,iloop) = r4_missval
+        endwhere
+      endif
 
       ! ---------------------------------------------------------------------
       ! For the Zenith Angles we only correct those values < 0, since we want
       ! to maintain the information of the value of SZA even if it is out of
       ! the bounds required for the computation of AMFs
-      ! EJOS - TEMPO zenith angles have high fill values which must be 
+      ! EJOS - TEMPO zenith angles have high fill values which must be
       ! excluded, so we require a check against a maximum legal value
       ! ---------------------------------------------------------------------
       WHERE ((omi_szenith(1:nxtrack,iloop) < min_zenith ) &
@@ -383,7 +399,7 @@ CONTAINS
     !use l1bread
     use tio_module
     use tg_names_module
-    use netcdf, only : nf90_nowrite
+    use netcdf, only : nf90_nowrite, nf90_noerr, nf90_inq_varid
 
     IMPLICIT NONE
 
@@ -403,8 +419,13 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4), DIMENSION (nx,0:nt-1) :: geoflg
+    real (kind=r4), dimension (nx, 0:nt-1) :: snow_ice_fraction
     !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
+    logical :: have_snowice_fraction
+    integer :: status, varid
+
+    have_snowice_fraction = .false.
 
     ! let errstat flow
     !call l1bread_open_swath (l1bfile, omi_radiance_swathname, l1bobj, errstat)
@@ -413,6 +434,14 @@ CONTAINS
     call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
     call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
     call tiof_get2d_ui4  (tio_l1obj, tg_var_gpqf, [0,0], [nt,nx], geoflg(1:nx,0:nt-1), errstat)
+    ! Look for snow_ice_fraction:
+    status = nf90_inq_varid (tio_l1obj % groupid, tempo_var_snowice_fraction, varid)
+    if (status == nf90_noerr) then
+      call tiof_get2d_r4 (tio_l1obj, tempo_var_snowice_fraction, [0,0], [nt,nx], &
+                          snow_ice_fraction(1:nx,0:nt-1), errstat)
+      have_snowice_fraction = .true.
+    endif
+
     call tiof_close (tio_l1obj, errstat)
     if (errstat /= 0) return
 
@@ -430,8 +459,16 @@ CONTAINS
     ! Bit 4 is glint
     glint_flg = int (iand (ishft(geoflg, -4), 1_i4), kind=i2)
 
-    ! Bits 8-14 are snow/ice
-    snow_ice_flg  = int (iand (ishft(geoflg, -8), 127_i4), kind=i2)
+    if (have_snowice_fraction) then
+      where (0.0 <= snow_ice_fraction .and. snow_ice_fraction <= 1.0)
+        snow_ice_flg = aint(snow_ice_fraction * 100)
+      elsewhere
+        snow_ice_flg = 0
+      endwhere
+    else
+      ! Bits 8-14 are snow/ice
+      snow_ice_flg  = int (iand (ishft(geoflg, -8), 127_i4), kind=i2)
+    endif
 
   END SUBROUTINE omi_read_glint_ice_flags
 
@@ -483,43 +520,43 @@ CONTAINS
   END SUBROUTINE convert_xtqualflag_info
 
 !unused   SUBROUTINE omi_xtract_swathname ( l1bfile, l1bchan, omiswath )
-!unused 
+!unused
 !unused     USE OMSAO_precision_module
-!unused 
+!unused
 !unused     USE OMSAO_parameters_module, ONLY : MAX_STR_LEN
 !unused     USE hdfeos4_parameters
 !unused     USE strutils
-!unused 
+!unused
 !unused     IMPLICIT NONE
-!unused 
+!unused
 !unused     ! --------------
 !unused     ! Input Variable
 !unused     ! --------------
 !unused     CHARACTER (LEN=*), INTENT (IN) :: l1bfile
 !unused     CHARACTER (LEN=3), INTENT (IN) :: l1bchan
-!unused 
+!unused
 !unused     ! ----------------
 !unused     ! Output variables
 !unused     ! ----------------
 !unused     CHARACTER (LEN=*), INTENT (OUT) :: omiswath
-!unused 
+!unused
 !unused     ! ---------------
 !unused     ! Local variables
 !unused     ! ---------------
 !unused     INTEGER   (KIND=i4)      :: is, ie
 !unused     INTEGER   (KIND=i4)      :: swfid, nswath, strbufsize, xswath
 !unused     CHARACTER (LEN=MAX_STR_LEN) :: swathlist
-!unused 
+!unused
 !unused     ! ------------------------------
 !unused     ! Name of this module/subroutine
 !unused     ! ------------------------------
 !unused     !CHARACTER (LEN=20), PARAMETER :: modulename = 'omi_xtract_swathname'
-!unused 
+!unused
 !unused     ! --------------------------
 !unused     ! Initialize OUTPUT variable
 !unused     ! --------------------------
 !unused     omiswath = '?'
-!unused 
+!unused
 !unused     ! ---------------------------------------------------------
 !unused     ! Inquire about the swaths in the current L1b radiance file
 !unused     ! ---------------------------------------------------------
@@ -527,7 +564,7 @@ CONTAINS
 !unused     swathlist="" !JED
 !unused     nswath = SWInqswath ( l1bfile, swathlist, strbufsize )
 !unused     xswath = SWClose    ( swfid )
-!unused 
+!unused
 !unused     ! --------------------------------------------------------------------
 !unused     ! Extract the swath name we need. Either there is one one swath in the
 !unused     ! file (VIS) or there are two (UV-1, UV-2)
@@ -549,9 +586,9 @@ CONTAINS
 !unused     CASE DEFAULT
 !unused       ! Nothing to do here except to fold.
 !unused     END SELECT
-!unused 
+!unused
 !unused     omiswath = TRIM(ADJUSTL(swathlist(is:ie)))
-!unused 
+!unused
 !unused     RETURN
 !unused   END SUBROUTINE omi_xtract_swathname
 
