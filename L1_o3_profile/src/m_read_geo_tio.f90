@@ -78,6 +78,7 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY: geo_group, nxbin, nybin, &
                                       l1file=>l1b_rad_filename
+    use netcdf, only : nf90_noerr, nf90_inq_varid
 
     IMPLICIT NONE
 
@@ -91,7 +92,7 @@ CONTAINS
     ! local variables
     type (tiof_file_type) :: tio_l1obj
     INTEGER :: nline, nx, i, j, ix, iy,iix, nl, sline1, eline1, nbin
-    INTEGER :: ysidx, yeidx, ymidx, xsidx, xeidx, xmidx
+    INTEGER :: ysidx, yeidx, ymidx, xsidx, xeidx, xmidx, varid, status, num_sf
     !-----------------------------------------------------------
     ! variables for reading original tempo geolocation dataset
     !------------------------------------------------------------
@@ -100,12 +101,15 @@ CONTAINS
                     tio_lon, tio_sza, tio_vza, tio_saza, tio_vaza
     INTEGER (kind=2), dimension (:,:), allocatable :: tio_height
     INTEGER (kind=4), dimension (:,:), allocatable :: tio_geoflg
+    real (kind=4), dimension (:,:), allocatable:: tio_snowice_fraction
     real (kind=4), dimension (:,:,:), allocatable:: tio_clon, tio_clat
     integer (kind=4), dimension(:), allocatable :: step_idx
     !---------------------------------------------------------
     ! variables for binning/arrange tempo geolocation dataset
     !--------------------------------------------------------
     real (kind=8) :: sza, vza,sazm, vazm, relaza
+    real (kind=4) :: sf_array(nxbin,nybin)
+    logical :: sf_mask (nxbin,nybin)
 
     allocate(tio_clon (4, nxtrack, 0:ntimes-1) , tio_clat(4, nxtrack, 0:ntimes-1) )
     allocate(tio_lon ( nxtrack, 0:ntimes-1) , tio_lat(nxtrack, 0:ntimes-1))
@@ -113,6 +117,7 @@ CONTAINS
     allocate(tio_vza ( nxtrack, 0:ntimes-1) , tio_vaza(nxtrack, 0:ntimes-1))
     allocate(tio_height ( nxtrack, 0:ntimes-1) , tio_geoflg(nxtrack, 0:ntimes-1))
     allocate(tio_time (0:ntimes-1), step_idx(0:ntimes-1))
+    geo % have_snowice_fraction = .false.
 
     !------------------------------------------------------------------------
     ! Initialize
@@ -158,6 +163,13 @@ CONTAINS
                         tio_clat(:,1:nxtrack,sline1:eline1), errstat)
     call tiof_get3d_r4 (tio_l1obj,o3p_var_longitude_bounds,[sline1,0,0],[nline,nxtrack,4],&
                         tio_clon(:,1:nxtrack,sline1:eline1), errstat)
+    status = nf90_inq_varid (tio_l1obj % groupid, tempo_var_snowice_fraction, varid)
+    if (status == nf90_noerr) then
+      allocate(tio_snowice_fraction( nxtrack, 0:ntimes-1))
+      call tiof_get2d_r4 (tio_l1obj, tempo_var_snowice_fraction, [sline1,0], [nline, nxtrack], &
+                          tio_snowice_fraction(1:nxtrack,sline1:eline1), errstat)
+      geo % have_snowice_fraction = .true.
+    endif
     call tiof_pop_group (tio_l1obj, errstat)
     call tiof_close (tio_l1obj, errstat)
 
@@ -227,6 +239,20 @@ CONTAINS
              !        How should status flag binning work?
              geo%gflg(ix, iy)  = tio_geoflg(xmidx, ymidx)
 
+             if (geo % have_snowice_fraction) then
+               ! JCH: Since snow_ice_flg is mostly used like a measure of fractional snow/ice
+               ! cover, I'm assuming it's ok to replace it with something that actual measures
+               ! the fractional area covered by snow/ice.
+               sf_array = tio_snowice_fraction(xsidx:xeidx, ysidx:yeidx)
+               sf_mask = 0.0 .le. sf_array .and. sf_array .le. 1.0   ! exclude missing data
+               num_sf = count(sf_mask)
+               if (num_sf > 0) then
+                 geo%snow_ice_flg(ix,iy) = aint(100.0*sum(sf_array, mask=sf_mask)/num_sf)
+               else
+                 geo%snow_ice_flg(ix,iy) = 0
+               endif
+             endif
+
              geo%height(ix, iy)= int( sum(1.0 * tio_height(xsidx:xeidx, ysidx:yeidx)) &
                                  / (1.0 * nbin), kind=2)
              geo%lon(ix, iy) = sum(tio_lon(xsidx:xeidx, ysidx:yeidx))/nbin
@@ -253,23 +279,28 @@ CONTAINS
       call convert_gpqualflag_info (nx, geo%gflg(1:nx, iy), &
                                     geo%land_water_flg(1:nx, iy), &
                                     geo%glint_flg(1:nx, iy), &
-                                    geo%snow_ice_flg(1:nx, iy))
+                                    geo%snow_ice_flg(1:nx, iy), &
+                                    geo%have_snowice_fraction)
     ENDDO
 
     deallocate(tio_clon, tio_clat, tio_lon, tio_lat, tio_sza, tio_saza, &
                tio_vza,tio_vaza, tio_height, tio_geoflg, tio_time)
+    if (geo%have_snowice_fraction) then
+      deallocate (tio_snowice_fraction)
+    endif
     RETURN
 
   end subroutine read_geo_tio
 
- SUBROUTINE convert_gpqualflag_info ( &
-       nxtrack, geoflg, land_water_flg, glint_flg, snow_ice_flg )
+ SUBROUTINE convert_gpqualflag_info (nxtrack, geoflg, land_water_flg, glint_flg, &
+       snow_ice_flg, have_snowice_fraction )
 
     USE OMSAO_precision_module
     IMPLICIT NONE
     INTEGER (KIND=i4), INTENT (IN) :: nxtrack
     INTEGER (KIND=i4), DIMENSION (:), INTENT (IN) :: geoflg
     INTEGER (KIND=i2), DIMENSION (:), INTENT (OUT) :: land_water_flg, glint_flg, snow_ice_flg
+    logical, intent(in) :: have_snowice_fraction
     INTEGER (KIND=i4) :: i
 
     ! bit 0 is least signifcant, n-1 is most signifcant
@@ -278,7 +309,9 @@ CONTAINS
       ! MODIS land-water mask is in bits 0-3
       land_water_flg(i) = int(ibits(geoflg(i), 0, 4), kind=i2)
       ! NISE snow-ice mask is in bits 8-15
-      snow_ice_flg(i) = int(ibits(geoflg(i), 8, 8), kind=i2)
+      if (.not. have_snowice_fraction) then
+        snow_ice_flg(i) = int(ibits(geoflg(i), 8, 8), kind=i2)
+      endif
       ! glint possibility is bit 4
       glint_flg(i) = int(ibits(geoflg(i), 4, 1), kind=i2)
     enddo

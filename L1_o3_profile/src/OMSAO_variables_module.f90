@@ -484,6 +484,7 @@ MODULE OMSAO_variables_module
     INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: land_water_flg
     INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: snow_ice_flg
     INTEGER (KIND=2), ALLOCATABLE, DIMENSION(:,:) :: glint_flg
+    logical :: have_snowice_fraction
   END TYPE geo_group
  
   TYPE cali_group
