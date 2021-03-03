@@ -106,6 +106,8 @@ module m_vars
   INTEGER (KIND=4), DIMENSION(:,:), allocatable :: geoflg ! geolocation flags
   INTEGER (KIND=1), DIMENSION(:,:), allocatable :: anomflg ! cross-track
   integer (kind=2), dimension(:,:), allocatable :: gems_snow_index
+  real (kind=4), dimension(:,:), allocatable :: snow_ice_fraction
+  logical :: have_snowice_fraction
   ! quality flags
   INTEGER (KIND=2), dimension(:), allocatable :: mflg ! measurement 
   ! quality flag from L1B data

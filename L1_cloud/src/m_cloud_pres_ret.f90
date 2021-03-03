@@ -117,7 +117,8 @@ contains
          using_spline, w12d, wave_fill, wave_long, wave_o3, wave_resid, &
          wave_short, wdelt, w_grid, wmax, wmin, write_fill, write_obs, & 
          write_resid, ws, xsect_o3, test_solar, add_shift, do_cloud_mask, &
-         read_gems, gems_snow_index, have_omi_data, use_pres_clim
+         read_gems, gems_snow_index, have_omi_data, use_pres_clim, &
+         snow_ice_fraction, have_snowice_fraction
     implicit none
 
     real (KIND=8), intent(inout) :: refl_clr
@@ -128,6 +129,7 @@ contains
     character (len=128) :: logmsg
     integer :: polyfit_status
     real (kind=8) :: clim_ctp
+    real (kind=4) :: sfrac
 
     if (errstat /= 0) return
 
@@ -561,7 +563,20 @@ contains
         !set qc if snow/ice
         !====================
         if (.not. read_gems) then
-          NISE = IBITS( geoflg(ip+1, iLine), 8, 7)
+          if (have_snowice_fraction) then
+            ! JCH (mar 2021): Since the earlier code pretended that the NISE
+            ! value gave a snow/ice fraction (the docs disagree), it seems
+            ! reasonable to replace it with something that actually measures
+            ! the areal snow/ice coverage of the pixel.
+            sfrac = snow_ice_fraction(ip+1, iLine)
+            if (0.0 <= sfrac .and. sfrac <= 1.0) then
+              NISE = aint (100 * sfrac)
+            else
+              NISE = 0
+            endif
+          else
+            NISE = IBITS( geoflg(ip+1, iLine), 8, 7)
+          endif
         else
           NISE = gems_snow_index(ip+1, iLine)
         endif

@@ -3,7 +3,7 @@ module m_read_input_data_tio
   use cld_names_module
   use tio_module
   use tell_module
-  use netcdf, only : nf90_nowrite
+  use netcdf, only : nf90_nowrite, nf90_noerr, nf90_inq_varid
   use m_read_metadata_tio
 
   public read_input_data_tio, alloc_scan
@@ -436,7 +436,8 @@ contains
 
     use m_vars, only: time, lat, lon, sza, sazimuth, sat_zen, &
          vazimuth, terr_height, geoflg, anomflg, mflg, nLines, nXtrack, &
-         azimuth, fill_value, have_omi_data
+         azimuth, fill_value, have_omi_data, snow_ice_fraction, &
+         have_snowice_fraction
 
     implicit none
     !input variables
@@ -446,6 +447,7 @@ contains
     integer (kind=4), intent (inout) :: errstat
 
     type (tiof_file_type) :: tio_l1obj
+    integer :: status, varid
 
     if (errstat /= 0) return
 
@@ -469,6 +471,12 @@ contains
          [nLines,nXtrack], terr_height, errstat)
     call tiof_get2d_ui4 (tio_l1obj, cld_var_gpqf, [0,0], &
          [nLines,nXtrack], geoflg, errstat)
+    status = nf90_inq_varid (tio_l1obj % groupid, tempo_var_snowice_fraction, varid)
+    if (status == nf90_noerr) then
+      call tiof_get2d_r4 (tio_l1obj, tempo_var_snowice_fraction, [0,0], &
+                          [nLines,nXtrack], snow_ice_fraction, errstat)
+      have_snowice_fraction = .true.
+    endif
     if (have_omi_data) then
       call tiof_get2d_i1 (tio_l1obj, "XTrackQualityFlags", [0,0], &
            [nLines,nXtrack], anomflg, errstat)
@@ -605,7 +613,8 @@ contains
          reflect_cld, eff_cld_frac, eff_cld_frac2, rad_cld_frac, cld_pres2, & 
          chlorophyll, biases, biases2, stds, stds2, chi_sqr, chi_sqr2, &
          land_flg, chlcl, qc, qc2, fill, shifts, shifts2, squeezes, &
-         nXtrack, nLines, nWavel, fill_value, gems_snow_index
+         nXtrack, nLines, nWavel, fill_value, gems_snow_index, &
+         snow_ice_fraction, have_snowice_fraction
 
     implicit none
     integer (kind=4), intent (inout) :: errstat
@@ -620,6 +629,7 @@ contains
          vazimuth(nXtrack,nLines), &
          terr_height(nXtrack,nLines), &
          geoflg(nXtrack,nLines), &
+         snow_ice_fraction(nXtrack,nLines), &
          anomflg(nXtrack,nLines), &
          gems_snow_index(nXtrack,nLines), &
          mflg(nLines), &
@@ -662,7 +672,10 @@ contains
       return
     endif
 
-    geoflg=0 
+    have_snowice_fraction = .false.
+    snow_ice_fraction = 0.0
+
+    geoflg=0
     anomflg=0
     gems_snow_index=0
     quality_flagL=0
