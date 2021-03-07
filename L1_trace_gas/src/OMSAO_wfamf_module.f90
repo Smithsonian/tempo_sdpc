@@ -182,6 +182,7 @@ CONTAINS
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
+    crfrc        = r8_missval
     amfdiag      = 0
     surface_pressure = r4_missval
     IF (yn_stratrop) then
