@@ -845,7 +845,6 @@ contains
                                 nf90_float, &
                                 dimids = dimids_xtrack_step,  &
                                 long_name = "Fraction of pixel area covered by snow and/or ice", &
-                                units = "", &
                                 valid_range = [0.0_r8, 1.0_r8], &
                                 fillvalue = fill_float, &
                                 attlist=att_coord)
