@@ -634,46 +634,6 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         return -1;
      }
 
-   /* pixel_scale_row */
-     {
-        static _pText_Attr_Type pixel_scale_row_attrs[] =
-          {
-             {"units", "nm"},
-             {"comment", "Nominal change in dispersed wavelength across one spectral pixel."},
-             _pTEXT_ATTRS_END
-          };
-        float pixel_scale_row = _pTIO_PIXEL_SCALE_ROW;
-
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_ROW, NC_FLOAT, 0, NULL, pixel_scale_row_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_row)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
-                          __func__, nc_strerror(status));
-             return -1;
-          }
-     }
-
-   /* pixel_scale_column */
-     {
-        static _pText_Attr_Type pixel_scale_column_attrs[] =
-          {
-             {"units", "microradians"},
-             {"comment", "Nominal angular size of one spatial image pixel."},
-             _pTEXT_ATTRS_END
-          };
-        float pixel_scale_column = _pTIO_PIXEL_SCALE_COLUMN;
-
-        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_PIXEL_SCALE_COLUMN, NC_FLOAT, 0, NULL, pixel_scale_column_attrs, &varid))
-          return -1;
-        if (NC_NOERR != (status = nc_put_var_float (grp, varid, &pixel_scale_column)))
-          {
-             Tell_verror (TELL_IO_WRITE_ERROR, "%s: writing pixel scale (%s)",
-                          __func__, nc_strerror(status));
-             return -1;
-          }
-     }
-
    /* radiance */
      {
         static _pText_Attr_Type radiance_attrs[] =

@@ -14,9 +14,6 @@ extern "C" {
 #include <time.h>
 #include <netcdf.h>
 
-#define _pTIO_PIXEL_SCALE_ROW       0.2   /* nm */
-#define _pTIO_PIXEL_SCALE_COLUMN   41.79  /* microradian */
-
 /* nominal default values for template files */
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
 #define _pTIO_PHOTON_UNITS "photons/s/cm^2/nm/sr"
