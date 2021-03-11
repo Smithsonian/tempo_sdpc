@@ -292,7 +292,6 @@ static int def_snow_ice_fraction_var (Geoloc_Type *geoloc)
    TIO_Var_Info_Type info;
    TIO_Attr_Text_Type text_attrs[] =
      {
-        {"units", ""},
         {"long_name", TEMPO_VAR_SNOWICE_FRACTION},
         {"comment", "Fraction of pixel area covered by snow and/or ice"},
         {"coordinates", "longitude latitude"},
