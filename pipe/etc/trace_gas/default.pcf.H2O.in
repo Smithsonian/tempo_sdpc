@@ -1,6 +1,6 @@
 #
 # filename:
-# 	OMHCHO.pcf
+# 	TEMPO_h2o.pcf
 #
 # description:
 #   	Process Control File (PCF)
@@ -8,7 +8,7 @@
 # notes:
 #
 # 	    This file supports the Release B version of the toolkit.
-#       It is intended for use with toolkit version "SCF  TK5.2.18".
+#       It is intended for use with toolkit version "SCF  TK5.2.19".
 #
 #       The logical IDs 10000-10999 (inclusive) are reserved for internal
 #       Toolkit/ECS usage, DO NOT add logical IDs with these values.
@@ -223,13 +223,16 @@
 # -----------------------------------------------------------------------
 #  example MCF input file
 # -----------------------------------------------------------------------
-700001|OMHCHO.MCF|refdata/control||||1
+700001|SIMPLE_H2O.MCF|@etc_dir@/trace_gas||||1
+700002|h2o_arch_metadata.nml|@etc_dir@/trace_gas||||1
 # =======================================================================
 # tpk> The following file contains the tabulated OMI slit function data
 # tpk> which are used by the PGE to determine the slit function shape at
 # tpk> all wavelengths in the UV2 channel.
 # =======================================================================
-700050|OMSAO_SlitFunction_HyperPar.dat|@refdata_dir@/trace_gas/data||||1
+#700050|OMSAO_SlitFunction_HyperPar.dat|@refdata_dir@/trace_gas/data||||1
+700050|TEMPO_Slit_Function_0.6nmGaussian_V1.nc|@refdata_dir@/instrument||||1
+#700050|@irradiance_file@|@spectra_dir@||||1
 # =======================================================================
 # tpk> This should be the place to list all the reference spectra. Needs
 # tpk> some thought on which spectra can occurr in the fitting. BUT we
@@ -240,25 +243,25 @@
 700100|@control_file@|@product_dir@||||1
 700101|OMSAO_NKPNO_SolarSpec_JQSRT2011.dat|@refdata_dir@/trace_gas/data||||1
 700102|OMSAO_MolecularRing_Spectrum.dat|@refdata_dir@/trace_gas/data||||1
-700103|OMSAO_O3_228K_Brion.dat|@refdata_dir@/trace_gas/data||||1
-700104|OMSAO_O3_295K_Brion.dat|@refdata_dir@/trace_gas/data||||1
+700103|OMSAO_O3_223K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
+700104|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700105|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700106|OMSAO_NO2_220K_IASB.dat|@refdata_dir@/trace_gas/data||||1
-700107|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700108|OMSAO_O4_294K_BISA_rmoffset347nm.dat|@refdata_dir@/trace_gas/data||||1
-700109|OMSAO_SO2_295K_IASB.dat|@refdata_dir@/trace_gas/data||||1
-700110|OMSAO_BrO_228K_Wilmouth.dat|@refdata_dir@/trace_gas/data||||1
-700111|OMSAO_OClO_213K_UBremen.dat|@refdata_dir@/trace_gas/data||||1
-700112|OMSAO_HCHO_300K_Cantrell_MMcorrected.dat|@refdata_dir@/trace_gas/data||||1
-700113|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700114|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700115|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700116|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700106|OMSAO_NO2_294K_IASB.dat|@refdata_dir@/trace_gas/data||||1
+700107|OMSAO_NO2_220K_IASB.dat|@refdata_dir@/trace_gas/data||||1
+700108|OMSAO_O4_293K_Thalman.dat|@refdata_dir@/trace_gas/data||||1
+700109|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700110|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700111|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700112|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700113|OMSAO_H2O_HITRAN2020_293K_Conway.dat|@refdata_dir@/trace_gas/data||||1
+700114|OMSAO_LQH2O_Mason_Pure.dat|@refdata_dir@/trace_gas/data||||1
+700115|OMSAO_CHOCHO_296K_Volkamer.dat|@refdata_dir@/trace_gas/data||||1
+700116|OMSAO_IO_298K_UBremen.dat|@refdata_dir@/trace_gas/data||||1
 700117|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700118|OMSAO_VibrationalRaman_Spectrum.dat|@refdata_dir@/trace_gas/data||||1
 700119|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700120|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700121|OMSAO_O4shi_294K_BISA_rmoffset347nm.dat|@refdata_dir@/trace_gas/data||||1
+700121|OMSAO_VRSair_Lampel.dat|@refdata_dir@/trace_gas/data||||1
 700122|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700123|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700124|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
@@ -268,16 +271,18 @@
 # ----------
 700210|OMHCHO_AMF_Tables_2x2p5_328nm.he5|@refdata_dir@/trace_gas/data||||1
 700230|OMHCHO_ISCCP_Clouds_1200h.he5|@refdata_dir@/trace_gas/data||||1
-700250|AMFs_lookup_325_360nm_m325.he5|@refdata_dir@/trace_gas/data||||1
-700270|OMI_H2OBrOSO2HCHO_GEOS5_2x2p5.he5|@refdata_dir@/trace_gas/data||||1
+700250|AMFs_lookup_h2o_442nm.he5|@refdata_dir@/trace_gas/data||||1
+700270|@clim_file@|@refdata_dir@/trace_gas/data||||1
 700280|OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5|@refdata_dir@/trace_gas/data||||1
+700290|@met_file1@|@met_dir1@||||1
+700291|@met_file2@|@met_dir2@||||1
 #
 # -----------------------------------------------------------------------
 # Prefitted output from other PGEs
 # -----------------------------------------------------------------------
-700301|OMSAO3-o00000.he5|.|||OMSAO3-o00000.he5|1
-700302|OMBRO-o08541.he5|.|||OMBRO-o08541.he5|1
-#700302|OMBRO-o00000.he5|.|||OMBRO-o00000.he5|1
+700301|OMSAO3-o00000.he5|./input|||OMSAO3-o00000.he5|1
+700302|OMBRO-o08541.he5|./input|||OMBRO-o08541.he5|1
+#700302|OMBRO-o00000.he5|./input|||OMBRO-o00000.he5|1
 #
 # ------------------------
 # Composite Solar Spectrum
@@ -353,8 +358,8 @@
 200190|AuthorName|"Thomas P. Kurosu / Gonzalo Gonzalez Abad"
 200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
 200200|OrbitNumber|08541
-200210|SwathName|"OMI Total Column Amount HCHO"
-200220|VERSIONID|3
+200210|SwathName|"OMI Total Column Amount H2O"
+200220|VERSIONID|@versionid@
 #
 # -------------------
 # SAO PGE Name
@@ -366,7 +371,7 @@
 # -------------------
 # DO NOT DELETE OR MODIFY THE FOLLOWING ENTRY!
 # ============================================
-700000|PGE Name|OMHCHO
+700000|PGE Name|OMH2O
 #
 #
 #############################################################################
@@ -398,7 +403,7 @@
 # PGE may be safely commented out (e.g. if logging is not disabled for
 # any status level, then the line beginning 10117 may be commented out).
 # -----------------------------------------------------------------------
-10114|Logging Control; 0=disable logging, 1=enable logging|0
+10114|Logging Control; 0=disable logging, 1=enable logging|1
 10115|Trace Control; 0=no trace, 1=error trace, 2=full trace|0
 10116|Process ID logging; 0=don't log PID, 1=log PID|0
 #10117|Disabled status level list (e.g. W S F)|
@@ -409,7 +414,7 @@
 # Toolkit version for which this PCF was intended.
 # DO NOT REMOVE THIS VERSION ENTRY!
 # -----------------------------------------------------------------------
-10220|Toolkit version string|SCF  TK5.2.18
+10220|Toolkit version string|SCF  TK5.2.19
 #
 #
 # -----------------------------------------------------------------------

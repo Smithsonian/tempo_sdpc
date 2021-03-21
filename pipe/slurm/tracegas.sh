@@ -102,8 +102,8 @@ refsec_rad_file="OML1BRUG-o08544.nc"
 refsec_cld_file="OMCLDRR-o08544.nc"
 
 product_file="${out_basename}.nc"
-template_pcf="${etc_dir}/trace_gas/synth.pcf.${molecule}.in"
-template_ctrl="${etc_dir}/trace_gas/synth.control.${molecule}.in"
+template_pcf="${etc_dir}/trace_gas/default.pcf.${molecule}.in"
+template_ctrl="${etc_dir}/trace_gas/control.${molecule}.in"
 control_file="control_${molecule}.txt"
 this_pcf_file="${pcf_file}_${molecule}"
 

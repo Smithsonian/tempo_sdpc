@@ -116,39 +116,24 @@ update_job_list()
   fi
 }
 
-do_HCHO()
-{
-  job_hcho="hcho:${SDPC_GRANULE_LABEL}"
-  jid_hcho=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_hcho tracegas.sh HCHO)
-  update_job_list $jid_hcho
-}
-
-do_NO2()
-{
-  job_no2="no2:${SDPC_GRANULE_LABEL}"
-  jid_no2=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_no2 tracegas.sh NO2)
-  update_job_list $jid_no2
-}
-
-do_O3TOT()
-{
-  job_o3t="o3t:${SDPC_GRANULE_LABEL}"
-  jid_o3t=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_o3t o3tot.sh)
-  update_job_list $jid_o3t
-}
-
 product_list="$(echo $product_list_arg | tr -s , ' ')"
 if test x"$product_list" = x ; then
    exit 0
 fi
 
-for d in $product_list ; do
-  init_product_dir $d
+for prod in $product_list ; do
+  init_product_dir $prod
 done
 remove_redundant_files
 
 for prod in $product_list ; do
-  do_${prod}
+  job_name="$prod:${SDPC_GRANULE_LABEL}"
+  if test $prod = O3TOT ; then
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_name o3tot.sh)
+  else
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_name tracegas.sh $prod)
+  fi
+  update_job_list $jid
 done
 
 if test X"$jid_list" != X ; then

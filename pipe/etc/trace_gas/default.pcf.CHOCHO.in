@@ -1,0 +1,501 @@
+#
+# filename:
+# 	TEMPO_chocho.pcf
+#
+# description:
+#   	Process Control File (PCF)
+#
+# notes:
+#
+# 	    This file supports the Release B version of the toolkit.
+#       It is intended for use with toolkit version "SCF  TK5.2.19".
+#
+#       The logical IDs 10000-10999 (inclusive) are reserved for internal
+#       Toolkit/ECS usage, DO NOT add logical IDs with these values.
+#
+#    	Please treat this file as a master template and make copies of it
+# 	    for your own testing. Note that the Toolkit installation script
+#   	sets PGS_PC_INFO_FILE to point to this master file by default.
+#       Remember to reset the environment variable PGS_PC_INFO_FILE to
+#       point to the instance of your PCF.
+#
+#       The toolkit will not interpret environment variables specified
+#       in this file (e.g. ~/database/$OSTYPE/TD is not a valid reference).
+#       The '~' character, however, when appearing in a reference WILL be
+#       replaced with the value of the environment variable PGSHOME.
+#
+#       The PCF file delivered with the toolkit should be taken as a
+#       template.  User entries should be added as necessary to this
+#       template.  Existing entries may (in some cases should) be altered
+#       but generally should not be commented out or deleted.  A few
+#       entries may not be needed by all users and can in some cases
+#       be commented out or deleted.  Such entries should be clearly
+#       identified in the comment(s) preceding the entry/entries.
+#
+#       Entries preceded by the comment: (DO NOT REMOVE THIS ENTRY)
+#       are deemed especially critical and should not be removed for
+#       any reason (although the values of the various fields of such an
+#       entry may be configurable).
+#
+# -----------------------------------------------------------------------
+?   SYSTEM RUNTIME PARAMETERS
+# -----------------------------------------------------------------------
+#########################################################################
+#
+# This section contains unique identifiers used to track instances of
+# a PGE run, versions of science software, etc.  This section must
+# contain exactly two entries.  These values will be inserted by
+# ECS just before a PGE is executed.  At the SCF the values may be set
+# to anything but these values are not normally user definable and user
+# values will be ignored/overwritten at the DAAC.
+#
+#########################################################################
+#
+# Production Run ID - unique production instance identifier
+# (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+1
+# -----------------------------------------------------------------------
+# Software ID - unique software configuration identifier
+# (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+1
+#
+?   PRODUCT INPUT FILES
+#########################################################################
+#
+# This section is intended for standard product inputs, i.e., major
+# input files such as Level 0 data files.
+#
+# Each logical ID may have several file instances, as given by the
+# version number in the last field.
+#
+#########################################################################
+#
+# Next non-comment line is the default location for PRODUCT INPUT FILES
+# WARNING! DO NOT MODIFY THIS LINE unless you have relocated these
+# data set files to the location specified by the new setting.
+! .
+700010|@radiance_file@|@spectra_dir@||||1
+700015|@refsec_rad_file@|@refsec_dir@||||1
+700020|@irradiance_file@|@spectra_dir@||||1
+700240|@cloud_file@|@cloud_dir@||||1
+#
+# -----------------------------------------------------------------------
+# The following are for the PGS_GCT tool only.  The IDs are #defined in
+# the PGS_GCT.h file.  These entries are essential for the State Plane
+# Projection but can otherwise be deleted or commented out.
+# -----------------------------------------------------------------------
+10200|nad27sp|~/database/common/GCT||||1
+10201|nad83sp|~/database/common/GCT||||1
+#
+# -----------------------------------------------------------------------
+# file for Constant & Unit Conversion (CUC) tools
+# IMPORTANT NOTE: THIS FILE WILL BE SUPPLIED AFTER TK4 DELIVERY!
+# -----------------------------------------------------------------------
+10999|PGS_CUC_maths_parameters|~/database/common/CUC||||1
+#
+#
+#------------------------------------------------------------------------
+# Metadata Configuration File (MCF) is a template to be filled in by the
+# Instrument teams.  MCFWrite.temp is a scratch file used to dump the MCF
+# prior to writing to the hdf file. GetAttr.temp is similarly used to
+# dump metadata from the hdf attributes and is used by PGS_MET_GetPCAttr.
+# (DO NOT REMOVE THESE ENTRIES)
+#------------------------------------------------------------------------
+10250|MCF|||||1
+10252|GetAttr.temp|.||||1
+10254|MCFWrite.temp|||||1
+10260|XMLstylesheet.temp|||||1
+#
+#
+# -----------------------------------------------------------------------
+# Ephemeris and Attitude files logical IDs.
+# Emphemeris files will be accessed via the logical ID 10501.
+# Attitude files will be accessed via the logical ID 10502.
+# Use file versions to allow for multiple physical ephemeris
+# or attitude files.
+# -----------------------------------------------------------------------
+#
+10501|INSERT_EPHEMERIS_FILES_HERE|||||1
+10502|INSERT_ATTITUDE_FILES_HERE|||||1
+10503|INSERT_EPHEMERIS_HDF_FILES_HERE|||||1
+10504|INSERT_ATTITUDE_HDF_FILES_HERE|||||1
+#
+#------------------------------------------------------------------------
+# Datasets for PGS_DEM tools.
+# A dataset of a given resolution is accessed via a single logical ID,
+# therefore all physical files comprising a data set must be accessed
+# via the same logical ID.  Use file versions to allow for multiple
+# physical files within a single data set.
+# Data files of 30 arc-sec resolution will be accessed via the
+# logical ID 10650.
+# Data files of 3 arc-sec resolution will be accessed via the
+# logical ID 10653.
+# NOTE: The file names in each entry must also appear in the attribute
+#       column of the entry (this is a requirement of the metadata tools).
+#       The entries given below are "template" entries and should be
+#       replaced with actual file name/location data before attempting
+#       to use the DEM tools.
+#------------------------------------------------------------------------
+#
+10650|DEM30ARC_NAME.hdf|DEM_LOCATION|||DEM30ARC_NAME.hdf|1
+10653|DEM3ARC_NAME.hdf|DEM_LOCATION|||DEM3ARC_NAME.hdf|1
+#
+?   PRODUCT OUTPUT FILES
+#########################################################################
+#
+# This section is intended for standard product outputs, i.e., HDF-EOS
+# files generated by this PGE.
+#
+# Each logical ID may have several file instances, as given by the
+# version number in the last field.
+#
+#########################################################################
+#
+# Next line is the default location for PRODUCT OUTPUT FILES
+! .
+700999|@product_file@|@product_dir@||||1
+#
+#------------------------------------------------------------------------
+# This file is created when PGS_MET_Write is used with an intention
+# to write an ASCII representation of the MCF in memory. The user is
+# allowed to change the name and path if required.
+#
+# NOTE: THIS IS OBSOLETE, THIS ENTRY IS ONLY HERE FOR BACKWARD
+#       COMPATIBILITY WITH PREVIOUS VERSIONS OF THE TOOLKIT.
+#       THE LOGICAL ID 10255 SHOULD BE MOVED DOWN TO THE RUNTIME
+#       PARAMETERS SECTION OF THIS FILE AND GIVEN A VALUE OF:
+#       <logical_id>:<version_number> WHERE THOSE VALUES REFLECT THE
+#       ACTUAL VALUES FOR THE NON-HDF OUTPUT PRODUCT FOR WHICH THE
+#       ASCII METADATA IS BEING WRITTEN.  e.g.:
+#       10255|reference output product|100:2
+#
+#------------------------------------------------------------------------
+10255|asciidump|||||1
+# -----------------------------------------------------------------------
+#
+?   SUPPORT INPUT FILES
+#########################################################################
+#
+# This section is intended for minor input files, e.g., calibration
+# files.
+#
+# Each logical ID may have several file instances, as given by the
+# version number in the last field.
+#
+#########################################################################
+#
+# Next line is the default location for SUPPORT INPUT FILES
+! @refdata_dir@/trace_gas/data
+#
+# -----------------------------------------------------------------------
+# leap seconds (TAI-UTC) file (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+10301|leapsec.dat|||||1
+#
+# -----------------------------------------------------------------------
+# polar motion and UTC-UT1 file (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+10401|utcpole.dat|||||1
+#
+# -----------------------------------------------------------------------
+# earth model tags file (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+#10402|earthfigure.dat|~/database/common/CSC||||1
+#
+# -----------------------------------------------------------------------
+# JPL planetary ephemeris file (binary form) (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+#10601|de200.eos|~/database/linux/CBP||||1
+#
+# -----------------------------------------------------------------------
+# spacecraft tag definition file (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+#10801|sc_tags.dat|~/database/common/EPH||||1
+#
+# -----------------------------------------------------------------------
+# units conversion definition file (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+#10302|udunits.dat|~/database/common/CUC||||1
+#
+#
+# -----------------------------------------------------------------------
+#  example MCF input file
+# -----------------------------------------------------------------------
+700001|SIMPLE_CHOCHO.MCF|@etc_dir@/trace_gas||||1
+700002|chocho_arch_metadata.nml|@etc_dir@/trace_gas||||1
+# =======================================================================
+# tpk> The following file contains the tabulated OMI slit function data
+# tpk> which are used by the PGE to determine the slit function shape at
+# tpk> all wavelengths in the UV2 channel.
+# =======================================================================
+#700050|OMSAO_SlitFunction_HyperPar.dat|@refdata_dir@/trace_gas/data||||1
+700050|TEMPO_Slit_Function_0.6nmGaussian_V1.nc|@refdata_dir@/instrument||||1
+#700050|@irradiance_file@|@spectra_dir@||||1
+# =======================================================================
+# tpk> This should be the place to list all the reference spectra. Needs
+# tpk> some thought on which spectra can occurr in the fitting. BUT we
+# tpk> also need to remember that different PGEs (BrO, OClO, HCHO) have
+# tpk> different product numbers. Thus, not all PGEs need to know about
+# tpk> all the reference files.
+# =======================================================================
+700100|@control_file@|@product_dir@||||1
+700101|OMSAO_NKPNO_SolarSpec_JQSRT2011.dat|@refdata_dir@/trace_gas/data||||1
+700102|OMSAO_MolecularRing_Spectrum.dat|@refdata_dir@/trace_gas/data||||1
+700103|OMSAO_O3_223K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
+700104|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700105|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700106|OMSAO_NO2_220K_IASB.dat|@refdata_dir@/trace_gas/data||||1
+700107|OMSAO_NO2_294K_IASB.dat|@refdata_dir@/trace_gas/data||||1
+700108|OMSAO_O4_293K_Thalman.dat|@refdata_dir@/trace_gas/data||||1
+700109|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700110|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700111|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700112|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700113|OMSAO_H2O_283K_EConway.dat|@refdata_dir@/trace_gas/data||||1
+700114|OMSAO_LQH2O_MasonFry_Pure.dat|@refdata_dir@/trace_gas/data||||1
+700115|OMSAO_CHOCHO_296K_Volkamer.dat|@refdata_dir@/trace_gas/data||||1
+700116|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700117|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700118|OMSAO_VibrationalRaman_Spectrum.dat|@refdata_dir@/trace_gas/data||||1
+700119|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700120|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700121|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700122|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700123|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+700124|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
+#
+# ----------
+# AMF tables
+# ----------
+700210|OMHCHO_AMF_Tables_2x2p5_328nm.he5|@refdata_dir@/trace_gas/data||||1
+700230|OMHCHO_ISCCP_Clouds_1200h.he5|@refdata_dir@/trace_gas/data||||1
+700250|AMFs_lookup_no2_440nm.he5|@refdata_dir@/trace_gas/data||||1
+700270|@clim_file@|@refdata_dir@/trace_gas/data||||1
+700280|OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5|@refdata_dir@/trace_gas/data||||1
+700290|@met_file1@|@met_dir1@||||1
+700291|@met_file2@|@met_dir2@||||1
+#
+# -----------------------------------------------------------------------
+# Prefitted output from other PGEs
+# -----------------------------------------------------------------------
+700301|OMSAO3-o00000.he5|./input|||OMSAO3-o00000.he5|1
+700302|OMBRO-o08541.he5|./input|||OMBRO-o08541.he5|1
+#700302|OMBRO-o00000.he5|./input|||OMBRO-o00000.he5|1
+#
+# ------------------------
+# Composite Solar Spectrum
+# ------------------------
+700400|OMSAO_SolarComposite_Global.he5|@refdata_dir@/trace_gas/data||||1
+#
+# ---------------------
+# Solar Monthly average
+# ---------------------
+700500|omisol_v003_avg_nshi_backup.dat|/home/xliu/OzoneFit/tbl/OMI||||1
+#
+# -------------------------------------
+# GEOS-Chem reference sector background
+# -------------------------------------
+700600|GEOS_Chem_Reference_Sector_Background.dat|@refdata_dir@/trace_gas/data||||1
+700615|@refsec_cld_file@|@refsec_dir@||||1
+#
+?   SUPPORT OUTPUT FILES
+#########################################################################
+#
+# This section is intended for minor output files, e.g., log files.
+#
+# Each logical ID may have several file instances, as given by the
+# version number in the last field.
+#
+#########################################################################
+#
+# Next line is default location for SUPPORT OUTPUT FILES
+! @product_dir@
+#
+#
+# -----------------------------------------------------------------------
+# These files support the SMF log functionality. Each run will cause
+# status information to be written to 1 or more of the Log files. To
+# simulate DAAC operations, remove the 3 Logfiles between test runs.
+# Remember: all executables within a PGE will contribute status data to
+# the same batch of log files. (DO NOT REMOVE THESE ENTRIES)
+# -----------------------------------------------------------------------
+10100|LogStatus|@product_dir@||||1
+10101|LogReport|@product_dir@||||1
+10102|LogUser|@product_dir@||||1
+10103|TmpStatus|||||1
+10104|TmpReport|||||1
+10105|TmpUser|||||1
+10110|MailFile|||||1
+#
+# -----------------------------------------------------------------------
+# ASCII file which stores pointers to runtime SMF files in lieu of
+# loading them to shared memory, which is a TK5 enhancement.
+# (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+10111|ShmMem|||||1
+#
+#
+?   USER DEFINED RUNTIME PARAMETERS
+#########################################################################
+#
+# This section is intended for parameters used as PGE input.
+#
+# Note: these parameters may NOT be changed dynamically.
+#
+#########################################################################
+#
+200100|SMF Verbosity Threshold|6
+200105|PGEVERSION|"3.0.0"
+200110|ProcessingCenter|"OMIDAPS"
+200115|ProcessingHost|"Linux ompspeate3.gsfc.nasa.gov 2.6.9-55.0.2.ELsmp #1 SMP Tue Jun 26 14:30:58 EDT 2007 i686 i686 i386 GNU/Linux"
+200135|REPROCESSINGACTUAL|"processed 1 time"
+200170|ProcessLevel|"2"
+200175|InstrumentName|"OMI"
+200180|OPERATIONMODE|"Test"
+200185|AuthorAffiliation|"Smithsonian Astrophysical Observatory"
+200190|AuthorName|"Thomas P. Kurosu / Gonzalo Gonzalez Abad"
+200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
+200200|OrbitNumber|08541
+200210|SwathName|"OMI Total Column Amount GLYOXAL"
+200220|VERSIONID|@versionid@
+#
+# -------------------
+# SAO PGE Name
+# -------------------
+#     OMOCLO: OMOCLO
+#     OMBRO:  OMBRO
+#     OMHCHO: OMHCHO
+#     OMSAO3: OMSAO3
+# -------------------
+# DO NOT DELETE OR MODIFY THE FOLLOWING ENTRY!
+# ============================================
+700000|PGE Name|OMCHOCHO
+#
+#
+#############################################################################
+# Temporary system fields that are required for Metatdata consistency checks.
+# During operations these fields will be provided by the scheduler, but until
+# then they are hand-edited and included at this point to provide required
+# input for the PGE. (t.kurosu, PGE developer)
+#############################################################################
+10258|Granule Start Time|17:03:23.000000
+10259|Granule End Time|18:42:16.000000
+#
+# -----------------------------------------------------------------------
+# These parameters are required to support the PGS_SMF_Send...() tools.
+# If the first parameter (TransmitFlag) is disabled, then none of the
+# other parameters need to be set. By default, this functionality has been
+# disabled. To enable, set TransmitFlag to 1 and supply the other 3
+# parameters with local information. (DO NOT REMOVE THESE ENTRIES)
+# -----------------------------------------------------------------------
+10109|TransmitFlag; 1=transmit,0=disable|0
+10106|RemoteHost|sandcrab
+10107|RemotePath|/usr/kwan/test/PC/data
+10108|EmailAddresses|kwan@eos.hitc.com
+#
+# -----------------------------------------------------------------------
+# The following runtime parameters define various logging options.
+# Parameters described as lists should be space (i.e. ' ') separated.
+# The logical IDs 10117, 10118, 10119 listed below are for OPTIONAL
+# control of SMF logging.  Any of these logical IDs which is unused by a
+# PGE may be safely commented out (e.g. if logging is not disabled for
+# any status level, then the line beginning 10117 may be commented out).
+# -----------------------------------------------------------------------
+10114|Logging Control; 0=disable logging, 1=enable logging|1
+10115|Trace Control; 0=no trace, 1=error trace, 2=full trace|0
+10116|Process ID logging; 0=don't log PID, 1=log PID|0
+#10117|Disabled status level list (e.g. W S F)|
+#10118|Disabled seed list|
+#10119|Disabled status code list|
+#
+# -----------------------------------------------------------------------
+# Toolkit version for which this PCF was intended.
+# DO NOT REMOVE THIS VERSION ENTRY!
+# -----------------------------------------------------------------------
+10220|Toolkit version string|SCF  TK5.2.19
+#
+#
+# -----------------------------------------------------------------------
+# The following parameter is a "mask" for the ephemeris data quality
+# flag.  The value should be specified as an unsigned integer
+# specifying those bits of the ephemeris data quality flag that
+# should be considered fatal (i.e. the ephemeris data associated
+# with the quality flag should be REJECTED/IGNORED).
+# -----------------------------------------------------------------------
+10507|ephemeris data quality flag mask|65536
+#
+# -----------------------------------------------------------------------
+# The following parameter is a "mask" for the attitude data quality
+# flag.  The value should be specified as an unsigned integer
+# specifying those bits of the attitude data quality flag that
+# should be considered fatal (i.e. the attitude data associated
+# with the quality flag should be REJECTED/IGNORED).
+# -----------------------------------------------------------------------
+10508|attitude data quality flag mask|65536
+#
+# -----------------------------------------------------------------------
+# ECS DPS trigger for PGE debug runs
+#
+# NOTICE TO PGE DEVELOPERS: PGEs which have a debug mode
+# need to examine this parameter to evaluate activation rule
+# (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+10911|ECS DEBUG; 0=normal, 1=debug|0
+#
+# -----------------------------------------------------------------------
+# This entry defines the IP address of the processing host and is used
+# by the Toolkit when generating unique Intermediate and Temporary file
+# names.  The Toolkit no longer relies on the PGS_HOST_PATH environment
+# variable to otain this information. (DO NOT REMOVE THIS ENTRY)
+# -----------------------------------------------------------------------
+10099|Local IP Address of 'ether'|155.157.31.87
+#
+?   INTERMEDIATE INPUT
+#########################################################################
+#
+# This section is intended for intermediate input files, i.e., files
+# which are output by an earlier PGE but which are not standard
+# products.
+#
+# Each logical ID may have only one file instance.
+# Last field on the line is ignored.
+#
+#########################################################################
+#
+# Next line is default location for INTERMEDIATE INPUT FILES
+! out
+#
+#
+?   INTERMEDIATE OUTPUT
+#########################################################################
+#
+# This section is intended for intermediate output files, i.e., files
+# which are to be input to later PGEs, but which are not standard
+# products.
+#
+# Each logical ID may have only one file instance.
+# Last field on the line is ignored.
+#
+#########################################################################
+#
+# Next line is default location for INTERMEDIATE OUTPUT FILES
+! out
+#
+#
+?   TEMPORARY I/O
+#########################################################################
+#
+# This section is intended for temporary files, i.e., files
+# which are generated during a PGE run and deleted at PGE termination.
+#
+# Entries in this section are generated internally by the Toolkit.
+# DO NOT MAKE MANUAL ENTRIES IN THIS SECTION.
+#
+#########################################################################
+#
+# Next line is default location for TEMPORARY FILES
+! out
+#
+?   END

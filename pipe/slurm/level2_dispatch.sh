@@ -56,6 +56,9 @@ if test -z "$level2_products" ; then
    error_exit "$LINENO: empty Level 2 products list"
 fi
 
+# ensure upper case product list tokens
+level2_products=${level2_products^^}
+
 product_list_tokens="$(echo $level2_products | tr , ' ')"
 
 have_o3p=""
