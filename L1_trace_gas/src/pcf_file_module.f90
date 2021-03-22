@@ -99,8 +99,8 @@ CONTAINS
     USE OMSAO_variables_module,      ONLY: &
          verb_thresh_lev, orbit_number, &
          ecs_version_id, l1b_rad_filename, l1b_irrad_filename, l2_filename,  &
-         static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,             &
-         OMBRO_amf_filename, OMSAO_solcomp_filename, voc_amf_filenames,      &
+         static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,            &
+         OMSAO_solcomp_filename, voc_amf_filenames,                          &
          refspecs_original, OMSAO_solmonthave_filename,                      &
          OMSAO_refseccor_filename, OMSAO_OMLER_filename,                     &
          OMSAO_refseccor_cld_filename, l1b_radref_filename
@@ -375,40 +375,12 @@ CONTAINS
     ! to the output file.
     ! -------------------------------------------------------------------------
     Have_AMF_Table = .TRUE.
-    SELECT CASE ( pge_idx )
-    CASE ( pge_bro_idx )
-      call do_pgs_get_reference (OMBRO_amf_lun, "PGE_STATIC_INPUT_LUN", &
-           OMSAO_W_GETLUN, pge_errstat_warning, &
-           OMBRO_amf_filename, pge_error_status)
-      Have_AMF_Table = Have_AMF_Table.and.(len_trim(OMBRO_amf_filename) > 0)
-
-    CASE ( pge_hcho_idx, pge_no2_idx )
-      DO i = 1, n_voc_amf_luns
-        call do_pgs_get_reference (voc_amf_luns(i), "PGE_STATIC_INPUT_LUN", &
-             OMSAO_W_GETLUN, pge_errstat_warning, &
-             voc_amf_filenames(i), pge_error_status)
-        Have_AMF_Table = Have_AMF_Table.and.(len_trim(voc_amf_filenames(i)) > 0)
-      END DO
-
-    CASE ( pge_gly_idx )
-      DO i = 1, n_voc_amf_luns
-        call do_pgs_get_reference (voc_amf_luns(i), "PGE_STATIC_INPUT_LUN", &
-             OMSAO_W_GETLUN, pge_errstat_warning, &
-             voc_amf_filenames(i), pge_error_status)
-        Have_AMF_Table = Have_AMF_Table.and.(len_trim(voc_amf_filenames(i)) > 0)
-      END DO
-
-    CASE ( pge_h2o_idx )
-      DO i = 1, n_voc_amf_luns
-
-        call do_pgs_get_reference (voc_amf_luns(i), "PGE_STATIC_INPUT_LUN", &
-             OMSAO_W_GETLUN, pge_errstat_warning, &
-             voc_amf_filenames(i), pge_error_status)
-        Have_AMF_Table = Have_AMF_Table.and.(len_trim(voc_amf_filenames(i)) > 0)
-
-      END DO
-
-    END SELECT
+     DO i = 1, n_voc_amf_luns
+       call do_pgs_get_reference (voc_amf_luns(i), "PGE_STATIC_INPUT_LUN", &
+            OMSAO_W_GETLUN, pge_errstat_warning, &
+            voc_amf_filenames(i), pge_error_status)
+       Have_AMF_Table = Have_AMF_Table.and.(len_trim(voc_amf_filenames(i)) > 0)
+     END DO
 
     ! -------------------------------------------------------------------------
     ! gga. The new implementation of the wf amf is intended to be molecule inde
