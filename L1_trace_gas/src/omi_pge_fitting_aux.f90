@@ -343,8 +343,7 @@ CONTAINS
     USE OMSAO_prefitcol_module,    ONLY : yn_o3_prefit, yn_bro_prefit,&
       yn_lqh2o_prefit
     USE OMSAO_indices_module,      ONLY: &
-      pge_oclo_idx, pge_bro_idx, pge_hcho_idx, pge_no2_idx, pge_o3_idx,    &
-      pge_gly_idx, l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
+      l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
       o3_prefit_lun, bro_prefit_lun, lqh2o_prefit_lun,                        &
       voc_amf_luns, voc_omicld_idx, pge_h2o_idx
     USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input
@@ -407,68 +406,26 @@ CONTAINS
       lun_input(n_lun_inp) = l1b_irradiance_lun
     END IF
 
-    ! -------------------------------------------------------------------
-    ! Depending on the PGE we are running, we need to add some input LUNs
-    ! -------------------------------------------------------------------
-    SELECT CASE ( pge_idx )
-    CASE (pge_oclo_idx)
-      ! -----------------------
-      ! Nothing to be done here
-      ! -----------------------
-    CASE (pge_bro_idx)
-      ! -----------------------
-      ! Nothing to be done here
-      ! -----------------------
-    CASE (pge_hcho_idx)
-      ! -----------------
-      ! Add the Cloud LUN
-      ! -----------------
+    ! -----------------------------------------------
+    ! We may need to add some input LUNs for pre-fits
+    ! -----------------------------------------------
+    n_lun_inp            = n_lun_inp + 1
+    lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
+    ! ------------------------------------------------------
+    ! Add possibly pre-fitted OMSAO3, OMBRO and Liquid Water
+    ! ------------------------------------------------------
+    IF ( yn_o3_prefit(1) ) THEN
       n_lun_inp            = n_lun_inp + 1
-      lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
-      ! ----------------------------------------------------------
-      ! Add possibly pre-fitted OMSAO3 and OMBRO
-      ! ----------------------------------------------------------
-      IF ( yn_o3_prefit(1) ) THEN
-        n_lun_inp            = n_lun_inp + 1
-        lun_input(n_lun_inp) = o3_prefit_lun
-      END IF
-      IF ( yn_bro_prefit(1) ) THEN
-        n_lun_inp            = n_lun_inp + 1
-        lun_input(n_lun_inp) = bro_prefit_lun
-      END IF
-    CASE (pge_gly_idx)
-      ! -----------------
-      ! Add the Cloud LUN
-      ! -----------------
+      lun_input(n_lun_inp) = o3_prefit_lun
+    END IF
+    IF ( yn_bro_prefit(1) ) THEN
       n_lun_inp            = n_lun_inp + 1
-      lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
-
-      ! --------------------
-      ! Pre-fitted lqH2O CCM
-      ! --------------------
-      IF ( yn_lqh2o_prefit(1) ) THEN
-        n_lun_inp            = n_lun_inp + 1
-        lun_input(n_lun_inp) = lqh2o_prefit_lun
-      END IF
-    CASE (pge_h2o_idx)
-      ! -----------------
-      ! Add the Cloud LUN
-      ! -----------------
+      lun_input(n_lun_inp) = bro_prefit_lun
+    END IF
+    IF ( yn_lqh2o_prefit(1) ) THEN
       n_lun_inp            = n_lun_inp + 1
-      lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
-
-    CASE (pge_no2_idx)
-      ! -----------------
-      ! Add the Cloud LUN
-      ! -----------------
-      n_lun_inp            = n_lun_inp + 1
-      lun_input(n_lun_inp) = voc_amf_luns(voc_omicld_idx)
-
-    CASE (pge_o3_idx)
-      ! -----------------------
-      ! Nothing to be done here
-      ! -----------------------
-    END SELECT
+      lun_input(n_lun_inp) = lqh2o_prefit_lun
+    END IF
 
     ! ------------------------------------------------------------
     ! Composing the InputVersion string is more difficult, because
