@@ -223,10 +223,9 @@ MODULE OMSAO_variables_module
   ! --------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: omi_slitfunc_fname
 
-  ! ---------------------------------------------------------
-  ! Filenames specific for the AMF scheme in OMBRO and OMHCHO
-  ! ---------------------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN)                               :: OMBro_AMF_Filename
+  ! -------------------------------------
+  ! Filenames specific for the AMF scheme
+  ! -------------------------------------
   CHARACTER (LEN=MAX_STR_LEN), DIMENSION (N_VOC_AMF_LUNS)   :: VOC_AMF_Filenames
 
   ! ---------------------------------------------------------------
