@@ -647,7 +647,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: nxtrack_max, nUTCdim
     USE OMSAO_variables_module,  ONLY: n_fitvar_rad, n_rad_wvl, n_rad_wvl_max
     USE OMSAO_indices_module,    ONLY: sao_molecule_names, &
-         pge_bro_idx, pge_o3_idx, o3_t1_idx
+         pge_o3_idx, o3_t1_idx
     !      pge_bro_idx, pge_o3_idx, o3_t1_idx,
     !      corr_didx,  corrcol_didx, correrr_didx, itnum_didx,  &
     !      fitwt_didx, posobs_didx,  spcobs_didx,  spcfit_didx, &
@@ -822,8 +822,6 @@ CONTAINS
     ! * Individual O3 slant column      (OMSAO3)
     ! ---------------------------------------------------------
     SELECT CASE ( pge_idx )
-    CASE ( pge_bro_idx )
-      ! Nothing here
     CASE ( pge_o3_idx )
       ! ------------------------------------------------------------------
       ! Individual O3 slant columns (possibly multiple temperature x-secs)
@@ -1857,8 +1855,7 @@ CONTAINS
     !------------------------------------------------------------------------------
 
     USE OMSAO_indices_module,    ONLY: &
-      pge_bro_idx, pge_hcho_idx, pge_oclo_idx, pge_gly_idx, &
-      voc_isccp_idx, voc_isccp_idx, n_voc_amf_luns, n_voc_amf_luns
+      voc_isccp_idx, n_voc_amf_luns, n_voc_amf_luns
     USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -1894,65 +1891,45 @@ CONTAINS
       modulename, vb_lev_default, he5stat )
 
     ! -------------------------------------------------------------
-    ! If we are running as OMHCHO and OMOCLO, we also need to close
-    ! a few auxiliary files.
+    ! We also need to close a few auxiliary files.
     ! -------------------------------------------------------------
-    SELECT CASE ( pge_idx )
-    CASE ( pge_bro_idx )
-    CASE ( pge_hcho_idx )
-      ! --------------------------------------------------------------------
-      ! AMF table files; make sure we skip the ISCCP swath, because that one
-      ! gets closed immediately after all the data are read from it.
-      ! --------------------------------------------------------------------
-      DO i = 1, n_voc_amf_luns
-        IF ( i                                 /=  voc_isccp_idx .AND. &
-            TRIM(ADJUSTL(amf_swath_names(i))) /= 'undefined'       .AND. &
-            amf_swath_ids     (i)             /= -1                .AND. &
-            amf_swath_file_ids(i)             /= -1                       ) THEN
-          locerr = HE5_SWDETACH ( amf_swath_ids(i) )
-          locerr = HE5_SWCLOSE  ( amf_swath_file_ids(i) )
-        END IF
-      END DO
-      ! ------------------
-      ! O3 and BrO prefits
-      ! ------------------
-      IF ( TRIM(ADJUSTL(o3fit_swath_name)) /= 'undefined' .AND. &
-          o3fit_swath_id                  /= -1          .AND. &
-          o3fit_swath_file_id             /= -1              ) THEN
-        locerr = HE5_SWDETACH ( o3fit_swath_id )
-        locerr = HE5_SWCLOSE  ( o3fit_swath_file_id )
+    ! --------------------------------------------------------------------
+    ! AMF table files; make sure we skip the ISCCP swath, because that one
+    ! gets closed immediately after all the data are read from it.
+    ! --------------------------------------------------------------------
+    DO i = 1, n_voc_amf_luns
+      IF ( i                                /=  voc_isccp_idx .AND. &
+          TRIM(ADJUSTL(amf_swath_names(i))) /= 'undefined'       .AND. &
+          amf_swath_ids     (i)             /= -1                .AND. &
+          amf_swath_file_ids(i)             /= -1                       ) THEN
+        locerr = HE5_SWDETACH ( amf_swath_ids(i) )
+        locerr = HE5_SWCLOSE  ( amf_swath_file_ids(i) )
       END IF
-      IF ( TRIM(ADJUSTL(brofit_swath_name)) /= 'undefined' .AND. &
-          brofit_swath_id                  /= -1          .AND. &
-          brofit_swath_file_id             /= -1              ) THEN
-        locerr = HE5_SWDETACH ( brofit_swath_id )
-        locerr = HE5_SWCLOSE  ( brofit_swath_file_id )
-      END IF
-    CASE ( pge_gly_idx )
-      ! --------------------------------------------------------------------
-      ! AMF table files; make sure we skip the ISCCP swath, because that one
-      ! gets closed immediately after all the data are read from it.
-      ! --------------------------------------------------------------------
-      DO i = 1, n_voc_amf_luns
-        IF ( i                                 /=  voc_isccp_idx .AND. &
-            TRIM(ADJUSTL(amf_swath_names(i))) /= 'undefined'       .AND. &
-            amf_swath_ids     (i)             /= -1                .AND. &
-            amf_swath_file_ids(i)             /= -1                       ) THEN
-          locerr = HE5_SWDETACH ( amf_swath_ids(i) )
-          locerr = HE5_SWCLOSE  ( amf_swath_file_ids(i) )
-        END IF
-      END DO
-      ! --------------------
-      ! Liquid Water prefits
-      ! --------------------
-      IF ( TRIM(ADJUSTL(lqh2ofit_swath_name)) /= 'undefined' .AND. &
-          lqh2ofit_swath_id                  /= -1          .AND. &
-          lqh2ofit_swath_file_id             /= -1              ) THEN
-        locerr = HE5_SWDETACH ( lqh2ofit_swath_id )
-        locerr = HE5_SWCLOSE  ( lqh2ofit_swath_file_id )
-      END IF
-    CASE ( pge_oclo_idx )
-    END SELECT
+    END DO
+    ! --------------------------------
+    ! O3, BrO and liquid water prefits
+    ! --------------------------------
+    IF ( TRIM(ADJUSTL(o3fit_swath_name)) /= 'undefined' .AND. &
+        o3fit_swath_id                  /= -1          .AND. &
+        o3fit_swath_file_id             /= -1              ) THEN
+      locerr = HE5_SWDETACH ( o3fit_swath_id )
+      locerr = HE5_SWCLOSE  ( o3fit_swath_file_id )
+    END IF
+    IF ( TRIM(ADJUSTL(brofit_swath_name)) /= 'undefined' .AND. &
+        brofit_swath_id                  /= -1          .AND. &
+        brofit_swath_file_id             /= -1              ) THEN
+      locerr = HE5_SWDETACH ( brofit_swath_id )
+      locerr = HE5_SWCLOSE  ( brofit_swath_file_id )
+    END IF
+    ! --------------------
+    ! Liquid Water prefits
+    ! --------------------
+    IF ( TRIM(ADJUSTL(lqh2ofit_swath_name)) /= 'undefined' .AND. &
+        lqh2ofit_swath_id                  /= -1          .AND. &
+        lqh2ofit_swath_file_id             /= -1              ) THEN
+      locerr = HE5_SWDETACH ( lqh2ofit_swath_id )
+      locerr = HE5_SWCLOSE  ( lqh2ofit_swath_file_id )
+    END IF
 
     RETURN
   END FUNCTION he5_close_output_file
