@@ -1,7 +1,7 @@
 MODULE OMSAO_destriping_module
 
   USE OMSAO_precision_module
-  USE OMSAO_indices_module,    ONLY: pge_bro_idx, pge_o3_idx, xtrcor_didx
+  USE OMSAO_indices_module,    ONLY: pge_o3_idx, xtrcor_didx
   USE OMSAO_parameters_module, ONLY: &
     r8_missval, normweight, downweight, nxtrack_max, nlines_max
   USE OMSAO_variables_module,  ONLY: &
