@@ -245,14 +245,14 @@
 ## JCH 700101|OMSAO_NKPNO_SolarSpec_JQSRT2011.dat|@refdata_dir@/trace_gas/data||||1
 700101|TEMPO_solarspec_jqsrt2010.dat|@refdata_dir@/trace_gas/data_tempo||||1
 700102|OMSAO_MolecularRing_Spectrum.dat|@refdata_dir@/trace_gas/data||||1
-700103|TEMPO_O3_228K_Brion.dat|@refdata_dir@/trace_gas/data_tempo||||1
-700104|TEMPO_O3_295K_Brion.dat|@refdata_dir@/trace_gas/data_tempo||||1
+700103|OMSAO_O3_223K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
+700104|OMSAO_O3_293K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700105|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700106|TEMPO_NO2_294K_IASB.dat|@refdata_dir@/trace_gas/data_tempo||||1
 700107|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700108|TEMPO_O4_294K_BISA.dat|@refdata_dir@/trace_gas/data_tempo||||1
+700108|OMSAO_O4_293K_Thalman.dat|@refdata_dir@/trace_gas/data||||1
 ## JCH 700109|OMSAO_SO2_295K_IASB.dat|@refdata_dir@/trace_gas/data||||1
-700109|TEMPO_SO2_295K.dat|@refdata_dir@/trace_gas/data_tempo||||1
+700109|OMSAO_SO2_293K_ESA_SEOM_IAS.dat|@refdata_dir@/trace_gas/data||||1
 700110|TEMPO_BRO_228K.dat|@refdata_dir@/trace_gas/data_tempo||||1
 700111|OMSAO_OClO_213K_UBremen.dat|@refdata_dir@/trace_gas/data||||1
 ## JCH 700112|OMSAO_HCHO_300K_Cantrell_MMcorrected.dat|@refdata_dir@/trace_gas/data||||1
@@ -268,7 +268,7 @@
 700119|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700120|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 ## JCH 700121|OMSAO_O4shi_294K_BISA_rmoffset347nm.dat|@refdata_dir@/trace_gas/data||||1
-700121|TEMPO_O4_294K_BISA.dat|@refdata_dir@/trace_gas/data_tempo||||1
+700121|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700122|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700123|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700124|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
