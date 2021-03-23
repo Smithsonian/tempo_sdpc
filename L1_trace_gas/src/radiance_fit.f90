@@ -749,9 +749,11 @@ CONTAINS
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
             did_full_range, errstat)
           if (errstat /= 0) then
-            call tell_error (tell_runtime_error, &
-                             "spectrum_earthshine: interpolation failed: "// &
-                             "resampling to radiance grid", errstat)
+            !call tell_error (tell_runtime_error, &
+            !          "spectrum_earthshine: interpolation failed: "// &
+            !                 "resampling to radiance grid", errstat)
+            call tell_log (0, "spectrum_earthshine: interpolation failed: "// &
+                             "resampling to radiance grid")
             return
           endif
           !CALL error_check ( &
@@ -964,7 +966,7 @@ CONTAINS
     !  1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
     !  OMI data.
 
-    !errstat = pge_errstat_ok
+    errstat = 0  ! as long as errstat is local, it should be initialized to zero
 
     ! ----------------------------------------------------------------------------
     ! Here is a logical to determine whether we need to compute a "sythetic"
@@ -1066,9 +1068,11 @@ CONTAINS
             npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
             did_full_range, errstat)
           if (errstat /= 0) then
-            call tell_error (tell_runtime_error, &
-                             "spectrum_earthshine_o3exp: interpolation failed: "// &
-                             "resampling to radiance grid", errstat)
+            !call tell_error (tell_runtime_error, &
+            !                 "spectrum_earthshine_o3exp: interpolation failed: "// &
+            !                 "resampling to radiance grid", errstat)
+            call tell_log (0, "spectrum_earthshine_o3exp: interpolation failed: "// &
+                           "resampling to radiance grid")
             return
           endif
           !CALL error_check ( &

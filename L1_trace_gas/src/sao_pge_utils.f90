@@ -114,7 +114,9 @@ CONTAINS
     END DO getpge
 
     IF ( (out_idx == -1) .OR. (out_name(1:1) == '?' )) then
-      call tell_set_error (tell_runtime_error) !locerrstat = pge_errstat_error
+      call tell_error (tell_runtime_error, &
+                       "get_pge_ident: pge index not found: "//trim(adjustl(in_name)), &
+                       errstat)
     endif
     !errstat = MAX ( errstat, locerrstat )
     RETURN
