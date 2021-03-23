@@ -942,6 +942,8 @@ CONTAINS
     ! We can't agree on how to spell the names of molecules.
     if (clim_db_molecule_name == 'HCHO') then
       clim_db_molecule_name = 'CH2O  '
+    else if (clim_db_molecule_name == 'CHOCHO') then
+      clim_db_molecule_name = 'GLYX  '
     endif
 
     call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
