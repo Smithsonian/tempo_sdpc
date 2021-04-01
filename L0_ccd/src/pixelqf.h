@@ -7,6 +7,14 @@
 #include <libconfig.h>
 #include "image.h"
 
+typedef struct
+{
+   int num_hot_pixels[4];  /* per quadrant: A,B,C,D */
+   int num_cold_pixels[4];
+   float mean_dark_current[4];  /* electrons/sec */
+}
+Dark_Trend_Type;
+
 typedef struct Pixelqf_Type Pixelqf_Type;
 
 /** @brief Struct providing functions to set selected pixel quality flags */
@@ -20,6 +28,7 @@ struct Pixelqf_Type
    /** Flag hot and cold pixels
     * @param pt  non-NULL pointer to a Pixelqf_Type object
     * @param img  non-NULL pointer to an Image_Type object
+    * @param dark_trend  non-NULL pointer to a Dark_Trend_Type object
     * @return 0 on success, non-zero on error
     *
     * Hot pixels exceed the mean pixel value in a quadrant by more than
@@ -32,7 +41,7 @@ struct Pixelqf_Type
     * Cold pixels are flagged by setting the pixel quality flag
     * bit associated with \a IMAGE_PQF_COLD_PIXEL.
     */
-   int (*pqf_flag_hotcold)(const Pixelqf_Type *, Image_Type *);
+   int (*pqf_flag_hotcold)(const Pixelqf_Type *, Image_Type *, Dark_Trend_Type *);
 
    /** Flag pixels adjacent to pixels that match a specified bitmask
     * @param pt  non-NULL pointer to a Pixelqf_Type object

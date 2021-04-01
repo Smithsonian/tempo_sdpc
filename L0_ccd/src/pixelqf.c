@@ -72,18 +72,22 @@ static void compute_goodpix_mean_and_stddev (const Image_Type *img,
 }
 
 static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
-                         int pb, int pe, int sb, int se)
+                         int pb, int pe, int sb, int se,
+                         int *pnum_hot, int *pnum_cold, float *pmean_dc)
 {
    Image_Pixel_Type *pixels;
    Image_Pqf_Bitmap_Type *pqf;
    Image_Pixel_Type hot_thresh, cold_thresh;
    double mean, stddev;
-   int p, s;
+   int p, s, num_hot, num_cold;
 
    compute_goodpix_mean_and_stddev (img, pb, pe, sb, se,
                                     &mean, &stddev);
 
    hot_thresh = mean + pt->num_sigmas_hot_threshold * stddev;
+
+   num_hot = 0;
+   num_cold = 0;
 
    for (p = pb; p < pe; p++)
      {
@@ -92,7 +96,10 @@ static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
         for (s = sb; s < se; s++)
           {
              if ((pqf[s] == 0) && (pixels[s] > hot_thresh))
-               pqf[s] |= IMAGE_PQF_HOT_PIXEL;
+               {
+                  pqf[s] |= IMAGE_PQF_HOT_PIXEL;
+                  num_hot++;
+               }
           }
      }
 
@@ -110,25 +117,39 @@ static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
         for (s = sb; s < se; s++)
           {
              if ((pqf[s] == 0) && (pixels[s] < cold_thresh))
-               pqf[s] |= IMAGE_PQF_COLD_PIXEL;
+               {
+                  pqf[s] |= IMAGE_PQF_COLD_PIXEL;
+                  num_cold++;
+               }
           }
      }
+
+   /* For trending, compute mean dark current excluding hot/cold pixels */
+   compute_goodpix_mean_and_stddev (img, pb, pe, sb, se,
+                                    &mean, &stddev);
+   *pmean_dc = (float) mean;
+   *pnum_hot = num_hot;
+   *pnum_cold = num_cold;
 
    return 0;
 }
 
-static int pqf_flag_hotcold (const Pixelqf_Type *pt, Image_Type *img)
+static int pqf_flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
+                             Dark_Trend_Type *dark_trend)
 {
    int nr = img->num_rows;
    int nc = img->num_cols;
+   int *num_hot = dark_trend->num_hot_pixels;
+   int *num_cold = dark_trend->num_cold_pixels;
+   float *mean_dc = dark_trend->mean_dark_current;
 
    if (enable_state_query_bool (ENABLE_HOTCOLD) < 1)
      return 0;
 
-   flag_hotcold (pt, img,    0, nr/2,    0, nc/2);  /* A */
-   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2);  /* B */
-   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  );  /* C */
-   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  );  /* D */
+   flag_hotcold (pt, img,    0, nr/2,    0, nc/2, &num_hot[0], &num_cold[0], &mean_dc[0]);  /* A */
+   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2, &num_hot[1], &num_cold[1], &mean_dc[1]);  /* B */
+   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  , &num_hot[2], &num_cold[2], &mean_dc[2]);  /* C */
+   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  , &num_hot[3], &num_cold[3], &mean_dc[3]);  /* D */
 
    return 0;
 }

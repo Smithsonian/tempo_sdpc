@@ -1615,7 +1615,9 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
    for (p = pb; p < pe; p++)
      {
         Image_Pixel_Type *pnsq = noisesq->pixels + p * noisesq->num_cols;
+#if 0
         Image_Pqf_Bitmap_Type *pqf = noisesq->pixel_quality_flags + p * noisesq->num_cols;
+#endif
         num_xfer_p = (pstep < 0) ? (1+p) : (pe-p);
         sdc_scaled = (sdc * num_xfer_p) /(pe - pb);
         sdc_factor = pow (sdc_scaled, 0.715);

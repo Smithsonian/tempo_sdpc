@@ -34,6 +34,7 @@ typedef struct
 {
    Granule_Exprec_Type *exprec;
    Image_Type *img_err;
+   Dark_Trend_Type dark_trend;
    float storage_region_dark[4];
    float fpa_temp;
    float fpe_temp;
@@ -428,7 +429,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
      {
-        if (-1 == pqft->pqf_flag_hotcold (pqft, exprec->img))
+        if (-1 == pqft->pqf_flag_hotcold (pqft, exprec->img, &xr->dark_trend))
           return -1;
      }
 
@@ -465,6 +466,7 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
    int dimid_time, dimid_row, dimid_col, dimid_quad;
    int varid_time, varid_img, varid_pqf, varid_fpa_temp;
    int varid_fpe_temp, varid_exptime, varid_sdc;
+   int varid_num_hot, varid_num_cold, varid_mean_dark;
    int varid_exptime_per_coadd;
    int sdc_dimids[2];
    int shuffle = 1;
@@ -518,6 +520,25 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
         {"units", "electrons/sec"},
         {"long_name", "mean storage region dark current"},
         {"comment", "mean storage region dark current in each quadrant; A,B,C,D"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type num_hot_attrs[] =
+     {
+        {"long_name", "number of hot pixels"},
+        {"comment", "number of hot pixels in each quadrant; A,B,C,D"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type num_cold_attrs[] =
+     {
+        {"long_name", "number of cold pixels"},
+        {"comment", "number of cold pixels in each quadrant; A,B,C,D"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type mean_dark_attrs[] =
+     {
+        {"units", "electrons/sec"},
+        {"long_name", "mean dark current"},
+        {"comment", "mean dark current in each quadrant; A,B,C,D (hot/cold pixels excluded)"},
         {NULL, NULL}
      };
 
@@ -577,6 +598,21 @@ static int create_current_file (int ncid, int num_times, int num_rows, int num_c
        || (0 != define_text_attrs (ncid, varid_sdc, sdc_attrs)))
      return -1;
 
+   if (EXPREC_TYPE_IS_DARK(exposure_type))
+     {
+        if ((0 != TIO_def_var (ncid, "mean_dark_current", TIO_FLOAT, 2, sdc_dimids, &varid_mean_dark))
+            || (0 != define_text_attrs (ncid, varid_mean_dark, mean_dark_attrs)))
+          return -1;
+
+        if ((0 != TIO_def_var (ncid, "num_hot_pixels", TIO_INT, 2, sdc_dimids, &varid_num_hot))
+            || (0 != define_text_attrs (ncid, varid_num_hot, num_hot_attrs)))
+          return -1;
+
+        if ((0 != TIO_def_var (ncid, "num_cold_pixels", TIO_INT, 2, sdc_dimids, &varid_num_cold))
+            || (0 != define_text_attrs (ncid, varid_num_cold, num_cold_attrs)))
+          return -1;
+     }
+
    img_dimids[0] = dimid_time;
    img_dimids[1] = dimid_row;
    img_dimids[2] = dimid_col;
@@ -625,6 +661,17 @@ static int write_current_exprec (int ncid, const Exprec_Meta_Type *xr)
    count[1] = 4;
    if (0 != TIO_put_var_section (ncid, "mean_sdc", start, count, TIO_FLOAT, xr->storage_region_dark))
      return -1;
+
+   if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
+     {
+        const Dark_Trend_Type *dtr = &xr->dark_trend;
+        if (0 != TIO_put_var_section (ncid, "num_hot_pixels", start, count, TIO_INT, dtr->num_hot_pixels))
+          return -1;
+        if (0 != TIO_put_var_section (ncid, "num_cold_pixels", start, count, TIO_INT, dtr->num_cold_pixels))
+          return -1;
+        if (0 != TIO_put_var_section (ncid, "mean_dark_current", start, count, TIO_FLOAT, dtr->mean_dark_current))
+          return -1;
+     }
 
    count[0] = 1;
    count[1] = img->num_rows;
