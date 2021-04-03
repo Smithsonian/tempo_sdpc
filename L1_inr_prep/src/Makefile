@@ -38,7 +38,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = l1_inr_prep.o bsearch.o radiance.o row_select.o ephem.o
+OFILES   = l1_inr_prep.o bsearch.o radiance.o row_select.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
@@ -95,9 +95,6 @@ $(objdir)/row_select.o:	$(srcdir)/row_select.c
 
 $(objdir)/radiance.o:	$(srcdir)/radiance.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/radiance.c
-
-$(objdir)/ephem.o:	$(srcdir)/ephem.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ephem.c
 
 $(objdir)/bsearch.o:	$(srcdir)/bsearch.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bsearch.c

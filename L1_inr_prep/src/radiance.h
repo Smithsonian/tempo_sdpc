@@ -6,7 +6,6 @@
 
 #include <libconfig.h>
 #include "row_select.h"
-#include "ephem.h"
 
 typedef struct Radiance_Type Radiance_Type;
 
@@ -114,11 +113,14 @@ extern int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta,
  *
  * @param[in] r    Pointer to a @c Radiance_Type struct associated with an
  *                 an open Level 1 radiance file
- * @param[in] rst  Pointer to an @c Eph_Type object containing
+ * @param[in] meta Pointer to @c TIO_Meta_Type struct associated with an open
+ *                 Level 1 radiance file
+ * @param[in] from_group_path  Path to file group containing ephemeris data
+ * @param[in] rst  Pointer to a @c Row_Select_Type object referencing
  *                 the relevant ephemeris time series data
  * @return 0 on success, -1 on error
  */
-extern int radiance_write_eph (Radiance_Type *r,
-                               const Eph_Type *eph);
-
+extern int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta,
+                              const char *from_group_path,
+                              const Row_Select_Type *rst);
 #endif

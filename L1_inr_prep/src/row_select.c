@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <wordexp.h>
 
 #include <ioclib.h>
@@ -141,19 +142,54 @@ static int estimate_padding (int ncid, int num_pad,
                              double *time_beg, double *time_end)
 {
    TIO_Var_Info_Type time_var_info;
+   const char *sample_hz_attname = "average_sample_frequency_hz";
+   const char *time_varname = "time";
    double average_sample_frequency_hz, dt;
+   size_t len_size_t;
+   int xtype;
 
-   if (0 != TIO_inq_var (ncid, "time", &time_var_info))
+   if (0 != TIO_inq_var (ncid, time_varname, &time_var_info))
      return -1;
 
-   if (0 != TIO_get_att (ncid, time_var_info.varid,
-                         "average_sample_frequency_hz", NC_DOUBLE,
-                         &average_sample_frequency_hz))
+   if (NC_NOERR == nc_inq_att (ncid, time_var_info.varid, sample_hz_attname, &xtype, &len_size_t))
      {
-        return -1;
+        if (0 != TIO_get_att (ncid, time_var_info.varid, sample_hz_attname,
+                              NC_DOUBLE, &average_sample_frequency_hz))
+          {
+             return -1;
+          }
+        dt = num_pad / average_sample_frequency_hz;
      }
+   else
+     {
+#define MAX_NUM_TIME_SAMPLES 32
 
-   dt = num_pad / average_sample_frequency_hz;
+        double t_array[MAX_NUM_TIME_SAMPLES], delta_t;
+        int size = time_var_info.dimlens[0];
+        int i, num, start, count;
+
+        start = 0;
+        count = (size < MAX_NUM_TIME_SAMPLES) ? size : MAX_NUM_TIME_SAMPLES;
+
+        if (0 != TIO_get_var_section (ncid, time_varname, &start, &count, NC_DOUBLE, t_array))
+          return -1;
+
+        delta_t = 0.0;
+        num = 0;
+        for (i = 1; i < count; i++)
+          {
+             double t0 = t_array[i-1];
+             double t1 = t_array[i];
+             if ((isfinite(t0) && (t0 != TIO_FILL_DOUBLE))
+                 && (isfinite(t1) && (t1 != TIO_FILL_DOUBLE)))
+               {
+                  delta_t += t1-t0;
+                  num++;
+               }
+          }
+        if (num > 0) delta_t /= num;
+        dt = num_pad * delta_t;
+     }
 
    *time_beg -= dt;
 
@@ -161,7 +197,6 @@ static int estimate_padding (int ncid, int num_pad,
      {
         *time_end += dt;
      }
-
 
    return 0;
 }
@@ -257,16 +292,18 @@ static int expand_glob_pattern (const char *file_glob_pattern,
           }
      }
 
+   FREE(pat);
    return 0;
 }
 
 int row_select_scan (double time_beg, double time_end, int num_pad,
-                     const char *file_glob_pattern,
+                     const char *file_glob_pattern, const char *group_path,
                      Row_Select_Type **rstp)
 {
    Row_Select_Type *rst_head = NULL;
    wordexp_t we = {0};
    int return_status = -1;
+   int ncid = 0;
    size_t i, n;
 
    *rstp = NULL;
@@ -300,45 +337,54 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
         const char *file = we.we_wordv[i];
         double time_beg_pad = time_beg;
         double time_end_pad = time_end;
-        int ncid, status;
+        int grp, status;
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %s", file);
 
+        ncid = 0;
         if (0 != TIO_open (file, NC_NOWRITE, &ncid))
           goto cleanup_and_return;
+        if (group_path)
+          {
+             if (0 != TIO_inq_grp (ncid, group_path, &grp))
+               goto cleanup_and_return;
+          }
+        else grp = ncid;
 
         if (num_pad > 0)
           {
              /* When padding, expand the time interval to make sure
               * we include all relevant files */
-             if (0 != estimate_padding (ncid, num_pad, &time_beg_pad, &time_end_pad))
+             if (0 != estimate_padding (grp, num_pad, &time_beg_pad, &time_end_pad))
                goto cleanup_and_return;
           }
 
         status = examine_file (&rst, ncid, file, time_beg_pad, time_end_pad);
         if (status == FILE_ERROR_OCCURRED)
           {
-             (void) TIO_close (ncid);
              goto cleanup_and_return;
           }
         else if (status == FILE_PRECEDES_INTERVAL)
           {
              tell_vlog (TELL_MSGTYPE_INFO, 2, "file precedes interval: %s", file);
              (void) TIO_close (ncid);
+             ncid = 0;
              continue;
           }
         else if (status == FILE_FOLLOWS_INTERVAL)
           {
              tell_vlog (TELL_MSGTYPE_INFO, 2, "file follows interval: %s", file);
              (void) TIO_close (ncid);
+             ncid = 0;
              break;
           }
         else if (status == FILE_OVERLAPS_INTERVAL)
           {
              tell_vlog (TELL_MSGTYPE_INFO, 1, "file overlaps interval: %s", file);
-             if (0 != read_times (rst, ncid))
+             if (0 != read_times (rst, grp))
                goto cleanup_and_return;
              (void) TIO_close (ncid);
+             ncid = 0;
 
              tell_vlog (TELL_MSGTYPE_INFO, 1, "read times: %s", file);
              if (0 != apply_selection (rst, time_beg_pad, time_end_pad))
@@ -373,6 +419,10 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
    return_status = 0;
 cleanup_and_return:
    wordfree (&we);
+   if (ncid != 0)
+     {
+        (void) TIO_close (ncid);
+     }
 
    if (return_status)
      {

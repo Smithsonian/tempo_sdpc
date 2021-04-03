@@ -24,7 +24,6 @@
 
 #include "row_select.h"
 #include "radiance.h"
-#include "ephem.h"
 
 #define BASENAME_SIZE 256
 
@@ -52,7 +51,6 @@ static void usage (void)
    fprintf (stderr, "   -e | --end <end-time>      stop time (sec since epoch)\n");
    fprintf (stderr, "   -V | --Version N           processing version for telemetry-only radiance file\n");
    fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
-   fprintf (stderr, "   -p | --ephemeris FILE      ephemeris file\n");
    fprintf (stderr, "   -d | --delay SEC           delay start (to wait for all telemetry to arrive)\n");
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
@@ -136,7 +134,7 @@ static int copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
 
    if (0 != row_select_scan (time_beg, time_end,
                              pad_enable ? iru.num_pad : 0,
-                             iru.file_glob_pattern, &iru.rst))
+                             iru.file_glob_pattern, NULL, &iru.rst))
      goto return_status;
 
    if (iru.rst)
@@ -162,7 +160,7 @@ static int copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
 
    if (0 != row_select_scan (time_beg, time_end,
                              pad_enable ? smc.num_pad : 0,
-                             smc.file_glob_pattern, &smc.rst))
+                             smc.file_glob_pattern, NULL, &smc.rst))
      goto return_status;
 
    if (smc.rst)
@@ -261,51 +259,36 @@ static void free_rename_path_type (Rename_Path_Type *rpt)
    FREE(rpt->target_dir);
 }
 
-static int copy_ephem (Radiance_Type *r, config_t *cfg,
-                       double time_beg, double time_end, int pad_enable,
-                       const char *ephemeris_file)
+static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
+                       double time_beg, double time_end, int pad_enable)
 {
-   Eph_Type eph = {0};
-   config_setting_t *s;
-   int num_pad, status = -1;
+   Selection_Type eph = {0};
+   const char *group_path = "anc_sec_102";
+   int status = -1;
 
-   if (NULL == (s = config_lookup (cfg, "ephemeris_config")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing 'ephemeris_config' in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
+   if (0 != read_common_params (cfg, "eph_config", &eph))
+     return -1;
 
-   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &num_pad))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading 'ephemeris_config' parameters in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (0 != eph_read_subset (&eph, ephemeris_file, time_beg, time_end,
-                             pad_enable ? num_pad : 0))
+   if (0 != row_select_scan (time_beg, time_end,
+                             pad_enable ? eph.num_pad : 0,
+                             eph.file_glob_pattern, group_path, &eph.rst))
      goto return_status;
 
-   if (eph.n > 0)
+   if (eph.rst)
      {
-        if (0 != radiance_write_eph (r, &eph))
+        if (0 != radiance_copy_eph (r, meta, group_path, eph.rst))
           goto return_status;
      }
 
    status = 0;
 return_status:
-   eph_free (&eph);
+   row_select_free (eph.rst);
 
    return status;
 }
 
-static int process_inputs (config_t *cfg,
-                           const char *radiance_file,
+static int process_inputs (config_t *cfg, const char *radiance_file,
                            double time_beg, double time_end,
-                           const char *ephemeris_file,
                            int processing_version)
 {
    Radiance_Type *r = NULL;
@@ -351,7 +334,7 @@ static int process_inputs (config_t *cfg,
         goto return_status;
      }
 
-   /* Copy IRU, SMC time series spanning [time_beg,time_end),
+   /* Copy IRU, SMC, ephemeris time series spanning [time_beg,time_end),
     * handling the case where padding forces consideration
     * of additional files.
     */
@@ -362,8 +345,7 @@ static int process_inputs (config_t *cfg,
    if (0 != copy_iru (r, meta, cfg, time_beg, time_end, pad_enable))
      goto return_status;
 
-   /* Copy subset of ephemeris */
-   if (0 != copy_ephem (r, cfg, time_beg, time_end, pad_enable, ephemeris_file))
+   if (0 != copy_ephem (r, meta, cfg, time_beg, time_end, pad_enable))
      goto return_status;
 
    if (radiance_is_telemetry_only)
@@ -428,7 +410,6 @@ int main (int argc, char **argv)
         {"delay",   required_argument, 0, 'd'},
         {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
-        {"ephemeris", required_argument, 0, 'p'},
         {"Version",   required_argument, 0, 'V'},
         {0,0,0,0}
      };
@@ -438,7 +419,6 @@ int main (int argc, char **argv)
    double time_end = nan_value;
    time_t delay_sec = 0;
    char *radiance_file = NULL;
-   char *ephemeris_file = NULL;
    int processing_version = 1;
    int print_usage = 0;
    int have_epoch = 0;
@@ -496,9 +476,6 @@ int main (int argc, char **argv)
              if (1 != sscanf (optarg, "%ld", &delay_sec))
                goto return_status;
              break;
-           case 'p':
-             ephemeris_file = optarg;
-             break;
            case 'c':
              config_file = optarg;
              /* This config file will override the default one
@@ -545,13 +522,6 @@ int main (int argc, char **argv)
 
    tio_set_cmdline (argc, argv);
 
-   if (ephemeris_file == NULL)
-     {
-        fprintf (stderr, "*** Ephemeris file not specified\n");
-        print_usage = 1;
-        goto return_status;
-     }
-
    if (delay_sec > 0)
      {
         delay_start (delay_sec);
@@ -565,8 +535,7 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, ephemeris_file,
-                            processing_version))
+   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, processing_version))
      goto return_status;
 
    status = 0;

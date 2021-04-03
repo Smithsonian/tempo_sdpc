@@ -355,24 +355,46 @@ static Var_Name_Type IRU_Bias_Vars[] =
    VAR_TABLE_END
 };
 
+static Var_Name_Type EPH_Vars[] =
+{
+   {"anc_satx", TEMPO_VAR_SAT_X},
+   {"anc_saty", TEMPO_VAR_SAT_Y},
+   {"anc_satz", TEMPO_VAR_SAT_Z},
+   {"anc_satvx", TEMPO_VAR_SAT_VX},
+   {"anc_satvy", TEMPO_VAR_SAT_VY},
+   {"anc_satvz", TEMPO_VAR_SAT_VZ},
+   VAR_TABLE_END
+};
+
 static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *meta,
-                               Var_Name_Type *v, int to_grp, int copy_all)
+                               Var_Name_Type *v, const char *from_group_path,
+                               int to_grp, int copy_all)
 {
    const Row_Select_Type *rst;
    Buffer_Type buf = {0};
+   int from_ncid = 0;
    int to_start = 0;
    int status = -1;
 
    for (rst = rst_head; rst != NULL; rst = rst->next)
      {
-        int from_ncid, rows_copied;
+        int from_grp, rows_copied;
+
         if (0 != TIO_open (rst->file, NC_NOWRITE, &from_ncid))
           goto free_and_return;
+        if (from_group_path)
+          {
+             if (0 != TIO_inq_grp (from_ncid, from_group_path, &from_grp))
+               goto free_and_return;
+          }
+        else from_grp = from_ncid;
+
         if (0 != meta_record_basename (meta, rst->file))
           goto free_and_return;
-        rows_copied = copy_file_var (rst, &buf, v->from, from_ncid, copy_all,
+        rows_copied = copy_file_var (rst, &buf, v->from, from_grp, copy_all,
                                      v->to, to_grp, to_start);
         (void) TIO_close (from_ncid);
+        from_ncid = 0;
         if (rows_copied < 0)
           goto free_and_return;
         to_start += rows_copied;
@@ -381,6 +403,10 @@ static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *m
    status = 0;
 free_and_return:
    FREE(buf.bytes);
+   if (from_ncid != 0)
+     {
+        (void) TIO_close (from_ncid);
+     }
    return status;
 }
 
@@ -397,7 +423,7 @@ int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, const Row_Select_T
 
    for (v = SMC_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 0))
+        if (0 != radiance_copy_vars (rst_head, meta, v, NULL, grp, 0))
           return -1;
      }
 
@@ -417,56 +443,35 @@ int radiance_copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, const Row_Select_T
 
    for (v = IRU_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 0))
+        if (0 != radiance_copy_vars (rst_head, meta, v, NULL, grp, 0))
           return -1;
      }
 
    for (v = IRU_Bias_Vars; v->from != NULL; v++)
      {
-        if (0 != radiance_copy_vars (rst_head, meta, v, grp, 1))
+        if (0 != radiance_copy_vars (rst_head, meta, v, NULL, grp, 1))
           return -1;
      }
 
    return 0;
 }
 
-int radiance_write_eph (Radiance_Type *r, const Eph_Type *eph)
+int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_group_path,
+                       const Row_Select_Type *eph_head)
 {
-   int grp, start, count;
-
-   if (eph->n == 0)
-     return 0;
+   Var_Name_Type *v;
+   int grp;
 
    if (0 != TIO_inq_grp (r->ncid, "/inr_input/ephemeris", &grp))
      return -1;
 
-   start = 0;
-   count = eph->n;
+   if (0 != radiance_write_times (r, eph_head, grp, TEMPO_VAR_TIME_EPHEM))
+     return -1;
 
-   if (r->created_for_inr_status_update)
+   for (v = EPH_Vars; v->from != NULL; v++)
      {
-        if (isnan(r->tstart))
-          r->tstart = eph->t[0];
-        if (isnan(r->tstop))
-          r->tstop = eph->t[count-1];
-     }
-
-   if (   (0 != TIO_put_var_section (grp, TEMPO_VAR_TIME_EPHEM, &start, &count,
-                                     NC_DOUBLE, eph->t))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_X, &start, &count,
-                                     NC_DOUBLE, eph->r.x))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_Y, &start, &count,
-                                     NC_DOUBLE, eph->r.y))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_Z, &start, &count,
-                                     NC_DOUBLE, eph->r.z))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VX, &start, &count,
-                                     NC_DOUBLE, eph->v.x))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VY, &start, &count,
-                                     NC_DOUBLE, eph->v.y))
-       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VZ, &start, &count,
-                                     NC_DOUBLE, eph->v.z)))
-     {
-        return -1;
+        if (0 != radiance_copy_vars (eph_head, meta, v, from_group_path, grp, 0))
+          return -1;
      }
 
    return 0;
