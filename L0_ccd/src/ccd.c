@@ -713,7 +713,7 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
    return configure_using_octant_phase (ccd);
 }
 
-static int perform_coadd_correction (const CCD_Object_Type *obj, int num_coadds,
+static int perform_coadd_correction (const CCD_Object_Type *obj, unsigned int num_coadds,
                                      float saturation_fudge_factor, Image_Type *img)
 {
    int saturation_level_coadded = (1 << obj->num_coadd_bits) - 1;
@@ -741,13 +741,13 @@ static int perform_coadd_correction (const CCD_Object_Type *obj, int num_coadds,
    return 0;
 }
 
-static int ccd_correct_coadd (const CCD_Type *ccd, int num_coadds, Image_Type *img)
+static int ccd_correct_coadd (const CCD_Type *ccd, unsigned int num_coadds, Image_Type *img)
 {
    const CCD_Object_Type *obj = &ccd->obj;
    return perform_coadd_correction (obj, num_coadds, ccd->saturation_fudge_factor, img);
 }
 
-static int clt_correct_coadd (const CCD_Linearity_Type *clt, int num_coadds, Image_Type *img)
+static int clt_correct_coadd (const CCD_Linearity_Type *clt, unsigned int num_coadds, Image_Type *img)
 {
    const CCD_Object_Type *obj = &clt->obj;
    return perform_coadd_correction (obj, num_coadds, clt->saturation_fudge_factor, img);
@@ -1356,7 +1356,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
 static int mean_sdc_quad (const CCD_Object_Type *obj,
                           const Image_Subset_Type *quad,
                           const Image_Type *img,
-                          int num_dg_rows, int num_tg_rows,
+                          unsigned int num_dg_rows, unsigned int num_tg_rows,
                           float *mean_sdc_per_pixel)
 {
    const Image_Pixel_Type *quad_pixels;
@@ -1416,7 +1416,7 @@ static int mean_sdc_quad (const CCD_Object_Type *obj,
 
 static int ccd_mean_storage_region_dark (const CCD_Type *ccd,
                                          const Image_Type *img,
-                                         int num_dg_rows, int num_tg_rows,
+                                         unsigned int num_dg_rows, unsigned int num_tg_rows,
                                          float *mean_sdc)
 {
    const CCD_Object_Type *obj = &ccd->obj;

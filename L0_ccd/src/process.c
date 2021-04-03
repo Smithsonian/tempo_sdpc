@@ -358,8 +358,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if (0 != instr->instr_temps (instr, exprec->start_time, &xr->fpa_temp, &xr->fpe_temp))
      {
-        tell_vlog (TELL_MSGTYPE_WARN, 0,
-                   "%s: temperature lookup failed, start_time=%15.12e",
+        tell_vwarn (0, "%s: temperature lookup failed, start_time=%15.12e",
                    __func__, exprec->start_time);
         /* drop */
      }
@@ -762,6 +761,15 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
         if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
           goto return_status;
+
+        if (xr->exprec->num_coadds == TIO_FILL_UINT)
+          {
+             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, ixr, num_exprecs);
+             free_exprec_meta (xr, gr);
+             xr = NULL;
+             continue;
+          }
+
         if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,
@@ -1368,6 +1376,15 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
         if (NULL == (xr->exprec = gr->granule_read_exprec_by_index (gr, ixr, NULL)))
           goto return_status;
+
+        if (xr->exprec->num_coadds == TIO_FILL_UINT)
+          {
+             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, ixr, num_exprecs);
+             free_exprec_meta (xr, gr);
+             xr = NULL;
+             continue;
+          }
+
         if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,

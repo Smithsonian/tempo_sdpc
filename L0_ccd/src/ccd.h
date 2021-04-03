@@ -54,7 +54,7 @@ struct CCD_Type
     * Saturated pixels are flagged by setting the \a IMAGE_PQF_SATURATED
     * bit in the pixel quality flag.
     */
-   int (*ccd_correct_coadd)(const CCD_Type *, int, Image_Type *);
+   int (*ccd_correct_coadd)(const CCD_Type *, unsigned int, Image_Type *);
 
    int (*ccd_configure_using_octant_phase)(CCD_Type *, const Image_Type *);
    int (*ccd_correct_crosstalk)(const CCD_Type *, Image_Type *);
@@ -147,7 +147,7 @@ struct CCD_Type
     * Pixels containing \a IMAGE_PIXEL_FILL_VALUE are ignored.
     */
    int (*ccd_mean_storage_region_dark)(const CCD_Type *, const Image_Type *,
-                                       int, int, float *mean_sdc);
+                                       unsigned int, unsigned int, float *mean_sdc);
 
    /** Retrieve the dimensions of the photo-active CCD image
     * @param ccd         A non-null pointer to the CCD_Type object
@@ -237,7 +237,7 @@ typedef struct CCD_Select_Type CCD_Select_Type;
 struct CCD_Linearity_Type
 {
    void (*clt_delete)(CCD_Linearity_Type *);
-   int (*clt_correct_coadd)(const CCD_Linearity_Type *, int, Image_Type *);
+   int (*clt_correct_coadd)(const CCD_Linearity_Type *, unsigned int, Image_Type *);
    int (*clt_correct_offset)(const CCD_Linearity_Type *, Image_Type *);
    int (*clt_trimmed_sample_mean)(const CCD_Linearity_Type *, const Image_Type *,
                                   CCD_Select_Type *, double *);

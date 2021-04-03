@@ -119,10 +119,11 @@ static int granule_get_exposure_per_frame (const Granule_Type *g, double *exposu
    for (i = 0; i < g->num_exprecs; i++)
      {
         double exposure_time;
-        int count=1, num_coadds;
+        unsigned int num_coadds;
+        int count=1;
 
         if ((0 != TIO_get_var_section (g->ncid, "exposure_time", &i, &count, TIO_DOUBLE, &exposure_time))
-            || (0 != TIO_get_var_section (g->ncid, "num_coadds", &i, &count, TIO_INT, &num_coadds)))
+            || (0 != TIO_get_var_section (g->ncid, "num_coadds", &i, &count, TIO_UINT, &num_coadds)))
           {
              tell_verror (TELL_IO_READ_ERROR, "%s: reading exposure_time, num_coadds (i=%d)", __func__, i);
              return -1;
@@ -178,13 +179,13 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
                                     &exprec->frame_transfer_time))
        ||(0 != TIO_get_var_section (g->ncid, "readout_time", start, count, TIO_DOUBLE,
                                     &exprec->readout_time))
-       ||(0 != TIO_get_var_section (g->ncid, "num_coadds", start, count, TIO_INT,
+       ||(0 != TIO_get_var_section (g->ncid, "num_coadds", start, count, TIO_UINT,
                                     &exprec->num_coadds))
-       ||(0 != TIO_get_var_section (g->ncid, "curr_mirror_step", start, count, TIO_INT,
+       ||(0 != TIO_get_var_section (g->ncid, "curr_mirror_step", start, count, TIO_UINT,
                                     &exprec->curr_mirror_step))
-       ||(0 != TIO_get_var_section (g->ncid, "num_dg_rows", start, count, TIO_INT,
+       ||(0 != TIO_get_var_section (g->ncid, "num_dg_rows", start, count, TIO_UINT,
                                     &exprec->num_dg_rows))
-       ||(0 != TIO_get_var_section (g->ncid, "num_tg_rows", start, count, TIO_INT,
+       ||(0 != TIO_get_var_section (g->ncid, "num_tg_rows", start, count, TIO_UINT,
                                     &exprec->num_tg_rows))
       )
      {
