@@ -346,8 +346,11 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
           goto cleanup_and_return;
         if (group_path)
           {
-             if (0 != TIO_inq_grp (ncid, group_path, &grp))
-               goto cleanup_and_return;
+             if (NC_NOERR != nc_inq_grp_full_ncid (ncid, group_path, &grp))
+               {
+                  (void) TIO_close(ncid);
+                  continue;
+               }
           }
         else grp = ncid;
 
