@@ -29,7 +29,6 @@ filedb -c $SDPC_ROOT/etc/filedb.cfg met:synth --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg met:hires --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg met:lores --update
 filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
-filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --update
 
 /bin/cp -r $SDPC_ROOT/etc/services $SDPC_RUN_DIR_MASTER
 

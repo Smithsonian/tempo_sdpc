@@ -604,8 +604,6 @@ static char *filedb_lookup (const char *filename, double query_time)
          * interval is not always defined (e.g. snow cover).
          *
          * For now, we pick the file that has the nearest timestamp.
-         * For the ephemeris, we may have to pre-process the ephemeris data
-         * files to remove any ambiguities.
          */
 
         if (id+1 < n)
@@ -844,7 +842,7 @@ static Filedb_Method_Type Filedb_Methods_List[] =
    FILEDB_METHOD(met),
    FILEDB_METHOD(snow),
    FILEDB_METHOD(tempo),
-   FILEDB_METHOD(ephemeris),
+   /* FILEDB_METHOD(ephemeris), */
    FILEDB_METHOD_TABLE_END
 };
 

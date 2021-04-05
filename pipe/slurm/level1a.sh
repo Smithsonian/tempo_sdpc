@@ -61,15 +61,12 @@ make_iru_only_file_for_inr()
    export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
    etc_dir="$SDPC_ROOT/etc"
 
-   ephem_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --find --sec $tbeg_utc)
-
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
 
    # No delay is needed here (any IRU coverage padding extends to earlier times)
    L1_inr_prep -v 1 --Version $SDPC_PROCESSING_VERSION \
        --config ${etc_dir}/l1_inr_prep.cfg \
-       --begin $tbeg --end $tend --epoch $epoch \
-       --ephemeris ${ephem_file_path}
+       --begin $tbeg --end $tend --epoch $epoch
 
    echo "L1_inr_prep finished"
 
@@ -91,11 +88,9 @@ case "${granule_basename}" in
 
    *IRR* | *RAD* )
    dark_file_path=$(select_dark.py "$granule_path")
-   ephem_file_path=$(filedb -c $SDPC_ROOT/etc/filedb.cfg ephemeris --find --header "$granule_path")
    ;;
    * )
    dark_file_path=NONE
-   ephem_file_path=NONE
    ;;
 esac
 
@@ -104,7 +99,6 @@ file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
 granule_path=${granule_path}
 dark_file_path=${dark_file_path}
-ephem_file_path=${ephem_file_path}
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
@@ -112,7 +106,9 @@ export SDPC_GRANULE_LABEL="$granule_basename"
 echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
 # Run the pipeline:
-job_l0="L0:$SDPC_GRANULE_LABEL"
-sbatch --job-name=$job_l0 \
+# Time-ordered processing is important:
+#  * DRK must finish before the relevant IRR or RAD
+#  * RAD time sequence is critical for INR
+sbatch --dependency=singleton --job-name="L0:sequential" \
        --chdir $run_dir \
        level1a_batch.sh "${granule_basename}.nc" "$file_list_file"

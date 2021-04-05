@@ -10,7 +10,6 @@
 #       $2 = file containing a list of filenames:
 #               granule_path
 #               dark_file_path
-#               ephem_file_path
 #
 #    The following environment variables are assumed to be set:
 #          * SDPC_ROOT, SDPC_RUN_DIR, SDPC_ARCHIVE_DIR
@@ -46,7 +45,6 @@ file_list_file="$2"
 # including this file should define these variables:
 #    granule_path
 #    dark_file_path
-#    ephem_file_path
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -132,7 +130,7 @@ run_inr_prep()
    # last exposure record of this granule was received from the IOC.
 
    srun --ntasks=1 --output=log_inr_prep.txt \
-   L1_inr_prep --ephemeris $ephem_file_path --delay 120 $target_file
+   L1_inr_prep --delay 120 $target_file
 }
 
 case "${granule_basename}" in
