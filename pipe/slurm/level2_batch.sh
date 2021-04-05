@@ -127,18 +127,17 @@ done
 remove_redundant_files
 
 for prod in $product_list ; do
-  job_name="$prod:${SDPC_GRANULE_LABEL}"
+  job_label_args="--job-name=$prod --comment=$SDPC_GRANULE_LABEL"
   if test $prod = O3TOT ; then
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_name o3tot.sh)
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable $job_label_args o3tot.sh)
   else
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable --job-name=$job_name tracegas.sh $prod)
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable $job_label_args tracegas.sh $prod)
   fi
   update_job_list $jid
 done
 
 if test X"$jid_list" != X ; then
-   job_clean="L2-end:$SDPC_GRANULE_LABEL"
-   sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
+   sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
           --dependency=afterany:$jid_list \
           level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
 fi

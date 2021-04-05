@@ -143,12 +143,12 @@ do_O3PROF()
 
    jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
                           --array="${array_bounds}" \
-                          --job-name="$SLURM_JOB_NAME" \
+                          --job-name="$SLURM_JOB_NAME" --comment=$SDPC_GRANULE_LABEL \
                           o3prof_block.sh ${run_dir})
 
    jid_o3p_cleanup=$(sbatch -w $SLURMD_NODENAME --parsable \
                             --dependency=afterany:$jid_o3p_array \
-                            --job-name="$SLURM_JOB_NAME" \
+                            --job-name="$SLURM_JOB_NAME" --comment=$SDPC_GRANULE_LABEL \
                             o3prof_util.sh cleanup "$host_spec")
    update_job_list $jid_o3p_cleanup
 }
@@ -159,8 +159,7 @@ remove_redundant_files
 do_O3PROF
 
 if test X"$jid_list" != X ; then
-   job_clean="L2-end:$SDPC_GRANULE_LABEL"
-   sbatch -w $SLURMD_NODENAME --job-name=$job_clean \
+   sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
           --dependency=afterany:$jid_list \
           level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
 fi

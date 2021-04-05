@@ -106,8 +106,7 @@ fi
 
 if test x"$product_list_sans_o3p" != x ; then
   log_message "start level2_batch.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
-  job_run_l2="L2:${SDPC_GRANULE_LABEL}"
-  sbatch --job-name=$job_run_l2 \
+  sbatch --job-name=L2 --comment=$SDPC_GRANULE_LABEL \
          --chdir $l2_run_dir \
          level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p"
 else
@@ -125,7 +124,7 @@ if test x"$have_o3p" != x ; then
   # final merge step to merge the blocks into a single O3 profile data product.
   # The merge step is triggered by a slurm 'singleton' dependency on the
   # job name "$job_o3p", defined here.
-  job_o3p="o3p:${SDPC_GRANULE_LABEL}"
+  job_o3p="O3PROF:${SDPC_GRANULE_LABEL}"
 
   for k in $o3p_host_list ; do
      host_spec="${k}-${num_o3p_hosts}"
@@ -138,7 +137,7 @@ if test x"$have_o3p" != x ; then
      # Without this wait, there's a race condition, where some compute jobs are
      # submitted after the singleton, causing some blocks to be omitted from
      # the final data product file.
-     sbatch --job-name="$job_o3p" \
+     sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$l2_run_dir \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"
@@ -147,6 +146,6 @@ if test x"$have_o3p" != x ; then
   log_message "start singleton-dependent batch o3prof_merge.sh: $job_o3p"
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
-  sbatch --dependency=singleton --job-name="$job_o3p" \
+  sbatch --dependency=singleton --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
          o3prof_merge.sh $granule_arch_dir_path
 fi

@@ -104,8 +104,8 @@ EOF
 log_message "start level2_prep.sh: $SDPC_GRANULE_LABEL"
 
 # Run the post-INR pipeline to prepare for L2 product generation:
-job_prep_l2="L2-pre:${SDPC_GRANULE_LABEL}"
-sbatch --wait --job-name=$job_prep_l2 --chdir $l1_run_dir \
+sbatch --wait --job-name="L2-prep" --comment=$SDPC_GRANULE_LABEL \
+        --chdir $l1_run_dir \
         --nodes=1-1 --ntasks=8 \
         level2_prep.sh "${rad_basename}.nc" "$file_list_file"
 

@@ -110,5 +110,6 @@ echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
 #  * DRK must finish before the relevant IRR or RAD
 #  * RAD time sequence is critical for INR
 sbatch --dependency=singleton --job-name="L0:sequential" \
+       --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \
        level1a_batch.sh "${granule_basename}.nc" "$file_list_file"
