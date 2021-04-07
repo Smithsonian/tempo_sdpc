@@ -11,7 +11,7 @@ from datetime import date
 from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 
-Radiance_Files = ["RAD_L1a", "RAD_L1b"]
+Radiance_Files = ["RAD_L1a", "RAD_L1"]
 Radiance_Products = ["CLDRR", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
@@ -72,7 +72,7 @@ def init_radiance_product_table (table_name):
     fields = {}
     define_common_fields (fields)
     fields["scan_id"] = "integer not null"
-    quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1b')
+    quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1')
     return Table_Type(table_name, fields, quals)
 
 def init_dark_product_table (table_name):
