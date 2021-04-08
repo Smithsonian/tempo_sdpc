@@ -40,15 +40,17 @@ CONTAINS
     ! --------------
     character (len=15) :: swathname
     character (len=3) :: prod_str
-    integer (kind=4) :: ncerr, n
+    integer (kind=4) :: ncerr
     integer (kind=4), parameter :: nxtrack = 2048, nwl = 1024
     logical :: preflight
-    real (kind=4), dimension(nwl, nxtrack) :: sf_asym, sf_hw1e, sf_shape, &
+    real (kind=8), dimension(nwl, nxtrack) :: sf_asym, sf_hw1e, sf_shape, &
          sf_wavelength
+    real (kind=4), dimension(nwl, nxtrack) :: r4_asym, r4_hw1e, r4_shape, &
+         r4_wavelength
     real (kind=4), dimension(nwl, nxtrack,1) :: tmp_asym, tmp_hw1e, tmp_shape, tmp_wl
     real (kind=4) :: minwl, maxwl
     logical, dimension(nwl, nxtrack) :: mask
-    
+
     type (tiof_file_type) :: tio_l1obj
 
     if (errstat /= 0) return
@@ -84,19 +86,23 @@ CONTAINS
     if (preflight) then ! read from pre flight slit function
       call tiof_push_group (tio_l1obj, swathname, errstat)
       call tiof_get2d_r4 (tio_l1obj, "sf_asym", [0,0], [nxtrack,nwl], &
-           sf_asym, errstat)
+           r4_asym, errstat)
       call tiof_get2d_r4 (tio_l1obj, "sf_hw1e", [0,0], [nxtrack,nwl], &
-           sf_hw1e, errstat)
+           r4_hw1e, errstat)
       call tiof_get2d_r4 (tio_l1obj, "sf_shape", [0,0], [nxtrack,nwl], &
-           sf_shape, errstat)
+           r4_shape, errstat)
       call tiof_get2d_r4 (tio_l1obj, "sf_wavelength", [0,0], [nxtrack,nwl], &
-           sf_wavelength, errstat)
+           r4_wavelength, errstat)
       if (errstat /= 0) then
         call tell_error (tell_io_read_error, &
              "tempo_slitfunc_read: failed to read pre-flight file", &
              errstat)
         return
       endif
+      sf_asym=real(r4_asym, kind=8)
+      sf_hw1e=real(r4_hw1e, kind=8)
+      sf_shape=real(r4_shape, kind=8)
+      sf_wavelength=real(r4_wavelength, kind=8)
       call tell_log (0, "read pre-flight slit function")
     else ! read from irradiance file
       call tiof_push_group (tio_l1obj, swathname, errstat)
@@ -115,10 +121,10 @@ CONTAINS
         return
       endif
       call tell_log (0, "read slit function from irradiance file")
-      sf_asym = tmp_asym(:,:,1)
-      sf_hw1e = tmp_hw1e(:,:,1)
-      sf_shape = tmp_shape(:,:,1)
-      sf_wavelength = tmp_wl(:,:,1)
+      sf_asym = real(tmp_asym(:,:,1), kind=8)
+      sf_hw1e = real(tmp_hw1e(:,:,1), kind=8)
+      sf_shape = real(tmp_shape(:,:,1), kind=8)
+      sf_wavelength = real(tmp_wl(:,:,1), kind=8)
     endif
 
     ! determine the mean variable values in the wavelength window
@@ -136,7 +142,6 @@ CONTAINS
     mean_hw1e = real(sum(sf_hw1e,mask=mask)/count(mask), kind=8)
     mean_shape = real(sum(sf_shape,mask=mask)/count(mask), kind=8)
     mean_wl = real(sum(sf_wavelength,mask=mask)/count(mask), kind=8)
-print *, mean_asym, mean_hw1e, mean_shape, mean_wl
 
   END SUBROUTINE tempo_slitfunc_read
 
