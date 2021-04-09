@@ -202,7 +202,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type irradiance_attrs[] =
           {
-             {"units", _pTIO_PHOTON_UNITS},
+             {"units", _pTIO_IRRADIANCE_UNITS},
              {"ancillary_variables", TEMPO_VAR_IRRADIANCE_ERROR},
              _pTEXT_ATTRS_END
           };
@@ -243,7 +243,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type irradiance_error_attrs[] =
           {
-             {"units", _pTIO_PHOTON_UNITS},
+             {"units", _pTIO_IRRADIANCE_UNITS},
              {"long_name", "irradiance error"},
              _pTEXT_ATTRS_END
           };

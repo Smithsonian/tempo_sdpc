@@ -638,7 +638,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type radiance_attrs[] =
           {
-             {"units", _pTIO_PHOTON_UNITS},
+             {"units", _pTIO_RADIANCE_UNITS},
              {"coordinates", "longitude latitude spectral_channel"},
              {"ancillary_variables", "radiance_error radiance_status_flag"},
              _pTEXT_ATTRS_END
@@ -677,7 +677,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type radiance_error_attrs[] =
           {
-             {"units", _pTIO_PHOTON_UNITS},
+             {"units", _pTIO_RADIANCE_UNITS},
              {"coordinates", "longitude latitude spectral_channel"},
              {"long_name", "radiance error"},
              _pTEXT_ATTRS_END

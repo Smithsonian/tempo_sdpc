@@ -16,7 +16,8 @@ extern "C" {
 
 /* nominal default values for template files */
 #define _pTIO_EARTH_SUN_DISTANCE    1.47975e+11
-#define _pTIO_PHOTON_UNITS "photons/s/cm^2/nm/sr"
+#define _pTIO_RADIANCE_UNITS "photons/s/cm^2/nm/sr"
+#define _pTIO_IRRADIANCE_UNITS "photons/s/cm^2/nm"
 
 #define TIO_REALLOC realloc
 #define TIO_MALLOC malloc
