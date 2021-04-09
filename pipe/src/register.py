@@ -54,7 +54,8 @@ def define_common_fields (fields):
     fields["mtime"] = "float"
     fields["size"] = "integer"
     fields["versionid"] = "integer"
-    fields["asdc_status"] = "integer"     # 0=not uploaded, 1=uploaded, 2=accepted
+    fields["asdc_status"] = "integer"
+    fields["asdc_status_met"] = "integer"
 
 def init_radiance_table (table_name):
     fields = {}
@@ -265,6 +266,7 @@ def process_file (conn, filename):
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
     keys["versionid"] = versionid
     keys["asdc_status"] = 0
+    keys["asdc_status_met"] = 0
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
     keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
