@@ -64,6 +64,7 @@ static int test_hotcold (Pixelqf_Type *pt)
    Image_Pixel_Type sigma = sqrt(p0);
    Image_Pixel_Type hot_value = p0 + 6*sigma;
    Image_Pixel_Type cold_value = p0 - 6*sigma;
+   Dark_Trend_Type dtt = {0};
    int status = -1;
 
    if (NULL == (img = image_new (NUM_ROWS, NUM_COLS)))
@@ -79,7 +80,7 @@ static int test_hotcold (Pixelqf_Type *pt)
 
    image_set (img, p0, 0);
    image_set_diag (img, hot_value);
-   if (0 != pt->pqf_flag_hotcold (pt, img))
+   if (0 != pt->pqf_flag_hotcold (pt, img, &dtt))
      goto return_status;
    if (0 == image_test_pqf_diag (img, IMAGE_PQF_HOT_PIXEL))
      {
@@ -89,7 +90,7 @@ static int test_hotcold (Pixelqf_Type *pt)
 
    image_set (img, p0, 0);
    image_set_diag (img, cold_value);
-   if (0 != pt->pqf_flag_hotcold (pt, img))
+   if (0 != pt->pqf_flag_hotcold (pt, img, &dtt))
      goto return_status;
    if (0 == image_test_pqf_diag (img, IMAGE_PQF_COLD_PIXEL))
      {
