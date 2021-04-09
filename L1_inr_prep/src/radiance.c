@@ -350,7 +350,7 @@ static Var_Name_Type IRU_Vars[] =
 
 static Var_Name_Type IRU_Bias_Vars[] =
 {
-   {"time_of_scale_or_bias_update", TEMPO_VAR_TIME_GYRO_BIAS},
+   {TEMPO_VAR_TIME_GYRO_BIAS, TEMPO_VAR_TIME_GYRO_BIAS},
    {"bias", TEMPO_VAR_GYRO_BIAS},
    VAR_TABLE_END
 };
