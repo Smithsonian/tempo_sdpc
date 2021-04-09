@@ -246,11 +246,8 @@ def process_file (conn, filename):
     # of each Level 2 product type to expect from each scan.
     # That number of Level 2 products then triggers end-of-scan processing
     # for each Level 2 product type e.g. by L2_split and L2_regrid
-    if product_name == 'RAD_L1':
-        if attr["inr_status"] == "2":
-            product_name = product_name + 'b'
-        else:
-            product_name = product_name + 'a'
+    if product_name == 'RAD_L1' and attr["inr_status"] != "2":
+        product_name = product_name + 'a'
 
     final_basename = remove_dot_prefix (basename)
     final_path = os.readlink (filename)
