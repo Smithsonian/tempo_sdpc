@@ -40,7 +40,7 @@
 #define IRU_FILE_VAR_TIME         "time"
 #define IRU_FILE_VAR_SCALE_FACTOR "scale_factor"
 #define IRU_FILE_VAR_BIAS         "bias"
-#define IRU_FILE_VAR_BIAS_TIME    "time_of_scale_or_bias_update"
+#define IRU_FILE_VAR_BIAS_TIME    "bias_time"
 
 #define IRU_BIAS_DIMLEN   3
 
@@ -58,7 +58,7 @@ IRU_Var_Type;
 
 static IRU_Var_Type IRU_Var_Table[] =
 {
-   IRU_VAR(IRU_FILE_VAR_TIME,1,NC_DOUBLE,"sec","Time of sample (secs since TEMPO epoch)"),
+   IRU_VAR(IRU_FILE_VAR_TIME,1,NC_DOUBLE,"sec","Time of gyro sample (secs since TEMPO epoch)"),
    IRU_VAR(TEMPO_VAR_GYRO_OUTPUT,2,NC_INT,"DN","Gyro output data values"),
    IRU_VARS_END
 };
@@ -131,7 +131,7 @@ static int define_iru_vars (Process_Method_Type *pmt,
    int varid, dimid_time, dimid_bias_time, dimid_gyro_axis, dimid_gyro_bias;
    int dimids_gyro_bias[2], dimids_gyro_output[2], dimids_gyro_scale[2];
    const char *descr_bias_time =
-     "Time when gyroscope scale or bias was updated (secs since TEMPO epoch)";
+     "Time of bias sample (secs since TEMPO epoch)";
 
    pmt->gyro_bias_time = iru->gyro_bias_time;
    pmt->gyro_dimension = iru->gyro_dimension ? iru->gyro_dimension : 4;
@@ -140,21 +140,6 @@ static int define_iru_vars (Process_Method_Type *pmt,
        || (0 != write_attr_global_timestamp (pmt->ncid, "time_coverage_start",
                                              pmt->outfile_timestamp_start)))
      return -1;
-
-   /* FIXME?:
-    * The dimension dimid_bias_time is being used somewhat inconsistently.
-    * Each iru file incoming from the IOC has a single value of
-    *     time_of_scale_or_bias_update
-    *     scale_factor[gyro_axis]
-    *     bias[gyro_bias]
-    * Instead, the instrument will provide a bias time series, which
-    * the IOC may ultimately provide as a separate file.  For now,
-    * the bias_time dimension is effectively a counter indicating the
-    * number of IRU products from the IOC merged to make the iru file.
-    * This configuration is likely to change when we complete NDAs
-    * with the gyroscope vendors and finally learn what's in the IRU
-    * packets.
-    */
 
    /* dimensions */
    if (-1 == TIO_def_dim (pmt->ncid, IRU_FILE_VAR_TIME, NC_UNLIMITED, &dimid_time))
