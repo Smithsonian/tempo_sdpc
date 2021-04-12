@@ -502,12 +502,24 @@ contains
              solwinfit(1:numwin, hwe_idx,1) = &
              solwinfit(1:numwin, hwe_idx,1) + 0.01
           ELSE IF (which_slit == 4) THEN
-             solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) + 0.01
-             solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) + 0.01
-          ELSE IF (which_slit == 5) THEN        
-             solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) + 0.01
-             solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) + 0.01
-             solwinfit(1:numwin, asy_idx,1) = solwinfit(1:numwin, asy_idx,1) + 0.01
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) + 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) + 0.01
+          ELSE IF (which_slit == 5) THEN
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) + 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) + 0.01
+             solwinfit(1:numwin, asy_idx,1) = &
+                  solwinfit(1:numwin, asy_idx,1) + 0.01
+          ELSE IF (which_slit == instrument_sidx) THEN
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) + 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) + 0.01
+             solwinfit(1:numwin, asy_idx,1) = &
+                  solwinfit(1:numwin, asy_idx,1) + 0.01
           ENDIF
         ELSE
           IF (which_slit == 0) THEN
@@ -523,7 +535,11 @@ contains
           ELSE IF ( which_slit == 4) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
-          ELSE IF ( which_slit == 5) THEN        
+          ELSE IF ( which_slit == 5) THEN
+           slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
+           slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) + 0.01
+           slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
+          ELSE IF ( which_slit == instrument_sidx) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) + 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
@@ -546,12 +562,24 @@ contains
              solwinfit(1:numwin, hwe_idx,1) = &
              solwinfit(1:numwin, hwe_idx,1) - 0.01
           ELSE IF ( which_slit == 4) THEN
-             solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) - 0.01
-             solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) - 0.01
-          ELSE IF ( which_slit == instrument_sidx) THEN        
-             solwinfit(1:numwin, hwe_idx,1) = solwinfit(1:numwin, hwe_idx,1) - 0.01
-             solwinfit(1:numwin, spk_idx,1) = solwinfit(1:numwin, spk_idx,1) - 0.01
-             solwinfit(1:numwin, asy_idx,1) = solwinfit(1:numwin, asy_idx,1) - 0.01
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) - 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) - 0.01
+          ELSE IF ( which_slit == 5) THEN
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) - 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) - 0.01
+             solwinfit(1:numwin, asy_idx,1) = &
+                  solwinfit(1:numwin, asy_idx,1) - 0.01
+          ELSE IF ( which_slit == instrument_sidx) THEN
+             solwinfit(1:numwin, hwe_idx,1) = &
+                  solwinfit(1:numwin, hwe_idx,1) - 0.01
+             solwinfit(1:numwin, spk_idx,1) = &
+                  solwinfit(1:numwin, spk_idx,1) - 0.01
+             solwinfit(1:numwin, asy_idx,1) = &
+                  solwinfit(1:numwin, asy_idx,1) - 0.01
           ENDIF
         ELSE
           IF (which_slit == 0) THEN
@@ -567,7 +595,11 @@ contains
           ELSE IF ( which_slit == 4) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
-          ELSE IF ( which_slit == instrument_sidx) THEN        
+          ELSE IF ( which_slit == 5) THEN
+           slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
+           slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
+           slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) - 0.01
+          ELSE IF ( which_slit == instrument_sidx) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) - 0.01

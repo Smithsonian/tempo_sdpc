@@ -8,11 +8,13 @@
 MODULE m_convol
   
   USE OMSAO_precision_module     
-  USE OMSAO_indices_module,     ONLY: solar_idx, wvl_idx, spc_idx, & 
-      spk_idx, hwr_idx, hwl_idx, vgl_idx, vgr_idx, asy_idx, hwe_idx, & 
-      instrument_idx, omi_idx, gome_idx, gome2_idx
-  USE OMSAO_variables_module,   ONLY: yn_varyslit, which_slit, fixslitcal,instrument_sidx, & 
-                                      n_refspec_pts,refspec_orig_data,fitvar_sol
+  USE OMSAO_indices_module,     ONLY: solar_idx, wvl_idx, spc_idx, &
+      spk_idx, hwr_idx, hwl_idx, vgl_idx, vgr_idx, asy_idx, hwe_idx, &
+      instrument_idx, omi_idx, gome_idx, gome2_idx, asy_idx, hwe_idx, &
+      spk_idx, tempo_idx
+  USE OMSAO_variables_module,   ONLY: yn_varyslit, which_slit, &
+       fixslitcal,instrument_sidx, n_refspec_pts, refspec_orig_data, &
+       fitvar_sol, solwinfit, mean_hw1e, mean_asym, mean_shape, numwin
 
   USE OMSAO_errstat_module
   USE m_ezspline_interpolation, ONLY: interpolation
@@ -29,6 +31,7 @@ MODULE m_convol
                            super_agauss_multi, super_agauss_vary, & 
                            super_agauss_f2c, super_agauss_vary_f2c
   USE OMSAO_slitfunction_module
+  use tell_module
 
   PUBLIC simple_convol, convol, convol_i0, convol_f2c,convol_i0f2c, convol_f2c_stk, get_i0
   PRIVATE !get_i0 !correct_coaddeffect, normalize_solar_refspec convol_f2c is much faster than convol
@@ -41,7 +44,7 @@ MODULE m_convol
   REAL (KIND=dp), DIMENSION (npts), INTENT(IN) :: kppos, kpspec
   REAL (KIND=dp), DIMENSION (npts), INTENT(OUT) :: kpspec_gauss
   
-   
+
     IF (.NOT. yn_varyslit .OR. fixslitcal) THEN 
       IF (which_slit == 0) THEN 
          CALL gauss (kppos, kpspec, kpspec_gauss, npts, &
@@ -63,15 +66,14 @@ MODULE m_convol
          CALL super_agauss (kppos, kpspec, kpspec_gauss, npts, &
               fitvar_sol(hwe_idx), fitvar_sol(asy_idx), fitvar_sol(spk_idx))
       ELSE IF (which_slit >= instrument_sidx) THEN 
-         IF (instrument_idx == omi_idx) THEN 
-            CALL omislit_multi (kppos, kpspec, kpspec_gauss, npts)
-         ELSE IF (instrument_idx == gome_idx .or. instrument_idx == gome2_idx) THEN 
-            IF (which_slit == 6) THEN 
-             !CALL slitfile (kppos, kpspec, kpspec_gauss, npts,fitvar_sol(hwe_idx))
-            ELSE IF (which_slit == 7) THEN 
-             !CALL gome2slit (kppos, kpspec, kpspec_gauss, npts)
-            ENDIF
-         ENDIF
+        IF (instrument_idx == omi_idx) THEN 
+          CALL omislit_multi (kppos, kpspec, kpspec_gauss, npts)
+        else if (instrument_idx == tempo_idx) then
+          solwinfit(1:numwin,asy_idx,1) = mean_asym
+          solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
+          solwinfit(1:numwin,spk_idx,1) = mean_shape
+          CALL super_agauss_multi (kppos, kpspec, kpspec_gauss, npts)
+        ENDIF
       ENDIF
     ELSE
       IF (which_slit == 0) THEN 
@@ -89,12 +91,9 @@ MODULE m_convol
       ELSE IF (which_slit >= instrument_sidx) THEN 
         IF (instrument_idx == omi_idx) THEN 
          CALL omislit_vary  (kppos, kpspec, kpspec_gauss, npts)
-        ELSE IF (instrument_idx == gome_idx .or. instrument_idx == gome2_idx) THEN 
-            IF (which_slit == 6) THEN 
-             !CALL slitfile_vary (kppos, kpspec, kpspec_gauss, npts)
-            ELSE IF (which_slit == 7) THEN 
-             !CALL gome2slit (kppos, kpspec, kpspec_gauss, npts)
-            ENDIF
+        else if (instrument_idx == tempo_idx) then
+          print *, "Simple convolve should not be used with TEMPO"
+          stop 1
         ENDIF
       ENDIF
     ENDIF  
@@ -121,7 +120,6 @@ MODULE m_convol
     npts = lidx - fidx + 1  
     abspec(fidx:lidx)  = refspec(fidx:lidx)
     
-
     IF (.NOT. yn_varyslit) THEN
       IF (which_slit == 0) THEN
         CALL gauss_multi (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
@@ -138,12 +136,12 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_multi    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-        ELSE IF (instrument_idx == gome2_idx) THEN  
-          IF (which_slit == 6) THEN 
-            !CALL slitfile_multi     (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-          ELSE IF (which_slit == 7) THEN 
-            !CALL gome2slit     (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-          ENDIF
+        else if (instrument_idx == tempo_idx) then
+          solwinfit(1:numwin,asy_idx,1) = mean_asym
+          solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
+          solwinfit(1:numwin,spk_idx,1) = mean_shape
+          CALL super_agauss_multi (refwav(fidx:lidx), abspec(fidx:lidx), &
+               abspecmod(fidx:lidx), npts)
         ENDIF
       ENDIF
     ELSE 
@@ -162,12 +160,9 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN 
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_vary    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-        ELSE IF (instrument_idx == gome2_idx) THEN 
-         IF (which_slit == 6) THEN 
-          !CALL slitfile_vary    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts) 
-         ELSE IF (which_slit == 7) THEN 
-          !CALL gome2slit     (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-         ENDIF
+        else if (instrument_idx == tempo_idx) then
+          print *, "Variable instrument slit convolution not implemented"
+          stop 1
         ENDIF
       ENDIF
     ENDIF
@@ -294,12 +289,10 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
              CALL omislit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-        ELSE IF (instrument_idx == gome2_idx) THEN 
-          IF (which_slit == 6) THEN
-             !CALL slitfile_f2c(fwave, fspec, nf, cwave, cspec, nc)
-          ELSE IF (which_slit == 6) THEN
-             !CALL gome2slit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-          END IF
+          solwinfit(1:numwin,asy_idx,1) = mean_asym
+          solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
+          solwinfit(1:numwin,spk_idx,1) = mean_shape
+          CALL super_agauss_f2c (fwave, fspec, nf, nspec, cwave, cspec, nc)
         ENDIF
       ENDIF
     ELSE
@@ -318,13 +311,9 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-        ELSE IF  (instrument_idx == gome2_idx) THEN 
-          IF (which_slit == 6) THEN
-            !CALL slitfile_vary_f2c(fwave, fspec, nf, cwave, cspec, nc)
-          ELSE IF (which_slit == 7) THEN
-            !WRITE(*,*) 'Should not vary slit function if using GOME-2 pre-flight slits'
-            !CALL gome2slit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-          ENDIF
+        else if (instrument_idx == tempo_idx) then
+          print *, "Variable instrument slit function not implemented"
+          stop 1
         ENDIF
       ENDIF
     ENDIF

@@ -1632,7 +1632,6 @@ SUBROUTINE HRES_RADCALC_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   ENDIF
   ! Call LIDORT_PROF_ENV on fine wavelength grids
   ! Return raidances and weighting functions on required resolution wavelength grid
-  
   IF (do_rtm_pca) THEN 
     CALL LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi,do_taodwf,      &
        do_twaewf, do_saodwf, do_cfracwf, do_ctpwf, do_codwf, & 

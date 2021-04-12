@@ -338,11 +338,13 @@ $(ODIR)/tmpo_pge_process.o: $(SDIR)/tmpo_pge_process.f90 \
   $(ODIR)/m_cross_calibrate.o \
   $(ODIR)/m_read_cloud_tio.o \
   $(ODIR)/m_read_geo_tio.o \
+  $(ODIR)/m_slitfunction_tempo.o \
   $(ODIR)/m_specfit_ozprof.o \
   $(ODIR)/m_write_odl_metadata.o \
   $(ODIR)/O3P_output_module.o \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMSAO_errstat_module.o \
+  $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_tmpodata_module.o \
@@ -892,6 +894,13 @@ $(ODIR)/m_write_odl_metadata.o: $(SDIR)/m_write_odl_metadata.f90 \
   $(ODIR)/OMSAO_tmpodata_module.o \
   $(ODIR)/PGS_MET_class.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_odl_metadata.f90 -o $(ODIR)/m_write_odl_metadata.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_slitfunction_tempo.o: $(SDIR)/m_slitfunction_tempo.f90 \
+  $(ODIR)/OMI_LUN_set.o \
+  $(ODIR)/OMSAO_parameters_module.o \
+  $(ODIR)/OMSAO_tmpodata_module.o \
+  $(ODIR)/OMSAO_variables_module.o \
+  $(ODIR)/PGS_PC_class.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_slitfunction_tempo.f90 -o $(ODIR)/m_slitfunction_tempo.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/HE5Tget_size.o:	$(SDIR)/HE5Tget_size.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/HE5Tget_size.c -o $(ODIR)/HE5Tget_size.o
 $(ODIR)/OMI_L1B_reader.o:	$(SDIR)/OMI_L1B_reader.c

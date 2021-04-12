@@ -24,7 +24,7 @@ contains
     USE OMSAO_parameters_module, ONLY: normweight
     USE OMSAO_variables_module, ONLY: numwin, nxbin, scnwrt,band_selectors, & 
          use_meas_sig, yn_varyslit, which_slit, wavcal, wavcal_sol, &
-         reduce_resolution, redslw, &
+         reduce_resolution, redslw, instrument_sidx, &
          curr_sol_spec, n_irrad_wvl, nsolpix, &
          wincal_wav, solwinfit, sol_spec_ring, nsol_ring, slitwav_sol, &
          sswav_sol, nslit_sol, nwavcal_sol, solslitfit,slit_fname  
@@ -96,13 +96,13 @@ contains
            'Performing solar wavelength calibration: ', (ix - 1) * nxbin + 1
 
       IF (yn_varyslit) THEN
-        IF (which_slit < 5 ) THEN
+        IF (which_slit < instrument_sidx ) THEN
           CALL solar_fit_vary (error )
           cali%nslit_sol(ix) = nslit_sol
           cali%slitfit_sol(1:nslit_sol, 1:max_calfit_idx, :, ix) = &
                           solslitfit(1:nslit_sol, 1:max_calfit_idx, :)
           cali%slitwav_sol(1:nslit_sol, ix) = slitwav_sol(1:nslit_sol)
-        ELSE IF (which_slit == 5) THEN 
+        ELSE IF (which_slit == instrument_sidx) THEN
           wavcal_sol = .true.
         ENDIF
 
@@ -112,7 +112,7 @@ contains
           cali%sswav_sol(1:nwavcal_sol, ix) = sswav_sol(1:nwavcal_sol)
         ENDIF
       ELSE
-        IF (wavcal .OR. which_slit /= 5) THEN
+        IF (wavcal .OR. which_slit /= instrument_sidx) THEN
           CALL solar_fit (error )
           cali%wincal_wav(1:numwin, ix) = wincal_wav(1:numwin)
           IF (reduce_resolution) THEN
@@ -120,7 +120,7 @@ contains
                  SQRT(solwinfit(1:numwin, hwe_idx, 1) ** 2. &
                  + redslw(band_selectors(1:numwin))**2)
           ENDIF
-            cali%solwinfit(1:numwin, 1:max_calfit_idx, ix) = &
+          cali%solwinfit(1:numwin, 1:max_calfit_idx, ix) = &
                solwinfit(1:numwin, 1:max_calfit_idx, 1)
         ENDIF
       END IF
@@ -167,7 +167,8 @@ contains
          use_meas_sig, yn_varyslit, wavcal_sol, slit_rad, nradpix, &
          wincal_wav, solwinfit, numwin, slitwav_rad, nslit_rad, radslitfit, &
          radwinfit, nslit, slitwav, slitfit, nwavcal_rad,  sswav_rad, &
-         which_slit, scnwrt, wavcal, nxbin, nybin,ntimes_loop,offset_line,  rslit_fname       
+         which_slit, scnwrt, wavcal, nxbin, nybin,ntimes_loop,offset_line,  &
+         rslit_fname, instrument_sidx
     USE OMSAO_errstat_module
     IMPLICIT NONE
 
@@ -243,7 +244,7 @@ contains
       IF (scnwrt) WRITE(*, '(A, 3I5)') &
            '-Performing radiance wavelength calibration: ', &
            (ix - 1) * nxbin + 1, iline * nybin + offset_line + 1, ntimes_loop
-      IF (which_slit < 5) THEN
+      IF (which_slit < instrument_sidx) THEN
         IF (yn_varyslit .AND. slit_rad ) THEN
           CALL radiance_fit_vary(n_rad_wvl, &
                curr_rad_spec(wvl_idx:sig_idx, 1:n_rad_wvl), error)
@@ -261,7 +262,8 @@ contains
       ENDIF
 
       IF (wavcal) THEN
-        IF (yn_varyslit .AND. (wavcal_sol .OR. which_slit == 5) ) THEN
+        IF (yn_varyslit .AND. &
+             (wavcal_sol .OR. which_slit == instrument_sidx) ) THEN
           CALL radiance_wavcal_vary ( n_rad_wvl, &
                curr_rad_spec(wvl_idx:sig_idx, 1:n_rad_wvl), error)
           cali%nwavcal_rad(ix) = nwavcal_rad

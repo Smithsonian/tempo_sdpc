@@ -11,6 +11,7 @@ PROGRAM PROFOZ_main
   !USE gome2_pge_process
   USE m_read_fitting_controls, only: read_fitting_control_file
   USE m_read_reference_spectra
+  use tell_module
 
   IMPLICIT NONE
 
@@ -44,6 +45,8 @@ PROGRAM PROFOZ_main
   CHARACTER (100) :: message
 
   pge_error_status = pge_errstat_ok
+
+  call tell_open("L1_o3_profile",0)
 
   call cpu_time(e2)
   !----------------------------------------------------------------------------

@@ -18,7 +18,8 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY: curr_sol_spec, n_irrad_wvl, &
          use_meas_sig, numwin, nsol_ring, sol_spec_ring, nsolpix, &
          yn_varyslit, slit_rad, solwinfit, nslit, slitwav, slitfit, &
-         sring_fidx, sring_lidx,  currpix, which_slit, curr_radresponse_spec
+         sring_fidx, sring_lidx,  currpix, which_slit, curr_radresponse_spec, &
+         instrument_sidx
     USE ozprof_data_module,      ONLY: div_sun, sun_posr, sun_specr, nrefl,which_inr
     USE OMSAO_errstat_module 
     
@@ -62,7 +63,7 @@ CONTAINS
     sun_specr(1:nrefl) = refl%solspec(1:nrefl, currpix)
 
     ! Load slit calibration parameters
-    IF (which_slit < 5) THEN
+    IF (which_slit < instrument_sidx) THEN
       IF (yn_varyslit) THEN
         IF (slit_rad) THEN
           nslit = cali%nslit_rad(currpix)

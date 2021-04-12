@@ -10,6 +10,8 @@ MODULE OMI_LUN_set
     INTEGER (KIND = 4), PARAMETER :: L1B_UV_FILE_LUN      = 1100
     INTEGER (KIND = 4), PARAMETER :: L1B_VIS_FILE_LUN     = 1101
     INTEGER (KIND = 4), PARAMETER :: L1B_IRR_FILE_LUN     = 1104
+    !! slit function file (either irradiance or pre-flight)
+    integer (kind = 4), parameter :: slitfunc_lun         = 1105
     !! L2 Input
     INTEGER (KIND = 4), PARAMETER :: L2_CLD_FILE_LUN      = 500001
     INTEGER (KIND = 4), PARAMETER :: L2_MET_FILE_LUN      = 500002

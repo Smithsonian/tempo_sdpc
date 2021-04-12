@@ -21,7 +21,8 @@ contains
          wavcal_fname, nradpix, winlim, poly_order, radwavfit, slitfit, &
          fixslitcal, which_slit, fitweights, fitwavs, &
          currspec, fitvar_sol_saved, nslit, slitwav, fitvar_sol_init, &
-         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lambda
+         numwin, currpixchar, scnwrt, sol_wav_avg, correct_lambda, &
+         instrument_sidx
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: bspline, interpolation
@@ -77,7 +78,7 @@ contains
     fitvar_sol_saved  =  fitvar_sol_init
     fitvar_sol = fitvar_sol_init
 
-    IF (which_slit /= 5) THEN
+    IF (which_slit /= instrument_sidx) THEN
       tmpslit = 0.0
       fpos = MINVAL(MINLOC(allwaves, MASK=(allwaves >= slitwav(1))))
       lpos = MINVAL(MAXLOC(allwaves, MASK=(allwaves <= slitwav(nslit))))
@@ -162,7 +163,7 @@ contains
           fitvar_sol = fitvar_sol_saved
           !fixslitcal = .FALSE.; fitvar_sol(slitind) = 0.0
           fixslitcal = .TRUE. 
-          IF (which_slit /= 5) THEN
+          IF (which_slit /= instrument_sidx) THEN
             fitvar_sol(slitind) = tmpslit(:, (fpos+lpos)/2)
             lo_sunbnd(slitind) = fitvar_sol(slitind)
             up_sunbnd(slitind) = fitvar_sol(slitind)

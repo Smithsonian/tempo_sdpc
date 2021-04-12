@@ -24,6 +24,7 @@ CONTAINS
     USE OMSAO_indices_module,     ONLY : max_calfit_idx, solar_idx, & 
          hwe_idx, asy_idx, shi_idx, squ_idx, wvl_idx, spc_idx, sin_idx, &
          vgl_idx, vgr_idx, hwl_idx, hwr_idx, spk_idx, &
+         omi_idx, tempo_idx, instrument_idx, &
          bl0_idx, bl1_idx, bl2_idx, bl3_idx, &!bl4_idx, bl5_idx, bl6_idx, bl7_idx, &
          sc0_idx, sc1_idx, sc2_idx, sc3_idx,& ! sc4_idx, sc5_idx, sc6_idx, sc7_idx, &
          wr0_idx, wr7_idx !, wr1_idx, wr2_idx, wr3_idx, wr4_idx, wr5_idx, wr6_idx
@@ -32,7 +33,7 @@ CONTAINS
         fitvar_sol, fitvar_sol_saved,chisq,  sol_wav_avg, which_slit,instrument_sidx, &
         mask_fitvar_sol, rmask_fitvar_sol, fitwavs, fitweights, currspec,& 
         lo_sunbnd, up_sunbnd,max_itnum_sol, poly_order, &
-        n_refspec_pts, refspec_orig_data !, tmp_rad
+        n_refspec_pts, refspec_orig_data, mean_hw1e, mean_asym, mean_shape
     USE OMSAO_errstat_module
   
     IMPLICIT NONE
@@ -163,8 +164,14 @@ CONTAINS
      IF (wrt_to_screen .OR. (wrt_to_file .AND. solfit_exval > 0)) THEN
         IF (which_slit == 3) THEN ! triangle (symmetric)
            hw1e = fitvar_sol(hwe_idx); e_asym = 0.0
-        ELSE IF (which_slit >= instrument_sidx) THEN ! OMI-preflight_slit
-           hw1e = 0.0; e_asym = 0.0; spk = 0.0
+        ELSE IF (which_slit >= instrument_sidx) THEN
+          if (instrument_idx == omi_idx) then! OMI-preflight_slit
+            hw1e = 0.0; e_asym = 0.0; spk = 0.0
+          else if (instrument_idx == tempo_idx) then
+            hw1e = mean_hw1e(1)
+            e_asym = mean_asym(1)
+            spk = mean_shape(1)
+          endif
         ELSE IF (which_slit == 2) THEN ! Voigt
            vgl  = fitvar_sol(vgl_idx);  vgr    = fitvar_sol(vgr_idx)
            hwl  = fitvar_sol(hwl_idx);  hwr    = fitvar_sol(hwr_idx)

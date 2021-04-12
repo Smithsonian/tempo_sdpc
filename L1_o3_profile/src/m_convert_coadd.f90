@@ -424,9 +424,10 @@ contains
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
          wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, spk_idx
     USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,   &
-         mask_fitvar_sol, fitvar_sol_saved, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
-         fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
-         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lambda
+         mask_fitvar_sol, fitvar_sol_saved, lo_sunbnd, up_sunbnd, fixslitcal,&
+         fitwavs, fitweights, currspec, which_slit, fitvar_sol_init, &
+         lo_sunbnd_init, up_sunbnd_init, sol_wav_avg, xbin_decerr, &
+         correct_lambda, instrument_sidx
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: interpolation
@@ -471,7 +472,7 @@ contains
         fixslitcal = .TRUE.    ; slitcal = .TRUE.
         wrt_to_screen = .FALSE.; wrt_to_file = .FALSE.
 
-        IF (which_slit == 5) THEN
+        IF (which_slit == instrument_sidx) THEN
           fitvar_sol_init(hwe_idx:asy_idx) = 0_dp
           lo_sunbnd_init(hwe_idx:asy_idx)  = 0_dp
           up_sunbnd_init(hwe_idx:asy_idx)  = 0_dp
@@ -577,10 +578,11 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module,     ONLY: max_calfit_idx, shi_idx, squ_idx, &
          wvl_idx, spc_idx, sig_idx, hwe_idx, asy_idx, vgl_idx, spk_idx
-    USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,fitvar_sol_saved, &
-         mask_fitvar_sol, lo_sunbnd, up_sunbnd, fixslitcal, fitwavs, &
-         fitweights, currspec, which_slit, fitvar_sol_init, lo_sunbnd_init, &
-         up_sunbnd_init, sol_wav_avg, xbin_decerr, correct_lambda
+    USE OMSAO_variables_module,   ONLY: n_fitvar_sol, fitvar_sol,&
+         fitvar_sol_saved, mask_fitvar_sol, lo_sunbnd, up_sunbnd, &
+         fixslitcal, fitwavs, fitweights, currspec, which_slit, &
+         fitvar_sol_init, lo_sunbnd_init, up_sunbnd_init, sol_wav_avg, &
+         xbin_decerr, correct_lambda, instrument_sidx
     USE OMSAO_errstat_module
     use m_cal_fit_one
     use m_ezspline_interpolation, only: interpolation
@@ -625,7 +627,7 @@ contains
         fixslitcal = .TRUE.    ; slitcal = .TRUE.
         wrt_to_screen = .FALSE.; wrt_to_file = .FALSE.
 
-        IF (which_slit == 5) THEN
+        IF (which_slit == instrument_sidx) THEN
           fitvar_sol_init(hwe_idx:asy_idx) = 0_dp
           lo_sunbnd_init(hwe_idx:asy_idx)  = 0_dp
           up_sunbnd_init(hwe_idx:asy_idx)  = 0_dp

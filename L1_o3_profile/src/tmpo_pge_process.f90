@@ -21,9 +21,9 @@ CONTAINS
          lon_min, lon_max, lat_min, lat_max, time_min, time_max, do_geoloc_init, &
          scnwrt, calwrt,use_backup, reduce_resolution, wavcal, which_slit, &
          l2_hdf_flag, l1b_rad_filename,l2_cld_filename,l2_filename, &
-         lcurve_unit, ozwrtint_unit,calunit, &
-         glb_fitvar, glb_initval, glb_exitval
-
+         lcurve_unit, ozwrtint_unit,calunit, l1b_irrad_filename, &
+         glb_fitvar, glb_initval, glb_exitval, &
+         mean_hw1e, mean_asym, mean_shape, instrument_sidx
     USE OMSAO_errstat_module
     USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&
          ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl
@@ -40,6 +40,8 @@ CONTAINS
     USE o3p_output_module
     USE tio_output_module
     use m_write_odl_metadata
+    use m_slitfunction_tempo
+    use OMSAO_indices_module, only: instrument_idx, tempo_idx
 
     IMPLICIT NONE
 
@@ -180,15 +182,23 @@ CONTAINS
     !------------------------------------------------------------------------
     ! load instrument slit parameters
     !-------------------------------------------------------------------------
-    IF (which_slit == 5) THEN
-      PRINT *, 'Please update slit function for real TEMPO algorithm'
-      !CALL load_slitpars (pge_error_status)
-      IF (pge_error_status /= pge_errstat_ok) THEN
-        message=": failed to read instrument slit function"
-        RETURN
-      ENDIF
-      IF (scnwrt) write(*, '(A)') '@ Finish loading slit parameters !!!'
-    ENDIF
+    IF (which_slit == instrument_sidx .and. instrument_idx == tempo_idx) THEN
+      allocate (mean_hw1e(numwin), mean_asym(numwin), mean_shape(numwin),&
+           stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error,&
+             "tmpo_pge_process: failed to allocate slit function params", &
+             errstat)
+        return
+      endif
+      call tempo_slitfunc_read (mean_hw1e, mean_asym, mean_shape, errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_io_read_error, &
+             "Failed to read TEMPO slit parameters", errstat)
+        return
+      endif
+    endif
+
 
     CALL tmpo_read_irradiance (first_pix, last_pix, pge_error_status)
     IF (calwrt) close(calunit)

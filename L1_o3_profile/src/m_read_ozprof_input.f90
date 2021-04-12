@@ -1075,7 +1075,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   fgasidxs = 0; nfgas = 0
   DO i = 1, ngas
      fidx =  max_calfit_idx + (gasidxs(i) - 1) * mxs_idx + 1; lidx = fidx + 2
-     fitvar_rad_unit(fidx:lidx) = 'molecumes cm^-2'
+     fitvar_rad_unit(fidx:lidx) = 'molecules cm^-2'
      fgasidxs(i) = MAXVAL(rmask_fitvar_rad(fidx:lidx))
      fgassidxs(i) = rmask_fitvar_rad(shift_offset + gasidxs(i))
      IF (fgasidxs(i) > 0) THEN

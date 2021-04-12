@@ -144,7 +144,7 @@ MODULE OMSAO_variables_module
 
   ! * slit function calibration
   INTEGER, PARAMETER        :: instrument_sidx = 6
-  INTEGER                   :: which_slit   ! 1. Gauss 2. Voigt 3. Triangle 4 super 5 instrument
+  INTEGER                   :: which_slit   ! 1. Gauss 2. Voigt 3. Triangle 4 super 5 asym super 6 instrument
   CHARACTER (3), PARAMETER, DIMENSION(0:instrument_sidx) :: slit_name=(/'sga','aga','voi','tri','spg','asp','ins'/)
 
   LOGICAL :: yn_smooth, yn_doas, yn_varyslit 
@@ -520,7 +520,10 @@ MODULE OMSAO_variables_module
   !------------------------------------------------------------
   INTEGER, DIMENSION (:, :), ALLOCATABLE :: glb_exitval, glb_initval
   REAL(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: glb_fitvar
- 
+
+  ! TEMPO instrument slit function parameters
+  real (kind=4), dimension(:), allocatable :: mean_hw1e, mean_asym, mean_shape
+
 END MODULE OMSAO_variables_module
 
 
