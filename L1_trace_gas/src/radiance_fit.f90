@@ -573,10 +573,11 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
-      max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
-      lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx,                   &
-      bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
-      sc3_idx, sin_idx, shi_idx, squ_idx
+    max_rs_idx, max_calfit_idx, solar_idx, ring_idx,      &
+    ad1_idx, lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx, &
+    bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, &
+    sc0_idx, sc1_idx, sc2_idx, sc3_idx, sc4_idx, sc5_idx, &
+    sin_idx, shi_idx, squ_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
     USE OMSAO_variables_module,  ONLY: &
       n_database_wvl, curr_sol_spec, &
@@ -869,14 +870,18 @@ CONTAINS
       * (rad_fitvar(sc0_idx) + &
          del(j1:j2) * (rad_fitvar(sc1_idx) + &
                        del(j1:j2) * (rad_fitvar(sc2_idx) + &
-                                     del(j1:j2) * rad_fitvar(sc3_idx))))
+                                     del(j1:j2) * (rad_fitvar(sc3_idx) + &
+                                     del(j1:j2) * (rad_fitvar(sc4_idx) + &
+                                     del(j1:j2) *  rad_fitvar(sc5_idx) )))))
 
     ! Add baseline parameters.
-    fit(j1:j2) = fit(j1:j2)                                        + &
-      rad_fitvar(bl0_idx)                                       + &
-      rad_fitvar(bl1_idx) * del(j1:j2)                          + &
-      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
-      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+    fit(j1:j2) = fit(j1:j2)                                             + &
+      rad_fitvar(bl0_idx)                                               + &
+      rad_fitvar(bl1_idx) * del(j1:j2)                                  + &
+      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)                       + &
+      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)            + &
+      rad_fitvar(bl4_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2) + &
+      rad_fitvar(bl5_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2)
 
     ! This form is better than the above, but introduces differences
     ! in the last digits of the output, breaking simple-minded diff-based
@@ -905,11 +910,11 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
-      max_rs_idx, max_calfit_idx, solar_idx, ring_idx, ad1_idx, &
-      lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx,                   &
-      bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, sc2_idx, &
-      sc3_idx, sin_idx, shi_idx, squ_idx, &
-      o3_t1_idx, o3_t2_idx, o3_t3_idx
+      max_rs_idx, max_calfit_idx, solar_idx, ring_idx,      &
+      ad1_idx, lbe_idx, ad2_idx, mxs_idx, wvl_idx, spc_idx, &
+      bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, &
+      sc0_idx, sc1_idx, sc2_idx, sc3_idx, sc4_idx, sc5_idx, &
+      sin_idx, shi_idx, squ_idx, o3_t1_idx, o3_t2_idx, o3_t3_idx
     USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
     USE OMSAO_variables_module,  ONLY: &
       n_database_wvl, curr_sol_spec, &
@@ -1210,18 +1215,22 @@ CONTAINS
     del(j1:j2) = locwvl(j1:j2) - rad_wav_avg
 
     ! Add the scaling.
-    fit(j1:j2) = fit(j1:j2) * ( &
-      rad_fitvar(sc0_idx)                                       + &
-      rad_fitvar(sc1_idx) * del(j1:j2)                          + &
-      rad_fitvar(sc2_idx) * del(j1:j2)*del(j1:j2)               + &
-      rad_fitvar(sc3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2) )
+    fit(j1:j2) = fit(j1:j2) &
+      * (rad_fitvar(sc0_idx) + &
+         del(j1:j2) * (rad_fitvar(sc1_idx) + &
+                       del(j1:j2) * (rad_fitvar(sc2_idx) + &
+                                     del(j1:j2) * (rad_fitvar(sc3_idx) + &
+                                     del(j1:j2) * (rad_fitvar(sc4_idx) + &
+                                     del(j1:j2) *  rad_fitvar(sc5_idx) )))))
 
     ! Add baseline parameters.
-    fit(j1:j2) = fit(j1:j2)                                        + &
-      rad_fitvar(bl0_idx)                                       + &
-      rad_fitvar(bl1_idx) * del(j1:j2)                          + &
-      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)               + &
-      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)
+    fit(j1:j2) = fit(j1:j2)                                             + &
+      rad_fitvar(bl0_idx)                                               + &
+      rad_fitvar(bl1_idx) * del(j1:j2)                                  + &
+      rad_fitvar(bl2_idx) * del(j1:j2)*del(j1:j2)                       + &
+      rad_fitvar(bl3_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)            + &
+      rad_fitvar(bl4_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2) + &
+      rad_fitvar(bl5_idx) * del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2)*del(j1:j2)
 
     ! ----------------------------------------------------------------
     ! Final sanity check: If the various multiplications and additions

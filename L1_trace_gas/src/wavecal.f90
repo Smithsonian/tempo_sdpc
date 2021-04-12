@@ -103,8 +103,9 @@ contains
     USE OMSAO_precision_module
     USE OMSAO_indices_module, ONLY: &
       solar_idx, &
-      bl0_idx, bl1_idx, bl2_idx, bl3_idx, sc0_idx, sc1_idx, &
-      sc2_idx, sc3_idx, sin_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, squ_idx
+      bl0_idx, bl1_idx, bl2_idx, bl3_idx, bl4_idx, bl5_idx, &
+      sc0_idx, sc1_idx, sc2_idx, sc3_idx, sc4_idx, sc5_idx, &
+      sin_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, squ_idx 
     USE OMSAO_variables_module,  ONLY: &
       refspecs_original, curr_xtrack_pixnum
     use ctrlvars, only: yn_spectrum_norm, yn_newshift
@@ -251,20 +252,24 @@ contains
     ! Add the scaling.
     ! ----------------
     del(1:npoints) = locwvl(1:npoints) - solar_wavel_avg
-    fit(1:npoints) = fit(1:npoints) * ( &
-      loc_cal_parms(sc0_idx)                                               + &
-      loc_cal_parms(sc1_idx) * del(1:npoints)                              + &
-      loc_cal_parms(sc2_idx) * del(1:npoints)*del(1:npoints)               + &
-      loc_cal_parms(sc3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints) )
+    fit(1:npoints) = fit(1:npoints) &
+      * (loc_cal_parms(sc0_idx) + &
+      del(1:npoints) * (loc_cal_parms(sc1_idx) + &
+                        del(1:npoints) * (loc_cal_parms(sc2_idx) + &
+                        del(1:npoints) * (loc_cal_parms(sc3_idx) + &
+                        del(1:npoints) * (loc_cal_parms(sc4_idx) + &
+                        del(1:npoints) *  loc_cal_parms(sc5_idx) )))))
 
     ! ------------------------
     ! Add baseline parameters.
     ! ------------------------
     fit(1:npoints) = fit(1:npoints) + &
-      loc_cal_parms(bl0_idx)                                               + &
-      loc_cal_parms(bl1_idx) * del(1:npoints)                              + &
-      loc_cal_parms(bl2_idx) * del(1:npoints)*del(1:npoints)               + &
-      loc_cal_parms(bl3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)
+    loc_cal_parms(bl0_idx)                                                                              + &
+    loc_cal_parms(bl1_idx) * del(1:npoints)                                                             + &
+    loc_cal_parms(bl2_idx) * del(1:npoints)*del(1:npoints)                                              + &
+    loc_cal_parms(bl3_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)                               + &
+    loc_cal_parms(bl4_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)*del(1:npoints)                + &
+    loc_cal_parms(bl5_idx) * del(1:npoints)*del(1:npoints)*del(1:npoints)*del(1:npoints)*del(1:npoints)
 
     RETURN
   END SUBROUTINE spectrum_solar
