@@ -94,9 +94,7 @@ static const TP_Type *find_entry (const TP_Type *tp, double t,
    return closest_tp;
 }
 
-/* FIXME: should get FPE and FPA temps separately, so the status can be returned separately for each */
-static int instr_temps (const Instr_Type *instr, double timestamp,
-                        float *fpa_temp, float *fpe_temp)
+static int instr_fpa_temp (const Instr_Type *instr, double timestamp, float *fpa_temp)
 {
    const TP_Type *tp = NULL;
    int index, index_status;
@@ -108,6 +106,14 @@ static int instr_temps (const Instr_Type *instr, double timestamp,
      }
    *fpa_temp = tp->value[index];
    tell_vlog (TELL_MSGTYPE_INFO, 2, "FPA temp lookup: time: %0.3f => FPA temp: %0.2f C", timestamp, *fpa_temp);
+
+   return 0;
+}
+
+static int instr_fpe_temp (const Instr_Type *instr, double timestamp, float *fpe_temp)
+{
+   const TP_Type *tp = NULL;
+   int index, index_status;
 
    if (NULL == (tp = find_entry (instr->fpe_temp1, timestamp, &index, &index_status)))
      {
@@ -211,7 +217,8 @@ static Instr_Type *new_instr_type (void)
    memset ((char *)instr, 0, sizeof *instr);
 
    instr->instr_delete = free_instr;
-   instr->instr_temps = instr_temps;
+   instr->instr_fpa_temp = instr_fpa_temp;
+   instr->instr_fpe_temp = instr_fpe_temp;
 
    return instr;
 }
@@ -301,15 +308,6 @@ free_and_return:
 
 static int read_instr1 (Instr_Type *instr, const char *file)
 {
-   /* FIXME - after fixing test data, stop looking for adc_temp0_derived in fpe_analog_tlm2
-    * Some of the level 0 test data erroneously put adc_temp0_derived in fpe_analog_tlm2
-    * instead of in adc_tlm (mea culpa).  In the near term, it's simplest to have the code
-    * look in adc_tlm first, and then check for fpe_analog_tlm2 as a fallback.
-    * With real data this should not be necessary.  The problem should be corrected in
-    * the next set of test data.  Once this workaround is no longer needed, remove it!
-    */
-   char *adc_temp0_sections[] = {"adc_tlm", "fpe_analog_tlm2", NULL};
-   char **section;
    int ncid, found_values = 0;
    TP_Type *tp;
 
@@ -334,15 +332,11 @@ static int read_instr1 (Instr_Type *instr, const char *file)
     * in Celsius so we use that directly.
     */
 
-   for (section = adc_temp0_sections; section != NULL; section++)
+   if (NULL != (tp = read_telemetry_point (ncid, "adc_tlm", "adc_temp0_derived")))
      {
-        if (NULL != (tp = read_telemetry_point (ncid, *section, "adc_temp0_derived")))
-          {
-             if (0 != append_tp (&instr->adc_temp0_derived, tp))
-               goto return_error;
-             found_values++;
-             break;
-          }
+        if (0 != append_tp (&instr->adc_temp0_derived, tp))
+          goto return_error;
+        found_values++;
      }
 
    if (NULL != (tp = read_telemetry_point (ncid, "fpe_analog_tlm2", "fpe_temp1")))

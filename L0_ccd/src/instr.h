@@ -15,13 +15,19 @@ struct Instr_Type
     */
    void (*instr_delete)(Instr_Type *);
 
-   /** Look up the instrument temperatures at a specific time
+   /** Look up the instrument FPA temperature at a specific time
     * @param instr   non-NULL pointer to an Instr_Type object
     * @param time    time stamp value in seconds elapsed since the TEMPO epoch
     * @param fpa_temp  Pointer to a float scalar that will receive the value of ADC_TEMP0
+    */
+   int (*instr_fpa_temp)(const Instr_Type *, double, float *);
+
+   /** Look up the instrument FPE temperature at a specific time
+    * @param instr   non-NULL pointer to an Instr_Type object
+    * @param time    time stamp value in seconds elapsed since the TEMPO epoch
     * @param fpe_temp  Pointer to a float scalar that will receive the value of FPE_TEMP1
     */
-   int (*instr_temps)(const Instr_Type *, double, float *, float *);
+   int (*instr_fpe_temp)(const Instr_Type *, double, float *);
 
 #ifdef INSTR_PRIVATE_DATA
    INSTR_PRIVATE_DATA

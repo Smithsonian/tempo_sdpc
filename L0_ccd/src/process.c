@@ -356,7 +356,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
 
-   if (0 != instr->instr_temps (instr, exprec->start_time, &xr->fpa_temp, &xr->fpe_temp))
+   if ((0 != instr->instr_fpa_temp (instr, exprec->start_time, &xr->fpa_temp))
+       || (0 != instr->instr_fpe_temp (instr, exprec->start_time, &xr->fpe_temp)))
      {
         tell_vwarn (0, "%s: temperature lookup failed, start_time=%15.12e",
                    __func__, exprec->start_time);
