@@ -6,7 +6,7 @@ MODULE OMSAO_wfamf_module
   ! and calculate them
   ! ====================================================================
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
-  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, i4_missval, r4_missval, r8_missval
+  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, i4_missval, r4_missval, r8_missval, dobson_units
   use tell_module
   use tio_module
   use ctrlvars, only: yn_gems
@@ -882,12 +882,12 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     type (clim_pres_bounds_type) :: bounds
-    type (clim_species_type) :: cst
+    type (clim_species_type) :: cst, cst_o3
     integer :: year(2), month(2), day(2)
     integer :: nz, nlayers, itimes, ixtrack
     real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end, tai93_offset
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
-    real (kind=r4) :: hour_f, lon_f, lat_f
+    real (kind=r4) :: hour_f, lon_f, lat_f, o3_col
     character (len=6) :: clim_db_molecule_name
     real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
 
@@ -951,15 +951,13 @@ CONTAINS
        call tell_error ( tell_io_read_error, "libclim_climatology: initializing "//trim(clim_db_molecule_name), errstat)
        return
     end if
-    ! FIXME. Instead of using fix values for cli_wgh_ozo_pro and
-    ! cli_idx_ozo_pro we can use the lat/lon and ozone total column
-    ! to decide at runtime. However, that requires to have O3 clima
-    ! tologies not available now
-!!$    call clim_species_init (cst_o3, cpt, 'O3', errstat)
-!!$    if (errstat /= 0) then
-!!$       call tell_error ( tell_io_read_error, "libclim_climatology: initializing O3", errstat)
-!!$    end if
     
+    ! Get O3 climatology to determine cli_wgh_ozo_pro and cli_idx_ozo_pro
+    call clim_species_init (cst_o3, cpt, 'O3', errstat)
+    if (errstat /= 0) then
+       call tell_error ( tell_io_read_error, "libclim_climatology: initializing O3", errstat)
+    end if
+
     do itimes = 0, nt-1
        do ixtrack = 1, nx
           ! Skip this pixel if geolocation information is not available
@@ -975,9 +973,6 @@ CONTAINS
           lon_f = fudge_lon(ixtrack,itimes)
           lat_f = fudge_lat(ixtrack,itimes)
 
-          ! FIXME - this is just temporary
-          cli_wgh_ozo_pro(ixtrack,itimes,1:2) = 0.5
-          cli_idx_ozo_pro(ixtrack,itimes,1:2) = 8
           ! Get pressure grid
           call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
           if (errstat /= 0) then
@@ -1005,6 +1000,30 @@ CONTAINS
           end where
           ! Assign climatology values
           climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
+
+          ! Get O3 vmr profile
+          call clim_species_vmr (cst_o3, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             cycle
+          end if
+          ! Compute O3 partical columns
+          call clim_partial_column (pres, vmr, partial_column, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             cycle
+          end if
+          ! Fix non-physical partial columns
+          where (partial_column < 0.0_r8)
+             partial_column = 0.0_r8
+          end where
+          ! Calculate O3 total column in Dobson units
+          o3_col = sum(partial_column(1:nlayers))/real(dobson_units,kind=r4)
+          ! Given pixel latitude and O3 column select LUT profiles (currently the function is
+          ! hard wired to pick to use )
+          call get_lut_o3_idx(o3_col, lat_f, cli_wgh_ozo_pro(ixtrack,itimes,1:2), cli_idx_ozo_pro(ixtrack,itimes,1:2), errstat)
        enddo
     enddo
   end subroutine clim_get_climatology
@@ -1360,6 +1379,8 @@ CONTAINS
     REAL (KIND=r8) :: local_alb, local_sza, local_vza, local_srf, local_ctp, &
          local_cfr, local_raa, out_pre_lay
     real (kind=4) :: local_saa, local_vaa
+    ! FIXME (gga) needed when implementing hypsometric surpressure adjustment
+    ! model_terrain_heigh, model_surface_temperature, model_surface_pressure
 
     ! Error variables
     INTEGER (KIND=i4) :: locerrstat
@@ -1422,6 +1443,13 @@ CONTAINS
           ! Xiong suggested to use pressure altitude:
           !  Z = -16 alog10 (P / Po) Z in km and P in hPa.
           ! ----------------------------------------------
+          ! FIXME (gga) Surface_pressure values should
+          ! be computed using satellite pixel terrain height information and the hypsometric
+          ! equation to correct GEOS-CF or climatology surface pressures. We need first to get
+          ! surface pressure and temperature from GEOS-CF (and its climatologies which is not
+          ! yet implemented)
+          ! call adjust_surface_pressure (terrain_height(ixtrack,itime), model_terrain_height,
+          !                               model_surface_temperature, model_surface_pressure, local_srf, errstat)
           local_srf = 1013.0_r8 * (10.0_r8 ** (local_srf / 1000.0_r8 / (-16.0_r8)))
 
 
@@ -1451,7 +1479,7 @@ CONTAINS
              l2ctp(ixtrack,itime) = local_ctp
           end if             
 
-          ! FIXME!!! Assign surface pressure values. They should be comming from the climatology
+          ! Assign surface pressure values.
           surface_pressure(ixtrack,itime) = real(local_srf,kind=r4)
 
           ! -----------------------------------------------
@@ -2070,6 +2098,102 @@ CONTAINS
     CmETA = nz - 1
 
   end subroutine read_climatology_dimensions
+
+  subroutine get_lut_o3_idx (o3_col, latitude, wgh_ozo, idx_ozo, errstat)
+    use OMSAO_linterpolation_module, ONLY: GetNode
+    implicit none
+
+    real (kind=r4), intent(in) :: o3_col, latitude
+    integer, intent(inout) :: errstat
+    real (kind=r8), dimension(2), intent(out) :: wgh_ozo
+    integer, dimension(2), intent(out) :: idx_ozo
+
+    ! Hardwired LUT Ozone profiles parameters. The definitions are based
+    ! on the TOMS climatology definition adopted to create Xiong's OMI
+    ! climatology L200,..., M200,..., H100, ... with
+    ! L for tropics (ABS(latitude) < 30),
+    ! M for middle latitudes (30 <= ABS(latitude) < 60 )
+    ! H high latitudes (60 <= ABS(latitude) <= 90)
+    real (kind=r8), dimension(4), parameter :: lut_l_col = [200,250,300,350]
+    real (kind=r8), dimension(8), parameter :: lut_m_col = [200,250,300,350,400,450,500,550]
+    real (kind=r8), dimension(10), parameter :: lut_h_col = [100,150,200,250,300,350,400,450,500,550]
+    integer, dimension(4), parameter :: lut_l_idx = [1,2,3,4]
+    integer, dimension(8), parameter :: lut_m_idx = [5,6,7,8,9,10,11,12]
+    integer, dimension(10), parameter :: lut_h_idx = [13,14,15,16,17,18,19,20,21,22]
+
+    real (kind=r4) :: abs_lat
+    integer, dimension(2) :: tmp
+
+    if (errstat /= 0) return
+    ! Initialize output variables
+    idx_ozo = 8
+    wgh_ozo = 0.5
+
+    ! First check the latitude and then find the bounding nodes
+    abs_lat = abs(latitude)
+    if (abs_lat < 30.0) then
+      call GetNode(lut_l_col,real(o3_col,kind=r8),tmp(1), 'Lower')
+      call GetNode(lut_l_col,real(o3_col,kind=r8),tmp(2), 'Upper')
+    else if (abs_lat >= 30 .and. abs_lat < 60) then
+      call GetNode(lut_m_col,real(o3_col,kind=r8),tmp(1), 'Lower')
+      call GetNode(lut_m_col,real(o3_col,kind=r8),tmp(2), 'Upper')
+    else if (abs_lat >= 60) then
+      call GetNode(lut_h_col,real(o3_col,kind=r8),tmp(1), 'Lower')
+      call GetNode(lut_h_col,real(o3_col,kind=r8),tmp(2), 'Upper')
+    endif
+
+    ! Special case for extrapolation
+    if (tmp(2) == -2) then
+       idx_ozo = 1
+       wgh_ozo = 0.5
+    else if (tmp(1) == -3) then
+       idx_ozo = size(lut_l_col)
+       wgh_ozo = 0.5
+    else
+      ! Find weights and copy values to output arrays.
+      if (abs_lat < 30) then
+       idx_ozo(1:2) = lut_l_idx(tmp(1:2))
+       wgh_ozo(1) = abs( (o3_col) - lut_l_col(tmp(1)) ) / ( lut_l_col(tmp(2)) - lut_l_col(tmp(1)) )
+       wgh_ozo(2) = abs( (o3_col) - lut_l_col(tmp(2)) ) / ( lut_l_col(tmp(2)) - lut_l_col(tmp(1)) )
+      else if (abs_lat >= 30 .and. abs_lat < 60) then
+       idx_ozo(1:2) = lut_m_idx(tmp(1:2))
+       wgh_ozo(1) = abs( (o3_col) - lut_m_col(tmp(1)) ) / ( lut_m_col(tmp(2)) - lut_m_col(tmp(1)) )
+       wgh_ozo(2) = abs( (o3_col) - lut_m_col(tmp(2)) ) / ( lut_m_col(tmp(2)) - lut_m_col(tmp(1)) )
+      else if (abs_lat >= 60) then
+       idx_ozo(1:2) = lut_h_idx(tmp(1:2))
+       wgh_ozo(1) = abs( (o3_col) - lut_h_col(tmp(1)) ) / ( lut_h_col(tmp(2)) - lut_h_col(tmp(1)) )
+       wgh_ozo(2) = abs( (o3_col) - lut_h_col(tmp(2)) ) / ( lut_h_col(tmp(2)) - lut_h_col(tmp(1)) )     
+      end if
+    end if
+    
+  end subroutine get_lut_o3_idx
+
+  subroutine adjust_surface_pressure (pixel_height, model_height, model_temperature, model_pressure, pressure, errstat)
+   ! Hypsometric equation. Follows equation 3 of Boersma et al., 2011
+   ! https://amt.copernicus.org/articles/4/1905/2011/
+   ! Given the terrain height for a satellite pixel, model terrain height, model surface temperature and
+   ! model surface pressure compute adjusted pressure
+   ! P_pix = P_mod ( T_mod / (T_mod + lr (H_mod - H_pix) ) )^(-g / R / lr * 1000.0)
+   ! Heights have to be in units of km.
+   implicit none
+
+   real (kind=r4), intent(in) :: pixel_height, model_height, model_temperature, model_pressure
+   integer :: errstat
+   real (kind=r4), intent(out) :: pressure ! adjusted pressure
+
+   real (kind=r4), parameter :: lr = 6.5 ! lapse rate (K km^-1)
+   real (kind=r4), parameter :: g = 9.8  ! Gravitational constant (m s^-2)
+   real (kind=r4), parameter :: R = 287  ! Gas constant for dry air (J kg^-1 K^-1)
+
+   real (kind=r4) :: a, b
+
+   if (errstat /= 0) return
+
+   a = - (g / R / lr * 1000.0)
+   b = lr * (model_height - pixel_height)
+   pressure = model_pressure * ( model_temperature / ( model_temperature + b) )**a
+
+  end subroutine adjust_surface_pressure
 
 END MODULE OMSAO_wfamf_module
 
