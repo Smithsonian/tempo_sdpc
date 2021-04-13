@@ -19,15 +19,15 @@ typedef struct TP_Type TP_Type;
 
 struct TP_Type
 {
-   TP_Type *next;
    double *timestamp;
-   float *value;
+   double *value;
    size_t num_times;
+   size_t num_allocated;
 };
 
 #define INSTR_PRIVATE_DATA \
-   TP_Type *adc_temp0_derived; \
-   TP_Type *fpe_temp1;
+   TP_Type adc_temp0_derived; \
+   TP_Type fpe_temp1;
 #include "instr.h"
 
 typedef struct
@@ -38,73 +38,40 @@ typedef struct
 }
 Instr_Filter_Type;
 
-static int find_entry1 (const TP_Type *tp, double t, int *entry)
+static int lookup_value (const TP_Type *tp, double t, double *value)
 {
    double *ti = tp->timestamp;
    int n = tp->num_times;
 
-   if (ti[0] <= t && t <= ti[n-1])
+   if (t < ti[0])
      {
-        *entry = bsearch_d (t, ti, n);
-        return 0;
-     }
-   else if (t < ti[0])
-     {
-        *entry = 0;
+        *value = tp->value[0];
         return -1;
+     }
+   else if (ti[n-1] < t)
+     {
+        *value = tp->value[n-1];
+        return +1;
      }
    else
      {
-        *entry = n-1;
-        return +1;
-     }
-}
-
-static const TP_Type *find_entry (const TP_Type *tp, double t,
-                                  int *entry, int *entry_status)
-{
-   const TP_Type *closest_tp = NULL;
-   int closest_status = -1;
-   int closest_index = 0;
-   double min_delta = DBL_MAX;
-
-   /* We could merge the lists, but this is probably fast enough */
-
-   for ( ; tp != NULL; tp = tp->next)
-     {
-        int index, status;
-        status = find_entry1 (tp, t, &index);
-        if (status == 0)
-          {
-             *entry = index;
-             *entry_status = 0;
-             return tp;
-          }
-        else if (fabs(t-tp->timestamp[index]) < min_delta)
-          {
-             closest_index = index;
-             closest_tp = tp;
-             closest_status = status;
-          }
+        int k = bsearch_d (t, ti, n);
+        *value = tp->value[k];
      }
 
-   *entry_status = closest_status;
-   *entry = closest_index;
-
-   return closest_tp;
+   return 0;
 }
 
 static int instr_fpa_temp (const Instr_Type *instr, double timestamp, float *fpa_temp)
 {
-   const TP_Type *tp = NULL;
-   int index, index_status;
+   double value;
 
-   if (NULL == (tp = find_entry (instr->adc_temp0_derived, timestamp, &index, &index_status)))
+   if (0 != lookup_value (&instr->adc_temp0_derived, timestamp, &value))
      {
         tell_verror (TELL_UNKNOWN_ERROR, "%s: FPA temperature lookup failed", __func__);
         return -2;
      }
-   *fpa_temp = tp->value[index];
+   *fpa_temp = (float) value;
    tell_vlog (TELL_MSGTYPE_INFO, 2, "FPA temp lookup: time: %0.3f => FPA temp: %0.2f C", timestamp, *fpa_temp);
 
    return 0;
@@ -112,86 +79,47 @@ static int instr_fpa_temp (const Instr_Type *instr, double timestamp, float *fpa
 
 static int instr_fpe_temp (const Instr_Type *instr, double timestamp, float *fpe_temp)
 {
-   const TP_Type *tp = NULL;
-   int index, index_status;
+   double value;
 
-   if (NULL == (tp = find_entry (instr->fpe_temp1, timestamp, &index, &index_status)))
+   if (0 != lookup_value (&instr->fpe_temp1, timestamp, &value))
      {
         tell_verror (TELL_UNKNOWN_ERROR, "%s: FPE temperature lookup failed", __func__);
         return -2;
      }
-   *fpe_temp = tp->value[index];
+   *fpe_temp = (float) value;
    tell_vlog (TELL_MSGTYPE_INFO, 2, "FPE temp lookup: time: %0.3f => FPE temp: %.2f C", timestamp, *fpe_temp);
 
    return 0;
 }
 
-static void free_tp1 (TP_Type *tp)
+static void free_tp (TP_Type *tp)
 {
    if (tp == NULL)
      return;
    FREE(tp->timestamp);
    FREE(tp->value);
-   FREE(tp);
 }
 
-static void free_tp (TP_Type *tp)
+static int realloc_tp (TP_Type *tp, size_t num_times)
 {
-   while (tp)
-     {
-        TP_Type *next = tp->next;
-        free_tp1(tp);
-        tp = next;
-     }
-}
+   double *tstamp = NULL;
+   double *value = NULL;
+   size_t num_new = tp->num_allocated + num_times;
 
-static TP_Type *alloc_tp (size_t num_times)
-{
-   TP_Type *tp = NULL;
-
-   if (NULL == (tp = (TP_Type *)MALLOC (sizeof *tp)))
+   if (NULL == (tstamp = (double *)REALLOC (tp->timestamp, num_new * sizeof(double))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return NULL;
-     }
-
-   if ((NULL == (tp->timestamp = (double *) MALLOC (num_times * sizeof(double))))
-       || (NULL == (tp->value = (float *) MALLOC (num_times * sizeof(float)))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        free_tp1 (tp);
-        return NULL;
-     }
-
-   tp->num_times = num_times;
-   tp->next = NULL;
-
-   return tp;
-}
-
-static int append_tp (TP_Type **head, TP_Type *tp)
-{
-   TP_Type *p;
-
-   if (tp == NULL)
-     return -1;
-
-   if (head == NULL)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: head pointer is NULL (should never happen!)", __func__);
         return -1;
      }
+   tp->timestamp = tstamp;
 
-   if (*head == NULL)
+   if (NULL == (value = (double *)REALLOC (tp->value, num_new * sizeof(double))))
      {
-        *head = tp;
-        return 0;
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
      }
-
-   for (p = *head; p->next != NULL; p = p->next)
-     {}
-
-   p->next = tp;
+   tp->value = value;
+   tp->num_allocated = num_new;
 
    return 0;
 }
@@ -200,8 +128,8 @@ static void free_instr (Instr_Type *instr)
 {
    if (instr == NULL)
      return;
-   free_tp (instr->adc_temp0_derived);
-   free_tp (instr->fpe_temp1);
+   free_tp (&instr->adc_temp0_derived);
+   free_tp (&instr->fpe_temp1);
    FREE(instr);
 }
 
@@ -234,12 +162,14 @@ static int Qsort_Index_Compare (const void *a, const void *b)
    else return 0;
 }
 
-static int time_sort1 (TP_Type *tp)
+static int time_sort (TP_Type *tp)
 {
    int *sort_index = NULL;
-   size_t i, num_keys = tp->num_times;
+   double *tmp = NULL;
+   size_t i, k, num_keys = tp->num_times;
 
-   if (NULL == (sort_index = (int *) MALLOC (tp->num_times * sizeof(int))))
+   if ((NULL == (sort_index = (int *) MALLOC (tp->num_times * sizeof(int))))
+       || (NULL == (tmp = (double *) MALLOC (tp->num_times * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         return -1;
@@ -253,63 +183,75 @@ static int time_sort1 (TP_Type *tp)
    num_keys = tp->num_times;
    qsort (sort_index, num_keys, sizeof(int), Qsort_Index_Compare);
 
+   memcpy ((char *)tmp, (char *)tp->timestamp, num_keys * sizeof(double));
+   for (i = 0; i < num_keys; i++)
+     {
+        k = sort_index[i];
+        tp->timestamp[i] = tmp[k];
+     }
+
+   memcpy ((char *)tmp, (char *)tp->value, num_keys * sizeof(double));
+   for (i = 0; i < num_keys; i++)
+     {
+        k = sort_index[i];
+        tp->value[i] = tmp[k];
+     }
+
    FREE(sort_index);
-   sort_index = NULL;
+   FREE(tmp);
 
    return 0;
 }
 
 static TIO_Meta_Type *_pMeta_Ptr;
 
-static TP_Type *read_telemetry_point (int ncid, const char *grp_name,
-                                      const char *var_name)
+static int read_telemetry_point (TP_Type *tp, int ncid, const char *grp_name,
+                                 const char *var_name)
 {
-   TP_Type *tp = NULL;
    int group_exists, grp, dimid, start, count, varid;
+   double *timestamp;
+   double *value;
    size_t num_times;
 
    tell_push_queue();
    group_exists = (0 == TIO_inq_grp (ncid, grp_name, &grp));
    tell_pop_queue (1);
    if (0 == group_exists)
-     return NULL;
+     return 1;
 
    if (NC_NOERR != tio_inq_varid (grp, var_name, &varid))
      {
         tell_vwarn (0, "%s: section %s: variable %s not present\n", __func__, grp_name, var_name);
-        return NULL;
+        return -1;
      }
 
    if (0 != TIO_inq_dim (grp, "time", &dimid, &num_times))
-     return NULL;
+     return -1;
 
-   if (NULL == (tp = alloc_tp (num_times)))
-     return NULL;
+   if (0 != realloc_tp (tp, num_times))
+     return -1;
+
+   timestamp = tp->timestamp + tp->num_times;
+   value = tp->value + tp->num_times;
 
    start = 0;
    count = num_times;
 
-   if ((0 != TIO_get_var_section (grp, "time", &start, &count, TIO_DOUBLE, tp->timestamp))
-       || (0 != TIO_get_var_section (grp, var_name, &start, &count, TIO_FLOAT, tp->value)))
+   if ((0 != TIO_get_var_section (grp, "time", &start, &count, TIO_DOUBLE, timestamp))
+       || (0 != TIO_get_var_section (grp, var_name, &start, &count, TIO_DOUBLE, value)))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading instrument telemetry point %s",  __func__, var_name);
-        goto free_and_return;
+        return -1;
      }
 
-   /* FIXME: probably don't need to do this */
-   if (0 != time_sort1 (tp))
-     goto free_and_return;
+   tp->num_times += num_times;
 
-   return tp;
-free_and_return:
-   free_tp1 (tp);
-   return NULL;
+   return 0;
 }
 
 static int read_instr1 (Instr_Type *instr, const char *file)
 {
-   int ncid, found_values = 0;
-   TP_Type *tp;
+   int ncid, status, found_values = 0;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
 
@@ -332,17 +274,17 @@ static int read_instr1 (Instr_Type *instr, const char *file)
     * in Celsius so we use that directly.
     */
 
-   if (NULL != (tp = read_telemetry_point (ncid, "adc_tlm", "adc_temp0_derived")))
+   if ((status = read_telemetry_point (&instr->adc_temp0_derived, ncid, "adc_tlm", "adc_temp0_derived")) < 0)
+     goto return_error;
+   if (status == 0)
      {
-        if (0 != append_tp (&instr->adc_temp0_derived, tp))
-          goto return_error;
         found_values++;
      }
 
-   if (NULL != (tp = read_telemetry_point (ncid, "fpe_analog_tlm2", "fpe_temp1")))
+   if ((status = read_telemetry_point (&instr->fpe_temp1, ncid, "fpe_analog_tlm2", "fpe_temp1")) < 0)
+     goto return_error;
+   if (status == 0)
      {
-        if (0 != append_tp (&instr->fpe_temp1, tp))
-          goto return_error;
         found_values++;
      }
 
@@ -660,6 +602,94 @@ static int read_instr (Instr_Type *instr, const char *path, const Instr_Filter_T
    return read_instr1 (instr, path);
 }
 
+#define FILTER_WINDOW_HALF  (10)
+#define FILTER_WINDOW_SIZE  (2*FILTER_WINDOW_HALF + 1)
+
+static int fill_window (double *w, size_t nw, size_t i, const double *x, size_t n)
+{
+   size_t k, h = (nw-1)/2;
+   int ni = n;
+
+   for (k = 0; k < nw; k++)
+     {
+        int j = i+k-h;
+        if (j < 0)
+          {
+             w[k] = x[0];
+          }
+        else if (j > ni-1)
+          {
+             w[k] = x[n-1];
+          }
+        else
+          {
+             w[k] = x[j];
+          }
+     }
+
+   return 0;
+}
+
+static int dbl_compare (const void *a, const void *b)
+{
+   double va = *(const double *)a;
+   double vb = *(const double *)b;
+   if (va < vb) return -1;
+   else if (va > vb) return +1;
+   else return 0;
+}
+
+static double median (double *w, size_t nw)
+{
+   qsort ((char *)w, nw, sizeof(double), dbl_compare);
+   return w[(nw-1)/2];
+}
+
+static int median_filter (const double *x, size_t n, double *x_med)
+{
+   double w[FILTER_WINDOW_SIZE];
+   size_t i, nw = FILTER_WINDOW_SIZE;
+
+   for (i = 0; i < n; i++)
+     {
+        fill_window (w, nw, i, x, n);
+        x_med[i] = median (w, nw);
+     }
+
+   return 0;
+}
+
+static int apply_median_filter (TP_Type *tp)
+{
+   double *tmp = NULL;
+   size_t n = tp->num_times;
+
+   if (NULL == (tmp = (double *) MALLOC (n * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   (void) median_filter (tp->value, n, tmp);
+   memcpy ((char *)tp->value, (char *)tmp, n * sizeof(double));
+
+   FREE(tmp);
+
+   return 0;
+}
+
+static int apply_filters (TP_Type *tp)
+{
+   /* In principle, sorting should not be necessary */
+   if (0 != time_sort (tp))
+     return -1;
+
+   if (0 != apply_median_filter (tp))
+     return -1;
+
+   return 0;
+}
+
 Instr_Type *instr_open (const char *file, const char *glob_basename,
                         double tstart, double tend, TIO_Meta_Type *meta)
 {
@@ -678,6 +708,13 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
      return NULL;
 
    if (0 != read_instr (instr, file, &flt))
+     {
+        free_instr (instr);
+        return NULL;
+     }
+
+   if ((0 != apply_filters (&instr->adc_temp0_derived))
+       || (0 != apply_filters (&instr->fpe_temp1)))
      {
         free_instr (instr);
         return NULL;
