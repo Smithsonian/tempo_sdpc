@@ -89,14 +89,14 @@ def print_files_matching_status (asdc_status):
         for f in table_lists[table]:
             print(f)
 
-def define_upload():
-    with connect_database() as conn:
+def define_upload(outfile):
+    with connect_database() as conn, open(outfile, "w") as fp:
         cur = conn.cursor()
         table_lists = files_matching_status (cur, Asdc_Status["new"])
         for table in table_lists.keys():
             for f in table_lists[table]:
                 # if print fails, status will not be updated
-                print(f)
+                fp.write('{}\n'.format(f))
                 update_file_status(cur, f, Asdc_Status["pending"])
 
 def longpan_header (thefile, parse):
@@ -186,14 +186,27 @@ def process_longpan_files (longpan_file_list):
             except:
                 print ("Error processing file: {}".format(longpan_file))
 
+def set_file_status (status, file_list):
+    with open(file_list, "r") as fp:
+        files = fp.readlines()
+    files = [f.strip() for f in files]
+    with connect_database() as conn:
+        cur = conn.cursor()
+        for f in files:
+            update_file_status (cur, f, Asdc_Status[status])
+
 def main():
-    parser = argparse.ArgumentParser(description='manage ASDC file upload status')
-    parser.add_argument('--dryrun', help="Print actions, but don't modify the database", action='store_true')
-    parser.add_argument('--list', metavar='STATUS', help="List files matching status: {}".format(Asdc_Status),
-                       default=None)
-    parser.add_argument('--define', help="Define an upload (atomically)", action='store_true')
-    parser.add_argument('--pans', help="List of LONGPAN files to process",
-                        default=None, nargs=argparse.REMAINDER)
+    parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
+    parser.add_argument('--list', metavar='STATUS', default=None,
+                        help="List files matching status: {}".format(Asdc_Status))
+    parser.add_argument('--dryrun', action='store_true',
+                        help="Show actions, but don't modify the database")
+    parser.add_argument('--define', metavar='FILE_LIST', default=None,
+                        help="Define an upload (changes status 'new' to 'pending')")
+    parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
+                        help="Process LONGPAN files (changes status 'pending' to 'accepted'|'problem')")
+    parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
+                        help="Set status of specified files")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
@@ -204,8 +217,10 @@ def main():
 
     if args.list:
         print_files_matching_status (Asdc_Status[args.list])
+    elif args.set:
+        set_file_status (args.set[0], args.set[1])
     elif args.define:
-        define_upload()
+        define_upload (args.define)
     elif args.pans:
         process_longpan_files(args.pans)
 
