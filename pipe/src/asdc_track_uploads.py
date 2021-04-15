@@ -40,8 +40,8 @@ def get_product_table_names (cur):
     return table_names
 
 def table_files_matching_status (cur, table_name, asdc_status):
-    #cur.execute ("select path from {} where asdc_status == {} or asdc_status_met == {} order by path".format(table_name, asdc_status, asdc_status))
-    cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
+    cur.execute ("select path from {} where asdc_status == {} or asdc_status_met == {} order by path".format(table_name, asdc_status, asdc_status))
+    #cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
     paths = [item for t in cur.fetchall() for item in t]
     return paths
 
@@ -66,14 +66,14 @@ def table_name_for_file (filename):
 
 def update_file_status (cur, filename, asdc_status):
     file_basename = os.path.basename (filename)
-    ext = os.path.splitext(file_basename)[1]
-    if '.nc' == ext:
+    ext_split = os.path.splitext(file_basename)
+    if '.nc' == ext_split[1]:
         status_var_name = 'asdc_status'
-    elif '.met' == ext:
-        #status_var_name = 'asdc_status_met'
-        return
+    elif '.met' == ext_split[1]:
+        status_var_name = 'asdc_status_met'
+        file_basename = os.path.basename(ext_split[0])
     else:
-        print ('update_file_status: unsupported extension: {}'.format(file_basename))
+        print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
     table_name = table_name_for_file (file_basename)
     sql = "update {} set {}={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, file_basename)
