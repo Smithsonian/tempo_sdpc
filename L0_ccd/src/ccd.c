@@ -114,6 +114,7 @@ typedef int Smear_Corr_Method_Type
 
 #define CCD_TYPE_PRIVATE_DATA \
    CCD_Object_Type obj; \
+   int sdc_row_offset; \
    float saturation_fudge_factor; \
    Response_Info_Type resp_info; \
    Phase_Change_Type pct; \
@@ -1355,7 +1356,7 @@ static int ccd_correct_smear (const CCD_Type *ccd, const void *client_data,
 
 static int mean_sdc_quad (const CCD_Object_Type *obj,
                           const Image_Subset_Type *quad,
-                          const Image_Type *img,
+                          const Image_Type *img, int sdc_row_offset,
                           unsigned int num_dg_rows, unsigned int num_tg_rows,
                           float *mean_sdc_per_pixel)
 {
@@ -1373,11 +1374,15 @@ static int mean_sdc_quad (const CCD_Object_Type *obj,
    if (-1 == smear_corr_region (obj, quad, &sb0, &se0, NULL, NULL))
      return -1;
 
-   /* The row nearest the readout contains the sum
-    * over storage region dark current rows
+   /* Which row contains the storage region dark current sum?
+    * When sdc_row_offset=0, it's the row above the storage region
+    * When sdc_row_offset=1, it's two rows above the storage region
     */
+   if (quad->row_step < 0)
+     p0 = quad->row_beg   + sdc_row_offset;
+   else
+     p0 = quad->row_end-1 - sdc_row_offset;
 
-   p0 = (quad->row_step < 0) ? quad->row_beg : quad->row_end-1;
    quad_pixels = img->pixels + p0 * img->num_cols;
    quad_pqf = img->pixel_quality_flags + p0 * img->num_cols;
 
@@ -1424,8 +1429,8 @@ static int ccd_mean_storage_region_dark (const CCD_Type *ccd,
 
    for (i = 0; i < NUM_QUAD; i++)
      {
-        if (-1 == mean_sdc_quad (&ccd->obj, &obj->quad[i], img, num_dg_rows, num_tg_rows,
-                                 &mean_sdc[i]))
+        if (-1 == mean_sdc_quad (&ccd->obj, &obj->quad[i], img, ccd->sdc_row_offset,
+                                 num_dg_rows, num_tg_rows, &mean_sdc[i]))
           return -1;
      }
 
@@ -2036,6 +2041,15 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (setting, "sdc_row_offset", &ccd->sdc_row_offset))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading sdc_row_offset in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+   if (ccd->sdc_row_offset) ccd->sdc_row_offset = 1;
 
    if (CONFIG_TRUE != config_setting_lookup_string (setting, "cal_param_file", &cal_param_file))
      {

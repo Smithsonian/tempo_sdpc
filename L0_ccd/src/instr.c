@@ -43,12 +43,12 @@ static int lookup_value (const TP_Type *tp, double t, double *value)
    double *ti = tp->timestamp;
    int n = tp->num_times;
 
-   if (t < ti[0])
+   if (t <= ti[0])
      {
         *value = tp->value[0];
         return -1;
      }
-   else if (ti[n-1] < t)
+   else if (ti[n-1] <= t)
      {
         *value = tp->value[n-1];
         return +1;
@@ -68,8 +68,7 @@ static int instr_fpa_temp (const Instr_Type *instr, double timestamp, float *fpa
 
    if (0 != lookup_value (&instr->adc_temp0_derived, timestamp, &value))
      {
-        tell_verror (TELL_UNKNOWN_ERROR, "%s: FPA temperature lookup failed", __func__);
-        return -2;
+        tell_vwarn (0, "%s: FPA temperature lookup failed", __func__);
      }
    *fpa_temp = (float) value;
    tell_vlog (TELL_MSGTYPE_INFO, 2, "FPA temp lookup: time: %0.3f => FPA temp: %0.2f C", timestamp, *fpa_temp);
@@ -83,8 +82,7 @@ static int instr_fpe_temp (const Instr_Type *instr, double timestamp, float *fpe
 
    if (0 != lookup_value (&instr->fpe_temp1, timestamp, &value))
      {
-        tell_verror (TELL_UNKNOWN_ERROR, "%s: FPE temperature lookup failed", __func__);
-        return -2;
+        tell_vwarn (0, "%s: FPE temperature lookup failed", __func__);
      }
    *fpe_temp = (float) value;
    tell_vlog (TELL_MSGTYPE_INFO, 2, "FPE temp lookup: time: %0.3f => FPE temp: %.2f C", timestamp, *fpe_temp);

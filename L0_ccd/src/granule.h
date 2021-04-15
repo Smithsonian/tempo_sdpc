@@ -43,6 +43,7 @@ typedef struct
    double frame_transfer_time;  /**< frame transfer time [sec] */
    double readout_time;         /**< storage region readout time [sec] */
    int exposure_type;           /**< \ref granule_exprec_types "exposure record type" */
+   int ccd_int_type;            /**< CCD integration type, NOMINAL=0, SHORT_INT=1, LONG_INT=2, DARK_INT=3 */
    unsigned int num_coadds;     /**< number of co-adds */
    unsigned int curr_mirror_step;  /**< current mirror step */
    /* ConOps 3.3: instrument command parameters: NUM_TG_ROWS, NUM_DG_ROWS */

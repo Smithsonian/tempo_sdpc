@@ -105,6 +105,23 @@ void image_sqrt (Image_Type *img)
      }
 }
 
+void image_set (Image_Type *img, Image_Pixel_Type value, Image_Pqf_Bitmap_Type value_pqf)
+{
+   Image_Pixel_Type *pixels;
+   Image_Pqf_Bitmap_Type *pqf;
+   int i, num_pixels;
+
+   num_pixels = img->num_rows * img->num_cols;
+   pixels = img->pixels;
+   pqf = img->pixel_quality_flags;
+
+   for (i = 0; i < num_pixels; i++)
+     {
+        pixels[i] = value;
+        pqf[i] = value_pqf;
+     }
+}
+
 int image_check_negative_pixels (Image_Type *img, int flag)
 {
    Image_Pixel_Type *pixels = img->pixels;

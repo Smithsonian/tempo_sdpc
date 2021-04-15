@@ -15,7 +15,7 @@
 #define NUM_ROWS 2000
 #define NUM_COLS NUM_ROWS
 
-static void image_set_diag (Image_Type *img, Image_Pixel_Type value)
+static void util_image_set_diag (Image_Type *img, Image_Pixel_Type value)
 {
    int i, n;
 
@@ -28,7 +28,7 @@ static void image_set_diag (Image_Type *img, Image_Pixel_Type value)
      }
 }
 
-static int image_test_pqf_diag (Image_Type *img,
+static int util_image_test_pqf_diag (Image_Type *img,
                                 Image_Pqf_Bitmap_Type mask_diag)
 {
    int r, c;
@@ -78,21 +78,21 @@ static int test_hotcold (Pixelqf_Type *pt)
     * on the diagonal has a large effect on the mean value.
     */
 
-   image_set (img, p0, 0);
-   image_set_diag (img, hot_value);
+   util_image_set (img, p0, 0);
+   util_image_set_diag (img, hot_value);
    if (0 != pt->pqf_flag_hotcold (pt, img, &dtt))
      goto return_status;
-   if (0 == image_test_pqf_diag (img, IMAGE_PQF_HOT_PIXEL))
+   if (0 == util_image_test_pqf_diag (img, IMAGE_PQF_HOT_PIXEL))
      {
         fprintf (stderr, "*** hot pixel flagging failed\n");
         goto return_status;
      }
 
-   image_set (img, p0, 0);
-   image_set_diag (img, cold_value);
+   util_image_set (img, p0, 0);
+   util_image_set_diag (img, cold_value);
    if (0 != pt->pqf_flag_hotcold (pt, img, &dtt))
      goto return_status;
-   if (0 == image_test_pqf_diag (img, IMAGE_PQF_COLD_PIXEL))
+   if (0 == util_image_test_pqf_diag (img, IMAGE_PQF_COLD_PIXEL))
      {
         fprintf (stderr, "*** cold pixel flagging failed\n");
         goto return_status;
@@ -190,7 +190,7 @@ static int test_neighbor (Pixelqf_Type *pt)
 
    for (hw = 1; hw < 4; hw++)
      {
-        image_set (img, 1.0, 0);
+        util_image_set (img, 1.0, 0);
 
         for (r = 0; r < nr; r++)
           {
@@ -270,8 +270,8 @@ static int test_transient (Pixelqf_Type *pt)
      goto return_status;
 
    memset ((char *)bpixmap, 0, bpixmap_size);
-   image_set (img, 1.0, 0);
-   image_set (img_ref, 1.0, 0);
+   util_image_set (img, 1.0, 0);
+   util_image_set (img_ref, 1.0, 0);
 
    for (r = 0; r < nr; r++)
      {

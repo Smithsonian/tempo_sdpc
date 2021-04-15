@@ -115,7 +115,7 @@ static int check_table_fptemp (Dark_Table_Type *dtt, Dark_Test_Params *tp,
         Dark_Test_Params *tpi = &tp[i];
         if (0 != dtt->dtt_interp (dtt, tpi->fptemp, dark_img))
           return -1;
-        if (0 == image_test (dark_img, tpi->pixel_value, 0))
+        if (0 == util_image_test (dark_img, tpi->pixel_value, 0))
           return -1;
      }
 
@@ -144,7 +144,7 @@ static int check_table_sdc (Dark_Table_Type *dtt, Dark_Test_Params *tp,
         Dark_Test_Params *tpi = &tp[i];
         if (0 != dtt->dtt_interp (dtt, tpi->sdc, dark_img))
           return -1;
-        if (0 == image_test (dark_img, tpi->pixel_value, 0))
+        if (0 == util_image_test (dark_img, tpi->pixel_value, 0))
           return -1;
      }
 
@@ -173,7 +173,7 @@ static int check_table_exptime (Dark_Table_Type *dtt, Dark_Test_Params *tp,
         Dark_Test_Params *tpi = &tp[i];
         if (0 != dtt->dtt_interp (dtt, tpi->exptime, dark_img))
           return -1;
-        if (0 == image_test (dark_img, tpi->pixel_value, 0))
+        if (0 == util_image_test (dark_img, tpi->pixel_value, 0))
           return -1;
      }
 
@@ -206,7 +206,7 @@ static int test_dark (config_t *cfg,
    for (i = 0 ; i < num_darks; i++)
      {
         tpi = &tp[i];
-        image_set (img_array[i], tpi->pixel_value, 0);
+        util_image_set (img_array[i], tpi->pixel_value, 0);
      }
 
    if (NULL == (da = dark_array_alloc (num_darks)))

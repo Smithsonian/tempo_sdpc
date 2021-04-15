@@ -83,21 +83,21 @@ static int perform_test (int num_rows, int num_cols)
    if (NULL == (img = image_new (num_rows, num_cols)))
      return -1;
 
-   image_set (img, pixel_value, pqf_value);
+   util_image_set (img, pixel_value, pqf_value);
    if (NULL == (dup = image_dup (img)))
      goto return_status;
 
-   if (0 == image_test (dup, pixel_value, pqf_value))
+   if (0 == util_image_test (dup, pixel_value, pqf_value))
      goto return_status;
 
    image_scale (dup, pixel_value);
 
-   if (0 == image_test (dup, pixel_value*pixel_value, pqf_value))
+   if (0 == util_image_test (dup, pixel_value*pixel_value, pqf_value))
      goto return_status;
 
    image_sqrt (dup);
 
-   if (0 == image_test (dup, pixel_value, pqf_value))
+   if (0 == util_image_test (dup, pixel_value, pqf_value))
      goto return_status;
 
    if (0 != test_write_raw (dup, "img_dup"))

@@ -28,20 +28,9 @@
 
 #include "control.h"
 #include "process.h"
+#include "_process.h"
+#include "current.h"
 #include "util.h"
-
-typedef struct
-{
-   Granule_Exprec_Type *exprec;
-   Image_Type *img_err;
-   Dark_Trend_Type dark_trend;
-   float storage_region_dark[4];
-   float fpa_temp;
-   float fpe_temp;
-   double earth_sun_distance;
-   int index;
-}
-Exprec_Meta_Type;
 
 typedef struct
 {
@@ -359,9 +348,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if ((0 != instr->instr_fpa_temp (instr, exprec->start_time, &xr->fpa_temp))
        || (0 != instr->instr_fpe_temp (instr, exprec->start_time, &xr->fpe_temp)))
      {
-        tell_vwarn (0, "%s: temperature lookup failed, start_time=%15.12e",
-                   __func__, exprec->start_time);
-        /* drop */
+        return -1;
      }
 
    /* convert DN to electrons */
@@ -438,253 +425,6 @@ static int compute_current_and_trim (CCD_Type *ccd,
    return 0;
 }
 
-typedef struct
-{
-   const char *name;
-   const char *text;
-}
-Text_Attr_Type;
-
-static int define_text_attrs (int grp, int varid, const Text_Attr_Type *attrs)
-{
-   const Text_Attr_Type *a;
-
-   for (a = attrs; a->name != NULL; a++)
-     {
-        size_t len = strlen(a->text) + 1;
-        if (0 != TIO_put_att (grp, varid, a->name, TIO_CHAR, len, a->text))
-          return -1;
-     }
-
-   return 0;
-}
-
-static int create_current_file (int ncid, int num_times, int num_rows, int num_cols,
-                                int exposure_type)
-{
-   const char *product_type;
-   int dimid_time, dimid_row, dimid_col, dimid_quad;
-   int varid_time, varid_img, varid_pqf, varid_fpa_temp;
-   int varid_fpe_temp, varid_exptime, varid_sdc;
-   int varid_num_hot, varid_num_cold, varid_mean_dark;
-   int varid_exptime_per_coadd;
-   int sdc_dimids[2];
-   int shuffle = 1;
-   int deflate = 1;
-   int deflate_level = 1;
-   int storage = NC_CHUNKED;
-   size_t chunksizes[3];
-   int img_dimids[3];
-   const Text_Attr_Type time_attrs[] =
-     {
-        {"long_name", "exposure start time"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type img_attrs[] =
-     {
-        {"units", "electrons/sec"},
-        {"long_name", "pixel current"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type pqf_attrs[] =
-     {
-        {"long_name", "pixel quality flag"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type fpa_temp_attrs[] =
-     {
-        {"units", "C"},
-        {"long_name", "focal plane array (FPA) temperature"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type fpe_temp_attrs[] =
-     {
-        {"units", "C"},
-        {"long_name", "focal plane electronics (FPE) temperature"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type exptime_attrs[] =
-     {
-        {"units", "seconds"},
-        {"long_name", "exposure time duration"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type exptime_per_coadd_attrs[] =
-     {
-        {"units", "seconds"},
-        {"long_name", "exposure time duration per coadd"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type sdc_attrs[] =
-     {
-        {"units", "electrons/sec"},
-        {"long_name", "mean storage region dark current"},
-        {"comment", "mean storage region dark current in each quadrant; A,B,C,D"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type num_hot_attrs[] =
-     {
-        {"long_name", "number of hot pixels"},
-        {"comment", "number of hot pixels in each quadrant; A,B,C,D"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type num_cold_attrs[] =
-     {
-        {"long_name", "number of cold pixels"},
-        {"comment", "number of cold pixels in each quadrant; A,B,C,D"},
-        {NULL, NULL}
-     };
-   const Text_Attr_Type mean_dark_attrs[] =
-     {
-        {"units", "electrons/sec"},
-        {"long_name", "mean dark current"},
-        {"comment", "mean dark current in each quadrant; A,B,C,D (hot/cold pixels excluded)"},
-        {NULL, NULL}
-     };
-
-   switch (exposure_type)
-     {
-      case EXPREC_TYPE_DARK:
-        product_type = TEMPO_PROD_TYPE_DRK;
-        break;
-      case EXPREC_TYPE_LIN_DARK:
-        product_type = TEMPO_PROD_TYPE_DRK_LIN;
-        break;
-      case EXPREC_TYPE_LIN_IRR:
-        product_type = TEMPO_PROD_TYPE_IRR_LIN;
-        break;
-      default:
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure record type = %d", __func__, exposure_type);
-        return -1;
-     }
-
-   if ((0 != TIO_def_dim (ncid, "time", num_times, &dimid_time))
-       || (0 != TIO_def_dim (ncid, "row", num_rows, &dimid_row))
-       || (0 != TIO_def_dim (ncid, "col", num_cols, &dimid_col))
-       || (0 != TIO_def_dim (ncid, "quad", 4, &dimid_quad)))
-     {
-        tell_verror (TELL_IO_WRITE_ERROR, "%s: defining file array dimensions", __func__);
-        return -1;
-     }
-
-   if (0 != TIO_label_product (ncid, product_type, 1, process_get_version()))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, "image_start_time", TIO_DOUBLE, 1, &dimid_time, &varid_time))
-       || (0 != define_text_attrs (ncid, varid_time, time_attrs))
-       || (0 != tio_write_timestamp_unit_string (ncid, "image_start_time")))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, "fpa_temp", TIO_FLOAT, 1, &dimid_time, &varid_fpa_temp))
-       || (0 != define_text_attrs (ncid, varid_fpa_temp, fpa_temp_attrs)))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, "fpe_temp", TIO_FLOAT, 1, &dimid_time, &varid_fpe_temp))
-       || (0 != define_text_attrs (ncid, varid_fpe_temp, fpe_temp_attrs)))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, TEMPO_VAR_EXPOSURE_TIME, TIO_FLOAT, 1, &dimid_time, &varid_exptime))
-       || (0 != define_text_attrs (ncid, varid_exptime, exptime_attrs)))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, "exposure_time_per_coadd", TIO_FLOAT, 1, &dimid_time, &varid_exptime_per_coadd))
-       || (0 != define_text_attrs (ncid, varid_exptime_per_coadd, exptime_per_coadd_attrs)))
-     return -1;
-
-   sdc_dimids[0] = dimid_time;
-   sdc_dimids[1] = dimid_quad;
-
-   if ((0 != TIO_def_var (ncid, "mean_sdc", TIO_FLOAT, 2, sdc_dimids, &varid_sdc))
-       || (0 != define_text_attrs (ncid, varid_sdc, sdc_attrs)))
-     return -1;
-
-   if (EXPREC_TYPE_IS_DARK(exposure_type))
-     {
-        if ((0 != TIO_def_var (ncid, "mean_dark_current", TIO_FLOAT, 2, sdc_dimids, &varid_mean_dark))
-            || (0 != define_text_attrs (ncid, varid_mean_dark, mean_dark_attrs)))
-          return -1;
-
-        if ((0 != TIO_def_var (ncid, "num_hot_pixels", TIO_INT, 2, sdc_dimids, &varid_num_hot))
-            || (0 != define_text_attrs (ncid, varid_num_hot, num_hot_attrs)))
-          return -1;
-
-        if ((0 != TIO_def_var (ncid, "num_cold_pixels", TIO_INT, 2, sdc_dimids, &varid_num_cold))
-            || (0 != define_text_attrs (ncid, varid_num_cold, num_cold_attrs)))
-          return -1;
-     }
-
-   img_dimids[0] = dimid_time;
-   img_dimids[1] = dimid_row;
-   img_dimids[2] = dimid_col;
-
-   chunksizes[0] = 1;
-   chunksizes[1] = 128;
-   chunksizes[2] = num_cols / 2;
-
-   if ((0 != TIO_def_var (ncid, "image", TIO_FLOAT, 3, img_dimids, &varid_img))
-       || (0 != TIO_def_var_chunking (ncid, varid_img, storage, chunksizes))
-       || (0 != TIO_def_var_deflate (ncid, varid_img, shuffle, deflate, deflate_level))
-       || (0 != define_text_attrs (ncid, varid_img, img_attrs)))
-     return -1;
-
-   if ((0 != TIO_def_var (ncid, TEMPO_VAR_PQF, TIO_UINT, 3, img_dimids, &varid_pqf))
-       || (0 != TIO_def_var_chunking (ncid, varid_pqf, storage, chunksizes))
-       || (0 != TIO_def_var_deflate (ncid, varid_pqf, shuffle, deflate, deflate_level))
-       || (0 != define_text_attrs (ncid, varid_pqf, pqf_attrs)))
-     return -1;
-
-   return 0;
-}
-
-static int write_current_exprec (int ncid, const Exprec_Meta_Type *xr)
-{
-   Granule_Exprec_Type *exprec = xr->exprec;
-   Image_Type *img = exprec->img;
-   double exposure_time_per_frame;
-   int start[3], count[3];
-
-   start[0] = xr->index;
-   start[1] = 0;
-   start[2] = 0;
-   count[0] = 1;
-
-   exposure_time_per_frame = exprec->exposure_time / exprec->num_coadds;
-
-   if ((0 != TIO_put_var_section (ncid, "image_start_time", start, count, TIO_DOUBLE, &exprec->start_time))
-       || (0 != TIO_put_var_section (ncid, "fpa_temp", start, count, TIO_FLOAT, &xr->fpa_temp))
-       || (0 != TIO_put_var_section (ncid, "fpe_temp", start, count, TIO_FLOAT, &xr->fpe_temp))
-       || (0 != TIO_put_var_section (ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_DOUBLE, &exprec->exposure_time))
-       || (0 != TIO_put_var_section (ncid, "exposure_time_per_coadd", start, count, TIO_DOUBLE, &exposure_time_per_frame)))
-     return -1;
-
-   count[0] = 1;
-   count[1] = 4;
-   if (0 != TIO_put_var_section (ncid, "mean_sdc", start, count, TIO_FLOAT, xr->storage_region_dark))
-     return -1;
-
-   if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
-     {
-        const Dark_Trend_Type *dtr = &xr->dark_trend;
-        if (0 != TIO_put_var_section (ncid, "num_hot_pixels", start, count, TIO_INT, dtr->num_hot_pixels))
-          return -1;
-        if (0 != TIO_put_var_section (ncid, "num_cold_pixels", start, count, TIO_INT, dtr->num_cold_pixels))
-          return -1;
-        if (0 != TIO_put_var_section (ncid, "mean_dark_current", start, count, TIO_FLOAT, dtr->mean_dark_current))
-          return -1;
-     }
-
-   count[0] = 1;
-   count[1] = img->num_rows;
-   count[2] = img->num_cols;
-
-   if (0 != TIO_put_var_section (ncid, "image", start, count, TIO_FLOAT, img->pixels))
-     return -1;
-   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_USHORT, img->pixel_quality_flags))
-     return -1;
-
-   return 0;
-}
-
 static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
                            Granule_Type *gr, TIO_Meta_Type *meta)
 {
@@ -695,7 +435,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
-   int ixr, num_exprecs, exposure_type, is_dark;
+   int ixr, num_exprecs, exposure_type, is_dark, grp;
    int num_parallel_active_full, num_serial_active_full, ncid = 0;
    int bpix_occur_threshold;
    int status = -1;
@@ -737,18 +477,13 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
      }
 
    /* Open the output file */
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "Opening output file: %s", ctrl->output_file);
-   if (0 != TIO_create (ctrl->output_file, NC_NETCDF4, &ncid))
-     goto return_status;
-   if (0 != tio_history_append_cmdline (ncid))
-     goto return_status;
    ccd->ccd_active_image_dims (ccd, &num_parallel_active_full, &num_serial_active_full);
-   if (0 != create_current_file (ncid, num_exprecs, num_parallel_active_full, num_serial_active_full, exposure_type))
-     goto return_status;
-   if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
-     goto return_status;
-   if (0 != TIO_copy_granule_ident (gr->granule_ncid(gr), ncid))
-     goto return_status;
+   if (0 != current_create_file_of_type (gr, ctrl->output_file, num_exprecs,
+                                         num_parallel_active_full, num_serial_active_full,
+                                         &ncid, &grp))
+     {
+        goto return_status;
+     }
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
@@ -780,7 +515,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
         if (-1 == compute_current_and_trim (ccd, instr, pqft, pct, xr))
           goto return_status;
 
-        if (0 != write_current_exprec (ncid, xr))
+        if (0 != current_write_exprec (grp, xr))
           goto return_status;
 
         if (is_dark)
@@ -807,6 +542,14 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    if (0 != tio_meta_write_ncattr (meta, ncid))
      goto return_status;
+
+   /* Generate average only for "true" dark measurements,
+    * but NOT for linearity data */
+   if (exposure_type == EXPREC_TYPE_DARK)
+     {
+        if (0 != current_write_mean_dark_current (ncid))
+          goto return_status;
+     }
 
    /* FIXME: eventually, we may write out an updated badpix map */
 
@@ -861,20 +604,25 @@ static int subtract_dark_current_img (Image_Type *img, const Image_Type *dc)
 static int dark_subtract (const Dark_Type *drk, Exprec_Meta_Type *xr, Image_Type *tmp_img)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
-   Dark_Lookup_Type dlt =
-     {
-        .fpa_temp = xr->fpa_temp,
-        .exposure_time = exprec->exposure_time,
-        .storage_region_dark = xr->storage_region_dark,
-     };
    const char *method = enable_state_query_enum (ENABLE_DARK);
 
    if (0 == strcmp (method, "none"))
      return 0;
 
    /* copy the appropriate dark current image into tmp_img */
-   if (0 != drk->drk_get_image (drk, &dlt, tmp_img))
+   if (0 != drk->drk_image (drk, tmp_img))
      return -1;
+
+   if (0 == strcmp (method, "mean_tfpa_adj"))
+     {
+        if (0 != drk->drk_image_Tfpa_adj (drk, xr->fpa_temp, tmp_img))
+          return -1;
+     }
+   else if (0 == strcmp (method, "mean_sdc_adj"))
+     {
+        if (0 != drk->drk_image_sdc_adj (drk, xr->storage_region_dark, tmp_img))
+          return -1;
+     }
 
    if (want_diagnostic_output (xr->index))
      {

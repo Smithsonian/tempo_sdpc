@@ -137,6 +137,24 @@ static int granule_get_exposure_per_frame (const Granule_Type *g, double *exposu
    return 0;
 }
 
+static int read_ccd_int_type_enum (int ncid, int *start, int *count, int *ccd_int_type)
+{
+   int varid_ccd_int_type, nc_status, enum_type;
+   size_t sstart = start[0];
+   size_t scount = count[0];
+
+   if ((NC_NOERR != (nc_status = nc_inq_varid (ncid, "ccd_int_type", &varid_ccd_int_type)))
+       || (NC_NOERR != (nc_status = nc_inq_vartype (ncid, varid_ccd_int_type, &enum_type)))
+       || (NC_NOERR != (nc_status = nc_get_vara (ncid, varid_ccd_int_type, &sstart, &scount, ccd_int_type))))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: reading ccd_int_type: (%s)",
+                     __func__, nc_strerror(nc_status));
+        return -1;
+     }
+
+   return 0;
+}
+
 /* If an exposure record is provided, its contents are overwritten,
  * and a pointer to it is returned.
  * Otherwise, an exposure record is allocated and returned.
@@ -187,6 +205,7 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
                                     &exprec->num_dg_rows))
        ||(0 != TIO_get_var_section (g->ncid, "num_tg_rows", start, count, TIO_UINT,
                                     &exprec->num_tg_rows))
+       ||(0 != read_ccd_int_type_enum (g->ncid, start, count, &exprec->ccd_int_type))
       )
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: reading exposure record %d",

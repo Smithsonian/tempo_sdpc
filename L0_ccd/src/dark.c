@@ -10,6 +10,8 @@
 
 #include "config.h"
 #include "image.h"
+#include "granule.h"
+#include "current.h"
 #include "util.h"
 
 #define NUM_QUAD  4
@@ -17,7 +19,8 @@
 #define DARK_PRIVATE_DATA \
    Image_Type *dc_image; \
    float ref_fpa_temp; \
-   float dc_coeffs[NUM_QUAD];
+   float dc_coeffs[NUM_QUAD]; \
+   float mean_sdc[NUM_QUAD];
 #include "dark.h"
 
 static void drk_close (Dark_Type *drk)
@@ -47,22 +50,19 @@ static int apply_quad_factor (Image_Type *img, int pb, int pe, int sb, int se, f
    return 0;
 }
 
-static int drk_image_Tfpa_corrected (const Dark_Type *drk, const Dark_Lookup_Type *dlt,
-                                     Image_Type *img)
+static int drk_image (const Dark_Type *drk, Image_Type *img)
 {
-   const char *method = enable_state_query_enum (ENABLE_DARK);
+   return image_copy (drk->dc_image, img);
+}
+
+static int drk_image_Tfpa_adj (const Dark_Type *drk, float fpa_temp, Image_Type *img)
+{
    float delta_invt, fac[NUM_QUAD];
    int nr = img->num_rows;
    int nc = img->num_cols;
    int i;
 
-   if (0 != image_copy (drk->dc_image, img))
-     return -1;
-
-   if (0 != strcmp (method, "mean_tfpa"))
-     return 0;
-
-   delta_invt = 1.0/dlt->fpa_temp - 1.0/drk->ref_fpa_temp;
+   delta_invt = 1.0/fpa_temp - 1.0/drk->ref_fpa_temp;
 
    for (i = 0; i < NUM_QUAD; i++)
      {
@@ -77,171 +77,31 @@ static int drk_image_Tfpa_corrected (const Dark_Type *drk, const Dark_Lookup_Typ
    return 0;
 }
 
-static int read_image (int ncid, int k, Image_Type *img)
+static int drk_image_sdc_adj (const Dark_Type *drk, float *target_sdc, Image_Type *img)
 {
-   int start[3], count[3];
+   float fac[NUM_QUAD];
+   int nr = img->num_rows;
+   int nc = img->num_cols;
+   int i;
 
-   start[0] = k;
-   start[1] = 0;
-   start[2] = 0;
-   count[0] = 1;
-   count[1] = img->num_rows;
-   count[2] = img->num_cols;
-
-   if ((0 != TIO_get_var_section (ncid, "image", start, count, TIO_FLOAT, img->pixels))
-       || (0 != TIO_get_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_USHORT, img->pixel_quality_flags)))
+   for (i = 0; i < NUM_QUAD; i++)
      {
-        return -1;
+        fac[i] = target_sdc[i] / drk->mean_sdc[i];
      }
 
-   img->image_type = IMAGE_TYPE_ACTIVE;
+   (void) apply_quad_factor (img,    0, nr/2,    0, nc/2, fac[0]);  /* A */
+   (void) apply_quad_factor (img,    0, nr/2, nc/2,   nc, fac[1]);  /* B */
+   (void) apply_quad_factor (img, nr/2,   nr, nc/2,   nc, fac[2]);  /* C */
+   (void) apply_quad_factor (img, nr/2,   nr,    0, nc/2, fac[3]);  /* D */
 
    return 0;
-}
-
-static int image_add_weighted (Image_Type *img, Image_Type *weights, double weight, const Image_Type *tmp)
-{
-   const Image_Pqf_Bitmap_Type *pqf = tmp->pixel_quality_flags;
-   const Image_Pixel_Type *pix = tmp->pixels;
-   Image_Pixel_Type *wt = weights->pixels;
-   Image_Pixel_Type *sum = img->pixels;
-   size_t i, n = img->num_rows * img->num_cols;
-
-   for (i = 0; i < n; i++)
-     {
-        if (pqf[i] == 0)
-          {
-             sum[i] += pix[i] * weight;
-             wt[i] += weight;
-          }
-     }
-
-   return 0;
-}
-
-static int image_divide (Image_Type *img, const Image_Type *denom)
-{
-   const Image_Pixel_Type *den = denom->pixels;
-   Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
-   Image_Pixel_Type *pix = img->pixels;
-   size_t i, n = img->num_rows * img->num_cols;
-
-   for (i = 0; i < n; i++)
-     {
-        if (pix[i] != IMAGE_PIXEL_FILL_VALUE)
-          {
-             if (isfinite(den[i]) && (den[i] != 0.0))
-               {
-                  pix[i] /= den[i];
-               }
-             else
-               {
-                  pix[i] = IMAGE_PIXEL_FILL_VALUE;
-                  pqf[i] |= IMAGE_PQF_BAD_PIXEL;
-               }
-          }
-     }
-
-   return 0;
-}
-
-static int get_averaging_weights (int ncid, int num, double *wt)
-{
-   int k, start, count, num_zero_exposures;
-
-   /* Assume all exposure times are >= 0.
-    * If all exposure_times are zero, then weight equally when computing the mean.
-    * If any exposure_times are non-zero, then weight by exposure time so that the
-    *                               terms with exposure_times=0 contribute nothing.
-    * If the data are packaged so that all images in a single file have the same exposure
-    * time, then this should do the right thing whether the exposure time is zero or not.
-    * If exposure times vary within a single file, then this also seems the right approach.
-    */
-
-   start = 0;
-   count = num;
-   if (0 != TIO_get_var_section (ncid, "exposure_time", &start, &count, TIO_DOUBLE, wt))
-     return -1;
-
-   num_zero_exposures = 0;
-   for (k = 0; k < num; k++)
-     {
-        if (wt[k] == 0.0) num_zero_exposures++;
-     }
-
-   if (num == num_zero_exposures)
-     {
-        for (k = 0; k < num; k++)
-          {
-             wt[k] = 1.0;
-          }
-     }
-
-   return 0;
-}
-
-static Image_Type *compute_image_mean (int ncid)
-{
-   TIO_Var_Info_Type info = {0};
-   Image_Type *img = NULL;
-   Image_Type *tmp = NULL;
-   Image_Type *weights = NULL;
-   double *wt = NULL;
-   int k, num, status = -1;
-
-   if (0 != TIO_inq_var (ncid, "image", &info))
-     return NULL;
-
-   if ((NULL == (img = image_new (info.dimlens[1], info.dimlens[2])))
-       || (NULL == (weights = image_dup (img)))
-       || (NULL == (tmp = image_dup (img))))
-     goto return_status;
-
-   num = info.dimlens[0];
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "averaging %d dark frames...", num);
-
-   if (NULL == (wt = (double *)MALLOC (num * sizeof(double))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto return_status;
-     }
-
-   if (0 != get_averaging_weights (ncid, num, wt))
-     goto return_status;
-
-   for (k = 0; k < num; k++)
-     {
-        if (0 != read_image (ncid, k, tmp))
-          goto return_status;
-        if (0 != image_add_weighted (img, weights, wt[k], tmp))
-          goto return_status;
-     }
-
-   if (0 != image_divide (img, weights))
-     goto return_status;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "done");
-
-   status = 0;
-
-return_status:
-   image_free (tmp);
-   image_free (weights);
-   if (status)
-     {
-        image_free (img);
-        img = NULL;
-     }
-   FREE(wt);
-
-   return img;
 }
 
 static int drk_open (Dark_Type *drk, const char *path)
 {
+   TIO_Var_Info_Type info = {0};
    char product_type[TIO_MAX_SHORT_NAME_LEN];
-   int ncid, status = -1;
+   int ncid, start[2], count[2], status = -1;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", path);
 
@@ -266,8 +126,21 @@ static int drk_open (Dark_Type *drk, const char *path)
         goto close_and_return;
      }
 
-   image_free (drk->dc_image);
-   if (NULL == (drk->dc_image = compute_image_mean (ncid)))
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = 1;
+   count[1] = 4;
+
+   if (0 != TIO_get_var_section (ncid, "mean_sdc", start, count, TIO_FLOAT, drk->mean_sdc))
+     goto close_and_return;
+
+   if (0 != TIO_inq_var (ncid, "image", &info))
+     goto close_and_return;
+
+   if (NULL == (drk->dc_image = image_new (info.dimlens[1], info.dimlens[2])))
+     goto close_and_return;
+
+   if (0 != current_image_read (ncid, 0, drk->dc_image))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: computing mean dark current image from file %s\n",
                      __func__, path);
@@ -401,7 +274,9 @@ Dark_Type *drk_init (config_t *cfg)
 
    drk->drk_close = drk_close;
    drk->drk_open = drk_open;
-   drk->drk_get_image = drk_image_Tfpa_corrected;
+   drk->drk_image = drk_image;
+   drk->drk_image_Tfpa_adj = drk_image_Tfpa_adj;
+   drk->drk_image_sdc_adj = drk_image_sdc_adj;
 
    return drk;
 }

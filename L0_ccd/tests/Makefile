@@ -63,7 +63,7 @@ coverage:	$(EXECUTABLES)
 	# generate summary web pages
 	genhtml filtered.info -o lcov.dir
 
-LIBOBJS = util.o $(elfdir)/ccd.o $(elfdir)/image.o $(elfdir)/dark.o \
+LIBOBJS = util.o $(elfdir)/ccd.o $(elfdir)/image.o \
           $(elfdir)/pixelqf.o $(elfdir)/bpix.o $(elfdir)/util.o
 
 test_image:	util.o

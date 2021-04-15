@@ -6,7 +6,7 @@
 #include <image.h>
 #include "util.h"
 
-void image_set (Image_Type *img, Image_Pixel_Type c, Image_Pqf_Bitmap_Type b)
+void util_image_set (Image_Type *img, Image_Pixel_Type c, Image_Pqf_Bitmap_Type b)
 {
    int p, s;
 
@@ -22,7 +22,7 @@ void image_set (Image_Type *img, Image_Pixel_Type c, Image_Pqf_Bitmap_Type b)
      }
 }
 
-int image_test (Image_Type *img, Image_Pixel_Type c, Image_Pqf_Bitmap_Type b)
+int util_image_test (Image_Type *img, Image_Pixel_Type c, Image_Pqf_Bitmap_Type b)
 {
    int p, s;
 

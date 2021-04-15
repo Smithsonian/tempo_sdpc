@@ -41,7 +41,7 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 # Yes, this is an ugly hack.
 BORROWED_OFILES = solar.o
 OFILES   = l0_ccd.o process.o image.o ccd.o granule.o instr.o pixelqf.o \
-           bpix.o dark.o sensorcal.o output.o util.o
+           bpix.o current.o dark.o sensorcal.o output.o util.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES)) \
            $(patsubst %.o,$(objdir)/%.o, $(BORROWED_OFILES))
 
@@ -127,6 +127,9 @@ $(objdir)/pixelqf.o:	$(srcdir)/pixelqf.c
 
 $(objdir)/bpix.o:	$(srcdir)/bpix.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/bpix.c
+
+$(objdir)/current.o:	$(srcdir)/current.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/current.c
 
 $(objdir)/dark.o:	$(srcdir)/dark.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/dark.c

@@ -196,6 +196,8 @@ extern int image_get_type (const Image_Type *img);
  */
 extern void image_set_type (Image_Type *img, int image_type);
 
+extern void image_set (Image_Type *img, Image_Pixel_Type value, Image_Pqf_Bitmap_Type value_pqf);
+
 /** Write image data fields to raw binary-formatted files
  * @param   img         A non-NULL pointer to an existing Image_Type object
  * @param   file        A filename prefix.

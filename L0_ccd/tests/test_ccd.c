@@ -69,44 +69,44 @@ static int test_ccd_correct_coadd (CCD_Type *ccd)
    if (NULL == (img = image_new (num_rows, num_cols)))
      return -1;
 
-   image_set (img, num_coadds, 0);
+   util_image_set (img, num_coadds, 0);
    if ((0 != ccd->ccd_correct_coadd (ccd, num_coadds, img))
-       || (0 == image_test (img, 1.0, 0)))
+       || (0 == util_image_test (img, 1.0, 0)))
      {
         fprintf (stderr, "*** coaddition correction\n");
         goto return_status;
      }
 
-   image_set (img, IMAGE_PIXEL_FILL_VALUE, 0);
+   util_image_set (img, IMAGE_PIXEL_FILL_VALUE, 0);
    if ((0 != ccd->ccd_correct_coadd (ccd, num_coadds, img))
-       || (0 == image_test (img, IMAGE_PIXEL_FILL_VALUE, 0)))
+       || (0 == util_image_test (img, IMAGE_PIXEL_FILL_VALUE, 0)))
      {
         fprintf (stderr, "*** coaddition correction (fill value)\n");
         goto return_status;
      }
 
    sat_test_value = saturation_level_readout * num_coadds + 1;
-   image_set (img, sat_test_value, 0);
+   util_image_set (img, sat_test_value, 0);
    if ((0 != ccd->ccd_correct_coadd (ccd, num_coadds, img))
-       || (0 == image_test (img, sat_test_value/num_coadds, IMAGE_PQF_SATURATED)))
+       || (0 == util_image_test (img, sat_test_value/num_coadds, IMAGE_PQF_SATURATED)))
      {
         fprintf (stderr, "*** coaddition correction (readout sat)\n");
         goto return_status;
      }
 
    sat_test_value = saturation_level_coadded * num_coadds + 1;
-   image_set (img, sat_test_value, 0);
+   util_image_set (img, sat_test_value, 0);
    if ((0 != ccd->ccd_correct_coadd (ccd, num_coadds, img))
-       || (0 == image_test (img, sat_test_value/num_coadds, IMAGE_PQF_SATURATED)))
+       || (0 == util_image_test (img, sat_test_value/num_coadds, IMAGE_PQF_SATURATED)))
      {
         fprintf (stderr, "*** coaddition correction (coadd sat)\n");
         goto return_status;
      }
 
    sat_test_value = (saturation_level_readout - 1) * num_coadds;
-   image_set (img, sat_test_value, 0);
+   util_image_set (img, sat_test_value, 0);
    if ((0 != ccd->ccd_correct_coadd (ccd, num_coadds, img))
-       || (0 == image_test (img, sat_test_value/num_coadds, 0)))
+       || (0 == util_image_test (img, sat_test_value/num_coadds, 0)))
      {
         fprintf (stderr, "*** coaddition correction (sub readout sat)\n");
         goto return_status;
@@ -138,7 +138,7 @@ static int test_ccd_correct_offset (CCD_Type *ccd)
     */
    init_rownum_image (img);
    if ((0 != ccd->ccd_correct_offset (ccd, img))
-       || (0 == image_test (img, 0.0, 0)))
+       || (0 == util_image_test (img, 0.0, 0)))
      {
         fprintf (stderr, "*** offset correction\n");
         goto return_status;
@@ -181,16 +181,16 @@ static int test_ccd_correct_nonlinearity (CCD_Type *ccd)
     * of the corrected pixels will have the expected value.
     */
 
-   image_set (img, test_value, 0);
+   util_image_set (img, test_value, 0);
    if ((0 != ccd->ccd_correct_nonlinearity (ccd, img))
-       || (0 == image_test (img, expected_value, 0)))
+       || (0 == util_image_test (img, expected_value, 0)))
      {
         fprintf (stderr, "*** nonlinearity correction\n");
         goto return_status;
      }
 
    /* Verify that fill values remain unmodified */
-   image_set (img, test_value, 0);
+   util_image_set (img, test_value, 0);
    img->pixels[itest] = IMAGE_PIXEL_FILL_VALUE;
    if ((0 != ccd->ccd_correct_nonlinearity (ccd, img))
        || (img->pixels[itest] != IMAGE_PIXEL_FILL_VALUE))
@@ -228,16 +228,16 @@ static int test_ccd_correct_gain (CCD_Type *ccd)
     * of the corrected pixels will have the expected value.
     */
 
-   image_set (img, test_value, 0);
+   util_image_set (img, test_value, 0);
    if ((0 != ccd->ccd_correct_gain (ccd, img))
-       || (0 == image_test (img, expected_value, 0)))
+       || (0 == util_image_test (img, expected_value, 0)))
      {
         fprintf (stderr, "*** gain correction\n");
         goto return_status;
      }
 
    /* Verify that fill values remain unmodified */
-   image_set (img, test_value, 0);
+   util_image_set (img, test_value, 0);
    img->pixels[itest] = IMAGE_PIXEL_FILL_VALUE;
    if ((0 != ccd->ccd_correct_gain (ccd, img))
        || (img->pixels[itest] != IMAGE_PIXEL_FILL_VALUE))
@@ -249,7 +249,7 @@ static int test_ccd_correct_gain (CCD_Type *ccd)
    /* Verify that gain-corrected pixels that exceed full-well
     * are marked as saturated
     */
-   image_set (img, test_value, 0);
+   util_image_set (img, test_value, 0);
    img->pixels[itest] = 2*(TEST_FULL_WELL+1) + 1;
    if ((0 != ccd->ccd_correct_gain (ccd, img))
        || (img->pixel_quality_flags [itest] != IMAGE_PQF_SATURATED))
@@ -294,10 +294,10 @@ static int test_ccd_correct_smear_method (CCD_Type *ccd,
     * Note that smear_fraction is used only by the 'timing' method
     */
    init_colnum_image (img);
-   image_set_type (img, IMAGE_TYPE_PADDED);
+   util_image_set_type (img, IMAGE_TYPE_PADDED);
    if ((0 != ccd->ccd_correct_smear (ccd, &smear_fraction, img))
        || (NULL == (img_active = ccd->ccd_copy_active_pixels (ccd, img)))
-       || (0 == image_test (img_active, expected_value, 0)))
+       || (0 == util_image_test (img_active, expected_value, 0)))
      {
         fprintf (stderr, "*** smear correction\n");
         goto return_status;
