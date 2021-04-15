@@ -271,7 +271,8 @@
 # ----------
 700210|OMHCHO_AMF_Tables_2x2p5_328nm.he5|@refdata_dir@/trace_gas/data||||1
 700230|OMHCHO_ISCCP_Clouds_1200h.he5|@refdata_dir@/trace_gas/data||||1
-700250|AMFs_lookup_h2o_442nm.he5|@refdata_dir@/trace_gas/data||||1
+#700250|AMFs_lookup_h2o_442nm.he5|@refdata_dir@/trace_gas/data||||1
+700250|AMFs_lookup_no2_440nm.he5|@refdata_dir@/trace_gas/data||||1
 700270|@clim_file@|@refdata_dir@/trace_gas/data||||1
 700280|OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5|@refdata_dir@/trace_gas/data||||1
 700290|@met_file1@|@met_dir1@||||1
