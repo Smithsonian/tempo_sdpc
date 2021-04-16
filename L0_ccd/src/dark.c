@@ -50,6 +50,22 @@ static int apply_quad_factor (Image_Type *img, int pb, int pe, int sb, int se, f
    return 0;
 }
 
+static int apply_factors (Image_Type *img, const float *fac)
+{
+   int nr = img->num_rows;
+   int nc = img->num_cols;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "dark scaling quadrants A,B,C,D:  %f %f %f %f",
+              fac[0], fac[1], fac[2], fac[3]);
+
+   (void) apply_quad_factor (img,    0, nr/2,    0, nc/2, fac[0]);  /* A */
+   (void) apply_quad_factor (img,    0, nr/2, nc/2,   nc, fac[1]);  /* B */
+   (void) apply_quad_factor (img, nr/2,   nr, nc/2,   nc, fac[2]);  /* C */
+   (void) apply_quad_factor (img, nr/2,   nr,    0, nc/2, fac[3]);  /* D */
+
+   return 0;
+}
+
 static int drk_image (const Dark_Type *drk, Image_Type *img)
 {
    return image_copy (drk->dc_image, img);
@@ -58,8 +74,6 @@ static int drk_image (const Dark_Type *drk, Image_Type *img)
 static int drk_image_Tfpa_adj (const Dark_Type *drk, float fpa_temp, Image_Type *img)
 {
    float delta_invt, fac[NUM_QUAD];
-   int nr = img->num_rows;
-   int nc = img->num_cols;
    int i;
 
    delta_invt = 1.0/fpa_temp - 1.0/drk->ref_fpa_temp;
@@ -69,19 +83,12 @@ static int drk_image_Tfpa_adj (const Dark_Type *drk, float fpa_temp, Image_Type 
         fac[i] = exp(drk->dc_coeffs[i] * delta_invt);
      }
 
-   (void) apply_quad_factor (img,    0, nr/2,    0, nc/2, fac[0]);  /* A */
-   (void) apply_quad_factor (img,    0, nr/2, nc/2,   nc, fac[1]);  /* B */
-   (void) apply_quad_factor (img, nr/2,   nr, nc/2,   nc, fac[2]);  /* C */
-   (void) apply_quad_factor (img, nr/2,   nr,    0, nc/2, fac[3]);  /* D */
-
-   return 0;
+   return apply_factors (img, fac);
 }
 
 static int drk_image_sdc_adj (const Dark_Type *drk, float *target_sdc, Image_Type *img)
 {
    float fac[NUM_QUAD];
-   int nr = img->num_rows;
-   int nc = img->num_cols;
    int i;
 
    for (i = 0; i < NUM_QUAD; i++)
@@ -89,12 +96,7 @@ static int drk_image_sdc_adj (const Dark_Type *drk, float *target_sdc, Image_Typ
         fac[i] = target_sdc[i] / drk->mean_sdc[i];
      }
 
-   (void) apply_quad_factor (img,    0, nr/2,    0, nc/2, fac[0]);  /* A */
-   (void) apply_quad_factor (img,    0, nr/2, nc/2,   nc, fac[1]);  /* B */
-   (void) apply_quad_factor (img, nr/2,   nr, nc/2,   nc, fac[2]);  /* C */
-   (void) apply_quad_factor (img, nr/2,   nr,    0, nc/2, fac[3]);  /* D */
-
-   return 0;
+   return apply_factors (img, fac);
 }
 
 static int drk_open (Dark_Type *drk, const char *path)
