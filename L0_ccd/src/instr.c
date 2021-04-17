@@ -606,23 +606,19 @@ static int read_instr (Instr_Type *instr, const char *path, const Instr_Filter_T
 static int fill_window (double *w, size_t nw, size_t i, const double *x, size_t n)
 {
    size_t k, h = (nw-1)/2;
-   int ni = n;
 
    for (k = 0; k < nw; k++)
      {
-        int j = i+k-h;
+        int j = k + i-h;
         if (j < 0)
           {
-             w[k] = x[0];
+             j = 0;
           }
-        else if (j > ni-1)
+        else if ((int)n <= j)
           {
-             w[k] = x[n-1];
+             j = n-1;
           }
-        else
-          {
-             w[k] = x[j];
-          }
+        w[k] = x[j];
      }
 
    return 0;
