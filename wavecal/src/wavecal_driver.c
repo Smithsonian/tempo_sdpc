@@ -752,6 +752,9 @@ int main (int argc, char **argv)
         fprintf (stdout, "\n");
      }
 
+   (void) tell_set_log_level (TELL_MSGTYPE_INFO, verbose);
+   (void) tell_set_log_level (TELL_MSGTYPE_WARN, verbose);
+
    if (0 == config_read_file (&cfg, config_file))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,

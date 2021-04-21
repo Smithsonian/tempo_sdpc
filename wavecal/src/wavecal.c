@@ -72,7 +72,7 @@ SF_Convolution_Type;
 typedef struct
 {
    int xtrack;      /**< cross-track index to be fitted */
-   int num_wave;    /**< total number of wavelength points in measured spectrum */
+   size_t num_wave; /**< total number of wavelength points in measured spectrum */
    double *wave0;   /**< initial guess at wavelength grid for measured spectrum */
 
    Shapefun_Type *wavegrid_shapefun;    /**< shape function for computing the wavelength grid */
@@ -649,7 +649,7 @@ static void free_window (Window_Type *win)
 static int alloc_window (Window_Type *win, int num_data_waves, int num_model_waves,
                          int num_pad, int num_sf_params)
 {
-   win->num_wave = num_data_waves;
+   win->num_wave = (size_t) num_data_waves;
 
    if ((NULL == (win->wave0 = alloc_doubles (num_data_waves)))
        || (NULL == (win->pindex = alloc_doubles (num_data_waves)))
@@ -1485,37 +1485,37 @@ error_return:
    return NULL;
 }
 
-static int evaluate_term (Term_Type *term, int num_wave, double *waves,
+static int evaluate_term (Term_Type *term, size_t num_wave, double *waves,
                           double scale_factor, const double *params)
 {
    Refspec_Type *ref = &term->refspec;
-   size_t i, offset, n = num_wave;
+   size_t i, offset;
    double *v = term->value;
 
-   memset ((char *)v, 0, 2*n * sizeof(double));
+   memset ((char *)v, 0, 2*num_wave * sizeof(double));
 
    offset = 0;
 
    if (term->shapefun)
      {
         Shapefun_Type *st = term->shapefun;
-        offset = n;
-        if (st->st_eval (st, params, n, waves, v))
+        offset = num_wave;
+        if (st->st_eval (st, params, num_wave, waves, v))
           return -1;
         if (st->st_apply_external_scaling)
           {
-             for (i = 0; i < n; i++) v[i] *= scale_factor;
+             for (i = 0; i < num_wave; i++) v[i] *= scale_factor;
           }
      }
 
    if (ref->interp)
      {
         Interp_Type *it = ref->interp;
-        if (it->it_interp_eval (it, n, waves, v + offset) < 0)
+        if (it->it_interp_eval (it, num_wave, waves, v + offset) < 0)
           return -1;
         if (offset)
           {
-             for (i = 0; i < n; i++) v[i] *= v[i+offset];
+             for (i = 0; i < num_wave; i++) v[i] *= v[i+offset];
           }
      }
 
@@ -1553,11 +1553,11 @@ int wavecal_query_term (const Wavecal_Type *wct, int nth,
    return 0;
 }
 
-static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *model)
+static int combine_terms (Wavecal_Type *wct, double *i0, size_t num_waves, double *model)
 {
    int count[NUM_TERM_TYPES];
    size_t num_term_types = NUM_TERM_TYPES;
-   size_t i, n = num_waves;
+   size_t i;
    double *ad1, *ad2, *lbe, *bl;
    Term_Type *t;
 
@@ -1569,7 +1569,7 @@ static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *
      {
         double *term_value = t->value;
         double *sum = wct->term_sums[t->term_type];
-        for (i = 0; i < n; i++)
+        for (i = 0; i < num_waves; i++)
           {
              sum[i] += term_value[i];
           }
@@ -1586,7 +1586,7 @@ static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *
    if (count[TERM_TYPE_SC] > 0)
      {
         double *sc  = wct->term_sums[TERM_TYPE_SC];
-        for (i = 0; i < n; i++)
+        for (i = 0; i < num_waves; i++)
           {
              model[i] = (sc[i] * (i0[i] + ad1[i]) * exp(-lbe[i])
                          + bl[i] + ad2[i]);
@@ -1594,7 +1594,7 @@ static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *
      }
    else
      {
-        for (i = 0; i < n; i++)
+        for (i = 0; i < num_waves; i++)
           {
              model[i] = ((i0[i] + ad1[i]) * exp(-lbe[i])
                          + bl[i] + ad2[i]);
@@ -1602,6 +1602,19 @@ static int combine_terms (Wavecal_Type *wct, double *i0, int num_waves, double *
      }
 
    return 0;
+}
+
+static int monotonic_increasing (const double *x, size_t n)
+{
+   size_t i;
+
+   for (i = 1; i < n; i++)
+     {
+        if (x[i-1] >= x[i])
+          return 0;
+     }
+
+   return 1;
 }
 
 static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
@@ -1620,6 +1633,13 @@ static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params,
    if (wl->st_eval (wl, par, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
    par += win->num_wave_params;
+
+   /* validate grid */
+   if (0 == monotonic_increasing (win->wave0, win->num_wave))
+     {
+        tell_vinfo (2, "%s: non-monotonic wavelength grid", __func__);
+        return -1;
+     }
 
    /* evaluate the reference irradiance on the new wavelength grid */
    if (cspline_eval (irr->cspline, win->num_wave, win->wave0, wct->irr0))
@@ -1738,7 +1758,8 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    const double *par;
    double *irr_wavelen = NULL;
    double *irr_value = NULL;
-   int index_irr_beg, index_irr_end, num_irr_waves;
+   size_t num_irr_waves;
+   int index_irr_beg, index_irr_end;
    int status, index_slit_param0;
    int use_derivs=0;
 
@@ -1749,6 +1770,13 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    if (wl->st_eval (wl, params, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
 
+   /* validate grid */
+   if (0 == monotonic_increasing (win->wave0, win->num_wave))
+     {
+        tell_vinfo (2, "%s: non-monotonic wavelength grid", __func__);
+        return -1;
+     }
+
    /* Select the relevant subset of the reference irradiance wavelength grid */
    index_irr_beg = bsearch_d (win->wave0[0], irr->wavelen, irr->num_wavelen);
    index_irr_end = bsearch_d (win->wave0[win->num_wave-1], irr->wavelen, irr->num_wavelen);
@@ -1757,6 +1785,22 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    /* evaluate the irradiance spectrum a bit beyond the required wavelength range */
    index_irr_beg -= sfct->num_pad;
    index_irr_end += sfct->num_pad;
+
+   /* Make sure the indices are still valid */
+   if (index_irr_beg < 0)
+     index_irr_beg = 0;
+   if ((int) irr->num_wavelen <= index_irr_end)
+     index_irr_end = irr->num_wavelen - 1;
+
+   /* Check for the impossible */
+   if (index_irr_end < index_irr_beg)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid interval!!: %ld waves, %f @index_irr_beg=%d, %f @index_irr_end=%d",
+                     __func__, win->num_wave,
+                     win->wave0[0], index_irr_beg,
+                     win->wave0[win->num_wave-1], index_irr_end);
+        return -1;
+     }
 
    /* define irradiance subset pointers */
    num_irr_waves = index_irr_end - index_irr_beg + 1;
@@ -1917,7 +1961,7 @@ static int compute_rad_mean_ratio (Wavecal_Type *wct)
    Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    double sum_irr, sum_rad;
-   int i;
+   size_t i;
 
    /* compute wavelength as a function of pixel index */
    if (wl->st_eval (wl, win->wave_params, win->num_wave, win->pindex, win->wave0) < 0)
@@ -2115,9 +2159,9 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    double *weight = win->weight;
    double *params = NULL;
    double scale_factor;
-   size_t num;
+   size_t i, num;
    int status = WAVECAL_FIT_ERROR;
-   int i, num_residuals, num_params, mp_status, num_good;
+   int num_residuals, num_params, mp_status, num_good;
 
    if (0 != init_window_shapefun (wct, wave))
      return WAVECAL_FIT_ERROR;
