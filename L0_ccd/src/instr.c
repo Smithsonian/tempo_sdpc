@@ -674,6 +674,13 @@ static int apply_median_filter (TP_Type *tp)
 
 static int apply_filters (TP_Type *tp)
 {
+   if ((tp->timestamp == NULL)
+       || (tp->value == NULL))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: NULL telemetry point array", __func__);
+        return -1;
+     }
+
    /* In principle, sorting should not be necessary */
    if (0 != time_sort (tp))
      return -1;
