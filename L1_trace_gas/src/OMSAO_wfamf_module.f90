@@ -978,6 +978,9 @@ CONTAINS
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating pressure", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             ! Clear the global errstat before cycling, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
              cycle
           end if
           ! Get vmr profile
@@ -985,6 +988,9 @@ CONTAINS
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             ! Clear the global errstat before cycling, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
              cycle
           end if
           ! Compute partical columns
@@ -992,6 +998,9 @@ CONTAINS
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             ! Clear the global errstat before cycling, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
              cycle
           end if
           ! Fix non-physical partial columns
@@ -1006,6 +1015,9 @@ CONTAINS
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             ! Clear the global errstat before cycling, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
              cycle
           end if
           ! Compute O3 partical columns
@@ -1013,6 +1025,9 @@ CONTAINS
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             ! Clear the global errstat before cycling, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
              cycle
           end if
           ! Fix non-physical partial columns
