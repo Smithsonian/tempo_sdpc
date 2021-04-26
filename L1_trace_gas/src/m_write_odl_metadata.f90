@@ -78,7 +78,7 @@ contains
     end type
     type(boundary_type) :: bdry
 
-    integer :: ncerr, npts
+    integer :: ncerr, npts, ninp_real
     character (len=32) :: cov_start_string, cov_end_string
 
     type (tiof_file_type) :: tio_l1obj
@@ -154,6 +154,7 @@ contains
     enddo
 
     ! Input files
+    ninp_real = 0
     do i=1,ninp
       Fil_Lun=lun_input(i)
       version = 1
@@ -165,7 +166,10 @@ contains
         return
       else
         j = index( buf, '/', BACK = .true. ) + 1
-        supflnm(i) = trim( buf( j:) )
+        if (trim(adjustl(buf(j:))) .ne. 'NONE') then
+          ninp_real = ninp_real + 1
+          supflnm(ninp_real) = trim( buf( j:) )
+        endif
       endif
     enddo
 
@@ -200,7 +204,7 @@ contains
     enddo
 
     returnstatus = pgs_MET_setmultiAttr_s(GROUPS(INVENTORY),"InputPointer", &
-         ninp,InputPnt)
+         ninp_real,InputPnt)
 
     if (returnstatus /= 0) then
       call tell_error(tell_io_error, &
@@ -225,7 +229,7 @@ contains
     ! do this first since pgs_met functions apparently leave nc file open!
     call md_open (outfilnm, errstat)
     call md_write_geo_bounds (bdry % lons, bdry % lats, errstat)
-    call md_write_inputs (ninp, InputPnt, errstat)
+    call md_write_inputs (ninp_real, InputPnt, errstat)
     call md_write_prodid (outfilnm, versionid, errstat)
     call md_close (errstat)
 
