@@ -355,7 +355,7 @@ CONTAINS
     ! Write AMFs, AMF diagnosting, and AMF-adjusted
     ! columns and column uncertainties to output file
     ! -----------------------------------------------
-    IF (do_write) then
+    IF (do_write .and. amf_wvl > 0.0) then
       call tell_log (1, 'amf_calculation: write amf correction to L2 file')
       nz = clim_pres_nz (cpt)
       allocate (eta_a(nz), eta_b(nz))

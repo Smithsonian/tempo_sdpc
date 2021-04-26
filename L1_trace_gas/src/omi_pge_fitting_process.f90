@@ -163,7 +163,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        xtrack_radiance_reference_loop
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   !USE OMSAO_errstat_module
-  USE OMSAO_wfamf_module, ONLY: read_climatology_dimensions, CmETA
+  USE OMSAO_wfamf_module, ONLY: read_climatology_dimensions, CmETA, amf_wvl
   use output_tools, only : create_output_file, close_output_file, &
        write_fitting_statistics, write_common_mode, write_wavcal_output, &
        write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics, &
@@ -382,9 +382,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   write(logmsg,'(a,i4,a)')'omi_fitting: n_comm_wvl=',n_comm_wvl, &
        ', calling create_output_file: '//trim(l2_filename_netcdf)
   call tell_log (1, logmsg)
-  call create_output_file (l2_filename_netcdf, pge_idx, ntimes_rad, nxtrack_rad, CmETA, &
-       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
-       errstat)
+  call create_output_file (l2_filename_netcdf, pge_idx, amf_wvl, &
+                           ntimes_rad, nxtrack_rad, CmETA, &
+                           n_comm_wvl, nwavel_max, max_rs_idx, &
+                           n_fitvar_rad, errstat)
   if (errstat /= 0) return
 
   call label_output_file (upper_case(molname), ecs_version_id, errstat)

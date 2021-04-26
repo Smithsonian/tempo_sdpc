@@ -590,12 +590,13 @@ contains
 
   end subroutine append_diagnostic_vars
 
-  subroutine append_column_vars (obj, dimlist, errstat)
+  subroutine append_column_vars (obj, dimlist, amf_wvl, errstat)
     use OMSAO_indices_module, only : pge_no2_idx, pge_hcho_idx
     implicit none
 
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
+    real (kind=r8), intent(in) :: amf_wvl
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist_geo, varlist_qa
@@ -662,25 +663,27 @@ contains
     endif
 
     ! data field variables with optional attribute lists:
-    call tiof_varlist_append (varlist_with_vertical_column, errstat, &
-                              var_vertical_column, &
-                              nf90_double, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = trim(target_molecule % name)//" vertical column", &
-                              units = "molec/cm^2", &
-                              comment = trim(target_molecule % name)// &
-                              " vertical column determined from fitted slant column"// &
-                              " and total AMF calculated from surface to top of atmosphere", &
-                              fillvalue = fill_double, &
-                              attlist=att_coord)
-    call tiof_varlist_append (varlist_with_vertical_column, errstat, &
-                              var_vertical_column_error, &
-                              nf90_double, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = trim(target_molecule % name)//" vertical column uncertainty", &
-                              units = "molec/cm^2", &
-                              fillvalue = fill_double, &
-                              attlist=att_coord)
+    if (amf_wvl > 0.0) then
+      call tiof_varlist_append (varlist_with_vertical_column, errstat, &
+                                var_vertical_column, &
+                                nf90_double, &
+                                dimids = dimids_xtrack_step,  &
+                                long_name = trim(target_molecule % name)//" vertical column", &
+                                units = "molec/cm^2", &
+                                comment = trim(target_molecule % name)// &
+                                " vertical column determined from fitted slant column"// &
+                                " and total AMF calculated from surface to top of atmosphere", &
+                                fillvalue = fill_double, &
+                                attlist=att_coord)
+      call tiof_varlist_append (varlist_with_vertical_column, errstat, &
+                                var_vertical_column_error, &
+                                nf90_double, &
+                                dimids = dimids_xtrack_step,  &
+                                long_name = trim(target_molecule % name)//" vertical column uncertainty", &
+                                units = "molec/cm^2", &
+                                fillvalue = fill_double, &
+                                attlist=att_coord)
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_main_dqf, &
@@ -979,6 +982,7 @@ contains
   !> Create netCDF format Level 2 product file
   !! @param[in] filename   netCDF output file name
   !! @param[in] pge_idx    Index of target molecule [integer]
+  !! @param[in] amf_wvl    AMF wavelength (>0 when AMF vars are present)
   !! @param[in] num_steps  Number of scan steps
   !! @param[in] num_xtrack  Number of cross-track pixels
   !! @param[in] num_swlevels  Number of height levels used in AMF climatologies
@@ -987,13 +991,15 @@ contains
   !! @param[in] max_rs_idx  Maximum reference spectrum index
   !! @param[in] n_fitvar_rad  Number of radiance spectrum fit variables
   !! @param[inout]  errstat  Error status variable
-  subroutine create_output_file (filename, pge_idx, num_steps, num_xtrack, num_swlevels, &
-                                 n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad, &
-                                 errstat)
+  subroutine create_output_file (filename, pge_idx, amf_wvl, &
+                                 num_steps, num_xtrack, num_swlevels, &
+                                 n_comm_wvl, nwavel_max, max_rs_idx, &
+                                 n_fitvar_rad, errstat)
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=i4), intent(in) :: pge_idx, num_steps, num_xtrack, num_swlevels, &
       n_comm_wvl, nwavel_max, max_rs_idx, n_fitvar_rad
+    real (kind=r8), intent(in) :: amf_wvl
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1054,7 +1060,7 @@ contains
     ! Define variables roughly in order of importance to aid users
     ! viewing the file with an application like ncdump
 
-    call append_column_vars (obj, dimlist, errstat)
+    call append_column_vars (obj, dimlist, amf_wvl, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
                        "create_output_file: defining variables in "//trim(filename), &
@@ -1962,9 +1968,11 @@ contains
                         convergence_flag(1:nxtrack,1:ntimes), errstat)
     call tiof_pop_group (obj, errstat)
 
-    call tiof_push_group (obj, tg_grp_support_data, errstat)
-    call tiof_get2d_r8 (obj, var_amf, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
-    call tiof_pop_group (obj, errstat)
+    if (yn_scat_weights) then
+      call tiof_push_group (obj, tg_grp_support_data, errstat)
+      call tiof_get2d_r8 (obj, var_amf, [0,0], [ntimes, nxtrack], amf(1:nxtrack,1:ntimes), errstat)
+      call tiof_pop_group (obj, errstat)
+    endif
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, "in read_column_results", errstat)
