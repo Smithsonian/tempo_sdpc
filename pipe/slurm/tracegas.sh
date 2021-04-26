@@ -48,9 +48,9 @@ tar_product_to_dest_dir()
 
    cd $run_dir
 
-   /bin/rm $work_dir/${rad_basename}.nc
-   /bin/rm $work_dir/${irr_basename}.nc
-   /bin/rm $work_dir/$cld_file
+   /bin/rm -f $work_dir/${rad_basename}.nc
+   /bin/rm -f $work_dir/${irr_basename}.nc
+   /bin/rm -f $work_dir/$cld_file
 
    work_dir_tarfile="${rad_basename}.${work_dir}.tar"
    granule_dir=$(basename $run_dir)
