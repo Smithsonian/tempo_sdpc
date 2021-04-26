@@ -32,7 +32,7 @@ private define applicable_config_file (cfg_case, product_list)
 
 private variable Config_File_Cases =
   array_map (Struct_Type, &config_file_case,
-             [{"${SDPC_ROOT}/etc/l3.cfg"$,     {"CLDRR", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT"}},
+             [{"${SDPC_ROOT}/etc/l3.cfg"$,     {"CLDRR", "CLDO4", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT"}},
               {"${SDPC_ROOT}/etc/l3_o3p.cfg"$, {"O3PROF"}}
              ]);
 

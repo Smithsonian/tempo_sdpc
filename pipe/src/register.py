@@ -12,7 +12,7 @@ from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 
 Radiance_Files = ["RAD_L1a", "RAD_L1"]
-Radiance_Products = ["CLDRR", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
+Radiance_Products = ["CLDRR", "CLDO4", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
 

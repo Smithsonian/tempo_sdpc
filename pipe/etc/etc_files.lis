@@ -21,6 +21,9 @@ trace_gas/SIMPLE_H2O.MCF
 trace_gas/control.NO2.in
 trace_gas/default.pcf.NO2.in
 trace_gas/SIMPLE_NO2.MCF
+trace_gas/control.O2O2.in
+trace_gas/default.pcf.O2O2.in
+trace_gas/SIMPLE_O2O2.MCF
 cloud/default.pcf.in
 cloud/SIMPLE.MCF
 o3_total/default.pcf.in
@@ -49,6 +52,7 @@ metadata/TEMPO.yaml
 metadata/TEMPO_IRR_L1.yaml
 metadata/TEMPO_RAD_L1.yaml
 metadata/TEMPO_CLDRR_L2.yaml
+metadata/TEMPO_CLDO4_L2.yaml
 metadata/TEMPO_BRO_L2.yaml
 metadata/TEMPO_CHOCHO_L2.yaml
 metadata/TEMPO_HCHO_L2.yaml
@@ -57,6 +61,7 @@ metadata/TEMPO_NO2_L2.yaml
 metadata/TEMPO_O3PROF_L2.yaml
 metadata/TEMPO_O3TOT_L2.yaml
 metadata/TEMPO_CLDRR_L3.yaml
+metadata/TEMPO_CLDO4_L3.yaml
 metadata/TEMPO_BRO_L3.yaml
 metadata/TEMPO_CHOCHO_L3.yaml
 metadata/TEMPO_HCHO_L3.yaml
