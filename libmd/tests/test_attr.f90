@@ -8,7 +8,7 @@ program test_attr
   implicit none
 
   !Fixed inputs
-  integer (kind=4), parameter :: nxtrack=21, nstep=11, ninp=5, version=1
+  integer (kind=4), parameter :: nxtrack=21, nstep=11, ninp=6, version=1
   character (len=32), dimension(ninp) :: inputs
   character (len=16), parameter :: l2file='test_attr.nc', &
        nlfile='boilerplate.nml'
@@ -66,9 +66,10 @@ program test_attr
   ! set input files
   inputs(1)='l1_radiance.nc'
   inputs(2)='l1_irradiance.nc'
-  inputs(3)='lookup.txt        '
-  inputs(4)='reference_table.nc'
-  inputs(5)='   otherstuff.dat '
+  inputs(3)='  NONE '
+  inputs(4)='lookup.txt        '
+  inputs(5)='reference_table.nc'
+  inputs(6)='   otherstuff.dat '
 
   ! set up lat, lon arrays
   do n=1,nstep

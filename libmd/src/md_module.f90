@@ -148,6 +148,7 @@ contains
     input_list=''
     input_list = trim(adjustl(inputs(1)))
     do n=2,ninp
+      if (trim(adjustl(inputs(n))) == 'NONE') cycle
       input_list = trim(input_list)//', '//trim(adjustl(inputs(n)))
     enddo
 
