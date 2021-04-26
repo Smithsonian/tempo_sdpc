@@ -728,10 +728,12 @@ return_status:
 }
 
 static TIO_Scan_Ident_Type *
-read_scan_ident (char **input_files, int num_input_files, const char *name)
+read_scan_ident (char **input_files, int num_input_files, const char *name, int *reject)
 {
    TIO_Scan_Ident_Type *lst = NULL;
    int i;
+
+   *reject = 0;
 
    if (NULL == (lst = TIO_new_scan_ident ()))
      return NULL;
@@ -750,9 +752,10 @@ read_scan_ident (char **input_files, int num_input_files, const char *name)
                goto free_and_return;
              if (0 != strcasecmp (buf, name))
                {
-                  Tell_verror (TELL_APPLICATION_ERROR,
-                               "%s: product_type mismatch: expected %s got %s",
-                               __func__, name, buf);
+                  tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: product_type mismatch: expected %s got %s",
+                             __func__, name, buf);
+                  *reject = 1;
+                  TIO_close (ncid);
                   goto free_and_return;
                }
           }
@@ -881,12 +884,16 @@ int main (int argc, char **argv)
 
    for (prod = product_list; prod != NULL; prod = prod->next)
      {
+        int reject;
         /* Don't overwrite an existing file */
         if (0 == access (prod->outfile, F_OK))
           continue;
         if ((expect_scan_ident != 0)
-            && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name))))
-          goto return_status;
+            && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name, &reject))))
+          {
+             if (reject) continue;
+             goto return_status;
+          }
         if (0 != read_processing_version (prod->input_files[0], &prod->processing_version))
           goto return_status;
         tell_vlog (TELL_MSGTYPE_INFO, 1, "making L3 product: %s", prod->name);
