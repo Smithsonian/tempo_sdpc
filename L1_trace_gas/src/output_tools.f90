@@ -1040,7 +1040,9 @@ contains
     call tiof_dimlist_append (dimlist, tg_dim_step, num_steps, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_xtrack, num_xtrack, errstat)
     call tiof_dimlist_append (dimlist, tg_dim_corner, 4, errstat)
-    call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
+    if (yn_scat_weights) then
+      call tiof_dimlist_append (dimlist, tg_dim_swt_level, num_swlevels, errstat)
+    endif
     call tiof_def_dims (obj, dimlist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
