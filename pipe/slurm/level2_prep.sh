@@ -397,6 +397,10 @@ run_cloud_o4()
   # First derive O2O2 slant column using the trace gas code:
   derive_o2o2_slant_column $cld_o4_basename
 
+  # Change labels O2O2 => CLDO4 in both .nc and .met files
+  fix_cldo4_metadata.py "${cld_o4_basename}.nc"
+  sed -i -e s,TEMPO_O2O2_L2,TEMPO_CLDO4_L2,g "${cld_o4_basename}.nc.met"
+
   # TBD: Add cloud fields to CLDO4 product file:
 
   tar_l2_cloud_to_dest "$cld_o4_dir" "$l2_out_dir"
