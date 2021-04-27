@@ -397,14 +397,14 @@ static int create_result_file (const char *path, const char *group_name,
      goto close_and_return;
 
    /* wavecal parameters */
-   if (0 != TIO_def_var (ncid, TEMPO_VAR_WAVECAL_PARAM, TIO_FLOAT, 3, dimids_wavecal_params, &varid))
+   if (0 != TIO_def_var (ncid, TEMPO_VAR_WAVECAL_PARAM, TIO_DOUBLE, 3, dimids_wavecal_params, &varid))
      goto close_and_return;
    if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
        ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
        ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
      goto close_and_return;
 
-   if (0 != TIO_def_var (ncid, "bestnorm", TIO_FLOAT, 2, dimids_wavecal_params, &varid))
+   if (0 != TIO_def_var (ncid, "bestnorm", TIO_DOUBLE, 2, dimids_wavecal_params, &varid))
      goto close_and_return;
 
    if (0 != TIO_def_var (ncid, TEMPO_DIM_STEP, TIO_INT, 1, &dimids_wavecal_params[0], &varid))
@@ -551,11 +551,11 @@ static int def_diagnostic_vars (int grp, const Wavecal_Result_Type *wavecal_resu
    dimids[1] = dimid_xtrack;
    dimids[2] = dimid_wavelen;
 
-   if ((0 != TIO_def_var (grp, dimname_wavelen, TIO_FLOAT, 3, dimids, &varid))
-       || (0 != TIO_def_var (grp, "model", TIO_FLOAT, 3, dimids, &varid))
-       || (0 != TIO_def_var (grp, "spec_scaled", TIO_FLOAT, 3, dimids, &varid))
-       || (0 != TIO_def_var (grp, "weight", TIO_FLOAT, 3, dimids, &varid))
-       || (0 != TIO_def_var (grp, "residuals", TIO_FLOAT, 3, dimids, &varid)))
+   if ((0 != TIO_def_var (grp, dimname_wavelen, TIO_DOUBLE, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "model", TIO_DOUBLE, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "spec_scaled", TIO_DOUBLE, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "weight", TIO_DOUBLE, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "residuals", TIO_DOUBLE, 3, dimids, &varid)))
      {
         return -1;
      }
