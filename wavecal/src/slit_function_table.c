@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <float.h>
 #include <math.h>
 
 #include <tell.h>
 #include <tio.h>
 #include <tio_template.h>
 
+#include "slit_function_asg.h"
 #include "util.h"
 
 typedef struct
@@ -23,6 +25,7 @@ Table_Var_Type;
    Table_Var_Type width; \
    Table_Var_Type power; \
    Table_Var_Type asym; \
+   double *norm; \
    int num_params;
 #include "slit_function_table.h"
 
@@ -40,6 +43,7 @@ static void sf_table_free (SF_Table_Type *stt)
    free_table_var (&stt->width);
    free_table_var (&stt->power);
    free_table_var (&stt->asym);
+   FREE(stt->norm);
    FREE(stt);
 }
 
@@ -57,9 +61,49 @@ static int stt_size (const SF_Table_Type *stt, int *num_xtrack, int *num_waves, 
    return 0;
 }
 
-static int stt_get_params (const SF_Table_Type *stt, int xtrack, double wave0, double *params)
+static int compute_sf_table_norms (SF_Table_Type *stt)
 {
-   double *waves_x, *width_x, *power_x, *asym_x;
+   Table_Var_Type *tv_width = &stt->width;
+   double *width = stt->width.var;
+   double *power = stt->power.var;
+   double *asym = stt->asym.var;
+   size_t i, n = tv_width->num_xtrack * tv_width->num_waves;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "computing slit function table norms [start]");
+
+   if (NULL == (stt->norm = (double *)MALLOC (n * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < n; i++)
+     {
+        double norm, params[3];
+        params[0] = width[i];
+        params[1] = power[i];
+        params[2] = asym[i];
+        if (0 != asg_compute_norm (params, &norm))
+          {
+             /* Returning a value <= 0 would eventually trigger another attempt
+              * to compute this, which would again fail.  To avoid that, we must
+              * return a positive value.  Since we divide by the norm, returning
+              * DBL_MAX would give zero contribution from this, while returning 1.0
+              * is like hoping the profile is already normalized, even though we
+              * failed to compute it. */
+             norm = DBL_MAX;
+          }
+        stt->norm[i] = norm;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 0, "computing slit function table norms [done]");
+
+   return 0;
+}
+
+static int stt_get_params (const SF_Table_Type *stt, int xtrack, double wave0, double *params, double *norm)
+{
+   double *waves_x, *width_x, *power_x, *asym_x, *norm_x;
    int x_offset, num_waves;
 
    if (xtrack < 0 || xtrack >= stt->waves.num_xtrack)
@@ -75,18 +119,21 @@ static int stt_get_params (const SF_Table_Type *stt, int xtrack, double wave0, d
    width_x = stt->width.var + x_offset;
    power_x = stt->power.var + x_offset;
    asym_x  = stt->asym.var  + x_offset;
+   norm_x  = stt->norm + x_offset;
 
    if (wave0 < waves_x[0])
      {
         params[0] = width_x[0];
         params[1] = power_x[0];
         params[2] =  asym_x[0];
+        *norm = norm_x[0];
      }
    else if (wave0 >= waves_x[num_waves-1])
      {
         params[0] = width_x[num_waves-1];
         params[1] = power_x[num_waves-1];
         params[2] =  asym_x[num_waves-1];
+        *norm = norm_x[num_waves-1];
      }
    else
      {
@@ -96,6 +143,7 @@ static int stt_get_params (const SF_Table_Type *stt, int xtrack, double wave0, d
         params[0] = width_x[k] * frac + width_x[k+1] * (1.0 - frac);
         params[1] = power_x[k] * frac + power_x[k+1] * (1.0 - frac);
         params[2] =  asym_x[k] * frac +  asym_x[k+1] * (1.0 - frac);
+        *norm     =  norm_x[k] * frac +  norm_x[k+1] * (1.0 - frac);
      }
 
    return 0;
@@ -260,6 +308,11 @@ SF_Table_Type *sf_table_open (const char *sf_file, const char *band_name)
      status = read_sf_table (grp, stt);
    else
      status = read_irr_sf_table (grp, stt);
+
+   if (status == 0)
+     {
+        status = compute_sf_table_norms (stt);
+     }
 
    if (status)
      {

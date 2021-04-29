@@ -17,13 +17,13 @@ typedef struct Slit_Function_Type Slit_Function_Type;
 
 /** Function interface for evaluating a slit function
  */
-typedef int SFT_Eval_Type (const double *x, size_t nx, double *params,
+typedef int SFT_Eval_Type (const double *x, size_t nx, double *params, double norm,
                            double *value, double *param_step,
                            double *param_derivs[SFT_MAX_NUM_PARAMS]);
 
 /** Function interface for retrieving wavelength[k] slit function parameters
  */
-typedef int SFT_Param_Type (int wave_index, int num_pars, double *pars, void *cl);
+typedef int SFT_Param_Type (int wave_index, int num_pars, double *pars, double *norm, void *cl);
 
 /** Free storage associated with \a Slit_Function_Type structure
  */

@@ -45,7 +45,7 @@ static Norm_Cache_Type Norm_Cache =
    61*32   /* 32 copies of the 61-point Gauss-Kronod rule */
 };
 
-static int update_cached_asg_norm (double *params, double *norm)
+int asg_compute_norm (double *params, double *norm)
 {
    Norm_Cache_Type *nc = &Norm_Cache;
    gsl_function fptr = {0};
@@ -118,14 +118,18 @@ static int update_cached_asg_norm (double *params, double *norm)
    return 0;
 }
 
-static int asg_normed (const double *x, size_t nx, double *params, double *value)
+static int asg_normed (const double *x, size_t nx, double *params, double asg_area, double *value)
 {
-   double asg_area;
    size_t i;
 
-   /* ASG normalized to have unit area within finite integration limits */
-   if (0 != update_cached_asg_norm (params, &asg_area))
-     return -1;
+   /* ASG normalized to have unit area within finite integration limits.
+    * If we're given a valid norm, use it.  Otherwise, compute it.
+    */
+   if (asg_area < 0.0)
+     {
+        if (0 != asg_compute_norm (params, &asg_area))
+          return -1;
+     }
 
    for (i = 0; i < nx; i++)
      {
@@ -135,14 +139,14 @@ static int asg_normed (const double *x, size_t nx, double *params, double *value
    return 0;
 }
 
-int asg_normed_plus_derivs (const double *x, size_t nx, double *params,
+int asg_normed_plus_derivs (const double *x, size_t nx, double *params, double norm,
                             double *value,
                             double *param_step,
                             double *param_derivs[3])
 {
    int j;
 
-   if (0 != asg_normed (x, nx, params, value))
+   if (0 != asg_normed (x, nx, params, norm, value))
      return -1;
 
    /* optionally compute derivatives */
@@ -161,7 +165,7 @@ int asg_normed_plus_derivs (const double *x, size_t nx, double *params,
         memcpy ((char *)par_copy, (char *)params, 3 * sizeof(double));
         par_copy[j] += param_step[j];
 
-        if (0 != asg_normed (x, nx, par_copy, deriv))
+        if (0 != asg_normed (x, nx, par_copy, norm, deriv))
           return -1;
 
         for (i = 0; i < nx; i++)
@@ -186,6 +190,7 @@ int main (void)
    double *derivs[3];
    double xb = -3.0;
    double xe = +3.0;
+   double norm = -1.0;
    size_t i, nx = NX;
 
    for (i = 0; i < nx; i++)
@@ -197,7 +202,7 @@ int main (void)
    derivs[1] = dvdp1;
    derivs[2] = dvdp2;
 
-   if (0 != asg_normed_plus_derivs (x, nx, params, value, param_step, derivs))
+   if (0 != asg_normed_plus_derivs (x, nx, params, norm, value, param_step, derivs))
      return 1;
 
    for (i = 0; i < nx; i++)

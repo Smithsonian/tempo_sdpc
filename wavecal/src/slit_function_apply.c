@@ -158,10 +158,10 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
 
    for (k = m; k < num_waves + m; k++)
      {
-        double s, par[3];
+        double s, par[3], norm;
         int j;
 
-        if (0 != sf_params (k-m, sft->num_params, par, cl))
+        if (0 != sf_params (k-m, sft->num_params, par, &norm, cl))
           {
              tell_verror (TELL_RUNTIME_ERROR, "%s: retrieving parameters for wavelength index = %d",
                           __func__, k-m);
@@ -170,7 +170,7 @@ int sft_apply (Slit_Function_Type *sft, SFT_Param_Type *sf_params, void *cl,
 
         if (cached_params_differ (par, prev_par, sft->num_params, DBL_EPSILON))
           {
-             if (0 != sft->sf_eval (sft->x, sft->num_sf, par, sft->sf, sft->param_step, sft->sf_derivs))
+             if (0 != sft->sf_eval (sft->x, sft->num_sf, par, norm, sft->sf, sft->param_step, sft->sf_derivs))
                return -1;
 
              memcpy ((char *)prev_par, (char *)par, sft->num_params * sizeof(double));

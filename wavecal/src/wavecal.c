@@ -1728,7 +1728,7 @@ typedef struct
 }
 SF_Param_Lookup_Type;
 
-static int get_sf_params (int wave_index, int num_pars, double *pars, void *cl)
+static int get_sf_params (int wave_index, int num_pars, double *pars, double *norm, void *cl)
 {
    SF_Param_Lookup_Type *lt = (SF_Param_Lookup_Type *)cl;
    SF_Table_Type *stt = lt->sf_table;
@@ -1736,11 +1736,18 @@ static int get_sf_params (int wave_index, int num_pars, double *pars, void *cl)
 
    if ((stt != NULL) && (lt->mode == SF_MODE_APPLY))
      {
-        status = stt->stt_get_params (stt, lt->xtrack, lt->waves[wave_index], pars);
+        /* When we have a lookup table, we can (optionally) pre-compute the norms and
+         * then interpolate in wavelength.  If the norms were not pre-computed, this
+         * can return norm<0 and that will trigger numerical integration to compute
+         * the norm.  The latter approach is more accurate, but is extremely slow.
+         */
+        status = stt->stt_get_params (stt, lt->xtrack, lt->waves[wave_index], pars, norm);
      }
    else
      {
         memcpy ((char *)pars, (char *)lt->params, num_pars * sizeof(double));
+        /* norm < 0 will trigger numerical integration to compute the norm. */
+        *norm = -1.0;
         status = 0;
      }
 
@@ -1950,7 +1957,8 @@ static int mpfit_objective_function
           }
      }
 
-   if (0) write_statistic (stderr, fvec, m);
+   if (tell_get_log_level (TELL_MSGTYPE_INFO) > 2)
+     write_statistic (stderr, fvec, m);
 
    return 0;
 }

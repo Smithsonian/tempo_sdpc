@@ -7,7 +7,7 @@ struct SF_Table_Type
 {
    int (*stt_close)(SF_Table_Type *);
    int (*stt_size) (const SF_Table_Type *, int *num_xtrack, int *num_waves, int *num_params);
-   int (*stt_get_params) (const SF_Table_Type *, int xtrack, double wave0, double *params);
+   int (*stt_get_params) (const SF_Table_Type *, int xtrack, double wave0, double *params, double *norm);
 
 #ifdef SLIT_FUNCTION_TABLE_PRIVATE_DATA
    SLIT_FUNCTION_TABLE_PRIVATE_DATA
