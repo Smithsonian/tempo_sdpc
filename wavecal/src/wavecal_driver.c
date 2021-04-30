@@ -1102,7 +1102,8 @@ int main (int argc, char **argv)
 
              progress++;
              (void) gettimeofday (&tv1, NULL);
-             if (tv1.tv_sec - tv0.tv_sec > 60.0)
+             if ((progress == 1) || (progress == num_expected_results)
+                 || (tv1.tv_sec - tv0.tv_sec > 60.0))
                {
                   tell_vinfo (0, "finished %d/%d", progress, num_expected_results);
                   tv0 = tv1;  /* struct copy */
