@@ -1957,8 +1957,7 @@ static int mpfit_objective_function
           }
      }
 
-   if (tell_get_log_level (TELL_MSGTYPE_INFO) > 2)
-     write_statistic (stderr, fvec, m);
+   if (0) write_statistic (stderr, fvec, m);
 
    return 0;
 }

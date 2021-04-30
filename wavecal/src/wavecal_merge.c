@@ -74,10 +74,11 @@ static int perform_merge (int ncid_target, const char *file)
    TIO_Var_Info_Type info = {0};
    char group_name[TIO_MAX_NAME_LEN] = {0};
    int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;
-   int step_dimlen_src, step_dimid, xtrack_dimid, channel_dimid, dest_varid;
-   int have_sf;
+   int step_dimlen_src, xtrack_dimlen_src;
+   int step_dimid, xtrack_dimid, channel_dimid, dest_varid;
+   int have_sf, start0, count0, xtrack0;
    int start[3], count[3];
-   size_t step_dimlen, xtrack_dimlen, channel_dimlen, xtrack_dimlen_src;
+   size_t step_dimlen, xtrack_dimlen, channel_dimlen;
    size_t params_dimlen_src, len_params, len_slab;
    size_t channel_dimlen_src;
    size_t i;
@@ -141,13 +142,6 @@ static int perform_merge (int ncid_target, const char *file)
         goto close_and_return;
      }
 
-   if (xtrack_dimlen != xtrack_dimlen_src)
-     {
-        tell_vwarn (0, "dimension mismatch (xtrack) source:%ld target:%ld",
-                    xtrack_dimlen_src, xtrack_dimlen);
-        goto close_and_return;
-     }
-
    /* read params */
 
    len_params = step_dimlen_src * xtrack_dimlen_src * params_dimlen_src;
@@ -168,13 +162,19 @@ static int perform_merge (int ncid_target, const char *file)
    start[1] = 0;
    start[2] = 0;
    count[0] = info.dimlens[0];
-   count[1] = xtrack_dimlen_src;
+   count[1] = info.dimlens[1];
    count[2] = params_dimlen_src;
 
    if ((0 != TIO_get_var_section (ncid_src, TEMPO_DIM_STEP, start, count,
                                   TIO_INT, mirror_step))
        ||(0 != TIO_get_var_section (ncid_src, params_varname, start, count,
                                     TIO_FLOAT, wavecal_params)))
+     goto close_and_return;
+
+   start0 = 0;
+   count0 = 1;
+   if (0 != TIO_get_var_section (ncid_src, TEMPO_DIM_XTRACK, &start0, &count0,
+                                 TIO_INT, &xtrack0))
      goto close_and_return;
 
    if ((0 != tio_inq_varid (ncid_src, params_varname, &varid))
@@ -189,7 +189,7 @@ static int perform_merge (int ncid_target, const char *file)
         start[1] = 0;
         start[2] = 0;
         count[0] = info.dimlens[0];
-        count[1] = xtrack_dimlen_src;
+        count[1] = info.dimlens[1];
         count[2] = channel_dimlen_src;
 
         if ((0 != TIO_get_var_section (ncid_src, "sf_hw1e", start, count, TIO_FLOAT, sf->hw1e))
@@ -244,7 +244,7 @@ static int perform_merge (int ncid_target, const char *file)
         float *param_slab_i = wavecal_params + i * len_slab;
 
         start[0] = mirror_step[i];
-        start[1] = 0;
+        start[1] = xtrack0;
         start[2] = 0;
         count[0] = 1;
         count[1] = xtrack_dimlen_src;
@@ -257,7 +257,7 @@ static int perform_merge (int ncid_target, const char *file)
         if (have_sf)
           {
              start[0] = mirror_step[i];
-             start[1] = 0;
+             start[1] = xtrack0;
              start[2] = 0;
              count[0] = 1;
              count[1] = xtrack_dimlen_src;

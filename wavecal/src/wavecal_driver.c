@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <limits.h>
+#include <sys/time.h>
 
 #include <gsl/gsl_errno.h>
 #include <libconfig.h>
@@ -45,7 +46,8 @@ static void usage (void)
    fprintf (stderr, "   -h | --help                Print this usage message\n");
    fprintf (stderr, "   -d | --debug               Write diagnostic information to output file\n");
    fprintf (stderr, "   -a | --adjust              Apply wavelength-shift adjustment\n");
-   fprintf (stderr, "   -b | --block i:num         Mirror step blocking specification\n");
+   fprintf (stderr, "   -S | --s_block i:num       Mirror step blocking specification\n");
+   fprintf (stderr, "   -X | --x_block i:num       Xtrack blocking specification\n");
    fprintf (stderr, "   -m | --mirror STEP         Mirror step index\n");
    fprintf (stderr, "   -x | --xtrack N            Cross-track pixel index, 0 is northernmost\n");
    fprintf (stderr, "   -w | --wavepar FILE        Output file for wavelength parameters\n");
@@ -365,24 +367,31 @@ static int write_fit_details (FILE *fp, int xtrack,
 }
 
 static int create_result_file (const char *path, const char *group_name,
-                               size_t beg_step, size_t end_step, size_t step_dimlen,
-                               size_t num_xtrack, size_t num_spectral_channels,
+                               int beg_step, int end_step, size_t step_dimlen,
+                               int beg_xtrack, int end_xtrack, size_t xtrack_dimlen,
+                               size_t num_spectral_channels,
                                int start_pix, int num_pix, int num_coefs,
                                int fitting_sf_params)
 {
    int ncid, varid, start, count;
    int dimids_wavecal_params[3], dimids_sf_params[3];
    size_t params_dimlen = num_coefs;
-   size_t i, num_steps = end_step - beg_step;
+   size_t num_steps = end_step - beg_step;
+   size_t num_xtrack = end_xtrack - beg_xtrack;
    int max_num_steps = step_dimlen;
+   int max_num_xtrack = xtrack_dimlen;
    int *steps = NULL;
+   int *xtracks = NULL;
+   int i;
 
    if (0 != TIO_create (path, NC_NETCDF4, &ncid))
      return -1;
 
    if ((0 != TIO_put_att (ncid, NC_GLOBAL, "group_name", TIO_CHAR,
                           strlen(group_name), group_name))
-       || (0 != TIO_put_att (ncid, NC_GLOBAL, "mirror_step_dimlen", TIO_INT, 1, &max_num_steps)))
+       || (0 != TIO_put_att (ncid, NC_GLOBAL, "mirror_step_dimlen", TIO_INT, 1, &max_num_steps))
+       || (0 != TIO_put_att (ncid, NC_GLOBAL, "xtrack_dimlen", TIO_INT, 1, &max_num_xtrack))
+      )
      goto close_and_return;
 
    if ((0 != TIO_def_dim (ncid, TEMPO_DIM_STEP, num_steps, &dimids_wavecal_params[0]))
@@ -409,6 +418,8 @@ static int create_result_file (const char *path, const char *group_name,
 
    if (0 != TIO_def_var (ncid, TEMPO_DIM_STEP, TIO_INT, 1, &dimids_wavecal_params[0], &varid))
      goto close_and_return;
+   if (0 != TIO_def_var (ncid, TEMPO_DIM_XTRACK, TIO_INT, 1, &dimids_wavecal_params[1], &varid))
+     goto close_and_return;
 
    /* slit-function parameters */
    if (fitting_sf_params)
@@ -419,6 +430,7 @@ static int create_result_file (const char *path, const char *group_name,
           goto close_and_return;
      }
 
+   /* Write step coordinate variable */
    if (NULL == (steps = (int *)MALLOC (num_steps * sizeof(int))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -437,10 +449,31 @@ static int create_result_file (const char *path, const char *group_name,
      goto close_and_return;
 
    FREE(steps);
+
+   /* Write xtrack coordinate variable */
+   if (NULL == (xtracks = (int *)MALLOC (num_xtrack * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   for (i = beg_xtrack; i < end_xtrack; i++)
+     {
+        xtracks[i-beg_xtrack] = i;
+     }
+
+   start = 0;
+   count = num_xtrack;
+
+   if (0 != TIO_put_var_section (ncid, TEMPO_DIM_XTRACK, &start, &count, TIO_INT, xtracks))
+     goto close_and_return;
+
+   FREE(xtracks);
    return ncid;
 
 close_and_return:
    FREE(steps);
+   FREE(xtracks);
    (void) TIO_close (ncid);
    return -1;
 }
@@ -451,7 +484,8 @@ static void fill_array (float a, float *v, int n)
    for (i = 0; i < n; i++) v[i] = a;
 }
 
-static int write_sf_params (int ncid, int beg_step, int step, int xtrack, const Wavecal_Result_Type *wavecal_result)
+static int write_sf_params (int ncid, int beg_step, int step, int beg_xtrack, int xtrack,
+                            const Wavecal_Result_Type *wavecal_result)
 {
    int num_fit = wavecal_result->num_fit;
    int start_pix = wavecal_result->start_pix;
@@ -474,7 +508,7 @@ static int write_sf_params (int ncid, int beg_step, int step, int xtrack, const 
      }
 
    start[0] = step - beg_step;
-   start[1] = xtrack;
+   start[1] = xtrack - beg_xtrack;
    start[2] = start_pix;
    count[0] = 1;
    count[1] = 1;
@@ -499,14 +533,14 @@ return_status:
    return status;
 }
 
-static int write_result (int ncid, int beg_step, int step, int xtrack,
+static int write_result (int ncid, int beg_step, int step, int beg_xtrack, int xtrack,
                          const double *final_coeff, int num_final_coeff,
                          const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
 
    start[0] = step - beg_step;
-   start[1] = xtrack;
+   start[1] = xtrack - beg_xtrack;
    start[2] = 0;
 
    count[0] = 1;
@@ -523,7 +557,7 @@ static int write_result (int ncid, int beg_step, int step, int xtrack,
                                     &wavecal_result->bestnorm))
           return -1;
 
-        if (0 != write_sf_params (ncid, beg_step, step, xtrack, wavecal_result))
+        if (0 != write_sf_params (ncid, beg_step, step, beg_xtrack, xtrack, wavecal_result))
           return -1;
      }
 
@@ -563,7 +597,7 @@ static int def_diagnostic_vars (int grp, const Wavecal_Result_Type *wavecal_resu
    return 0;
 }
 
-static int write_diagnostics (int grp, int beg_step, int step, int xtrack,
+static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, int xtrack,
                               const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
@@ -575,7 +609,7 @@ static int write_diagnostics (int grp, int beg_step, int step, int xtrack,
    (void) def_diagnostic_vars (grp, wavecal_result);
 
    start[0] = step - beg_step;
-   start[1] = xtrack;
+   start[1] = xtrack - beg_xtrack;
    start[2] = 0;
 
    count[0] = 1;
@@ -626,7 +660,8 @@ int main (int argc, char **argv)
    int grp, ncid = 0, step = -1, xtrack = -1;
    int beg_xtrack, end_xtrack;
    int beg_step, end_step;
-   int use_blocking = 0, this_block, num_blocks;
+   int use_s_blocking = 0, this_s_block, num_s_blocks;
+   int use_x_blocking = 0, this_x_block, num_x_blocks;
    int is_irradiance = 0;
    int verbose = 0;
    int ncid_result = 0;
@@ -635,7 +670,9 @@ int main (int argc, char **argv)
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
    int num_wave_params, fitting_sf_params, start_pix, num_pix;
    int num_final_coeff, final_start_pix, final_num_pix;
-   int fit_status_code;
+   int fit_status_code, residual, progress, num_expected_results;
+   struct timeval tv0 = {0};
+   struct timeval tv1 = {0};
    static struct option long_options[] =
      {
         {"help",    no_argument, 0, 'h'},
@@ -645,7 +682,8 @@ int main (int argc, char **argv)
         {"config",  required_argument, 0, 'c'},
         {"wavepar", required_argument, 0, 'w'},
         {"xtrack",  required_argument, 0, 'x'},
-        {"block",   required_argument, 0, 'b'},
+        {"s_block", required_argument, 0, 'S'},
+        {"x_block", required_argument, 0, 'X'},
         {"mirror",  required_argument, 0, 'm'},
         {"group",   required_argument, 0, 'g'},
         {0,0,0,0}
@@ -676,7 +714,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ahdb:m:c:g:x:w:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ahdS:X:m:c:g:x:w:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -723,15 +761,26 @@ int main (int argc, char **argv)
              if (1 != sscanf (optarg, "%d", &step))
                usage();
              break;
-           case 'b':
-             if (2 != sscanf (optarg, "%d:%d", &this_block, &num_blocks))
+
+           case 'S':
+             if (2 != sscanf (optarg, "%d:%d", &this_s_block, &num_s_blocks))
                usage();
-             if (this_block < 0 || num_blocks <= this_block)
+             if (this_s_block < 0 || num_s_blocks <= this_s_block)
                {
-                  fprintf (stderr, "*** wavecal_driver: invalid blocking specification\n");
+                  fprintf (stderr, "*** wavecal_driver: invalid step blocking specification\n");
                   goto return_status;
                }
-             use_blocking++;
+             use_s_blocking++;
+             break;
+           case 'X':
+             if (2 != sscanf (optarg, "%d:%d", &this_x_block, &num_x_blocks))
+               usage();
+             if (this_s_block < 0 || num_x_blocks <= this_x_block)
+               {
+                  fprintf (stderr, "*** wavecal_driver: invalid xtrack blocking specification\n");
+                  goto return_status;
+               }
+             use_x_blocking++;
              break;
           }
      }
@@ -812,15 +861,25 @@ int main (int argc, char **argv)
    channel_dimlen = spectrum_info.dimlens[2];
 
    /* If too many blocks are requested, ignore the excess */
-   if ((use_blocking != 0) &&
-       (num_blocks > (int) step_dimlen))
+   if ((use_s_blocking != 0) &&
+       (num_s_blocks > (int) step_dimlen))
      {
-        if (this_block > (int) step_dimlen)
+        if (this_s_block > (int) step_dimlen)
           {
              status = EXIT_SUCCESS;
              goto return_status;
           }
-        num_blocks = step_dimlen;
+        num_s_blocks = step_dimlen;
+     }
+   if ((use_x_blocking != 0) &&
+       (num_x_blocks > (int) xtrack_dimlen))
+     {
+        if (this_x_block > (int) xtrack_dimlen)
+          {
+             status = EXIT_SUCCESS;
+             goto return_status;
+          }
+        num_x_blocks = xtrack_dimlen;
      }
 
    if (alloc_spectrum (&spec, channel_dimlen))
@@ -853,7 +912,25 @@ int main (int argc, char **argv)
           }
      }
 
-   if (xtrack < 0)
+   if (use_x_blocking)
+     {
+        int x_block_size = xtrack_dimlen / num_x_blocks;
+        residual = xtrack_dimlen - num_x_blocks * x_block_size;
+        beg_xtrack = this_x_block * x_block_size;
+        if (residual > 0)
+          {
+             if (this_x_block < residual)
+               {
+                  x_block_size += 1;
+                  beg_xtrack += this_x_block;
+               }
+             else beg_xtrack += residual;
+          }
+        end_xtrack = beg_xtrack + x_block_size;
+        if (end_xtrack > (int) xtrack_dimlen)
+          end_xtrack = xtrack_dimlen;
+     }
+   else if (xtrack < 0)
      {
         beg_xtrack = 0;
         end_xtrack = xtrack_dimlen;
@@ -864,21 +941,21 @@ int main (int argc, char **argv)
         end_xtrack = xtrack+1;
      }
 
-   if (use_blocking)
+   if (use_s_blocking)
      {
-        int block_size = step_dimlen / num_blocks;
-        int residual = step_dimlen - num_blocks * block_size;
-        beg_step = this_block * block_size;
+        int s_block_size = step_dimlen / num_s_blocks;
+        residual = step_dimlen - num_s_blocks * s_block_size;
+        beg_step = this_s_block * s_block_size;
         if (residual > 0)
           {
-             if (this_block < residual)
+             if (this_s_block < residual)
                {
-                  block_size += 1;
-                  beg_step += this_block;
+                  s_block_size += 1;
+                  beg_step += this_s_block;
                }
              else beg_step += residual;
           }
-        end_step = beg_step + block_size;
+        end_step = beg_step + s_block_size;
         if (end_step > (int) step_dimlen)
           end_step = step_dimlen;
      }
@@ -965,7 +1042,8 @@ int main (int argc, char **argv)
    /* Create a netcdf output file to hold the wavelength grid coefficients */
    ncid_result = create_result_file (result_file, group_name,
                                      beg_step, end_step, step_dimlen,
-                                     xtrack_dimlen, channel_dimlen,
+                                     beg_xtrack, end_xtrack, xtrack_dimlen,
+                                     channel_dimlen,
                                      final_start_pix, final_num_pix, num_final_coeff,
                                      fitting_sf_params);
    if (ncid_result <= 0)
@@ -974,6 +1052,11 @@ int main (int argc, char **argv)
                      __func__, result_file);
         goto return_status;
      }
+
+   /* Try to report progress at regular intervals */
+   num_expected_results = (end_step-beg_step) * (end_xtrack-beg_xtrack);
+   progress = 0;
+   (void) gettimeofday (&tv0, NULL);
 
    for (step = beg_step; step < end_step; step++)
      {
@@ -1014,16 +1097,24 @@ int main (int argc, char **argv)
                     goto return_status;
                }
 
-             if (write_result (ncid_result, beg_step, step, xtrack, final_coeff, num_final_coeff, wrt))
+             if (write_result (ncid_result, beg_step, step, beg_xtrack, xtrack, final_coeff, num_final_coeff, wrt))
                goto return_status;
+
+             progress++;
+             (void) gettimeofday (&tv1, NULL);
+             if (tv1.tv_sec - tv0.tv_sec > 60.0)
+               {
+                  tell_vinfo (0, "finished %d/%d", progress, num_expected_results);
+                  tv0 = tv1;  /* struct copy */
+               }
 
              if (debug)
                {
-                  if (write_diagnostics (ncid_result, beg_step, step, xtrack, wrt))
+                  if (write_diagnostics (ncid_result, beg_step, step, beg_xtrack, xtrack, wrt))
                     goto return_status;
                }
 
-             if (verbose && wrt)
+             if ((verbose > 1) && (wrt != NULL))
                {
                   fprintf (stderr, "%4d %4d %12.4e %4d %4d\n", step, xtrack,
                            wrt->bestnorm, wrt->nfev, wrt->opt_status);
