@@ -63,7 +63,7 @@ int cspline_eval (Cspline_Type *ct,
         status = gsl_spline_eval_e (ct->spline, x[i], ct->acc, &yest[i]);
         if (status)
           {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: %s", __func__, gsl_strerror(status));
+             tell_vwarn (0, "%s: %s", __func__, gsl_strerror(status));
              return -1;
           }
      }

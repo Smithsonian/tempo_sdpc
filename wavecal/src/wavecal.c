@@ -1085,7 +1085,6 @@ static int interp_filepar_init (Interp_Type *interp,
 
    if (0 != TIO_open (file->path, NC_NOWRITE, &ncid))
      return -1;
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file->path);
 
    if ((0 != read_var (ncid, file->name_x, xtrack, &x, &nx))
        ||(0 != read_var (ncid, file->name_y, xtrack, &y, &ny)))
@@ -1919,7 +1918,7 @@ static int mpfit_objective_function
    const double *spec = p->spec;
    const double *weight = p->weight;
    double *model = p->model;
-   int i;
+   int i, eval_status;
 
    (void) n;
 
@@ -1927,13 +1926,19 @@ static int mpfit_objective_function
 
    if (p->wct->sf_ctrl.mode == SF_MODE_NONE)
      {
-        if (pre_convolved_forward_model (p->wct, x, model, dvec) < 0)
-          return -1;
+        eval_status = pre_convolved_forward_model (p->wct, x, model, dvec);
      }
    else
      {
-        if (convolve_forward_model (p->wct, x, model, dvec) < 0)
-          return -1;
+        eval_status = convolve_forward_model (p->wct, x, model, dvec);
+     }
+
+   if (eval_status)
+     {
+        /* Model evaluation failed, but returning a negative value
+         * would halt the optimizer. Zero the model to penalize
+         * this parameter set and keep going. */
+        memset ((char *)model, 0, m * sizeof(double));
      }
 
    for (i = 0; i < m; i++)
@@ -1947,12 +1952,19 @@ static int mpfit_objective_function
         for (k = 0; k < n; k++)
           {
              double *dvec_k = dvec[k];
-             if (dvec_k != NULL)
+             if (dvec_k == NULL)
+               continue;
+             if (eval_status == 0)
                {
                   for (i = 0; i < m; i++)
                     {
                        dvec_k[i] *= weight[i];
                     }
+               }
+             else
+               {
+                  /* Handle failure of the model evaluation */
+                  memset ((char *)dvec_k, 0, m * sizeof(double));
                }
           }
      }
