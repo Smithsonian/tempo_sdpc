@@ -34,16 +34,18 @@ bn=$(basename $INPUT_FILE)
 case "$bn" in
  *RAD* )
     adjust="--adjust"
+    block_args="--s_block $block_spec"
     config="${etc_dir}/wavecal_rad.cfg"
     ;;
 
  *IRR* )
     adjust=""
+    block_args="--x_block $block_spec"
     config="${etc_dir}/wavecal_irr.cfg"
     ;;
 esac
 
-ARGS="$adjust -g $BAND_NAME -b $block_spec -c $config"
+ARGS="$adjust $block_args -g $BAND_NAME -c $config"
 
 result_file $INPUT_FILE
 
