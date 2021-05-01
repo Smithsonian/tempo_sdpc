@@ -1,7 +1,7 @@
 sdpc_env.sh
 level1a_cachemon.cfg
+level1b_cachemon.cfg
 level2_cachemon.cfg
-level2_entry_cachemon.cfg
 level3_cachemon.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in

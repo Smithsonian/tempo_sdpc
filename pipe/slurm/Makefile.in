@@ -7,7 +7,8 @@ all:
 	@echo "targets: install"
 
 SCRIPT_FILES= level1a.sh level1a_batch.sh \
-              level2.sh level2_prep.sh level2_dispatch.sh level2_batch.sh level2_finish.sh \
+              level1b.sh level1b_batch.sh \
+              level2.sh level2_batch.sh level2_finish.sh \
               wavecal.sh wavecal_block.sh wavecal_merge.sh \
               o3tot.sh tracegas.sh \
               o3prof_batch.sh o3prof_block.sh o3prof_merge.sh o3prof_util.sh \

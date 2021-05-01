@@ -22,8 +22,7 @@ mkdirlist()
 }
 
 PIPE_DIRS="incoming/l0ccd incoming/telem \
-           L0/repro L1/repro \
-           L2/repro L2/incoming L2/inputs L2/entry \
+           L0/repro L1/repro L2/repro L2/incoming \
 	   log public_mirror"
 
 mkdirlist $SDPC_RUN_DIR_MASTER "$PIPE_DIRS"

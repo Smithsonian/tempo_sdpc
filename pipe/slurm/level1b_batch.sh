@@ -35,7 +35,7 @@
 #---------------------------------------------------------------------
 
 # exit on error
-#set -e
+set -e
 # exit upon any usage of an undefined variable
 set -u
 ulimit -s unlimited
@@ -448,14 +448,13 @@ notify_granule_ready()
   this_hostname_sans_domain=$(uname -n | cut -d. -f1)
 
   # To give notice that a granule is ready for level 1-2 processing,
-  # we store path information in an ascii file in $l2_incoming.
+  # we store path information in an ascii file in $dir.
   # The file is created as a hidden file, then renamed so that the file
   # appears as an atomic change to the directory file listing.
 cat <<EOF > $dir/.$tarfile_basename
 tar_host="$this_hostname_sans_domain"
 tar_host_file_path="${l1_out_dir}/$tarfile_basename"
 granule_arch_dir_path="$SDPC_ARCHIVE_DIR/L2/$granule_subdir"
-level2_products="$SDPC_LEVEL2_PRODUCTS"
 EOF
   /bin/mv "$dir/.$tarfile_basename" "$dir/$tarfile_basename"
 }
