@@ -3,11 +3,9 @@
 set -e
 set -u
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
 cat <<EOF
-Usage: make_tar_notice.sh <tar-file-absolute-path> <PRODUCTS> [DIR]
-   PRODUCTS = Comma-delimited list of level 2 products to be generated.
-              e.g. HCHO,NO2,O3TOT
+Usage: make_tar_notice.sh <tar-file-absolute-path> [DIR]
    DIR = [Optional] Directory to receive the output in a file
          with the same filename as the input tar file.
          When this argument is missing, the script writes to stdout.
@@ -32,8 +30,6 @@ case "$1" in
   ;;
 esac
 
-level2_products="$2"
-
 if ! test -f "$tar_host_file_path" ; then
    error_exit "cannot access file: $tar_host_file_path"
 fi
@@ -48,18 +44,17 @@ cat <<EOF
 tar_host="$this_hostname_sans_domain"
 tar_host_file_path="$tar_host_file_path"
 granule_arch_dir_path="$granule_arch_dir_path"
-level2_products="$level2_products"
 EOF
 }
 
 notice_text=$(generate_notice)
 
-if test $# -lt 3; then
+if test $# -lt 2; then
   echo "$notice_text"
   exit 0
 fi
 
-outdir="$3"
+outdir="$2"
 
 if ! test -d "$outdir" || ! test -w "$outdir" ; then
    error_exit "cannot write to directory $outdir"
