@@ -20,7 +20,7 @@
 #    RAD:  run L0_ccd, run L1_inr_prep, archive the (intermediate) result,
 #          and put the radiance granule into the INR input cache
 #
-# 3. On error, a tar file is placed in the L0/repro directory
+# 3. On error, a tar file is placed in the repro/L0 directory
 #
 #---------------------------------------------------------------------
 
@@ -53,7 +53,7 @@ file_list_file="$2"
 export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
-l0_repro_dir="$SDPC_RUN_DIR_MASTER/L0/repro"
+l0_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L0"
 l0_out_dir="$SDPC_RUN_DIR/L0/out"
 
 inr_input_cache="$SDPC_INR_RUN_DIR/Staging/Granules"

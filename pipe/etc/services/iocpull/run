@@ -11,7 +11,7 @@ fi
 # When SDPC_IOC_LIVESTREAM_DIR is set, use that, otherwise use this default
 : "${SDPC_IOC_LIVESTREAM_DIR:=/tempo/ioc/sciroot/l0spool}"
 
-sdpc_dest_dir="$SDPC_RUN_DIR_MASTER/incoming/l0spool"
+sdpc_dest_dir="$SDPC_RUN_DIR_MASTER/stage/level0/spool"
 
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir

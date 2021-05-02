@@ -11,7 +11,7 @@
 #         granule_arch_dir_path = archive subdirectory for this granule
 #
 # 2. Data products produced are automatically archived.
-#    On error, a tar file is stored in L2/repro
+#    On error, a tar file is stored in repro/L2
 #
 set -e
 set -u

@@ -181,8 +181,8 @@ def make_l3_path (l2_path):
     return l3_path
 
 def write_pathlist (file_basename, pathlist):
-    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    target_dir = os.path.join (arch_dir, "registry/scans")
+    pipe_dir = os.getenv ("SDPC_RUN_DIR_MASTER")
+    target_dir = os.path.join (pipe_dir, "stage/scans")
     os.makedirs (target_dir, exist_ok=True)
     # Ensure that the output file appears atomicly
     # write file to hidden_path, then rename to target_path

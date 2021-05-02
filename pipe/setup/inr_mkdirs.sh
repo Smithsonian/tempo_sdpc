@@ -11,8 +11,7 @@ if test -e $SDPC_INR_RUN_DIR ; then
 fi
 
 INR_DIRS="config logs scantailoring \
-          Output CloudProducts \
-          Staging/Granules \
+          CloudProducts \
           Staging/Left \
           Staging/Right \
           Staging/rsr"
@@ -22,3 +21,6 @@ mkdir -p $SDPC_INR_RUN_DIR
 for d in $INR_DIRS ; do
   mkdir -p $SDPC_INR_RUN_DIR/$d
 done
+
+ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_input $SDPC_INR_RUN_DIR/Staging/Granules
+ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_output $SDPC_INR_RUN_DIR/Output

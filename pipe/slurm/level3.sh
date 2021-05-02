@@ -3,7 +3,7 @@
 # 0. This script is run by cachemon, upon completion of all level 2
 #    data products of a particular type from a single scan.
 #    The script is triggered by the appearance of a file in
-#      $SDPC_ARCHIVE_DIR/registry/scans
+#      $SDPC_RUN_DIR_MASTER/stage/scans
 #    The argument passed to the script is the path to this file.
 
 #set -e

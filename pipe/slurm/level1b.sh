@@ -9,7 +9,7 @@
 #    polarization correction, wavelength calibration), and generate
 #    the cloud product.
 ##
-# On error, a tar file is stored in L1/repro
+# On error, a tar file is stored in repro/L1
 #
 #--------------------------------------------------------------------
 

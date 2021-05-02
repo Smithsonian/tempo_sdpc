@@ -21,8 +21,14 @@ mkdirlist()
    done
 }
 
-PIPE_DIRS="incoming/l0ccd incoming/telem \
-           L0/repro L1/repro L2/repro L2/incoming \
+PIPE_DIRS="stage/level0/ccd \
+           stage/level0/telem \
+           stage/level0/spool \
+           stage/granules/inr_input \
+           stage/granules/inr_output \
+           stage/granules/level2_input \
+           stage/scans \
+           repro/L0 repro/L1 repro/L2 \
 	   log public_mirror"
 
 mkdirlist $SDPC_RUN_DIR_MASTER "$PIPE_DIRS"

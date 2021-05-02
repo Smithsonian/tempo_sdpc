@@ -25,12 +25,12 @@
 #
 # 4. Upon completion of the cloud product, a tar file containing
 #    the radiance, irradiance, and cloud products is stored in the
-#    L2/incoming directory.
+#    stage/granules/level2_input directory.
 #
 # 5. When it's finished, the script cleans up after itself and
 #    should leave nothing behind.
 #
-# On error, a tar file is stored in the L1/repro directory.
+# On error, a tar file is stored in the repro/L1 directory.
 #
 #---------------------------------------------------------------------
 
@@ -77,8 +77,8 @@ export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_ROOT/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
-l1_repro_dir="$SDPC_RUN_DIR_MASTER/L1/repro"
-l2_incoming="$SDPC_RUN_DIR_MASTER/L2/incoming"
+l1_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L1"
+l2_incoming="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
