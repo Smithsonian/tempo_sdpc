@@ -56,10 +56,6 @@ rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")
 # construct granule label string for slurm job names
 export SDPC_GRANULE_LABEL="${rad_basename}"
 
-# FIXME - in operations, a cron job should handle this DB update, e.g. 1x per day
-# For testing, we'll update it here, because the irr file may be newly created
-filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:irr --update
-
 cache_uncompressed_snow_file()
 {
    path=$1
@@ -78,7 +74,7 @@ cache_uncompressed_snow_file()
 }
 
 # Generate file list file on master node
-irr_file=$(filedb -c $SDPC_ROOT/etc/filedb.cfg tempo:irr --find --header "$rad_path")
+irr_file=$(select_irr.py "$rad_path")
 snow_file=$(filedb -c $SDPC_ROOT/etc/filedb.cfg snow --find --header "$rad_path")
 cache_uncompressed_snow_file $snow_file
 met_file_path_synth=$(filedb -c $SDPC_ROOT/etc/filedb.cfg met:synth --find --header "$rad_path")
