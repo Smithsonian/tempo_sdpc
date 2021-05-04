@@ -7,7 +7,7 @@ import sqlite3
 import re
 import argparse
 
-Asdc_Status = {"problem":-1, "new": 0, "pending":1, "accepted":2}
+Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "accepted":2}
 DryRun = False
 
 class Tokenizer:
@@ -40,10 +40,11 @@ def get_product_table_names (cur):
     return table_names
 
 def table_files_matching_status (cur, table_name, asdc_status):
-    cur.execute ("select path from {} where asdc_status == {} or asdc_status_met == {} order by path".format(table_name, asdc_status, asdc_status))
-    #cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
-    paths = [item for t in cur.fetchall() for item in t]
-    return paths
+    cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
+    nc_paths = [item for t in cur.fetchall() for item in t]
+    cur.execute ("select path from {} where asdc_status_met == {} order by path".format(table_name, asdc_status))
+    met_paths = [item + ".met" for t in cur.fetchall() for item in t]
+    return sorted (nc_paths + met_paths)
 
 def files_matching_status (cur, asdc_status):
     """

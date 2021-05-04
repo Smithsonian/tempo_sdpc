@@ -16,7 +16,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl o3p_partition.sl \
                select_hk.py select_irr.py select_dark.py register.py  \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
                copy_level1_frame.py radiance_inr_status.py \
-               asdc_mkscript.sl asdc_track_uploads.py \
+               asdc_mkscript.sl asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
                sdpccron.py update_public_mirror.sh inrmonitor.sh \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)

@@ -6,8 +6,10 @@ require ("cmdopt");
 
 private variable Node_Name = "$HOST"$;
 
-private variable Upload_Subdir = "ingest/tempo";
-%private variable Upload_Subdir = strftime ("tempo_test_%Y-%m-%d", gmtime(_time()));
+private variable Dest_Subdir   = "ingest/tempo";
+% Because of some file system confusion at ASDC, we need the absolute path
+% in one context, and the relative path in another context.
+private variable Dest_Target_Dir = path_concat ("/XSan/DH/Incoming/tempo", Dest_Subdir);
 
 define make_file_entry (path, data_type, st, extname_is_nc)
 {
@@ -35,7 +37,8 @@ define process_file (types, path_nc)
    variable extname = path_extname (path_nc);
    if (extname != ".nc")
      {
-        () = fprintf (stderr, "*** skipping file: %s\n", path_nc);
+        % silently skip .met files
+        if (extname != ".met") () = fprintf (stderr, "*** skipping file: %s\n", path_nc);
         return;
      }
 
@@ -158,21 +161,11 @@ TOTAL_FILE_COUNT = $num_files
 
    foreach g (lst)
      {
-        write_file_group (fp, g, dest.target_dir);
+        write_file_group (fp, g, Dest_Target_Dir);
      }
 
    if (0 != fclose (fp))
      throw IOError, "closing $filename"$;
-}
-
-define append_target_subdir (dir)
-{
-   if (Upload_Subdir != NULL)
-     {
-        return path_concat (dir, Upload_Subdir);
-     }
-
-   return dir;
 }
 
 define write_lftp_script (dest, types, pdr_files, script_file)
@@ -184,20 +177,8 @@ define write_lftp_script (dest, types, pdr_files, script_file)
    () = fprintf (fp, "open --user %s --password %s sftp://%s\n",
                  dest.user, dest.password, dest.host);
    () = fprintf (fp, "set xfer:log-file lftp_log.%s\n", strftime ("%Y%m%dT%H%M%SZ", gmtime(_time)));
-
-   if (Upload_Subdir != NULL)
-     {
-#iffalse
-        % The mkdir is commented out because it generates an error
-        % message when the directory exists.  The -f option would
-        % suppress the message, but that's too heavy-handed.
-        %() = fprintf (fp, "mkdir -p %s\n", dest.target_dir);
-        () = fprintf (fp, "cd %s\n", dest.target_dir);
-#else
-        % Use a relative path to work around some confusion at ASDC
-        () = fprintf (fp, "cd %s\n", Upload_Subdir);
-#endif
-     }
+   % Use a relative path to work around some confusion at ASDC
+   () = fprintf (fp, "cd %s\n", Dest_Subdir);
 
    variable f, g, t;
 
@@ -259,42 +240,12 @@ define process_file_list (dest, nc_file_list, script_file)
    write_lftp_script (dest, types, mf_files, script_file);
 }
 
-private define read_netrc_file (file)
-{
-   variable fp = fopen (file, "r");
-   if (fp == NULL)
-     throw IOError, "Error opening $file for reading"$;
-   variable s = fgetslines (fp);
-   () = fclose (fp);
-
-   variable dest = struct
-     {
-        host, user, password, target_dir
-     };
-
-   variable i, n = length(s);
-   _for i (0, n-1, 1)
-     {
-        if (s[i][0] == '#')
-          continue;
-        variable num = sscanf (s[i], "machine %s login %s password %s dir %s",
-                               &dest.host,
-                               &dest.user,
-                               &dest.password,
-                               &dest.target_dir);
-        if (num != 4)
-          throw IOError, "Error parsing netrc file: $file"$;
-     }
-
-   return dest;
-}
-
 private define usage ()
 {
    variable msg =
 `Usage: asdc_mkscript.sl [options] <files.lis>
 Options:
-    -n|--netrc FILE       Read host,user,passwd,target_dir from FILE
+    -d|--dest USER@HOST   Destination account
     -o|--output FILE      Write lftp script to FILE
     -h|--help             Show usage message
 `;
@@ -311,20 +262,26 @@ private define cmdopt_error (msg)
 define slsh_main ()
 {
    variable show_usage = 0;
-   variable netrc_file = NULL;
    variable script_file = "script.lftp";
+   variable user_at_host = "tempo@xfr140.larc.nasa.gov";
 
    variable opts = cmdopt_new (&cmdopt_error);
    opts.add ("h|help", &show_usage; inc);
-   opts.add ("n|netrc", &netrc_file; type="string");
+   opts.add ("d|dest", &user_at_host; type="string");
    opts.add ("o|output", &script_file; type="string");
    variable i = opts.process (__argv,1);
 
    if (__argc != i+1 || show_usage != 0)
      usage();
 
-   variable dest = read_netrc_file (netrc_file);
-   dest.target_dir = append_target_subdir (dest.target_dir);
+   variable dest = struct
+     {
+        host, user, password = "DUMMY"
+        % ASDC (password DUMMY causes lftp to use the ssh-agent for authentication)
+     };
+   variable tok = strtok (user_at_host, "@");
+   dest.user = tok[0];
+   dest.host = tok[1];
 
    variable nc_file_list_file = __argv[i];
 
