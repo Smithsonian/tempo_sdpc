@@ -11,11 +11,13 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
                      pipe_mkdirs_archive.sh pipe_mkdirs_master.sh \
 		     pipe_mkdirs_node.sh pipe_setup_master.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
-SCRIPT_FILES = cachemon.sl archive.sl o3p_partition.sl move_file_stream.sl \
-               asdc_mkscript.sl sdpcrun.sh make_tar_notice.sh select_hk.py select_irr.py \
-               select_dark.py register.py insert_fixed_metadata.py fix_cldo4_metadata.py \
-               fix_met_format.py copy_level1_frame.py radiance_inr_status.py \
-               update_public_mirror.sh sdpccron.py inrmonitor.sh \
+SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl o3p_partition.sl \
+               sdpcrun.sh make_tar_notice.sh \
+               select_hk.py select_irr.py select_dark.py register.py  \
+               insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
+               copy_level1_frame.py radiance_inr_status.py \
+               asdc_mkscript.sl asdc_track_uploads.py \
+               sdpccron.py update_public_mirror.sh inrmonitor.sh \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 HLP_FILES =# ../doc/help/daemon.hlp
