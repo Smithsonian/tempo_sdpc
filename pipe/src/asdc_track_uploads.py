@@ -83,6 +83,14 @@ def update_file_status (cur, filename, asdc_status):
     else:
         cur.execute (sql)
 
+def count_files_matching_status (asdc_status):
+    with connect_database() as conn:
+        table_lists = files_matching_status (conn.cursor(), asdc_status)
+    num_files=0
+    for table in table_lists.keys():
+        num_files += len(table_lists[table])
+    print(num_files)
+
 def print_files_matching_status (asdc_status):
     with connect_database() as conn:
         table_lists = files_matching_status (conn.cursor(), asdc_status)
@@ -198,6 +206,8 @@ def set_file_status (status, file_list):
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
+    parser.add_argument('--num', metavar='STATUS', default=None,
+                        help="Count files matching status: {}".format(Asdc_Status))
     parser.add_argument('--list', metavar='STATUS', default=None,
                         help="List files matching status: {}".format(Asdc_Status))
     parser.add_argument('--dryrun', action='store_true',
@@ -216,7 +226,9 @@ def main():
     global DryRun
     DryRun = args.dryrun
 
-    if args.list:
+    if args.num:
+        count_files_matching_status (Asdc_Status[args.num])
+    elif args.list:
         print_files_matching_status (Asdc_Status[args.list])
     elif args.set:
         set_file_status (args.set[0], args.set[1])

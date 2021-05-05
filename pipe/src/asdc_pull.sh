@@ -37,9 +37,18 @@ open --user $asdc_user --password DUMMY sftp://$asdc_host
 set xfer:log-file lftp_pan.log
 set xfer:clobber yes
 cd ingest/tempo
+glob --exist TEMPO*.PAN || exit 0
 mget -E TEMPO*.PAN
 exit
 EOF
+}
+
+cleanup()
+{
+  dir=$1
+  cd /tmp
+  /bin/rm -f $dir/lftp.script $dir/lftp_pan.log
+  /bin/rmdir $dir
 }
 
 do_asdc_download()
@@ -48,21 +57,28 @@ do_asdc_download()
   if ! test -d $dir ; then
      mkdir -p $dir
   fi
-
   cd $dir
 
   script="lftp.script"
-
-  # make lftp script and run it
   emit_script $script
-  lftp -f $script
+
+  # When there are no files, lftp should exit with zero status
+  lftp -f $script > /dev/null 2>&1
 
   # If PANs were retrieved, process them:
   panfiles=$(find . -maxdepth 1 -name "TEMPO*.PAN")
   if test x"$panfiles" != x"" ; then
      asdc_track_uploads.py --pans $panfiles
+  else
+     cleanup $dir
   fi
 }
+
+# When no files have pending status, silently do nothing
+num=$(asdc_track_uploads.py --num pending)
+if test x"$num" = x0 ; then
+   exit 0
+fi
 
 download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/pull/$(date -u +%Y/%j/tempo_pan_%Y%jT%H%M%SZ)"
 

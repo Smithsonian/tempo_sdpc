@@ -46,8 +46,14 @@ do_asdc_upload()
   asdc_mkscript.sl --dest $user_at_host --output $script $file_list
 
   # perform the upload
-  lftp -f $script
+  lftp -f $script > /dev/null 2>&1
 }
+
+# When there are no new files, silently do nothing
+num=$(asdc_track_uploads.py --num new)
+if test x"$num" = x0 ; then
+   exit 0
+fi
 
 upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/push/$(date -u +%Y/%j/tempo_pdr_%Y%jT%H%M%SZ)"
 
