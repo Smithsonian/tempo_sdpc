@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="mirror"
+INCDIR=".."
+
+. $INCDIR/finish.inc

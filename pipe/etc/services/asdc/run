@@ -1,0 +1,12 @@
+#!/bin/sh
+
+exec 2>& 1
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The SDPC environment is not set"
+  exit 1
+fi
+
+exec $SDPC_S6_ROOT/bin/s6-envdir ./env \
+  ${SDPC_ROOT}/bin/asdc_transfer.py

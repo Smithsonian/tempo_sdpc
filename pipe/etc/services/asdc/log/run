@@ -1,4 +1,4 @@
 #!/bin/sh
 
-SERVICE="sdpccron"
+SERVICE="asdc"
 . ../../log.inc

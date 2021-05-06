@@ -8,4 +8,4 @@ then
   exit 1
 fi
 
-exec sdpccron.py
+exec public_mirror.py
