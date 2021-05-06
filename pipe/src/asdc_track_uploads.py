@@ -98,16 +98,6 @@ def print_files_matching_status (asdc_status):
         for f in table_lists[table]:
             print(f)
 
-def define_upload(outfile):
-    with connect_database() as conn, open(outfile, "w") as fp:
-        cur = conn.cursor()
-        table_lists = files_matching_status (cur, Asdc_Status["new"])
-        for table in table_lists.keys():
-            for f in table_lists[table]:
-                # if print fails, status will not be updated
-                fp.write('{}\n'.format(f))
-                update_file_status(cur, f, Asdc_Status["pending"])
-
 def longpan_header (thefile, parse):
     # MESSAGE_TYPE = LONGPAN
     line = thefile.readline()
@@ -210,14 +200,12 @@ def main():
                         help="Count files matching status: {}".format(Asdc_Status))
     parser.add_argument('--list', metavar='STATUS', default=None,
                         help="List files matching status: {}".format(Asdc_Status))
-    parser.add_argument('--dryrun', action='store_true',
-                        help="Show actions, but don't modify the database")
-    parser.add_argument('--define', metavar='FILE_LIST', default=None,
-                        help="Define an upload (changes status 'new' to 'pending')")
-    parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
-                        help="Process LONGPAN files (changes status 'pending' to 'accepted'|'problem')")
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
+    parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
+                        help="Process LONGPAN files (changes status 'pending' to 'accepted'|'problem')")
+    parser.add_argument('--dryrun', action='store_true',
+                        help="Show actions, but don't modify the database")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
@@ -232,8 +220,6 @@ def main():
         print_files_matching_status (Asdc_Status[args.list])
     elif args.set:
         set_file_status (args.set[0], args.set[1])
-    elif args.define:
-        define_upload (args.define)
     elif args.pans:
         process_longpan_files(args.pans)
 
