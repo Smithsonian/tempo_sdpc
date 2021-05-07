@@ -43,7 +43,7 @@ cd $work_dir
 
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 l2_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L2"
-etc_dir="$SDPC_ROOT/etc"
+etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 # get input file names
 . ./pge_input_basenames.lis
@@ -200,7 +200,7 @@ config_subdir()
    /bin/cp $control_file $subdir_name
    /bin/cp $profoz_file $subdir_name
 
-   etc_dir="$SDPC_ROOT/etc"
+   etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
    product_dir=.
    spectra_dir=.

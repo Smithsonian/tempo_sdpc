@@ -83,7 +83,7 @@ if test x"$product_name" = x"NO2_L2" ; then
    # put log file in the the first granule directory
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    logdir=$(dirname $first_granule)
-   L2_split -v -c $SDPC_ROOT/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
+   L2_split -v -c $SDPC_RUN_DIR_MASTER/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
 fi
 
@@ -101,9 +101,9 @@ for f in $l2_paths ; do
 done
 
 if test x"$product_name" = x"O3PROF_L2" ; then
-   l2_regrid_cfg="${SDPC_ROOT}/etc/l3_o3p.cfg"
+   l2_regrid_cfg="${SDPC_RUN_DIR_MASTER}/etc/l3_o3p.cfg"
 else
-   l2_regrid_cfg="${SDPC_ROOT}/etc/l3.cfg"
+   l2_regrid_cfg="${SDPC_RUN_DIR_MASTER}/etc/l3.cfg"
 fi
 
 (cd $l3_target_dir && L2_regrid -v $l2_regrid_cfg > log_regrid_${product_name}.txt 2>&1 ) || error_exit "L2_regrid failed"

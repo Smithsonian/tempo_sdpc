@@ -87,7 +87,7 @@ trap finish EXIT ERR
 out_basename=$(printf "$lev2_base_fmt" ${molecule})
 export TG_NO_HE5_OUTPUT=1
 
-etc_dir="$SDPC_ROOT/etc"
+etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 product_dir=.
 spectra_dir=.

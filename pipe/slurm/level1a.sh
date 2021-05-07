@@ -59,7 +59,7 @@ make_iru_only_file_for_inr()
 
    # run L1_inr_prep to generate the INR input file
    export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
-   etc_dir="$SDPC_ROOT/etc"
+   etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
 

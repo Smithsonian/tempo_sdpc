@@ -23,12 +23,6 @@ pipe_mkdirs_archive.sh
 inr_mkdirs.sh
 inr_config.sh
 
-# FIXME - During operations, cron jobs will do this.
-#         For testing purposes, do it here.
-filedb -c $SDPC_ROOT/etc/filedb.cfg met:synth --update
-filedb -c $SDPC_ROOT/etc/filedb.cfg met:hires --update
-filedb -c $SDPC_ROOT/etc/filedb.cfg met:lores --update
-filedb -c $SDPC_ROOT/etc/filedb.cfg snow --update
-
-/bin/cp -r $SDPC_ROOT/etc/services $SDPC_RUN_DIR_MASTER
+/bin/cp -r $SDPC_ROOT/etc $SDPC_RUN_DIR_MASTER
+/bin/mv $SDPC_RUN_DIR_MASTER/etc/services $SDPC_RUN_DIR_MASTER
 

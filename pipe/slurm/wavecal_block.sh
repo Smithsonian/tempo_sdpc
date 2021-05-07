@@ -28,7 +28,7 @@ result_file()
   RESULT_FILE="${RESULT_DIR}/${bn}_wavecal_${BAND_NAME}_${block_spec}.nc"
 }
 
-etc_dir="$SDPC_ROOT/etc"
+etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 bn=$(basename $INPUT_FILE)
 case "$bn" in

@@ -11,5 +11,5 @@ fi
 exec L0_format --register \
                --Version "$SDPC_PROCESSING_VERSION" \
                --logdir "${SDPC_RUN_DIR_MASTER}/incoming/log" \
-               --archive "$SDPC_ARCHIVE_DIR" "${SDPC_ROOT}/etc/l0_format.cfg" \
+               --archive "$SDPC_ARCHIVE_DIR" "${SDPC_RUN_DIR_MASTER}/etc/l0_format.cfg" \
                --mirror "${SDPC_RUN_DIR_MASTER}/public_mirror"
