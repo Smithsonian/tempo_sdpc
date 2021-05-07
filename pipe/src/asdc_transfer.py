@@ -5,17 +5,27 @@ import signal
 import time
 import subprocess
 import argparse
+from threading import Event
 
 class Signal_Catcher:
-  kill_now = False
-  signum = None
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.exit_gracefully)
-    signal.signal(signal.SIGHUP, self.exit_gracefully)
-    signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-  def exit_gracefully(self,signum, frame):
-    self.kill_now = True
+  exit = None
+  signum = None
+
+  def __init__(self):
+    self.exit = Event()
+    signal.signal(signal.SIGINT, self.handler)
+    signal.signal(signal.SIGHUP, self.handler)
+    signal.signal(signal.SIGTERM, self.handler)
+
+  def wait(self, delay):
+      self.exit.wait(delay)
+
+  def caught(self):
+      return self.exit.is_set()
+
+  def handler(self,signum, frame):
+    self.exit.set()
     self.signum = signum
 
 def main():
@@ -47,10 +57,10 @@ def main():
 
     sig = Signal_Catcher()
 
-    while not sig.kill_now:
+    while not sig.caught():
         obj = subprocess.run (["asdc_pull.sh", user_at_host])
         obj = subprocess.run (["asdc_push.sh", user_at_host])
-        time.sleep (wait)
+        sig.wait(wait)
 
     print ("Exiting: caught signal = {}".format(sig.signum))
 

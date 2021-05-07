@@ -6,6 +6,8 @@ from __future__ import print_function
 import os, sys
 import signal
 import time
+from threading import Event
+
 import sqlite3
 from datetime import date
 from subprocess import check_output
@@ -346,15 +348,24 @@ def init_registry ():
     return Registry (incoming_dir, file_path)
 
 class Signal_Catcher:
-  kill_now = False
-  signum = None
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.exit_gracefully)
-    signal.signal(signal.SIGHUP, self.exit_gracefully)
-    signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-  def exit_gracefully(self,signum, frame):
-    self.kill_now = True
+  exit = None
+  signum = None
+
+  def __init__(self):
+    self.exit = Event()
+    signal.signal(signal.SIGINT, self.handler)
+    signal.signal(signal.SIGHUP, self.handler)
+    signal.signal(signal.SIGTERM, self.handler)
+
+  def wait(self, delay):
+      self.exit.wait(delay)
+
+  def caught(self):
+      return self.exit.is_set()
+
+  def handler(self,signum, frame):
+    self.exit.set()
     self.signum = signum
 
 def main():
@@ -362,11 +373,11 @@ def main():
     reg = init_registry()
     sig = Signal_Catcher()
 
-    while not sig.kill_now:
+    while not sig.caught():
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:
             register_files (reg.file_path, filenames)
-        time.sleep (10)
+        sig.wait(10)
 
     print ("Exiting: caught signal = {}".format(sig.signum))
 

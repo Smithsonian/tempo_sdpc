@@ -4,17 +4,27 @@ import os, sys
 import signal
 import time
 import subprocess
+from threading import Event
 
 class Signal_Catcher:
-  kill_now = False
-  signum = None
-  def __init__(self):
-    signal.signal(signal.SIGINT, self.exit_gracefully)
-    signal.signal(signal.SIGHUP, self.exit_gracefully)
-    signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-  def exit_gracefully(self,signum, frame):
-    self.kill_now = True
+  exit = None
+  signum = None
+
+  def __init__(self):
+    self.exit = Event()
+    signal.signal(signal.SIGINT, self.handler)
+    signal.signal(signal.SIGHUP, self.handler)
+    signal.signal(signal.SIGTERM, self.handler)
+
+  def wait(self, delay):
+      self.exit.wait(delay)
+
+  def caught(self):
+      return self.exit.is_set()
+
+  def handler(self,signum, frame):
+    self.exit.set()
     self.signum = signum
 
 def main():
@@ -23,9 +33,9 @@ def main():
 
     argv = ["update_public_mirror.sh"]
 
-    while not sig.kill_now:
+    while not sig.caught():
         obj = subprocess.run (argv)
-        time.sleep (240)
+        sig.wait(240)
 
     print ("Exiting: caught signal = {}".format(sig.signum))
 
