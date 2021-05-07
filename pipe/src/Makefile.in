@@ -20,6 +20,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl o3p_partition.sl \
                asdc_transfer.py public_mirror.py update_public_mirror.sh inrmonitor.sh \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
+SHARE_FILES = $(shell grep -v '\#' ../share/share_files.lis)
 HLP_FILES =# ../doc/help/daemon.hlp
 DOC_FILES = ../COPYRIGHT ../README #../doc/text/daemon.txt
 MODULE_VERSION	= `./mkversion.sh`
@@ -34,6 +35,7 @@ MODULE_INSTALL_DIR = @MODULE_INSTALL_DIR@
 SL_FILES_INSTALL_DIR = @SL_FILES_INSTALL_DIR@
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
 ETC_FILES_INSTALL_DIR = $(prefix)/etc
+SHARE_FILES_INSTALL_DIR = $(prefix)/share
 HLP_FILES_INSTALL_DIR = $(SL_FILES_INSTALL_DIR)/help
 DOC_FILES_INSTALL_DIR =# $(datarootdir)/doc/slang-daemon
 
@@ -79,6 +81,7 @@ DEST_MODULE_INSTALL_DIR = $(DESTDIR)$(MODULE_INSTALL_DIR)
 DEST_SL_FILES_INSTALL_DIR = $(DESTDIR)$(SL_FILES_INSTALL_DIR)
 DEST_SCRIPT_FILES_INSTALL_DIR = $(DESTDIR)$(SCRIPT_FILES_INSTALL_DIR)
 DEST_ETC_FILES_INSTALL_DIR = $(DESTDIR)$(ETC_FILES_INSTALL_DIR)
+DEST_SHARE_FILES_INSTALL_DIR = $(DESTDIR)$(SHARE_FILES_INSTALL_DIR)
 DEST_HLP_FILES_INSTALL_DIR = $(DESTDIR)$(HLP_FILES_INSTALL_DIR)
 DEST_DOC_FILES_INSTALL_DIR = $(DESTDIR)$(DOC_FILES_INSTALL_DIR)
 
@@ -146,6 +149,7 @@ install_directories:
 	$(MKINSDIR) $(DEST_MODULE_INSTALL_DIR)
 	$(MKINSDIR) $(DEST_SL_FILES_INSTALL_DIR)
 	$(MKINSDIR) $(DEST_SCRIPT_FILES_INSTALL_DIR)
+	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/cachemon
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/trace_gas
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/cloud
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/o3_total
@@ -153,7 +157,7 @@ install_directories:
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/level1
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/level3
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/inr
-	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/metadata
+	$(MKINSDIR) $(DEST_SHARE_FILES_INSTALL_DIR)/metadata
 	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
 	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
 
@@ -199,6 +203,16 @@ install_etcfiles:
 		fi; \
 	done
 
+install_sharefiles:
+	@for X in $(SHARE_FILES); \
+	do \
+		echo $(INSTALL_DATA) ../share/$$X $(DEST_SHARE_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) ../share/$$X $(DEST_SHARE_FILES_INSTALL_DIR)/$$X; \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
 install_slfiles:
 	@for X in $(SL_FILES); \
 	do \
@@ -228,7 +242,7 @@ install_docfiles:
 	done
 
 install: all install_directories install_modules install_execs \
-          install_scripts install_etcfiles install_slfiles \
+          install_scripts install_etcfiles install_sharefiles install_slfiles \
           install_supervision_tree # install_hlpfiles install_docfiles
 
 clean:

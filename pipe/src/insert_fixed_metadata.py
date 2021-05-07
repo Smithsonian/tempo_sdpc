@@ -12,7 +12,7 @@ from netCDF4 import Dataset as NetCDFFile
 
 Sdpc_Root_Dir = os.getenv ('SDPC_ROOT')
 if Sdpc_Root_Dir:
-    Sdpc_Metadata_Dir = os.path.join (Sdpc_Root_Dir, 'etc/metadata')
+    Sdpc_Metadata_Dir = os.path.join (Sdpc_Root_Dir, 'share/metadata')
 
 def read_keyword_file (filename):
     if not os.path.isfile(filename):
