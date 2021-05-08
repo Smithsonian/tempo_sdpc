@@ -94,17 +94,16 @@ def init_other_product_table (table_name):
     return Table_Type(table_name, fields, quals)
 
 def insert_radiance_entry (conn, table_name, entry):
-    with conn:
-        c = conn.cursor()
-        rad = init_radiance_table(table_name)
-        rad.create(c)
-        try:
-            rad.new_entry (c, entry.keys(), entry.values())
-            conn.commit()
-            return 0
-        except sqlite3.IntegrityError:
-            eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
-            return -1
+    c = conn.cursor()
+    rad = init_radiance_table(table_name)
+    rad.create(c)
+    try:
+        rad.new_entry (c, entry.keys(), entry.values())
+        conn.commit()
+        return 0
+    except sqlite3.IntegrityError:
+        eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+        return -1
 
 def insert_product_entry (conn, product_name, init_product_table, entry):
     c = conn.cursor()
@@ -121,20 +120,17 @@ def insert_product_entry (conn, product_name, init_product_table, entry):
         return -1
 
 def insert_radiance_product_entry (conn, product_name, entry):
-    with conn:
-        status = insert_product_entry (conn, product_name, init_radiance_product_table, entry)
-        if status == 0:
-            maybe_handle_scan_completion (conn, product_name, entry["scan_id"])
+    status = insert_product_entry (conn, product_name, init_radiance_product_table, entry)
+    if status == 0:
+        maybe_handle_scan_completion (conn, product_name, entry["scan_id"])
     return status
 
 def insert_dark_product_entry (conn, product_name, entry):
-    with conn:
-        status = insert_product_entry (conn, product_name, init_dark_product_table, entry)
+    status = insert_product_entry (conn, product_name, init_dark_product_table, entry)
     return status
 
 def insert_other_product_entry (conn, product_name, entry):
-    with conn:
-        status = insert_product_entry (conn, product_name, init_other_product_table, entry)
+    status = insert_product_entry (conn, product_name, init_other_product_table, entry)
     return status
 
 def get_dark_keys (nc, keys):
@@ -294,6 +290,11 @@ def process_file (conn, filename):
 
     return status
 
+def connect_database (db_path):
+    conn = sqlite3.connect (db_path)
+    conn.execute("pragma foreign_keys=on")
+    return conn
+
 def register_files (db_path, filenames):
 
     # For back-compatibility sqlite has foreign keys turned off by default,
@@ -302,19 +303,15 @@ def register_files (db_path, filenames):
     # we apparently need to turn it on explicitly, each time the database
     # connection is established.
 
-    conn = sqlite3.connect (db_path)
-    conn.execute("pragma foreign_keys=on")
-
     # Operate only on symbolic links!
 
     for fn in filenames:
         if os.path.islink(fn):
-            status = process_file (conn, fn)
+            with connect_database (db_path) as conn:
+                status = process_file (conn, fn)
             if status != 0:
                 eprint('Error processing file: {}'.format(fn))
             os.remove(fn)
-
-    conn.close()
 
 def collect_filenames (dir):
     filenames = []

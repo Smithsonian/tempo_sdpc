@@ -71,9 +71,8 @@ def main():
     # we apparently need to turn it on explicitly, each time the database
     # connection is established.
 
-    conn = sqlite3.connect (db_path)
-    conn.execute("pragma foreign_keys=on")
-    with conn:
+    with sqlite3.connect (db_path) as conn:
+        conn.execute("pragma foreign_keys=on")
         #conn.set_trace_callback(print)
         c = conn.cursor()
         irr = select_irradiance (c, args.window, file_keys)
