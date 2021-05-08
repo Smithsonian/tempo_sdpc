@@ -16,20 +16,12 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def get_db_path():
-    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    if (arch_dir == None):
-        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-        sys.exit(1)
-
-    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if (db_basename == None):
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_file_path == None:
         eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
 
-    db_dir = os.path.join (arch_dir, "registry")
-    db_path = os.path.join (db_dir, db_basename)
-
-    return db_path
+    return db_file_path
 
 def get_level0_keys (filename):
     nc = NetCDFFile (filename, "r")

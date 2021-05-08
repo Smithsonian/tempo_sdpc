@@ -19,18 +19,12 @@ class Tokenizer:
         return self.regex.split(s)
 
 def connect_database ():
-    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    if arch_dir == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-        sys.exit(1)
-
-    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_basename == None:
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_file_path == None:
         eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
 
-    path = os.path.join (arch_dir, os.path.join ("registry", db_basename))
-    conn = sqlite3.connect (path)
+    conn = sqlite3.connect (db_file_path)
     conn.execute("pragma foreign_keys=on")
     return conn
 

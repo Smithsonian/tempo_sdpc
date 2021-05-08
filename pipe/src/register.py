@@ -330,22 +330,21 @@ class Registry:
         self.file_path = file_path
 
 def init_registry ():
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_file_path == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
+
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     if arch_dir == None:
         eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-        sys.exit(1)
-
-    db_basename = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_basename == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
 
     incoming_dir = os.path.join (arch_dir, 'registry/incoming')
     if not os.path.isdir (incoming_dir):
         os.makedirs(incoming_dir)
 
-    file_path = os.path.join (arch_dir, os.path.join ("registry", db_basename))
-    return Registry (incoming_dir, file_path)
+    return Registry (incoming_dir, db_file_path)
 
 class Signal_Catcher:
 

@@ -41,7 +41,8 @@ export SDPC_PIPE_NAME
 : "${SDPC_PROCESSING_VERSION:=1}"
 export SDPC_PROCESSING_VERSION
 
-: "${SDPC_ARCHIVE_DBFILE:=archived_products.sqlite}"
+# SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
+: "${SDPC_ARCHIVE_DBFILE:=/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite}"
 export SDPC_ARCHIVE_DBFILE
 
 #---------------------------------
