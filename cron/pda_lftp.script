@@ -5,5 +5,5 @@ set ssl:verify-certificate no
 set mirror:require-source true
 set mirror:sort-by name
 set mirror:order *.sha1 *.nc
-mirror -c -O @ANCILLARY_DATA_DIR@/goes -F /PDAFileLinks/g1?_cmi -F /PDAFileLinks/g1?_cth
+mirror -c -O @TARGET_DIR@ -F /PDAFileLinks/g1?_cmi
 quit

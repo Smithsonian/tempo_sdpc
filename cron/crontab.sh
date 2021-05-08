@@ -22,19 +22,21 @@ _task=$1
 
 case $_task in
    MET )
-   ./src/dl_met.sl
+   src/dl_met.sl
    ;;
 
    SNOW )
-   ./src/dl_snow_ims.sl
+   src/dl_snow_ims.sl
    ;;
 
    GOES )
-   lftp -f src/pda_lftp.script
+   src/goes_pull.sh
    ;;
 
    CLEANUP )
-   ./src/deleter.sl
+   if test -f src/cleanup.sh ; then
+      src/cleanup.sh
+   fi
    ;;
 
    * )

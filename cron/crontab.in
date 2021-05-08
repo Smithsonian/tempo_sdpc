@@ -17,5 +17,5 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 # GOES data: Mode 6 updates every 10 min
 5-59/10 * * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh GOES >> $SDPC_ANCILLARY_ROOT/log/goes.log 2>&1
 
-# GOES deleter:
-#*/15 * * * * $SDPC_ANCILLARY_ROOT/src/crontab.sh CLEANUP >> $SDPC_ANCILLARY_ROOT/log/goes_del.log 2>&1
+# cleanup
+@daily $SDPC_ANCILLARY_ROOT/src/crontab.sh CLEANUP >> $SDPC_ANCILLARY_ROOT/log/cleanup.log 2>&1
