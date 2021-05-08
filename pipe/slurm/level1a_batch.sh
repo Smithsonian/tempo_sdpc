@@ -44,6 +44,7 @@ file_list_file="$2"
 
 # including this file should define these variables:
 #    granule_path
+#    hk_file_list
 #    dark_file_path
 . "$file_list_file"
 
@@ -63,6 +64,7 @@ work_dir=$(basename $granule_basename .nc)
 /bin/mkdir "$work_dir"
 cd $work_dir
 /bin/cp "$granule_path" "$granule_basename"
+/bin/cp "$hk_file_list" hk.lis
 /bin/cp "$file_list_file" "${granule_basename}.lis"
 chmod u+w "$granule_basename"
 
@@ -99,14 +101,12 @@ run_l0_ccd()
 
    /bin/cp ${etc_dir}/l0_ccd.cfg .
 
-# Try to find HK files that cover the time interval of this dataset.
-# If none exist, let L0_ccd search the archive for something suitable.
-   hk_paths=$(select_hk.py $granule_basename)
-   if test x"$hk_paths" != xNONE ; then
-      printf '%s\n' "${hk_paths[@]}" > hk.lis
-      lookup_option="-i @hk.lis"
-   else
+   # If no HK files were found, let L0_ccd search the archive for something suitable.
+   hk_none=$(grep NONE hk.lis || true)
+   if test x"$hk_none" = x"NONE" ; then
       lookup_option=""
+   else
+      lookup_option="-i @hk.lis"
    fi
 
    srun --ntasks=1 --output=log_l0_ccd.txt \
@@ -183,4 +183,4 @@ fi
 # Assume the initial L0 granule was archived when it was produced,
 # so it's ok to delete this copy once the archive.sl process has
 # succeeded.
-/bin/rm "$granule_path" "$file_list_file"
+/bin/rm "$granule_path" "$file_list_file" "$hk_file_list"

@@ -94,10 +94,21 @@ case "${granule_basename}" in
    ;;
 esac
 
+# Try to find HK files that cover the time interval of this dataset.
+# If none exist, let L0_ccd search the archive for something suitable.
+hk_file_list="$granule_dir/.${granule_basename}_hk.lis"
+hk_paths=$(select_hk.py "$granule_path")
+if test x"$hk_paths" != xNONE ; then
+   printf '%s\n' "${hk_paths[@]}" > $hk_file_list
+else
+   echo NONE > $hk_file_list
+fi
+
 # Create file-list file
 file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
 granule_path=${granule_path}
+hk_file_list=${hk_file_list}
 dark_file_path=${dark_file_path}
 EOF
 
