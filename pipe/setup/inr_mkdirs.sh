@@ -10,11 +10,13 @@ if test -e $SDPC_INR_RUN_DIR ; then
    exit 1
 fi
 
-INR_DIRS="config logs scantailoring \
-          CloudProducts \
-          Staging/Left \
-          Staging/Right \
-          Staging/rsr"
+INR_DIRS="config logs scantailoring CloudProducts Staging/rsr"
+
+# GOES data will be delivered in these:
+#    Staging/Left
+#    Staging/Right
+# which will be defined by symbolic links.
+# During operations, these links will be updated daily
 
 mkdir -p $SDPC_INR_RUN_DIR
 
