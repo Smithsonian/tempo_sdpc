@@ -26,11 +26,11 @@ case $_task in
    ;;
 
    SNOW )
-   src/dl_snow_ims.sl
+   src/pull_ims.sh
    ;;
 
    GOES )
-   src/goes_pull.sh
+   src/pull_goes.sh
    ;;
 
    CLEANUP )
