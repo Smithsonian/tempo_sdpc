@@ -24,3 +24,8 @@ mkdirlist()
 ARCHIVE_DIRS="L0/incoming L1/incoming L2/incoming L3/incoming"
 
 mkdirlist $SDPC_ARCHIVE_DIR "$ARCHIVE_DIRS"
+
+dbfile_dir=$(dirname $SDPC_ARCHIVE_DBFILE)
+if ! test -d $dbfile_dir ; then
+   mkdir -p $dbfile_dir
+fi
