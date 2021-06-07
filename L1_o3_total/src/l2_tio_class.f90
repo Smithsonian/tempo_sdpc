@@ -163,6 +163,13 @@ contains
                               //' '//trim(o3t_var_latitude))
 
     call tiof_varlist_append (varlist, errstat, &
+                              o3t_var_geoflg, &
+                              nf90_ushort, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "ground pixel quality flag", &
+                              valid_range = [0.0_8, 65534.0_8])
+
+    call tiof_varlist_append (varlist, errstat, &
                               o3t_var_lut_wavelength, &
                               nf90_float, &
                               dimids = [dimids_wavel_xtrack_step(1)], &
@@ -531,13 +538,6 @@ contains
                               fillvalue = fill_short, &
                               attlist=att_coord)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              o3t_var_geoflg, &
-                              nf90_ushort, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "ground pixel quality flag", &
-                              valid_range = [0.0_8, 65534.0_8])
-
     if (have_omi_data) then
       call tiof_varlist_append (varlist, errstat, &
                               o3t_var_xtrack_qf, &
@@ -834,8 +834,6 @@ contains
     ! geolocation group
     call tiof_push_group (obj, o3t_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3t_var_time, [iline], [1], [time], errstat)
-    call tiof_put1d_ui2 (obj, o3t_var_geoflg, [iline,0], [1, nxtrack], &
-                        geoflg(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_latitude, [iline,0], [1, nxtrack], &
                         latitude(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_longitude, [iline,0], [1, nxtrack], &
@@ -870,6 +868,8 @@ contains
 
     ! support data group
     call tiof_push_group (obj, o3t_grp_support_data, errstat)
+    call tiof_put1d_ui2 (obj, o3t_var_geoflg, [iline,0], [1, nxtrack], &
+                        geoflg(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_cloud_pressure, [iline,0], [1, nxtrack], &
                         pcArray(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_terrain_pressure, [iline,0], [1, nxtrack], &
