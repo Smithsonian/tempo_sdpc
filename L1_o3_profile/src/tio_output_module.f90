@@ -590,14 +590,6 @@ contains
                               valid_range = [-180.0_8, 180.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
-    call tiof_varlist_append (varlist, errstat, &
-                              o3p_var_geoflg, &
-                              nf90_int, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "ground pixel quality flag", &
-                              valid_range = [0.0_8, 65534.0_8], &
-                              fillvalue = fill_uint16, &
-                              attlist=att_coord)
 !    call tiof_varlist_append (varlist, errstat, &
 !                              o3p_var_anomflg, &
 !                              nf90_ubyte, &
@@ -1016,6 +1008,14 @@ contains
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
                               att_text = trim(o3p_var_longitude) &
                               //' '//trim(o3p_var_latitude))
+    call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_geoflg, &
+                              nf90_int, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "ground pixel quality flag", &
+                              valid_range = [0.0_8, 65534.0_8], &
+                              fillvalue = fill_uint16, &
+                              attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_aeros_index, &
                               nf90_float, &
@@ -1652,10 +1652,6 @@ contains
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [0], [num_lines], &
          geo%time(0:num_lines-1), errstat)
-    call tiof_put2d_i2 (obj, o3p_var_geoflg, &
-         [0, 0], [num_lines, num_pix], &
-         int(geo%GFlg(first_pix:last_pix, 0:num_lines-1), kind=2), &
-         errstat)
     call tiof_put2d_r4 (obj, o3p_var_latitude, [0,0], &
          [num_lines, num_pix], &
          real(geo%lat(first_pix:last_pix, 0:num_lines-1), kind=4), errstat)
@@ -1675,7 +1671,14 @@ contains
          [num_lines, num_pix, 4], geo%clat(1:4,first_pix:last_pix, 0:num_lines-1), errstat)
     call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, [0,0,0], &
          [num_lines, num_pix, 4], geo%clon(1:4,first_pix:last_pix, 0:num_lines-1), errstat)
+    call tiof_pop_group (obj, errstat)
 
+    ! support_data group
+    call tiof_push_group (obj, o3p_grp_support_data, errstat)
+    call tiof_put2d_i2 (obj, o3p_var_geoflg, &
+         [0, 0], [num_lines, num_pix], &
+         int(geo%GFlg(first_pix:last_pix, 0:num_lines-1), kind=2), &
+         errstat)
     call tiof_pop_group (obj, errstat)
 
     if (errstat < 0) then
@@ -2423,8 +2426,6 @@ contains
     ! geolocation group
     call tiof_push_group (obj, o3p_grp_geolocation, errstat)
     call tiof_put1d_r8 (obj, o3p_var_time, [min_step], [nstep], time, errstat)
-    call tiof_put2d_i2 (obj, o3p_var_geoflg, [min_step, min_xtrack], &
-         [nstep, nxtrack], geoflg(1:nxtrack,1:nstep), errstat)
     call tiof_put2d_r4 (obj, o3p_var_latitude, [min_step, min_xtrack], &
          [nstep, nxtrack], lat(1:nxtrack,1:nstep), errstat)
     call tiof_put2d_r4 (obj, o3p_var_longitude, [min_step, min_xtrack], &
@@ -2441,7 +2442,12 @@ contains
     call tiof_put3d_r4 (obj, o3p_var_longitude_bounds, &
          [min_step, min_xtrack, 0], &
          [nstep, nxtrack, ncorner], corner_lon(1:ncorner,1:nxtrack,1:nstep), errstat)
+    call tiof_pop_group (obj, errstat)
 
+    ! support_data group
+    call tiof_push_group (obj, o3p_grp_support_data, errstat)
+    call tiof_put2d_i2 (obj, o3p_var_geoflg, [min_step, min_xtrack], &
+         [nstep, nxtrack], geoflg(1:nxtrack,1:nstep), errstat)
     call tiof_pop_group (obj, errstat)
 
     if (errstat < 0) then

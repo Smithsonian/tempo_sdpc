@@ -179,7 +179,7 @@ contains
   subroutine read_o3p_geolocation (tio_l2obj, nstep, nxtrack, ncorner, &
        min_xtrack, max_xtrack, min_step, max_step, errstat)
 
-    use m_o3p_params, only: time, geoflg, lat, lon, aza, sza, vza, &
+    use m_o3p_params, only: time, lat, lon, aza, sza, vza, &
          corner_lat, corner_lon
 
     implicit none
@@ -198,9 +198,6 @@ contains
     call tiof_push_group (tio_l2obj, o3p_grp_geolocation, errstat)
     call tiof_get1d_r8 (tio_l2obj, o3p_var_time, [0], [nstep], &
          time(min_step:max_step), errstat)
-    call tiof_get2d_i2 (tio_l2obj, o3p_var_geoflg, [0, 0], &
-         [nstep, nxtrack], geoflg(min_xtrack:max_xtrack, min_step:max_step), &
-         errstat)
     call tiof_get2d_r4 (tio_l2obj, o3p_var_latitude, [0,0], &
          [nstep, nxtrack], lat(min_xtrack:max_xtrack, min_step:max_step), &
          errstat)
@@ -373,7 +370,7 @@ contains
 
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
          ozwrtcontri, ozwrtvar, gaswrt, aerosol, do_lambcld
-    use m_o3p_params, only: aeros_idx, tropo_idx, cld_frac, cld_pres, &
+    use m_o3p_params, only: geoflg, aeros_idx, tropo_idx, cld_frac, cld_pres, &
          cld_flag, glintprob, eff_alb, o3apriori, o3apriori_err, &
          ozprof_pres, ozprof_alt, ozprof_temp, ozinfo, cld_opt_depth, &
          gas_apriori, gas_apriori_err, nongas_apriori, nongas_apriori_err, &
@@ -396,6 +393,9 @@ contains
     if (errstat /= 0) return
 
     call tiof_push_group (tio_l2obj, o3p_grp_support_data, errstat)
+    call tiof_get2d_i2 (tio_l2obj, o3p_var_geoflg, [0, 0], &
+         [nstep, nxtrack], geoflg(min_xtrack:max_xtrack, min_step:max_step), &
+         errstat)
     call tiof_get2d_r4 (tio_l2obj, o3p_var_aeros_index, [0,0], &
          [nstep, nxtrack], &
          aeros_idx(min_xtrack:max_xtrack, min_step:max_step), errstat)
