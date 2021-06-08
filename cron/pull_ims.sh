@@ -5,14 +5,6 @@
 set -e
 set -u
 
-tmpfile=$(mktemp -p $SDPC_ANCILLARY_ROOT/src)
-
-cleanup()
-{
-   /bin/rm -f $tmpfile
-}
-trap cleanup EXIT
-
 rootdir="${SDPC_ANCILLARY_ROOT}/ims"
 subdir="$(date +%Y)"
 
@@ -21,8 +13,12 @@ if ! test -d $target_dir ; then
    mkdir -p $target_dir
 fi
 
-sed -e s,@SOURCE_DIR@,$subdir,g \
-    -e s,@TARGET_DIR@,$target_dir,g \
-    $SDPC_ANCILLARY_ROOT/src/lftp_ims.script > $tmpfile
+lftp ftp://sidads.colorado.edu <<- EOF
+   set xfer:use-temp-file yes
+   set xfer:temp-file-name *.lftp
+   set mirror:require-source true
+   cd pub/DATASETS/NOAA/G02156/GIS/1km
+   mirror -c --newer-than=now-4days $subdir $target_dir
+   quit
+EOF
 
-lftp -f $tmpfile

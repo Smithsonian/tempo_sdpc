@@ -1,7 +1,0 @@
-open ftp://sidads.colorado.edu
-set xfer:use-temp-file yes
-set xfer:temp-file-name *.lftp
-set mirror:require-source true
-cd pub/DATASETS/NOAA/G02156/GIS/1km
-mirror -c --newer-than=now-4days @SOURCE_DIR@ @TARGET_DIR@
-quit
