@@ -6,8 +6,8 @@ all:
 	@echo "targets: install"
 
 SCRIPT_FILES = crontab crontab.sh dl_met.sl \
-               ims_lftp.script pull_ims.sh \
-               pda_lftp.script pull_goes.sh
+               lftp_ims.script pull_ims.sh \
+               lftp_pda.script pull_goes.sh
 
 SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/src
 

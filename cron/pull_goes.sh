@@ -22,7 +22,7 @@ if ! test -d $target_dir ; then
 fi
 
 sed -e s,@TARGET_DIR@,$target_dir,g \
-    $SDPC_ANCILLARY_ROOT/src/pda_lftp.script > $tmpfile
+    $SDPC_ANCILLARY_ROOT/src/lftp_pda.script > $tmpfile
 
 lftp -f $tmpfile
 
