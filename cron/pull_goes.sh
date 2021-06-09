@@ -5,14 +5,6 @@
 set -e
 set -u
 
-tmpfile=$(mktemp -p $SDPC_ANCILLARY_ROOT/src)
-
-cleanup()
-{
-   /bin/rm -f $tmpfile
-}
-trap cleanup EXIT
-
 rootdir="${SDPC_ANCILLARY_ROOT}/goes"
 subdir="$(date +%Y/%j)"
 
@@ -21,10 +13,16 @@ if ! test -d $target_dir ; then
    mkdir -p $target_dir
 fi
 
-sed -e s,@TARGET_DIR@,$target_dir,g \
-    $SDPC_ANCILLARY_ROOT/src/lftp_pda.script > $tmpfile
-
-lftp -f $tmpfile
+lftp AO_TEMPO_SERV1@140.90.190.143 <<- EOF
+   set xfer:use-temp-file yes
+   set xfer:temp-file-name *.lftp
+   set ssl:verify-certificate no
+   set mirror:require-source true
+   set mirror:sort-by name
+   set mirror:order *.sha1 *.nc
+   mirror -c -O $target_dir -F /PDAFileLinks/g1?_cmi
+   quit
+EOF
 
 # The 'today' symlink always points to today's GOES data
 cd $rootdir
