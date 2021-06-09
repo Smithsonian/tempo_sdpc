@@ -33,6 +33,10 @@ case $_task in
    src/pull_goes.sh
    ;;
 
+   GEOSCF )
+   src/pull_geoscf.sh
+   ;;
+
    CLEANUP )
    if test -f src/cleanup.sh ; then
       src/cleanup.sh
