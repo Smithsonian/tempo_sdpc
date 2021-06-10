@@ -5,11 +5,14 @@
 set -e
 set -u
 
-: "${TESTARGS:=}"
+dateargs=""
+if test $# -gt 1; then
+   dateargs="$@"
+fi
 
 rootdir="${SDPC_ANCILLARY_ROOT}/geos_cf"
-subdir="$(date $TESTARGS +%Y/%j)"
-daytag="$(date $TESTARGS +%Y%m%d)"
+subdir="$(date $dateargs +%Y/%j)"
+daytag="$(date $dateargs +%Y%m%d)"
 
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
