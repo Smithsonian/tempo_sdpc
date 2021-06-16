@@ -100,7 +100,7 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS) $(ELFOBJS_F)
 # 	$(COMPILE_CMD) -o test_met test_met.c $(MET_LIBPATHS) -lmet $(LIBS)
 
 test_clim:	$(ELFDIR_ELF_F_LIB) test_clim.f90
-	$(FC) $(FCFLAGS) -o test_clim test_clim.f90 -I$(elfdir) -L$(elfdir) $(CLIM_LIBPATHS) -lclim_f $(LIBS_F)
+	$(FC) $(FCFLAGS) -o test_clim test_clim.f90 -I$(elfdir) -L$(elfdir) $(MODS_F) $(CLIM_LIBPATHS) -lclim_f $(LIBS_F)
 
 .PHONY: clean distclean tags all install check \
         $(EXECUTABLES)

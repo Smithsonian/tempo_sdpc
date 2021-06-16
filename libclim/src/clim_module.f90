@@ -8,10 +8,11 @@
 !! selected trace gases.  For each trace gas species, there is one climatology
 !! file for each hour of the day, for each month, for a total of 24 * 12 = 288
 !! climatology files.  Each file provides VMR(z,lat,lon).
-!! The z coordinate is defined in terms of pressure.  The pressure
-!! climatology is contained in a set of 12 files, one for each month.
-!! Each (monthly) pressure climatology file provides a parameterization
-!! of the pressure, P(z,lat,lon,hour).
+!! The z coordinate is defined in terms of pressure.
+!! Each file also contains the surface pressure, PS (lat,lon,hour)
+!! The pressure vs height, P(z,lat,lon,hour), is obtained using the
+!! EtaA(z) and EtaB(z) variables from a separate file:
+!!   P(z,lat,lon,hour) = EtaA(z) + EtaB(z) * PS(lat,lon,hour)
 !!
 module clim_module
   use netcdf, only : nf90_nowrite
@@ -22,8 +23,8 @@ module clim_module
   private
 
   public clim_query_nz
-  public clim_pres, clim_pres_init, clim_pres_nz, clim_pres_eta
-  public clim_species_vmr, clim_species_init
+  public clim_pres, clim_pres_init, clim_pres_eta
+  public clim_val_interp, clim_val_init
   public clim_cloud, clim_cloud_init
   public clim_partial_column
 
@@ -36,6 +37,13 @@ module clim_module
 
   integer, private, parameter :: path_bufsize = 1024, msg_bufsize = 128
 
+  ! Vertical grid has Num_Layers with Num_Layers+1 edges
+  ! At each layer edge:     EtaA, EtaB, i=1,Num_Layers+1
+  ! At each layer midpoint: have VMR(k), k=1,Num_Layers
+  real (kind=4), private, dimension(:), allocatable :: EtaA, EtaB
+  integer, private :: Num_Layers
+  logical, private :: Have_Forecast
+
   type :: dim_subset_type
     integer :: dimlen
     real (kind=4) :: min, max    ! domain limits [min, max)
@@ -45,14 +53,20 @@ module clim_module
     real (kind=4), dimension(:), allocatable :: values  ! (num_values)
   end type
 
+  type :: clim_pres_slab_type
+    real (kind=4), dimension(:,:,:), allocatable :: p_surf    ! (nlat,nlon,nhour)
+    real (kind=4), dimension(:,:,:), allocatable :: p_trop    ! (nlat,nlon,nhour)
+  end type
+
   type, public :: clim_pres_type
     private
-    real (kind=4) :: fmonth  ! label for month-interpolated result
+    integer :: year, month, day
+    integer :: month0, month1
+    real (kind=4) :: month0_weight
     type(dim_subset_type) :: lon_subset  ! nlon, grid box centers
     type(dim_subset_type) :: lat_subset  ! nlat, grid box centers
-    type(dim_subset_type) :: hour_subset ! nhour, interval start times
-    integer :: nz
-    real (kind=4), dimension(:), allocatable :: eta_a, eta_b  ! (nz)
+    integer :: nhours
+    real (kind=4), dimension(:), allocatable :: hours         ! (nhour)
     real (kind=4), dimension(:,:,:), allocatable :: p_surf    ! (nlat,nlon,nhour)
     real (kind=4), dimension(:,:,:), allocatable :: p_trop    ! (nlat,nlon,nhour)
   end type
@@ -63,18 +77,14 @@ module clim_module
     real (kind=4) :: lat_min, lat_max   !< latitude range of interest [deg]
   end type
 
-  ! Note: clim_type % nz = clim_pres_type % nz - 1
   type :: clim_type
     integer :: nz, nlat, nlon
-    logical :: have_variance    ! if .true., vmr_var is allocated
-    real (kind=4), dimension(:,:,:), allocatable :: vmr     ! (nz, nlat, nlon)
-    real (kind=4), dimension(:,:,:), allocatable :: vmr_var ! (nz, nlat, nlon)
+    real (kind=4), dimension(:,:,:), allocatable :: values   ! (nz, nlat, nlon)
   end type
 
-  type, public :: clim_species_type
+  type, public :: clim_val_type
     private
     integer :: nhours
-    logical :: have_variance    ! if .true., clim % vmr_var is allocated
     real (kind=4), dimension (:), allocatable :: hours   ! (nhours)
     type(clim_type), dimension(:), allocatable :: clim   ! (nhours)
   end type
@@ -88,57 +98,157 @@ module clim_module
   end type
 
   interface
-    function c_make_climatology_filename (species, month, hour, path, path_buflen) &
-        bind (c, name='make_climatology_filename')
+    function c_make_climatology_path (month, hour, path, path_buflen) &
+        bind (c, name='make_climatology_path')
       use, intrinsic :: iso_c_binding, only : c_char, c_int
       implicit none
-      character (kind=c_char), intent(in) :: species(*)
       integer (c_int), value, intent(in) :: month, hour, path_buflen
       character (kind=c_char), intent(out) :: path(*)
-      integer (c_int) :: c_make_climatology_filename
+      integer (c_int) :: c_make_climatology_path
     end function
   end interface
 
   interface
-    function c_make_pressure_filename (month, path, path_buflen) &
-        bind (c, name='make_pressure_filename')
-      use, intrinsic :: iso_c_binding, only : c_char, c_int
+    function c_make_forecast_path (timet, path, path_buflen) &
+        bind (c, name='make_forecast_path')
+      use, intrinsic :: iso_c_binding, only : c_char, c_int, c_long
       implicit none
-      integer (c_int), value, intent(in) :: month, path_buflen
+      integer (c_long), value, intent(in) :: timet
+      integer (c_int), value, intent(in) :: path_buflen
       character (kind=c_char), intent(out) :: path(*)
-      integer (c_int) :: c_make_pressure_filename
+      integer (c_int) :: c_make_forecast_path
     end function
   end interface
 
   interface
-    function c_make_cloud_climatology_filename (path, path_buflen) &
-        bind (c, name='make_cloud_climatology_filename')
+    function c_make_pressure_eta_path (path, path_buflen) &
+        bind (c, name='make_pressure_eta_path')
       use, intrinsic :: iso_c_binding, only : c_char, c_int
       implicit none
       integer (c_int), value, intent(in) :: path_buflen
       character (kind=c_char), intent(out) :: path(*)
-      integer (c_int) :: c_make_cloud_climatology_filename
+      integer (c_int) :: c_make_pressure_eta_path
+    end function
+  end interface
+
+  interface
+    function c_make_cloud_climatology_path (path, path_buflen) &
+        bind (c, name='make_cloud_climatology_path')
+      use, intrinsic :: iso_c_binding, only : c_char, c_int
+      implicit none
+      integer (c_int), value, intent(in) :: path_buflen
+      character (kind=c_char), intent(out) :: path(*)
+      integer (c_int) :: c_make_cloud_climatology_path
+    end function
+  end interface
+
+  interface
+    function c_make_timet (year, month, day, hour) &
+        bind (c, name='make_timet')
+      use, intrinsic :: iso_c_binding, only : c_int, c_long
+      implicit none
+      integer (c_int), value, intent(in) :: year, month, day, hour
+      integer (c_long) :: c_make_timet
+    end function
+  end interface
+
+  interface
+    function c_have_forecast_files (tt, num_hours) &
+        bind (c, name='have_forecast_files')
+      use, intrinsic :: iso_c_binding, only : c_int, c_long
+      implicit none
+      integer (c_long), value, intent(in) :: tt
+      integer (c_int), value, intent(in) :: num_hours
+      integer (c_int) :: c_have_forecast_files
     end function
   end interface
 
 contains
 
-  subroutine alloc_pres_type (cpt, nhour, nlon, nlat, nz, errstat)
+  subroutine define_month_interp (cpt, month, day)
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
-    integer, intent(in) :: nhour, nlon, nlat, nz
+    integer, intent(in) :: month, day
+
+    real (kind=4) :: f
+
+    cpt % month = month
+    cpt % day = day
+
+    ! At mid-month, month0 is weighted 100%.
+    ! At each month0/month1 transition, both are weighted equally,
+    ! with linear interpolation on all other days.
+
+    f = (day - 1)/mean_days_per_month
+
+    cpt % month0 = month
+
+    if (f < 0.5) then
+      cpt % month0_weight = 0.5 + f
+      cpt % month1 = month - 1
+      if (cpt % month1 < 1) cpt % month1 = 12
+    else
+      cpt % month0_weight = 1.5 - f
+      cpt % month1 = month + 1
+      if (cpt % month1 > 12) cpt % month1 = 1
+    endif
+
+  end subroutine
+
+  subroutine make_pressure_eta_path (file, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char, c_int
+    implicit none
+    character (kind=c_char, len=*), target, intent(inout) :: file
     integer, intent(inout) :: errstat
+
     integer :: err
 
     if (errstat /= 0) return
 
-    allocate (cpt % eta_a(nz), &
-              cpt % eta_b(nz), &
-              cpt % p_surf(nlat,nlon,nhour), &
-              cpt % p_trop(nlat,nlon,nhour), &
-              stat=err)
+    err = c_make_pressure_eta_path (file, len(file))
     if (err /= 0) then
-      call tell_error (tell_malloc_error, 'alloc_pres_type: allocate failed', errstat)
+      call tell_error (tell_runtime_error, "make_pressure_eta_path: failed", errstat)
+      return
+    endif
+  end subroutine
+
+  subroutine read_pressure_eta (errstat)
+    use, intrinsic :: iso_c_binding, only : c_char
+    implicit none
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type) :: obj
+    character (kind=c_char, len=path_bufsize) :: file_eta
+    integer :: num_edges, err
+
+    if (errstat /= 0) return
+    if (allocated (EtaA)) return
+
+    call make_pressure_eta_path (file_eta, errstat)
+    if (errstat /= 0) return
+
+    call tiof_open (file_eta, obj, nf90_nowrite, errstat)
+    call tiof_inq_dimlen (obj, 'z', num_edges, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, 'reading file: '//trim(file_eta), errstat)
+      return
+    endif
+
+    ! Define global
+    Num_Layers = num_edges-1
+
+    allocate (EtaA(num_edges), &
+              EtaB(num_edges), stat=err)
+    if (err /= 0) then
+      call tell_error (tell_malloc_error, 'read_pressure_eta: allocate failed', errstat)
+      return
+    endif
+
+    call tiof_get1d_r4 (obj, 'Ap', (/0/), (/num_edges/), EtaA, errstat)
+    call tiof_get1d_r4 (obj, 'Bp', (/0/), (/num_edges/), EtaB, errstat)
+    call tiof_close (obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, 'reading pressure eta tables', errstat)
       return
     endif
 
@@ -195,22 +305,17 @@ contains
 
   end subroutine
 
-  subroutine read_pressure_subset (obj, cpt, errstat)
+  subroutine read_pressure_subset (obj, cpt, cps, errstat)
     implicit none
     type (tiof_file_type) :: obj
-    type (clim_pres_type), intent(inout) :: cpt
+    type (clim_pres_type), intent(in) :: cpt
+    type (clim_pres_slab_type), intent(inout) :: cps
     integer, intent(inout) :: errstat
 
-    integer :: ilat0, ilon0, ihour0, nlat, nlon, nhour
+    integer :: ilat0, ilon0, nlat, nlon
     integer :: istart(3), icount(3)
 
     if (errstat /= 0) return
-
-    call tiof_inq_dimlen (obj, 'z', cpt % nz, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_read_error, 'reading pressure file dimensions', errstat)
-      return
-    endif
 
     ilon0 = cpt % lon_subset % imin - 1
     nlon = cpt % lon_subset % num_values
@@ -218,194 +323,238 @@ contains
     ilat0 = cpt % lat_subset % imin - 1
     nlat = cpt % lat_subset % num_values
 
-    ihour0 = cpt % hour_subset % imin - 1
-    nhour = cpt % hour_subset % num_values
-
-    call alloc_pres_type (cpt, nhour, nlon, nlat, cpt % nz, errstat)
-    if (errstat /= 0) return
-
-    call tiof_get1d_r4 (obj, 'EtaA', (/0/), (/cpt % nz/), cpt % eta_a, errstat)
-    call tiof_get1d_r4 (obj, 'EtaB', (/0/), (/cpt % nz/), cpt % eta_b, errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_io_read_error, 'reading pressure file', errstat)
-      return
-    endif
-
-    istart(1) = ihour0
+    istart(1) = 0
     istart(2) = ilon0
     istart(3) = ilat0
 
-    icount(1) = nhour
+    icount(1) = 1
     icount(2) = nlon
     icount(3) = nlat
 
-    call tiof_get3d_r4 (obj, 'SurfacePressure', istart, icount, &
-                        cpt % p_surf, errstat)
-    call tiof_get3d_r4 (obj, 'TropopausePressure', istart, icount, &
-                        cpt % p_trop, errstat)
+    if (.not.allocated (cps % p_surf)) then
+      allocate (cps % p_surf (nlat, nlon, 1))
+    endif
+    if (.not.allocated (cps % p_trop)) then
+      allocate (cps % p_trop (nlat, nlon, 1))
+    endif
+
+    call tiof_get3d_r4 (obj, 'PS', istart, icount, cps % p_surf, errstat)
     if (errstat /= 0) then
-      call tell_error (tell_io_read_error, 'reading pressure file', errstat)
+      call tell_error (tell_io_read_error, 'reading surface pressure (PS)', errstat)
       return
     endif
 
+    call tiof_get3d_r4 (obj, 'TROPPB', istart, icount, cps % p_trop, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, 'reading tropopause pressure (TROPPB)', errstat)
+      return
+    endif
+
+    ! GEOS-CF files have pressure in Pa, but this interface returns hPa:
+    cps % p_surf = cps % p_surf / 100.0
+    cps % p_trop = cps % p_trop / 100.0
+
   end subroutine
 
-  subroutine read_pressure_file (cpt, pressure_file, hour_beg, hour_end, &
-                                 lon_min, lon_max, lat_min, lat_max, errstat)
+  subroutine read_pressure_slab (cpt, cps, clim_file, errstat)
     implicit none
-    type (clim_pres_type), intent(out) :: cpt
-    character (len=*), intent(in) :: pressure_file
-    real (kind=4), intent(in) :: hour_beg, hour_end
-    real (kind=4), intent(in) :: lon_min, lon_max, lat_min, lat_max
+    type (clim_pres_type), intent(in) :: cpt
+    type (clim_pres_slab_type), intent(inout) :: cps
+    character (len=*), intent(in) :: clim_file
     integer, intent(inout) :: errstat
 
     type (tiof_file_type) :: obj
 
     if (errstat /= 0) return
 
-    call tiof_open (pressure_file, obj, nf90_nowrite, errstat)
+    call tell_log (1, 'clim_module: reading: '//trim(clim_file))
+
+    call tiof_open (clim_file, obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
-                       'read_pressure_file: error opening file: '//trim(pressure_file), &
+                       'read_pressure_slab: error opening file: '//trim(clim_file), &
                        errstat)
       return
     endif
 
-    call subset_dim (obj, 'Longitude', 'x', lon_min, lon_max, cpt % lon_subset, errstat)
-    call subset_dim (obj, 'Latitude', 'y', lat_min, lat_max, cpt % lat_subset, errstat)
-    call subset_dim (obj, 'Hour', 't', hour_beg, hour_end, cpt % hour_subset, errstat)
-
-    call read_pressure_subset (obj, cpt, errstat)
+    call read_pressure_subset (obj, cpt, cps, errstat)
 
     if (errstat /= 0) then
-      call tell_error (tell_runtime_error, 'read_pressure_file: failed', errstat)
+      call tell_error (tell_runtime_error, 'read_pressure_slab: failed', errstat)
     endif
 
     call tiof_close (obj, errstat)
 
   end subroutine
 
-  subroutine make_pressure_filename (imonth, file, errstat)
-    use, intrinsic :: iso_c_binding, only : c_char, c_int
+  subroutine maybe_alloc_subset (cpt, source_file, lon_min, lon_max, lat_min, lat_max, &
+                                 nhours, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char
     implicit none
-    integer (kind=c_int), intent(in) :: imonth
-    character (kind=c_char, len=*), target, intent(inout) :: file
+    type (clim_pres_type), intent(inout) :: cpt
+    character (kind=c_char, len=path_bufsize), intent(in) :: source_file
+    real (kind=4), intent(in) :: lon_min, lon_max, lat_min, lat_max
+    integer, intent(in) :: nhours
     integer, intent(inout) :: errstat
 
-    integer :: err
+    integer :: nlon, nlat, err
+    type (tiof_file_type) :: obj
 
     if (errstat /= 0) return
+    if (allocated (cpt % lon_subset % values)) return
 
-    err = c_make_pressure_filename (imonth, file, len(file))
-    if (err /= 0) then
-      call tell_error (tell_runtime_error, "make_pressure_filename: failed", errstat)
+    call tiof_open (source_file, obj, nf90_nowrite, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_open_error, &
+                       'maybe_alloc_subset: error opening file: '//trim(source_file), &
+                       errstat)
       return
     endif
+
+    call subset_dim (obj, 'lon', 'lon', lon_min, lon_max, cpt % lon_subset, errstat)
+    call subset_dim (obj, 'lat', 'lat', lat_min, lat_max, cpt % lat_subset, errstat)
+    call tiof_close (obj, errstat)
+    if (errstat /= 0) return
+
+    nlon = cpt % lon_subset % num_values
+    nlat = cpt % lat_subset % num_values
+    allocate (cpt % p_surf(nlat,nlon,nhours), &
+              cpt % p_trop(nlat,nlon,nhours), &
+              stat=err)
+    if (err /= 0) then
+      call tell_error (tell_malloc_error, 'maybe_alloc_subset: allocate failed', errstat)
+      return
+    endif
+
   end subroutine
 
   !> @brief
   !> Initialize pressure climatology (struct args)
   !> @param[out] cpt   Instance of opaque @a type(clim_pres_type) to hold
   !>                   the selected pressure climatology data
+  !> @param[in] year   Integer year
   !> @param[in] month  Integer month [1,12] of climatology data to read
   !> @param[in] day    Integer day [1,30] of data to read
   !> @param[in] b      Instance of @a type(clim_pres_bounds_type) providing
   !>                   the hour, longitude, latitude range of interest
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_pres_init_struct (cpt, month, day, b, errstat)
+  !> @param[in,optional] use_fcast   If present, and .false., the forecast
+  !>                                 files are ignored.
+  subroutine clim_pres_init_struct (cpt, year, month, day, b, errstat, use_fcast)
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
-    integer, intent(in) :: month, day
+    integer, intent(in) :: year, month, day
     type (clim_pres_bounds_type), intent(in) :: b
     integer, intent(inout) :: errstat
+    logical, optional, intent(in) :: use_fcast
 
-    call clim_pres_init_args (cpt, month, day, &
+    call clim_pres_init_args (cpt, year, month, day, &
                               b % hour_beg, b % hour_end, &
                               b % lon_min, b % lon_max, &
-                              b % lat_min, b % lat_max, errstat)
+                              b % lat_min, b % lat_max, errstat, &
+                              use_fcast)
   end subroutine
 
   !> @brief
   !> Initialize pressure climatology (explicit args)
   !> @param[out] cpt   Instance of opaque @a type(clim_pres_type) to hold
   !>                   the selected pressure climatology data
+  !> @param[in] year   Integer year
   !> @param[in] month  Integer month [1,12] of climatology data to read
   !> @param[in] day    Integer day [1,30] of data to read
   !> @param[in] hour_beg, hour_end  Selected UTC interval [hour]
   !> @param[in] lon_min, lon_max    Selected longitude range [deg]
   !> @param[in] lat_min, lat_max    Selected latitude range
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_pres_init_args (cpt, month, day, &
+  !> @param[in,optional] use_fcast   If present, and .false., the forecast
+  !>                                 files are ignored.
+  subroutine clim_pres_init_args (cpt, year, month, day, &
                                   hour_beg, hour_end, &
                                   lon_min, lon_max, &
-                                  lat_min, lat_max, errstat)
+                                  lat_min, lat_max, errstat, use_fcast)
     use, intrinsic :: iso_c_binding, only : c_char
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
-    integer, intent(in) :: month, day
+    integer, intent(in) :: year, month, day
     real (kind=4), intent(in) :: hour_beg, hour_end
     real (kind=4), intent(in) :: lon_min, lon_max, lat_min, lat_max
     integer, intent(inout) :: errstat
+    logical, optional, intent(in) :: use_fcast
 
     character (kind=c_char, len=path_bufsize) :: file_month0, file_month1
-    integer :: month0, month1
-    real (kind=4) :: fmonth, wt0
-    type (clim_pres_type) :: cpt1
+    integer :: i, nhours, have_forecast_files
+    integer (kind=8) :: timet
+    real (kind=4) :: wt0
+    type (clim_pres_slab_type) :: cps0, cps1
 
     if (errstat /= 0) return
 
-    fmonth = month + (day - 1)/mean_days_per_month
-
-    month0 = month
-    month1 = modulo (month0 + 1, 12)
-    wt0 = 1.0 - (fmonth - month0)
-
-    call make_pressure_filename (month0, file_month0, errstat)
-    call read_pressure_file (cpt, file_month0, hour_beg, hour_end, &
-                             lon_min, lon_max, lat_min, lat_max, errstat)
+    call read_pressure_eta (errstat)
     if (errstat /= 0) return
 
-    call make_pressure_filename (month1, file_month1, errstat)
-    call read_pressure_file (cpt1, file_month1, hour_beg, hour_end, &
-                             lon_min, lon_max, lat_min, lat_max, errstat)
-    if (errstat /= 0) return
+    call define_month_interp (cpt, month, day)
 
-    cpt % fmonth = fmonth
-    cpt % eta_a(:)      = (wt0 * cpt % eta_a(:)      + (1.0 - wt0) * cpt1 % eta_a(:))
-    cpt % eta_b(:)      = (wt0 * cpt % eta_b(:)      + (1.0 - wt0) * cpt1 % eta_b(:))
-    cpt % p_surf(:,:,:) = (wt0 * cpt % p_surf(:,:,:) + (1.0 - wt0) * cpt1 % p_surf(:,:,:))
-    cpt % p_trop(:,:,:) = (wt0 * cpt % p_trop(:,:,:) + (1.0 - wt0) * cpt1 % p_trop(:,:,:))
+    nhours = ceiling(hour_end) - floor(hour_beg) + 1
+
+    allocate (cpt % hours(nhours))
+    cpt % nhours = nhours
+    cpt % hours(:) = real((/(i, i=0,nhours-1)/) + floor(hour_beg), 4)
+    cpt % year = year
+
+    timet = c_make_timet (year, month, day, int(hour_beg))
+    have_forecast_files = c_have_forecast_files (timet, nhours)
+    Have_Forecast = (have_forecast_files == 1)
+
+    if (present(use_fcast)) then
+      if (.not.use_fcast) Have_Forecast = .false.
+    endif
+
+    if (Have_Forecast) then
+
+      do i = 1, nhours
+        timet = c_make_timet (year, month, day, int(cpt % hours(i)))
+        call make_forecast_path (timet, file_month0, errstat)
+        call maybe_alloc_subset (cpt, file_month0, lon_min, lon_max, lat_min, lat_max, nhours, errstat)
+        if (errstat /= 0) return
+
+        call read_pressure_slab (cpt, cps0, file_month0, errstat)
+        if (errstat /= 0) return
+
+        cpt % p_surf(:,:,i) = cps0 % p_surf (:,:,1)
+        cpt % p_trop(:,:,i) = cps0 % p_trop (:,:,1)
+      enddo
+
+    else
+
+      wt0 = cpt % month0_weight
+
+      do i = 1, nhours
+        call make_climatology_path (cpt % month0, int(cpt % hours(i)), file_month0, errstat)
+        call make_climatology_path (cpt % month1, int(cpt % hours(i)), file_month1, errstat)
+        call maybe_alloc_subset (cpt, file_month0, lon_min, lon_max, lat_min, lat_max, nhours, errstat)
+        if (errstat /= 0) return
+
+        call read_pressure_slab (cpt, cps0, file_month0, errstat)
+        call read_pressure_slab (cpt, cps1, file_month1, errstat)
+        if (errstat /= 0) return
+
+        cpt % p_surf(:,:,i) = wt0 * cps0 % p_surf(:,:,1) + (1.0 - wt0) * cps1 % p_surf(:,:,1)
+        cpt % p_trop(:,:,i) = wt0 * cps0 % p_trop(:,:,1) + (1.0 - wt0) * cps1 % p_trop(:,:,1)
+      enddo
+
+    endif
 
   end subroutine
 
   subroutine clim_query_nz (nz, errstat)
-    use, intrinsic :: iso_c_binding, only : c_char
     implicit none
     integer, intent(out) :: nz
     integer, intent(inout) :: errstat
 
-    type (tiof_file_type) :: obj
-    integer :: month
-    character (kind=c_char, len=path_bufsize) :: pressure_file
-
+    call read_pressure_eta (errstat)
     if (errstat /= 0) return
 
-    ! Assuming all months have the same grid, the month doesn't matter.
-    ! July is available now, so I'll pick that.
-    month = 7
-    call make_pressure_filename (month, pressure_file, errstat)
-    if (errstat /= 0) return
-
-    call tiof_open (pressure_file, obj, nf90_nowrite, errstat)
-    call tiof_inq_dimlen (obj, 'z', nz, errstat)
-    call tiof_close (obj, errstat)
-
-    if (errstat /= 0) then
-      call tell_error (tell_io_read_error, &
-                       'clim_query_nz: error reading: '//trim(pressure_file), &
-                       errstat)
-      return
-    endif
+    nz = Num_Layers
 
   end subroutine
 
@@ -423,6 +572,9 @@ contains
     character (len=msg_bufsize) :: msg
 
     if (errstat /= 0) return
+
+    ilon0 = -1
+    ilat0 = -1
 
     nlon = cpt % lon_subset % num_values
     nlat = cpt % lat_subset % num_values
@@ -460,19 +612,7 @@ contains
   end subroutine
 
   !> @brief
-  !> Query the number of vertical layers in the pressure grid
-  !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
-  !> @return the number of vertical layers in the pressure grid
-  function clim_pres_nz (cpt)
-    implicit none
-    type (clim_pres_type), intent(in) :: cpt
-    integer :: clim_pres_nz
-    clim_pres_nz = cpt % nz
-  end function
-
-  !> @brief
   !> Interpolate pressure vs height
-  !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
   !> @param[out] eta_a    Output Eta_A array
   !> @param[out] eta_b    Output Eta_B array
   !>
@@ -482,16 +622,18 @@ contains
   !> @v+
   !> p(z) = eta_a(z) + eta_b(z) * p_surf
   !> @v-
-  subroutine clim_pres_eta (cpt, eta_a, eta_b, errstat)
+  subroutine clim_pres_eta (eta_a, eta_b, errstat)
     implicit none
-    type(clim_pres_type), intent(in) :: cpt
-    real (kind=4), dimension(cpt % nz), intent(out) :: eta_a, eta_b
+    real (kind=4), dimension(:), intent(out) :: eta_a, eta_b
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
 
-    eta_a(:) = cpt % eta_a(:)
-    eta_b(:) = cpt % eta_b(:)
+    call read_pressure_eta (errstat)
+    if (errstat /= 0) return
+
+    eta_a(:) = EtaA(:)
+    eta_b(:) = EtaB(:)
 
   end subroutine
 
@@ -509,12 +651,12 @@ contains
     implicit none
     type(clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
-    real (kind=4), dimension(cpt % nz), intent(out) :: pres_z
+    real (kind=4), dimension(Num_Layers+1), intent(out) :: pres_z
     integer, intent(inout) :: errstat
     real (kind=4), optional, intent(out) :: p_surf, p_trop
 
     integer :: ilon0, ilat0, ihr0
-    real (kind=4) :: hr0, wt0, psurf
+    real (kind=4) :: hr0, wt0, psurf, hr_min, hr_max
     character (len=msg_bufsize) :: msg
 
     if (errstat /= 0) return
@@ -522,30 +664,32 @@ contains
     call lonlat_lookup (cpt, lon, lat, ilon0, ilat0, errstat)
     if (errstat /= 0) return
 
-    if ((hour_utc < cpt % hour_subset % min) &
-        .or. (cpt % hour_subset % max < hour_utc)) then
+    hr_min = cpt % hours(1)
+    hr_max = cpt % hours(cpt % nhours)
+
+    if ((hour_utc < hr_min) .or. (hr_max < hour_utc)) then
       write (msg, '(a,f10.1)')'clim_pres: domain error: hour_utc=', hour_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif
 
-    hr0  = cpt % hour_subset % values(1)
+    hr0  = hr_min
     ihr0 = ceiling (hour_utc - hr0)
     if (ihr0 <= 0) ihr0 = 1
 
-    if (ihr0 + 1 > cpt % hour_subset % num_values) then
+    if (ihr0 + 1 > cpt % nhours) then
       write (msg, '(a,f10.1)')'clim_pres: domain error: hour_utc=', hour_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif
 
     ! This assumes the diurnal grid spacing is 1 hour
-    wt0 = 1.0 - (hour_utc - cpt % hour_subset % values(ihr0))
+    wt0 = 1.0 - (hour_utc - cpt % hours(ihr0))
 
     psurf = (wt0 * cpt % p_surf (ilat0, ilon0, ihr0) &
              + (1.0 - wt0) * cpt % p_surf (ilat0, ilon0, ihr0+1))
 
-    pres_z(:) = cpt % eta_a(:) + cpt % eta_b (:) * psurf
+    pres_z(:) = EtaA(:) + EtaB (:) * psurf
 
     if (present(p_surf)) then
       p_surf = psurf
@@ -558,11 +702,10 @@ contains
 
   end subroutine
 
-  subroutine allocate_clim_type (cpt, ct, have_variance, errstat)
+  subroutine allocate_clim_type (cpt, ct, errstat)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
     type (clim_type), intent(inout) :: ct
-    logical, intent(in) :: have_variance
     integer, intent(inout) :: errstat
 
     integer :: err
@@ -571,47 +714,48 @@ contains
 
     ct % nlon = cpt % lon_subset % num_values
     ct % nlat = cpt % lat_subset % num_values
-    ct % nz = cpt % nz - 1
+    ct % nz = Num_Layers
 
-    ct % have_variance = have_variance
-
-    allocate (ct % vmr (ct % nz, ct % nlat, ct % nlon), stat=err)
+    allocate (ct % values (ct % nz, ct % nlat, ct % nlon), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, 'allocate_clim_type: allocate failed', errstat)
       return
     endif
 
-    if (have_variance) then
-      allocate (ct % vmr_var (ct % nz, ct % nlat, ct % nlon), stat=err)
-      if (err /= 0) then
-        call tell_error (tell_malloc_error, 'allocate_clim_type: allocate failed', errstat)
-        return
-      endif
-    endif
-
   end subroutine
 
-  subroutine read_climatology (cpt, file, species, ct, errstat)
+  subroutine read_climatology (cpt, file, name, ct, errstat)
     use, intrinsic :: iso_c_binding, only : c_null_char
     implicit none
     type (clim_pres_type), intent(in) :: cpt
     character (len=*), intent(in) :: file
-    character (len=*), intent(in) :: species
+    character (len=*), intent(in) :: name
     type (clim_type), intent(inout) :: ct
     integer, intent(inout) :: errstat
 
-    integer :: istart(3), icount(3)
+    integer :: istart(0:3), icount(0:3)
     type (tiof_file_type) :: obj
+
+    real (kind=4), dimension (:,:,:,:), allocatable :: values
+    integer :: nlon, nlat, nz
 
     if (errstat /= 0) return
 
+    nlon = cpt % lon_subset % num_values
+    nlat = cpt % lat_subset % num_values
+    nz = ct % nz
+
+    istart(0) = 0
     istart(1) = cpt % lon_subset % imin
     istart(2) = cpt % lat_subset % imin
     istart(3) = 0
 
-    icount(1) = cpt % lon_subset % num_values
-    icount(2) = cpt % lat_subset % num_values
-    icount(3) = ct % nz
+    icount(0) = 1
+    icount(1) = nlon
+    icount(2) = nlat
+    icount(3) = nz
+
+    call tell_log (1, 'clim_module: reading: '//trim(file))
 
     call tiof_open (file, obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
@@ -621,13 +765,10 @@ contains
       return
     endif
 
-    call tiof_get3d_r4 (obj, 'TRC'//trim(species)//c_null_char, &
-                        istart, icount, ct % vmr, errstat)
-
-    if (ct % have_variance) then
-      call tiof_get3d_r4 (obj, 'TRC'//trim(species)//'_variance'//c_null_char, &
-                          istart, icount, ct % vmr_var, errstat)
-    endif
+    allocate (values(nz,nlat,nlon,1))
+    call tiof_get4d_r4 (obj, trim(name)//c_null_char, &
+                        istart, icount, values, errstat)
+    ct % values = reshape (values, (/nz,nlat,nlon/))
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
@@ -640,10 +781,9 @@ contains
 
   end subroutine
 
-  subroutine make_climatology_filename (species, imonth, ihour, file, errstat)
+  subroutine make_climatology_path (imonth, ihour, file, errstat)
     use, intrinsic :: iso_c_binding, only : c_null_char, c_char, c_int
     implicit none
-    character (kind=c_char, len=*), intent(in) :: species
     integer (kind=c_int), intent(in) :: imonth, ihour
     character (kind=c_char, len=*), intent(inout) :: file
     integer, intent(inout) :: errstat
@@ -652,17 +792,35 @@ contains
 
     if (errstat /= 0) return
 
-    err = c_make_climatology_filename (trim(species)//c_null_char, imonth, ihour, file, len(file))
+    err = c_make_climatology_path (imonth, ihour, file, len(file))
     if (err /= 0) then
-      call tell_error (tell_runtime_error, "make_climatology_filename: failed", errstat)
+      call tell_error (tell_runtime_error, "make_climatology_path: failed", errstat)
       return
     endif
 
   end subroutine
 
-  subroutine interp_months (cpt, wt0, ct0, ct1, ct_avg, errstat)
+  subroutine make_forecast_path (ttime, file, errstat)
+    use, intrinsic :: iso_c_binding, only : c_null_char, c_char, c_int, c_long
     implicit none
-    type (clim_pres_type), intent(in) :: cpt
+    integer (kind=c_long), intent(in) :: ttime
+    character (kind=c_char, len=*), intent(inout) :: file
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat /= 0) return
+
+    err = c_make_forecast_path (ttime, file, len(file))
+    if (err /= 0) then
+      call tell_error (tell_runtime_error, "make_forecast_path: failed", errstat)
+      return
+    endif
+
+  end subroutine
+
+  subroutine interp_months (wt0, ct0, ct1, ct_avg, errstat)
+    implicit none
     real (kind=4), intent(in) :: wt0
     type (clim_type), intent(in) :: ct0, ct1
     type (clim_type), intent(inout) :: ct_avg
@@ -670,51 +828,35 @@ contains
 
     if (errstat /= 0) return
 
-    ct_avg % vmr(:,:,:) = &
-      (wt0 * ct0 % vmr(:,:,:) + (1.0 - wt0) * ct1 % vmr(:,:,:))
-
-    if (ct0 % have_variance .and. ct1 % have_variance) then
-      ct_avg % vmr_var(:,:,:) = &
-        (wt0 * ct0 % vmr_var(:,:,:) + (1.0 - wt0) * ct1 % vmr_var(:,:,:))
-    endif
+    ct_avg % values(:,:,:) = &
+      (wt0 * ct0 % values(:,:,:) + (1.0 - wt0) * ct1 % values(:,:,:))
 
   end subroutine
 
   !> @brief
-  !> Initialize trace gas species climatology
-  !> @param[out] cst  Instance of opaque @a type(clim_species_type) to hold
-  !>                  the selected trace gas species climatology data
+  !> Initialize tables for named variable
+  !> @param[out] cst  Instance of opaque @a type(clim_val_type) to hold
+  !>                  the selected values
   !> @param[in] cpt   Initialized instance of @a type(clim_pres_type)
-  !> @param[in] species  String name of the trace gas species (must exactly
-  !>                     match a species name in the climatology database)
-  !> @param[in] select_vmr_stddev  Optional, logical variable indicating whether
-  !>                           or not the VMR standard deviation will be needed.
-  !>                           Default: select_vmr_stddev = .false.
+  !> @param[in] name  String name of the value in the database files
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_species_init (cst, cpt, species, errstat, select_vmr_stddev)
+  subroutine clim_val_init (cst, cpt, name, errstat)
     implicit none
-    type (clim_species_type), intent(out) :: cst
+    type (clim_val_type), intent(out) :: cst
     type (clim_pres_type), intent(in) :: cpt
-    character (len=*), intent(in) :: species
+    character (len=*), intent(in) :: name
     integer, intent(inout) :: errstat
-    logical, intent(in), optional :: select_vmr_stddev
 
     type (clim_type) :: ct_month0, ct_month1
-    integer :: i, nhours, month0, month1, err
+    integer :: i, nhours, err
+    integer (kind=8) :: timet
     real (kind=4) :: hour_beg, hour_end
-    real (kind=4) :: weight0
     character (len=path_bufsize) :: file_month0, file_month1
 
     if (errstat /= 0) return
 
-    if (present(select_vmr_stddev)) then
-      cst % have_variance = select_vmr_stddev
-    else
-      cst % have_variance = .false.
-    endif
-
-    hour_beg = cpt % hour_subset % min
-    hour_end = cpt % hour_subset % max
+    hour_beg = cpt % hours(1)
+    hour_end = cpt % hours(cpt % nhours)
 
     if (hour_end < hour_beg) then
       call tell_error (tell_invalid_parm_error, 'invalid hour range', errstat)
@@ -730,7 +872,7 @@ contains
               cst % clim(nhours), &
               stat=err)
     if (err /= 0) then
-      call tell_error (tell_malloc_error, 'alloc_pres_type: allocate failed', errstat)
+      call tell_error (tell_malloc_error, 'clim_val_init: allocate failed', errstat)
       return
     endif
 
@@ -739,54 +881,64 @@ contains
     cst % nhours = nhours
     cst % hours(:) = real((/(i, i=0,nhours-1)/) + floor(hour_beg), 4)
     do i = 1,nhours
-      call allocate_clim_type (cpt, cst % clim(i), cst % have_variance, errstat)
+      call allocate_clim_type (cpt, cst % clim(i), errstat)
       if (errstat /= 0) return
     enddo
 
-    ! read climatologies and perform month interpolation
+    if (Have_Forecast) then
+      ! read composition forecast
 
-    call allocate_clim_type (cpt, ct_month0, cst % have_variance, errstat)
-    call allocate_clim_type (cpt, ct_month1, cst % have_variance, errstat)
-    if (errstat /= 0) return
+      do i = 1, nhours
+        timet = c_make_timet (cpt % year, cpt % month, cpt % day, int(cpt % hours(i)))
+        call make_forecast_path (timet, file_month0, errstat)
+        if (errstat /= 0) return
+        call read_climatology (cpt, file_month0, name, cst % clim(i), errstat)
+      enddo
 
-    month0 = floor(cpt % fmonth)
-    month1 = modulo (month0 + 1, 12)
-    weight0 = 1.0 - (cpt % fmonth - month0)
+    else
+      ! read composition climatologies and perform month interpolation
 
-    do i = 1,nhours
-      call make_climatology_filename (species, month0, int(cst % hours(i)), file_month0, errstat)
-      call read_climatology (cpt, file_month0, species, ct_month0, errstat)
+      call allocate_clim_type (cpt, ct_month0, errstat)
+      call allocate_clim_type (cpt, ct_month1, errstat)
       if (errstat /= 0) return
 
-      call make_climatology_filename (species, month1, int(cst % hours(i)), file_month1, errstat)
-      call read_climatology (cpt, file_month1, species, ct_month1, errstat)
-      if (errstat /= 0) return
+      do i = 1,nhours
+        call make_climatology_path (cpt % month0, int(cst % hours(i)), file_month0, errstat)
+        call make_climatology_path (cpt % month1, int(cst % hours(i)), file_month1, errstat)
+        if (errstat /= 0) return
 
-      call interp_months (cpt, weight0, ct_month0, ct_month1, cst % clim(i), errstat)
-      if (errstat /= 0) return
-    enddo
+        call read_climatology (cpt, file_month0, name, ct_month0, errstat)
+        call read_climatology (cpt, file_month1, name, ct_month1, errstat)
+        if (errstat /= 0) return
+
+        call interp_months (cpt % month0_weight, ct_month0, ct_month1, cst % clim(i), errstat)
+        if (errstat /= 0) return
+      enddo
+    endif
 
   end subroutine
 
   subroutine hrlonlat_lookup (cst, cpt, hour_utc, lon, lat, &
                               ihr0, ilon0, ilat0, errstat)
     implicit none
-    type (clim_species_type), intent(in) :: cst
+    type (clim_val_type), intent(in) :: cst
     type (clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
     integer, intent(out) :: ihr0, ilon0, ilat0
     integer, intent(inout) :: errstat
 
     character (len=msg_bufsize) :: msg
-    real (kind=4) :: hr0
+    real (kind=4) :: hr0, hr_min, hr_max
 
     if (errstat /= 0) return
 
     call lonlat_lookup (cpt, lon, lat, ilon0, ilat0, errstat)
     if (errstat /= 0) return
 
-    if ((hour_utc < cpt % hour_subset % min) &
-        .or. (cpt % hour_subset % max < hour_utc)) then
+    hr_min = cpt % hours(1)
+    hr_max = cpt % hours(cpt % nhours)
+
+    if ((hour_utc < hr_min) .or. (hr_max < hour_utc)) then
       write (msg, '(a,f10.1)')'hrlonlat_lookup: domain error: hour_utc=', hour_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
@@ -806,25 +958,21 @@ contains
   end subroutine
 
   !> @brief
-  !> Interpolate species volume mixing ratio vs height
-  !> @param[out] cst  Initialized instance of opaque @a type(clim_species_type)
+  !> Interpolate table values vs height
+  !> @param[out] cst  Initialized instance of opaque @a type(clim_val_type)
   !> @param[in] cpt   Initialized instance of @a type(clim_pres_type)
   !> @param[in] hour_utc  UTC hour of interest
   !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
-  !> @param[out] vmr_z   Output volume mixing ratio vs height.
-  !>                     For (nz) pressure values, the VMR array size is (nz-1).
-  !> @param[out] vmr_stddev_z   (optional) Output VMR standard deviation vs height.
-  !>                     For (nz) pressure values, the VMR stddev array size is (nz-1).
+  !> @param[out] values_z   Output value vs height.
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_species_vmr (cst, cpt, hour_utc, lon, lat, vmr_z, &
-                               errstat, vmr_stddev_z)
+  subroutine clim_val_interp (cst, cpt, hour_utc, lon, lat, values_z, &
+                              errstat)
     implicit none
-    type(clim_species_type), intent(in) :: cst
+    type(clim_val_type), intent(in) :: cst
     type(clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
-    real (kind=4), intent(out), dimension(cpt % nz - 1) :: vmr_z
+    real (kind=4), intent(out), dimension(Num_Layers) :: values_z
     integer, intent(inout) :: errstat
-    real (kind=4), intent(out), optional, dimension(cpt % nz - 1) :: vmr_stddev_z
 
     integer :: ihr0, ilon0, ilat0
     real (kind=4) :: wt0
@@ -837,13 +985,8 @@ contains
     ! This assumes the diurnal grid spacing is 1 hour
     wt0 = 1.0 - (hour_utc - cst % hours(ihr0))
 
-    vmr_z(:) = (wt0 * cst % clim(ihr0) % vmr(:,ilat0,ilon0) &
-                + (1.0 - wt0) * cst % clim(ihr0+1) % vmr(:,ilat0,ilon0))
-
-    if (present (vmr_stddev_z) .and. cst % have_variance) then
-      vmr_stddev_z(:) = sqrt (wt0 * cst % clim(ihr0) % vmr_var(:,ilat0,ilon0) &
-                              + (1.0 - wt0) * cst % clim(ihr0+1) % vmr_var(:,ilat0,ilon0))
-    endif
+    values_z(:) = (wt0 * cst % clim(ihr0) % values(:,ilat0,ilon0) &
+                + (1.0 - wt0) * cst % clim(ihr0+1) % values(:,ilat0,ilon0))
 
   end subroutine
 
@@ -851,10 +994,10 @@ contains
   !> Compute the partial column from the volume mixing ratio and pressure
   !> @param[in] pres_z  Atmospheric pressure in @a nz layers [hPa]
   !> @param[in] vmr_z   Volume mixing ratio of a trace constituent in
-  !>                    @a (nz-1) layers.
-  !> @param[out] col_z  Partial column [cm^-2] in each layer
+  !>                    @a [nz-1] layers.
+  !> @param[out] col_z  Partial column [cm^-2] in each layer [nz-1]
   !> @param[inout]  errstat  Error status code (0 on success)
-  !> @param[in]  vmr_h2o  Optional volume mixing ratio of water in @a (nz-1) layers
+  !> @param[in]  vmr_h2o  Optional volume mixing ratio of water in @a [nz-1] layers
   !>
   !> The pressure array is assumed to provide the pressure at both boundaries
   !> of each layer, therefore the pressure array dimension is one larger than
@@ -908,7 +1051,7 @@ contains
 
   end subroutine
 
-  subroutine make_cloud_climatology_filename (file, errstat)
+  subroutine make_cloud_climatology_path (file, errstat)
     use, intrinsic :: iso_c_binding, only : c_char, c_int
     implicit none
     character (kind=c_char, len=*), target, intent(inout) :: file
@@ -918,9 +1061,9 @@ contains
 
     if (errstat /= 0) return
 
-    err = c_make_cloud_climatology_filename (file, len(file))
+    err = c_make_cloud_climatology_path (file, len(file))
     if (err /= 0) then
-      call tell_error (tell_runtime_error, "make_cloud_climatology_filename: failed", errstat)
+      call tell_error (tell_runtime_error, "make_cloud_climatology_path: failed", errstat)
       return
     endif
   end subroutine
@@ -943,7 +1086,7 @@ contains
 
     if (errstat /= 0) return
 
-    call make_cloud_climatology_filename (file, errstat)
+    call make_cloud_climatology_path (file, errstat)
     if (errstat /= 0) return
 
     call tiof_open (file, obj, nf90_nowrite, errstat)
@@ -1020,13 +1163,23 @@ contains
     integer, intent(inout) :: errstat
 
     integer :: ilon0, ilat0, month0, month1
-    real (kind=4) :: lon0, lat0, dlon, dlat, wt0
+    real (kind=4) :: lon0, lat0, dlon, dlat, f, wt0
 
     if (errstat /= 0) return
 
+    f = (day - 1)/ mean_days_per_month
+
     month0 = month
-    month1 = modulo (month+1,12)
-    wt0 = (day - 1)/ mean_days_per_month
+
+    if (f < 0.5) then
+      wt0 = 0.5 + f
+      month1 = month - 1
+      if (month1 < 1) month1 = 12
+    else
+      wt0 = 1.5 - f
+      month1 = month + 1
+      if (month1 > 12) month1 = 1
+    endif
 
     lon0 = cct % lon(1)
     dlon = cct % lon(2) - lon0
