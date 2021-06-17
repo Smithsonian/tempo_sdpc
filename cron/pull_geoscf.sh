@@ -31,6 +31,16 @@ lftp <<- EOF
    quit
 EOF
 
-# The 'today' symlink always points to today's GEOS-CF data
-cd $rootdir
-ln -nf -s $subdir today
+# re-order the variable dimensions
+
+reorder_dims()
+{
+   path=$1
+   bn=$(basename $path .nc4)
+   new_file="${bn}_reorder.nc4"
+   ncpdq -a time,lon,lat,lev --no_tmp_fl $path $target_dir/$new_file && /bin/rm -f "$path"
+}
+export target_dir
+export -f reorder_dims
+
+find $target_dir -name $filename_regex | parallel --citation --max-procs 12 reorder_dims {}
