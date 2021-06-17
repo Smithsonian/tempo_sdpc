@@ -43,4 +43,4 @@ reorder_dims()
 export target_dir
 export -f reorder_dims
 
-find $target_dir -name $filename_regex | parallel --citation --max-procs 12 reorder_dims {}
+find $target_dir -name $filename_regex | parallel --will-cite --max-procs 12 reorder_dims {}
