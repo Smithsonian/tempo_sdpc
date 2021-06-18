@@ -357,9 +357,10 @@ CONTAINS
     ! -----------------------------------------------
     IF (do_write .and. amf_wvl > 0.0) then
       call tell_log (1, 'amf_calculation: write amf correction to L2 file')
-      nz = clim_pres_nz (cpt)
+      call clim_query_nz (nz, errstat)
+      if (errstat /= 0) return
       allocate (eta_a(nz), eta_b(nz))
-      call clim_pres_eta (cpt, eta_a, eta_b, errstat)
+      call clim_pres_eta (eta_a, eta_b, errstat)
       if (errstat /= 0) return
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_molecule_stratospheric => stratospheric_amf
@@ -882,7 +883,7 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     type (clim_pres_bounds_type) :: bounds
-    type (clim_species_type) :: cst, cst_o3
+    type (clim_val_type) :: cst, cst_o3
     integer :: year(2), month(2), day(2)
     integer :: nz, nlayers, itimes, ixtrack
     real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end, tai93_offset
@@ -931,29 +932,27 @@ CONTAINS
     bounds % lat_min = minval(fudge_lat, fudge_lat /= r4_missval)
     bounds % lat_max = maxval(fudge_lat, fudge_lat /= r4_missval)
 
-    call clim_pres_init (cpt, month(1), day(1), bounds, errstat)
+    call clim_pres_init (cpt, year(1), month(1), day(1), bounds, errstat)
+    call clim_query_nz (nz, errstat)
     if (errstat /= 0) return
-    nz = clim_pres_nz (cpt)
     nlayers = nz - 1
     allocate (pres(nz), vmr(nlayers), partial_column(nlayers))
 
     clim_db_molecule_name = sao_molecule_names(pge_idx)
 
     ! We can't agree on how to spell the names of molecules.
-    if (clim_db_molecule_name == 'HCHO') then
-      clim_db_molecule_name = 'CH2O  '
-    else if (clim_db_molecule_name == 'CHOCHO') then
+    if (clim_db_molecule_name == 'CHOCHO') then
       clim_db_molecule_name = 'GLYX  '
     endif
 
-    call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat)
+    call clim_val_init (cst, cpt, trim(clim_db_molecule_name), errstat)
     if (errstat /= 0) then
        call tell_error ( tell_io_read_error, "libclim_climatology: initializing "//trim(clim_db_molecule_name), errstat)
        return
     end if
     
     ! Get O3 climatology to determine cli_wgh_ozo_pro and cli_idx_ozo_pro
-    call clim_species_init (cst_o3, cpt, 'O3', errstat)
+    call clim_val_init (cst_o3, cpt, 'O3', errstat)
     if (errstat /= 0) then
        call tell_error ( tell_io_read_error, "libclim_climatology: initializing O3", errstat)
     end if
@@ -984,7 +983,7 @@ CONTAINS
              cycle
           end if
           ! Get vmr profile
-          call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+          call clim_val_interp (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
@@ -993,7 +992,7 @@ CONTAINS
              call tell_set_error (0)
              cycle
           end if
-          ! Compute partical columns
+          ! Compute partial columns
           call clim_partial_column (pres, vmr, partial_column, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
@@ -1011,7 +1010,7 @@ CONTAINS
           climatology(1:nlayers,ixtrack,itimes) = real (partial_column(1:nlayers), kind=r8)
 
           ! Get O3 vmr profile
-          call clim_species_vmr (cst_o3, cpt, hour_f, lon_f, lat_f, vmr, errstat)
+          call clim_val_interp (cst_o3, cpt, hour_f, lon_f, lat_f, vmr, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating vmr", errstat)
              amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
@@ -1020,7 +1019,7 @@ CONTAINS
              call tell_set_error (0)
              cycle
           end if
-          ! Compute O3 partical columns
+          ! Compute O3 partial columns
           call clim_partial_column (pres, vmr, partial_column, errstat)
           if (errstat /= 0) then
              call tell_error (tell_runtime_error, "libclim_climatology: calculating partial column", errstat)
@@ -1406,7 +1405,7 @@ CONTAINS
     call tell_log (1, logmsg)
 
     locerrstat = 0
-    call clim_pres_eta (cpt, eta_a, eta_b, locerrstat)
+    call clim_pres_eta (eta_a, eta_b, locerrstat)
     if (locerrstat /= 0) return
   
     ! ---------------
@@ -1947,7 +1946,7 @@ CONTAINS
 
     if (errstat /= 0) return
 
-    call clim_pres_eta (cpt, eta_a, eta_b, errstat)
+    call clim_pres_eta (eta_a, eta_b, errstat)
     if (errstat /= 0) return
 
     if (0 /= index (OMSAO_meteorology_filename(1), '.nc', .true.)) then
