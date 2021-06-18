@@ -31,8 +31,8 @@ ifeq ($(COMPILER_SUITE), gnu)
   FC_EXTRA_LIBS =#
 
 # target specific variables propagated to every makefile that includes this one
-  all-opt :: export CFLAGS=-O3
-  all-opt :: export FFLAGS=-O3
+  all-opt :: export CFLAGS=-O3 -Wall -W -Wextra
+  all-opt :: export FFLAGS=-O3 -Wall -W -Wextra
   all-opt :: export LFLAGS=#
 
 # more FFLAGS: -ffpe-trap=invalid,zero,overflow -finit-real=snan
