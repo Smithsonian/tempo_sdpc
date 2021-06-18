@@ -38,7 +38,7 @@ reorder_dims()
    path=$1
    bn=$(basename $path .nc4)
    new_file="${bn}_reorder.nc4"
-   ncpdq -a time,lon,lat,lev --no_tmp_fl $path $target_dir/$new_file && /bin/rm -f "$path"
+   ncpdq -O -a "time,lon,lat,-lev" --no_tmp_fl $path $target_dir/$new_file && /bin/rm -f "$path"
 }
 export target_dir
 export -f reorder_dims
