@@ -149,7 +149,7 @@ MODULE netcdf_module
     IF (status .NE. NF_NOERR) THEN
        message = 'Error in '//TRIM(location)//': '//NF_STRERROR(status)
        print*,message
-       STOP 
+       STOP 1
     ENDIF
 
   END SUBROUTINE netcdf_handle_error

@@ -2024,13 +2024,13 @@ SUBROUTINE get_v8prof(toz, oz)
   ! ======================
    TYPE (clim_pres_type), SAVE :: cpt
    TYPE (clim_pres_bounds_type), SAVE :: bounds
-   TYPE (clim_species_type), SAVE :: cst
+   TYPE (clim_val_type), SAVE :: cst
    INTEGER, SAVE  :: nl0
    INTEGER :: errstat, nl
    INTEGER :: year, month, day
    REAL (KIND=r8) :: hour
    REAL (KIND=r4) :: hour_f, lon_f, lat_f
-   REAL (kind=r4), dimension(:), allocatable, SAVE :: pres, vmr,vmr_stddev
+   REAL (kind=r4), dimension(:), allocatable, SAVE :: pres, vmr
    REAL (KIND=r4), dimension(:), allocatable ::  partial_column
    character (len=6), PARAMETER :: clim_db_molecule_name  ='O3    '
    logical :: is_reord
@@ -2062,14 +2062,14 @@ SUBROUTINE get_v8prof(toz, oz)
    bounds % lat_max = real(lat_max,kind=r4)
 
    !@ set bounds
-   call clim_pres_init (cpt, month, day, bounds, errstat)
+   call clim_pres_init (cpt, year, month, day, bounds, errstat)
+   call clim_query_nz (nl0, errstat)
    if (errstat /= 0) THEN 
       call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_pres_init", errstat)
       return
    endif
-   nl0 = clim_pres_nz (cpt)
 
-   call clim_species_init (cst, cpt, trim(clim_db_molecule_name), errstat,.true.)
+   call clim_val_init (cst, cpt, trim(clim_db_molecule_name), errstat)
    if (errstat /= 0) then
      call tell_error ( tell_io_read_error, "libclim_climatology: initializing "//trim(clim_db_molecule_name), errstat)
      return
@@ -2094,27 +2094,22 @@ SUBROUTINE get_v8prof(toz, oz)
     return
   end if
 
-  allocate (vmr(nl), vmr_stddev(nl))
+  allocate (vmr(nl))
   ! Get vmr profile
-  call clim_species_vmr (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat, vmr_stddev)
+  call clim_val_interp (cst, cpt, hour_f, lon_f, lat_f, vmr, errstat)
   if (errstat /= 0) then
-    call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_species_vmr", errstat)
-    deallocate(pres, vmr, vmr_stddev)
+    call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_val_interp", errstat)
+    deallocate(pres, vmr)
     return
   end if
-  
- 
-  ! Compute partical columns
+
+  ! Compute partial columns
   nl  = nl -1 ! number of layer
   allocate (partial_column(nl))
-  IF (which_out == 1) THEN 
-    call clim_partial_column (pres, vmr, partial_column, errstat)
-  ELSE
-    call clim_partial_column (pres, vmr_stddev, partial_column, errstat)
-  ENDIF
+  call clim_partial_column (pres, vmr, partial_column, errstat)
   if (errstat /= 0) then
-    call tell_error (tell_runtime_error, "libclim_climatology:calculating partiacl column", errstat)
-    deallocate(partial_column, pres, vmr, vmr_stddev)
+    call tell_error (tell_runtime_error, "libclim_climatology:calculating partial column", errstat)
+    deallocate(partial_column, pres, vmr)
     return
   else
     partial_column = real (partial_column/du2mol, kind=r4)
@@ -2122,7 +2117,7 @@ SUBROUTINE get_v8prof(toz, oz)
     where (partial_column < 0.0_r8)
      partial_column = 0.0_r8
     end where
-    deallocate(vmr, vmr_stddev)
+    deallocate(vmr)
   endif
 
   ! interpolation to user grids
