@@ -69,6 +69,10 @@ tar_product_to_dest_dir()
 
    cd $run_dir
 
+   if ! test -d $work_dir ; then
+      return
+   fi
+
    /bin/rm $work_dir/${rad_basename}.nc
    /bin/rm $work_dir/${irr_basename}.nc
    /bin/rm $work_dir/$cld_file
@@ -81,7 +85,7 @@ tar_product_to_dest_dir()
    # copy the archive_subdir file over there, and then create the tar file.
 
    cd $parent_dir
-   tmp_dir="$(mktemp -d tmp.XXXXXX)"
+   tmp_dir="$(mktemp -d tmpo3p.XXXXXX)"
    tmp_granule_dir="$tmp_dir/$granule_dir"
    /bin/mkdir -p $tmp_granule_dir
    /bin/cp $granule_dir/archive_subdir $tmp_granule_dir
