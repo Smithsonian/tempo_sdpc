@@ -461,7 +461,7 @@ CONTAINS
 
     if (have_snowice_fraction) then
       where (0.0 <= snow_ice_fraction .and. snow_ice_fraction <= 1.0)
-        snow_ice_flg = aint(snow_ice_fraction * 100)
+        snow_ice_flg = int (aint(snow_ice_fraction * 100), kind=i2)
       elsewhere
         snow_ice_flg = 0
       endwhere

@@ -345,7 +345,7 @@ CONTAINS
     USE OMSAO_indices_module,      ONLY: &
       l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
       o3_prefit_lun, bro_prefit_lun, lqh2o_prefit_lun,                        &
-      voc_amf_luns, voc_omicld_idx, pge_h2o_idx
+      voc_amf_luns, voc_omicld_idx
     USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input
     USE OMSAO_variables_module,    ONLY: l1b_rad_filename, &
       l1b_radref_filename
