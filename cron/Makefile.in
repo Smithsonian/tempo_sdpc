@@ -5,7 +5,7 @@ SDPC_ANCILLARY_ROOT = @ANCILLARY_DATA_DIR@
 all:
 	@echo "targets: install"
 
-SCRIPT_FILES = crontab crontab.sh dl_met.sl \
+SCRIPT_FILES = crontab crontab.sh \
                pull_ims.sh pull_goes.sh pull_geoscf.sh
 
 SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/src
