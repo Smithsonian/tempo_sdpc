@@ -624,7 +624,7 @@ contains
   !> @v-
   subroutine clim_pres_eta (eta_a, eta_b, errstat)
     implicit none
-    real (kind=4), dimension(:), intent(out) :: eta_a, eta_b
+    real (kind=4), dimension(Num_Layers+1), intent(out) :: eta_a, eta_b
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
@@ -642,7 +642,7 @@ contains
   !> @param[in] cpt       Initialized instance of opaque @a type(clim_pres_type)
   !> @param[in] hour_utc  UTC hour of interest [hours]
   !> @param[in] lon, lat  Longitude, latitude coordinates of interest [deg]
-  !> @param[out] pres_z   Output pressure [hPa] vs height
+  !> @param[out] pres_z   Output pressure [hPa] vs height [nz+1]
   !> @param[inout] errstat        Error status code (0 on success)
   !> @param[out] p_surf    Optional output surface pressure [hPa]
   !> @param[out] p_trop    Optional output tropopause pressure [hPa]
@@ -689,7 +689,7 @@ contains
     psurf = (wt0 * cpt % p_surf (ilat0, ilon0, ihr0) &
              + (1.0 - wt0) * cpt % p_surf (ilat0, ilon0, ihr0+1))
 
-    pres_z(:) = EtaA(:) + EtaB (:) * psurf
+    pres_z(1:Num_Layers+1) = EtaA(1:Num_Layers+1) + EtaB (1:Num_Layers+1) * psurf
 
     if (present(p_surf)) then
       p_surf = psurf
