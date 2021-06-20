@@ -10,9 +10,9 @@ ulimit -s unlimited
 # If SDPC_O3PROF_MODE is not set, define it
 : "${SDPC_O3PROF_MODE:=UVVIS}"
 
-# If USE_FORECAST_MET_DATA is not set, define it to be OFF
-# To use forecast data, set it to anything else
-: "${USE_FORECAST_MET_DATA:=OFF}"
+# If USE_SYNTHETIC_MET_DATA is not set, define it to be OFF
+# To use synthetic met data, set it to anything else
+: "${USE_SYNTHETIC_MET_DATA:=OFF}"
 
 # 1. Processing will run in the subdirectory provided on the command line,
 #    which already contains all necessary inputs.
@@ -161,21 +161,14 @@ set_met_file_path()
 
 define_met_files()
 {
-if test x"$USE_FORECAST_MET_DATA" = x"OFF" ; then
+met_file1="notused"
+met_dir1=""
+met_file2="notused"
+met_dir2=""
+if ! test x"$USE_SYNTHETIC_MET_DATA" = x"OFF" ; then
       set_met_file_path "met_file_path_synth"
       met_file1=$(basename $met_file_path)
       met_dir1=$(dirname $met_file_path)
-
-      met_file2=""
-      met_dir2=""
-else
-      set_met_file_path "met_file_path_hires"
-      met_file1=$(basename $met_file_path)
-      met_dir1=$(dirname $met_file_path)
-
-      set_met_file_path "met_file_path_lores"
-      met_file2=$(basename $met_file_path)
-      met_dir2=$(dirname $met_file_path)
 fi
 }
 

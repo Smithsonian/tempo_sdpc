@@ -48,9 +48,9 @@ ulimit -s unlimited
 # To turn on this diagnostic feature, set it to an integer 0 <= n < num_frames_in_granule
 : "${SDPC_DIAGNOSTIC_INDEX:=OFF}"
 
-# If USE_FORECAST_MET_DATA is not set, define it to be OFF
-# To use forecast data, set it to anything else
-: "${USE_FORECAST_MET_DATA:=OFF}"
+# If USE_SYNTHETIC_MET_DATA is not set, define it to be OFF
+# To use synthetic met data, set it to anything else
+: "${USE_SYNTHETIC_MET_DATA:=OFF}"
 
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
@@ -337,21 +337,14 @@ derive_o2o2_slant_column()
   start_month_name=$(level1_info --month ../$radiance_file)
   clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
 
-  if test x"$USE_FORECAST_MET_DATA" = x"OFF" ; then
+  met_file1=""
+  met_dir1=""
+  met_file2=""
+  met_dir2=""
+  if ! test x"$USE_SYNTHETIC_MET_DATA" = x"OFF" ; then
       set_met_file_path "met_file_path_synth"
       met_file1=$(basename $met_file_path)
       met_dir1=$(dirname $met_file_path)
-
-      met_file2=""
-      met_dir2=""
-  else
-      set_met_file_path "met_file_path_hires"
-      met_file1=$(basename $met_file_path)
-      met_dir1=$(dirname $met_file_path)
-
-      set_met_file_path "met_file_path_lores"
-      met_file2=$(basename $met_file_path)
-      met_dir2=$(dirname $met_file_path)
   fi
 
   # copy the control file template

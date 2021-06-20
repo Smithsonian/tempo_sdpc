@@ -9,6 +9,4 @@ set -u
 #         For testing purposes, do it here.
 filedb_cfg=$SDPC_RUN_DIR_MASTER/etc/filedb.cfg
 filedb -c $filedb_cfg met:synth --update
-filedb -c $filedb_cfg met:hires --update
-filedb -c $filedb_cfg met:lores --update
 filedb -c $filedb_cfg snow --update
