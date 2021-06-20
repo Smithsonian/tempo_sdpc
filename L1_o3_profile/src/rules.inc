@@ -413,6 +413,7 @@ $(ODIR)/m_get_fnl.o: $(SDIR)/m_get_fnl.f90 \
   $(ODIR)/ozprof_data_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_fnl.f90 -o $(ODIR)/m_get_fnl.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_met_tempo.o: $(SDIR)/m_get_met_tempo.f90 \
+  $(ODIR)/m_ezspline_interpolation.o \
   $(ODIR)/OMI_LUN_set.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
