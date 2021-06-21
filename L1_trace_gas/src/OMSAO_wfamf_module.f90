@@ -890,6 +890,9 @@ CONTAINS
     real (kind=r4) :: hour_f, lon_f, lat_f, o3_col
     character (len=6) :: clim_db_molecule_name
     real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
+    logical :: water_vapor
+    real (kind=r4), parameter :: molar_mass_water = 18.02 ! kg/mol
+    real (kind=r4), parameter :: molar_mass_dry_air = 28.97 ! kg/mol
 
     if (errstat /= 0) return
 
@@ -939,8 +942,12 @@ CONTAINS
     clim_db_molecule_name = sao_molecule_names(pge_idx)
 
     ! We can't agree on how to spell the names of molecules.
+    water_vapor = .false.
     if (clim_db_molecule_name == 'CHOCHO') then
       clim_db_molecule_name = 'GLYX  '
+    else if (clim_db_molecule_name == 'H2O   ') then
+      clim_db_molecule_name = 'Q     '  ! specific humidity (kg kg^-1)
+      water_vapor = .true.
     endif
 
     call clim_val_init (cvt, cpt, trim(clim_db_molecule_name), errstat)
@@ -990,6 +997,11 @@ CONTAINS
              call tell_set_error (0)
              cycle
           end if
+          if (water_vapor) then
+            ! At this point, vmr contains Q = specific humidity (kg kg^-1),
+            ! and we want the water vapor volume mixing ratio (mol mol^-1):
+            vmr(:) = vmr(:) * molar_mass_dry_air / molar_mass_water
+          endif
           ! Compute partial columns
           call clim_partial_column (pres, vmr, partial_column, errstat)
           if (errstat /= 0) then
