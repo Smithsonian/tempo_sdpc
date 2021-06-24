@@ -11,6 +11,10 @@ subdir="$(date +%Y)"
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
    mkdir -p $target_dir
+   prev_path=""
+else
+   prev_file=$(ls -t $target_dir | head -n1)
+   prev_path="$target_dir/$prev_file"
 fi
 
 lftp ftp://sidads.colorado.edu <<- EOF
@@ -21,4 +25,15 @@ lftp ftp://sidads.colorado.edu <<- EOF
    mirror -c --newer-than=now-4days $subdir $target_dir
    quit
 EOF
+
+newer=""
+if test x"$prev_path" != x ; then
+   newer="-newer $prev_path"
+fi
+new_list=$(find $target_dir -name "ims???????_1km_GIS_v*.tif.gz" $newer)
+
+if test x"$new_list" != x ; then
+   export SDPC_ANCILLARY_IMS_DBFILE="$rootdir/ims.sqlite"
+   $SDPC_ANCILLARY_ROOT/src/register_ims.py $new_list
+fi
 
