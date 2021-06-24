@@ -93,7 +93,7 @@ srcdir = $(config_dir)/pipe/src
 objdir = $(srcdir)/$(archobjs)
 bindir = $(prefix)/bin
 
-all: $(objdir) $(MODULES) $(objdir)/filedb
+all: $(objdir) $(MODULES)
 
 #---------------------------------------------------------------------------
 # Put Rules to create the modules here
@@ -113,34 +113,8 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 IOCSDPC_INC = $(prefix)/include
 IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
 
-FILEDB_OFILES = filedb.o filedb_met.o filedb_snow.o filedb_tempo.o
-FILEDB_OBJS = $(patsubst %.o,$(objdir)/%.o, $(FILEDB_OFILES))
-
-FILEDB_LIBS = $(TIO_LIBPATHS) -ltio $(LIBCONFIG_LIBPATHS) -lconfig $(IOCSDPC_LIBPATHS)
-FILEDB_INC_DIRS = $(TIO_INC) $(LIBCONFIG_INC) $(IOCSDPC_INC)
-FILEDB_INCS = $(patsubst %,-I%, $(FILEDB_INC_DIRS))
-
 $(objdir):
 	-mkdir -p $(objdir)
-
-$(objdir)/filedb:	$(FILEDB_OBJS)
-	$(COMPILE_CMD) -o $(objdir)/filedb $(FILEDB_OBJS) \
-	    $(FILEDB_INCS) $(FILEDB_LIBS) -lm
-
-$(objdir)/filedb.o:	$(srcdir)/filedb.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb.c $(FILEDB_LIBS)
-
-$(objdir)/filedb_met.o:	$(srcdir)/filedb_met.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_met.c $(FILEDB_LIBS)
-
-$(objdir)/filedb_snow.o:	$(srcdir)/filedb_snow.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_snow.c $(FILEDB_LIBS)
-
-$(objdir)/filedb_tempo.o:	$(srcdir)/filedb_tempo.c
-	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_tempo.c $(FILEDB_LIBS)
-
-# $(objdir)/filedb_ephemeris.o:	$(srcdir)/filedb_ephemeris.c
-# 	cd $(objdir) && $(ELF_COMPILE_CMD) $(FILEDB_INCS) $(srcdir)/filedb_ephemeris.c $(FILEDB_LIBS)
 
 #---------------------------------------------------------------------------
 # Installation Rules
@@ -161,10 +135,9 @@ install_directories:
 	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
 	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
 
-install_execs:
-	mkdir -p $(bindir)
-	@echo installing executables in $(bindir)/
-	$(INSTALL_PROGRAM) $(objdir)/filedb $(bindir)/
+# install_execs:
+# 	mkdir -p $(bindir)
+# 	@echo installing executables in $(bindir)/
 
 install_modules:
 	@for X in $(MODULES); \
@@ -241,7 +214,7 @@ install_docfiles:
 		fi; \
 	done
 
-install: all install_directories install_modules install_execs \
+install: all install_directories install_modules \
           install_scripts install_etcfiles install_sharefiles install_slfiles \
           install_supervision_tree # install_hlpfiles install_docfiles
 
