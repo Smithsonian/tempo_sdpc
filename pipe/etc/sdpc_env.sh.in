@@ -23,6 +23,10 @@ export SDPC_S6_ROOT="@S6_ROOT_DIR@"
 # (e.g. GOES data, meteorology data, snow & ice cover)
 export SDPC_ANCILLARY_ROOT="@ANCILLARY_DATA_DIR@"
 
+# SDPC_ANCILLARY_IMS_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
+: "${SDPC_ANCILLARY_IMS_DBFILE:=${SDPC_ANCILLARY_ROOT}/ims/ims.sqlite}"
+export SDPC_ANCILLARY_IMS_DBFILE
+
 # SDPC_REFDATA_DIR contains static reference data,
 # shared by all processing nodes
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
