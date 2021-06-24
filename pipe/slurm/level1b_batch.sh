@@ -49,7 +49,7 @@ ulimit -s unlimited
 : "${SDPC_DIAGNOSTIC_INDEX:=OFF}"
 
 # If USE_SYNTHETIC_MET_DATA is not set, define it to be OFF
-# To use synthetic met data, set it to anything else
+# To use synthetic met data, set it to the relevant file path
 : "${USE_SYNTHETIC_MET_DATA:=OFF}"
 
 # check that paths are valid
@@ -303,12 +303,6 @@ run_cloud_rr()
   /bin/rmdir ${cld_rr_dir}
 }
 
-set_met_file_path()
-{
-  varname=$1
-  met_file_path=$(grep ${varname} ../${rad_basename}.lis | sed -e s,${varname}=,,)
-}
-
 derive_o2o2_slant_column()
 {
   out_basename=$1
@@ -342,9 +336,8 @@ derive_o2o2_slant_column()
   met_file2=""
   met_dir2=""
   if ! test x"$USE_SYNTHETIC_MET_DATA" = x"OFF" ; then
-      set_met_file_path "met_file_path_synth"
-      met_file1=$(basename $met_file_path)
-      met_dir1=$(dirname $met_file_path)
+      met_file1=$(basename $USE_SYNTHETIC_MET_DATA)
+      met_dir1=$(dirname $USE_SYNTHETIC_MET_DATA)
   fi
 
   # copy the control file template

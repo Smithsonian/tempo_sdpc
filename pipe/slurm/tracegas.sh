@@ -9,7 +9,7 @@ set -u
 ulimit -s unlimited
 
 # If USE_SYNTHETIC_MET_DATA is not set, define it to be OFF
-# To use synthetic met data, set it to anything else
+# To use synthetic met data, set it to the relevant file path
 : "${USE_SYNTHETIC_MET_DATA:=OFF}"
 
 # 1. Processing will run in the subdirectory provided on the command line,
@@ -115,20 +115,13 @@ this_pcf_file="${pcf_file}_${molecule}"
 start_month_name=$(level1_info --month ${rad_basename}.nc)
 clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
 
-set_met_file_path()
-{
-  varname=$1
-  met_file_path=$(grep ${varname} ${rad_basename}.lis | sed -e s,${varname}=,,)
-}
-
 met_file1=""
 met_dir1=""
 met_file2=""
 met_dir2=""
 if ! test x"$USE_SYNTHETIC_MET_DATA" = x"OFF" ; then
-      set_met_file_path "met_file_path_synth"
-      met_file1=$(basename $met_file_path)
-      met_dir1=$(dirname $met_file_path)
+      met_file1=$(basename $USE_SYNTHETIC_MET_DATA)
+      met_dir1=$(dirname $USE_SYNTHETIC_MET_DATA)
 fi
 
 # copy the control file template
