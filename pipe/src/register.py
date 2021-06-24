@@ -287,6 +287,8 @@ def process_file (conn, filename):
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
+    else:
+        print ('registered {} product: {}'.format(product_name, final_basename), flush=True)
 
     return status
 

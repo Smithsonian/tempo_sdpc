@@ -74,9 +74,9 @@ do_asdc_download()
   fi
 }
 
-# When no files have pending status, silently do nothing
 num=$(asdc_track_uploads.py --num pending)
 if test x"$num" = x0 ; then
+   echo "asdc_pull.sh: ASDC ingest status: pending: $num"
    exit 0
 fi
 

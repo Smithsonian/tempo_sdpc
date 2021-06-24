@@ -177,6 +177,7 @@ define write_lftp_script (dest, types, pdr_files, script_file)
    () = fprintf (fp, "open --user %s --password %s sftp://%s\n",
                  dest.user, dest.password, dest.host);
    %() = fprintf (fp, "set xfer:log-file lftp_log.%s\n", strftime ("%Y%m%dT%H%M%SZ", gmtime(_time)));
+   () = fprintf (fp, "set xfer:use-temp-file yes\n");
    () = fprintf (fp, "set xfer:log-file lftp.log\n");
    % Use a relative path to work around some confusion at ASDC
    () = fprintf (fp, "cd %s\n", Dest_Subdir);

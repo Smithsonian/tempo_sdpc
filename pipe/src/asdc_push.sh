@@ -49,9 +49,9 @@ do_asdc_upload()
   lftp -f $script > /dev/null 2>&1
 }
 
-# When there are no new files, silently do nothing
 num=$(asdc_track_uploads.py --num new)
 if test x"$num" = x0 ; then
+   echo "asdc_push.sh: ASDC ingest status: new: $num"
    exit 0
 fi
 
