@@ -184,8 +184,12 @@ tar_l1_radiance_to_dest()
               $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 
    # Now that the final L1b radiance file has been archived, we can
-   # delete the L1a radiance file that was provided as input to INR:
-   /bin/rm -f $SDPC_INR_RUN_DIR/Staging/Granules/${rad_basename}.nc
+   # delete the L1a radiance file that was provided as input to INR,
+   # along with any earlier telemetry-only radiance files.
+   inr_input_cache="$SDPC_INR_RUN_DIR/Staging/Granules"
+   level1a_granule_path="${inr_input_cache}/${rad_basename}.nc"
+   radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
+   /bin/rm -f "$level1a_granule_path"
 
    # Move INR performance reports to the archive:
    inr_report="$SDPC_INR_RUN_DIR/Output/${rad_basename}.PerformanceReport.nc"
