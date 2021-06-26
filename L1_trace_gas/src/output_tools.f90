@@ -1885,7 +1885,7 @@ contains
   subroutine read_geofields (l1bfile, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, thgt, time, errstat)
     use OMSAO_precision_module, only : i2, i4, r4
     use OMSAO_omidata_module, only: omi_radiance_swathname
-    use OMSAO_parameters_module, only : max_latitude, max_longitude, r4_missval
+    use OMSAO_parameters_module, only : max_latitude, max_longitude, r4_missval, r8_missval
     use tio_module
     use netcdf, only: nf90_nowrite
     implicit none
@@ -1904,7 +1904,8 @@ contains
     if (errstat /= 0) return
 
     call tiof_open (l1bfile, obj, nf90_nowrite, errstat)
-    call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat)
+    call tiof_get1d_r8 (obj, tg_var_time, [0], [ntimes], time(1:ntimes), errstat, &
+                        replace_fill=r8_missval)
     call tiof_push_group (obj, omi_radiance_swathname, errstat)
     call tiof_get2d_r4 (obj, tg_var_latitude, [0,0], [ntimes, nxtrack], lat(1:nxtrack,1:ntimes), errstat)
     call tiof_get2d_r4 (obj, tg_var_longitude, [0,0], [ntimes, nxtrack], lon(1:nxtrack,1:ntimes), errstat)

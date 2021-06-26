@@ -59,6 +59,7 @@ CONTAINS
     call lookup_swathname (l1b_channel, swathname, errstat)
 
     ! determine whether we're reading from irradiance or pre-flight slit func.
+    preflight = .true.
     call tiof_open (omi_slitfunc_fname, tio_l1obj, nf90_nowrite, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
@@ -73,13 +74,13 @@ CONTAINS
     else if (ncerr == nf90_noerr) then
       ncerr = nf90_get_att (tio_l1obj%fileid, nf90_global, "product_type", &
            prod_str)
-      if (ncerr .ne. nf90_noerr .or. prod_str .ne. "IRR") then
+      if (ncerr .eq. nf90_noerr .and. prod_str .eq. "IRR") then
+        preflight = .false.
+      else
         call tell_error (tell_io_open_error, &
              "tempo_slitfunc_read: undetermined slit function file type", &
              errstat)
         return
-      else
-        preflight = .false.
       endif
     endif
 
@@ -144,7 +145,6 @@ CONTAINS
     mean_wl = real(sum(sf_wavelength,mask=mask)/count(mask), kind=8)
 
   END SUBROUTINE tempo_slitfunc_read
-
 
   !--------------------------------------------------------------------------
   !

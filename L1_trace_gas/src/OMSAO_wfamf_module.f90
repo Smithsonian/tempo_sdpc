@@ -847,6 +847,7 @@ CONTAINS
     !reset epoch if gems data is in use
     do ix=1,nx
        do it=0,nt-1
+          if (time(it) == r8_missval) cycle
           if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
              call tio_f_taix_time_to_utc_caldate (time(it)-tai93_offset, year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
@@ -906,8 +907,8 @@ CONTAINS
       endif
     endif
 
-    t_beg = minval(time-tai93_offset, time /= r8_missval)
-    t_end = maxval(time-tai93_offset, time /= r8_missval)
+    t_beg = minval(time, time /= r8_missval) - tai93_offset
+    t_end = maxval(time, time /= r8_missval) - tai93_offset
 
     if (t_end - t_beg > 86400.0) then
       call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
@@ -964,6 +965,7 @@ CONTAINS
 
     do itimes = 0, nt-1
       ! Work out hour of interest
+      if (time(itimes) == r8_missval) cycle
       call tio_f_taix_time_to_utc_caldate (time(itimes)-tai93_offset, year(1), month(1), day(1), hour)
       hour_f = real (hour, kind=r4)
 
@@ -1992,6 +1994,7 @@ CONTAINS
     DO itimes  = 0, nt-1 ! Swath lines loop
 
       ! Work out hour of interest
+      if (time(itimes) == r8_missval) cycle
       call tio_f_taix_time_to_utc_caldate (time(itimes)-tai93_offset, year, month, day, hour)
       hour_f = real (hour, kind=r4)
 

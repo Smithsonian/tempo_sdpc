@@ -172,7 +172,7 @@ CONTAINS
     USE OMSAO_precision_module
     !USE OMSAO_indices_module, ONLY: pge_o3_idx
     USE OMSAO_parameters_module, ONLY: &
-      i2_missval, r4_missval, &
+      i2_missval, r4_missval, r8_missval, &
       min_zenith, min_azimuth, max_azimuth, &  ! "non-inclusive"
       max_legal_zenith, &
       max_latitude, max_longitude, &
@@ -236,7 +236,7 @@ CONTAINS
       call tell_log (2, logmsg)
       call tiof_open (l1bfile, tio_l1obj, nf90_nowrite, errstat)
       call tiof_get1d_r8 (tio_l1obj, tg_var_time, [iline], [nloop], omi_time,&
-           errstat)
+           errstat, replace_fill=r8_missval)
       call tiof_inq_group (tio_l1obj, omi_radiance_swathname, errstat)
       call tiof_get2d_r4 (tio_l1obj, tg_var_latitude, [iline,0], &
            [nloop,nxtrack], omi_latitude(1:nxtrack,0:nloop-1), errstat)
