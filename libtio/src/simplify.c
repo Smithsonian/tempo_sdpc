@@ -137,7 +137,7 @@ int simplify_dp (const float *lon_deg, const float *lat_deg, int num,
      };
    int *index = NULL;
    double band_sqr, max_dev_sqr;
-   int num_kept, split, status = -1;
+   int num_kept, beg, end, split, status = -1;
 
    if (num < 3)
      return -1;
@@ -158,10 +158,13 @@ int simplify_dp (const float *lon_deg, const float *lat_deg, int num,
    if (0 != stack_push (&s, 0, num-1))
      goto return_error;
 
+   beg = 0;
+   end = num-1;
+
    while (s.num > 0)
      {
         Delta_Type d12, d13, d23;
-        int i, beg, end;
+        int i;
 
         stack_pop (&s, &beg, &end);
 
