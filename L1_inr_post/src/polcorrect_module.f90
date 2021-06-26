@@ -164,6 +164,7 @@ contains
     if (errstat /= 0) then
       call tell_error (tell_runtime_error, 'error processing file:'//rad_file, errstat)
       polcorrect = errstat
+      return
     endif
 
     call tiof_close (rad_s % obj, errstat)
