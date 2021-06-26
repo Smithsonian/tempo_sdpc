@@ -224,6 +224,7 @@ static int define_global_attrs (int grp)
    return 0;
 }
 
+#define PQF_MISSING_DATA_INDEX (0)    /* This index *must* be consistent with the table */
 static _pName_UInt_Pair_Type PQF_Pairs[] =
 {
    {1<< 0, "missing_data"},
@@ -240,6 +241,50 @@ static _pName_UInt_Pair_Type PQF_Pairs[] =
    {1<<11, "nonlinear_range"},
    _pNAME_UINT_LIST_END
 };
+
+static int set_pqf_default (int grp, size_t num_steps, size_t num_xtrack, size_t num_channel)
+{
+   size_t k, len_pqf_slab;
+   int start[3], count[3];
+   unsigned short *pqf_missing = NULL;
+   unsigned int pqf_missing_data_value = PQF_Pairs[PQF_MISSING_DATA_INDEX].value;
+
+   /* To be certain that all missing data pixels are always labeled as such,
+    * we initialize all the pixel_quality_flag values to indicate missing data.
+    */
+
+   count[0] = 1;
+   count[1] = num_xtrack;
+   count[2] = num_channel;
+
+   start[1] = 0;
+   start[2] = 0;
+
+   len_pqf_slab = num_xtrack * num_channel;
+   if (NULL == (pqf_missing = (unsigned short *)TIO_MALLOC (len_pqf_slab * sizeof(unsigned short))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   for (k = 0; k < len_pqf_slab; k++)
+     {
+        pqf_missing[k] = pqf_missing_data_value;
+     }
+
+   for (k = 0; k < num_steps; k++)
+     {
+        start[0] = k;
+        if (0 != TIO_put_var_section (grp, TEMPO_VAR_PQF, start, count, TIO_USHORT, pqf_missing))
+          {
+             TIO_FREE(pqf_missing);
+             return -1;
+          }
+     }
+
+   TIO_FREE(pqf_missing);
+
+   return 0;
+}
 
 int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
 {
@@ -313,6 +358,9 @@ int _pEmit_Var_Pixel_Quality_Flag (int grp, _pDim_Table_Type *dim_table)
         goto cleanup_and_return;
      }
 #endif
+
+   if (0 != set_pqf_default (grp, dim_table->step.len, dim_table->xtrack.len, dim_table->channel.len))
+     return error_status;
 
    error_status = 0;
 cleanup_and_return:
