@@ -89,7 +89,7 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
            default:
              /* Quality flag is invalid, but we'll preserve the bits just in case */
              num_invalid_quality_byte += 1;
-             quality_flag = IMAGE_PQF_BAD_PIXEL;
+             quality_flag = IMAGE_PQF_MISSING_DATA;
              pixel_value = PIXEL_VALUE(bits);
              break;
           }
@@ -100,7 +100,7 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
 
    if (num_invalid_quality_byte)
      {
-        tell_vwarn (0, "%s: %d pixels had invalid quality byte values (flagged as bad pixels)",
+        tell_vwarn (0, "%s: %d pixels had invalid quality byte values (flagged as missing data)",
                     __func__, num_invalid_quality_byte);
      }
 

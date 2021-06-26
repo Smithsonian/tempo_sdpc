@@ -65,7 +65,9 @@ static int create_current_vars (int ncid, int num_times, int num_rows, int num_c
    int deflate_level = 1;
    int storage = NC_CHUNKED;
    size_t chunksizes[3];
-   int img_dimids[3];
+   int img_dimids[3], start[3], count[3];
+   int k, len_pqf_slab;
+   unsigned short *pqf_missing = NULL;
    const Text_Attr_Type time_attrs[] =
      {
         {"long_name", "exposure start time"},
@@ -214,6 +216,37 @@ static int create_current_vars (int ncid, int num_times, int num_rows, int num_c
        || (0 != TIO_def_var_deflate (ncid, varid_pqf, shuffle, deflate, deflate_level))
        || (0 != define_text_attrs (ncid, varid_pqf, pqf_attrs)))
      return -1;
+
+   /* To be certain that all missing data pixels are always labeled as such,
+    * we initialize all the pixel_quality_flag values to indicate missing data.
+    */
+
+   count[0] = 1;
+   count[1] = num_rows;
+   count[2] = num_cols;
+
+   start[1] = 0;
+   start[2] = 0;
+
+   len_pqf_slab = num_rows * num_cols;
+   if (NULL == (pqf_missing = (unsigned short *)MALLOC (len_pqf_slab * sizeof(unsigned short))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   for (k = 0; k < len_pqf_slab; k++)
+     {
+        pqf_missing[k] = IMAGE_PQF_MISSING_DATA;
+     }
+
+   for (k = 0; k < num_times; k++)
+     {
+        start[0] = k;
+        if (0 != TIO_put_var_section (ncid, TEMPO_VAR_PQF, start, count, TIO_USHORT, pqf_missing))
+          return -1;
+     }
+
+   FREE(pqf_missing);
 
    return 0;
 }
