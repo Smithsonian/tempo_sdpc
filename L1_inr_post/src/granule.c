@@ -38,6 +38,7 @@ typedef struct
    double *lon_cnr;
    double *lat_cnr;
    double *shift_km;
+   int *inr_quality_flag;
    unsigned int num_mirror_step;
    unsigned int num_xtrack;
    unsigned int num_corner;
@@ -102,6 +103,7 @@ static void free_geoloc_fields (Geoloc_Type *geoloc)
      return;
    FREE(geoloc->lon);
    FREE(geoloc->lat);
+   FREE(geoloc->inr_quality_flag);
    FREE(geoloc->shift_km);
 }
 
@@ -128,12 +130,17 @@ static int alloc_geoloc_fields (size_t *dimlens, Geoloc_Type *geoloc)
    geoloc->num_xtrack = dimlens[1];
    geoloc->num_corner = dimlens[2];
 
+   num_pixels = geoloc->num_mirror_step * geoloc->num_xtrack;
+
    if ((NULL == (geoloc->lon = alloc_geoloc_coordinate (geoloc)))
-       || (NULL == (geoloc->lat = alloc_geoloc_coordinate (geoloc))))
+       || (NULL == (geoloc->lat = alloc_geoloc_coordinate (geoloc)))
+       || (NULL == (geoloc->inr_quality_flag = (int *)MALLOC (num_pixels * sizeof(int))))
+      )
      {
         free_geoloc_fields (geoloc);
         return -1;
      }
+   memset ((char *)geoloc->inr_quality_flag, 0, num_pixels * sizeof(int));
 
 #ifdef OUTPUT_PARALLAX_SHIFT
    if (NULL == (geoloc->shift_km = alloc_geoloc_coordinate (geoloc)))
@@ -348,7 +355,7 @@ static int set_snow_ice_fraction (Granule_Type *gt, Snow_Type *sn)
         count[1] = geoloc->num_xtrack;
 
         if (0 != TIO_put_var_section (geoloc->group, TEMPO_VAR_SNOWICE_FRACTION,
-                                       start, count, TIO_FILL_FLOAT, snow_ice_fraction))
+                                       start, count, TIO_FLOAT, snow_ice_fraction))
           {
              tell_verror (TELL_RUNTIME_ERROR,
                           "%s: setting pixel snow/ice fraction", __func__);
@@ -1331,16 +1338,19 @@ free_and_return:
 }
 
 static int read_band_geolocation (Granule_Type *gt, const char *band_name,
-                                  Geoloc_Type *geoloc)
+                                  Geoloc_Type *geoloc, int *pnum_loc)
 {
    TIO_Var_Info_Type info;
    int i, grp, start[3], count[3];
+   int num_pixels, num_loc;
 
    if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
      return -1;
 
    if (0 != TIO_inq_var (grp, TEMPO_VAR_LONGITUDE_BOUNDS, &info))
      return -1;
+
+   num_pixels = info.dimlens[0] * info.dimlens[1];
 
    if (0 != alloc_geoloc_fields (info.dimlens, geoloc))
      return -1;
@@ -1356,11 +1366,21 @@ static int read_band_geolocation (Granule_Type *gt, const char *band_name,
 
    if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE, start, count, TIO_DOUBLE, geoloc->lon))
        || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE, start, count, TIO_DOUBLE, geoloc->lat))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, geoloc->inr_quality_flag))
        || (0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lon_cnr))
        || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_DOUBLE, geoloc->lat_cnr)))
      {
         goto return_error;
      }
+
+   num_loc = 0;
+   for (i = 0; i < num_pixels; i++)
+     {
+        if (geoloc->inr_quality_flag[i] == 0)
+          num_loc++;
+     }
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "band %s: got %d geolocated pixels", band_name, num_loc);
+   if (pnum_loc) *pnum_loc = num_loc;
 
    return 0;
 
@@ -1372,12 +1392,20 @@ return_error:
 static int read_geolocation (Granule_Type *gt)
 {
    const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
-   int i;
+   int i, num_loc_tot = 0;
 
    for (i = 0; i < NUM_BANDS; i++)
      {
-        if (0 != read_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
+        int num_loc = 0;
+        if (0 != read_band_geolocation (gt, band_names[i], &gt->geoloc[i], &num_loc))
           return -1;
+        num_loc_tot += num_loc;
+     }
+
+   if (num_loc_tot == 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: no pixels have valid geolocation", __func__);
+        return -1;
      }
 
    return 0;
