@@ -547,6 +547,7 @@ static int read_instr_default_paths (Instr_Type *instr, const Instr_Filter_Type 
         status_end = read_instr_glob (instr, dir, flt);
         FREE(dir);
      }
+   else status_end = -1;
 
    if ((status_beg == 0) || (status_end == 0))
      return 0;
