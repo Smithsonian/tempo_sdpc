@@ -63,7 +63,19 @@ make_iru_only_file_for_inr()
 
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
 
-   # No delay is needed here (any IRU coverage padding extends to earlier times)
+   # L1_inr_prep wants file lists in files with standard names.
+   # We could edit the config file and change the file list names,
+   # or we could run in a subdirectory with a unique name.
+   # Creating the subdirectory seems simpler.
+   this_dir=$(pwd)
+   dir=$(mktemp -d -p $this_dir)
+   cd $dir
+
+   select_l0.py --table IRU_L0 --begin $tbeg --end $tend > iru.lis
+   select_l0.py --table SMC_L0 --begin $tbeg --end $tend > smc.lis
+   select_l0.py --table HK_L0  --begin $tbeg --end $tend > hk.lis
+
+   # Output goes to inr input cache.
    L1_inr_prep -v 1 --Version $SDPC_PROCESSING_VERSION \
        --config ${etc_dir}/l1_inr_prep.cfg \
        --begin $tbeg --end $tend --epoch $epoch
@@ -73,12 +85,17 @@ make_iru_only_file_for_inr()
    # If L1_inr_prep fails, 'set -e' ensures that the script
    # will exit before we can delete the time interval file.
    # If L1_inr_prep succeeds, its ok to delete the file.
-   /bin/rm -f $time_interval_file
+   /bin/rm -f $time_interval_file iru.lis smc.lis hk.lis
+   cd $this_dir
+   /bin/rmdir $dir
 }
 
 # Parse the path to the granule file:
 granule_basename=$(basename "$granule_path" .nc| sed -e s"/^[.]//")
 granule_dir=$(dirname "$granule_path")
+
+iru_file_list=NONE
+smc_file_list=NONE
 
 case "${granule_basename}" in
    *_INR_* )
@@ -86,30 +103,36 @@ case "${granule_basename}" in
    exit 0
    ;;
 
-   *IRR* | *RAD* )
+   *IRR* )
    dark_file_path=$(select_dark.py "$granule_path")
    ;;
+
+   *RAD* )
+   dark_file_path=$(select_dark.py "$granule_path")
+
+   iru_file_list="$granule_dir/.${granule_basename}_iru.lis"
+   select_l0.py --table IRU_L0 --granule "$granule_path" > $iru_file_list
+
+   smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
+   select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
+   ;;
+
    * )
    dark_file_path=NONE
    ;;
 esac
 
-# Try to find HK files that cover the time interval of this dataset.
-# If none exist, let L0_ccd search the archive for something suitable.
 hk_file_list="$granule_dir/.${granule_basename}_hk.lis"
-hk_paths=$(select_hk.py "$granule_path")
-if test x"$hk_paths" != xNONE ; then
-   printf '%s\n' "${hk_paths[@]}" > $hk_file_list
-else
-   echo NONE > $hk_file_list
-fi
+select_l0.py --table HK_L0 --granule "$granule_path" > $hk_file_list
 
 # Create file-list file
 file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
 granule_path=${granule_path}
-hk_file_list=${hk_file_list}
 dark_file_path=${dark_file_path}
+hk_file_list=${hk_file_list}
+iru_file_list=${iru_file_list}
+smc_file_list=${smc_file_list}
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"

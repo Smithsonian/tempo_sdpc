@@ -13,7 +13,7 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl o3p_partition.sl \
                sdpcrun.sh make_tar_notice.sh select_ims.py \
-               select_hk.py select_irr.py select_dark.py register.py \
+               select_l0.py select_irr.py select_dark.py register.py \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
                copy_level1_frame.py radiance_inr_status.py radiance_telem_only.py \
                asdc_mkscript.sl asdc_track_uploads.py asdc_push.sh asdc_pull.sh \

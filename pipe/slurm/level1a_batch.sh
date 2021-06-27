@@ -44,8 +44,10 @@ file_list_file="$2"
 
 # including this file should define these variables:
 #    granule_path
-#    hk_file_list
 #    dark_file_path
+#    hk_file_list
+#    iru_file_list
+#    smc_file_list
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -123,14 +125,11 @@ run_inr_prep()
 
    /bin/cp ${etc_dir}/l1_inr_prep.cfg .
 
-   # Delay for 2 minutes to be certain that we have all telemetry
-   # relevant to these radiance exposure records.  This may be overly
-   # conservative because we've already had time for L0_ccd to run
-   # to completion.  The minimum delay would be 2 minutes after the
-   # last exposure record of this granule was received from the IOC.
+   /bin/cp "$iru_file_list" iru.lis
+   /bin/cp "$smc_file_list" smc.lis
 
    srun --ntasks=1 --output=log_inr_prep.txt \
-   L1_inr_prep --delay 120 $target_file
+        L1_inr_prep -v 1 $target_file
 }
 
 case "${granule_basename}" in
@@ -183,4 +182,4 @@ fi
 # Assume the initial L0 granule was archived when it was produced,
 # so it's ok to delete this copy once the archive.sl process has
 # succeeded.
-/bin/rm "$granule_path" "$file_list_file" "$hk_file_list"
+/bin/rm -f "$granule_path" "$file_list_file" "$hk_file_list" "$iru_file_list" "$smc_file_list"
