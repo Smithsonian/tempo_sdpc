@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <wordexp.h>
 
 #include <ioclib.h>
 
@@ -245,99 +244,24 @@ static int examine_file (Row_Select_Type **rstp, int ncid, const char *file,
    return status;
 }
 
-static int expand_glob_pattern (const char *file_glob_pattern,
-                                double time_beg, double time_end,
-                                wordexp_t *we)
-{
-   double sat_day_beg, sat_day_end;
-   int isat_day_beg, isat_day_end;
-   int n, len;
-   char *pat;
-
-   if (NULL == strstr (file_glob_pattern, "%"))
-     {
-        return wordexp (file_glob_pattern, we, WRDE_NOCMD | WRDE_UNDEF);
-     }
-
-   if ((0 != tio_time_sat_local_day_number (time_beg, &sat_day_beg))
-       || (0 != tio_time_sat_local_day_number (time_end, &sat_day_end)))
-     return -1;
-
-   isat_day_beg = sat_day_beg;
-   isat_day_end = sat_day_end;
-
-   len = 8 + strlen(file_glob_pattern);
-   if (NULL == (pat = MALLOC (len * sizeof(char))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        return -1;
-     }
-
-   n = snprintf (pat, len, file_glob_pattern, isat_day_beg);
-   if ((n < 0) || (n >= len)
-       || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF)))
-     {
-        FREE(pat);
-        return -1;
-     }
-
-   if (isat_day_end != isat_day_beg)
-     {
-        n = snprintf (pat, len, file_glob_pattern, isat_day_end);
-        if ((n < 0) || (n >= len)
-            || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF | WRDE_APPEND)))
-          {
-             FREE(pat);
-             return -1;
-          }
-     }
-
-   FREE(pat);
-   return 0;
-}
-
 int row_select_scan (double time_beg, double time_end, int num_pad,
-                     const char *file_glob_pattern, const char *group_path,
-                     Row_Select_Type **rstp)
+                     int num_files, char **file_list,
+                     const char *group_path, Row_Select_Type **rstp)
 {
    Row_Select_Type *rst_head = NULL;
-   wordexp_t we = {0};
    int return_status = -1;
-   int ncid = 0;
-   size_t i, n;
+   int i, ncid = 0;
 
-   *rstp = NULL;
-
-   if (0 != expand_glob_pattern (file_glob_pattern, time_beg, time_end, &we))
-     {
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, file_glob_pattern);
-        goto cleanup_and_return;
-     }
-
-   if (we.we_wordc < 1)
-     {
-        return_status = 0;
-        tell_vwarn (0, "%s: no files match glob pattern: %s",
-                    __func__, file_glob_pattern);
-        goto cleanup_and_return;
-     }
-
-   /* globbed file list is sorted in ascending order,
-    * and is, therefore, assumed to be correctly time-ordered
-    */
-   n = we.we_wordc;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %ld files matching pattern %s",
-              n, file_glob_pattern);
-
-   for (i = 0; i < n; i++)
+   for (i = 0; i < num_files; i++)
      {
         Row_Select_Type *rst;
-        const char *file = we.we_wordv[i];
+        const char *file = file_list[i];
         double time_beg_pad = time_beg;
         double time_end_pad = time_end;
         int grp, status;
+
+        if (0 == strcasecmp (file, "NONE"))
+          continue;
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %s", file);
 
@@ -421,7 +345,6 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
 
    return_status = 0;
 cleanup_and_return:
-   wordfree (&we);
    if (ncid != 0)
      {
         (void) TIO_close (ncid);

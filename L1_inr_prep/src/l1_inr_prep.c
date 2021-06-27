@@ -29,11 +29,17 @@
 
 typedef struct
 {
-   const char *file_glob_pattern;
+   const char *file_list_source;
    int num_pad;
-   Row_Select_Type *rst;
 }
 Selection_Type;
+
+typedef struct
+{
+   char **file_list;
+   int num_files;
+}
+File_Array_Type;
 
 typedef struct
 {
@@ -68,6 +74,57 @@ static int read_config_file (const char *config_file, config_t *cfg)
         return -1;
      }
 
+   return 0;
+}
+
+static int expand_glob_pattern (const char *file_glob_pattern,
+                                double time_beg, double time_end,
+                                wordexp_t *we)
+{
+   double sat_day_beg, sat_day_end;
+   int isat_day_beg, isat_day_end;
+   int n, len;
+   char *pat;
+
+   if (NULL == strstr (file_glob_pattern, "%"))
+     {
+        return wordexp (file_glob_pattern, we, WRDE_NOCMD | WRDE_UNDEF);
+     }
+
+   if ((0 != tio_time_sat_local_day_number (time_beg, &sat_day_beg))
+       || (0 != tio_time_sat_local_day_number (time_end, &sat_day_end)))
+     return -1;
+
+   isat_day_beg = sat_day_beg;
+   isat_day_end = sat_day_end;
+
+   len = 8 + strlen(file_glob_pattern);
+   if (NULL == (pat = MALLOC (len * sizeof(char))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   n = snprintf (pat, len, file_glob_pattern, isat_day_beg);
+   if ((n < 0) || (n >= len)
+       || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF)))
+     {
+        FREE(pat);
+        return -1;
+     }
+
+   if (isat_day_end != isat_day_beg)
+     {
+        n = snprintf (pat, len, file_glob_pattern, isat_day_end);
+        if ((n < 0) || (n >= len)
+            || (0 != wordexp (pat, we, WRDE_NOCMD | WRDE_UNDEF | WRDE_APPEND)))
+          {
+             FREE(pat);
+             return -1;
+          }
+     }
+
+   FREE(pat);
    return 0;
 }
 
@@ -111,7 +168,7 @@ static int read_common_params (config_t *cfg, const char *setting_name,
         return -1;
      }
 
-   if ((CONFIG_TRUE != config_setting_lookup_string (s, "file_glob", &st->file_glob_pattern))
+   if ((CONFIG_TRUE != config_setting_lookup_string (s, "file_pattern", &st->file_list_source))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "num_pad", &st->num_pad)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -123,29 +180,190 @@ static int read_common_params (config_t *cfg, const char *setting_name,
    return 0;
 }
 
+static void file_array_free (File_Array_Type *fa)
+{
+   int i;
+   if (fa == NULL)
+     return;
+   for (i = 0; i < fa->num_files; i++)
+     {
+        FREE(fa->file_list[i]);
+     }
+}
+
+static int file_array_new (int num_files, File_Array_Type *fa)
+{
+   if (NULL == (fa->file_list = (char **)MALLOC (num_files * sizeof(char *))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)fa->file_list, 0, num_files * sizeof(char *));
+   fa->num_files = num_files;
+
+   return 0;
+}
+
+static int read_file_list_file (const char *filename, File_Array_Type *fa)
+{
+   unsigned char *ucfbytes = NULL;
+   size_t nbytes;
+   char *fbytes, *pend, *pbeg, *p;
+   int num_strings, len, i;
+   int status = -1;
+
+   if (NULL == (ucfbytes = ioclib_read_file (filename, &nbytes)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: error reading file: %s", __func__, filename);
+        return -1;
+     }
+   fbytes = (char *)ucfbytes;
+   pend = (char *)ucfbytes + nbytes;
+
+   /* Count the newline terminated strings, ignoring zero-length strings.
+    * Comment lines are not supported.
+    */
+   num_strings = 0;
+   len = 0;
+   for (p = fbytes; p < pend; p++)
+     {
+        if (*p == '\n')
+          {
+             if (len > 0) num_strings++;
+             len = 0;
+          }
+        else len++;
+     }
+   /* count last string even if not newline terminated */
+   if (len) num_strings++;
+
+   /* Allocate an array of pointers */
+   if (0 != file_array_new (num_strings, fa))
+     goto return_status;
+
+   /* Load the strings into the array */
+   i = 0;
+   len = 0;
+   pbeg = fbytes;
+   for (p = fbytes; p < pend; p++)
+     {
+        if (*p == '\n')
+          {
+             if (len > 0)
+               {
+                  if (NULL == (fa->file_list[i++] = strndup (pbeg, len)))
+                    {
+                       tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+                       goto return_status;
+                    }
+                  pbeg = p + 1;
+               }
+             len = 0;
+          }
+        else len++;
+     }
+   if (len)
+     {
+        /* Lack of a terminating newline may cause trouble when strndup adds terminating 0 byte. */
+        if (NULL == (fa->file_list[i++] = strndup (pbeg, len)))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto return_status;
+          }
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Read %d file names from %s", fa->num_files, filename);
+
+   status = 0;
+return_status:
+   ioclib_free (ucfbytes);
+
+   return status;
+}
+
+static int get_file_list (double time_beg, double time_end,
+                          const char *pattern, File_Array_Type *fa)
+{
+   wordexp_t we = {0};
+   int i, status = -1;
+
+   if (pattern == NULL)
+     {
+        tell_verror (TELL_INTERNAL_ERROR, "%s: pattern == NULL", __func__);
+        return -1;
+     }
+
+   if (*pattern == '@')
+     {
+        return read_file_list_file (pattern + 1, fa);
+     }
+
+   if (0 != expand_glob_pattern (pattern, time_beg, time_end, &we))
+     {
+        tell_verror (TELL_UNKNOWN_ERROR,
+                     "%s: expanding path: %s", __func__, pattern);
+        goto cleanup_and_return;
+     }
+
+   if (we.we_wordc < 1)
+     {
+        status = 0;
+        tell_vwarn (0, "%s: no files match glob pattern: %s", __func__, pattern);
+        goto cleanup_and_return;
+     }
+
+   /* globbed file list is sorted in ascending order,
+    * and is, therefore, assumed to be correctly time-ordered
+    */
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "Examining %ld files matching pattern %s",
+              we.we_wordc, pattern);
+
+   if (0 != file_array_new (we.we_wordc, fa))
+     goto cleanup_and_return;
+
+   for (i = 0; i < fa->num_files; i++)
+     {
+        if (NULL == (fa->file_list[i] = strdup (we.we_wordv[i])))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto cleanup_and_return;
+          }
+     }
+
+   status = 0;
+cleanup_and_return:
+   wordfree (&we);
+   return status;
+}
+
 static int copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type iru = {0};
+   File_Array_Type fa = {0};
+   Row_Select_Type *rst = NULL;
    int status = -1;
 
    if (0 != read_common_params (cfg, "iru_config", &iru))
      return -1;
 
-   if (0 != row_select_scan (time_beg, time_end,
-                             pad_enable ? iru.num_pad : 0,
-                             iru.file_glob_pattern, NULL, &iru.rst))
+   if (0 != get_file_list (time_beg, time_end, iru.file_list_source, &fa))
      goto return_status;
 
-   if (iru.rst)
+   if (0 != row_select_scan (time_beg, time_end, pad_enable ? iru.num_pad : 0,
+                             fa.num_files, fa.file_list, NULL, &rst))
+     goto return_status;
+
+   if (rst)
      {
-        if (0 != radiance_copy_iru (r, meta, iru.rst))
+        if (0 != radiance_copy_iru (r, meta, rst))
           goto return_status;
      }
 
    status = 0;
 return_status:
-   row_select_free (iru.rst);
+   row_select_free (rst);
+   file_array_free (&fa);
    return status;
 }
 
@@ -153,25 +371,30 @@ static int copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                      double time_beg, double time_end, int pad_enable)
 {
    Selection_Type smc = {0};
+   File_Array_Type fa = {0};
+   Row_Select_Type *rst = NULL;
    int status = -1;
 
    if (0 != read_common_params (cfg, "smc_config", &smc))
      return -1;
 
-   if (0 != row_select_scan (time_beg, time_end,
-                             pad_enable ? smc.num_pad : 0,
-                             smc.file_glob_pattern, NULL, &smc.rst))
+   if (0 != get_file_list (time_beg, time_end, smc.file_list_source, &fa))
      goto return_status;
 
-   if (smc.rst)
+   if (0 != row_select_scan (time_beg, time_end, pad_enable ? smc.num_pad : 0,
+                             fa.num_files, fa.file_list, NULL, &rst))
+     goto return_status;
+
+   if (rst)
      {
-        if (0 != radiance_copy_smc (r, meta, smc.rst))
+        if (0 != radiance_copy_smc (r, meta, rst))
           goto return_status;
      }
 
    status = 0;
 return_status:
-   row_select_free (smc.rst);
+   row_select_free (rst);
+   file_array_free (&fa);
    return status;
 }
 
@@ -263,27 +486,31 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                        double time_beg, double time_end, int pad_enable)
 {
    Selection_Type eph = {0};
+   File_Array_Type fa = {0};
+   Row_Select_Type *rst = NULL;
    const char *group_path = "anc_sec_102";
    int status = -1;
 
    if (0 != read_common_params (cfg, "eph_config", &eph))
      return -1;
 
-   if (0 != row_select_scan (time_beg, time_end,
-                             pad_enable ? eph.num_pad : 0,
-                             eph.file_glob_pattern, group_path, &eph.rst))
+   if (0 != get_file_list (time_beg, time_end, eph.file_list_source, &fa))
      goto return_status;
 
-   if (eph.rst)
+   if (0 != row_select_scan (time_beg, time_end, pad_enable ? eph.num_pad : 0,
+                             fa.num_files, fa.file_list, group_path, &rst))
+     goto return_status;
+
+   if (rst)
      {
-        if (0 != radiance_copy_eph (r, meta, group_path, eph.rst))
+        if (0 != radiance_copy_eph (r, meta, group_path, rst))
           goto return_status;
      }
 
    status = 0;
 return_status:
-   row_select_free (eph.rst);
-
+   row_select_free (rst);
+   file_array_free (&fa);
    return status;
 }
 

@@ -27,9 +27,8 @@ extern void row_select_free (Row_Select_Type *rst);
  *                        elapsed since the TEMPO epoch
  * @param[in] num_pad     Approximate number of additional time samples to
  *                        include as padding before @c time_beg and after @c time_end
- * @param[in] file_glob_pattern   Regular expression defining the set of time
- *                            series data files to be examined.  It is assumed
- *                            that the expression yields a time-ordered set of files.
+ * @param[in] num_files   Number of files to be examined.
+ * @param[in] file_list   Pointer to array of strings containing file paths.
  * @param[in] group_path  Pointer to file group containing time series (ignored if NULL)
  * @param[out] rstp      Pointer to a linked list of @c Row_Select_Type objects
  *                       that cover the specified time interval with the
@@ -37,7 +36,7 @@ extern void row_select_free (Row_Select_Type *rst);
  * @return 0 on success, -1 on error
  */
 extern int row_select_scan (double time_beg, double time_end, int num_pad,
-                            const char *file_glob_pattern, const char *group_path,
-                            Row_Select_Type **rstp);
+                            int num_files, char **file_list,
+                            const char *group_path, Row_Select_Type **rstp);
 
 #endif
