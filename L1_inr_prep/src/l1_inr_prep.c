@@ -534,10 +534,6 @@ static int process_inputs (config_t *cfg, const char *radiance_file,
           return -1;
         if (0 != radiance_interval (r, &time_beg, &time_end))
           goto return_status;
-        if (NULL == (meta = tio_meta_open ()))
-          goto return_status;
-        if (0 != tio_meta_ncinit (meta, r->ncid, "input_files", TIO_META_TYPE_STRING))
-          goto return_status;
      }
    else
      {
@@ -561,6 +557,11 @@ static int process_inputs (config_t *cfg, const char *radiance_file,
         goto return_status;
      }
 
+   if (NULL == (meta = tio_meta_open ()))
+     goto return_status;
+   if (0 != tio_meta_ncinit (meta, r->ncid, "input_files", TIO_META_TYPE_STRING))
+     goto return_status;
+
    /* Copy IRU, SMC, ephemeris time series spanning [time_beg,time_end),
     * handling the case where padding forces consideration
     * of additional files.
@@ -579,6 +580,9 @@ static int process_inputs (config_t *cfg, const char *radiance_file,
      {
         /* Finalize the temporary radiance file */
         if (0 != radiance_update_coverage_times (r, time_beg, time_end))
+          goto return_status;
+
+        if (0 != tio_meta_write_ncattr (meta, r->ncid))
           goto return_status;
 
         /* close before renaming */
