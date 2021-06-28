@@ -246,6 +246,7 @@ private define set_executable (p, argv)
    Exec = struct
      {
         name=p.exec_name,
+        wait_arg = p.wait_arg,
         argv=argv
      };
 
@@ -295,7 +296,10 @@ private define run_executable (obj, file, run_dir)
         p = new_process (argv);
      }
 
-   variable s = p.wait(WNOHANG);
+   variable s;
+   if (Exec.wait_arg != WNOHANG)
+     s = p.wait();
+   else s = p.wait(WNOHANG);
    if (s == NULL)
      throw OSError, "waitpid failed: " + errno_string ();
 
@@ -379,6 +383,7 @@ variable _P = struct
    incoming_dir = NULL,
    file_glob = "*",
    wait_sec = 1.0,
+   wait_arg = WNOHANG,
    exec_root_dir = NULL,
    exec_name = NULL
 };
