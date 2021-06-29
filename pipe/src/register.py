@@ -227,14 +227,13 @@ def maybe_handle_scan_completion (conn, product_name, scan_id):
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
 
-def process_file (conn, filename):
+def process_file (conn, nc, filename):
 
     basename = os.path.basename (filename)
     tok = basename.split('_')
     product_name = '{}_{}'.format(tok[1], tok[2])
     versionid = int(tok[3].strip('V'))
 
-    nc = NetCDFFile(filename, "r")
     attr = nc.__dict__
 
     if not "time_coverage_start_since_epoch" in attr:
@@ -310,7 +309,8 @@ def register_files (db_path, filenames):
     for fn in filenames:
         if os.path.islink(fn):
             with connect_database (db_path) as conn:
-                status = process_file (conn, fn)
+                with NetCDFFile (fn, "r") as nc:
+                    status = process_file (conn, nc, fn)
             if status != 0:
                 eprint('Error processing file: {}'.format(fn))
             os.remove(fn)
