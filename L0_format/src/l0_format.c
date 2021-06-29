@@ -539,6 +539,8 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    double t_max = iru_interval->max_iru_knowledge_gap_duration;
    double t_only = iru_interval->latest_iru_only_interval_end_time;
    double t_rad_prev = iru_interval->latest_radiance_timestamp_seen;
+   double t_only_min_duration = 3;  /* [sec] min duration desired for a single telemetry-only file */
+   double t_rad_typical = 3;        /* [sec] typical interval between radiance scan steps */
    double t_rad, t_last;
 
    t_last = (t_rad_prev > t_only) ? t_rad_prev : t_only;
@@ -546,10 +548,21 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RAD, &t_rad))
      return -1;
 
-   if ((t_last > 0) && (t_rad - t_last > t_max))
+   if (t_last > 0)
      {
-        if (0 != ensure_iru_coverage_for_inr (iru_interval, t_last, t_rad))
-          return -1;
+        double dt_only = t_rad - t_only;
+        if (((t_rad - t_rad_prev) > 3 * t_rad_typical)
+            && (t_only_min_duration < dt_only) && (dt_only < t_max))
+          {
+             /* Try to fill any small gap before a radiance scan */
+             if (0 != ensure_iru_coverage_for_inr (iru_interval, t_only, t_rad))
+               return -1;
+          }
+        else if (t_rad - t_last > t_max)
+          {
+             if (0 != ensure_iru_coverage_for_inr (iru_interval, t_last, t_rad))
+               return -1;
+          }
      }
 
    iru_interval->latest_radiance_timestamp_seen = t_rad;
