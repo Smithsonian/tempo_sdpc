@@ -108,6 +108,8 @@ private define dir_monitor (obj, order)
    variable file;
    foreach file (file_list)
      {
+        if (Sigterm_Received)
+          break;
         if (1 == obj.process (file))
           break;
      }
