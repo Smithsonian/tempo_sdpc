@@ -9,6 +9,7 @@ import numpy as np
 def get_file_times (fname, varpath):
     dset = netCDF4.Dataset(fname, 'r')
     tstart = dset.time_coverage_start_since_epoch
+    tend = dset.time_coverage_end_since_epoch
     gpath = os.path.dirname (varpath)
     vname = os.path.basename (varpath)
     if len(gpath) > 1:
@@ -17,13 +18,13 @@ def get_file_times (fname, varpath):
         g = dset
     t = g.variables[vname][:]
     dset.close ()
-    return tstart,t
+    return tstart,tend,t
 
 def check_for_gaps (fprev, f, varpath, before):
 
     have_prev = not (fprev == None)
 
-    tstart,t = get_file_times (f, varpath)
+    tstart,tend,t = get_file_times (f, varpath)
     if len(t) == 0:
         return []
 
@@ -41,7 +42,7 @@ def check_for_gaps (fprev, f, varpath, before):
 
     if have_prev:
         fbprev = os.path.basename (fprev)
-        tstart_prev,tprev = get_file_times (fprev, varpath)
+        tstart_prev,tend_prev,tprev = get_file_times (fprev, varpath)
         if tstart < tstart_prev:
             issues.append ('file out of order')
         if len(tprev) > 1 and ((t[0] - tprev[-1]) > dt_thresh):
@@ -49,6 +50,8 @@ def check_for_gaps (fprev, f, varpath, before):
 
     if t[0] + before > tstart:
         issues.append ('insufficient padding: tstart-t[0] = %0.3f' % (tstart-t[0]))
+    if t[-1] < tend:
+        issues.append ('insufficient padding: t[-1]-tend = %0.3f' % (t[-1]-tend))
     if num_bad_dt > 0:
         issues.append ('%d non-monotonic entries' % (num_bad_dt))
     if num_big_dt > 0:
@@ -92,8 +95,8 @@ def main():
             num_ok = num_ok + 1
         f_prev = f
 
-    if num_ok == n:
-        print('OK')
+    if num_ok > 0:
+        print('{} files OK'.format(num_ok))
 
 if __name__ == "__main__":
     main()
