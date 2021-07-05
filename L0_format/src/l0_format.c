@@ -549,15 +549,21 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    if (t_last > 0)
      {
         double dt_only_min = 3;           /* [sec] min duration desired for a single telemetry-only file */
-        double dt_rad_typical = 3;        /* [sec] typical interval between radiance scan steps */
+        double dt_rad_pad = 10;           /* [sec] padding that preceeds every radiance granule */
         double dt_only = t_rad - t_only;
         double dt_rad = t_rad - t_rad_prev;
 
-        if ((dt_rad > 3 * dt_rad_typical)
+        if ((dt_rad > dt_rad_pad)
             && (dt_only_min < dt_only) && (dt_only < dt_max))
           {
              /* Fill small gap before first radiance scan */
              if (0 != ensure_iru_coverage_for_inr (iru_interval, t_only, t_rad))
+               return -1;
+          }
+        else if ((dt_rad > dt_rad_pad) && (dt_only > dt_max))
+          {
+             /* Fill largish gap between radiance scans */
+             if (0 != ensure_iru_coverage_for_inr (iru_interval, t_rad_prev, t_rad))
                return -1;
           }
         else if (t_rad - t_last > dt_max)
