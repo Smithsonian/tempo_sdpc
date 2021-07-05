@@ -169,12 +169,6 @@ int have_forecast_files (time_t tt, int num_hours)
         return -1;
      }
 
-   if (tm.tm_hour + num_hours > 23)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: time interval spans multiple days (not supported)", __func__);
-        return -1;
-     }
-
    for (hour = 0; hour <= num_hours; hour++)
      {
         if (0 != make_forecast_path (tt + hour * 3600, path, CF_BUFSIZE))
