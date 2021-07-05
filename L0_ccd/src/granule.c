@@ -321,37 +321,6 @@ static int identify_exprec_type (const char *exprec_type)
    return EXPREC_TYPE_UNKNOWN;
 }
 
-/* Level 0 granule file may be dimensioned to hold a
- * fixed number of exposures, but some slots may be empty
- */
-static int count_exprecs (Granule_Type *g, int time_dim)
-{
-   double *start_times;
-   int start, count, i, num_exprecs;
-
-   if (NULL == (start_times = (double *) MALLOC (time_dim * sizeof(double))))
-     return -1;
-
-   start = 0;
-   count = time_dim;
-   if (0 != TIO_get_var_section (g->ncid, "image_start_time", &start, &count, TIO_DOUBLE, start_times))
-     {
-        FREE(start_times);
-        return -1;
-     }
-
-   num_exprecs = 0;
-   for (i = 0; i < count; i++)
-     {
-        if (start_times[i] != TIO_FILL_DOUBLE)
-          num_exprecs++;
-     }
-
-   FREE(start_times);
-
-   return num_exprecs;
-}
-
 static int get_granule_dims (Granule_Type *g)
 {
    TIO_Var_Info_Type info;
@@ -367,9 +336,7 @@ static int get_granule_dims (Granule_Type *g)
         return -1;
      }
 
-   if ((g->num_exprecs = count_exprecs (g, info.dimlens[0])) < 0)
-     return -1;
-
+   g->num_exprecs = info.dimlens[0];
    g->num_rows = info.dimlens[1];
    g->num_cols = info.dimlens[2];
 
