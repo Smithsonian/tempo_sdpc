@@ -7,9 +7,10 @@ require ("cmdopt");
 private variable Node_Name = "$HOST"$;
 
 private variable Dest_Subdir   = "ingest/tempo";
-% Because of some file system confusion at ASDC, we need the absolute path
-% in one context, and the relative path in another context.
-private variable Dest_Target_Dir = path_concat ("/XSan/DH/Incoming/tempo", Dest_Subdir);
+private variable Dest_Target_Dir = ".";
+% Weirdly, absolute directory paths viewed from inside ASDC are
+% different from those viewed from outside ASDC. To avoid
+% confusion, we use "."
 
 define make_file_entry (path, data_type, st, extname_is_nc)
 {
@@ -89,7 +90,7 @@ define read_file_list (list_file)
    return array_map (String_Type, &strtrim, lst, "\n\t");
 }
 
-define entry_string (entry, target_dir)
+define entry_string (entry)
 {
    variable
      id = entry.file_id,
@@ -100,7 +101,7 @@ define entry_string (entry, target_dir)
 
    variable str =
 ` OBJECT = FILE_SPEC;
-    DIRECTORY_ID = $target_dir;
+    DIRECTORY_ID = $Dest_Target_Dir;
     FILE_ID = $id;
     FILE_TYPE = $type;
     FILE_SIZE = $size;
@@ -111,16 +112,16 @@ define entry_string (entry, target_dir)
    return str;
 }
 
-define write_file_group (fp, g, target_dir)
+define write_file_group (fp, g)
 {
    variable data_version = g.data_version;
    variable data_type = g.nc_entry.data_type;
 
-   variable entries = entry_string (g.nc_entry, target_dir);
+   variable entries = entry_string (g.nc_entry);
 
    if (g.met_entry != NULL)
      {
-        variable met_str = entry_string (g.met_entry, target_dir);
+        variable met_str = entry_string (g.met_entry);
         entries = sprintf ("%s\n%s", entries, met_str);
      }
 
@@ -161,7 +162,7 @@ TOTAL_FILE_COUNT = $num_files
 
    foreach g (lst)
      {
-        write_file_group (fp, g, Dest_Target_Dir);
+        write_file_group (fp, g);
      }
 
    if (0 != fclose (fp))
