@@ -36,8 +36,22 @@ do_asdc_upload()
   file_list="files.lis"
   script="lftp.script"
 
-  # make list of files to upload
+  exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.lis"
+
+  # make list of new data product files
   asdc_track_uploads.py --list new > $file_list
+
+  # apply the upload filter, if any
+  if test -f "$exclude_list" ; then
+     /bin/cp "$file_list" "${file_list}.orig"
+     grep -v '^#' "$exclude_list" | while read -r line
+     do
+       sed -i "/$line/d" $file_list
+     done
+     if ! test -s $file_list ; then
+        return
+     fi
+  fi
 
   # mark the new files as "pending"
   asdc_track_uploads.py --set pending $file_list

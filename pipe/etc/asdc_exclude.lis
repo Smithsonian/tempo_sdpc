@@ -1,0 +1,11 @@
+#
+# Lines beginning with '#' are ignored.
+# The remaining strings are used to filter the list of data products
+# to be autonomously uploaded to ASDC.  When the archive path to
+# a data product file contains one of these strings, that file is
+# excluded from uploads to ASDC.
+#--------------------------------------------------------------------
+#
+# CLDO4 products are in development.  Do not upload.
+#
+CLDO4
