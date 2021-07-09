@@ -76,7 +76,7 @@ do_asdc_download()
 
 num=$(asdc_track_uploads.py --num pending)
 if test x"$num" = x0 ; then
-   echo "asdc_pull.sh: ASDC ingest status: pending: $num"
+   echo "asdc_pull.sh: ASDC ingest status: pending:$num"
    exit 0
 fi
 
@@ -84,5 +84,7 @@ download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/pull/$(date -u +%Y/%j/tempo_pan_%Y%j
 
 do_asdc_download $download_dir_path
 
-num_after=$(asdc_track_uploads.py --num pending)
-echo "asdc_pull.sh: ASDC ingest status: resolved: $(($num - $num_after))  pending: $num_after"
+num_pending=$(asdc_track_uploads.py --num pending)
+num_accepted=$(asdc_track_uploads.py --num accepted)
+num_problem=$(asdc_track_uploads.py --num problem)
+echo "asdc_pull.sh: ASDC ingest status: pending:$num_pending  accepted:$num_accepted  problem:$num_problem"
