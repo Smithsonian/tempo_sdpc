@@ -34,8 +34,13 @@ class IRU_Series (object):
 
 def read_iru_series (filename):
     nc = netCDF4.Dataset (filename, 'r')
-    t = nc.variables['time'][:]
-    gyro_output = nc.variables['gyro_output'][:,:]
+    if nc.product_type == 'IRU':
+        g = nc
+        t = g.variables['time'][:]
+    elif nc.product_type == 'RAD':
+        g = nc['/inr_input/telemetry/gyroscope']
+        t = g.variables['gyro_time'][:]
+    gyro_output = g.variables['gyro_output'][:,:]
     iru = IRU_Series (t, gyro_output/1.e6)
     nc.close()
     return iru
@@ -52,7 +57,7 @@ def main():
     parser = argparse.ArgumentParser(description='plot IRU')
     parser.add_argument('--tmin', help="start time [sec]", default=None, type=float)
     parser.add_argument('--tmax', help="end time [sec]", default=None, type=float)
-    parser.add_argument('--outfile', help="output filename")
+    parser.add_argument('--outfile', help="output filename", default='iru.pdf')
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     #parser.add_argument('step', help="mirror_step index")
     if len(sys.argv)==1:
@@ -84,6 +89,7 @@ def main():
         print ('WARNING: tmax lies beyond the last data point: t_last = {}'.format(t_last))
 
     plt_filename = args.outfile
+    print('Creating plot file: {}'.format(plt_filename))
     pdf = PdfPages(plt_filename)
 
     fig, axs = plt.subplots (4, 1, sharex='row')

@@ -37,9 +37,14 @@ class SMC_Series (object):
 
 def read_smc_series (filename):
     nc = netCDF4.Dataset (filename, 'r')
-    t = nc.variables['time'][:]
-    proc_meas_x = nc.variables['proc_meas_x'][:]
-    proc_meas_y = nc.variables['proc_meas_y'][:]
+    if nc.product_type == 'SMC':
+        g = nc
+        t = g.variables['time'][:]
+    elif nc.product_type == 'RAD':
+        g = nc['/inr_input/telemetry/mirror']
+        t = g.variables['sma_time'][:]
+    proc_meas_x = g.variables['proc_meas_x'][:]
+    proc_meas_y = g.variables['proc_meas_y'][:]
     s = SMC_Series (t, proc_meas_x, proc_meas_y)
     nc.close()
     return s
@@ -56,7 +61,7 @@ def main():
     parser = argparse.ArgumentParser(description='plot SMC')
     parser.add_argument('--tmin', help="start time [sec]", default=None, type=float)
     parser.add_argument('--tmax', help="end time [sec]", default=None, type=float)
-    parser.add_argument('--outfile', help="output filename")
+    parser.add_argument('--outfile', help="output filename", default='smc.pdf')
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     #parser.add_argument('step', help="mirror_step index")
     if len(sys.argv)==1:
@@ -88,6 +93,7 @@ def main():
         print ('WARNING: tmax lies beyond the last data point: t_last = {}'.format(t_last))
 
     plt_filename = args.outfile
+    print('Creating plot file: {}'.format(plt_filename))
     pdf = PdfPages(plt_filename)
 
     fig, axs = plt.subplots (2, 1, sharex='row')
