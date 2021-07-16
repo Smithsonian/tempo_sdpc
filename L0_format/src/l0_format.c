@@ -58,6 +58,9 @@ Process_Method_Table_Type;
 typedef struct
 {
    double max_iru_knowledge_gap_duration;
+   /* Time between telemetry-only granules;
+    * A negative value means "don't generate telemetry-only granules".
+    */
    double latest_iru_timestamp_seen;
    double latest_radiance_timestamp_seen;
    double latest_iru_only_interval_end_time;
@@ -541,6 +544,10 @@ static int exprec_post_process_callback (Process_Method_Type *pmt, void *client_
    double t_rad_prev = iru_interval->latest_radiance_timestamp_seen;
    double t_rad, t_last;
 
+   /* dt_max < 0 means "don't generate telemetry-only granules" */
+   if (dt_max < 0.0)
+     return 0;
+
    t_last = (t_rad_prev > t_only) ? t_rad_prev : t_only;
 
    if (0 != pmt->pmt_query_latest_timestamp (pmt, IOCSDPC_EXPREC_TYPE_RAD, &t_rad))
@@ -583,6 +590,10 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
    IRU_Interval_Type *iru_interval = (IRU_Interval_Type *)client_data;
    double dt_max = iru_interval->max_iru_knowledge_gap_duration;
    double t_iru, t_last, t_only, t_rad;
+
+   /* dt_max < 0 means "don't generate telemetry-only granules" */
+   if (dt_max < 0.0)
+     return 0;
 
    if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &t_iru))
      return -1;
