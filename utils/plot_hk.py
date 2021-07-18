@@ -15,6 +15,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
+from matplotlib.ticker import ScalarFormatter
+
 plt.rc('text', usetex=True)
 
 plt.rc('lines', linewidth=0.5)
@@ -32,9 +34,12 @@ class HK_Series (object):
             self.time = np.append (self.time, s.time)
             self.var = np.append (self.var, s.var)
 
-def read_hk_series (filename, varpath):
+def read_hk_series (filename, varpath, timevar):
     nc = netCDF4.Dataset (filename, 'r')
-    timevarpath = "{}/time".format(os.path.dirname(varpath))
+    if timevar == None:
+        timevarpath = "{}/time".format(os.path.dirname(varpath))
+    else:
+        timevarpath = timevar
     t = nc[timevarpath][:]
     var = nc[varpath][:]
     hk = HK_Series (t, var)
@@ -48,12 +53,15 @@ def autoscale_ylim (ax, x, y):
     ymax = y[i].max()
     pad = 0.02 * (ymax - ymin)
     ax.set_ylim (ymin - pad, ymax + pad)
+    y_formatter = ScalarFormatter(useOffset=False)
+    ax.yaxis.set_major_formatter(y_formatter)
 
 def main():
     parser = argparse.ArgumentParser(description='plot HK')
     parser.add_argument('--tmin', help="start time [sec]", default=None, type=float)
     parser.add_argument('--tmax', help="end time [sec]", default=None, type=float)
     parser.add_argument('--outfile', help="output filename")
+    parser.add_argument('--timevar', help="time variable path", default=None)
     parser.add_argument('varpath', help="variable path")
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     #parser.add_argument('step', help="mirror_step index")
@@ -64,7 +72,7 @@ def main():
 
     hk = HK_Series()
     for f in args.filenames:
-        hk.append(read_hk_series (f, args.varpath))
+        hk.append(read_hk_series (f, args.varpath, args.timevar))
 
     t0 = hk.time[0]
     t_last = hk.time[-1]
