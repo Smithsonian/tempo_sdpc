@@ -635,7 +635,7 @@ static int set_earth_sun_distance (Granule_Type *gt)
 {
    const ECEF_Position_Type *sun = &gt->sun;
    double x = sun->X[0], y = sun->Y[0], z = sun->Z[0];
-   double dist_km = sqrt (x*x + y*y + z+z);
+   double dist_km = sqrt (x*x + y*y + z*z);
    return tio_set_earth_sun_distance (gt->ncid, dist_km * 1.e3);
 }
 
