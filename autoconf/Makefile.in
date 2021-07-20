@@ -8,7 +8,7 @@ RM = /bin/rm
 TARGETS := all check docs clean distclean
 
 BASE_LIBS   = libtio
-OTHER_LIBS  = libmet libmd libclim
+OTHER_LIBS  = libndinterp libmet libmd libclim libgler
 
 LIBRARIES   = $(BASE_LIBS) $(OTHER_LIBS)
 
