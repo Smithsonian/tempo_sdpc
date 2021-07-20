@@ -73,6 +73,52 @@ module ndinterp_module
 
 contains
 
+  integer function binary_search (xa, t)
+    implicit none
+    real (kind=8), dimension(:), intent(in) :: xa
+    real (kind=8), intent(in) :: t
+
+    integer :: n, n0, n1, n2
+    real (kind=8) :: xt
+
+    n = size(xa)
+
+    n0 = 1
+    n1 = n+1
+
+    ! Require xa in ascending order
+    if (xa(1) >= xa(2)) then
+      binary_search = -1
+      return
+    endif
+
+    ! Don't extrapolate
+    if (t < xa(1)) then
+      binary_search = -1
+      return
+    else if (xa(n) < t) then
+      binary_search = -n
+      return
+    endif
+
+    do while (n1 > n0+1)
+      n2 = (n0 + n1) / 2
+      xt = xa(n2)
+      if (t <= xt) then
+        if (xt == t) then
+          binary_search = n2
+          return
+        endif
+        n1 = n2
+      else
+        n0 = n2
+      endif
+    enddo
+
+    binary_search = n0
+
+  end function
+
   !> Find coordinate x0 in array x(:), assumed to be in ascending order
   !! @param[in]   x0   Coordinate value to search for
   !! @param[in]   x    Coordinate array to search. Must be in ascending order
@@ -98,12 +144,11 @@ contains
       return
     endif
 
-    ! For long coordinate arrays (e.g. dimlen>64?), binary search
-    ! will be faster. However, at the moment I'm most interested
-    ! in support for interpolation in high-dimensional tables,
-    ! where the coordinate arrays mostly have dimlen<64.
-
-    i = minloc (abs(x0 - x), dim=1)
+    if (n < 64) then
+      i = minloc (abs(x0 - x), dim=1)
+    else
+      i = binary_search (x, x0)
+    endif
 
     if (x0 < x(i) .or. i == n) then
       i = i - 1

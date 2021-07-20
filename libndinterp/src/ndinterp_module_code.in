@@ -1,7 +1,7 @@
 !!
 !! @dim@-D tables
 !!
-  subroutine ndi_table_@typchar@@dim@d_interp (dims, tbl, x, val, errstat, input_indices, output_indices)
+  subroutine ndi_table_@typchar@@dim@d_interp (dims, tbl, x, val, errstat, input_indices, output_indices, fill_value)
     implicit none
     integer, parameter :: nd=@dim@, nterms=2**nd
     type (ndi_dim), intent(in), dimension(:) :: dims
@@ -11,10 +11,12 @@
     integer, intent(inout) :: errstat
     integer, optional, dimension(nd), intent(in) :: input_indices
     integer, optional, dimension(nd), intent(out) :: output_indices
+    real (kind=@fkind@), optional, intent(in) :: fill_value
 
     real (kind=r8), dimension(nd) :: weights
     integer, dimension(nd) :: indices, id_k
-    real (kind=r8) :: wt_k, val_r8
+    real (kind=r8) :: wt_k, val_r8, wt_sum
+    real (kind=@fkind@) :: val_k
     integer :: k
 
     if (errstat /= 0) return
@@ -31,11 +33,27 @@
     if (errstat /= 0) return
 
     val_r8 = 0.0
-    do k = 1, nterms
-      call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
-      val_r8 = val_r8 + wt_k * tbl(@idxid@)
-    enddo
-
-    val = real (val_r8, kind=@fkind@)
+    if (present(fill_value)) then
+       wt_sum = 0.0
+       do k = 1, nterms
+         call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
+         val_k = tbl(@idxid@)
+         if (val_k /= fill_value) then
+            val_r8 = val_r8 + wt_k * val_k
+            wt_sum = wt_sum + wt_k
+         endif
+       enddo
+       if (wt_sum /= 0.0) then
+          val = real (val_r8/wt_sum, kind=@fkind@)
+       else
+          val = fill_value
+       endif
+    else
+       do k = 1, nterms
+         call ndi_calc_term_weight (k, indices, weights, id_k, wt_k)
+         val_r8 = val_r8 + wt_k * tbl(@idxid@)
+       enddo
+       val = real (val_r8, kind=@fkind@)
+    endif
 
   end subroutine ndi_table_@typchar@@dim@d_interp

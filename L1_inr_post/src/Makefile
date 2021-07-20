@@ -23,6 +23,8 @@ TIFF_LIBPATHS = -Wl,-rpath=$(TIFF_LIB) -L$(TIFF_LIB)
 GEOTIFF_LIBPATHS = -Wl,-rpath=$(GEOTIFF_LIB) -L$(GEOTIFF_LIB)
 PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 
+NDINTERP_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lndinterp_f
+
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
                -lTempoGeospatial -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
@@ -61,8 +63,6 @@ ELF_F_COMPILE_CMD = $(ELF_FC) -c $(ELF_FCFLAGS)
 all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/L1_polcorr
 
 polcorr:	$(objdir)/L1_polcorr
-
-tests:	 $(objdir)/ndinterp_test
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -127,7 +127,7 @@ $(objdir)/snow.o:	$(srcdir)/snow.c
 
 # -----------------------------------------------------------------------
 
-POLCORR_F_OFILES = ndinterp_module.o types_module.o polpredict_module.o polcorrect_module.o
+POLCORR_F_OFILES = types_module.o polpredict_module.o polcorrect_module.o
 POLCORR_C_OFILES = l1_polcorr.o lps.o spline.o lps_apply.o
 POLCORR_OFILES = $(POLCORR_C_OFILES) $(POLCORR_F_OFILES)
 
@@ -143,6 +143,7 @@ POLCORR_LIBS = $(LIBCONFIG_LIBPATHS) -lconfig \
                $(TIO_LIBPATHS) -ltio_f -ltio \
 	       $(PROJ_LIBPATHS) -lproj \
 	       $(GSL_LIBPATHS) \
+	       $(NDINTERP_LIBPATHS) \
                $(RPATH) $(INSTALL_LIBPATHS) -lgfortran
 
 MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(TIO_LIB) -I$(prefix)/include
@@ -170,16 +171,3 @@ $(objdir)/polcorrect_module.o:	$(srcdir)/polcorrect_module.f90
 
 $(objdir)/polpredict_module.o:	$(srcdir)/polpredict_module.f90
 	cd $(objdir) && $(ELF_F_COMPILE_CMD) $(MODS_F) $(srcdir)/polpredict_module.f90
-
-NDINTERP_AUTOGEN_SRC = ndinterp_module_code.in ndinterp_module_autogen.sh
-
-ndinterp-autogen-timestamp:	ndinterp_module.f90 $(NDINTERP_AUTOGEN_SRC)
-	./ndinterp_module_autogen.sh
-	touch $@
-
-$(objdir)/ndinterp_module.o:	ndinterp_module.f90 ndinterp-autogen-timestamp
-	$(ELF_F_COMPILE_CMD) -o $(objdir)/ndinterp_module.o -I$(TELL_INC) ndinterp_module.f90
-
-NDI_LIBS = $(TELL_LIBPATHS) -ltell_f -ltell
-$(objdir)/ndinterp_test:	$(objdir)/ndinterp_module.o ndinterp_test.f90
-	$(ELF_FC) $(ELF_FCFLAGS) -o $(objdir)/ndinterp_test ndinterp_test.f90 $(objdir)/ndinterp_module.o $(NDI_LIBS)
