@@ -13,11 +13,15 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
 TIO_INC          = $(config_dir)/libtio/src
 
+IOCLIB_INC = $(prefix)/include
+IOCLIB_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
+
 CLIM_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
 
-INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC)
+INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC) -I$(IOCLIB_INC)
 LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
+       $(IOCLIB_LIBPATHS) \
        $(TIO_LIBPATHS) -ltio $(RPATH) $(INSTALL_LIBPATHS)
 
 MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(TIO_INC)/$(archobjs)
@@ -100,7 +104,7 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS) $(ELFOBJS_F)
 # 	$(COMPILE_CMD) -o test_met test_met.c $(MET_LIBPATHS) -lmet $(LIBS)
 
 test_clim:	$(ELFDIR_ELF_F_LIB) test_clim.f90
-	$(FC) $(FCFLAGS) -o test_clim test_clim.f90 -I$(elfdir) -L$(elfdir) $(MODS_F) $(CLIM_LIBPATHS) -lclim_f $(LIBS_F)
+	$(FC) $(FCFLAGS) -o test_clim test_clim.f90 -I$(elfdir) -L$(elfdir) $(MODS_F) $(CLIM_LIBPATHS) -lclim_f $(LIBS_F) $(LIBS)
 
 .PHONY: clean distclean tags all install check \
         $(EXECUTABLES)

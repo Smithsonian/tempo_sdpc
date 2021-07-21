@@ -5,26 +5,31 @@
 #include <unistd.h>
 #include <wordexp.h>
 
+#include <ioclib.h>
 #include <tell.h>
 
-#define CLIM_PATH_PATTERN_CLIMATOLOGY \
-   "$SDPC_REFDATA_DIR/climatology/monthly_by_hour/GEOS-CF_NRT.month%02d_%02dz_reorder.nc4"
+#define CLIM_CONFIG_INI_DEFAULT "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini"
 
-#define CLIM_PATH_PATTERN_FORECAST \
-   "$SDPC_ANCILLARY_ROOT/geos_cf/%4d/%d/GEOS-CF.v01.rpl.sat_inst_1hr_r720x361_v72.%4d%02d%02d_%02d00z_reorder.nc4"
+typedef struct
+{
+   char *cf_climatology;
+   char *cf_forecast;
+   char *cf_pressure_grid;
+   char *cloud_climatology;
+}
+Clim_File_Pattern_Type;
+static Clim_File_Pattern_Type Clim_File_Patterns = {0};
 
-#define CLIM_PATH_PATTERN_PRESSURE_ETA \
-   "$SDPC_REFDATA_DIR/climatology/GEOS-Chem_72_layer_vertical_grid.nc"
+#define FILE_PATTERN_PTR(s) (Clim_File_Patterns.s)
 
-#define CLIM_PATH_PATTERN_CLOUD \
-   "$SDPC_REFDATA_DIR/climatology/omcldrr_pressure.nc"
-
+extern int read_config_file (const char *config_file);
 extern int make_climatology_path (int month, int hour, char *buf, int bufsize);
-extern long make_timet (int year, int month, int day, int hour);
 extern int make_forecast_path (time_t tt, char *buf, int bufsize);
-extern int have_forecast_files (time_t tt, int num_hours);
 extern int make_pressure_eta_path (char *buf, int bufsize);
 extern int make_cloud_climatology_path (char *buf, int bufsize);
+
+extern int have_forecast_files (time_t tt, int num_hours);
+extern long make_timet (int year, int month, int day, int hour);
 
 static char *expand_string (const char *s)
 {
@@ -80,10 +85,79 @@ static int expand_buffer_in_place (char *buf, size_t bufsize)
    return 0;
 }
 
+static int replace_alloc_str (char **targ, char *src)
+{
+   ioclib_free (*targ);
+   *targ = ioclib_strdup (src);
+   return *targ ? 0 : -1;
+}
+#define REPLACE_ALLOC_STR(old,p,field) \
+   do {if (replace_alloc_str (&old->field, p->field)) return -1; } while (0)
+
+static int replace_file_patterns (Clim_File_Pattern_Type *old, Clim_File_Pattern_Type *p)
+{
+   if ((old == NULL) || (p == NULL))
+     return -1;
+   REPLACE_ALLOC_STR(old,p,cf_climatology);
+   REPLACE_ALLOC_STR(old,p,cf_forecast);
+   REPLACE_ALLOC_STR(old,p,cf_pressure_grid);
+   REPLACE_ALLOC_STR(old,p,cloud_climatology);
+   return 0;
+}
+
+int read_config_file (const char *config_file)
+{
+   Clim_File_Pattern_Type p = {0};
+   IOCLib_String_Array_Obj_Type *sa = NULL;
+   IOCLib_Config_String_Type tbl[] =
+     {
+        {"GEOSCF_Climatology_Files", &p.cf_climatology, IOCLIB_CONFIG_TYPE_STR},
+        {"GEOSCF_Forecast_Files", &p.cf_forecast, IOCLIB_CONFIG_TYPE_STR},
+        {"GEOSCF_Pressure_Grid", &p.cf_pressure_grid, IOCLIB_CONFIG_TYPE_STR},
+        {"Cloud_Climatology", &p.cloud_climatology, IOCLIB_CONFIG_TYPE_STR},
+        {NULL,NULL,0}
+     };
+   char *cfg_file = NULL;
+   int status = -1;
+
+   if ((config_file == NULL)
+       && (NULL == (config_file = getenv ("SDPC_GEOSCF_CONFIG"))))
+     {
+        if (NULL == (cfg_file = expand_string (CLIM_CONFIG_INI_DEFAULT)))
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: config_file not specified, default file not found: %s",
+                          __func__, CLIM_CONFIG_INI_DEFAULT);
+             return -1;
+          }
+        config_file = cfg_file;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: reading config file: %s", __func__, config_file);
+
+   if (NULL == (sa = ioclib_config_get_strings (config_file, "GEOSCF", tbl)))
+     goto return_status;
+
+   replace_file_patterns (&Clim_File_Patterns, &p);
+
+   status = 0;
+return_status:
+   ioclib_string_array_obj_free (sa);
+   if (cfg_file) free(cfg_file);
+   return status;
+}
+
 int make_climatology_path (int month, int hour, char *buf, int bufsize)
 {
-   const char fmt[] = CLIM_PATH_PATTERN_CLIMATOLOGY;
+   const char *fmt = FILE_PATTERN_PTR(cf_climatology);
    int n;
+
+   if (fmt == NULL)
+     {
+        if (read_config_file (NULL))
+          return -1;
+        fmt = FILE_PATTERN_PTR(cf_climatology);
+     }
 
    if ((n = snprintf (buf, bufsize, fmt, month, hour)) < 0)
      {
@@ -115,9 +189,16 @@ long make_timet (int year, int month, int day, int hour)
 
 int make_forecast_path (time_t tt, char *buf, int bufsize)
 {
-   const char fmt[] = CLIM_PATH_PATTERN_FORECAST;
+   const char *fmt = FILE_PATTERN_PTR(cf_forecast);
    struct tm tm = {0};
    int n, year, dayofyear, month;
+
+   if (fmt == NULL)
+     {
+        if (read_config_file (NULL))
+          return -1;
+        fmt = FILE_PATTERN_PTR(cf_forecast);
+     }
 
    if (NULL == gmtime_r (&tt, &tm))
      {
@@ -183,8 +264,15 @@ int have_forecast_files (time_t tt, int num_hours)
 
 int make_pressure_eta_path (char *buf, int bufsize)
 {
-   const char fmt[] = CLIM_PATH_PATTERN_PRESSURE_ETA;
+   const char *fmt = FILE_PATTERN_PTR(cf_pressure_grid);
    int n;
+
+   if (fmt == NULL)
+     {
+        if (read_config_file (NULL))
+          return -1;
+        fmt = FILE_PATTERN_PTR(cf_pressure_grid);
+     }
 
    if ((n = snprintf (buf, bufsize, fmt)) < 0)
      {
@@ -204,8 +292,15 @@ int make_pressure_eta_path (char *buf, int bufsize)
 
 int make_cloud_climatology_path (char *buf, int bufsize)
 {
-   const char fmt[] = CLIM_PATH_PATTERN_CLOUD;
+   const char *fmt = FILE_PATTERN_PTR(cloud_climatology);
    int n;
+
+   if (fmt == NULL)
+     {
+        if (read_config_file (NULL))
+          return -1;
+        fmt = FILE_PATTERN_PTR(cloud_climatology);
+     }
 
    if ((n = snprintf (buf, bufsize, fmt)) < 0)
      {

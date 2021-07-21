@@ -17,6 +17,9 @@ program test_clim
   call tell_open ("test_clim", 0)
   call tell_set_log_level (1)
 
+  call clim_read_config ('clim_config.ini', errstat)
+  if (errstat /= 0) call exit(1)
+
   call clim_query_nz (nz, errstat)
   if (errstat /= 0) call exit(1)
 

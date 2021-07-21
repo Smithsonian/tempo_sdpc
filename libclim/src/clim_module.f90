@@ -22,6 +22,7 @@ module clim_module
 
   private
 
+  public clim_read_config
   public clim_query_nz
   public clim_pres, clim_pres_init, clim_pres_eta
   public clim_val_interp, clim_val_init
@@ -98,6 +99,15 @@ module clim_module
   end type
 
   interface
+    function c_read_config_file (config_file) bind (c, name="read_config_file")
+      use, intrinsic :: iso_c_binding, only : c_char, c_int, c_ptr
+      implicit none
+      type (c_ptr), value :: config_file
+      integer (kind=c_int) :: c_read_config_file
+    end function
+  end interface
+
+  interface
     function c_make_climatology_path (month, hour, path, path_buflen) &
         bind (c, name='make_climatology_path')
       use, intrinsic :: iso_c_binding, only : c_char, c_int
@@ -164,6 +174,27 @@ module clim_module
   end interface
 
 contains
+
+  subroutine clim_read_config (config_file, errstat)
+    use, intrinsic :: iso_c_binding, only : c_char, c_null_char, c_loc
+    implicit none
+    character (len=*), intent(in) :: config_file
+    integer, intent(inout) :: errstat
+    integer :: status
+    character (kind=c_char, len=:), allocatable, target :: c_config_file
+
+    if (errstat /= 0) return
+
+    allocate (character (len=len(config_file)) :: c_config_file)
+    c_config_file = trim(config_file) // c_null_char
+    status = c_read_config_file (c_loc(c_config_file))
+    deallocate (c_config_file)
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, 'clim_read_config: failed', errstat)
+      return
+    endif
+
+  end subroutine
 
   subroutine define_month_interp (cpt, month, day)
     implicit none
