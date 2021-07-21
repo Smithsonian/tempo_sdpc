@@ -11,6 +11,10 @@
 #include <tio.h>
 #include "gler_util.h"
 
+#define BUFSIZE 1024
+
+#define GLER_CONFIG_INI_DEFAULT "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini"
+
 typedef struct
 {
    char **files;
@@ -96,25 +100,36 @@ static char *expand_string (const char *s)
    return s_exp;
 }
 
-static char *expand_dirpath (const char *path)
+static char *expand_file_map_path (const char *path, int iwave)
 {
    char *dirpath = NULL;
    char *exp_dirpath = NULL;
    char *exp_path = NULL;
-   int status = -1;
+   char *filled_path = NULL;
+   size_t len;
+   int n, status = -1;
 
-   if (NULL == (dirpath = ioclib_dirname (path)))
+   len = 9 + strlen(path);
+   if (NULL == (filled_path = ioclib_malloc (len)))
+     return NULL;
+
+   n = snprintf (filled_path, len, path, iwave);
+   if ((n < 0) || (n >= (int) len))
+     goto return_status;
+
+   if (NULL == (dirpath = ioclib_dirname (filled_path)))
      goto return_status;
 
    if (NULL == (exp_dirpath = expand_string (dirpath)))
      goto return_status;
 
-   if (NULL == (exp_path = ioclib_pathconcat (exp_dirpath, ioclib_basename(path))))
+   if (NULL == (exp_path = ioclib_pathconcat (exp_dirpath, ioclib_basename(filled_path))))
      goto return_status;
 
    status = 0;
 return_status:
    ioclib_free (dirpath);
+   ioclib_free (filled_path);
    free (exp_dirpath);
    if (status)
      {
@@ -125,7 +140,7 @@ return_status:
    return exp_path;
 }
 
-static GLER_File_Map_Type *gler_glob_file_map (const char *pattern)
+static GLER_File_Map_Type *gler_glob_file_map (const char *pattern, int iwave)
 {
    GLER_File_Map_Type *fmt = NULL;
    IOCLib_Glob_Type *g = NULL;
@@ -136,7 +151,7 @@ static GLER_File_Map_Type *gler_glob_file_map (const char *pattern)
    if (pattern == NULL)
      return NULL;
 
-   if (NULL == (exp_pattern = expand_dirpath (pattern)))
+   if (NULL == (exp_pattern = expand_file_map_path (pattern, iwave)))
      return NULL;
 
    /* Get sorted file list */
@@ -170,7 +185,7 @@ static GLER_File_Map_Type *gler_glob_file_map (const char *pattern)
         if (NULL == (fmt->files[i] = strdup (g->files[i])))
           goto return_error;
 
-        tell_vlog (TELL_MSGTYPE_INFO, 1 , "%s: got yday=%d file=%s", __func__, fmt->yearday[i], fmt->files[i]);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: got yday=%d file=%s", __func__, fmt->yearday[i], fmt->files[i]);
      }
 
    status = 0;
@@ -196,27 +211,61 @@ void gler_close (GLER_Type *gt)
    free(gt);
 }
 
-GLER_Type *gler_open (const char *land_glob, const char *ocean_glob)
+GLER_Type *gler_open (int iwave, const char *config_file)
 {
    GLER_Type *gt = NULL;
+   IOCLib_String_Array_Obj_Type *sa = NULL;
+   char *land_glob = NULL;
+   char *ocean_glob = NULL;
+   char *cfg_file = NULL;
+   int status = -1;
+   IOCLib_Config_String_Type tbl[] =
+     {
+        {"GLER_Land_File_Pattern", &land_glob, IOCLIB_CONFIG_TYPE_STR},
+        {"GLER_Ocean_File_Pattern", &ocean_glob, IOCLIB_CONFIG_TYPE_STR},
+        {NULL,NULL,0}
+     };
+
+   if (config_file == NULL)
+     {
+        if (NULL == (cfg_file = expand_string (GLER_CONFIG_INI_DEFAULT)))
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: config_file not specified, default file not found: %s",
+                          __func__, GLER_CONFIG_INI_DEFAULT);
+             return NULL;
+          }
+        config_file = cfg_file;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: reading config file: %s", __func__, config_file);
+
+   if (NULL == (sa = ioclib_config_get_strings (config_file, "GLER", tbl)))
+     goto return_error;
 
    if (NULL == (gt = (GLER_Type *)malloc (sizeof *gt)))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc error", __func__);
-        return NULL;
+        goto return_error;
      }
    memset ((char *)gt, 0, sizeof (*gt));
 
-   if (NULL == (gt->land = gler_glob_file_map (land_glob)))
+   if (NULL == (gt->land = gler_glob_file_map (land_glob, iwave)))
      goto return_error;
 
-   if (NULL == (gt->ocean = gler_glob_file_map (ocean_glob)))
+   if (NULL == (gt->ocean = gler_glob_file_map (ocean_glob, iwave)))
      goto return_error;
 
-   return gt;
+   status = 0;
 return_error:
-   gler_close(gt);
-   return NULL;
+   ioclib_string_array_obj_free (sa);
+   if (cfg_file) free(cfg_file);
+   if (status)
+     {
+        gler_close (gt);
+        gt = NULL;
+     }
+   return gt;
 }
 
 static int bsearch_i (int t, const int *x, int n)

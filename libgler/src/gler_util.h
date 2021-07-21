@@ -3,7 +3,7 @@
 
 typedef struct GLER_Type GLER_Type;
 
-extern GLER_Type *gler_open (const char *land_glob, const char *ocean_glob);
+extern GLER_Type *gler_open (int iwave, const char *config_file);
 extern void gler_close (GLER_Type *gt);
 
 extern int gler_land_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt);

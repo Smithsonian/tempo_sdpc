@@ -4,7 +4,6 @@ program gler_test
   use tio_module
   use tell_module
 
-  character (kind=c_char, len=1024) :: land_glob, ocean_glob
   integer :: iwavelen, errstat, nlon, nlat, i,j
   type(gler_type) :: glt
   real (kind=8) :: taix
@@ -16,15 +15,12 @@ program gler_test
   iwavelen = 466
 
   call tell_open ("gler_test", 0)
-  call tell_set_log_level (0)
-
-  write (land_glob, '(''$SDPC_REFDATA_DIR/gler/climatology_'',i3,''nm_fixup/modis_land_d???.nc'')') iwavelen
-  write (ocean_glob, '(''$SDPC_REFDATA_DIR/gler/climatology_'',i3,''nm_fixup/modis_ocean_d???.nc'')') iwavelen
+  call tell_set_log_level (1)
 
   taix = 425963157.845324
   call tiof_time_set_taix_epoch ('2000-01-01T12:00:00Z', errstat)
 
-  call gler_open (glt, trim(land_glob)//c_null_char, trim(ocean_glob)//c_null_char, errstat)
+  call gler_open (glt, iwavelen, errstat, config_file='gler_config.ini')
   if (errstat /= 0) then
     write(*,*)'gler_open failed'
     stop 1

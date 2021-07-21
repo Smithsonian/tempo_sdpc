@@ -3,7 +3,8 @@ module gler_module
   use tell_module
   use tio_module
   use ndinterp_module
-  use, intrinsic :: iso_c_binding, only : c_char, c_int, c_double, c_ptr, c_associated
+  use, intrinsic :: iso_c_binding, only : c_char, c_null_char, c_int, c_double, &
+    c_loc, c_ptr, c_null_ptr, c_associated
   implicit none
 
   private
@@ -37,10 +38,11 @@ module gler_module
   end type
 
   interface
-    function c_gler_open (land_glob, ocean_glob) bind (c, name='gler_open')
-      use, intrinsic :: iso_c_binding, only: c_ptr, c_char
+    function c_gler_open (iwave, cfg_file_ptr) bind (c, name='gler_open')
+      use, intrinsic :: iso_c_binding, only: c_ptr, c_int
       implicit none
-      character (kind=c_char), intent(in) :: land_glob(*), ocean_glob(*)
+      integer (kind=c_int), value :: iwave
+      type (c_ptr), value :: cfg_file_ptr
       type (c_ptr) :: c_gler_open
     end function
   end interface
@@ -308,13 +310,23 @@ contains
     call c_gler_close (glt % c_gler_type)
   end subroutine
 
-  subroutine gler_open (glt, land_glob, ocean_glob, errstat)
+  subroutine gler_open (glt, iwave, errstat, config_file)
     implicit none
     type (gler_type), intent(inout) :: glt
-    character (kind=c_char, len=*), intent(in) :: land_glob, ocean_glob
+    integer, intent(in) :: iwave
+    character (len=*), optional, intent(in) :: config_file
     integer, intent(inout) :: errstat
 
-    glt % c_gler_type = c_gler_open (trim(land_glob), trim(ocean_glob))
+    character (kind=c_char, len=:), allocatable, target:: c_config_file
+
+    if (present (config_file)) then
+      allocate (character (len=len(config_file)) :: c_config_file)
+      c_config_file = trim(config_file) // c_null_char
+      glt % c_gler_type = c_gler_open (iwave, c_loc(c_config_file))
+      deallocate (c_config_file)
+    else
+      glt % c_gler_type = c_gler_open (iwave, c_null_ptr)
+    endif
     if (.not.c_associated(glt % c_gler_type)) then
       call tell_error (tell_runtime_error, 'gler_open: failed', errstat)
       return
