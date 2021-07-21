@@ -226,7 +226,8 @@ GLER_Type *gler_open (int iwave, const char *config_file)
         {NULL,NULL,0}
      };
 
-   if (config_file == NULL)
+   if ((config_file == NULL)
+       && (NULL == (config_file = getenv ("SDPC_GLER_CONFIG"))))
      {
         if (NULL == (cfg_file = expand_string (GLER_CONFIG_INI_DEFAULT)))
           {
