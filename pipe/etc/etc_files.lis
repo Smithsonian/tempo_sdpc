@@ -1,4 +1,5 @@
 sdpc_env.sh
+sdpc_config.ini
 asdc_exclude.lis
 cachemon/level1a.cfg
 cachemon/level1b.cfg
