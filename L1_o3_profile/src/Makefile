@@ -35,7 +35,7 @@ CLIM_LIB     = $(prefix)/lib
 CLIM_SRC     = $(config_dir)/libclim/src
 CLIMSRC_OBJS = $(CLIM_SRC)/$(archobjs)
 CLIMINCS     = -I$(CLIMSRC_OBJS)
-CLIMLIBS     = -L$(CLIMSRC_OBJS) -L$(CLIM_LIB) -lclim_f
+CLIMLIBS     = -L$(CLIMSRC_OBJS) -L$(CLIM_LIB) -lclim_f -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
 
 MET_LIB     = $(prefix)/lib
 MET_SRC     = $(config_dir)/libmet/src
