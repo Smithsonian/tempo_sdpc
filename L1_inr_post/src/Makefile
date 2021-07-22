@@ -26,7 +26,7 @@ PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 NDINTERP_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lndinterp_f
 
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
-               -lTempoGeospatial -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
+               -lTempoGeospatial -lephcom -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
 EXTRA_INCS = -I$(PROJ_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj

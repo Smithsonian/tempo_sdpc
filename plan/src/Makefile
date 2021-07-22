@@ -21,7 +21,7 @@ IOCSDPC_INC = $(prefix)/include
 IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -lcsv
 
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
-               -lTempoGeospatial -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
+               -lTempoGeospatial -lephcom -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
 EXTRA_INCS = -I$(PROJ_INC) -I$(SLNOVAS_INC)
 EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj $(SLNOVAS_LIBPATHS) -llibnovas
