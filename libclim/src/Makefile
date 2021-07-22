@@ -100,9 +100,6 @@ $(ELFDIR_F_ELF_LIB):	$(elfdir) $(ELFOBJS) $(ELFOBJS_F)
 	fi
 	cd $(elfdir) && $(LN) $(ELFLIB_F_BUILD_NAME) $(ELFLIB_F)
 
-# test_met:	$(ELFDIR_ELF_LIB) test_met.c
-# 	$(COMPILE_CMD) -o test_met test_met.c $(MET_LIBPATHS) -lmet $(LIBS)
-
 test_clim:	$(ELFDIR_ELF_F_LIB) test_clim.f90
 	$(FC) $(FCFLAGS) -o test_clim test_clim.f90 -I$(elfdir) -L$(elfdir) $(MODS_F) $(CLIM_LIBPATHS) -lclim_f $(LIBS_F) $(LIBS)
 
@@ -120,8 +117,7 @@ bindir = $(prefix)/bin
 install-header:
 	$(MKINSDIR) $(incdir)
 	@echo installing headers in $(incdir)/
-	$(INSTALL_DATA) $(srcdir)/met.h $(incdir)
-	$(INSTALL_DATA) $(elfdir)/met_module.mod $(incdir)
+	$(INSTALL_DATA) $(elfdir)/clim_module.mod $(incdir)
 
 install-execs:
 	$(MKINSDIR) $(bindir)
@@ -156,7 +152,7 @@ install-elf-f:
 	@echo The links $(ELFLIB_F) and $(ELFLIB_F_MAJOR) to $(ELFLIB_F_BUILD_NAME) were also created.
 	@echo ""
 
-install:	elf install-elf-f # install-header install-elf install-execs
+install:	elf install-elf-f install-header # install-elf install-execs
 
 # --------------------------------------------------------------------------
 # Housekeeping
