@@ -210,7 +210,7 @@ mode=BINOCULAR
 numThreads=4
 # Flag indicating whether optical flow in reference images are used to improve calculations
 # TRUE or FALSE
-useOpticalFlow=TRUE
+useOpticalFlow=FALSE
 # The maximum number of loops to be used in optical flow
 useOpticalFlowMaxLoops=10
 # The position tolerance for optical flow calculation in km
@@ -248,7 +248,7 @@ telescopeOffset=13
 numPixUpper=2048
 numPixLower=2048
 # Nominal number of column in a full scan
-numCol=1226
+numCol=1614
 # Angular sampling distance for long and short wavelength bands in radians
 angularSamplingEW=1.23000e-04
 angularSamplingNSUpper=4.1490e-05
@@ -264,8 +264,8 @@ farrenkopf=6.80387520069123e-07
 # The uncertainty in acceleration due to solar radiation pressure in km/s^2
 srp_uncertainty=7e-11
 # The scan mechanism shimming bias in radians
-ewbias=3.590972610656502
-nsbias=0.095274420715921
+ewbias=3.595378259108319
+nsbias=0.095232069219954
 # The 3-sigma ephemeris position error in km
 ephPosErr=1.5
 # The 3-sigma ephemeris velocity error in km/s
@@ -287,7 +287,6 @@ drift_ke=1.16e-8
 drift_xe=1.74e-8
 drift_kee2=1.157e-7
 drift_kne2=1.157e-7
-#10e-7/86400
 drift_dx=1.1574e-11
 drift_dy=1.1574e-11
 drift_mag_diff=0
@@ -446,30 +445,30 @@ delta_v3=1e-3
 
 # Initial state for cold-start of Kalman Filter
 # TODO item is to set up in accordance with as-built instrument
-init_state_roll=-3.659427697244887E-4
-init_state_pitch=-4.681046622478289E-4
-init_state_yaw=-4.410908890791226E-4
-init_state_magnification=0.02
-init_state_misalignment=0.01
-init_state_smile=-3.3529e-06
-init_state_eflvar=1e-7
-init_state_e0=1e-4
-init_state_n0=1e-4
-init_state_ke=0.02
-init_state_xe=0.02
-init_state_kee2=0.08
-init_state_kne2=0.08
-init_state_dx=12e-6
-init_state_dy=12e-6
+init_state_roll=0
+init_state_pitch=0
+init_state_yaw=0
+init_state_magnification=0
+init_state_misalignment=0
+init_state_smile=0
+init_state_eflvar=0
+init_state_e0=0
+init_state_n0=0
+init_state_ke=0
+init_state_xe=0
+init_state_kee2=0
+init_state_kne2=0
+init_state_dx=0
+init_state_dy=0
 init_state_magdiff=0
 init_state_misaligndiff=0
 init_state_smilediff=0
 init_state_eflvardiff=0
-init_state_r1=-3.971912163648117e-17
-init_state_r2=-1.0274937117325218e-8
+init_state_r1=0
+init_state_r2=0
 init_state_r3=0
-init_state_v1=-1.0968087196287929e-12
-init_state_v2=-1.0674602791670426e-4
+init_state_v1=0
+init_state_v2=0
 init_state_v3=0
 
 # Initial state covariance diagonal one-sigma values for cold-start of Kalman Filter
@@ -487,7 +486,6 @@ init_cov_ke=4.4444e-05
 init_cov_xe=4.4444e-05
 init_cov_kee2=4.4444e-03
 init_cov_kne2=4.4444e-03
-# 15e-6^2
 init_cov_dx=2.25e-10
 init_cov_dy=2.25e-10
 init_cov_magdiff=0
