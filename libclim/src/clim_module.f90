@@ -80,6 +80,7 @@ module clim_module
 
   type :: clim_type
     integer :: nz, nlat, nlon
+    logical :: single_layer
     real (kind=4), dimension(:,:,:), allocatable :: values   ! (nz, nlat, nlon)
   end type
 
@@ -733,11 +734,12 @@ contains
 
   end subroutine
 
-  subroutine allocate_clim_type (cpt, ct, errstat)
+  subroutine allocate_clim_type (cpt, ct, errstat, single_layer)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
     type (clim_type), intent(inout) :: ct
     integer, intent(inout) :: errstat
+    logical, intent(in), optional :: single_layer
 
     integer :: err
 
@@ -746,7 +748,14 @@ contains
     ct % nlon = cpt % lon_subset % num_values
     ct % nlat = cpt % lat_subset % num_values
     ct % nz = Num_Layers
+    ct % single_layer = .false.
 
+    if (present(single_layer)) then
+      if (single_layer) then
+        ct % nz = 1
+        ct % single_layer = .true.
+      endif
+    endif
     allocate (ct % values (ct % nz, ct % nlat, ct % nlon), stat=err)
     if (err /= 0) then
       call tell_error (tell_malloc_error, 'allocate_clim_type: allocate failed', errstat)
@@ -768,6 +777,7 @@ contains
     type (tiof_file_type) :: obj
 
     real (kind=4), dimension (:,:,:,:), allocatable :: values
+    real (kind=4), dimension (:,:,:), allocatable :: values_s
     integer :: nlon, nlat, nz
 
     if (errstat /= 0) return
@@ -796,10 +806,17 @@ contains
       return
     endif
 
-    allocate (values(nz,nlat,nlon,1))
-    call tiof_get4d_r4 (obj, trim(name)//c_null_char, &
-                        istart, icount, values, errstat)
-    ct % values = reshape (values, (/nz,nlat,nlon/))
+    if (ct % single_layer) then
+      allocate (values_s (nlat,nlon,1))
+      call tiof_get3d_r4 (obj, trim(name)//c_null_char, &
+                          istart, icount, values_s, errstat)
+      ct % values = reshape (values_s, (/nz,nlat,nlon/))
+    else
+      allocate (values(nz,nlat,nlon,1))
+      call tiof_get4d_r4 (obj, trim(name)//c_null_char, &
+                          istart, icount, values, errstat)
+      ct % values = reshape (values, (/nz,nlat,nlon/))
+    endif
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
@@ -850,20 +867,6 @@ contains
 
   end subroutine
 
-  subroutine interp_months (wt0, ct0, ct1, ct_avg, errstat)
-    implicit none
-    real (kind=4), intent(in) :: wt0
-    type (clim_type), intent(in) :: ct0, ct1
-    type (clim_type), intent(inout) :: ct_avg
-    integer, intent(inout) :: errstat
-
-    if (errstat /= 0) return
-
-    ct_avg % values(:,:,:) = &
-      (wt0 * ct0 % values(:,:,:) + (1.0 - wt0) * ct1 % values(:,:,:))
-
-  end subroutine
-
   !> @brief
   !> Initialize tables for named variable
   !> @param[out] cst  Instance of opaque @a type(clim_val_type) to hold
@@ -871,17 +874,21 @@ contains
   !> @param[in] cpt   Initialized instance of @a type(clim_pres_type)
   !> @param[in] name  String name of the value in the database files
   !> @param[inout] errstat        Error status code (0 on success)
-  subroutine clim_val_init (cst, cpt, name, errstat)
+  !> @param[in] single_layer  [optional] Use single_layer=.true. to
+  !>                          read a variable with only a single Z layer,
+  !>                          such as U2M, V2M, or PHIS
+  subroutine clim_val_init (cst, cpt, name, errstat, single_layer)
     implicit none
     type (clim_val_type), intent(out) :: cst
     type (clim_pres_type), intent(in) :: cpt
     character (len=*), intent(in) :: name
     integer, intent(inout) :: errstat
+    logical, intent(in), optional :: single_layer
 
     type (clim_type) :: ct_month0, ct_month1
     integer :: i, nhours, err
     integer (kind=8) :: timet
-    real (kind=4) :: hour_beg, hour_end
+    real (kind=4) :: hour_beg, hour_end, wt0
     character (len=path_bufsize) :: file_month0, file_month1
 
     if (errstat /= 0) return
@@ -912,7 +919,7 @@ contains
     cst % nhours = nhours
     cst % hours(:) = real((/(i, i=0,nhours-1)/) + floor(hour_beg), 4)
     do i = 1,nhours
-      call allocate_clim_type (cpt, cst % clim(i), errstat)
+      call allocate_clim_type (cpt, cst % clim(i), errstat, single_layer)
       if (errstat /= 0) return
     enddo
 
@@ -929,9 +936,11 @@ contains
     else
       ! read composition climatologies and perform month interpolation
 
-      call allocate_clim_type (cpt, ct_month0, errstat)
-      call allocate_clim_type (cpt, ct_month1, errstat)
+      call allocate_clim_type (cpt, ct_month0, errstat, single_layer)
+      call allocate_clim_type (cpt, ct_month1, errstat, single_layer)
       if (errstat /= 0) return
+
+      wt0 = cpt % month0_weight
 
       do i = 1,nhours
         call make_climatology_path (cpt % month0, int(cst % hours(i)), file_month0, errstat)
@@ -942,8 +951,8 @@ contains
         call read_climatology (cpt, file_month1, name, ct_month1, errstat)
         if (errstat /= 0) return
 
-        call interp_months (cpt % month0_weight, ct_month0, ct_month1, cst % clim(i), errstat)
-        if (errstat /= 0) return
+        cst % clim(i) % values(:,:,:) = &
+          (wt0 * ct_month0 % values(:,:,:) + (1.0 - wt0) * ct_month1 % values(:,:,:))
       enddo
     endif
 
@@ -962,6 +971,8 @@ contains
     real (kind=4) :: hr0, hr_min, hr_max
 
     if (errstat /= 0) return
+
+    ihr0 = -1
 
     call lonlat_lookup (cpt, lon, lat, ilon0, ilat0, errstat)
     if (errstat /= 0) return
@@ -1002,13 +1013,21 @@ contains
     type(clim_val_type), intent(in) :: cst
     type(clim_pres_type), intent(in) :: cpt
     real (kind=4), intent(in) :: hour_utc, lon, lat
-    real (kind=4), intent(out), dimension(Num_Layers) :: values_z
+    real (kind=4), intent(out), dimension(:) :: values_z
     integer, intent(inout) :: errstat
 
     integer :: ihr0, ilon0, ilat0
     real (kind=4) :: wt0
+    character (len=msg_bufsize) :: msg
 
     if (errstat /= 0) return
+
+    if (size(values_z) /= cst % clim(1) % nz) then
+      write (msg, '(a,i2,a,i2,a)')'unexpected array dimension',size(values_z), &
+        ' (expected ',cst % clim(1) % nz,')'
+      call tell_error (tell_runtime_error, msg, errstat)
+      return
+    endif
 
     call hrlonlat_lookup (cst, cpt, hour_utc, lon, lat, ihr0, ilon0, ilat0, errstat)
     if (errstat /= 0) return

@@ -3,13 +3,14 @@ program test_clim
   use clim_module
   implicit none
   type (clim_pres_type) :: cpt
-  type (clim_val_type) :: cst, temp_cst
+  type (clim_val_type) :: cst, temp_cst, u2m_cst, v2m_cst
   type (clim_pres_bounds_type) :: bounds
   type (clim_cloud_type) :: cct
   integer :: year, month, day, nz, i, errstat
   real (kind=4) :: hour, lon, lat, psurf, ptrop, cloud_pressure
   real (kind=4), dimension(:), allocatable :: pres_z, ap, bp
   real (kind=4), dimension(:), allocatable :: vmr_z, partial_column_z, temp_z
+  real (kind=4), dimension(1) :: u2m, v2m
   character (len=*), parameter :: species = 'NO2'
 
   errstat = 0
@@ -63,6 +64,15 @@ program test_clim
 
   write (*,*)'P(surface) = ',psurf,' hPa'
   write (*,*)'P(tropopause) = ',ptrop,' hPa'
+
+  call clim_val_init (u2m_cst, cpt, 'U2M', errstat, single_layer=.true.)
+  call clim_val_init (v2m_cst, cpt, 'V2M', errstat, single_layer=.true.)
+  if (errstat /= 0) call exit(1)
+  call clim_val_interp (u2m_cst, cpt, hour, lon, lat, u2m, errstat)
+  call clim_val_interp (v2m_cst, cpt, hour, lon, lat, v2m, errstat)
+  if (errstat /= 0) call exit(1)
+  write (*,'(a,f7.3,a)')'U2M = ',u2m,' m/s'
+  write (*,'(a,f7.3,a)')'V2M = ',v2m,' m/s'
 
   call clim_val_init (cst, cpt, species, errstat)
   if (errstat /= 0) call exit(1)
