@@ -371,8 +371,7 @@ static int select_iru_outfile (Process_Method_Type *pmt,
    if ((pmt->ncid != INT_MAX)
        && (0 < pmt->outfile_timestamp_start)
        && ((timestamp - pmt->outfile_timestamp_start)
-           < pmt->outfile_deltat_sec)
-       && (iru->gyro_bias_time == pmt->gyro_bias_time))
+           < pmt->outfile_deltat_sec))
      return 0;
 
    if (0 != new_iru_outfile (pmt, timestamp, &iru->common_header))
