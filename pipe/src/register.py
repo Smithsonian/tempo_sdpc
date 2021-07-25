@@ -12,6 +12,7 @@ import sqlite3
 from datetime import date
 from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
+import dateutil.parser as dp
 
 Radiance_Files = ["RAD_L1a", "RAD_L1"]
 Radiance_Products = ["CLDRR", "CLDO4", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
@@ -92,6 +93,30 @@ def init_other_product_table (table_name):
     define_common_fields (fields)
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
+
+def init_raw_file_table (table_name):
+    fields = {}
+    fields["filename"] = "text"
+    fields["path"] = "text"
+    fields["istart"] = "integer not null"
+    fields["mtime"] = "integer"
+    fields["size"] = "integer"
+    fields["asdc_status"] = "integer"
+    fields["asdc_time_accepted"] = "integer"
+    fields["asdc_status_met"] = "integer"
+    quals = "unique(istart)"
+    return Table_Type(table_name, fields, quals)
+
+def insert_raw_entry (conn, table_name, entry):
+    c = conn.cursor()
+    raw = init_raw_file_table(table_name)
+    raw.create(c)
+    try:
+        raw.new_entry (c, entry.keys(), entry.values())
+        return 0
+    except sqlite3.IntegrityError:
+        eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+        return -1
 
 def insert_radiance_entry (conn, table_name, entry):
     c = conn.cursor()
@@ -227,7 +252,7 @@ def maybe_handle_scan_completion (conn, product_name, scan_id):
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
 
-def process_file (conn, nc, filename):
+def process_file (conn, filename, nc):
 
     basename = os.path.basename (filename)
     tok = basename.split('_')
@@ -291,6 +316,30 @@ def process_file (conn, nc, filename):
 
     return status
 
+def process_file_raw (conn, filename):
+
+    basename = os.path.basename (filename)
+    final_path = os.readlink (filename)
+    st = os.stat (filename)
+
+    # tempo_YYYYMMDDThhmmssZ_ccccc_type.raw
+    tok = basename.split('_')
+    istart = int(dp.parse(tok[1]).timestamp())
+
+    keys = {}
+    keys["filename"] = basename
+    keys["path"] = final_path
+    keys["istart"] = istart
+    keys["mtime"] = st.st_mtime
+    keys["size"] = st.st_size
+    keys["asdc_status"] = 0
+    keys["asdc_time_accepted"] = 0
+    keys["asdc_status_met"] = -2 # nonexistent
+
+    status = insert_raw_entry (conn, 'RAW', keys)
+
+    return status
+
 def connect_database (db_path):
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
@@ -309,8 +358,13 @@ def register_files (db_path, filenames):
     for fn in filenames:
         if os.path.islink(fn):
             with connect_database (db_path) as conn:
-                with NetCDFFile (fn, "r") as nc:
-                    status = process_file (conn, nc, fn)
+                if fn.endswith ('.nc'):
+                    with NetCDFFile (fn, "r") as nc:
+                        status = process_file (conn, fn, nc)
+                elif fn.endswith ('.raw'):
+                    status = process_file_raw (conn, fn)
+                else:
+                    status = -1
             if status != 0:
                 eprint('Error processing file: {}'.format(fn))
             os.remove(fn)

@@ -26,6 +26,7 @@ def connect_database ():
 
     conn = sqlite3.connect (db_file_path)
     conn.execute("pragma foreign_keys=on")
+    #conn.set_trace_callback(print)
     return conn
 
 def get_product_table_names (cur):
@@ -64,13 +65,17 @@ def update_file_status (cur, filename, asdc_status):
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
         status_var_name = 'asdc_status'
+        table_name = table_name_for_file (file_basename)
     elif '.met' == ext_split[1]:
         status_var_name = 'asdc_status_met'
         file_basename = os.path.basename(ext_split[0])
+        table_name = table_name_for_file (file_basename)
+    elif '.raw' == ext_split[1]:
+        status_var_name = 'asdc_status'
+        table_name = 'RAW'
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
-    table_name = table_name_for_file (file_basename)
     sql = "update {} set {}={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, file_basename)
     if DryRun:
         print(sql)
