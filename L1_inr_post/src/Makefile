@@ -13,6 +13,9 @@ TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 REGRID_INC = $(config_dir)/L2_regrid/src
 REGRID_LIB = $(config_dir)/L2_regrid/src/$(archobjs)
 
+NDINTERP_INC = $(config_dir)/libndinterp/src
+NDINTERP_LIB = $(config_dir)/libndinterp/src/$(archobjs)
+
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
@@ -23,7 +26,7 @@ TIFF_LIBPATHS = -Wl,-rpath=$(TIFF_LIB) -L$(TIFF_LIB)
 GEOTIFF_LIBPATHS = -Wl,-rpath=$(GEOTIFF_LIB) -L$(GEOTIFF_LIB)
 PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 
-NDINTERP_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lndinterp_f
+NDINTERP_LIBPATHS = -L$(NDINTERP_LIB) -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lndinterp_f
 
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
                -lTempoGeospatial -lephcom -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
@@ -133,7 +136,7 @@ POLCORR_OFILES = $(POLCORR_C_OFILES) $(POLCORR_F_OFILES)
 
 POLCORR_OBJS = $(patsubst %.o,$(objdir)/%.o, $(POLCORR_OFILES))
 
-POLCORR_INC_DIRS = $(config_dir)/include $(PROJ_INC) \
+POLCORR_INC_DIRS = $(config_dir)/include $(PROJ_INC) $(NDINTERP_INC) \
                    $(TIO_INC) $(TELL_INC) $(LIBCONFIG_INC) $(NETCDF_INC)
 POLCORR_INCS = $(patsubst %,-I%, $(POLCORR_INC_DIRS))
 
