@@ -13,8 +13,6 @@
 
 #define BUFSIZE 1024
 
-#define GLER_CONFIG_INI_DEFAULT "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini"
-
 typedef struct
 {
    char **files;
@@ -72,7 +70,7 @@ static GLER_File_Map_Type *alloc_gler_file_map_type (int num_files)
    return fmt;
 }
 
-static char *expand_string (const char *s)
+static char *expand_string (const char *s, int quiet)
 {
    wordexp_t we = {0};
    char *s_exp = NULL;
@@ -82,9 +80,8 @@ static char *expand_string (const char *s)
    if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
        || (we.we_wordc != 1))
      {
-        fprintf (stderr, "we.we_wordc = %ld\n", we.we_wordc);
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, s ? s : "(null)");
+        if (!quiet) tell_verror (TELL_UNKNOWN_ERROR,
+                                 "%s: expanding path: %s", __func__, s ? s : "(null)");
         wordfree (&we);
         return NULL;
      }
@@ -120,7 +117,7 @@ static char *expand_file_map_path (const char *path, int iwave)
    if (NULL == (dirpath = ioclib_dirname (filled_path)))
      goto return_status;
 
-   if (NULL == (exp_dirpath = expand_string (dirpath)))
+   if (NULL == (exp_dirpath = expand_string (dirpath, 0)))
      goto return_status;
 
    if (NULL == (exp_path = ioclib_pathconcat (exp_dirpath, ioclib_basename(filled_path))))
@@ -226,16 +223,31 @@ GLER_Type *gler_open (int iwave, const char *config_file)
         {NULL,NULL,0}
      };
 
+   /* When a config file path is not provided, search
+    * for the path in a few likely places, starting with
+    * the closest, and expanding outward.
+    */
+
    if ((config_file == NULL)
-       && (NULL == (config_file = getenv ("SDPC_GLER_CONFIG"))))
+       && (NULL == (config_file = getenv ("SDPC_GLER_CONFIG"))))  /* check local environment customization */
      {
-        if (NULL == (cfg_file = expand_string (GLER_CONFIG_INI_DEFAULT)))
+        char *conf_file_paths[] =
           {
-             tell_verror (TELL_RUNTIME_ERROR,
-                          "%s: config_file not specified, default file not found: %s",
-                          __func__, GLER_CONFIG_INI_DEFAULT);
-             return NULL;
+             "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini",  /* running pipeline context */
+             "$SDPC_ROOT/etc/sdpc_config.ini",            /* software installation context */
+             NULL
+          };
+        char **cfp;
+         for (cfp = conf_file_paths; *cfp != NULL; cfp++)
+          {
+             if (NULL != (cfg_file = expand_string (*cfp, 1)))
+               break;
           }
+        if (cfg_file == NULL)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: config_file not specified, default file not found", __func__);
+             goto return_error;
+           }
         config_file = cfg_file;
      }
 
