@@ -8,8 +8,6 @@
 #include <ioclib.h>
 #include <tell.h>
 
-#define CLIM_CONFIG_INI_DEFAULT "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini"
-
 typedef struct
 {
    char *cf_climatology;
@@ -31,7 +29,7 @@ extern int make_cloud_climatology_path (char *buf, int bufsize);
 extern int have_forecast_files (time_t tt, int num_hours);
 extern long make_timet (int year, int month, int day, int hour);
 
-static char *expand_string (const char *s)
+static char *expand_string (const char *s, int quiet)
 {
    wordexp_t we = {0};
    char *s_exp = NULL;
@@ -41,8 +39,8 @@ static char *expand_string (const char *s)
    if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
        || (we.we_wordc != 1))
      {
-        tell_verror (TELL_UNKNOWN_ERROR,
-                     "%s: expanding path: %s", __func__, s ? s : "(null)");
+        if (!quiet) tell_verror (TELL_UNKNOWN_ERROR,
+                                 "%s: expanding path: %s", __func__, s ? s : "(null)");
         wordfree (&we);
         return NULL;
      }
@@ -63,7 +61,7 @@ static int expand_buffer_in_place (char *buf, size_t bufsize)
    char *fmt = NULL;
    size_t n;
 
-   if (NULL == (fmt = expand_string (buf)))
+   if (NULL == (fmt = expand_string (buf, 0)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: expand_string failed", __func__);
         return -1;
@@ -120,16 +118,31 @@ int read_config_file (const char *config_file)
    char *cfg_file = NULL;
    int status = -1;
 
+   /* When a config file path is not provided, search
+    * for the path in a few likely places, starting with
+    * the closest, and expanding outward.
+    */
+
    if ((config_file == NULL)
-       && (NULL == (config_file = getenv ("SDPC_GEOSCF_CONFIG"))))
+       && (NULL == (config_file = getenv ("SDPC_GEOSCF_CONFIG"))))   /* check local environment customization */
      {
-        if (NULL == (cfg_file = expand_string (CLIM_CONFIG_INI_DEFAULT)))
+        char *conf_file_paths[] =
           {
-             tell_verror (TELL_RUNTIME_ERROR,
-                          "%s: config_file not specified, default file not found: %s",
-                          __func__, CLIM_CONFIG_INI_DEFAULT);
-             return -1;
+             "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini",  /* running pipeline context */
+             "$SDPC_ROOT/etc/sdpc_config.ini",            /* software installation context */
+             NULL
+          };
+        char **cfp;
+         for (cfp = conf_file_paths; *cfp != NULL; cfp++)
+          {
+             if (NULL != (cfg_file = expand_string (*cfp, 1)))
+               break;
           }
+        if (cfg_file == NULL)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: config_file not specified, default file not found", __func__);
+             return -1;
+           }
         config_file = cfg_file;
      }
 
