@@ -241,7 +241,10 @@ GLER_Type *gler_open (int iwave, const char *config_file)
          for (cfp = conf_file_paths; *cfp != NULL; cfp++)
           {
              if (NULL != (cfg_file = expand_string (*cfp, 1)))
-               break;
+               {
+                  if (0 == access (cfg_file, F_OK | R_OK))
+                    break;
+               }
           }
         if (cfg_file == NULL)
           {
