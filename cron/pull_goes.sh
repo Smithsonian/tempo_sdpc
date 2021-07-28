@@ -6,7 +6,7 @@ set -e
 set -u
 
 rootdir="${SDPC_ANCILLARY_ROOT}/goes"
-subdir="$(date +%Y/%j)"
+subdir="$(date -u +%Y/%j)"
 
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then

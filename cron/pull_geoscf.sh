@@ -11,8 +11,8 @@ if test $# -gt 1; then
 fi
 
 rootdir="${SDPC_ANCILLARY_ROOT}/geos_cf"
-subdir="$(date $dateargs +%Y/%j)"
-daytag="$(date $dateargs +%Y%m%d)"
+subdir="$(date -u $dateargs +%Y/%j)"
+daytag="$(date -u $dateargs +%Y%m%d)"
 
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then

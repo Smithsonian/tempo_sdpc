@@ -6,7 +6,7 @@ set -e
 set -u
 
 rootdir="${SDPC_ANCILLARY_ROOT}/ims"
-subdir="$(date +%Y)"
+subdir="$(date -u +%Y)"
 
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
