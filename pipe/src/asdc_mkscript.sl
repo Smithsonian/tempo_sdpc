@@ -77,9 +77,10 @@ define process_file_raw (types, path)
      return;
 
    variable basename = path_basename (path);
-   variable data_type    = "RAW";
-   variable product_type = "RAW";
-   variable data_version = "V01";
+   variable tok = strtok (basename, "_");
+   variable data_type    = strjoin (tok[[0:1]], "_");  % e.g. TEMPO_GRDDP
+   variable product_type = tok[1];                     % e.g.       GRDDP
+   variable data_version = "V01";    % no versions for unprocessed telemetry
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
 
    variable group = struct

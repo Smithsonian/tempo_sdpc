@@ -40,6 +40,10 @@ private define exit_usage ()
 private define make_target_path (infile, outdir)
 {
    variable basename = path_basename (infile);
+
+   % tempo_YYYYMMDDThhmmssZ_ccccc_type.raw
+   % where type=grddp_XXX
+   %    or type=ccsds_XXX
    variable tok = strtok (basename, "_");
    variable tt = timestamp_parse (tok[1]);
    variable tm = gmtime(tt);
@@ -47,7 +51,18 @@ private define make_target_path (infile, outdir)
    % tm_year is years since 1900, tm_yday is numbered from 0
    % Target directory is YYYY/ddd, where ddd is [001-366].
    variable target_dir = sprintf ("%s/%4d/%03d", outdir, 1900 + tm.tm_year, 1 + tm.tm_yday);
-   return path_concat (target_dir, basename);
+
+   variable timestamp = tok[1];
+   variable counter_string = tok[2];
+   variable type_string = strup(tok[3]);
+
+   % For example:
+   %   TEMPO_GRDDP_YYYYMMDDThhmmssZ_Cccccc.raw
+   %   TEMPO_CCSDS_YYYYMMDDThhmmssZ_Cccccc.raw
+
+   variable asdc_basename = "TEMPO_${type_string}_${timestamp}_C${counter_string}.raw"$;
+
+   return path_concat (target_dir, asdc_basename);
 }
 
 % Return -1 on error, 0 on success, +1 when target file exists
@@ -143,6 +158,10 @@ define slsh_main ()
           "*** Error: Archive root directory not specified (SDPC_ARCHIVE_DIR not set)";
      }
 
+   % The monitored directory should normally contain
+   % no more than a few hundred files, at most.
+   % (A few days of data at 144 files/day, or one file every 10 min)
+
    forever
      {
 	variable files = glob ("$indir/tempo_*.raw"$);
@@ -152,11 +171,7 @@ define slsh_main ()
 	     continue;
 	  }
 
-        % Scan the files in reverse time-order.
-        % Copy any files we don't already have.
-
-        variable k = array_sort (files);
-	files = files [reverse(k)];
+	files = files [array_sort (files)];
 	foreach (files)
 	  {
 	     variable file = ();

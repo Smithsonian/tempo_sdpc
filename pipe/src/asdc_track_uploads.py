@@ -60,6 +60,10 @@ def table_name_for_file (filename):
     tok = filename.split('_')
     return '{}_{}'.format(tok[1], tok[2])
 
+def table_name_for_file_raw (filename):
+    tok = filename.split('_')
+    return tok[1]
+
 def update_file_status (cur, filename, asdc_status):
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
@@ -72,7 +76,7 @@ def update_file_status (cur, filename, asdc_status):
         table_name = table_name_for_file (file_basename)
     elif '.raw' == ext_split[1]:
         status_var_name = 'asdc_status'
-        table_name = 'RAW'
+        table_name = table_name_for_file_raw (file_basename)
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return

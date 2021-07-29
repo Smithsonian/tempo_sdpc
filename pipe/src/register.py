@@ -282,7 +282,7 @@ def process_file (conn, filename, nc):
     keys["filename"] = final_basename
     keys["path"]     = final_path
     keys["size"]     = st.st_size
-    keys["mtime"]    = st.st_mtime
+    keys["mtime"]    = int(st.st_mtime)
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
     keys["versionid"] = versionid
     keys["asdc_status"] = 0
@@ -322,21 +322,28 @@ def process_file_raw (conn, filename):
     final_path = os.readlink (filename)
     st = os.stat (filename)
 
-    # tempo_YYYYMMDDThhmmssZ_ccccc_type.raw
+    # TEMPO_GRDDP_YYYYMMDDThhmmssZ_Cccccc.raw
+    # TEMPO_CCSDS_YYYYMMDDThhmmssZ_Cccccc.raw
     tok = basename.split('_')
-    istart = int(dp.parse(tok[1]).timestamp())
+    table_name = tok[1];
+    istart = int(dp.parse(tok[2]).timestamp())
 
     keys = {}
     keys["filename"] = basename
     keys["path"] = final_path
     keys["istart"] = istart
-    keys["mtime"] = st.st_mtime
+    keys["mtime"] = int(st.st_mtime)
     keys["size"] = st.st_size
     keys["asdc_status"] = 0
     keys["asdc_time_accepted"] = 0
     keys["asdc_status_met"] = -2 # nonexistent
 
-    status = insert_raw_entry (conn, 'RAW', keys)
+    status = insert_raw_entry (conn, table_name, keys)
+
+    if status < 0:
+        eprint('ERROR: processing file {}'.format(filename))
+    else:
+        print ('registered {} file: {}'.format(table_name, basename), flush=True)
 
     return status
 
