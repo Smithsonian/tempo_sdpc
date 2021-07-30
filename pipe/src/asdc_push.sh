@@ -36,18 +36,14 @@ do_asdc_upload()
   file_list="files.lis"
   script="lftp.script"
 
-  exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.lis"
+  exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.csv"
 
   # make list of new data product files
   asdc_track_uploads.py --list new > $file_list
 
-  # apply the upload filter, if any
+  # apply the upload filter
   if test -f "$exclude_list" ; then
-     /bin/cp "$file_list" "${file_list}.orig"
-     grep -v '^#' "$exclude_list" | while read -r line
-     do
-       sed -i "/$line/d" $file_list
-     done
+     asdc_exclude_filter.py --filter $exclude_list $file_list
      if ! test -s $file_list ; then
         return
      fi

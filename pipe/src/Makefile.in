@@ -17,7 +17,8 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl o3p_partit
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
                copy_level1_frame.py radiance_inr_status.py radiance_telem_only.py \
                asdc_mkscript.sl asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
-               asdc_transfer.py public_mirror.py update_public_mirror.sh inrmonitor.sh \
+               asdc_transfer.py asdc_exclude_filter.py \
+               public_mirror.py update_public_mirror.sh inrmonitor.sh \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 SHARE_FILES = $(shell grep -v '\#' ../share/share_files.lis)
