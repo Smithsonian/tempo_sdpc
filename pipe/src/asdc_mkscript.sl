@@ -41,9 +41,18 @@ define process_file_nc (types, path)
 
    variable basename = path_basename (path);
    variable tok = strtok (basename, "_");
-   variable data_type = strjoin (tok[[0:2]], "_");
    variable product_type = strjoin (tok[[1:3]], "_");
-   variable data_version = tok[3];
+   variable data_type, data_version;
+   if (0 != is_substr (basename, "_L0_"))
+     {
+        data_type = "TEMPO_NONORDERABLE";
+        data_version = strtrim_beg (tok[3], "V0");   % e.g. 1
+     }
+   else
+     {
+        data_type = strjoin (tok[[0:2]], "_");       % e.g. TEMPO_RAD_L1
+        data_version = tok[3];                       % e.g. V01
+     }
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
 
    variable path_met = path + ".met";
@@ -78,9 +87,9 @@ define process_file_raw (types, path)
 
    variable basename = path_basename (path);
    variable tok = strtok (basename, "_");
-   variable data_type    = strjoin (tok[[0:1]], "_");  % e.g. TEMPO_GRDDP
-   variable product_type = tok[1];                     % e.g.       GRDDP
-   variable data_version = "V01";    % no versions for unprocessed telemetry
+   variable product_type = tok[1];                 % e.g. GRDDP
+   variable data_type    = "TEMPO_NONORDERABLE";
+   variable data_version = "1";
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
 
    variable group = struct
