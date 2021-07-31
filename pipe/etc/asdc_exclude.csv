@@ -1,11 +1,11 @@
 #
-# Text following '#' is ignored.
+# Text following a '#' character is ignored.
 # Strings in the pattern column are used to filter the list of data
-# products to be autonomously uploaded to ASDC.  When the archive path 
-# to a data product file contains one of these strings, that file is
-# excluded from uploads to ASDC. A filter may apply only during
-# specified hours each day (local time).  If no time interval is
-# specified, the filter applies at all times.
+# products to be autonomously uploaded to ASDC.  When a data product
+# filename contains one of these strings, that file is excluded from
+# uploads to ASDC. When a time interval (local time) is specified, the
+# filter applies only during the specified time interval.  When no time
+# interval is specified, the filter applies at all times.
 #--------------------------------------------------------------------
 pattern,begin_exclude_hour,end_exclude_hour
 TEMPO_CLDO4,,
