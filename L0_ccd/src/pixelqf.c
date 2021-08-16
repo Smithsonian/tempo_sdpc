@@ -73,7 +73,7 @@ static void compute_goodpix_mean_and_stddev (const Image_Type *img,
 
 static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
                          int pb, int pe, int sb, int se,
-                         int *pnum_hot, int *pnum_cold, float *pmean_dc)
+                         int *pnum_hot, int *pnum_cold, float *pmean_dc, float *pstddev_dc)
 {
    Image_Pixel_Type *pixels;
    Image_Pqf_Bitmap_Type *pqf;
@@ -128,6 +128,7 @@ static int flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
    compute_goodpix_mean_and_stddev (img, pb, pe, sb, se,
                                     &mean, &stddev);
    *pmean_dc = (float) mean;
+   *pstddev_dc = (float) stddev;
    *pnum_hot = num_hot;
    *pnum_cold = num_cold;
 
@@ -142,14 +143,18 @@ static int pqf_flag_hotcold (const Pixelqf_Type *pt, Image_Type *img,
    int *num_hot = dark_trend->num_hot_pixels;
    int *num_cold = dark_trend->num_cold_pixels;
    float *mean_dc = dark_trend->mean_dark_current;
+   float stddev_dc[4];
 
    if (enable_state_query_bool (ENABLE_HOTCOLD) < 1)
      return 0;
 
-   flag_hotcold (pt, img,    0, nr/2,    0, nc/2, &num_hot[0], &num_cold[0], &mean_dc[0]);  /* A */
-   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2, &num_hot[1], &num_cold[1], &mean_dc[1]);  /* B */
-   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  , &num_hot[2], &num_cold[2], &mean_dc[2]);  /* C */
-   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  , &num_hot[3], &num_cold[3], &mean_dc[3]);  /* D */
+   flag_hotcold (pt, img,    0, nr/2,    0, nc/2, &num_hot[0], &num_cold[0], &mean_dc[0], &stddev_dc[0]);  /* A */
+   flag_hotcold (pt, img, nr/2, nr  ,    0, nc/2, &num_hot[1], &num_cold[1], &mean_dc[1], &stddev_dc[1]);  /* B */
+   flag_hotcold (pt, img, nr/2, nr  , nc/2, nc  , &num_hot[2], &num_cold[2], &mean_dc[2], &stddev_dc[2]);  /* C */
+   flag_hotcold (pt, img,    0, nr/2, nc/2, nc  , &num_hot[3], &num_cold[3], &mean_dc[3], &stddev_dc[3]);  /* D */
+
+   if (0 != trend_collect_dc_mean (mean_dc, stddev_dc))
+     return -1;
 
    return 0;
 }

@@ -3,11 +3,13 @@
 
 #include "granule.h"
 #include "pixelqf.h"
+#include "util.h"
 
 typedef struct
 {
    Granule_Exprec_Type *exprec;
    Image_Type *img_err;
+   Trend_Record_Type *tr;
    Dark_Trend_Type dark_trend;
    float storage_region_dark[4];
    float fpa_temp;

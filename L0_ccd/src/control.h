@@ -9,6 +9,7 @@ typedef struct
    const char *dark_file;
    const char *instr_status_file;
    const char *instr_glob;
+   const char *trend_file;
    int limit_num_granules;
    int diagnostic_index;
 }

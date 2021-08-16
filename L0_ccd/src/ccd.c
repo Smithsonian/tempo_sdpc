@@ -711,6 +711,9 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
                    pct->phase_change[i] ? "parity changed" : "parity matches FPS test");
      }
 
+   if (0 != trend_collect_eoffsets (pct->mean_eoffset, pct->phase_change))
+     return -1;
+
    return configure_using_octant_phase (ccd);
 }
 
@@ -1082,24 +1085,15 @@ static int interpolate_gain (const Gain_Param_Type *gpt,
    return 0;
 }
 
-static int correct_gain_oct (const Octant_Response_Type *oct_resp,
-                             const Image_Subset_Type *oct, Image_Type *img,
-                             float fpa_temp, float fpe_temp,
-                             float saturation_fudge_factor)
+static int correct_gain_oct (const Image_Subset_Type *oct, Image_Type *img,
+                             float gain, float saturation_threshold_gate)
 {
    int s, sb, se, p, pb, pe;
-   float gain, saturation_threshold_gate;
-
-   if (0 != interpolate_gain (&oct_resp->gain, fpa_temp, fpe_temp, &gain))
-     return -1;
 
    pb = oct->row_beg;
    pe = oct->row_end;
    sb = oct->col_beg;
    se = oct->col_end;
-
-   /* serial readout gate saturation threshold [e-] */
-   saturation_threshold_gate = saturation_fudge_factor * oct_resp->ccd_gate_limit;
 
    for (p = pb; p < pe; p += 1)
      {
@@ -1129,17 +1123,27 @@ static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
                              float fpa_temp, float fpe_temp)
 {
    const CCD_Object_Type *obj = &ccd->obj;
+   float gain[NUM_OCTANTS];
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
         int k = ccd->oct_resp_index[i];
-        if (-1 == correct_gain_oct (&ccd->oct_resp_data[k], &obj->oct[i], img,
-                                    fpa_temp, fpe_temp, ccd->saturation_fudge_factor))
-          {
-             return -1;
-          }
+        const Octant_Response_Type *oct_resp = &ccd->oct_resp_data[k];
+        float saturation_threshold_gate;
+
+        if (0 != interpolate_gain (&oct_resp->gain, fpa_temp, fpe_temp, &gain[i]))
+          return -1;
+
+        /* serial readout gate saturation threshold [e-] */
+        saturation_threshold_gate = ccd->saturation_fudge_factor * oct_resp->ccd_gate_limit;
+
+        if (-1 == correct_gain_oct (&obj->oct[i], img, gain[i], saturation_threshold_gate))
+          return -1;
      }
+
+   if (0 != trend_collect_gain (fpa_temp, fpe_temp, gain))
+     return -1;
 
    return 0;
 }

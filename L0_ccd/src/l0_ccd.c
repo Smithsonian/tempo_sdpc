@@ -29,6 +29,7 @@ static void usage (void)
    fprintf (stderr, "                          files matching hk_glob_pattern are examined\n");
    fprintf (stderr, "                          (hk_glob_pattern is defined in the config file)\n");
    fprintf (stderr, "   -n | --num N           Process <= N exposure records \n");
+   fprintf (stderr, "   -t | --trend FILE      Trending parameter output file\n");
    fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
    fprintf (stderr, "   -V | --Version         Processing version number [default=%d]\n", process_get_version());
    fprintf (stderr, "   -h | --help            Print this usage message\n");
@@ -127,6 +128,7 @@ int main (int argc, char **argv)
         {"bpix",    required_argument, 0, 'b'},
         {"dark",    required_argument, 0, 'd'},
         {"instr",   required_argument, 0, 'i'},
+        {"trend",   required_argument, 0, 't'},
         {"output",  required_argument, 0, 'o'},
         {"num",     required_argument, 0, 'n'},
         {"Version", required_argument, 0, 'V'},
@@ -155,7 +157,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:V:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:t:V:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -188,6 +190,8 @@ int main (int argc, char **argv)
            case 'n':
              if (1 != sscanf (optarg, "%u", &ctrl.limit_num_granules))
 	       usage();
+             break;
+           case 't': ctrl.trend_file = optarg;
              break;
            case 'V':
                {

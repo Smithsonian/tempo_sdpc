@@ -21,4 +21,23 @@ extern int enable_state_query_bool (const char *name);
 #include <tio.h>
 extern int meta_record_basename (TIO_Meta_Type *meta, const char *path);
 
+typedef struct Trend_File_Type Trend_File_Type;
+typedef struct Trend_Record_Type Trend_Record_Type;
+
+extern Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type, int num_exprecs);
+extern int trend_collect_close (Trend_File_Type *tft);
+
+extern Trend_Record_Type *trend_collect_new_record (const Trend_File_Type *tft);
+extern void trend_collect_free_record (Trend_Record_Type *tr);
+extern Trend_Record_Type *trend_collect_set_active_record (Trend_Record_Type *tr);
+
+extern int trend_collect_write_record (Trend_Record_Type *tr);
+
+extern int trend_collect_time (double start_time, int index);
+extern int trend_collect_eoffsets (float *eoffsets, int *phase_change);
+extern int trend_collect_gain (float fpa_temp, float fpe_temp, float *gain);
+extern int trend_collect_sdc (int num_dg_rows, int num_tg_rows, float *sdc);
+extern int trend_collect_dc_mean (float *mean_dc, float *stddev_dc);
+extern int trend_collect_solar_angles (double solar_theta, double solar_phi, int use_reference_diffuser);
+
 #endif

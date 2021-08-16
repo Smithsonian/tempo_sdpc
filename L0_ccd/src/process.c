@@ -233,15 +233,16 @@ static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 
 static void free_exprec_meta (Exprec_Meta_Type *xr, Granule_Type *gr)
 {
-   if (xr == NULL)
+   if ((xr == NULL) || (gr == NULL))
      return;
    gr->granule_free_exprec (xr->exprec);
    image_free (xr->img_err);
+   trend_collect_free_record (xr->tr);
    memset ((char *)xr, 0, sizeof (*xr));
    FREE(xr);
 }
 
-static Exprec_Meta_Type *alloc_exprec_meta (void)
+static Exprec_Meta_Type *alloc_exprec_meta (const Trend_File_Type *tft)
 {
    Exprec_Meta_Type *xr = NULL;
 
@@ -251,6 +252,13 @@ static Exprec_Meta_Type *alloc_exprec_meta (void)
         return NULL;
      }
    memset ((char *)xr, 0, sizeof *xr);
+
+   if (NULL == (xr->tr = trend_collect_new_record (tft)))
+     {
+        FREE(xr);
+        return NULL;
+     }
+
    return xr;
 }
 
@@ -411,6 +419,9 @@ static int compute_current_and_trim (CCD_Type *ccd,
         xr->storage_region_dark[i] /= exprec->readout_time;
      }
 
+   if (0 != trend_collect_sdc (exprec->num_dg_rows, exprec->num_tg_rows, xr->storage_region_dark))
+     return -1;
+
    if (0 != ccd->ccd_correct_prnu (ccd, exprec->img))
      return -1;
 
@@ -432,6 +443,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Instr_Type *instr = NULL;
    Exprec_Meta_Type *xr = NULL;
    Pixelqf_Type *pqft = NULL;
+   Trend_File_Type *tft = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
@@ -448,6 +460,12 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
      num_exprecs = ctrl->limit_num_granules;
+
+   if (ctrl->trend_file != NULL)
+     {
+        if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type, num_exprecs)))
+          goto return_status;
+     }
 
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
@@ -490,7 +508,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
      {
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
 
-        if (NULL == (xr = alloc_exprec_meta ()))
+        if (NULL == (xr = alloc_exprec_meta (tft)))
           goto return_status;
 
         xr->index = ixr;
@@ -506,6 +524,11 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
              continue;
           }
 
+        trend_collect_set_active_record (xr->tr);
+
+        if (0 != trend_collect_time (xr->exprec->start_time, ixr))
+          goto return_status;
+
         if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
         if (0 != ccd->ccd_apply_pixel_quality_flags (ccd, xr->exprec->img,
@@ -516,6 +539,9 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
           goto return_status;
 
         if (0 != current_write_exprec (grp, xr))
+          goto return_status;
+
+        if (0 != trend_collect_write_record (xr->tr))
           goto return_status;
 
         if (is_dark)
@@ -555,6 +581,8 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    status = 0;
 return_status:
+
+   (void) trend_collect_close (tft);
 
    bpix_free (bpixmap);
    bpix_occur_close (bpix_occur);
@@ -702,6 +730,9 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
+        if (0 != trend_collect_solar_angles (solar_theta, solar_phi, use_reference_diffuser))
+          return -1;
+
         if (want_diagnostic_output(xr->index))
           (void) write_diagnostic_image (exprec->img, "img_before_btdf_correction");
 
@@ -752,15 +783,18 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
                               Exprec_Meta_Type *xr)
 {
    Output_Exprec_Type outrec = {0};
+   Trend_Record_Type *tr_old = NULL;
    int num_negative, status = -1;
 
+   tr_old = trend_collect_set_active_record (xr->tr);
+
    if (0 != radiometric_correction (cal, sgt, xr))
-     return -1;
+     goto return_status;
 
    if (0) (void) image_write_raw (xr->exprec->img, "final");
 
    if ((num_negative = image_check_negative_pixels (xr->exprec->img, 1)) < 0)
-     return -1;
+     goto return_status;
    if (num_negative > 0)
      {
 	tell_vwarn (0, "%s: set processing error bit in %d pixels with ((value<0) && (pqf==0))",
@@ -780,11 +814,14 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
 
    if (0 != out->out_write_rec (out, xr->index, &outrec))
      goto return_status;
+   if (0 != trend_collect_write_record (xr->tr))
+     goto return_status;
 
    Write_Nominal_Wavelength_Grid = 0;
 
    status = 0;
 return_status:
+   (void) trend_collect_set_active_record (tr_old);
    sdt_free (outrec.uv);
    sdt_free (outrec.vis);
 
@@ -888,7 +925,7 @@ static void queue_empty (Queue_Type *q, Granule_Type *gr)
    for (i = 0; i < q->num_queued; i++)
      {
         Queue_Entry_Type *entry = q->items[i];
-        free_exprec_meta (entry->xr, gr);
+        if (entry) free_exprec_meta (entry->xr, gr);
         free_queue_entry (entry);
         q->items[i] = NULL;
      }
@@ -1001,6 +1038,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
    Solar_Geom_Type *sgt = NULL;
+   Trend_File_Type *tft = NULL;
    int num_serial_active_full, num_parallel_active_full, flag_transients;
    int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
    int processing_version;
@@ -1012,6 +1050,12 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
      num_exprecs = ctrl->limit_num_granules;
+
+   if (ctrl->trend_file != NULL)
+     {
+        if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type, num_exprecs)))
+          goto return_status;
+     }
 
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
@@ -1118,7 +1162,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
      {
         tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
 
-        if (NULL == (xr = alloc_exprec_meta ()))
+        if (NULL == (xr = alloc_exprec_meta (tft)))
           goto return_status;
 
         xr->index = ixr;
@@ -1133,6 +1177,11 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
              xr = NULL;
              continue;
           }
+
+        trend_collect_set_active_record (xr->tr);
+
+        if (0 != trend_collect_time (xr->exprec->start_time, ixr))
+          goto return_status;
 
         if (-1 == validate_exposure_type (exposure_type, xr->exprec->exposure_type))
           goto return_status;
@@ -1193,6 +1242,8 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    status = 0;
 return_status:
+
+   (void) trend_collect_close (tft);
 
    queue_empty (&exprec_queue, gr);
    image_free (tmp_img);
