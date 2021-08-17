@@ -437,13 +437,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
 }
 
 static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
-                           Granule_Type *gr, TIO_Meta_Type *meta)
+                           Granule_Type *gr, TIO_Meta_Type *meta, Trend_File_Type *tft)
 {
    CCD_Type *ccd = NULL;
    Instr_Type *instr = NULL;
    Exprec_Meta_Type *xr = NULL;
    Pixelqf_Type *pqft = NULL;
-   Trend_File_Type *tft = NULL;
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
@@ -460,12 +459,6 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
      num_exprecs = ctrl->limit_num_granules;
-
-   if (ctrl->trend_file != NULL)
-     {
-        if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type, num_exprecs)))
-          goto return_status;
-     }
 
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
@@ -581,8 +574,6 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    status = 0;
 return_status:
-
-   (void) trend_collect_close (tft);
 
    bpix_free (bpixmap);
    bpix_occur_close (bpix_occur);
@@ -1025,7 +1016,7 @@ static int flag_transients1 (const Pixelqf_Type *pqft,
 }
 
 static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Control_Type *pct,
-                             Granule_Type *gr, TIO_Meta_Type *meta)
+                           Granule_Type *gr, TIO_Meta_Type *meta, Trend_File_Type *tft)
 {
    Queue_Type exprec_queue = {0};
    CCD_Type *ccd = NULL;
@@ -1038,7 +1029,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Output_Type *out = NULL;
    Image_Type *tmp_img = NULL;
    Solar_Geom_Type *sgt = NULL;
-   Trend_File_Type *tft = NULL;
    int num_serial_active_full, num_parallel_active_full, flag_transients;
    int ixr, num_exprecs, exposure_type, scan_type, ncid_from, ncid_to;
    int processing_version;
@@ -1050,12 +1040,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    num_exprecs = gr->granule_num_exprecs(gr);
    if (ctrl->limit_num_granules < num_exprecs)
      num_exprecs = ctrl->limit_num_granules;
-
-   if (ctrl->trend_file != NULL)
-     {
-        if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type, num_exprecs)))
-          goto return_status;
-     }
 
    if (NULL == (ccd = ccd_init (cfg, meta)))
      goto return_status;
@@ -1243,8 +1227,6 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    status = 0;
 return_status:
 
-   (void) trend_collect_close (tft);
-
    queue_empty (&exprec_queue, gr);
    image_free (tmp_img);
    bpix_free (bpixmap);
@@ -1345,6 +1327,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
 {
    Granule_Type *gr = NULL;
    TIO_Meta_Type *meta = NULL;
+   Trend_File_Type *tft = NULL;
    Process_Control_Type pct = {0};
    Ephem_Type eph = {0};
    double tbeg, tend;
@@ -1367,6 +1350,12 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
    if (0 != gr->granule_type (gr, &exposure_type))
      goto return_status;
 
+   if (ctrl->trend_file != NULL)
+     {
+        if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type)))
+          goto return_status;
+     }
+
    /* It's not expected that data from a linearity sweep will be processed
     * to Level 1, but if it is, then we'll treat it exactly the same
     * as any other dark or irradiance measurement */
@@ -1375,7 +1364,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
      {
       case EXPREC_TYPE_DARK:
       case EXPREC_TYPE_LIN_DARK:
-        status = derive_current (cfg, ctrl, &pct, gr, meta);
+        status = derive_current (cfg, ctrl, &pct, gr, meta, tft);
         break;
 
       case EXPREC_TYPE_IRR_WRK:
@@ -1389,7 +1378,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
         tend = gr->granule_tend (gr);
         if (0 != init_solsys_ephem (cfg, tbeg, tend, &eph))
           goto return_status;
-        status = derive_photons (cfg, ctrl, &pct, gr, meta);
+        status = derive_photons (cfg, ctrl, &pct, gr, meta, tft);
         break;
 
       default:
@@ -1402,6 +1391,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
 return_status:
 
    if (gr) gr->granule_close (gr);
+   (void) trend_collect_close (tft);
    tio_meta_close (meta);
    (void) ephem_close (&eph);
 

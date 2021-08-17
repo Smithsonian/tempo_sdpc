@@ -346,7 +346,6 @@ struct Trend_File_Type
 {
    int ncid;
    int exposure_type;
-   int num_exprecs;
    Trend_Record_Type *tr;
 };
 
@@ -388,7 +387,7 @@ static void trend_type_free (Trend_File_Type *tft)
    FREE(tft);
 }
 
-static Trend_File_Type *trend_type_alloc (int exposure_type, int num_exprecs)
+static Trend_File_Type *trend_type_alloc (int exposure_type)
 {
    Trend_File_Type *tft = NULL;
 
@@ -399,7 +398,6 @@ static Trend_File_Type *trend_type_alloc (int exposure_type, int num_exprecs)
      }
    memset ((char *)tft, 0, sizeof(*tft));
    tft->exposure_type = exposure_type;
-   tft->num_exprecs = num_exprecs;
    tft->tr = NULL;
 
    return tft;
@@ -421,7 +419,7 @@ int trend_collect_close (Trend_File_Type *tft)
    return status;
 }
 
-Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type, int num_exprecs)
+Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
 {
    Trend_File_Type *tft = NULL;
    const char *product_type = NULL;
@@ -521,7 +519,7 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type, 
    if (trend_file == NULL)
      return NULL;
 
-   if (NULL == (tft = trend_type_alloc (exposure_type, num_exprecs)))
+   if (NULL == (tft = trend_type_alloc (exposure_type)))
      return NULL;
 
    if (0 != TIO_create (trend_file, NC_NETCDF4, &tft->ncid))
@@ -547,7 +545,7 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type, 
    if (0 != define_text_attrs (tft->ncid, NC_GLOBAL, global_attrs))
      goto return_status;
 
-   if ((0 != TIO_def_dim (tft->ncid, TEMPO_VAR_TIME, num_exprecs, &dimid_time))
+   if ((0 != TIO_def_dim (tft->ncid, TEMPO_VAR_TIME, NC_UNLIMITED, &dimid_time))
        || (0 != TIO_def_dim (tft->ncid, "quad", 4, &dimid_quad))
        || (0 != TIO_def_dim (tft->ncid, "oct", 8, &dimid_oct)))
      goto return_status;

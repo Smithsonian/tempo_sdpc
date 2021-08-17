@@ -24,7 +24,7 @@ extern int meta_record_basename (TIO_Meta_Type *meta, const char *path);
 typedef struct Trend_File_Type Trend_File_Type;
 typedef struct Trend_Record_Type Trend_Record_Type;
 
-extern Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type, int num_exprecs);
+extern Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type);
 extern int trend_collect_close (Trend_File_Type *tft);
 
 extern Trend_Record_Type *trend_collect_new_record (const Trend_File_Type *tft);
