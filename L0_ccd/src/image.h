@@ -144,7 +144,7 @@ extern int image_check_negative_pixels (Image_Type *img, int flag);
  * @param  mask  The mask
  * @return 0 on success, -1 on error
  */
-extern int image_count_mask_pixels (Image_Type *img, unsigned int mask);
+extern int image_count_mask_pixels (const Image_Type *img, unsigned int mask);
 
 /** Transfer pixel quality flags from one image to another of the same size
  * @param  src   A non-NULL pointer to an existing (source) Image_Type object

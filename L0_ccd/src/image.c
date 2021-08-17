@@ -146,9 +146,9 @@ int image_check_negative_pixels (Image_Type *img, int flag)
    return count;
 }
 
-int image_count_mask_pixels (Image_Type *img, unsigned int mask)
+int image_count_mask_pixels (const Image_Type *img, unsigned int mask)
 {
-   Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
+   const Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
    int i, n, count;
 
    n = img->num_rows * img->num_cols;

@@ -242,7 +242,7 @@ static void free_exprec_meta (Exprec_Meta_Type *xr, Granule_Type *gr)
    FREE(xr);
 }
 
-static Exprec_Meta_Type *alloc_exprec_meta (const Trend_File_Type *tft)
+static Exprec_Meta_Type *alloc_exprec_meta (Trend_File_Type *tft)
 {
    Exprec_Meta_Type *xr = NULL;
 
@@ -534,6 +534,8 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
         if (0 != current_write_exprec (grp, xr))
           goto return_status;
 
+        if (0 != trend_collect_pqf (xr->exprec->img))
+          goto return_status;
         if (0 != trend_collect_write_record (xr->tr))
           goto return_status;
 
@@ -796,6 +798,10 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
        || (NULL == (outrec.vis = finalize_band (cal, xr, TEMPO_BAND_VIS))))
      goto return_status;
 
+   if ((0 != trend_collect_pqf_uv (outrec.uv->pqf, outrec.uv->num_xtrack, outrec.uv->num_channels))
+       || (0 != trend_collect_pqf_vis (outrec.vis->pqf, outrec.vis->num_xtrack, outrec.vis->num_channels)))
+     goto return_status;
+
    outrec.meta.start_time = xr->exprec->start_time;
    outrec.meta.exposure_time = xr->exprec->exposure_time;
    outrec.meta.mirror_step = xr->exprec->curr_mirror_step;
@@ -805,6 +811,7 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
 
    if (0 != out->out_write_rec (out, xr->index, &outrec))
      goto return_status;
+
    if (0 != trend_collect_write_record (xr->tr))
      goto return_status;
 

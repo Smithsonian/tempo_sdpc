@@ -320,6 +320,7 @@ int meta_record_basename (TIO_Meta_Type *meta, const char *path)
 
 #define NUM_QUAD     4
 #define NUM_OCTANTS  8
+#define NUM_PQF_BITS  ((int) (8*sizeof(Image_Pqf_Bitmap_Type)))
 
 struct Trend_Record_Type
 {
@@ -337,6 +338,9 @@ struct Trend_Record_Type
    float storage_region_dark[NUM_QUAD];
    float mean_dc[NUM_QUAD];
    float stddev_dc[NUM_QUAD];
+   int pqf_bits[NUM_PQF_BITS];
+   int pqf_bits_uv[NUM_PQF_BITS];
+   int pqf_bits_vis[NUM_PQF_BITS];
    double solar_theta;
    double solar_phi;
    int use_reference_diffuser;
@@ -423,9 +427,10 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
 {
    Trend_File_Type *tft = NULL;
    const char *product_type = NULL;
-   int dimid_time, dimid_quad, dimid_oct, varid;
+   int dimid_time, dimid_quad, dimid_oct, dimid_bit, varid;
    int dimid_time_quad[2];
    int dimid_time_oct[2];
+   int dimid_time_bit[2];
    const Text_Attr_Type global_attrs[] =
      {
         {"comment",
@@ -514,6 +519,21 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
         {"comment", "0:working diffuser, 1:reference diffuser"},
         {NULL, NULL}
      };
+   const Text_Attr_Type pqf_bits_attrs[] =
+     {
+        {"long_name", "count of pixels with each pixel_quality_flag bit set"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type pqf_bits_uv_attrs[] =
+     {
+        {"long_name", "count of UV pixels with each pixel_quality_flag bit set"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type pqf_bits_vis_attrs[] =
+     {
+        {"long_name", "count of VIS pixels with each pixel_quality_flag bit set"},
+        {NULL, NULL}
+     };
    int status = -1;
 
    if (trend_file == NULL)
@@ -547,7 +567,9 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
 
    if ((0 != TIO_def_dim (tft->ncid, TEMPO_VAR_TIME, NC_UNLIMITED, &dimid_time))
        || (0 != TIO_def_dim (tft->ncid, "quad", 4, &dimid_quad))
-       || (0 != TIO_def_dim (tft->ncid, "oct", 8, &dimid_oct)))
+       || (0 != TIO_def_dim (tft->ncid, "oct", 8, &dimid_oct))
+       || (0 != TIO_def_dim (tft->ncid, "bit", NUM_PQF_BITS, &dimid_bit))
+      )
      goto return_status;
 
    dimid_time_quad[0] = dimid_time;
@@ -555,6 +577,9 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
 
    dimid_time_oct[0] = dimid_time;
    dimid_time_oct[1] = dimid_oct;
+
+   dimid_time_bit[0] = dimid_time;
+   dimid_time_bit[1] = dimid_bit;
 
    if ((0 != TIO_def_var (tft->ncid, TEMPO_VAR_TIME, NC_DOUBLE, 1, &dimid_time, &varid))
        || (0 != define_text_attrs (tft->ncid, varid, time_attrs))
@@ -596,6 +621,9 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
         if ((0 != TIO_def_var (tft->ncid, "dc_stddev", NC_FLOAT, 2, dimid_time_quad, &varid))
             || (0 != define_text_attrs (tft->ncid, varid, stddev_dc_attrs)))
           goto return_status;
+        if ((0 != TIO_def_var (tft->ncid, "pqf_bits", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_attrs)))
+          goto return_status;
      }
    else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
      {
@@ -607,6 +635,21 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "use_reference_diffuser", NC_INT, 1, &dimid_time, &varid))
             || (0 != define_text_attrs (tft->ncid, varid, ref_diffuser_attrs)))
+          goto return_status;
+        if ((0 != TIO_def_var (tft->ncid, "pqf_bits_uv", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_uv_attrs)))
+          goto return_status;
+        if ((0 != TIO_def_var (tft->ncid, "pqf_bits_vis", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_vis_attrs)))
+          goto return_status;
+     }
+   else /* radiance */
+     {
+        if ((0 != TIO_def_var (tft->ncid, "pqf_bits_uv", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_uv_attrs)))
+          goto return_status;
+        if ((0 != TIO_def_var (tft->ncid, "pqf_bits_vis", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_vis_attrs)))
           goto return_status;
      }
 
@@ -661,9 +704,15 @@ static void trend_collect_clear_record (Trend_Record_Type *tr)
         tr->mean_dc[i] = TIO_FILL_FLOAT;
         tr->stddev_dc[i] = TIO_FILL_FLOAT;
      }
+   for (i = 0; i < NUM_PQF_BITS; i++)
+     {
+        tr->pqf_bits[i] = TIO_FILL_INT;
+        tr->pqf_bits_uv[i] = TIO_FILL_INT;
+        tr->pqf_bits_vis[i] = TIO_FILL_INT;
+     }
 }
 
-Trend_Record_Type *trend_collect_new_record (const Trend_File_Type *tft)
+Trend_Record_Type *trend_collect_new_record (Trend_File_Type *tft)
 {
    Trend_Record_Type *tr = NULL;
 
@@ -679,7 +728,7 @@ Trend_Record_Type *trend_collect_new_record (const Trend_File_Type *tft)
    return tr;
 }
 
-int trend_collect_write_record (Trend_Record_Type *tr)
+int trend_collect_write_record (const Trend_Record_Type *tr)
 {
    int start[2], count[2];
    int ncid, exposure_type;
@@ -704,15 +753,6 @@ int trend_collect_write_record (Trend_Record_Type *tr)
        || (0 != TIO_put_var_section (ncid, "num_tg_rows", start, count, TIO_INT, &tr->num_tg_rows)))
      return -1;
 
-   if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
-     {
-        count[1] = 0;
-        if ((0 != TIO_put_var_section (ncid, "solar_theta", start, count, TIO_DOUBLE, &tr->solar_theta))
-            || (0 != TIO_put_var_section (ncid, "solar_phi", start, count, TIO_DOUBLE, &tr->solar_phi))
-            || (0 != TIO_put_var_section (ncid, "use_reference_diffuser", start, count, TIO_INT, &tr->use_reference_diffuser)))
-          return -1;
-     }
-
    count[1] = NUM_OCTANTS;
    if ((0 != TIO_put_var_section (ncid, "eoffsets", start, count, TIO_FLOAT, tr->eoffsets))
        || (0 != TIO_put_var_section (ncid, "gain", start, count, TIO_FLOAT, tr->gain)))
@@ -728,6 +768,30 @@ int trend_collect_write_record (Trend_Record_Type *tr)
         count[1] = NUM_QUAD;
         if ((0 != TIO_put_var_section (ncid, "dc_mean", start, count, TIO_FLOAT, tr->mean_dc))
             || (0 != TIO_put_var_section (ncid, "dc_stddev", start, count, TIO_FLOAT, tr->stddev_dc)))
+          return -1;
+
+        count[1] = NUM_PQF_BITS;
+        if (0 != TIO_put_var_section (ncid, "pqf_bits", start, count, TIO_INT, tr->pqf_bits))
+          return -1;
+     }
+   else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
+     {
+        count[1] = 0;
+        if ((0 != TIO_put_var_section (ncid, "solar_theta", start, count, TIO_DOUBLE, &tr->solar_theta))
+            || (0 != TIO_put_var_section (ncid, "solar_phi", start, count, TIO_DOUBLE, &tr->solar_phi))
+            || (0 != TIO_put_var_section (ncid, "use_reference_diffuser", start, count, TIO_INT, &tr->use_reference_diffuser)))
+          return -1;
+
+        count[1] = NUM_PQF_BITS;
+        if ((0 != (TIO_put_var_section (ncid, "pqf_bits_uv", start, count, TIO_INT, tr->pqf_bits_uv)))
+            || (0 != (TIO_put_var_section (ncid, "pqf_bits_vis", start, count, TIO_INT, tr->pqf_bits_vis))))
+          return -1;
+     }
+   else /* radiance */
+     {
+        count[1] = NUM_PQF_BITS;
+        if ((0 != (TIO_put_var_section (ncid, "pqf_bits_uv", start, count, TIO_INT, tr->pqf_bits_uv)))
+            || (0 != (TIO_put_var_section (ncid, "pqf_bits_vis", start, count, TIO_INT, tr->pqf_bits_vis))))
           return -1;
      }
 
@@ -752,7 +816,7 @@ int trend_collect_time (double start_time, int index)
 /*  electronic offset for each octant => eoffsets[8]
  * phase determined for each quadrant => phase_change[4]
  */
-int trend_collect_eoffsets (float *eoffsets, int *phase_change)
+int trend_collect_eoffsets (const float *eoffsets, const int *phase_change)
 {
    Trend_Record_Type *tr = Active_Record;
 
@@ -768,7 +832,7 @@ int trend_collect_eoffsets (float *eoffsets, int *phase_change)
 }
 
 /* Gain, by octant => gain[8] */
-int trend_collect_gain (float fpa_temp, float fpe_temp, float *gain)
+int trend_collect_gain (float fpa_temp, float fpe_temp, const float *gain)
 {
    Trend_Record_Type *tr = Active_Record;
 
@@ -785,7 +849,7 @@ int trend_collect_gain (float fpa_temp, float fpe_temp, float *gain)
 }
 
 /* Storage region dark current, by quadrant => sdc[4] */
-int trend_collect_sdc (int num_dg_rows, int num_tg_rows, float *sdc)
+int trend_collect_sdc (int num_dg_rows, int num_tg_rows, const float *sdc)
 {
    Trend_Record_Type *tr = Active_Record;
 
@@ -802,7 +866,7 @@ int trend_collect_sdc (int num_dg_rows, int num_tg_rows, float *sdc)
 }
 
 /* Mean dark current, by quadrant => mean_dc[4], stddev_dc[4] */
-int trend_collect_dc_mean (float *mean_dc, float *stddev_dc)
+int trend_collect_dc_mean (const float *mean_dc, const float *stddev_dc)
 {
    Trend_Record_Type *tr = Active_Record;
 
@@ -829,6 +893,68 @@ int trend_collect_solar_angles (double solar_theta, double solar_phi, int use_re
    tr->solar_theta = solar_theta;
    tr->solar_phi = solar_phi;
    tr->use_reference_diffuser = use_reference_diffuser;
+
+   return 0;
+}
+
+static void count_bits (const Image_Type *img, int nbits, int *bit_count)
+{
+   int n;
+
+   for (n = 0; n < nbits; n++)
+     {
+        bit_count[n] = image_count_mask_pixels (img, 1 << n);
+     }
+}
+
+int trend_collect_pqf (const Image_Type *img)
+{
+   Trend_Record_Type *tr = Active_Record;
+
+   if (!Have_Trend_File)
+     return 0;
+   if (tr == NULL)
+     return -1;
+
+   count_bits (img, NUM_PQF_BITS, tr->pqf_bits);
+
+   return 0;
+}
+
+int trend_collect_pqf_uv (Image_Pqf_Bitmap_Type *pqf, int num_rows, int num_cols)
+{
+   Trend_Record_Type *tr = Active_Record;
+   Image_Type img = {0};
+
+   if (!Have_Trend_File)
+     return 0;
+   if (tr == NULL)
+     return -1;
+
+   img.pixel_quality_flags = pqf;
+   img.num_rows = num_rows;
+   img.num_cols = num_cols;
+
+   count_bits (&img, NUM_PQF_BITS, tr->pqf_bits_uv);
+
+   return 0;
+}
+
+int trend_collect_pqf_vis (Image_Pqf_Bitmap_Type *pqf, int num_rows, int num_cols)
+{
+   Trend_Record_Type *tr = Active_Record;
+   Image_Type img = {0};
+
+   if (!Have_Trend_File)
+     return 0;
+   if (tr == NULL)
+     return -1;
+
+   img.pixel_quality_flags = pqf;
+   img.num_rows = num_rows;
+   img.num_cols = num_cols;
+
+   count_bits (&img, NUM_PQF_BITS, tr->pqf_bits_vis);
 
    return 0;
 }
