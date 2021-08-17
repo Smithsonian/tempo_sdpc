@@ -222,4 +222,4 @@ install: all install_directories install_modules \
 clean:
 	-/bin/rm -f $(MODULES) $(objdir)/*
 distclean: clean
-	-/bin/rm -f config.h Makefile
+	-/bin/rm -f Makefile

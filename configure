@@ -4718,7 +4718,7 @@ LINKOBJS="$F90OBJS $COBJS"
 
 
 
-ac_config_headers="$ac_config_headers libtio/src/config.h:libtio/src/config.hin L0_format/src/config.h:L0_format/src/config.hin pipe/src/config.h:pipe/src/config.hin"
+ac_config_headers="$ac_config_headers libtio/src/config.h:libtio/src/config.hin L0_format/src/config.h:L0_format/src/config.hin"
 
 
 ac_config_files="$ac_config_files Makefile:autoconf/Makefile.in Makefile.defines:autoconf/Makefile.defines.in pipe/src/Makefile:pipe/src/Makefile.in pipe/slurm/Makefile:pipe/slurm/Makefile.in pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in cron/Makefile:cron/Makefile.in cron/crontab:cron/crontab.in utils/Makefile:utils/Makefile.in"
@@ -5415,7 +5415,6 @@ do
   case $ac_config_target in
     "libtio/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS libtio/src/config.h:libtio/src/config.hin" ;;
     "L0_format/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS L0_format/src/config.h:L0_format/src/config.hin" ;;
-    "pipe/src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS pipe/src/config.h:pipe/src/config.hin" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile:autoconf/Makefile.in" ;;
     "Makefile.defines") CONFIG_FILES="$CONFIG_FILES Makefile.defines:autoconf/Makefile.defines.in" ;;
     "pipe/src/Makefile") CONFIG_FILES="$CONFIG_FILES pipe/src/Makefile:pipe/src/Makefile.in" ;;

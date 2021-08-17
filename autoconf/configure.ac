@@ -312,7 +312,6 @@ JH_LIST_SOURCES(L1_trace_gas/src)
 AC_CONFIG_HEADER(\
  libtio/src/config.h:libtio/src/config.hin\
  L0_format/src/config.h:L0_format/src/config.hin\
- pipe/src/config.h:pipe/src/config.hin\
 )
 
 AC_CONFIG_FILES([\
