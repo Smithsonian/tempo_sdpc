@@ -1800,7 +1800,7 @@ sdt_extract_band (const Calibration_Type *cal, int band_id,
         return NULL;
      }
 
-   if (NULL == (sdt = sdt_alloc (img->num_cols, end-beg+1)))
+   if (NULL == (sdt = sdt_alloc (img->num_cols, end-beg)))
      return NULL;
 
    if (NULL == (sdt->name = strdup (band_name)))
