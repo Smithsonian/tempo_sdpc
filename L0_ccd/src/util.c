@@ -384,6 +384,12 @@ static int define_text_attrs (int grp, int varid, const Text_Attr_Type *attrs)
    return 0;
 }
 
+static int enable_var_deflation (int grp, int varid)
+{
+   int shuffle = 1, deflate = 1, deflate_level = 1;
+   return TIO_def_var_deflate (grp, varid, shuffle, deflate, deflate_level);
+}
+
 static void trend_type_free (Trend_File_Type *tft)
 {
    if (tft == NULL)
@@ -583,72 +589,91 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
 
    if ((0 != TIO_def_var (tft->ncid, TEMPO_VAR_TIME, NC_DOUBLE, 1, &dimid_time, &varid))
        || (0 != define_text_attrs (tft->ncid, varid, time_attrs))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != tio_write_timestamp_unit_string (tft->ncid, TEMPO_VAR_TIME)))
      goto return_status;
 
    if ((0 != TIO_def_var (tft->ncid, "eoffsets", NC_FLOAT, 2, dimid_time_oct, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, eoffset_attrs)))
      goto return_status;
    if ((0 != TIO_def_var (tft->ncid, "phase_change", NC_INT, 2, dimid_time_quad, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, phase_change_attrs)))
      goto return_status;
 
    if ((0 != TIO_def_var (tft->ncid, "gain", NC_FLOAT, 2, dimid_time_oct, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, gain_attrs)))
      goto return_status;
    if ((0 != TIO_def_var (tft->ncid, "fpa_temp", NC_FLOAT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, fpa_temp_attrs)))
      goto return_status;
    if ((0 != TIO_def_var (tft->ncid, "fpe_temp", NC_FLOAT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, fpe_temp_attrs)))
      goto return_status;
 
    if ((0 != TIO_def_var (tft->ncid, "num_dg_rows", NC_INT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, num_dg_rows_attrs)))
      goto return_status;
    if ((0 != TIO_def_var (tft->ncid, "num_tg_rows", NC_INT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, num_tg_rows_attrs)))
      goto return_status;
    if ((0 != TIO_def_var (tft->ncid, "dc_storage_region", NC_FLOAT, 2, dimid_time_quad, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, sdc_attrs)))
      goto return_status;
 
    if (EXPREC_TYPE_IS_DARK(exposure_type))
      {
         if ((0 != TIO_def_var (tft->ncid, "dc_mean", NC_FLOAT, 2, dimid_time_quad, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, mean_dc_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "dc_stddev", NC_FLOAT, 2, dimid_time_quad, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, stddev_dc_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "pqf_bits", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_attrs)))
           goto return_status;
      }
    else if (EXPREC_TYPE_IS_IRRADIANCE(exposure_type))
      {
         if ((0 != TIO_def_var (tft->ncid, "solar_theta", NC_DOUBLE, 1, &dimid_time, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, solar_theta_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "solar_phi", NC_DOUBLE, 1, &dimid_time, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, solar_phi_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "use_reference_diffuser", NC_INT, 1, &dimid_time, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, ref_diffuser_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "pqf_bits_uv", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_uv_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "pqf_bits_vis", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_vis_attrs)))
           goto return_status;
      }
    else /* radiance */
      {
         if ((0 != TIO_def_var (tft->ncid, "pqf_bits_uv", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_uv_attrs)))
           goto return_status;
         if ((0 != TIO_def_var (tft->ncid, "pqf_bits_vis", NC_INT, 2, dimid_time_bit, &varid))
+            || (0 != enable_var_deflation (tft->ncid, varid))
             || (0 != define_text_attrs (tft->ncid, varid, pqf_bits_vis_attrs)))
           goto return_status;
      }
