@@ -57,6 +57,7 @@ def define_common_fields (fields):
     fields["mtime"] = "integer"
     fields["size"] = "integer"
     fields["versionid"] = "integer"
+    fields["trend_status"] = "integer not null"
     fields["asdc_status"] = "integer"
     fields["asdc_status_met"] = "integer"
     fields["asdc_time_accepted"] = "integer"
@@ -285,6 +286,7 @@ def process_file (conn, filename, nc):
     keys["mtime"]    = int(st.st_mtime)
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
     keys["versionid"] = versionid
+    keys["trend_status"] = 0
     keys["asdc_status"] = 0
     keys["asdc_time_accepted"] = 0
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]

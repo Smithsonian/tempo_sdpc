@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="trend"
+INCDIR=".."
+
+. $INCDIR/finish.inc
