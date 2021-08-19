@@ -113,6 +113,7 @@ run_l0_ccd()
 
    srun --ntasks=1 --output=log_l0_ccd.txt \
    L0_ccd -vv --Version $SDPC_PROCESSING_VERSION $lookup_option \
+          --trend trend_params.nc \
           -o $output_file $dark_option \
           $granule_basename
 }
