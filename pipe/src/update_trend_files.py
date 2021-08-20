@@ -111,14 +111,6 @@ def append_file_vars (trend_file, target_file):
     else:
         return append_vars_to_existing_file (trend_file, target_file)
 
-def make_samedir_backup (path):
-    try:
-        copyfile (path, path+'.ORIG')
-        return 0
-    except IOError:
-        eprint ("*** Error making file backup: {}".format(path))
-        return -1
-
 def copy_selected_wavecal_params (src, dst, dst_time_var_name):
     num_xtrack = len(src.dimensions['xtrack'])
     xtrack = [k for k in range(Xtrack_Sample_Offset,num_xtrack,Xtrack_Sample_Interval)]
@@ -172,6 +164,14 @@ def rad_copy_vars (rad_file, in_trend_file):
         for band in band_names:
             dst_grp = ensure_group_exists (band, nc)
             copy_selected_wavecal_params (rad.groups[band], dst_grp, 'time')
+
+def make_samedir_backup (path):
+    try:
+        copyfile (path, path+'.ORIG')
+        return 0
+    except IOError:
+        eprint ("*** Error making file backup: {}".format(path))
+        return -1
 
 def drk_append_vars (drk_file, target_trend_file):
     in_trend_file = os.path.join (os.path.dirname(drk_file), 'trend_params.nc')
