@@ -108,6 +108,7 @@ if test x"$product_list_sans_o3p" != x ; then
   log_message "start level2_batch.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
   sbatch --job-name=L2 --comment=$SDPC_GRANULE_LABEL \
          --chdir $l2_run_dir \
+         --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/level2_batch-%j.out" \
          level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p"
 else
   # If o3p is the only product, we no longer need the primary tar file.
@@ -140,6 +141,7 @@ if test x"$have_o3p" != x ; then
      sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$l2_run_dir \
+            --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/o3prof_batch-%j.out" \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"
   done
 
@@ -147,5 +149,6 @@ if test x"$have_o3p" != x ; then
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   sbatch --dependency=singleton --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
+         --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/o3prof_merge-%j.out" \
          o3prof_merge.sh $granule_arch_dir_path
 fi

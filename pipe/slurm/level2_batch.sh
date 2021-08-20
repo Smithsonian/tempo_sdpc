@@ -1,4 +1,4 @@
-#! /bin/sh -vx
+#! /bin/sh
 #SBATCH --cpus-per-task=4
 #SBATCH --output=/dev/null
 
@@ -129,9 +129,11 @@ remove_redundant_files
 for prod in $product_list ; do
   job_label_args="--job-name=$prod --comment=$SDPC_GRANULE_LABEL"
   if test $prod = O3TOT ; then
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable $job_label_args o3tot.sh)
+     o3tot_log="$SDPC_RUN_DIR_MASTER/log/level2/slurm/o3tot-%j.out"
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $o3tot_log $job_label_args o3tot.sh)
   else
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable $job_label_args tracegas.sh $prod)
+     tracegas_log="$SDPC_RUN_DIR_MASTER/log/level2/slurm/tracegas-%j.out"
+     jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $tracegas_log $job_label_args tracegas.sh $prod)
   fi
   update_job_list $jid
 done
@@ -139,5 +141,6 @@ done
 if test X"$jid_list" != X ; then
    sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
           --dependency=afterany:$jid_list \
+          --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/level2_finish-%j.out" \
           level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
 fi

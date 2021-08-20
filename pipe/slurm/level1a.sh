@@ -146,4 +146,5 @@ echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
 sbatch --wait --dependency=singleton --job-name="L0:serial" \
        --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \
+       --output "$SDPC_RUN_DIR_MASTER/log/level1a/slurm/level1a_batch-%j.out" \
        level1a_batch.sh "${granule_basename}.nc" "$file_list_file"
