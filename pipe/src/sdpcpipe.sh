@@ -27,6 +27,12 @@ do_start()
 {
   check_dir "$1"
 
+: "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set}"
+
+  export SLURM_ACCOUNT="$SDPC_PIPE_NAME"
+  export SBATCH_ACCOUNT="$SLURM_ACCOUNT"
+  export SALLOC_ACCOUNT="$SLURM_ACCOUNT"
+
   echo "Starting services in $1"
   $SDPC_S6_ROOT/bin/s6-svscan "$1" &
 }
