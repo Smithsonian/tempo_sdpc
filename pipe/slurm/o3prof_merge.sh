@@ -9,9 +9,6 @@ if test $# -ne 1 ; then
    exit 1
 fi
 
-#. ../ctrl/sdpc_setup.sh
-export PATH="$SDPC_ROOT/bin:$PATH"
-
 error_exit()
 {
    printf "*** Error: o3prof_merge.sh: $1"

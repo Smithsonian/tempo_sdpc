@@ -37,7 +37,6 @@ test -r $tar_file_notice || exit 1
 
 # Setup paths to scripts, config files
 #
-export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 # tar_file_notice is a short script that defines the variables

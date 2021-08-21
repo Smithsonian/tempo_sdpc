@@ -73,7 +73,6 @@ file_list_file="$2"
 # Setup paths to scripts, config files
 # current directory, output directories
 #
-export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"

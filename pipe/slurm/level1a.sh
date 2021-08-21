@@ -45,8 +45,6 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # in the processing directory path on the compute nodes.
 : "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set}"
 
-export PATH="$SDPC_ROOT/bin:$PATH"
-
 make_iru_only_file_for_inr()
 {
    time_interval_file="$1"

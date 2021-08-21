@@ -43,8 +43,6 @@ log_message()
 test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
-export PATH="$SDPC_ROOT/bin:$PATH"
-
 # SDPC_RUN_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used
 # in the processing directory path on the compute nodes.

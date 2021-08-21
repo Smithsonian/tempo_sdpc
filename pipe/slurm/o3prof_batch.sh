@@ -23,7 +23,6 @@ fi
 
 # Setup paths to scripts, config files
 #
-export PATH="$SDPC_ROOT/bin:$PATH"
 etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
 # host_spec is a string of the form k:N indicating that
