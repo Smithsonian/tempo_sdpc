@@ -6,7 +6,14 @@ set -e
 set -u
 
 rootdir="${SDPC_ANCILLARY_ROOT}/goes"
-subdir="$(date -u +%Y/%j)"
+
+# It's convenient if a single directory contains
+# all GOES imagery needed for a single operational day.
+# For this reason, we compute the day-of-year using
+# the satellite-local time zone for TEMPO.
+# Weirdly, POSIX requires a positive TZ offset
+# for time zones *west* of the prime meridian.
+subdir="$(TZ='UTC+6' date +%Y/%j)"
 
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
