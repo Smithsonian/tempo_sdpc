@@ -27,5 +27,5 @@ run_wavecal()
 
    sbatch -w $SLURMD_NODENAME --wait --dependency=afterany:$jid_list \
           --job-name="wvl:finish" --comment=${SDPC_GRANULE_LABEL} \
-          wavecal_merge.sh $input_file $result_dir
+          wavecal_merge.sh $input_file $result_dir > /dev/null
 }

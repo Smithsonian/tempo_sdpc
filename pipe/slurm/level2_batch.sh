@@ -125,13 +125,15 @@ for prod in $product_list ; do
 done
 remove_redundant_files
 
+slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
+
 for prod in $product_list ; do
   job_label_args="--job-name=$prod --comment=$SDPC_GRANULE_LABEL"
   if test $prod = O3TOT ; then
-     o3tot_log="$SDPC_RUN_DIR_MASTER/log/level2/slurm/o3tot-%j.out"
+     o3tot_log="$slurm_logdir/${rad_basename}.o3tot-%j.out"
      jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $o3tot_log $job_label_args o3tot.sh)
   else
-     tracegas_log="$SDPC_RUN_DIR_MASTER/log/level2/slurm/tracegas-%j.out"
+     tracegas_log="$slurm_logdir/${rad_basename}.tracegas-%j.out"
      jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $tracegas_log $job_label_args tracegas.sh $prod)
   fi
   update_job_list $jid
@@ -140,6 +142,6 @@ done
 if test X"$jid_list" != X ; then
    sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
           --dependency=afterany:$jid_list \
-          --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/level2_finish-%j.out" \
-          level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir
+          --output "$slurm_logdir/${rad_basename}.level2_finish-%j.out" \
+          level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir > /dev/null
 fi

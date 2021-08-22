@@ -157,9 +157,11 @@ remove_redundant_files
 
 do_O3PROF
 
+slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
+
 if test X"$jid_list" != X ; then
    sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
           --dependency=afterany:$jid_list \
-          --output "$SDPC_RUN_DIR_MASTER/log/level2/slurm/level2_finish-%j.out" \
-          level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir"
+          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_finish-%j.out" \
+          level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir" > /dev/null
 fi

@@ -141,8 +141,9 @@ echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
 # Time-ordered processing is important:
 #  * DRK must finish before the relevant IRR or RAD
 #  * RAD time sequence is critical for INR
+slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
 sbatch --wait --dependency=singleton --job-name="L0:serial" \
        --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \
-       --output "$SDPC_RUN_DIR_MASTER/log/level1a/slurm/level1a_batch-%j.out" \
+       --output "$slurm_logdir/${granule_basename}.level1a_batch-%j.out" \
        level1a_batch.sh "${granule_basename}.nc" "$file_list_file"

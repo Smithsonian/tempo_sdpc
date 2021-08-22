@@ -86,10 +86,11 @@ EOF
 log_message "start level1b_batch: $SDPC_GRANULE_LABEL"
 
 # Run the post-INR pipeline to prepare for L2 product generation:
+slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1b/slurm"
 sbatch --wait --job-name="L1b" --comment=$SDPC_GRANULE_LABEL \
         --chdir $l1_run_dir \
         --nodes=1-1 --ntasks=8 \
-        --output "$SDPC_RUN_DIR_MASTER/log/level1b/slurm/level1b_batch-%j.out" \
+        --output "$slurm_logdir/${rad_basename}.level1b_batch-%j.out" \
         level1b_batch.sh "${rad_basename}.nc" "$file_list_file"
 
 log_message "finished level1b_batch: $SDPC_GRANULE_LABEL"
