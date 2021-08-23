@@ -19,7 +19,7 @@ tar_dir="$2"
 this_host=$(uname -n | cut -d. -f1)
 # Remove the original tar file
 if test x"$tar_host" != x"$this_host" ; then
-   ssh $tar_host /bin/rm -f $tar_host_file_path
+   ssh -o ForwardX11=no $tar_host /bin/rm -f $tar_host_file_path
 else
    /bin/rm -f $tar_host_file_path
 fi
