@@ -82,9 +82,10 @@ done
 
 if test x"$have_o3p" != x ; then
 
-  # FIXME: put these parameters in a control file somewhere.
-  ntasks_per_op3_host=14
-  num_o3p_hosts=3;
+  # FIXME: put these parameters in a control file somewhere(?)
+  ntasks_per_op3_host=20
+  num_o3p_hosts=3
+  o3p_partition="part2"
   o3p_host_list=$(seq 0 $((num_o3p_hosts-1)))
 
   for k in $o3p_host_list ; do
@@ -141,6 +142,7 @@ if test x"$have_o3p" != x ; then
      # submitted after the singleton, causing some blocks to be omitted from
      # the final data product file.
      sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
+            --partition="$o3p_partition" \
             --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
