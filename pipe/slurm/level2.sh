@@ -71,6 +71,14 @@ for p in $product_list_tokens ; do
    fi
 done
 
+# When O3PROF is selected, we generate the product only
+# when this granule is also a selected scene:
+if test x"$have_o3p" != x ; then
+: "${SDPC_O3PROF_SCAN_STEP:=2}"
+: "${SDPC_O3PROF_SCAN_OFFSET:=0}"
+  have_o3p=$(o3p_select.sl --step $SDPC_O3PROF_SCAN_STEP --offset $SDPC_O3PROF_SCAN_OFFSET $SDPC_GRANULE_LABEL)
+fi
+
 # Because the o3p array jobs go to different compute hosts, we use a hard link
 # to provide each o3p array job with its own private copy of the input data,
 # to be deleted upon job completion.
