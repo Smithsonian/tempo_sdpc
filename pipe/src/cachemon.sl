@@ -339,11 +339,14 @@ private define claim_with_rename (obj, path)
    if (path == NULL)
      return -1;
 
-   % If the machine is fully loaded, try again later
-   if (Num_Running > Num_Cpus)
-     return 0;
-
    variable cl = obj.client_data;
+
+   if (cl.use_cpu_limiter != 0)
+     {
+        % If the machine is fully loaded, try again later
+        if (Num_Running > Num_Cpus)
+          return 0;
+     }
 
    variable bname = path_basename (path);
    variable dname = path_dirname (path);
@@ -386,6 +389,7 @@ variable _P = struct
    file_glob = "*",
    wait_sec = 1.0,
    wait_arg = WNOHANG,
+   use_cpu_limiter = 1,     % boolean
    exec_root_dir = NULL,
    exec_name = NULL
 };
