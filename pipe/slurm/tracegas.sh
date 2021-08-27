@@ -152,7 +152,7 @@ sed \
 
 export PGS_PC_INFO_FILE="$this_pcf_file"
 
-srun --ntasks=1 --output=log_${molecule}.txt \
+srun --ntasks=1 --output=log_${molecule}.txt --job-name=${molecule} \
  L1_trace_gas -tempo -wrt_odl
 
 # SDPTK MET routines litter the directory with temporary files

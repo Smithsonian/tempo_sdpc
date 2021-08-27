@@ -79,8 +79,8 @@ if test x"$have_o3p" != x ; then
   have_o3p=$(o3p_select.sl --step $SDPC_O3PROF_SCAN_STEP --offset $SDPC_O3PROF_SCAN_OFFSET $SDPC_GRANULE_LABEL)
 fi
 
-# Because the o3p array jobs go to different compute hosts, we use a hard link
-# to provide each o3p array job with its own private copy of the input data,
+# Because the o3p batch jobs go to different compute hosts, we use a hard link
+# to provide each o3p batch job with its own private copy of the input data,
 # to be deleted upon job completion.
 # To avoid a race condition, it's important to set up the input data hard links
 # for _all_ of the batch jobs, before _any_ of the batch jobs are submitted.
@@ -91,6 +91,7 @@ fi
 if test x"$have_o3p" != x ; then
 
   # FIXME: put these parameters in a control file somewhere(?)
+: "${SDPC_O3PROF_TIME_LIMIT:=200}"
   ntasks_per_op3_host=20
   num_o3p_hosts=3
   o3p_partition="part2"
@@ -98,7 +99,6 @@ if test x"$have_o3p" != x ; then
 
   for k in $o3p_host_list ; do
      # To enable parallel cleanup, make a per-host hard link to the tar file
-     # (we can make these links now, only because level2_prep.sh ran with --wait)
      tar_host_file_path_alias="${tar_host_file_path}_${k}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
      ssh $tar_host ln $tar_host_file_path $tar_host_file_path_alias
@@ -130,10 +130,10 @@ fi
 
 if test x"$have_o3p" != x ; then
 
-  # On each host in $o3p_host_list, we'll issue an array of O3 profile tasks
-  # with --job-name="$job_o3p".  When each array job is completed, the output
-  # blocks are archived.  When all of those job steps are finished, we run the
-  # final merge step to merge the blocks into a single O3 profile data product.
+  # On each host in $o3p_host_list, we'll issue a batch of O3 profile tasks.
+  # When each batch is completed, the output blocks are archived.
+  # When all of the batch jobs are finished, we run the final merge step to
+  # merge the archived blocks into a single O3 profile data product.
   # The merge step is triggered by a slurm 'singleton' dependency on the
   # job name "$job_o3p", defined here.
   job_o3p="O3PROF:${SDPC_GRANULE_LABEL}"
@@ -143,15 +143,10 @@ if test x"$have_o3p" != x ; then
      tar_file_notice_alias="${tar_file_notice}_${k}"
 
      log_message "start o3prof_batch.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
-     # Here, the --wait ensures that the tar file has been unpacked on each
-     # compute host and all associated o3p batch jobs have been submitted
-     # _before_ the singleton dependency cleanup batch job is submitted.
-     # Without this wait, there's a race condition, where some compute jobs are
-     # submitted after the singleton, causing some blocks to be omitted from
-     # the final data product file.
      sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
             --partition="$o3p_partition" \
-            --wait --nodes=1-1 --ntasks=$ntasks_per_op3_host \
+            --nodes=1-1 --ntasks=$ntasks_per_op3_host \
+            --time=$SDPC_O3PROF_TIME_LIMIT \
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"

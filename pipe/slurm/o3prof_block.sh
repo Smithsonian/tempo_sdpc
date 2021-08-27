@@ -7,16 +7,17 @@
 set -u
 ulimit -s unlimited
 
-run_dir=$1
+task_id=$1
+run_dir=$2
 
-block_run_subdir=$(printf "block_%03d" $SLURM_ARRAY_TASK_ID)
+block_run_subdir=$(printf "block_%03d" $task_id)
 cd "${run_dir}/O3PROF/${block_run_subdir}"
 
 export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="o3_profile.pcf"
 
-#--exclusive
 srun --ntasks=1 --cpus-per-task=1 \
+     --job-name=O3PROF \
      --output=log_o3_profile.txt \
      L1_o3_profile
 

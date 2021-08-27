@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /usr/bin/env bash
 #SBATCH --cpus-per-task=4
 #SBATCH --output=/dev/null
 
@@ -104,17 +104,6 @@ remove_redundant_files()
    /bin/rm pge_input_basenames.lis ${rad_basename}.lis
 }
 
-jid_list=""
-update_job_list()
-{
-  jid=$1
-  if test X"$jid_list" = X ; then
-     jid_list=$jid
-  else
-     jid_list="$jid:$jid_list"
-  fi
-}
-
 product_list="$(echo $product_list_arg | tr -s , ' ')"
 if test x"$product_list" = x ; then
    exit 0
@@ -127,21 +116,20 @@ remove_redundant_files
 
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
 
+# Run a background process for each product.
+# Each product script runs the product code via srun so that slurm
+# can track the individual job steps.
 for prod in $product_list ; do
-  job_label_args="--job-name=$prod --comment=$SDPC_GRANULE_LABEL"
   if test $prod = O3TOT ; then
-     o3tot_log="$slurm_logdir/${rad_basename}.o3tot-%j.out"
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $o3tot_log $job_label_args o3tot.sh)
+     o3tot_log="$slurm_logdir/${rad_basename}.o3tot-${SLURM_JOB_ID}.out"
+     o3tot.sh > $o3tot_log 2>&1 &
   else
-     tracegas_log="$slurm_logdir/${rad_basename}.tracegas-%j.out"
-     jid=$(sbatch -w $SLURMD_NODENAME --parsable --output $tracegas_log $job_label_args tracegas.sh $prod)
+     tracegas_log="$slurm_logdir/${rad_basename}.tracegas-${SLURM_JOB_ID}.out"
+     tracegas.sh $prod > $tracegas_log 2>&1 &
   fi
-  update_job_list $jid
 done
 
-if test X"$jid_list" != X ; then
-   sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
-          --dependency=afterany:$jid_list \
-          --output "$slurm_logdir/${rad_basename}.level2_finish-%j.out" \
-          level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir > /dev/null
-fi
+# wait for background jobs to exit
+wait
+
+level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir > /dev/null

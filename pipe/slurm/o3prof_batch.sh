@@ -103,55 +103,15 @@ remove_redundant_files()
    /bin/rm pge_input_basenames.lis ${rad_basename}.lis
 }
 
-jid_list=""
-update_job_list()
-{
-  jid=$1
-  if test X"$jid_list" = X ; then
-     jid_list=$jid
-  else
-     jid_list="$jid:$jid_list"
-  fi
-}
-
 do_O3PROF()
 {
-   # Ozone profile is a job array:
-   #  1. Initialize the working directories.
-   #  2. Submit the job array for processing.
-   #  3. Submit job to handle cleanup
-   #  4. Update the master job dependency list.
+   array_bounds=$(o3prof_util.sh init "$host_spec")
+   joblog_file="O3PROF/joblog.${SLURM_JOB_ID}.out"
 
-   block_range_file="blocks"
-   o3prof_util.sh init "$host_spec" "$block_range_file"
+   parallel --delay .2 -j $SLURM_NTASKS --joblog $joblog_file \
+            o3prof_block.sh {1} $run_dir ::: $(seq $array_bounds)
 
-   block_range_path="${run_dir}/O3PROF/$block_range_file"
-
-   if ! test -f "$block_range_path" ; then
-      echo "*** Error: file not found: $block_range_path"
-      exit 1
-   fi
-   array_bounds="$(cat $block_range_path)"
-
-   # FIXME?
-   # Ideally, each of these batch jobs should have exclusive use of
-   # a single node but, because other jobs exist, the scheduler may
-   # insist on putting two of these jobs on a single node.
-   # The script should work in that case, even though it's a little
-   # inefficient.
-: "${SDPC_O3PROF_TIME_LIMIT:=200}"
-
-   jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
-                          --array="${array_bounds}" \
-                          --time="$SDPC_O3PROF_TIME_LIMIT" \
-                          --job-name="$SLURM_JOB_NAME" --comment=$SDPC_GRANULE_LABEL \
-                          o3prof_block.sh ${run_dir})
-
-   jid_o3p_cleanup=$(sbatch -w $SLURMD_NODENAME --parsable \
-                            --dependency=afterany:$jid_o3p_array \
-                            --job-name="$SLURM_JOB_NAME" --comment=$SDPC_GRANULE_LABEL \
-                            o3prof_util.sh cleanup "$host_spec")
-   update_job_list $jid_o3p_cleanup
+   o3prof_util.sh cleanup "$host_spec"
 }
 
 init_product_dir O3PROF
@@ -159,11 +119,4 @@ remove_redundant_files
 
 do_O3PROF
 
-slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
-
-if test X"$jid_list" != X ; then
-   sbatch -w $SLURMD_NODENAME --job-name="L2:finish" --comment=$SDPC_GRANULE_LABEL \
-          --dependency=afterany:$jid_list \
-          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_finish-%j.out" \
-          level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir" > /dev/null
-fi
+level2_finish.sh ${tar_file_notice_alias} $tar_unpack_dir/$tarfile_dir "$tar_unpack_dir" > /dev/null

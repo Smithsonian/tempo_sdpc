@@ -159,44 +159,17 @@ private define create_dir (p, target_dir)
      throw IOError, "closing $pathname"$;
 }
 
-private define write_array_bounds_file (ary, target_dir, filename)
+private define write_array_bound (ary, fp)
 {
-   variable dirname, pathname;
-
-   if (target_dir != NULL)
-     {
-        dirname = target_dir;
-        pathname = path_concat (dirname, path_basename (filename));
-     }
-   else
-     {
-        dirname = path_dirname (filename);
-        pathname = filename;
-     }
-
-   if (mkdir_p (dirname) != 0)
-     throw IOError, "creating directory $dirname"$;
-
-   variable fp = fopen (pathname, "w");
-   if (fp == NULL)
-     throw IOError, "opening $pathname for writing";
-
-   if (fprintf (fp, "%d-%d\n", ary[0].blkid, ary[-1].blkid) < 0)
-     throw IOError, "writing to $pathname";
-
-   if (fclose (fp) < 0)
-     throw IOError, "closing $pathname";
 }
 
 define slsh_main ()
 {
    variable this_host, num_hosts;
    variable target_dir = NULL;
-   variable array_bounds_file = NULL;
 
    variable opts = cmdopt_new (&cmdopt_error);
    opts.add ("m|mksub", &target_dir; type="string");
-   opts.add ("b|bounds", &array_bounds_file; type="string");
    variable i = opts.process (__argv,1);
 
    if (__argc == 1 || i < 1)
@@ -221,8 +194,6 @@ define slsh_main ()
         array_map (Void_Type, &create_dir, ary, target_dir);
      }
 
-   if (array_bounds_file != NULL)
-     {
-        write_array_bounds_file (ary, target_dir, array_bounds_file);
-     }
+   if (fprintf (stdout, "%d %d", ary[0].blkid, ary[-1].blkid) < 0)
+     throw IOError, "writing array bounds";
 }

@@ -22,13 +22,9 @@ ulimit -s unlimited
 
 mode="$1"
 host_spec="$2"
-block_range_file=""
 
 case $mode in
-  init)
-    block_range_file="$3"
-    ;;
-  cleanup)
+  init | cleanup)
     ;;
   *)
     echo "*** $0: unsupported mode = $mode"
@@ -84,6 +80,8 @@ tar_product_to_dest_dir()
    # To avoid deleting the archive_subdir file we create a temporary directory,
    # copy the archive_subdir file over there, and then create the tar file.
 
+   this_host=$(uname -n | cut -d. -f1)
+
    cd $parent_dir
    tmp_dir="$(mktemp -d tmpo3p.XXXXXX)"
    tmp_granule_dir="$tmp_dir/$granule_dir"
@@ -127,7 +125,7 @@ case $mode in
     if test "$cleanup_dest_dir" != "$l2_out_dir" ; then
         tar_product_to_dest_dir "$cleanup_dest_dir"
     else
-        /bin/rm -f pge_input_basenames.lis blocks ${rad_basename}.lis
+        /bin/rm -f pge_input_basenames.lis ${rad_basename}.lis
         tar_product_to_dest_dir "$cleanup_dest_dir"
         tarfile_path="$l2_out_dir/$work_dir_tarfile"
         archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L2 $tarfile_path
@@ -242,7 +240,7 @@ config_subdir()
 # indicating that the calculation is being spread over N hosts,
 # and this particular host is the kth one.
 
-o3p_partition.sl -m . -b $block_range_file "$host_spec"
+array_bounds=$(o3p_partition.sl -m . "$host_spec")
 
 block_dirs=$(ls -d block_*)
 
@@ -251,3 +249,6 @@ for subdir in $block_dirs; do
 done
 
 trap - EXIT
+# Return the array bounds:
+# (this is the intended output -- don't delete this!)
+echo "$array_bounds"
