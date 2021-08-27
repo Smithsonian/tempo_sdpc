@@ -15,7 +15,8 @@ cd "${run_dir}/O3PROF/${block_run_subdir}"
 export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="o3_profile.pcf"
 
-srun --ntasks=1 --cpus-per-task=1 --exclusive \
+#--exclusive
+srun --ntasks=1 --cpus-per-task=1 \
      --output=log_o3_profile.txt \
      L1_o3_profile
 

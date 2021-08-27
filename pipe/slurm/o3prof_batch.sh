@@ -139,9 +139,11 @@ do_O3PROF()
    # insist on putting two of these jobs on a single node.
    # The script should work in that case, even though it's a little
    # inefficient.
+: "${SDPC_O3PROF_TIME_LIMIT:=200}"
 
    jid_o3p_array=$(sbatch -w $SLURMD_NODENAME --parsable \
                           --array="${array_bounds}" \
+                          --time="$SDPC_O3PROF_TIME_LIMIT" \
                           --job-name="$SLURM_JOB_NAME" --comment=$SDPC_GRANULE_LABEL \
                           o3prof_block.sh ${run_dir})
 

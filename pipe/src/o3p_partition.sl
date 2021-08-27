@@ -56,11 +56,35 @@ private define define_nearly_equal_blocks (this_block, num_blocks, num)
      };
 }
 
+private variable Num_Cores_Per_Host = 20;
+
+private define __init_num_cores_using_ntasks ()
+{
+   variable env = getenv ("SLURM_NTASKS");
+   if (env == NULL)
+     return;
+
+   try
+     {
+        variable n = eval(env);
+        if (_typeof(n) == Integer_Type)
+          {
+             Num_Cores_Per_Host = n;
+          }
+     }
+   catch AnyError:
+     {
+        return;
+     }
+}
+
+__init_num_cores_using_ntasks();
+
 define host_partition (this_host)
 {
    variable lst = {};
 
-   variable num_cores_per_host = qualifier ("num_cores_per_host", 14);
+   variable num_cores_per_host = qualifier ("num_cores_per_host", Num_Cores_Per_Host);
    variable num_hosts = qualifier ("num_hosts", 3);
    variable bin_factor = qualifier ("bin_factor", 4);
 
