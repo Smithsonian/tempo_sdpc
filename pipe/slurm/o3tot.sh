@@ -121,7 +121,7 @@ srun --ntasks=1 --output=log_o3_total.txt --job-name=O3TOT \
   L1_o3_total tempo wrt_odl
 
 # SDPTK MET routines litter the directory with temporary files
-/bin/rm -f MCFWrite.temp_*
+find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"

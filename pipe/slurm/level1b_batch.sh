@@ -296,7 +296,7 @@ run_cloud_rr()
     L1_cloud -tempo -wrt_odl
 
   # SDPTK MET routines litter the directory with temporary files
-  /bin/rm -f MCFWrite.temp_*
+  find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 
   tar_l2_cloud_to_dest "$cld_rr_dir" "$l2_out_dir"
 
@@ -373,7 +373,7 @@ derive_o2o2_slant_column()
      L1_trace_gas -tempo -wrt_odl
 
   # SDPTK MET routines litter the directory with temporary files
-  /bin/rm -f MCFWrite.temp_*
+  find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 }
 
 run_cloud_o4()
