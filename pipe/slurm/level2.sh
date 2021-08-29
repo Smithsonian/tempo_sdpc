@@ -74,7 +74,7 @@ done
 # When O3PROF is selected, we generate the product only
 # when this granule is also a selected scene:
 if test x"$have_o3p" != x ; then
-: "${SDPC_O3PROF_SCAN_STEP:=2}"
+: "${SDPC_O3PROF_SCAN_STEP:=3}"
 : "${SDPC_O3PROF_SCAN_OFFSET:=0}"
   have_o3p=$(o3p_select.sl --step $SDPC_O3PROF_SCAN_STEP --offset $SDPC_O3PROF_SCAN_OFFSET $SDPC_GRANULE_LABEL)
 fi
@@ -91,7 +91,6 @@ fi
 if test x"$have_o3p" != x ; then
 
   # FIXME: put these parameters in a control file somewhere(?)
-: "${SDPC_O3PROF_TIME_LIMIT:=200}"
   ntasks_per_op3_host=20
   num_o3p_hosts=3
   o3p_partition="part2"
@@ -145,8 +144,7 @@ if test x"$have_o3p" != x ; then
      log_message "start o3prof_batch.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
      sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
             --partition="$o3p_partition" \
-            --nodes=1-1 --ntasks=$ntasks_per_op3_host \
-            --time=$SDPC_O3PROF_TIME_LIMIT \
+            --nodes=1-1 --ntasks=$ntasks_per_op3_host --ntasks-per-core=1 \
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"
