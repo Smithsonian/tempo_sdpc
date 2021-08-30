@@ -6,7 +6,7 @@
 # on the command line.
 
 # exit on error
-set -e
+#set -e
 # exit upon any usage of an undefined variable
 set -u
 ulimit -s unlimited
