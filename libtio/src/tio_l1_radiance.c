@@ -1499,6 +1499,26 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
 #endif
      }
 
+   /* gyro quality flags */
+     {
+        static _pText_Attr_Type output_attrs[] =
+          {
+             {"comment", "Gyro data quality flags"},
+             _pTEXT_ATTRS_END
+          };
+        dims[0] = dim_table->time_gyroscope.id;
+        dims[1] = dim_table->gyro_axis.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_GYRO_DQF, NC_USHORT, 2, dims, output_attrs, &varid))
+          return -1;
+#ifdef DO_CHUNKING
+        chunksizes[0] = TIO_CHUNK_IRU_SMC_TIME;
+        chunksizes[1] = dim_table->gyro_axis.len;
+        if ((storage == NC_CHUNKED)
+            && (0 != TIO_def_var_chunking (grp, varid, storage, chunksizes)))
+          return -1;
+#endif
+     }
+
    /* gyro bias time coordinate */
      {
         dims[0] = dim_table->time_bias.id;
