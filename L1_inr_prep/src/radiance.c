@@ -9,6 +9,7 @@
 
 #include <libconfig.h>
 #include <ioclib.h>
+#include <iocsdpc.h>
 #include <tell.h>
 
 #include <tio.h>
@@ -329,42 +330,82 @@ typedef struct
 {
    const char *from;
    const char *to;
+   int (*annotate)(int);
 }
 Var_Name_Type;
-#define VAR_TABLE_END {NULL,NULL}
+#define VAR_TABLE_END {NULL,NULL,NULL}
 
 static Var_Name_Type SMC_Vars[] =
 {
-   {TEMPO_VAR_SMADIT_SCANX, TEMPO_VAR_SMADIT_SCANX},
-   {TEMPO_VAR_SMADIT_SCANY, TEMPO_VAR_SMADIT_SCANY},
-   {TEMPO_VAR_SMADIT_RAWX, TEMPO_VAR_SMADIT_RAWX},
-   {TEMPO_VAR_SMADIT_RAWY, TEMPO_VAR_SMADIT_RAWY},
+   {TEMPO_VAR_SMADIT_SCANX, TEMPO_VAR_SMADIT_SCANX, NULL},
+   {TEMPO_VAR_SMADIT_SCANY, TEMPO_VAR_SMADIT_SCANY, NULL},
+   {TEMPO_VAR_SMADIT_RAWX, TEMPO_VAR_SMADIT_RAWX, NULL},
+   {TEMPO_VAR_SMADIT_RAWY, TEMPO_VAR_SMADIT_RAWY, NULL},
    VAR_TABLE_END
 };
 
+static int annotate_gyro_dqf (int grp);
+
 static Var_Name_Type IRU_Vars[] =
 {
-   {TEMPO_VAR_GYRO_OUTPUT, TEMPO_VAR_GYRO_OUTPUT},
+   {TEMPO_VAR_GYRO_OUTPUT, TEMPO_VAR_GYRO_OUTPUT, NULL},
+   {TEMPO_VAR_GYRO_DQF, TEMPO_VAR_GYRO_DQF, annotate_gyro_dqf},
    VAR_TABLE_END
 };
 
 static Var_Name_Type IRU_Bias_Vars[] =
 {
-   {TEMPO_VAR_TIME_GYRO_BIAS, TEMPO_VAR_TIME_GYRO_BIAS},
-   {"bias", TEMPO_VAR_GYRO_BIAS},
+   {TEMPO_VAR_TIME_GYRO_BIAS, TEMPO_VAR_TIME_GYRO_BIAS, NULL},
+   {"bias", TEMPO_VAR_GYRO_BIAS, NULL},
    VAR_TABLE_END
 };
 
 static Var_Name_Type EPH_Vars[] =
 {
-   {"anc_satx", TEMPO_VAR_SAT_X},
-   {"anc_saty", TEMPO_VAR_SAT_Y},
-   {"anc_satz", TEMPO_VAR_SAT_Z},
-   {"anc_satvx", TEMPO_VAR_SAT_VX},
-   {"anc_satvy", TEMPO_VAR_SAT_VY},
-   {"anc_satvz", TEMPO_VAR_SAT_VZ},
+   {"anc_satx", TEMPO_VAR_SAT_X, NULL},
+   {"anc_saty", TEMPO_VAR_SAT_Y, NULL},
+   {"anc_satz", TEMPO_VAR_SAT_Z, NULL},
+   {"anc_satvx", TEMPO_VAR_SAT_VX, NULL},
+   {"anc_satvy", TEMPO_VAR_SAT_VY, NULL},
+   {"anc_satvz", TEMPO_VAR_SAT_VZ, NULL},
    VAR_TABLE_END
 };
+
+static int annotate_gyro_dqf (int grp)
+{
+   uint16_t flag_masks[2] = {IOCSDPC_IRU_DATA_INVALID, IOCSDPC_IRU_DATA_SATURATED};
+   char flag_meanings[] = "invalid saturated";
+   int varid, status, len, num_values = 2;
+
+   status = nc_inq_varid (grp, TEMPO_VAR_GYRO_DQF, &varid);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: cannot find variable %s", __func__, TEMPO_VAR_GYRO_DQF);
+        return -1;
+     }
+
+   len = strlen(flag_meanings) + 1;
+   status = nc_put_att_text (grp, varid, "flag_meanings", len, flag_meanings);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining ushort attribute %s (%s)",
+                     __func__, "flag_meanings", nc_strerror(status));
+        return -1;
+     }
+
+   status = nc_put_att_ushort (grp, varid, "flag_masks", NC_USHORT, num_values, flag_masks);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining ushort attribute %s (%s)",
+                     __func__, "flag_masks", nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
 
 static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *meta,
                                Var_Name_Type *v, const char *from_group_path,
@@ -375,6 +416,12 @@ static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *m
    int from_ncid = 0;
    int to_start = 0;
    int status = -1;
+
+   if (v->annotate)
+     {
+        if (0 != v->annotate (to_grp))
+          return -1;
+     }
 
    for (rst = rst_head; rst != NULL; rst = rst->next)
      {
