@@ -60,6 +60,7 @@ static IRU_Var_Type IRU_Var_Table[] =
 {
    IRU_VAR(IRU_FILE_VAR_TIME,1,NC_DOUBLE,"sec","Time of gyro sample (secs since TEMPO epoch)"),
    IRU_VAR(TEMPO_VAR_GYRO_OUTPUT,2,NC_INT,"DN","Gyro output data values"),
+   IRU_VAR(TEMPO_VAR_GYRO_DQF,2,NC_USHORT,"","Gyro data quality flags"),
    IRU_VARS_END
 };
 
@@ -119,6 +120,42 @@ static int query_latest_timestamp (Process_Method_Type *pmt, int notused, double
 {
    (void) notused;
    *timestamp = pmt->outfile_timestamp_end;
+   return 0;
+}
+
+static int annotate_gyro_dqf (int grp)
+{
+   uint16_t flag_masks[2] = {IOCSDPC_IRU_DATA_INVALID, IOCSDPC_IRU_DATA_SATURATED};
+   char flag_meanings[] = "invalid saturated";
+   int varid, status, len, num_values = 2;
+
+   status = nc_inq_varid (grp, TEMPO_VAR_GYRO_DQF, &varid);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: cannot find variable %s", __func__, TEMPO_VAR_GYRO_DQF);
+        return -1;
+     }
+
+   len = strlen(flag_meanings) + 1;
+   status = nc_put_att_text (grp, varid, "flag_meanings", len, flag_meanings);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining ushort attribute %s (%s)",
+                     __func__, "flag_meanings", nc_strerror(status));
+        return -1;
+     }
+
+   status = nc_put_att_ushort (grp, varid, "flag_masks", NC_USHORT, num_values, flag_masks);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR,
+                     "%s: defining ushort attribute %s (%s)",
+                     __func__, "flag_masks", nc_strerror(status));
+        return -1;
+     }
+
    return 0;
 }
 
@@ -189,6 +226,9 @@ static int define_iru_vars (Process_Method_Type *pmt,
         if (0 != annotate_var (pmt->ncid, varid, vt->description, vt->units))
           return -1;
      }
+
+   if (0 != annotate_gyro_dqf (pmt->ncid))
+     return -1;
 
    return 0;
 }
@@ -265,6 +305,7 @@ static int write_iru_records (Process_Method_Type *pmt,
    int start[2], count[2], start_per_file[2], count_per_file[2];
    unsigned int i, ng;
    int32_t *gyro_data;
+   uint16_t *gyro_data_flags;
    size_t num_bytes;
 
    if (time_last_sample > pmt->outfile_timestamp_end)
@@ -279,6 +320,7 @@ static int write_iru_records (Process_Method_Type *pmt,
    count[0] = num_records;
    count[1] = pmt->gyro_dimension;
 
+   /* sample_time */
    sample_time = (double *)pmt->outbuf;
    for (i = 0; i < num_records; i++)
      {
@@ -291,6 +333,7 @@ static int write_iru_records (Process_Method_Type *pmt,
    if (0 != TIO_put_var_section (pmt->ncid, IRU_FILE_VAR_TIME, start, count, NC_DOUBLE, sample_time))
      return -1;
 
+   /* gyro_data */
    ng = pmt->gyro_dimension;
    gyro_data = (int32_t *)pmt->outbuf;
    for (i = 0; i < num_records; i++)
@@ -299,6 +342,15 @@ static int write_iru_records (Process_Method_Type *pmt,
      }
 
    if (0 != TIO_put_var_section (pmt->ncid, TEMPO_VAR_GYRO_OUTPUT, start, count, NC_INT, gyro_data))
+     return -1;
+
+   /* gyro_data_flags */
+   gyro_data_flags = (uint16_t *)pmt->outbuf;
+   for (i = 0; i < num_records; i++)
+     {
+        memcpy ((char *)&gyro_data_flags[ng*i], (char *)rec_array[i].gyro_data_flags, ng*sizeof(uint16_t));
+     }
+   if (0 != TIO_put_var_section (pmt->ncid, TEMPO_VAR_GYRO_DQF, start, count, NC_USHORT, gyro_data_flags))
      return -1;
 
    pmt->num_written += num_records;
