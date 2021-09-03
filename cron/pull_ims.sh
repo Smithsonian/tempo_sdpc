@@ -18,6 +18,7 @@ else
 fi
 
 lftp ftp://sidads.colorado.edu <<- EOF
+   set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set mirror:require-source true

@@ -21,6 +21,7 @@ if ! test -d $target_dir ; then
 fi
 
 lftp AO_TEMPO_SERV1@140.90.190.143 <<- EOF
+   set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set ssl:verify-certificate no
