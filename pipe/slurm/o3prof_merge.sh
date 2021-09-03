@@ -11,7 +11,7 @@ fi
 
 error_exit()
 {
-   printf "*** Error: o3prof_merge.sh: $1"
+   printf "*** Error: o3prof_merge.sh: $1\n"
    exit 1
 }
 
@@ -42,7 +42,7 @@ perform_merge()
   o3p_dir="$granule_arch_dir_path/O3PROF"
 
   if ! test -d "$o3p_dir" ; then
-      printf "*** Error: directory not found: $o3p_dir"
+      printf "*** Error: directory not found: $o3p_dir\n"
       exit 1
   fi
 

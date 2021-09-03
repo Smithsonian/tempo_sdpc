@@ -19,6 +19,7 @@ if (Num_Cpus < 1)
 }
 
 private variable Sigterm_Received;
+private variable Verbose = 0;
 
 private variable Host_Name = uname().nodename;
 private variable My_Pid = getpid();
@@ -178,9 +179,10 @@ private define exit_msg (w)
 private variable LOG_INFO = "INFO";
 private variable LOG_ERR = "ERROR";
 
-private define write_log (severity, msg)
+private define write_log (severity, level, msg)
 {
-   () = fprintf (stderr, "cachemon[%d] %s %s\n", My_Pid, severity, msg);
+   if (Verbose >= level)
+     () = fprintf (stderr, "cachemon[%d] %s %s\n", My_Pid, severity, msg);
 }
 
 private define sigchld_handler (sig);
@@ -191,7 +193,7 @@ private define sigchld_handler (sig)
         variable w = waitpid (-1, WNOHANG|WUNTRACED);
         if ((w == NULL) || (w.pid == 0))
           break;
-	write_log (LOG_INFO, sprintf ("[%d] %s", w.pid, exit_msg(w)));
+	write_log (LOG_INFO, 1, sprintf ("[%d] %s", w.pid, exit_msg(w)));
         Num_Running--;
      }
    signal (SIGCHLD, &sigchld_handler);
@@ -221,14 +223,14 @@ private define wait_for_processes_to_exit ()
    if (Num_Running == 0)
      return;
 
-   write_log (LOG_INFO, "waiting for $Num_Running processes to exit"$);
+   write_log (LOG_INFO, 0, "waiting for $Num_Running processes to exit"$);
 
    while (Num_Running > 0)
      {
         sleep(1);
      }
 
-   write_log (LOG_INFO, "done");
+   write_log (LOG_INFO, 0, "done");
 }
 
 private variable Exec = NULL;
@@ -313,7 +315,7 @@ private define run_executable (obj, file, run_dir)
    variable msg = sprintf ("[%d] started%s: %s %s",
                            p.pid, dir_str, path_basename(argv[0]),
                            argv_rest);
-   write_log (LOG_INFO, msg);
+   write_log (LOG_INFO, 1, msg);
 
    if (s.pid == 0)
      {
@@ -323,11 +325,11 @@ private define run_executable (obj, file, run_dir)
 
    if (s.exited)
      {
-        write_log (LOG_INFO, sprintf ("child exited with status %d", s.exit_status));
+        write_log (LOG_INFO, 1, sprintf ("child exited with status %d", s.exit_status));
      }
    else if (s.signal)
      {
-	write_log (LOG_INFO, sprintf ("child terminated by signal %d %s",
+	write_log (LOG_INFO, 1, sprintf ("child terminated by signal %d %s",
 				      s.signal, (s.coredump ? "(coredump)" : "")));
      }
 
@@ -391,7 +393,8 @@ variable _P = struct
    wait_arg = WNOHANG,
    use_cpu_limiter = 1,     % boolean
    exec_root_dir = NULL,
-   exec_name = NULL
+   exec_name = NULL,
+   verbose = Verbose
 };
 
 private define load_config_file (file)
@@ -427,6 +430,8 @@ define slsh_main()
 
    variable p = load_config_file (config_file);
 
+   Verbose = p.verbose;
+
    set_executable (p, exec_args);
 
    variable dir = new_dirmon (p.incoming_dir; glob = p.file_glob,
@@ -437,7 +442,7 @@ define slsh_main()
    catch_sigterm();
    catch_sigchild();
 
-   write_log (LOG_INFO, "started");
+   write_log (LOG_INFO, 0, "started");
 
    while (Sigterm_Received == 0)
      {
@@ -447,7 +452,7 @@ define slsh_main()
      }
 
    if (Sigterm_Received)
-     write_log (LOG_INFO, "received SIGTERM");
+     write_log (LOG_INFO, 0, "received SIGTERM");
 
    wait_for_processes_to_exit ();
 }

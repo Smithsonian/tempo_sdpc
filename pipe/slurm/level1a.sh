@@ -37,6 +37,11 @@ error_exit()
 
 trap error_exit ERR
 
+log_message()
+{
+   printf "${PROGNAME}[$$]: $1\n"
+}
+
 test -r $granule_path || error_exit "$LINENO: cannot access granule: $granule_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
@@ -135,15 +140,16 @@ EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
 
-echo "start level1a_batch.sh: $SDPC_GRANULE_LABEL"
-
 # Run the pipeline:
 # Time-ordered processing is important:
 #  * DRK must finish before the relevant IRR or RAD
 #  * RAD time sequence is critical for INR
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
-sbatch --wait --dependency=singleton --job-name="L0:serial" \
+jid=$(sbatch --wait --dependency=singleton --parsable \
+       --job-name="L0:serial" \
        --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \
        --output "$slurm_logdir/${granule_basename}.level1a_batch-%j.out" \
-       level1a_batch.sh "${granule_basename}.nc" "$file_list_file"
+       level1a_batch.sh "${granule_basename}.nc" "$file_list_file")
+
+log_message "sbatch $jid: level1a_batch.sh: $SDPC_GRANULE_LABEL"

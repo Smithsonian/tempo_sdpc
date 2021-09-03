@@ -37,7 +37,7 @@ log_message()
 
 error_exit()
 {
-   printf "*** Error: ${PROGNAME}: $1"
+   printf "*** Error: ${PROGNAME}: $1\n"
    exit 1
 }
 

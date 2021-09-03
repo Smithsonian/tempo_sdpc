@@ -115,11 +115,12 @@ fi
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
 
 if test x"$product_list_sans_o3p" != x ; then
-  log_message "start level2_batch.sh [$product_list_sans_o3p]: $SDPC_GRANULE_LABEL"
-  sbatch --job-name=L2 --comment=$SDPC_GRANULE_LABEL \
+  jid=$(sbatch --job-name=L2 --parsable \
+         --comment=$SDPC_GRANULE_LABEL \
          --chdir $l2_run_dir \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_batch-%j.out" \
-         level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p"
+         level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p")
+  log_message "sbatch $jid: level2_batch.sh: $SDPC_GRANULE_LABEL [$product_list_sans_o3p]"
 else
   # If o3p is the only product, we no longer need the primary tar file.
   # Remove both the tar file notice, and the tar file itself.
@@ -141,19 +142,23 @@ if test x"$have_o3p" != x ; then
      host_spec="${k}-${num_o3p_hosts}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
 
-     log_message "start o3prof_batch.sh [O3PROF:$k]: $SDPC_GRANULE_LABEL"
-     sbatch --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
+     jid=$(sbatch --job-name="$job_o3p" --parsable \
+            --comment=$SDPC_GRANULE_LABEL \
             --partition="$o3p_partition" \
             --nodes=1-1 --ntasks=$ntasks_per_op3_host --ntasks-per-core=1 \
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
-            o3prof_batch.sh "$host_spec" "$tar_file_notice_alias"
+            o3prof_batch.sh "$host_spec" "$tar_file_notice_alias")
+     log_message "sbatch $jid: o3prof_batch.sh: $SDPC_GRANULE_LABEL [$O3PROF:$k]"
+
   done
 
-  log_message "start singleton-dependent batch o3prof_merge.sh: $job_o3p"
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
-  sbatch --dependency=singleton --job-name="$job_o3p" --comment=$SDPC_GRANULE_LABEL \
+  jid=$(sbatch --dependency=singleton --job-name="$job_o3p" --parsable \
+         --comment=$SDPC_GRANULE_LABEL \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_merge-%j.out" \
-         o3prof_merge.sh $granule_arch_dir_path
+         o3prof_merge.sh $granule_arch_dir_path)
+  log_message "sbatch $jid: o3prof_merge.sh: $SDPC_GRANULE_LABEL"
+
 fi
