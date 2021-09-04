@@ -144,6 +144,8 @@ export SDPC_GRANULE_LABEL="$granule_basename"
 # Time-ordered processing is important:
 #  * DRK must finish before the relevant IRR or RAD
 #  * RAD time sequence is critical for INR
+log_message "submitting sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL"
+
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
 jid=$(sbatch --wait --dependency=singleton --parsable \
        --job-name="L0:serial" \
@@ -152,4 +154,4 @@ jid=$(sbatch --wait --dependency=singleton --parsable \
        --output "$slurm_logdir/${granule_basename}.level1a_batch-%j.out" \
        level1a_batch.sh "${granule_basename}.nc" "$file_list_file")
 
-log_message "sbatch $jid: level1a_batch.sh: $SDPC_GRANULE_LABEL"
+log_message "completed: sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL [$jid]"

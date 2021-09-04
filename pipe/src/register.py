@@ -9,7 +9,6 @@ import time
 from threading import Event
 
 import sqlite3
-from datetime import date
 from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 import dateutil.parser as dp
@@ -23,9 +22,14 @@ Coverage_Time_Attributes = ["time_coverage_start_since_epoch", "time_coverage_en
 Radiance_File_Attributes = Coverage_Time_Attributes \
                          + ["scan_num", "scan_type", "granule_num"]
 
+Prefix = "register:"
+
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    print(Prefix, *args, file=sys.stderr, **kwargs)
+
+def logprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stdout, **kwargs)
 
 class Table_Type:
 
@@ -314,7 +318,7 @@ def process_file (conn, filename, nc):
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
     else:
-        print ('registered {} product: {}'.format(product_name, final_basename), flush=True)
+        logprint ('{}: {}'.format(product_name, final_basename), flush=True)
 
     return status
 
@@ -345,7 +349,7 @@ def process_file_raw (conn, filename):
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
     else:
-        print ('registered {} file: {}'.format(table_name, basename), flush=True)
+        logprint ('{}: {}'.format(table_name, basename), flush=True)
 
     return status
 
@@ -434,13 +438,15 @@ def main():
     reg = init_registry()
     sig = Signal_Catcher()
 
+    logprint ("Started", flush=True)
+
     while not sig.caught():
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:
             register_files (reg.file_path, filenames)
         sig.wait(10)
 
-    print ("Exiting: caught signal = {}".format(sig.signum))
+    logprint ("Exiting: caught signal = {}".format(sig.signum))
 
 if __name__ == "__main__":
     main()

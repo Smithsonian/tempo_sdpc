@@ -62,12 +62,12 @@ level2_products=${level2_products^^}
 product_list_tokens="$(echo $level2_products | tr , ' ')"
 
 have_o3p=""
-product_list_sans_o3p=''
+product_list_sans_o3p=""
 for p in $product_list_tokens ; do
    if test x"$p" = x"O3PROF" ; then
       have_o3p="yes"
    else
-      product_list_sans_o3p="$product_list_sans_o3p $p"
+      product_list_sans_o3p="$p $product_list_sans_o3p"
    fi
 done
 
@@ -77,6 +77,11 @@ if test x"$have_o3p" != x ; then
 : "${SDPC_O3PROF_SCAN_STEP:=3}"
 : "${SDPC_O3PROF_SCAN_OFFSET:=0}"
   have_o3p=$(o3p_select.sl --step $SDPC_O3PROF_SCAN_STEP --offset $SDPC_O3PROF_SCAN_OFFSET $SDPC_GRANULE_LABEL)
+  if test x"$have_o3p" != x ; then
+     log_message "O3PROF selected: $SDPC_GRANULE_LABEL"
+  else
+     log_message "O3PROF excluded: $SDPC_GRANULE_LABEL"
+  fi
 fi
 
 # Because the o3p batch jobs go to different compute hosts, we use a hard link
@@ -120,7 +125,7 @@ if test x"$product_list_sans_o3p" != x ; then
          --chdir $l2_run_dir \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_batch-%j.out" \
          level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p")
-  log_message "sbatch $jid: level2_batch.sh: $SDPC_GRANULE_LABEL [$product_list_sans_o3p]"
+  log_message "submitted sbatch $jid: level2_batch.sh: $SDPC_GRANULE_LABEL: $product_list_sans_o3p"
 else
   # If o3p is the only product, we no longer need the primary tar file.
   # Remove both the tar file notice, and the tar file itself.
@@ -149,7 +154,7 @@ if test x"$have_o3p" != x ; then
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias")
-     log_message "sbatch $jid: o3prof_batch.sh: $SDPC_GRANULE_LABEL [$O3PROF:$k]"
+     log_message "submitted sbatch $jid: o3prof_batch.sh: $SDPC_GRANULE_LABEL: O3PROF:$k"
 
   done
 
@@ -159,6 +164,6 @@ if test x"$have_o3p" != x ; then
          --comment=$SDPC_GRANULE_LABEL \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_merge-%j.out" \
          o3prof_merge.sh $granule_arch_dir_path)
-  log_message "sbatch $jid: o3prof_merge.sh: $SDPC_GRANULE_LABEL"
+  log_message "submitted sbatch $jid: o3prof_merge.sh: $SDPC_GRANULE_LABEL"
 
 fi

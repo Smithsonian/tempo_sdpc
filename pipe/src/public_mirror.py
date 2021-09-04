@@ -6,6 +6,15 @@ import time
 import subprocess
 from threading import Event
 
+Prefix = "mirror:"
+
+# python3 will provide file= redirection to stderr
+def eprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stderr, **kwargs)
+
+def logprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stdout, **kwargs)
+
 class Signal_Catcher:
 
   exit = None
@@ -33,11 +42,13 @@ def main():
 
     argv = ["update_public_mirror.sh"]
 
+    logprint ("Started", flush=True)
+
     while not sig.caught():
         obj = subprocess.run (argv)
         sig.wait(240)
 
-    print ("Exiting: caught signal = {}".format(sig.signum))
+    logprint ("Exiting: caught signal = {}".format(sig.signum))
 
 if __name__ == "__main__":
     main()

@@ -7,6 +7,15 @@ import subprocess
 import argparse
 from threading import Event
 
+Prefix = "asdc:"
+
+# python3 will provide file= redirection to stderr
+def eprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stderr, **kwargs)
+
+def logprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stdout, **kwargs)
+
 class Signal_Catcher:
 
   exit = None
@@ -52,17 +61,19 @@ def main():
     else:
         user_at_host = os.getenv ("SDPC_ASDC_DROPBOX")
         if user_at_host == None:
-            print ("Exiting: SDPC_ASDC_DROPBOX not set")
+            eprint ("Exiting: SDPC_ASDC_DROPBOX not set")
             sys.exit(1)
 
     sig = Signal_Catcher()
+
+    logprint ("Started", flush=True)
 
     while not sig.caught():
         obj = subprocess.run (["asdc_pull.sh", user_at_host])
         obj = subprocess.run (["asdc_push.sh", user_at_host])
         sig.wait(wait)
 
-    print ("Exiting: caught signal = {}".format(sig.signum))
+    logprint ("Exiting: caught signal = {}".format(sig.signum))
 
 if __name__ == "__main__":
     main()

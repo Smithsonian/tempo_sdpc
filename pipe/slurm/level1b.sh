@@ -92,4 +92,4 @@ jid=$(sbatch --job-name="L1b" --parsable \
        --output "$slurm_logdir/${rad_basename}.level1b_batch-%j.out" \
        level1b_batch.sh "${rad_basename}.nc" "$file_list_file")
 
-log_message "sbatch $jid: level1b_batch: $SDPC_GRANULE_LABEL"
+log_message "submitted sbatch $jid: level1b_batch: $SDPC_GRANULE_LABEL"

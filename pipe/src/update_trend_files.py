@@ -9,7 +9,6 @@ import argparse
 import pathlib
 from netCDF4 import Dataset
 from shutil import copyfile
-from datetime import datetime
 
 import sqlite3
 import signal
@@ -20,9 +19,14 @@ Xtrack_Sample_Offset = 25
 Xtrack_Sample_Interval = 500
 Deflate_Level = 1
 
+Prefix = "trend:"
+
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    print(Prefix, *args, file=sys.stderr, **kwargs)
+
+def logprint(*args, **kwargs):
+    print(Prefix, *args, file=sys.stdout, **kwargs)
 
 def trend_file_for_product (infile):
     basename = os.path.basename(infile)
@@ -214,7 +218,7 @@ def collect_trend_params (path, args_dir, arch_dir):
     if status != 0:
         eprint ('*** Error processing file: {}'.format(path))
     else:
-        print ('update from: {}'.format(os.path.basename(path)), flush=True)
+        logprint ('{} update from: {}'.format(product_type, os.path.basename(path)), flush=True)
     return status
 
 def process_file_list (path_list, args_dir, arch_dir):
@@ -294,7 +298,7 @@ def run_as_service (args_dir, arch_dir):
 
     sig = Signal_Catcher()
 
-    print ("Started: ", datetime.now(), flush=True)
+    logprint ("Started", flush=True)
     while not sig.caught():
         filenames = unprocessed_files (db_file_path, table_names)
         processed_files = process_file_list (filenames, args_dir, arch_dir)
@@ -316,11 +320,10 @@ def main():
     """
     args = parser.parse_args()
 
-    if args.dir == None:
-        arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-        if arch_dir == None:
-            eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-            sys.exit(1)
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    if arch_dir == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        sys.exit(1)
 
     if args.service:
         status = run_as_service (args.dir, arch_dir)
