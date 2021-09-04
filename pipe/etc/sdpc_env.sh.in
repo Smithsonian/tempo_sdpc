@@ -49,6 +49,10 @@ export SDPC_PROCESSING_VERSION
 : "${SDPC_ARCHIVE_DBFILE:=/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite}"
 export SDPC_ARCHIVE_DBFILE
 
+# Level 0 IRU, SMC, HK file lookup can use a separate database
+: "${SDPC_ARCHIVE_DBFILE_L0:=${SDPC_ARCHIVE_DBFILE}}"
+export SDPC_ARCHIVE_DBFILE_L0
+
 #---------------------------------
 #  Live processing directory paths
 #---------------------------------
