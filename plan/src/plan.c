@@ -115,7 +115,8 @@ static void usage (void)
    fprintf (stderr, "                                SOURCE may be a file or a directory.\n");
    fprintf (stderr, "                                SOURCE=@FILE indicates FILE contains a list of files.\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
-   fprintf (stderr, "   -I | --irr FILE          Generate irradiance plan output file\n");
+   fprintf (stderr, "   -i | --irr FILE          Generate irradiance geometry output file\n");
+   fprintf (stderr, "   -I | --Irr FILE          Generate only irradiance geometry output file\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize\n");
    fprintf (stderr, "                            the solar illumination at the start of each scan\n\n");
@@ -1519,6 +1520,7 @@ int main (int argc, char **argv)
    int status = EXIT_FAILURE;
    int enable_twilight_scan = 0;
    int have_date = 0;
+   int irr_only = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
    const char *maneuver_file = NULL;
@@ -1539,7 +1541,8 @@ int main (int argc, char **argv)
         {"scan",         required_argument, 0, 's'},
         {"type",         required_argument, 0, 't'},
         {"output",       required_argument, 0, 'o'},
-        {"irr",          required_argument, 0, 'I'},
+        {"irr",          required_argument, 0, 'i'},
+        {"Irr",          required_argument, 0, 'I'},
         {"szaout",       required_argument, 0, 'z'},
         {"tailor",       required_argument, 0, 'T'},
         {"maneuver",     required_argument, 0, 'M'},
@@ -1575,7 +1578,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNvZ:M:c:d:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNvZ:M:c:d:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1635,6 +1638,9 @@ int main (int argc, char **argv)
                }
              break;
            case 'I':
+             irr_only = 1;
+             /* drop */
+           case 'i':
              irr_outfile = optarg;
              if (NULL == (fp_irr = handle_outfile_arg (irr_outfile, "w")))
                {
@@ -1754,6 +1760,11 @@ int main (int argc, char **argv)
      {
         if (0 != write_irradiance_plan (fp_irr, solar_geom, &t0, num_plan_days))
           goto return_status;
+        if (irr_only)
+          {
+             status = 0;
+             goto return_status;
+          }
      }
 
    if (NULL == (scan = scan_open (&cfg, scan_type)))
