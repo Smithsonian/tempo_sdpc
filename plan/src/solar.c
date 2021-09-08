@@ -326,14 +326,14 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
    if (pphi)
      {
         double dot, hat_bs_sat[3], hat_sat[3], u[3], hat_u[3];
-        double hat_z[3], hat_vel[3], hat_slit[3];
+        double hat_z[3], hat_vel[3], hat_slit[3], cross[3];
         double cos_phi;
 
         /* \H = host satellite position vector
          * \S = sun pos. vec.
          * \B = boresight pos. vec.
          * \z = earth rotation axis unit vector
-         * \l = unit vector along slit
+         * \l = unit vector northward along slit
          * \v = unit tangent vector in the direction of the orbital velocity
          *   = \z x \h,  where \h = \H/norm(\H)
          * R(\v,\k,theta) = rotation of vector \v about axis \k by angle theta,
@@ -365,6 +365,11 @@ static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *pt
         vec_rotate (hat_z, hat_vel, tilt_angle, hat_slit);  /* \l */
         cos_phi = vec_dot (hat_u, hat_slit);                /* \u dot \l */
         *pphi = acos(cos_phi) / DEGTORAD;
+
+        /* acos() returns a value in the range [0,pi].
+         * Determine the sign of the angle from the z component of cross(\l, \u) */
+        vec_cross (hat_slit, hat_u, cross);
+        if (cross[2] < 0) *pphi *= -1;
      }
 
    return 0;
