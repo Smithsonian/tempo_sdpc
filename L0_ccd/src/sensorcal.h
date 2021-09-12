@@ -40,6 +40,7 @@ struct Calibration_Type
     * @param solar_phi    azimuthal angle coordinate of the solar position vector
     * @param solar_theta  polar angle coordinate of the solar position vector
     * @param img  non-NULL pointer to an uncalibrated image
+    * @param img_diag    pointer to space for the BTDF values (diagnostic - NULL is ok)
     * @return 0 on success, non-zero on error
     *
     * The BTDF is the bidirectional transmission distribution function
@@ -48,7 +49,21 @@ struct Calibration_Type
     * the image in place. Pixels containing \a IMAGE_PIXEL_FILL_VALUE are not modified.
     */
    int (*cal_apply_btdf)(const Calibration_Type *, int, double, double,
-                         Image_Type *);
+                         Image_Type *, Image_Type *);
+
+   /** Apply correction for diffuser polarization
+    * @param cal  non-NULL pointer to a Calibration_Type object
+    * @param solar_phi    azimuthal angle coordinate of the solar position vector
+    * @param solar_theta  polar angle coordinate of the solar position vector
+    * @param img  non-NULL pointer to an uncorrected irradiance image
+    * @param img_diag    pointer to space for the BTDF values (diagnostic - NULL is ok)
+    * @return 0 on success, non-zero on error
+    *
+    * The input image is modified in place.
+    * Pixels containing \a IMAGE_PIXEL_FILL_VALUE are not modified.
+    */
+   int (*cal_apply_diffuser_polcorr)(const Calibration_Type *, double, double,
+                                     Image_Type *, Image_Type *);
 
    int (*cal_straylight_correction)(const Calibration_Type *, Image_Type *);
 

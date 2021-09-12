@@ -15,6 +15,8 @@
 #include "config.h"
 #include "util.h"
 
+#define DEGTORAD (M_PI/180.0)
+
 #define SLIT_AOV_MAX_DEG (2.3)
 
 #define SHADOW_TOP (1<<0)
@@ -49,6 +51,15 @@ typedef struct
     */
 }
 BTDF_Type;
+
+typedef struct
+{
+   double *lpsens;   /**< linear polarization sensivity [num_xtrack, num_wave] */
+   double *angmax;   /**< angle of maximum transmission [num_xtrack, num_wave] [rad] */
+   int num_xtrack;
+   int num_wave;
+}
+Lps_Table_Type;
 
 typedef struct
 {
@@ -87,11 +98,16 @@ typedef struct
 }
 Shadow_Type;
 
+static void free_lps_table (Lps_Table_Type *tbl);
+
 #define SENSORCAL_PRIVATE_DATA \
    BB_Kernel_Type *sl_bbk; \
    PSF_Matrix_Type *sl_psf; \
    BTDF_Type *diffuser_wrk; \
    BTDF_Type *diffuser_ref; \
+   Lps_Table_Type *lps_uv; \
+   Lps_Table_Type *lps_vis; \
+   double *diffuser_index; \
    float *wavelength_grid; \
    float *radcal_coeffs; \
    int num_waves; \
@@ -533,7 +549,7 @@ static int read_btdf (Calibration_Type *cal, const char *path, const char *trend
 static int cal_apply_btdf (const Calibration_Type *cal,
                            int is_reference_diffuser,
                            double solar_phi_deg, double solar_theta_deg,
-                           Image_Type *img)
+                           Image_Type *img, Image_Type *img_diag)
 {
    const BTDF_Type *bt;
    float aov_min, aov_step, hs;
@@ -598,7 +614,14 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              int iw, ia;
 
              if (img_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
-               continue;
+               {
+                  if (img_diag)
+                    {
+                       Image_Pixel_Type *img_d = img_diag->pixels + p * img_diag->num_cols;
+                       img_d[s] = IMAGE_PIXEL_FILL_VALUE;
+                    }
+                  continue;
+               }
 
              aov_s = SLIT_AOV_MAX_DEG * (1.0 - s/hs);
              wave_s = waves[s];
@@ -652,6 +675,115 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
 
              img_pixels[s] /= btdfe_s * bt_trend[s];
+             if (img_diag)
+               {
+                  Image_Pixel_Type *img_d = img_diag->pixels + p * img_diag->num_cols;
+                  img_d[s] = 1.0 / (btdfe_s * bt_trend[s]);
+               }
+          }
+     }
+
+   return 0;
+}
+
+static int lps_lookup (const Calibration_Type *cal, int p, int s, double *lpsens, double *angmax)
+{
+   int iwave, end, offset;
+   Lps_Table_Type *lps;
+
+   /* LPS tables are split into UV, VIS bands with arrays dimensioned as
+    * [num_xtrack, num_wave], so num_wave varies fastest, with wavelength
+    * monotonic increasing.
+    * Before splitting into bands, the CCD images are dimensioned as
+    * [num_wave, num_xtrack], with wavelengths in reverse order. Ugh.
+    */
+
+   if (p < cal->num_waves/2)
+     { /* VIS band */
+        lps = cal->lps_vis;
+        end = cal->num_waves/2;
+     }
+   else
+     { /* UV band */
+        lps = cal->lps_uv;
+        end = cal->num_waves;
+     }
+
+   /* xtrack == s */
+   iwave = end - p - 1;
+   offset = s * lps->num_wave + iwave;
+
+   *lpsens = lps->lpsens[offset];
+   *angmax = lps->angmax[offset];
+
+   return 0;
+}
+
+static int cal_apply_diffuser_polcorr (const Calibration_Type *cal,
+                                       double solar_phi_deg, double solar_theta_deg,
+                                       Image_Type *img, Image_Type *img_diag)
+{
+   double solar_phi = solar_phi_deg * DEGTORAD;
+   double solar_theta = solar_theta_deg * DEGTORAD;
+   double sin_aoi = sin(solar_theta);
+   double cos_aoi = cos(solar_theta);
+   int p, s;
+
+   if (enable_state_query_bool (ENABLE_DIFF_POLCORR) < 1)
+     return 0;
+
+   for (p = 0; p < img->num_rows; p++)
+     {
+        Image_Pixel_Type *img_pixels = img->pixels + p * img->num_cols;
+        double *diffuser_index = cal->diffuser_index + p * img->num_cols;
+
+        for (s = 0; s < img->num_cols; s++)
+          {
+             double sin_t, cos_t, r, x, lps_d, lps_t, ang_max, diffuser_polcorr;
+             double n2 = diffuser_index[s];
+
+             if (img_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               {
+                  if (img_diag)
+                    {
+                       Image_Pixel_Type *img_d = img_diag->pixels + p * img_diag->num_cols;
+                       img_d[s] = IMAGE_PIXEL_FILL_VALUE;
+                    }
+                  continue;
+               }
+
+             /* Snell's law, angle of incidence -> angle of transmission */
+             sin_t = sin_aoi / n2;
+             cos_t = (fabs(sin_t) > 1.0) ? 0.0 : sqrt (1.0 - sin_t * sin_t);
+
+             /* The two-plate diffuser linear polarization sensitivity, LPS, may
+              * be expressed as lps_d = (Tp^2-Ts^2)/(Tp^2+Ts^2) where
+              * Ts, Tp are power transmission coefficients for perpendicular (s),
+              * and parallel polarization modes (p), respectively.
+              * [Not to be confused with serial/parallel readout of the CCD].
+              * For details on Ts,Tp, see e.g. the wikipedia article on Fresnel Equations.
+              * We can write lps_d in terms of the ratio, x = Ts/Tp.
+              * Ts and Tp have a common numerator and can be written in the form:
+              *     Ts = A/a^2, Tp=A/b^2,
+              * so that x = Ts/Tp = b^2/a^2. Defining r=b/a, we then have:
+              */
+             r = (cos_t + n2 * cos_aoi) / (cos_aoi + n2 * cos_t);
+             x = r*r;
+             lps_d = (1.0 - x*x) / (1.0 + x*x);
+
+             /* lps_t = spectrometer linear polarization sensitivity */
+             (void) lps_lookup (cal, p, s, &lps_t, &ang_max);
+
+             /* factor to correct for polarization caused by the diffuser */
+             diffuser_polcorr = 1.0/(1.0 + lps_d * lps_t * cos(2*(ang_max - solar_phi)));
+
+             /* apply the correction */
+             img_pixels[s] *= diffuser_polcorr;
+             if (img_diag)
+               {
+                  Image_Pixel_Type *img_d = img_diag->pixels + p * img_diag->num_cols;
+                  img_d[s] = diffuser_polcorr;
+               }
           }
      }
 
@@ -1475,8 +1607,11 @@ static void cal_delete (Calibration_Type *cal)
    free_psf_matrix_type (cal->sl_psf);
    btdf_free(cal->diffuser_wrk);
    btdf_free(cal->diffuser_ref);
+   free_lps_table (cal->lps_uv);
+   free_lps_table (cal->lps_vis);
    FREE(cal->radcal_coeffs);
    FREE(cal->wavelength_grid);
+   FREE(cal->diffuser_index);
    FREE(cal);
 }
 
@@ -1607,6 +1742,167 @@ static int optional_config_path (config_setting_t *s, const char *name, char **p
    return 0;
 }
 
+static void free_lps_table (Lps_Table_Type *tbl)
+{
+   if (tbl == NULL)
+     return;
+   FREE(tbl->lpsens);
+   FREE(tbl->angmax);
+   FREE(tbl);
+}
+
+static Lps_Table_Type *alloc_lps_table (int num_xtrack, int num_wave)
+{
+   Lps_Table_Type *tbl = NULL;
+   size_t len = num_xtrack * num_wave * sizeof(double);
+
+   if (NULL == (tbl = (Lps_Table_Type *)MALLOC (sizeof *tbl)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+   memset ((char *)tbl, 0, sizeof (*tbl));
+
+   if ((NULL == (tbl->lpsens = (double *)MALLOC (len)))
+       || (NULL == (tbl->angmax = (double *)MALLOC (len))))
+     {
+        free_lps_table (tbl);
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   tbl->num_xtrack = num_xtrack;
+   tbl->num_wave = num_wave;
+
+   return tbl;
+}
+
+static Lps_Table_Type *read_lps_table (int grp)
+{
+   Lps_Table_Type *tbl = NULL;
+   TIO_Var_Info_Type info = {0};
+   const char lps_var[] = "linear_polarization_sensitivity";
+   const char angmax_var[] = "angle_of_maximum_transmission";
+   int k, num_xtrack, num_wave;
+   int start[3], count[3];
+
+   if (0 != TIO_inq_var (grp, lps_var, &info))
+     return NULL;
+
+   /* dimlen[0] is slowest varying,
+    * dimlen[ndims-1] is fastest varying */
+   num_xtrack = info.dimlens[1];
+   num_wave = info.dimlens[2];
+
+   if (NULL == (tbl = alloc_lps_table (num_xtrack, num_wave)))
+     return NULL;
+
+   /* read the table for the middle mirror position */
+   start[0] = 1;
+   start[1] = 0;
+   start[2] = 0;
+
+   count[0] = 1;
+   count[1] = num_xtrack;
+   count[2] = num_wave;
+
+   if ((0 != TIO_get_var_section (grp, lps_var, start, count, NC_DOUBLE, tbl->lpsens))
+       ||(0 != TIO_get_var_section (grp, angmax_var, start, count, NC_DOUBLE, tbl->angmax)))
+     goto return_error;
+
+   /* convert deg -> radians */
+   for (k = 0; k < num_xtrack * num_wave; k++)
+     {
+        tbl->angmax[k] *= DEGTORAD;
+     }
+
+   return tbl;
+return_error:
+   free_lps_table (tbl);
+   return NULL;
+}
+
+static int read_lps (Calibration_Type *cal, config_t *cfg)
+{
+   const char *lps_file = NULL;
+   char *lps_path = NULL;
+   int status = -1;
+   int ncid, grp;
+
+   if (CONFIG_TRUE != config_lookup_string (cfg, "calibration.lps_file", &lps_file))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading calibration.lps_file: %s", __func__, config_error_file(cfg));
+        return -1;
+     }
+
+   if (NULL == (lps_path = expand_string (lps_file)))
+     return -1;
+
+   if (0 != TIO_open (lps_path, NC_NOWRITE, &ncid))
+     goto return_status;
+
+   if (0 != TIO_inq_grp (ncid, TEMPO_BAND_NAME_UV, &grp))
+     goto return_status;
+
+   if (NULL == (cal->lps_uv = read_lps_table (grp)))
+     goto return_status;
+
+   if (0 != TIO_inq_grp (ncid, TEMPO_BAND_NAME_VIS, &grp))
+     goto return_status;
+
+   if (NULL == (cal->lps_vis = read_lps_table (grp)))
+     goto return_status;
+
+   if (   (cal->num_waves/2 != cal->lps_uv->num_wave)
+       || (cal->num_waves/2 != cal->lps_vis->num_wave)
+       || (cal->num_xpos != cal->lps_uv->num_xtrack)
+       || (cal->num_xpos != cal->lps_vis->num_xtrack)
+      )
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: LPS table dimensions are inconsistent", __func__);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   FREE(lps_path);
+   return status;
+}
+
+static int diffuser_index_of_refraction (Calibration_Type *cal)
+{
+   /* Sellmeier dispersion equation parameters from:
+    * "Interspecimen Comparison of the Refractive Index of Fused Silica",
+    * Malitson, 1965, J. of Opt. Soc. Am., 55, 1205 */
+   double a[] = {0.6961663, 0.4079426, 0.8974794};
+   double y0[] = {0.0684043, 0.1162414, 9.896161};  /* microns */
+   double micron_per_nm = 1.e-3;
+   int n = sizeof(y0)/sizeof(*y0);
+   int i, k, num = cal->num_waves * cal->num_xpos;
+
+   if (NULL == (cal->diffuser_index = (double *)MALLOC (num * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+
+   for (i = 0; i < num; i++)
+     {
+        double y = micron_per_nm * cal->wavelength_grid[i];
+        double nsqr = 1.0;
+        for (k = 0; k < n; k++)
+          {
+             double r = y0[k]/y;
+             nsqr += a[k] / (1.0 - r * r);
+          }
+        cal->diffuser_index[i] = sqrt(nsqr);
+     }
+
+   return 0;
+}
+
 Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
 {
    config_setting_t *s;
@@ -1619,7 +1915,8 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    int status = -1;
 
    if ((0 != enable_state_define (cfg, ENABLE_STRAYLIGHT))
-       || (0 != enable_state_define (cfg, ENABLE_BTDF)))
+       || (0 != enable_state_define (cfg, ENABLE_BTDF))
+       || (0 != enable_state_define (cfg, ENABLE_DIFF_POLCORR)))
      return NULL;
 
    if (NULL == (s = config_lookup (cfg, "calibration")))
@@ -1652,6 +1949,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_delete = cal_delete;
    cal->cal_apply_radcal_coeffs = cal_apply_radcal_coeffs;
    cal->cal_apply_btdf = cal_apply_btdf;
+   cal->cal_apply_diffuser_polcorr = cal_apply_diffuser_polcorr;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
    if ((0 != read_radcal_coeffs (cal, path, radcal_trend_file))
@@ -1672,9 +1970,11 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
         if (0 != read_btdf (cal, path, btdf_trend_file))
           goto free_and_return;
 
-        if (0)
+        if (enable_state_query_bool (ENABLE_DIFF_POLCORR) > 0)
           {
-             if (0 != meta_record_basename (meta, btdf_trend_file))
+             if (0 != read_lps (cal, cfg))
+               goto free_and_return;
+             if (0 != diffuser_index_of_refraction (cal))
                goto free_and_return;
           }
      }

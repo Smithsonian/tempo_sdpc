@@ -11,5 +11,6 @@
 #define ENABLE_SMEAR         "smear"
 #define ENABLE_STRAYLIGHT    "straylight"
 #define ENABLE_TRANSIENTS    "transients"
+#define ENABLE_DIFF_POLCORR  "diff_polcorr"
 
 #endif

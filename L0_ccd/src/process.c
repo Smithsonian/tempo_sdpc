@@ -81,6 +81,10 @@ static struct
 }
 Diagnostic_Controls;
 
+/* Setting environment variable SDPC_DIAGNOSTIC_INDEX to
+ * an integer >= 0 turns on diagnostic output for the specified
+ * image index.
+ */
 static int want_diagnostic_output (int index)
 {
    return (index == Diagnostic_Controls.index);
@@ -161,6 +165,8 @@ static int create_diagnostic_file (const Control_Type *ctrl, int num_parallel_ac
    if (is_irradiance)
      {
         if ((0 != TIO_def_var (ncid, "img_before_btdf_correction", TIO_FLOAT, 2, img_dimids, &varid))
+            ||(0 != TIO_def_var (ncid, "btdf", TIO_FLOAT, 2, img_dimids, &varid))
+            ||(0 != TIO_def_var (ncid, "diffuser_polcorr", TIO_FLOAT, 2, img_dimids, &varid))
             ||(0 != TIO_def_var (ncid, "img_after_btdf_correction", TIO_FLOAT, 2, img_dimids, &varid)))
           {
              tell_verror (TELL_IO_WRITE_ERROR, "%s: defining irradiance variables", __func__);
@@ -181,6 +187,9 @@ static int write_diagnostic_image (const Image_Type *img, const char *varname)
 {
    int ncid = Diagnostic_Controls.ncid;
    int start[2], count[2];
+
+   if (img == NULL)
+     return 0;
 
    start[0] = 0;
    start[1] = 0;
@@ -720,6 +729,8 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
      {
         int use_reference_diffuser = (exprec->exposure_type == EXPREC_TYPE_IRR_REF);
+        Image_Type *img_btdf = NULL;
+        Image_Type *img_polcorr = NULL;
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
@@ -727,14 +738,39 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
           return -1;
 
         if (want_diagnostic_output(xr->index))
-          (void) write_diagnostic_image (exprec->img, "img_before_btdf_correction");
+          {
+             (void) write_diagnostic_image (exprec->img, "img_before_btdf_correction");
+             /* try to allocate space for diagnostic images, but ignore NULLs */
+             img_btdf = image_new (exprec->img->num_rows, exprec->img->num_cols);
+             img_polcorr = image_new (exprec->img->num_rows, exprec->img->num_cols);
+          }
 
-        if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img))
-            || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err)))
-          return -1;
+        if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img, img_btdf))
+            || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err, NULL)))
+          {
+             image_free (img_btdf);
+             image_free (img_polcorr);
+             return -1;
+          }
+
+        if ((0 != cal->cal_apply_diffuser_polcorr (cal, solar_phi, solar_theta, exprec->img, img_polcorr))
+            || (0 != cal->cal_apply_diffuser_polcorr (cal, solar_phi, solar_theta, xr->img_err, NULL)))
+          {
+             image_free (img_btdf);
+             image_free (img_polcorr);
+             return -1;
+          }
 
         if (want_diagnostic_output(xr->index))
-          (void) write_diagnostic_image (exprec->img, "img_after_btdf_correction");
+          {
+             (void) write_diagnostic_image (img_btdf, "btdf");
+             (void) write_diagnostic_image (img_polcorr, "diffuser_polcorr");
+             (void) write_diagnostic_image (exprec->img, "img_after_btdf_correction");
+             image_free (img_btdf);
+             image_free (img_polcorr);
+             img_btdf = NULL;
+             img_polcorr = NULL;
+          }
      }
 
    return 0;
