@@ -725,12 +725,70 @@ static int cal_apply_diffuser_polcorr (const Calibration_Type *cal,
 {
    double solar_phi = solar_phi_deg * DEGTORAD;
    double solar_theta = solar_theta_deg * DEGTORAD;
-   double sin_aoi = sin(solar_theta);
+   double sin_aoi = sin(solar_theta);   /* angle of incidence (polar angle) */
    double cos_aoi = cos(solar_theta);
    int p, s;
 
    if (enable_state_query_bool (ENABLE_DIFF_POLCORR) < 1)
      return 0;
+
+   /* To correct for polarization induced by the diffuser, consider the
+    * Stokes vector and use Mueller matrices to model the effect of the
+    * diffuser.
+    * 1. Incident solar radiation is unpolarized, so the initial Stokes vector
+    *    is (S0, 0, 0, 0).  (e.g. S1, S2, S3 are all zero).
+    * 2. Mt' = Mueller matrix of the TEMPO instrument
+    *    Md' = Mueller matrix of the diffuser
+    *    Mueller matrix elements can be derived by considering the effect
+    *    of the diffuser material on each component of the Stokes vector.
+    *    Because the incident radiation is unpolarized, only a few matrix
+    *    elements are needed.
+    *    The matrix elements may be expressed in terms of the linear
+    *    polarization sensitivity, LPS, of the diffuser material.
+    *    The LPS may be written in terms of the Fresnel power transmission
+    *    coefficients Ts, Tp, of each polarization mode (s, p).
+    * 3. To account for the illumination geometry, the necessary Mueller
+    *    matrices rotations are incorporated using:
+    *       M' = R(x) M R(-x)
+    *    where R(x) is the rotation matrix,
+    *          Mt is rotated by 'chi' = angle of maximum transmission,
+    *      and Md is rotated by 'az' = the azimuth angle of the incident solar
+    *          irradiance.  'az' is the usual azimuthal angle in the coordinate
+    *          system where:
+    *          \z is the diffuser unit normal pointing toward earth,
+    *          \x is a unit normal pointing northward along the slit, and
+    *          \y = (\z x \x) completes the right-handed coordinate triad
+    *          of unit vectors.
+    * 4. The diffuser polarization correction factor is the ratio:
+    *       factor = S0/S
+    *    where S0 is the signal transmitted by a perfect non-polarizing diffuser,
+    *      and S is the signal transmitted by the actual diffuser.
+    *
+    * Part of the derivation was checked with Mathematica using the following
+    * expressions (Mathematica syntax):
+    *
+    * # Define unrotated Mueller matrices in terms of Lt,Ld which are the telescope
+    * # and diffuser LPS values, respectively. Variables at,ad get multiplied by zero,
+    * # so their structure is not important for the final result.
+    *    Mt = {{1,Lt,0,0},{Lt,1,0,0},{0,0,at,0},{0,0,0,at}}
+    *    Md = {{1,Ld,0,0},{Ld,1,0,0},{0,0,ad,0},{0,0,0,ad}}
+    * # Define the rotation matrices R(+az),R(-az),R(+chi),R(-chi)
+    * # using abbreviations z=azimuth, x=chi
+    *    Rpz = {{1,0,0,0},{0,Cos[2z],-Sin[2z],0},{0, Sin[2z],Cos[2z],0},{0,0,0,1}}
+    *    Rmz = {{1,0,0,0},{0,Cos[2z], Sin[2z],0},{0,-Sin[2z],Cos[2z],0},{0,0,0,1}}
+    *    Rpx = {{1,0,0,0},{0,Cos[2x],-Sin[2x],0},{0, Sin[2x],Cos[2x],0},{0,0,0,1}}
+    *    Rmx = {{1,0,0,0},{0,Cos[2x], Sin[2x],0},{0,-Sin[2x],Cos[2x],0},{0,0,0,1}}
+    * # Compute rotated Mueller matrices
+    *    tprime = Rpx.Mt.Rmx
+    *    dprime = Rpz.Md.Rmz
+    *    signal = tprime . dprime
+    *    signal[[1,1]]
+    *    Out[10]= 1 + Ld Lt Cos[2 x] Cos[2 z] + Ld Lt Sin[2 x] Sin[2 z]
+    * Here, 'signal' is really the ratio -- e.g., the incident Stokes vector
+    * is (1,0,0,0).
+    *
+    * Finally, we use cos(a-b) = cos(a)cos(b) + sin(a)*sin(b)
+    */
 
    for (p = 0; p < img->num_rows; p++)
      {
@@ -740,7 +798,7 @@ static int cal_apply_diffuser_polcorr (const Calibration_Type *cal,
         for (s = 0; s < img->num_cols; s++)
           {
              double sin_t, cos_t, r, x, lps_d, lps_t, ang_max, diffuser_polcorr;
-             double n2 = diffuser_index[s];
+             double n2 = diffuser_index[s];  /* index of refraction */
 
              if (img_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                {
@@ -774,7 +832,7 @@ static int cal_apply_diffuser_polcorr (const Calibration_Type *cal,
              /* lps_t = spectrometer linear polarization sensitivity */
              (void) lps_lookup (cal, p, s, &lps_t, &ang_max);
 
-             /* factor to correct for polarization caused by the diffuser */
+             /* Factor to correct for polarization caused by the diffuser. */
              diffuser_polcorr = 1.0/(1.0 + lps_d * lps_t * cos(2*(ang_max - solar_phi)));
 
              /* apply the correction */
