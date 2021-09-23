@@ -9,6 +9,7 @@ import time
 from threading import Event
 
 import sqlite3
+import argparse
 from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 import dateutil.parser as dp
@@ -23,6 +24,9 @@ Radiance_File_Attributes = Coverage_Time_Attributes \
                          + ["scan_num", "scan_type", "granule_num"]
 
 Prefix = "register:"
+
+Have_Rad_L1_Table = False
+Have_Rad_L1a_Table = False
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -82,7 +86,10 @@ def init_radiance_product_table (table_name):
     fields = {}
     define_common_fields (fields)
     fields["scan_id"] = "integer not null"
-    quals = "unique(istart), foreign key (istart) references {}(istart)".format('RAD_L1')
+    if Have_Rad_L1_Table:
+        quals = "unique(istart), foreign key (istart) references RAD_L1(istart)"
+    else:
+        quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
 def init_dark_product_table (table_name):
@@ -244,6 +251,8 @@ EOF
 def maybe_handle_scan_completion (conn, product_name, scan_id):
     if not "L2" in product_name:
         return
+    if not Have_Rad_L1a_Table:
+        return
     # This approach assumes that all of the RAD_L1a files will have been archived
     # by the time the associated L2 products start appearing.  This should be
     # true for normal processing because no L2 product generation starts until the
@@ -256,6 +265,12 @@ def maybe_handle_scan_completion (conn, product_name, scan_id):
     num_products = count_archived_granules (cur, product_name, scan_id)
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
+
+def table_exists (conn, table_name):
+    cur = conn.cursor()
+    cur.execute ("SELECT name FROM sqlite_master WHERE type='table' AND name='{}';".format(table_name))
+    result = cur.fetchone()
+    return result != None
 
 def process_file (conn, filename, nc):
 
@@ -301,6 +316,11 @@ def process_file (conn, filename, nc):
         keys["asdc_status_met"] = 0   # new
     else:
         keys["asdc_status_met"] = -2  # nonexistent
+
+    global Have_Rad_L1a_Table
+    Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
+    global Have_Rad_L1_Table
+    Have_Rad_L1_Table = table_exists (conn, 'RAD_L1')
 
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)
@@ -356,7 +376,32 @@ def process_file_raw (conn, filename):
 def connect_database (db_path):
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
+    #conn.set_trace_callback(print)
     return conn
+
+def register_one_file (db_path, fn):
+    status = -1
+    with connect_database (db_path) as conn:
+        if fn.endswith ('.nc'):
+            with NetCDFFile (fn, "r") as nc:
+                status = process_file (conn, fn, nc)
+        elif fn.endswith ('.raw'):
+            status = process_file_raw (conn, fn)
+        if status != 0:
+            eprint('Error processing file: {}'.format(fn))
+    return status
+
+def move_failing (fn):
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    if arch_dir == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        return
+    fail_dir = os.path.join (arch_dir, 'registry/failed')
+    if not os.path.isdir (fail_dir):
+        os.makedirs(fail_dir)
+    new_path = os.path.join (fail_dir, os.path.basename(fn))
+    logprint ('moving {} to {}'.format(fn, new_path))
+    os.rename (fn, new_path)
 
 def register_files (db_path, filenames):
 
@@ -368,19 +413,20 @@ def register_files (db_path, filenames):
 
     # Operate only on symbolic links!
 
+    status_list = []
+
     for fn in filenames:
         if os.path.islink(fn):
-            with connect_database (db_path) as conn:
-                if fn.endswith ('.nc'):
-                    with NetCDFFile (fn, "r") as nc:
-                        status = process_file (conn, fn, nc)
-                elif fn.endswith ('.raw'):
-                    status = process_file_raw (conn, fn)
-                else:
-                    status = -1
-            if status != 0:
-                eprint('Error processing file: {}'.format(fn))
-            os.remove(fn)
+            try:
+                status = register_one_file (db_path, fn)
+            except:
+                status_list.append(-1)
+                move_failing(fn)
+            else:
+                status_list.append(status)
+                os.remove(fn)
+
+    return status_list
 
 def collect_filenames (dir):
     filenames = []
@@ -433,9 +479,8 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
-def main():
+def run_as_service (reg):
 
-    reg = init_registry()
     sig = Signal_Catcher()
 
     logprint ("Started", flush=True)
@@ -443,10 +488,25 @@ def main():
     while not sig.caught():
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:
-            register_files (reg.file_path, filenames)
+            status_list = register_files (reg.file_path, filenames)
         sig.wait(10)
 
     logprint ("Exiting: caught signal = {}".format(sig.signum))
+
+def main():
+    parser = argparse.ArgumentParser(description='register data products in a sqlite database')
+    parser.add_argument('--service', help="run as a service", action='store_true')
+    parser.add_argument('filename', help="netCDF4 file name", nargs='*', default=None)
+    args = parser.parse_args()
+
+    reg = init_registry()
+
+    if args.service:
+        run_as_service (reg)
+    elif args.filename != None:
+        status_list = register_files (reg.file_path, args.filename)
+        if any(status_list):
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
