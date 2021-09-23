@@ -53,6 +53,10 @@ export SDPC_ARCHIVE_DBFILE
 : "${SDPC_ARCHIVE_DBFILE_L0:=${SDPC_ARCHIVE_DBFILE}}"
 export SDPC_ARCHIVE_DBFILE_L0
 
+# Level 1 IRR file lookup can use a separate database
+: "${SDPC_ARCHIVE_DBFILE_L1:=${SDPC_ARCHIVE_DBFILE}}"
+export SDPC_ARCHIVE_DBFILE_L1
+
 #---------------------------------
 #  Live processing directory paths
 #---------------------------------

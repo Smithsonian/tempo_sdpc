@@ -16,9 +16,9 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def get_db_path():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_L1")
     if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE_L1 is not set')
         sys.exit(1)
 
     return db_file_path
