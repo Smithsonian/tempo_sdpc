@@ -104,8 +104,8 @@ irr_basename=$(basename "$irr_file" .nc)
 
 # Define template product file name
 #
-lev1_file_fmt=$(mkgranule_name -L 1 -p %s "${rad_basename}.nc")
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s "${rad_basename}.nc")
+lev1_file_fmt=$(mkgranule_name -L 1 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
 lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
 
 # FIXME: For now, both CLDO4 and CLDRR names are needed.
@@ -464,10 +464,9 @@ get_tiepoint_file
 granule_subdir=$(level1_info --dir ${rad_basename}.nc)
 printf "$granule_subdir" > archive_subdir
 
-# We'll be updating the metadata file, so retrieve the pre-INR version from the archive
-/bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
-
 if test x"$SDPC_RADIANCE_POSTINR" = x"ON"; then
+   # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
+   /bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
    run_inr_post ${rad_basename}.nc
 fi
 
