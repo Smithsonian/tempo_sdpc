@@ -144,7 +144,7 @@ define make_public_mirror_symlink (oldpath)
    else if (is_substr (basename, "TEMPO_RAD_L1"))
      {
         % TEMPO_RAD_L1 files are released after INR processing
-        argv = ["radiance_inr_status.py", oldpath];
+        argv = ["radiance_attribute.py", "--attr", "inr_status", oldpath];
         obj = new_process (argv; write=1);
         result = fgetslines (obj.fp1);
         s = obj.wait();

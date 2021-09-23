@@ -40,9 +40,13 @@ set -e
 set -u
 ulimit -s unlimited
 
-# If RADIANCE_POLCORR is not set, define it to be ON.
+# If SDPC_RADIANCE_POSTINR is not set, define it to be ON.
+# To turn off post-INR radiance processing, set it to anything else.
+: "${SDPC_RADIANCE_POSTINR:=ON}"
+
+# If SDPC_RADIANCE_POLCORR is not set, define it to be ON.
 # To turn off polarization correction, set it to anything else.
-: "${RADIANCE_POLCORR:=ON}"
+: "${SDPC_RADIANCE_POLCORR:=ON}"
 
 # If SDPC_DIAGNOSTIC_INDEX is not set, define it to be OFF
 # To turn on this diagnostic feature, set it to an integer 0 <= n < num_frames_in_granule
@@ -157,7 +161,7 @@ tar_l1_radiance_to_dest()
    tarfile_rad="${rad_basename}.rad.tar"
 
    EXTRA_FILES=""
-   if test x"$RADIANCE_POLCORR" = x"ON"; then
+   if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
       EXTRA_FILES="$granule_dir/log_polcorr.txt"
       if test x"$SDPC_DIAGNOSTIC_INDEX" != x"OFF" ; then
          EXTRA_FILES="$EXTRA_FILES $granule_dir/polcorr_*${rad_basename}.nc"
@@ -187,8 +191,10 @@ tar_l1_radiance_to_dest()
    # along with any earlier telemetry-only radiance files.
    inr_input_cache="$SDPC_INR_RUN_DIR/Staging/Granules"
    level1a_granule_path="${inr_input_cache}/${rad_basename}.nc"
-   radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
-   /bin/rm -f "$level1a_granule_path"
+   if test -f "$level1a_granule_path" ; then
+      radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
+      /bin/rm -f "$level1a_granule_path"
+   fi
 
    # Move INR performance reports to the archive:
    inr_report="$SDPC_INR_RUN_DIR/Output/${rad_basename}.PerformanceReport.nc"
@@ -216,7 +222,7 @@ run_inr_post()
    run_wavecal $radiance_file "0-4"
 
    # polarization correction
-   if test x"$RADIANCE_POLCORR" = x"ON"; then
+   if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
 
       # Intentionally avoid TEMPO prefix for diagnostic output files,
       # so those files won't be treated as data products.
@@ -413,7 +419,7 @@ EOF
 perform_cleanup()
 {
    # Delete the original radiance file, and file list file
-   /bin/rm "$rad_path" "$file_list_file"
+   /bin/rm -f "$rad_path" "$file_list_file"
 
    # We need original radiance path, without the "." prefix on the basename
    # (usually looks like "$some_dir/${prefix}.Smoothed.nc"):
@@ -424,7 +430,7 @@ perform_cleanup()
    for tag in $INR_FILE_TAGS ; do
        inrfile_path=$(echo "$rad_path_nodot" | sed -e "s/Smoothed.nc/${tag}.nc/")
        if test -f "$inrfile_path" ; then
-          /bin/rm "$inrfile_path"
+          /bin/rm -f "$inrfile_path"
        fi
    done
 }
@@ -461,7 +467,9 @@ printf "$granule_subdir" > archive_subdir
 # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
 /bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
 
-run_inr_post ${rad_basename}.nc
+if test x"$SDPC_RADIANCE_POSTINR" = x"ON"; then
+   run_inr_post ${rad_basename}.nc
+fi
 
 /bin/cp $irr_file ${irr_basename}.nc
 (run_cloud_o4)
