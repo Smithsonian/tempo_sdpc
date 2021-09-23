@@ -93,6 +93,33 @@ make_iru_only_file_for_inr()
    /bin/rmdir $dir
 }
 
+prep_inr_goes_source()
+{
+   # During normal operations, the GOES imagery source will change only
+   # once per day, but the best way to automate this update is to set it
+   # here, using the radiance file measurement date. While we could check
+   # the existing symlinks before changing them, the code is simplest
+   # if we set the symlinks every time.  Re-setting the links for each new
+   # radiance file also ensures a quick recovery in case something happens
+   # to the links during the course of an operational day.
+   # If the necessary GOES imagery doesn't exist, we proceed with a warning
+   # rather than a fatal error, because we don't want to prevent the system
+   # from running in an unusual mode (e.g. maybe we don't care about INR
+   # in some context, so the lack of imagery is irrelevant).
+
+   tstart=$(radiance_attribute.py --attr time_coverage_start "$granule_path")
+   yday_subdir="$(TZ='UTC+6' date -d $tstart +%Y/%j)"
+   goes_srcdir="${SDPC_ANCILLARY_ROOT}/goes/${yday_subdir}"
+
+   if test -d "$goes_srcdir" ; then
+      target_dir="$SDPC_INR_RUN_DIR/Staging"
+      ln -nf -s $goes_srcdir/g16_cmi $target_dir/Right || error_exit "$LINENO: setting GOES-East source"
+      ln -nf -s $goes_srcdir/g17_cmi $target_dir/Left || error_exit "$LINENO: setting GOES-West source"
+   else
+      echo "WARNING: INR reference GOES imagery not found: $goes_srcdir"
+   fi
+}
+
 # Parse the path to the granule file:
 granule_basename=$(basename "$granule_path" .nc| sed -e s"/^[.]//")
 granule_dir=$(dirname "$granule_path")
@@ -118,6 +145,8 @@ case "${granule_basename}" in
 
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
    select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
+
+   prep_inr_goes_source
    ;;
 
    * )
