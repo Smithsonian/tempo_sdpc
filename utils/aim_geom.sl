@@ -16,6 +16,11 @@ private variable _DtoR   = PI/180.0;
 private variable R_geo   = 42164.0;  % km
 private variable R_earth = 6371.0;   % km (mean)
 
+% WGS84 ellipsoid:
+private variable R_a = 6378.137;  % km
+private variable R_b = 6356.752;  % km
+private variable _WGS84_ratio = R_a/R_b;
+
 private define unit_vec (theta, phi)
 {
    return [cos(phi)*sin(theta),
@@ -37,8 +42,8 @@ private define dot (a,b)
 
 private define wgs84_xyz (lat_phi, lon_lam)
 {
-   variable a = 6378.137;  % km
-   variable b = 6356.752;  % km
+   variable a = R_a;
+   variable b = R_b;
    variable h = 0.0;       % height above/below ellipsoid
 
    % In these expressions, phi = geodetic latitude, lambda = longitude
@@ -55,6 +60,20 @@ private define wgs84_xyz (lat_phi, lon_lam)
    return [x,y,z];
 }
 
+private define geodetic_lat (geocentric_lat_deg)
+{
+   % tan(gencentric_lat) = (1-f)^2 tan(geodetic_lat)
+   % where f = flattening = (a-b)/a
+   % (1-f) = 1-(1-b/a) = b/a
+   % so geodetic_lat = atan((a/b)^2 * tan(geocentric_lat))
+   return atan(sqr(_WGS84_ratio) * tan(geocentric_lat_deg * _DtoR)) / _DtoR;
+}
+
+private define wgs84_xyz_geocentric (lat_deg, lon_deg)
+{
+   return wgs84_xyz (geodetic_lat (lat_deg), lon_deg);
+}
+
 private define sphere_xyz (lat_phi, lon_lam)
 {
    % Unit vec wants theta, phi in the usual spherical coordinates
@@ -62,6 +81,14 @@ private define sphere_xyz (lat_phi, lon_lam)
    variable theta = (90.0 - lat_phi) * _DtoR;
 
    return R_earth * unit_vec (theta, phi);
+}
+
+private define geocentric_lat_lon (r)
+{
+   variable r_plane = hypot (r[0], r[1]);
+   variable lat_deg = atan2 (r[2], r_plane) / _DtoR;
+   variable lon_deg = atan2 (r[1], r[0]) / _DtoR;
+   return lat_deg, lon_deg;
 }
 
 private define coordinate_transform_matrices (lon_deg)
@@ -114,16 +141,34 @@ private variable V = struct
 
 % WGS84 XYZ position vector of the Earth surface point where
 % the instrument boresight unit vector is aimed.
-private define surface_pos_xyz (d0)
+private define pos_vector_xyz (d0)
 {
    return V.sat_pos_xyz + d0 * V.bs_u_xyz;
 }
 
+private define radial_distance_above_sphere (d0)
+{
+   return hypot(pos_vector_xyz (d0)) - R_earth;
+}
+
+private define radial_distance_above_ellipsoid (d0)
+{
+   variable pos = pos_vector_xyz (d0);
+   variable lat_deg, lon_deg;
+   (lat_deg, lon_deg) = geocentric_lat_lon (pos);
+   variable ell = wgs84_xyz_geocentric (lat_deg, lon_deg);
+
+   % distance along radius vector (not perpendicular to ellipsoid)
+   return hypot(pos) - hypot(ell);
+}
+
 % Compute the (lon,lat) coordinates where the boresight unit vector
 % from a geostationary satellite at the specified longitude
-% intersects the (spherical) earth's surface.
+% intersects the earth's surface.
 private define compute_pierce_point (lon_deg, bs_u_sc)
 {
+   variable is_sphere = qualifier_exists ("sphere");
+
    variable p = coordinate_transform_matrices (lon_deg);
    variable bs_u_xyz = p.sat_to_xyz # bs_u_sc;
    V.bs_u_xyz = bs_u_xyz;
@@ -141,7 +186,13 @@ private define compute_pierce_point (lon_deg, bs_u_sc)
 
    % The lower limit on the distance to the near-side
    % intersection point is the geostationary orbit height:
-   variable dmin = R_geo - R_earth;
+   variable dmin = R_geo - (is_sphere ? R_earth : R_a);
+
+   variable radial_dist_func;
+   if (is_sphere)
+     radial_dist_func = &radial_distance_above_sphere;
+   else
+     radial_dist_func = &radial_distance_above_ellipsoid;
 
    variable height, dlast = 0.0;
    variable num_loops = 0, converged = 0;
@@ -150,7 +201,7 @@ private define compute_pierce_point (lon_deg, bs_u_sc)
    loop (64)
      {
         d = 0.5 * (dmin + dmax);
-        height = hypot(surface_pos_xyz(d)) - R_earth;
+        height = (@radial_dist_func)(d);
         if (abs (dlast - d) < 1.e-10*d)
           {
              converged = 1;
@@ -171,11 +222,17 @@ private define compute_pierce_point (lon_deg, bs_u_sc)
    %vmessage ("num_loops=$num_loops"$);
 
    % XYZ coordinates of earth surface intersection point
-   r = surface_pos_xyz (d);
+   r = pos_vector_xyz (d);
 
-   variable lon = atan2 (r[1], r[0]) /_DtoR;
-   variable r_plane = hypot (r[0], r[1]);
-   variable lat = atan2 (r[2], r_plane) /_DtoR;
+   % geocentric angular coordinates:
+   variable lat, lon;
+   (lat, lon) = geocentric_lat_lon (r);
+
+   if (is_sphere == 0)
+     {
+        lat = geodetic_lat (lat);
+     }
+
    return lon, lat;
 }
 
@@ -207,10 +264,10 @@ private define maybe_convert_to_double (s)
    return atof(s);
 }
 
-private define print_proj4_tpers_angles (bs_sphere)
+private define print_proj4_tpers_angles (bs_u)
 {
    variable tilt, az;
-   (tilt, az) = compute_proj4_tpers_angles (bs_sphere);
+   (tilt, az) = compute_proj4_tpers_angles (bs_u);
    vmessage ("Viewing angle parameters for proj4 tpers projection");
    vmessage ("%7.4f : [deg] tilt", tilt);
    vmessage ("%7.4f : [deg] azimuth", az);
@@ -232,6 +289,7 @@ private define examine_geometry (geom)
    variable bs_angles_deg = geom.bs_angles_deg;
    variable bs_u_calc, offset_rad, aim_lon, aim_lat, aim_pt;
    variable pt, bs_u;
+   variable is_sphere = qualifier_exists ("sphere");
 
    if (lon_sc_deg == NULL)
      {
@@ -257,12 +315,15 @@ private define examine_geometry (geom)
    if (bs_lat_deg == NULL || bs_lon_deg == NULL)
      {
         bs_u = unit_vector_from_angles_deg (bs_angles_deg);
-        (aim_lon, aim_lat) = compute_pierce_point (lon_sc_deg, bs_u);
+        (aim_lon, aim_lat) = compute_pierce_point (lon_sc_deg, bs_u ;; __qualifiers);
         vmessage ("computed aim point (lon, lat): = (%7.4f, %7.4f)", aim_lon, aim_lat);
      }
    else if (bs_angles_deg == NULL)
      {
-        pt = sphere_xyz (bs_lat_deg, bs_lon_deg);
+        if (is_sphere)
+          pt = sphere_xyz (bs_lat_deg, bs_lon_deg);
+        else
+          pt = wgs84_xyz (bs_lat_deg, bs_lon_deg);
         bs_u = compute_boresight_unit_vector (lon_sc_deg, pt);
         bs_angles_deg = angles_deg_from_unit_vector (bs_u);
         vmessage ("boresight direction:");
@@ -274,7 +335,10 @@ private define examine_geometry (geom)
         bs_u = unit_vector_from_angles_deg (bs_angles_deg);
 
         % This is the given boresight surface point
-        pt = sphere_xyz (bs_lat_deg, bs_lon_deg);
+        if (is_sphere)
+          pt = sphere_xyz (bs_lat_deg, bs_lon_deg);
+        else
+          pt = wgs84_xyz (bs_lat_deg, bs_lon_deg);
 
         % Check internal consistency:
         bs_u_calc = compute_boresight_unit_vector (lon_sc_deg, pt);
@@ -287,10 +351,10 @@ private define examine_geometry (geom)
         vmessage ("%9.4f [km]", offset_rad * R_earth);
 
         % Computed surface point for the given boresight direction:
-        (aim_lon, aim_lat) = compute_pierce_point (lon_sc_deg, bs_u);
+        (aim_lon, aim_lat) = compute_pierce_point (lon_sc_deg, bs_u;; __qualifiers);
         vmessage ("aim point for the given boresight direction:");
-        vmessage ("%9.4f deg  (delta = %7.4f deg)", aim_lon, aim_lon - bs_lon_deg);
-        vmessage ("%9.4f deg  (delta = %7.4f deg)", aim_lat, aim_lat - bs_lat_deg);
+        vmessage ("lon: %9.4f deg (delta = %7.4f deg)", aim_lon, aim_lon - bs_lon_deg);
+        vmessage ("lat: %9.4f deg (delta = %7.4f deg)", aim_lat, aim_lat - bs_lat_deg);
 
         % Computed boresight direction to given surface point:
         bs_angles_deg = angles_deg_from_unit_vector (bs_u_calc);
@@ -322,7 +386,9 @@ Usage: $argv0 [options]
                               where VEC = "NULL" | "[alpha,beta,gamma]"
          -p|--bs_point        If present, compute boresight
                               aim point (lon,lat) coordinates
-                              for a spherical Earth.
+         -S|--sphere          Assume a spherical Earth
+
+Default: WGS84 ellipsoid, geodetic latitude
 `$;
    vmessage(s);
    exit(0);
@@ -333,6 +399,7 @@ define main()
    variable s = @Maxar_Geometry;
    variable bs_angles_str = NULL;
    variable compute_bs_point = 0;
+   variable is_sphere = 0;
 
    variable c = cmdopt_new (&error_routine);
    c.add ("h|help", &usage);
@@ -341,6 +408,7 @@ define main()
    c.add ("o|bs_lon_deg", &s.bs_lon_deg; type="double");
    c.add ("b|bs_angles", &bs_angles_str; type="string");
    c.add ("p|bs_point", &compute_bs_point; inc);
+   c.add ("S|sphere", &is_sphere; inc);
    variable __i = c.process (__argv, 1);
 
    if (_typeof(bs_angles_str) == String_Type)
@@ -354,7 +422,13 @@ define main()
         s.bs_lon_deg = NULL;
      }
 
-   return examine_geometry (s);
+   variable status;
+   if (is_sphere)
+     status = examine_geometry (s ; sphere);
+   else
+     status = examine_geometry (s);
+
+   return status;
 }
 
 main();
