@@ -3,17 +3,9 @@
 set -u
 set -e
 
-if test $# -ne 2 ; then
-   echo "Usage:  $0 SDPC_PIPE_NAME SDPC_ROOT"
-   exit 0
-fi
-
-_pipe_name=$1
-_root_dir=$2
-
-export SDPC_PIPE_NAME=$_pipe_name
-
-. $_root_dir/etc/sdpc_env.sh
+: "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set -- source sdpc_env.sh}"
+: "${SDPC_ROOT:?SDPC_ROOT not set -- source sdpc_env.sh}"
+: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set -- source sdpc_env.sh}"
 
 printf "Creating pipeline directory: $SDPC_RUN_DIR_MASTER\n"
 
