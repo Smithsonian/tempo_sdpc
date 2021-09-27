@@ -194,25 +194,25 @@ private define compute_pierce_point (lon_deg, bs_u_sc)
    else
      radial_dist_func = &radial_distance_above_ellipsoid;
 
-   variable height, dlast = 0.0;
    variable num_loops = 0, converged = 0;
+   variable d0 = dmin;
+   variable d1 = dmax;
+   variable h1, h0 = (@radial_dist_func)(d0);
 
-   % Use bisection to find the root
+   % Use secant method to find the root
+   % (iterate linear interpolation to the zero)
    loop (64)
      {
-        d = 0.5 * (dmin + dmax);
-        height = (@radial_dist_func)(d);
-        if (abs (dlast - d) < 1.e-10*d)
+        h1 = (@radial_dist_func)(d1);
+        d = (d0 * h1 - d1 * h0) / (h1 - h0);
+        if (abs (d1 - d) < 1.e-10*d)
           {
              converged = 1;
              break;
           }
-        dlast = d;
-        if (height < 0)
-          {
-             dmax = d;
-          }
-        else dmin = d;
+        h0 = h1;
+        d0 = d1;
+        d1 = d;
         num_loops++;
      }
 
