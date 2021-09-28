@@ -9,6 +9,9 @@ extern void gler_close (GLER_Type *gt);
 extern int gler_land_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt);
 extern int gler_land_file (const GLER_Type *gt, int k, char *path, int pathlen);
 
+extern int gler_snow_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt);
+extern int gler_snow_file (const GLER_Type *gt, int k, char *path, int pathlen);
+
 extern int gler_ocean_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt);
 extern int gler_ocean_file (const GLER_Type *gt, int k, char *path, int pathlen);
 

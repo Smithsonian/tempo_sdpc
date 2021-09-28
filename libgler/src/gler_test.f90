@@ -9,7 +9,8 @@ program gler_test
   real (kind=8) :: taix
   real (kind=4), allocatable, dimension(:) :: lon, lat
   real (kind=4), allocatable, dimension(:,:) :: alb
-  real (kind=4) :: wind_speed, lon_range(2), lat_range(2)
+  real (kind=4) :: lon_range(2), lat_range(2)
+  real (kind=4) :: wind_speed, snow_ice_fraction
 
   errstat = 0
   iwavelen = 466
@@ -41,10 +42,11 @@ program gler_test
   lon(1:nlon) = lon_range(1) + (/(ilon, ilon=0,nlon-1)/) * (lon_range(2)-lon_range(1))/(nlon - 1)
   lat(1:nlat) = lat_range(1) + (/(ilat, ilat=0,nlat-1)/) * (lat_range(2)-lat_range(1))/(nlat - 1)
   wind_speed = 10.0
+  snow_ice_fraction = 0.5
 
   do j = 1, nlat
     do i = 1,nlon
-      call gler_albedo (glt, lon(i), lat(j), wind_speed, alb(i,j), errstat)
+      call gler_albedo (glt, lon(i), lat(j), wind_speed, snow_ice_fraction, alb(i,j), errstat)
       if (errstat /= 0) then
         write(*,*)'gler_albedo failed:  lon=',lon(i),' lat=',lat(j)
         call tell_set_error (0)

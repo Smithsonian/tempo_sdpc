@@ -33,7 +33,8 @@ module gler_module
   type, public :: gler_type
     private
     type(c_ptr) :: c_gler_type
-    type(gler_land_type) :: land
+    type(gler_land_type) :: land  ! land without snow/ice
+    type(gler_land_type) :: snow  ! land with snow/ice
     type(gler_ocean_type) :: ocean
   end type
 
@@ -77,6 +78,31 @@ module gler_module
       integer (c_int), value, intent(in) :: k, pathlen
       character (kind=c_char), intent(out) :: path(*)
       integer (c_int) :: c_gler_land_file
+    end function
+  end interface
+
+  interface
+    function c_gler_snow_lookup (ptr, taix, a, b, awt) &
+        bind (c, name='gler_snow_lookup')
+      use, intrinsic :: iso_c_binding, only: c_ptr, c_double, c_int
+      implicit none
+      type (c_ptr), value :: ptr
+      real (kind=c_double), value :: taix
+      integer (c_int), intent(out) :: a, b
+      real (kind=c_double), intent(out) :: awt
+      integer (c_int) :: c_gler_snow_lookup
+    end function
+  end interface
+
+  interface
+    function c_gler_snow_file (ptr, k, path, pathlen) &
+        bind (c, name='gler_snow_file')
+      use, intrinsic :: iso_c_binding, only: c_ptr, c_char, c_int
+      implicit none
+      type (c_ptr), value :: ptr
+      integer (c_int), value, intent(in) :: k, pathlen
+      character (kind=c_char), intent(out) :: path(*)
+      integer (c_int) :: c_gler_snow_file
     end function
   end interface
 
@@ -333,24 +359,21 @@ contains
     endif
   end subroutine gler_open
 
-  subroutine gler_interp_time (glt, taix, errstat)
+  subroutine gler_interp_time_land (glt, taix, errstat)
     implicit none
     type (gler_type), intent(inout) :: glt
     real (kind=8), intent(in) :: taix
     integer, intent(inout) :: errstat
 
-    integer :: i0, i1, k, year, month, day, status
+    integer :: i0, i1, i, j, year, month, day, status
     character (kind=c_char, len=path_bufsize) :: path0, path1
     real (kind=8) :: hourf, wt0_yday
-    real (kind=4) :: wt0f
-    type (gler_land_type) :: tmp_lt
-    type (gler_ocean_type) :: tmp_ot
+    real (kind=4) :: wt0f, a, a_tmp
+    type (gler_land_type) :: tmp
 
     if (errstat /= 0) return
 
     call tiof_taix_time_to_utc_caldate (taix, year, month, day, hourf, errstat)
-
-    ! Land GLER =============================================
 
     ! Which files bracket the specified day-of-year? */
     status = c_gler_land_lookup (glt % c_gler_type, taix, i0, i1, wt0_yday)
@@ -376,16 +399,121 @@ contains
 
     ! Read the two files, interpolating to the relevant measurement time-of-day, hourf
     call gler_read_land (glt % land, hourf, path0, errstat)
-    call gler_read_land (tmp_lt, hourf, path1, errstat)
+    call gler_read_land (tmp, hourf, path1, errstat)
     if (errstat /= 0) return
 
     ! Perform day-of-year interpolation
-    where (glt % land % mask /= m_water)
-      glt % land % albedo(:,:) = (wt0f * glt % land % albedo(:,:) + &
-                                  (1.0-wt0f) * tmp_lt % albedo(:,:))
-    endwhere
 
-    ! Ocean GLER =============================================
+    do j = 1, glt % land % dims(2) % dimlen
+      do i = 1, glt % land % dims(1) % dimlen
+
+        a = glt % land % albedo(i,j)
+        a_tmp = tmp % albedo(i,j)
+
+        if (glt % land % mask(i,j) /= m_water) then
+          if (a_tmp /= albedo_fill_value) then
+            if (a /= albedo_fill_value) then
+              glt % land % albedo(i,j) = wt0f * a + (1.0 - wt0f) * a_tmp
+            else
+              glt % land % albedo(i,j) = a_tmp
+            endif
+          endif
+        endif
+
+      enddo
+    enddo
+
+  end subroutine gler_interp_time_land
+
+  subroutine gler_interp_time_snow (glt, taix, errstat)
+    implicit none
+    type (gler_type), intent(inout) :: glt
+    real (kind=8), intent(in) :: taix
+    integer, intent(inout) :: errstat
+
+    integer :: i0, i1, i, j, year, month, day, status
+    character (kind=c_char, len=path_bufsize) :: path0, path1
+    real (kind=8) :: hourf, wt0_yday
+    real (kind=4) :: wt0f, a, a_tmp
+    type (gler_land_type) :: tmp
+
+    if (errstat /= 0) return
+
+    call tiof_taix_time_to_utc_caldate (taix, year, month, day, hourf, errstat)
+
+    ! Which files bracket the specified day-of-year? */
+    status = c_gler_snow_lookup (glt % c_gler_type, taix, i0, i1, wt0_yday)
+    if (status /= 0) then
+      call tell_set_error (tell_runtime_error)
+      return
+    endif
+    wt0f = real(wt0_yday,kind=4)
+
+    ! Retrieve the path to file i0
+    status = c_gler_snow_file (glt % c_gler_type, i0, path0, path_bufsize)
+    if (status /= 0) then
+      call tell_set_error (tell_runtime_error)
+      return
+    endif
+
+    ! Retrieve the path to file i1
+    status = c_gler_snow_file (glt % c_gler_type, i1, path1, path_bufsize)
+    if (status /= 0) then
+      call tell_set_error (tell_runtime_error)
+      return
+    endif
+
+    ! Read the two files, interpolating to the relevant measurement time-of-day, hourf
+    call gler_read_land (glt % snow, hourf, path0, errstat)
+    call gler_read_land (tmp, hourf, path1, errstat)
+    if (errstat /= 0) return
+
+    ! Perform day-of-year interpolation
+
+    do j = 1, glt % snow % dims(2) % dimlen
+      do i = 1, glt % snow % dims(1) % dimlen
+
+        a = glt % snow % albedo(i,j)
+        a_tmp = tmp % albedo(i,j)
+
+        if (glt % snow % mask(i,j) /= m_water) then
+          if (a_tmp /= albedo_fill_value) then
+            if (a /= albedo_fill_value) then
+              glt % snow % albedo(i,j) = wt0f * a + (1.0 - wt0f) * a_tmp
+            else
+              glt % snow % albedo(i,j) = a_tmp
+            endif
+          endif
+        endif
+
+      enddo
+    enddo
+
+  end subroutine gler_interp_time_snow
+
+  subroutine gler_interp_time_ocean (glt, taix, errstat)
+    implicit none
+    type (gler_type), intent(inout) :: glt
+    real (kind=8), intent(in) :: taix
+    integer, intent(inout) :: errstat
+
+    integer :: i0, i1, i, j, k, year, month, day, status
+    character (kind=c_char, len=path_bufsize) :: path0, path1
+    real (kind=8) :: hourf, wt0_yday
+    real (kind=4) :: wt0f, a, a_tmp
+    type (gler_ocean_type) :: tmp
+
+    if (errstat /= 0) return
+
+    call tiof_taix_time_to_utc_caldate (taix, year, month, day, hourf, errstat)
+
+    ! Which files bracket the specified day-of-year? */
+    status = c_gler_ocean_lookup (glt % c_gler_type, taix, i0, i1, wt0_yday)
+    if (status /= 0) then
+      call tell_set_error (tell_runtime_error)
+      return
+    endif
+    wt0f = real(wt0_yday,kind=4)
 
     ! Retrieve the path to file i0
     status = c_gler_ocean_file (glt % c_gler_type, i0, path0, path_bufsize)
@@ -403,18 +531,45 @@ contains
 
     ! Read the two files, interpolating to the relevant measurement time-of-day, hourf
     call gler_read_ocean (glt % ocean, hourf, path0, errstat)
-    call gler_read_ocean (tmp_ot, hourf, path1, errstat)
+    call gler_read_ocean (tmp, hourf, path1, errstat)
     if (errstat /= 0) return
 
     ! Perform day-of-year interpolation
-    do k = 1, glt % ocean % dims(1) % dimlen
-      where (glt % ocean % albedo(k,:,:) /= albedo_fill_value)
-        glt % ocean % albedo(k,:,:) = (wt0f * glt % ocean % albedo(k,:,:) + &
-                                       (1.0-wt0f) * tmp_ot % albedo(k,:,:))
-      endwhere
-    enddo
 
-  end subroutine
+    do j = 1, glt % ocean % dims(3) % dimlen
+      do i = 1, glt % ocean % dims(2) % dimlen
+        do k = 1, glt % ocean % dims(1) % dimlen
+
+          a = glt % ocean % albedo(k,i,j)
+          a_tmp = tmp % albedo(k,i,j)
+
+          if (a_tmp /= albedo_fill_value) then
+            if (a /= albedo_fill_value) then
+              glt % ocean % albedo (k,i,j) = wt0f * a + (1.0 - wt0f) * a_tmp
+            else
+              glt % ocean % albedo (k,i,j) = a_tmp
+            endif
+          endif
+
+      enddo
+    enddo
+  enddo
+
+  end subroutine gler_interp_time_ocean
+
+  subroutine gler_interp_time (glt, taix, errstat)
+    implicit none
+    type (gler_type), intent(inout) :: glt
+    real (kind=8), intent(in) :: taix
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    call gler_interp_time_land (glt, taix, errstat)
+    call gler_interp_time_snow (glt, taix, errstat)
+    call gler_interp_time_ocean (glt, taix, errstat)
+
+  end subroutine gler_interp_time
 
   integer function binary_search (xa, t)
     implicit none
@@ -463,12 +618,12 @@ contains
 
   end function
 
-  subroutine gler_albedo (glt, lon, lat, wind_speed, alb, errstat)
+  subroutine gler_albedo (glt, lon, lat, wind_speed, snow_ice_fraction, alb, errstat)
     use, intrinsic :: iso_fortran_env
     use, intrinsic :: ieee_arithmetic
     implicit none
     type (gler_type), intent(in) :: glt
-    real (kind=4), intent(in) :: lon, lat, wind_speed
+    real (kind=4), intent(in) :: lon, lat, wind_speed, snow_ice_fraction
     real (kind=4), intent(out) :: alb
     integer, intent(inout) :: errstat
 
@@ -476,7 +631,7 @@ contains
     real (kind=8), dimension(2) :: x_land
     real (kind=8), dimension(3) :: x_ocean
     real (kind=8) :: wmin, wmax
-    real (kind=4) :: wind_speed_trim
+    real (kind=4) :: wind_speed_trim, snow_alb
 
     if (errstat /= 0) return
 
@@ -494,6 +649,19 @@ contains
       call ndi_table_interp (glt % land % dims, &
                              glt % land % albedo, &
                              x_land, alb, errstat, fill_value=albedo_fill_value)
+      if (0.0 < snow_ice_fraction .and. snow_ice_fraction <= 1.0) then
+        ! When snow/ice is present, use snow_ice_fraction to weight the land/snow albedos
+        call ndi_table_interp (glt % snow % dims, &
+                               glt % snow % albedo, &
+                               x_land, snow_alb, errstat, fill_value=albedo_fill_value)
+        if (snow_alb /= albedo_fill_value) then
+          if (alb /= albedo_fill_value) then
+            alb = snow_ice_fraction * snow_alb + (1.0 - snow_ice_fraction) * alb
+          else
+            alb = snow_alb
+          endif
+        endif
+      endif
     else if (glt % land % mask(ilat, ilon) == m_water) then
       ! Force the wind speed coordinate to be on the tabulated grid
       nw = size (glt % ocean % dims(1) % x)

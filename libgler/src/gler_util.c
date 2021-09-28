@@ -24,6 +24,7 @@ GLER_File_Map_Type;
 struct GLER_Type
 {
    GLER_File_Map_Type *land;
+   GLER_File_Map_Type *snow;
    GLER_File_Map_Type *ocean;
 };
 
@@ -204,6 +205,7 @@ void gler_close (GLER_Type *gt)
    if (NULL == gt)
      return;
    free_gler_file_map_type (gt->land);
+   free_gler_file_map_type (gt->snow);
    free_gler_file_map_type (gt->ocean);
    free(gt);
 }
@@ -213,12 +215,14 @@ GLER_Type *gler_open (int iwave, const char *config_file)
    GLER_Type *gt = NULL;
    IOCLib_String_Array_Obj_Type *sa = NULL;
    char *land_glob = NULL;
+   char *snow_glob = NULL;
    char *ocean_glob = NULL;
    char *cfg_file = NULL;
    int status = -1;
    IOCLib_Config_String_Type tbl[] =
      {
         {"GLER_Land_File_Pattern", &land_glob, IOCLIB_CONFIG_TYPE_STR},
+        {"GLER_Snow_File_Pattern", &snow_glob, IOCLIB_CONFIG_TYPE_STR},
         {"GLER_Ocean_File_Pattern", &ocean_glob, IOCLIB_CONFIG_TYPE_STR},
         {NULL,NULL,0}
      };
@@ -267,6 +271,9 @@ GLER_Type *gler_open (int iwave, const char *config_file)
    memset ((char *)gt, 0, sizeof (*gt));
 
    if (NULL == (gt->land = gler_glob_file_map (land_glob, iwave)))
+     goto return_error;
+
+   if (NULL == (gt->snow = gler_glob_file_map (snow_glob, iwave)))
      goto return_error;
 
    if (NULL == (gt->ocean = gler_glob_file_map (ocean_glob, iwave)))
@@ -391,8 +398,17 @@ int gler_land_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *
    return file_lookup (gt->land, taix, a, b, awt);
 }
 
+int gler_snow_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt)
+{
+   if (gt == NULL)
+     return -1;
+   return file_lookup (gt->snow, taix, a, b, awt);
+}
+
 int gler_ocean_lookup (const GLER_Type *gt, double taix, int *a, int *b, double *awt)
 {
+   if (gt == NULL)
+     return -1;
    return file_lookup (gt->ocean, taix, a, b, awt);
 }
 
@@ -401,6 +417,13 @@ int gler_land_file (const GLER_Type *gt, int k, char *path, int pathlen)
    if (gt == NULL)
      return -1;
    return copy_path (gt->land, k, path, pathlen);
+}
+
+int gler_snow_file (const GLER_Type *gt, int k, char *path, int pathlen)
+{
+   if (gt == NULL)
+     return -1;
+   return copy_path (gt->snow, k, path, pathlen);
 }
 
 int gler_ocean_file (const GLER_Type *gt, int k, char *path, int pathlen)
