@@ -42,7 +42,7 @@ program gler_test
   lon(1:nlon) = lon_range(1) + (/(ilon, ilon=0,nlon-1)/) * (lon_range(2)-lon_range(1))/(nlon - 1)
   lat(1:nlat) = lat_range(1) + (/(ilat, ilat=0,nlat-1)/) * (lat_range(2)-lat_range(1))/(nlat - 1)
   wind_speed = 10.0
-  snow_ice_fraction = 0.0
+  snow_ice_fraction = 0.5
 
   do j = 1, nlat
     do i = 1,nlon

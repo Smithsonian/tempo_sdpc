@@ -212,11 +212,10 @@ contains
         ! assume land, and change below when necessary
         mm = m_land
 
-        ! The land/water pattern is identical for all times.
-        ! Only the shadow pattern changes with time.
-        if (m1 == m_water .or. m2 == m_water) then
-          alb = albedo_fill_value
+        ! water pixels have albedo==fill_value
+        if (a1 == albedo_fill_value .and. a2 == albedo_fill_value) then
           mm = m_water
+          alb = albedo_fill_value
         else if (m1 == m_land) then
           if (m2 == m_land) then
             alb = wt0 * a1 + (1.0 - wt0) * a2
@@ -618,7 +617,7 @@ contains
 
   end function
 
-  subroutine gler_albedo (glt, lon, lat, wind_speed, snow_ice_fraction, alb, errstat)
+  subroutine gler_albedo (glt, lon, lat, wind_speed, snow_ice_fraction, alb, errstat, clip_opt)
     use, intrinsic :: iso_fortran_env
     use, intrinsic :: ieee_arithmetic
     implicit none
@@ -626,6 +625,7 @@ contains
     real (kind=4), intent(in) :: lon, lat, wind_speed, snow_ice_fraction
     real (kind=4), intent(out) :: alb
     integer, intent(inout) :: errstat
+    logical, intent(in), optional :: clip_opt
 
     integer :: ilat, ilon, nw
     real (kind=8), dimension(2) :: x_land
@@ -685,6 +685,14 @@ contains
     if (errstat /= 0) then
       call tell_error (tell_runtime_error, "gler_albedo: interpolation failed", errstat)
       return
+    endif
+
+    if (alb > 1.0) then
+      if (present(clip_opt)) then
+        if (clip_opt) alb = 1.0
+      else
+        alb = 1.0
+      endif
     endif
 
   end subroutine
