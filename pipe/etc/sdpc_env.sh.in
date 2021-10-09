@@ -32,6 +32,9 @@ export SDPC_ANCILLARY_IMS_DBFILE
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
 export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 
+# SDPC_ARCHIVE_ROOT contains the destination archive for various pipelines
+export SDPC_ARCHIVE_ROOT="@ARCHIVE_ROOT@"
+
 #-----------------------------------------
 #  Environment-dependent pipeline defaults
 #-----------------------------------------
@@ -44,6 +47,10 @@ export SDPC_PIPE_NAME
 
 : "${SDPC_PROCESSING_VERSION:=1}"
 export SDPC_PROCESSING_VERSION
+
+# SDPC_ARCHIVE_DIR = root directory for the destination archive
+: "${SDPC_ARCHIVE_DIR:=${SDPC_ARCHIVE_ROOT}/${USER}/${SDPC_PIPE_NAME}}"
+export SDPC_ARCHIVE_DIR
 
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
 : "${SDPC_ARCHIVE_DBFILE:=/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite}"
@@ -66,9 +73,6 @@ export SDPC_RUN_DIR_MASTER="${SDPC_PIPE_HOME}/${SDPC_PIPE_NAME}"
 
 # SDPC_INR_RUN_DIR = root directory where INR processing takes place on the master node
 export SDPC_INR_RUN_DIR="${SDPC_RUN_DIR_MASTER}/inr"
-
-# SDPC_ARCHIVE_DIR = root directory for the destination archive
-export SDPC_ARCHIVE_DIR="${SDPC_RUN_DIR_MASTER}/archive"
 
 # SDPC_RUN_DIR = root directory where pipeline processing takes place on compute nodes
 export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"

@@ -661,6 +661,7 @@ INR_LIB
 S6_ROOT_DIR
 ANCILLARY_DATA_DIR
 REFDATA_DIR
+ARCHIVE_ROOT
 GSL_BLAS
 ECCODES_INC
 ECCODES_LIB
@@ -756,6 +757,7 @@ with_slnovas
 with_libconfig
 with_eccodes
 with_atlasblas
+with_archive
 with_refdata
 with_ancdata
 with_s6root
@@ -1408,6 +1410,7 @@ Optional Packages:
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-eccodes=DIR      Use eccodes library installed in DIR
   --with-atlasblas=DIR      Use atlas library installed in DIR
+  --with-archive=DIR       Put archive directory trees in DIR
   --with-refdata=DIR       Use refdata directory=DIR
   --with-ancdata=DIR       Use ancillary data directory=DIR
   --with-s6root=DIR       Use s6 supervisor installed in DIR
@@ -2746,6 +2749,21 @@ fi
 
 
 
+# Check whether --with-archive was given.
+if test "${with_archive+set}" = set; then :
+  withval=$with_archive; jh_with_archive=$withval
+else
+  jh_with_archive=no
+fi
+
+if test "x$jh_with_archive" = "xno"; then
+   ARCHIVE_ROOT="/tempo/nas0/sdpc_archive"
+else
+   ARCHIVE_ROOT="$jh_with_archive"
+fi
+
+
+
 # Check whether --with-refdata was given.
 if test "${with_refdata+set}" = set; then :
   withval=$with_refdata; jh_with_refdata=$withval
@@ -2754,7 +2772,7 @@ else
 fi
 
 if test "x$jh_with_refdata" = "xno"; then
-   REFDATA_DIR="/data/tempo/sdpc/refdata"
+   REFDATA_DIR="/dev/null"
 else
    REFDATA_DIR="$jh_with_refdata"
 fi
@@ -2769,7 +2787,7 @@ else
 fi
 
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/data/tempo/sdpc/ancillary"
+   ANCILLARY_DATA_DIR="/dev/null"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi
@@ -2784,7 +2802,7 @@ else
 fi
 
 if test "x$jh_with_s6root" = "xno"; then
-   S6_ROOT_DIR="/soft/tempo/sdpc/skarnet"
+   S6_ROOT_DIR="/dev/null"
 else
    S6_ROOT_DIR="$jh_with_s6root"
 fi

@@ -143,12 +143,23 @@ else
 fi
 AC_SUBST(GSL_BLAS)
 
+AC_ARG_WITH(archive,
+  [  --with-archive[=DIR]       Put archive directory trees in DIR],
+  [jh_with_archive=$withval],
+  [jh_with_archive=no])
+if test "x$jh_with_archive" = "xno"; then
+   ARCHIVE_ROOT="/tempo/nas0/sdpc_archive"
+else
+   ARCHIVE_ROOT="$jh_with_archive"
+fi
+AC_SUBST(ARCHIVE_ROOT)
+
 AC_ARG_WITH(refdata,
   [  --with-refdata[=DIR]       Use refdata directory=DIR],
   [jh_with_refdata=$withval],
   [jh_with_refdata=no])
 if test "x$jh_with_refdata" = "xno"; then
-   REFDATA_DIR="/data/tempo/sdpc/refdata"
+   REFDATA_DIR="/dev/null"
 else
    REFDATA_DIR="$jh_with_refdata"
 fi
@@ -159,7 +170,7 @@ AC_ARG_WITH(ancdata,
   [jh_with_ancdata=$withval],
   [jh_with_ancdata=no])
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/data/tempo/sdpc/ancillary"
+   ANCILLARY_DATA_DIR="/dev/null"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi
@@ -170,7 +181,7 @@ AC_ARG_WITH(s6root,
   [jh_with_s6root=$withval],
   [jh_with_s6root=no])
 if test "x$jh_with_s6root" = "xno"; then
-   S6_ROOT_DIR="/soft/tempo/sdpc/skarnet"
+   S6_ROOT_DIR="/dev/null"
 else
    S6_ROOT_DIR="$jh_with_s6root"
 fi
