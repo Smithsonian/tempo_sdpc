@@ -2825,11 +2825,11 @@ if test "x$jh_with_inrots" = "xno"; then
 else
    INROTS_LIB="$jh_with_inrots/lib"
    INROTS_INC="$jh_with_inrots/include"
-   if test -f "${INROTS_LIB}/libtmglib.a" ; then
-     INROTS_EXTRA_LIBS="-ltmglib"
-   else
-     INROTS_EXTRA_LIBS=""
-   fi
+fi
+if test -f "${INROTS_LIB}/libtmglib.a" ; then
+  INROTS_EXTRA_LIBS="-ltmglib"
+else
+  INROTS_EXTRA_LIBS=""
 fi
 
 
