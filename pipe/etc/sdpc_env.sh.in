@@ -32,13 +32,11 @@ export SDPC_ANCILLARY_IMS_DBFILE
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
 export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 
-# SDPC_ARCHIVE_HOME contains the destination archive for various pipelines
-export SDPC_ARCHIVE_HOME="@ARCHIVE_HOME@"
-
 #-----------------------------------------
 #  Environment-dependent pipeline defaults
 #-----------------------------------------
 
+# SDPC_PIPE_HOME = default location for primary node run directories
 : "${SDPC_PIPE_HOME:=@PIPE_HOME@}"
 export SDPC_PIPE_HOME
 
@@ -48,7 +46,11 @@ export SDPC_PIPE_NAME
 : "${SDPC_PROCESSING_VERSION:=1}"
 export SDPC_PROCESSING_VERSION
 
-# SDPC_ARCHIVE_DIR = root directory for the destination archive
+# SDPC_ARCHIVE_HOME = default location for pipeline-specific archive directories
+: "${SDPC_ARCHIVE_HOME:=@ARCHIVE_HOME@}"
+export SDPC_ARCHIVE_HOME
+
+# SDPC_ARCHIVE_DIR = root directory for the pipeline-specific archive
 : "${SDPC_ARCHIVE_DIR:=${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}}"
 export SDPC_ARCHIVE_DIR
 
