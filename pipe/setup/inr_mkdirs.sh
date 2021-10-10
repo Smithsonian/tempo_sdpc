@@ -1,12 +1,12 @@
 #! /bin/sh
 
-: "${SDPC_INR_RUN_DIR:?SDPC_INR_RUN_DIR not set, run this with sdpcrun.sh}"
+: "${SDPC_RUN_DIR_INR:?SDPC_RUN_DIR_INR not set, run this with sdpcrun.sh}"
 
 set -u
 set -e
 
-if test -e $SDPC_INR_RUN_DIR ; then
-   echo "File exists: $SDPC_INR_RUN_DIR"
+if test -e $SDPC_RUN_DIR_INR ; then
+   echo "File exists: $SDPC_RUN_DIR_INR"
    exit 1
 fi
 
@@ -18,11 +18,11 @@ INR_DIRS="config logs scantailoring CloudProducts Staging/rsr"
 # which will be defined by symbolic links.
 # During operations, these links will be updated daily
 
-mkdir -p $SDPC_INR_RUN_DIR
+mkdir -p $SDPC_RUN_DIR_INR
 
 for d in $INR_DIRS ; do
-  mkdir -p $SDPC_INR_RUN_DIR/$d
+  mkdir -p $SDPC_RUN_DIR_INR/$d
 done
 
-ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_input $SDPC_INR_RUN_DIR/Staging/Granules
-ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_output $SDPC_INR_RUN_DIR/Output
+ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_input $SDPC_RUN_DIR_INR/Staging/Granules
+ln -s $SDPC_RUN_DIR_MASTER/stage/granules/inr_output $SDPC_RUN_DIR_INR/Output
