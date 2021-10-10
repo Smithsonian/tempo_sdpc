@@ -129,7 +129,7 @@ AC_SUBST(ECCODES_LIB)
 AC_SUBST(ECCODES_INC)
 
 AC_ARG_WITH(atlasblas,
-  [  --with-atlasblas[=DIR]      Use atlas library installed in DIR],
+  [  --with-atlasblas[=DIR]     Use atlas library installed in DIR],
   [jh_with_atlasblas=$withval],
   [jh_with_atlasblas=no])
 if test "x$jh_with_atlasblas" = "xno"; then
@@ -143,16 +143,27 @@ else
 fi
 AC_SUBST(GSL_BLAS)
 
-AC_ARG_WITH(archive,
-  [  --with-archive[=DIR]       Put archive directory trees in DIR],
-  [jh_with_archive=$withval],
-  [jh_with_archive=no])
-if test "x$jh_with_archive" = "xno"; then
-   ARCHIVE_ROOT="/tempo/nas0/sdpc_archive"
+AC_ARG_WITH(archive-home,
+  [  --with-archive-home[=DIR]  Put archive directory trees in DIR],
+  [jh_with_archive_home=$withval],
+  [jh_with_archive_home=no])
+if test "x$jh_with_archive_home" = "xno"; then
+   ARCHIVE_HOME="/tempo/nas0/sdpc_archive"
 else
-   ARCHIVE_ROOT="$jh_with_archive"
+   ARCHIVE_HOME="$jh_with_archive_home"
 fi
-AC_SUBST(ARCHIVE_ROOT)
+AC_SUBST(ARCHIVE_HOME)
+
+AC_ARG_WITH(pipe-home,
+  [  --with-pipe-home[=DIR]     Put archive directory trees in DIR],
+  [jh_with_pipe_home=$withval],
+  [jh_with_pipe_home=no])
+if test "x$jh_with_pipe_home" = "xno"; then
+   PIPE_HOME="/tempo/nas0/sdpc_ancillary/proc"
+else
+   PIPE_HOME="$jh_with_pipe_home"
+fi
+AC_SUBST(PIPE_HOME)
 
 AC_ARG_WITH(refdata,
   [  --with-refdata[=DIR]       Use refdata directory=DIR],
@@ -177,7 +188,7 @@ fi
 AC_SUBST(ANCILLARY_DATA_DIR)
 
 AC_ARG_WITH(s6root,
-  [  --with-s6root[=DIR]       Use s6 supervisor installed in DIR],
+  [  --with-s6root[=DIR]        Use s6 supervisor installed in DIR],
   [jh_with_s6root=$withval],
   [jh_with_s6root=no])
 if test "x$jh_with_s6root" = "xno"; then
@@ -187,18 +198,18 @@ else
 fi
 AC_SUBST(S6_ROOT_DIR)
 
-AC_ARG_WITH(inrlib,
-  [  --with-inrlib[=DIR]       Use INR library installed in DIR],
-  [jh_with_inrlib=$withval],
-  [jh_with_inrlib=no])
-if test "x$jh_with_inrlib" = "xno"; then
+AC_ARG_WITH(inrroot,
+  [  --with-inrroot[=DIR]       INR software is installed in DIR],
+  [jh_with_inrroot=$withval],
+  [jh_with_inrroot=no])
+if test "x$jh_with_inrroot" = "xno"; then
    INRSW_ROOT="$OTS_ROOT"
    INR_LIB="\$(OTS_ROOT)/lib"
    INR_INC="\$(OTS_ROOT)/include"
 else
-   INRSW_ROOT="$jh_with_inrlib"
-   INR_LIB="$jh_with_inrlib/lib"
-   INR_INC="$jh_with_inrlib/include"
+   INRSW_ROOT="$jh_with_inrroot"
+   INR_LIB="$jh_with_inrroot/lib"
+   INR_INC="$jh_with_inrroot/include"
 fi
 AC_SUBST(INR_LIB)
 AC_SUBST(INR_INC)
@@ -337,3 +348,15 @@ AC_CONFIG_FILES([\
 ])
 AC_OUTPUT
 
+echo ""
+echo "Configuration summary:"
+echo "     Install dir: $prefix"
+echo "    INR software: $INRSW_ROOT"
+echo "  Reference data: $REFDATA_DIR"
+echo "  Ancillary data: $ANCILLARY_DATA_DIR"
+echo "   Pipeline home: $PIPE_HOME"
+echo "    Archive home: $ARCHIVE_HOME"
+echo ""
+if test "x$jh_with_timezone" != "xno"; then
+   echo "   SPACECRAFT_TIMEZONE: $jh_with_timezone"
+fi

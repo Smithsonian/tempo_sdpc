@@ -32,14 +32,14 @@ export SDPC_ANCILLARY_IMS_DBFILE
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
 export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 
-# SDPC_ARCHIVE_ROOT contains the destination archive for various pipelines
-export SDPC_ARCHIVE_ROOT="@ARCHIVE_ROOT@"
+# SDPC_ARCHIVE_HOME contains the destination archive for various pipelines
+export SDPC_ARCHIVE_HOME="@ARCHIVE_HOME@"
 
 #-----------------------------------------
 #  Environment-dependent pipeline defaults
 #-----------------------------------------
 
-: "${SDPC_PIPE_HOME:=$HOME}"
+: "${SDPC_PIPE_HOME:=@PIPE_HOME@}"
 export SDPC_PIPE_HOME
 
 : "${SDPC_PIPE_NAME:=sdpc_test}"
@@ -49,7 +49,7 @@ export SDPC_PIPE_NAME
 export SDPC_PROCESSING_VERSION
 
 # SDPC_ARCHIVE_DIR = root directory for the destination archive
-: "${SDPC_ARCHIVE_DIR:=${SDPC_ARCHIVE_ROOT}/${USER}/${SDPC_PIPE_NAME}}"
+: "${SDPC_ARCHIVE_DIR:=${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}}"
 export SDPC_ARCHIVE_DIR
 
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)

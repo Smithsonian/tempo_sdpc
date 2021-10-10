@@ -661,7 +661,8 @@ INR_LIB
 S6_ROOT_DIR
 ANCILLARY_DATA_DIR
 REFDATA_DIR
-ARCHIVE_ROOT
+PIPE_HOME
+ARCHIVE_HOME
 GSL_BLAS
 ECCODES_INC
 ECCODES_LIB
@@ -757,11 +758,12 @@ with_slnovas
 with_libconfig
 with_eccodes
 with_atlasblas
-with_archive
+with_archive_home
+with_pipe_home
 with_refdata
 with_ancdata
 with_s6root
-with_inrlib
+with_inrroot
 with_inrots
 with_tell
 with_tiff
@@ -1409,12 +1411,13 @@ Optional Packages:
   --with-slnovas=DIR      Use slnovas library installed in DIR
   --with-libconfig=DIR    Use libconfig library installed in DIR
   --with-eccodes=DIR      Use eccodes library installed in DIR
-  --with-atlasblas=DIR      Use atlas library installed in DIR
-  --with-archive=DIR       Put archive directory trees in DIR
+  --with-atlasblas=DIR     Use atlas library installed in DIR
+  --with-archive-home=DIR  Put archive directory trees in DIR
+  --with-pipe-home=DIR     Put archive directory trees in DIR
   --with-refdata=DIR       Use refdata directory=DIR
   --with-ancdata=DIR       Use ancillary data directory=DIR
-  --with-s6root=DIR       Use s6 supervisor installed in DIR
-  --with-inrlib=DIR       Use INR library installed in DIR
+  --with-s6root=DIR        Use s6 supervisor installed in DIR
+  --with-inrroot=DIR       INR software is installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
@@ -2749,17 +2752,32 @@ fi
 
 
 
-# Check whether --with-archive was given.
-if test "${with_archive+set}" = set; then :
-  withval=$with_archive; jh_with_archive=$withval
+# Check whether --with-archive-home was given.
+if test "${with_archive_home+set}" = set; then :
+  withval=$with_archive_home; jh_with_archive_home=$withval
 else
-  jh_with_archive=no
+  jh_with_archive_home=no
 fi
 
-if test "x$jh_with_archive" = "xno"; then
-   ARCHIVE_ROOT="/tempo/nas0/sdpc_archive"
+if test "x$jh_with_archive_home" = "xno"; then
+   ARCHIVE_HOME="/tempo/nas0/sdpc_archive"
 else
-   ARCHIVE_ROOT="$jh_with_archive"
+   ARCHIVE_HOME="$jh_with_archive_home"
+fi
+
+
+
+# Check whether --with-pipe-home was given.
+if test "${with_pipe_home+set}" = set; then :
+  withval=$with_pipe_home; jh_with_pipe_home=$withval
+else
+  jh_with_pipe_home=no
+fi
+
+if test "x$jh_with_pipe_home" = "xno"; then
+   PIPE_HOME="/tempo/nas0/sdpc_ancillary/proc"
+else
+   PIPE_HOME="$jh_with_pipe_home"
 fi
 
 
@@ -2809,21 +2827,21 @@ fi
 
 
 
-# Check whether --with-inrlib was given.
-if test "${with_inrlib+set}" = set; then :
-  withval=$with_inrlib; jh_with_inrlib=$withval
+# Check whether --with-inrroot was given.
+if test "${with_inrroot+set}" = set; then :
+  withval=$with_inrroot; jh_with_inrroot=$withval
 else
-  jh_with_inrlib=no
+  jh_with_inrroot=no
 fi
 
-if test "x$jh_with_inrlib" = "xno"; then
+if test "x$jh_with_inrroot" = "xno"; then
    INRSW_ROOT="$OTS_ROOT"
    INR_LIB="\$(OTS_ROOT)/lib"
    INR_INC="\$(OTS_ROOT)/include"
 else
-   INRSW_ROOT="$jh_with_inrlib"
-   INR_LIB="$jh_with_inrlib/lib"
-   INR_INC="$jh_with_inrlib/include"
+   INRSW_ROOT="$jh_with_inrroot"
+   INR_LIB="$jh_with_inrroot/lib"
+   INR_INC="$jh_with_inrroot/include"
 fi
 
 
@@ -6028,3 +6046,15 @@ $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
 
+echo ""
+echo "Configuration summary:"
+echo "     Install dir: $prefix"
+echo "    INR software: $INRSW_ROOT"
+echo "  Reference data: $REFDATA_DIR"
+echo "  Ancillary data: $ANCILLARY_DATA_DIR"
+echo "   Pipeline home: $PIPE_HOME"
+echo "    Archive home: $ARCHIVE_HOME"
+echo ""
+if test "x$jh_with_timezone" != "xno"; then
+   echo "   SPACECRAFT_TIMEZONE: $jh_with_timezone"
+fi
