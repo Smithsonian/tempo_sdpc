@@ -159,7 +159,7 @@ AC_ARG_WITH(pipe-home,
   [jh_with_pipe_home=$withval],
   [jh_with_pipe_home=no])
 if test "x$jh_with_pipe_home" = "xno"; then
-   PIPE_HOME="/tempo/nas0/sdpc_ancillary/proc"
+   PIPE_HOME="/tempo/nas0/sdpc/proc"
 else
    PIPE_HOME="$jh_with_pipe_home"
 fi
