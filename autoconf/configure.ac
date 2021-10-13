@@ -155,7 +155,7 @@ fi
 AC_SUBST(ARCHIVE_HOME)
 
 AC_ARG_WITH(pipe-home,
-  [  --with-pipe-home[=DIR]     Put archive directory trees in DIR],
+  [  --with-pipe-home[=DIR]     Put pipeline directories in DIR],
   [jh_with_pipe_home=$withval],
   [jh_with_pipe_home=no])
 if test "x$jh_with_pipe_home" = "xno"; then
@@ -170,7 +170,7 @@ AC_ARG_WITH(refdata,
   [jh_with_refdata=$withval],
   [jh_with_refdata=no])
 if test "x$jh_with_refdata" = "xno"; then
-   REFDATA_DIR="/dev/null"
+   REFDATA_DIR="/tempo/nas0/sdpc_soft/refdata"
 else
    REFDATA_DIR="$jh_with_refdata"
 fi
@@ -181,7 +181,7 @@ AC_ARG_WITH(ancdata,
   [jh_with_ancdata=$withval],
   [jh_with_ancdata=no])
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/dev/null"
+   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc/ancillary"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi
@@ -199,7 +199,7 @@ fi
 AC_SUBST(S6_ROOT_DIR)
 
 AC_ARG_WITH(inrroot,
-  [  --with-inrroot[=DIR]       INR software is installed in DIR],
+  [  --with-inrroot[=DIR]       Use INR software installed in DIR],
   [jh_with_inrroot=$withval],
   [jh_with_inrroot=no])
 if test "x$jh_with_inrroot" = "xno"; then

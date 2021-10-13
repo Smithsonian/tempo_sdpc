@@ -1413,11 +1413,11 @@ Optional Packages:
   --with-eccodes=DIR      Use eccodes library installed in DIR
   --with-atlasblas=DIR     Use atlas library installed in DIR
   --with-archive-home=DIR  Put archive directory trees in DIR
-  --with-pipe-home=DIR     Put archive directory trees in DIR
+  --with-pipe-home=DIR     Put pipeline directories in DIR
   --with-refdata=DIR       Use refdata directory=DIR
   --with-ancdata=DIR       Use ancillary data directory=DIR
   --with-s6root=DIR        Use s6 supervisor installed in DIR
-  --with-inrroot=DIR       INR software is installed in DIR
+  --with-inrroot=DIR       Use INR software installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
@@ -2790,7 +2790,7 @@ else
 fi
 
 if test "x$jh_with_refdata" = "xno"; then
-   REFDATA_DIR="/dev/null"
+   REFDATA_DIR="/tempo/nas0/sdpc_soft/refdata"
 else
    REFDATA_DIR="$jh_with_refdata"
 fi
@@ -2805,7 +2805,7 @@ else
 fi
 
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/dev/null"
+   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc/ancillary"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi
