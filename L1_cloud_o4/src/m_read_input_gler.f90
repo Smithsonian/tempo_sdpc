@@ -1,10 +1,10 @@
-!Read GLER 
+!Read GLER
 module m_read_input_gler
    use gler_module
    use tell_module
 
 contains
-   subroutine read_gler
+   subroutine read_gler (errstat)
 
    use m_vars,only: BRDF_SurfaceReflectivity466,&
        BRDF_SurfaceReflectivity440, rad_NumTimes, &
@@ -13,14 +13,16 @@ contains
        rad_SnowIceFraction
 
    implicit none
+   integer, intent(inout) :: errstat
    type (gler_type) :: glt
    logical :: clip_opt
    real(kind=8) :: thistime
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
-   integer :: iwavelen, ix, it, nx, nt, errstat
+   integer :: iwavelen, ix, it, nx, nt
    real(kind=4) :: fspecial
 
-   errstat = 0
+   if (errstat /= 0) return
+
    fspecial = -9999.
    clip_opt = .TRUE.
 
@@ -39,18 +41,19 @@ contains
    !------------------------------
    iwavelen = 466
 !   write(*,*) 'Initializing GLER for 466'
-   call gler_open(glt, iwavelen, errstat, config_file='clim_config.ini')
-   if (errstat /=0) then
-      write(*,*) 'gler_open failed for 466'
-      stop 1
+   ! The run-time environment should specify the config file location
+   call gler_open(glt, iwavelen, errstat) !, config_file='clim_config.ini')
+   if (errstat /= 0) then
+     call tell_error (tell_io_error, 'gler_open failed for 466', errstat)
+     return
    endif
 
    !use the starting time of swath in gler_interp_time
    thistime = rad_time(1)
    call gler_interp_time(glt, thistime, errstat)
    if (errstat /= 0) then
-       write(*,*)'gler_interp_time failed'
-       stop 1
+     call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
+     return
    endif
 
    ! loop through pixels
@@ -71,7 +74,7 @@ contains
                 thissnowice, thisalb, errstat, clip_opt)
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
       enddo
-    enddo     
+    enddo
    else
     wind_speed = 0.
     write(*,*)'note: GLER calculate with wind_speed=0.'
@@ -89,7 +92,7 @@ contains
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
       enddo
     enddo
-   endif 
+   endif
 
    !------------------------------
    ! calculate GLER for 440nm
@@ -105,7 +108,7 @@ contains
    !write(*,*) 'write debug_gler.txt'
    !open(unit=19,file='debug_gler.txt')
    !do it = 1, nt
-   !   write(19,*)(BRDF_SurfaceReflectivity466(ix,it),ix=1,nx) 
+   !   write(19,*)(BRDF_SurfaceReflectivity466(ix,it),ix=1,nx)
    !enddo
    !close(19)
 

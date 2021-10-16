@@ -8,7 +8,6 @@ module m_read_input_tio
 
 contains
 
-
   !> Open a netCDF file
   !-----------------------------------------------------------------------
   !
@@ -40,12 +39,11 @@ contains
 
   end subroutine open_tio
 
-
   !> Get global attribute
   !-----------------------------------------------------------------------
   !hqw & gga
   subroutine get_tio_global_attr(l1file, attrname, attrval, errstat)
- 
+
     use netcdf, only: nf90_global, nf90_get_att, nf90_nowrite
 
     implicit none
@@ -62,24 +60,24 @@ contains
     call tiof_close(tio_l1obj, errstat)
 
   end subroutine get_tio_global_attr
- 
+
   !> Get TEMPO L1 RAD attributes
   !----------------------------------------------------------------------
   !hqw & gga
   !could use get_tio_global_attr, but this one aviods multiple open & close
-  
+
   subroutine get_tio_l1rad_glbattr(l1file, errstat)
     use m_vars, only: gmetadata
 
     use netcdf, only: nf90_global, nf90_get_att, nf90_nowrite
     implicit none
 
-    include 'GetConfig.inc' 
+    include 'GetConfig.inc'
 
     character (len=*), intent(in) :: l1file
     integer (kind=4), intent(inout) :: errstat
 
-    character(len=CFG_VAL_LEN) :: attrval, attrname
+    character(len=CFG_VAL_LEN) :: attrval!, attrname
     integer (kind=4) :: ncerr, tmpint
 
     real (kind=4) :: tmpreal
@@ -92,17 +90,17 @@ contains
     gmetadata%startdate=attrval(01:11)
     gmetadata%starttime=attrval(12:19)
 
-    read(attrval(01:04),*) tmpint 
+    read(attrval(01:04),*) tmpint
     gmetadata%granule_year = tmpint
-    read(attrval(06:07),*) tmpint 
+    read(attrval(06:07),*) tmpint
     gmetadata%granule_month = tmpint
-    read(attrval(09:10),*) tmpint 
+    read(attrval(09:10),*) tmpint
     gmetadata%granule_day = tmpint
-    read(attrval(12:13),*) tmpint 
+    read(attrval(12:13),*) tmpint
     gmetadata%granule_hour_start = tmpint
-    read(attrval(15:16),*) tmpint 
+    read(attrval(15:16),*) tmpint
     gmetadata%granule_minute_start = tmpint
-    read(attrval(18:19),*) tmpint 
+    read(attrval(18:19),*) tmpint
     gmetadata%granule_seconds_start = tmpint
 
     ncerr = nf90_get_att(tio_l1obj%fileid, nf90_global, 'time_coverage_end', attrval)
@@ -121,7 +119,6 @@ contains
     ncerr = nf90_get_att(tio_l1obj%fileid, nf90_global, 'granule_num',tmpint)
     gmetadata%granule_num = tmpint
 
-
     ncerr = nf90_get_att(tio_l1obj%fileid, nf90_global, 'geospatial_lon_min',tmpreal)
     gmetadata%geospatial_lon_min = tmpreal
 
@@ -133,11 +130,11 @@ contains
 
     ncerr = nf90_get_att(tio_l1obj%fileid, nf90_global, 'geospatial_lat_max',tmpreal)
     gmetadata%geospatial_lat_max = tmpreal
-   
+
     call tiof_close(tio_l1obj, errstat)
- 
+
   end subroutine get_tio_l1rad_glbattr
- 
+
   !> Close a netCDF file
   !-----------------------------------------------------------------------
   !
@@ -203,7 +200,6 @@ contains
 
   end subroutine read_rad_dims
 
-
   !> Read L1 irradiance file and build 440, 466, 477nm irradiance arrays
   !-----------------------------------------------------------------------
   !
@@ -232,7 +228,6 @@ contains
     character(len=80) :: logmsg
 
     type(tiof_file_type) :: tio_l1obj
-
 
     if (errstat /= 0) return
 
@@ -322,14 +317,13 @@ contains
 
   end subroutine read_irr_tio
 
-
   subroutine read_rad_tio (l1_file, swathname, errstat)
 
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_SolarAzimuthAngle, rad_ViewingZenithAngle, &
-         rad_ViewingAzimuthAngle, & 
+         rad_ViewingAzimuthAngle, &
          out_TerrainHeight, &
-         !rad_GroundPixelQualityFlags, & 
+         !rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
          out_ProcessingQualityFlags, &
          w440, w466, w477, &
@@ -346,14 +340,14 @@ contains
     !local variables
     type(tiof_file_type) :: tio_l1obj
     !hqw moved rad_Radiance & rad_Wavelength from m_vars.f90 here
-    
+
     integer (kind=4) :: ntimes, nxtrack, nwavel, ix, it
     integer :: iw1, iw2, iw, nw
     real(kind=4) :: rad466, rad477, rad440
     real(kind=4) :: ww1, ww2, dww, yy1, yy2
 
-    real (kind=4), parameter :: r4_missval=-1.0e+30
-    real (kind=8), parameter :: r8_missval=-1.0d+30 
+    !real (kind=4), parameter :: r4_missval=-1.0e+30
+    real (kind=8), parameter :: r8_missval=-1.0d+30
 
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
@@ -408,7 +402,7 @@ contains
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
     call tiof_get2d_r4 (tio_l1obj, "terrain_height", [0,0], &
          [ntimes,nxtrack], out_TerrainHeight, errstat)
-    !hqw removed rad_GroundPixelQualityFlags, it does not do a lot 
+    !hqw removed rad_GroundPixelQualityFlags, it does not do a lot
     !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
     !     [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
     call tiof_get3d_ui2 (tio_l1obj, "pixel_quality_flag", [0,0,0], &
@@ -431,7 +425,7 @@ contains
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
 
    nw = nwavel
-   write(*,*) 'nw, ntimes, nxtrack=',nw,ntimes,nxtrack 
+   write(*,*) 'nw, ntimes, nxtrack=',nw,ntimes,nxtrack
 
    do it = 1, ntimes
       do ix = 1, nxtrack
@@ -588,24 +582,24 @@ contains
      ! original code by gga
      use m_vars, only: nasa_SlantColumnAmountO2O2, fFillValue
      use m_vars, only: nasa_NumTimes, nasa_nXtrack
-     use m_vars, only: l2_TerrainPressure, scd_mdqfl
- 
+     use m_vars, only: scd_mdqfl!, l2_TerrainPressure
+
      implicit none
- 
+
      !input variables
      character (len=*), intent(in) :: l2_file
- 
+
      !output variables
      integer (kind=4), intent(inout) :: errstat
 
      !local variables
      type(tiof_file_type) :: tio_l2obj
-     integer (kind=4) :: ntimes, nxtrack, ix
+     integer (kind=4) :: ntimes, nxtrack!, ix
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
      real (kind=8), parameter :: norm = 1.0d43
- 
+
      if (errstat /= 0) return
- 
+
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)
 
@@ -616,7 +610,7 @@ contains
           return
      endif
      nasa_nXtrack = nXtrack
-     nasa_numTimes = nTimes 
+     nasa_numTimes = nTimes
      write(*,*) 'read_cldo4_tio:nXtrack,nTimes=',nXtrack,nTimes
 
      ! Allocate cldo4 variables
@@ -625,7 +619,7 @@ contains
           call tell_error (tell_runtime_error, "allocate_cldo4_vars: failed", errstat)
           return
      endif
- 
+
      ! allocate tmp_dbl array
      allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
@@ -639,7 +633,7 @@ contains
           return
      endif
 
-    !hqw inteded to read spfc from O4 L2 file, but all = -1.e+30 now 
+    !hqw inteded to read spfc from O4 L2 file, but all = -1.e+30 now
     ! as is actually a placeholder in that file
     ! l2_TerrainPressure will be assigned using GEOS-CF values
     ! call tiof_get2d_r4(tio_l2obj, "surface_pressure",[0,0],[ntimes,nxtrack],&
@@ -648,8 +642,8 @@ contains
     !      call tell_error(tell_runtime_error, "read_cldo4_tio: surface_pressure failed", errstat)
     !      return
     ! endif
- 
-     ! read fitted_slant_column 
+
+     ! read fitted_slant_column
      call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
            tmp_dbl, errstat)
      if (errstat /= 0) then
@@ -710,7 +704,6 @@ contains
 
    end subroutine read_cldo4_tio
 
-
   !> Use simple linear interpolation to find irrad at target wavelength
   !-----------------------------------------------------------------------
   !
@@ -752,7 +745,6 @@ contains
     endif
 
   end subroutine quick_lin_interpol
-
 
   !> Allocate variables associated with radiance
   !-----------------------------------------------------------------------
@@ -858,17 +850,16 @@ end subroutine read_cldo4_dims
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
                        scd_mdqfl
- 
+
      implicit none
- 
+
      !input variables
      integer (kind=4), intent(in) :: ntimes, nxtrack
      !output variables
      integer (kind=4), intent(inout) :: errstat
- 
- 
+
      if (errstat /= 0) return
- 
+
      allocate (nasa_SlantColumnAmountO2O2(nxtrack, ntimes), &
           stat = errstat)
 
@@ -876,13 +867,13 @@ end subroutine read_cldo4_dims
           stat = errstat)
 
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
- 
+
      if (errstat /= 0) then
        call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed", &
             errstat)
        return
      endif
- 
+
    end subroutine allocate_cldo4_vars
 
 end module m_read_input_tio

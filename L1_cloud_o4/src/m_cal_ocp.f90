@@ -1,3 +1,6 @@
+module m_cal_ocp
+  public cal_ocp
+contains
 !******************
 subroutine cal_ocp
   !******************
@@ -61,11 +64,11 @@ subroutine cal_ocp
 !  real(kind=4),dimension(geos_np)::tt_geos
 !  real(kind=4),dimension(geos_np+1)::pp_geos !include Psfc
   real(kind=4), dimension(:), allocatable :: tt, pp
-  real(kind=4)::sum1_vcd,avg_tvcd
 
   integer(kind=4)::kleipool_ix,kleipool_iy
 
-  integer::bit08to14,i0,i1,i2,i3,i4,i5,i6,i7,isnowice
+  !integer::bit08to14,i0,i1,i2,i3,i4,i5,i6,i7
+  integer ::isnowice
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -131,7 +134,7 @@ subroutine cal_ocp
 !hqw debug
   !write(*,*) 'writing debug_scd_adjust.txt'
   !open(unit=19,file='debug_scd_adjust.txt')
-  !write(19,*)'    ix   scdmorg    scdm     scdadj      temp_t8p     t8p    temp_cpp' 
+  !write(19,*)'    ix   scdmorg    scdm     scdadj      temp_t8p     t8p    temp_cpp'
 
   ! ==========
   do it=1,nt
@@ -190,7 +193,7 @@ subroutine cal_ocp
 
       !hqw temporaryalb0 and psfc0 which will be replaced by climatology
       alb0 = 0.05
-      psfc0 = 1000. 
+      psfc0 = 1000.
 
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
@@ -353,7 +356,7 @@ subroutine cal_ocp
       ! -----------------------------------------------------
       isnowice=0
 
-      !hqw temporarily skip these rad_GroundPixelQualityFlags 
+      !hqw temporarily skip these rad_GroundPixelQualityFlags
       !isnowice is used to set out_ProcessingQualityFlagsbit 4 later
 !      goto 1101
 !      i0=0
@@ -402,13 +405,13 @@ subroutine cal_ocp
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
       endif
 
-      !hqw changed from out_SlantColumnAmountO2O2 to 
+      !hqw changed from out_SlantColumnAmountO2O2 to
       if(nasa_SlantColumnAmountO2O2(ix,it).lt.0.0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
       endif
 
       !hqw temporarily skip groudpixelqualityflags
-      !if(btest(rad_GroundPixelQualityFlags(ix,it),6)) then 
+      !if(btest(rad_GroundPixelQualityFlags(ix,it),6)) then
       !  out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
       !endif
 
@@ -423,7 +426,7 @@ subroutine cal_ocp
            btest(out_ProcessingQualityFlags(ix,it),10)) go to 990 !irr pixel error
 
       ! skip calculation if cal_ecf are out of range
-      ! though this seems unecessary as cal_ecf is clipped 
+      ! though this seems unecessary as cal_ecf is clipped
       ! and <0. values are already skipped
       if((cal_ecf.lt.0.0).or.(cal_ecf.gt.1.0)) then
            go to 990
@@ -546,7 +549,7 @@ subroutine cal_ocp
 
       ! -----------
       ! check psfc0
-      ! ----------- 
+      ! -----------
       ! make sure psfc0 is <= lut_psfc(npsfc)
       if(psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
 
@@ -615,7 +618,7 @@ subroutine cal_ocp
 
       !hqw looks like this hardcode Pclr=Psfc when Pcld>Psfc
       option_psfc_clear=0
-      ! find pressure for AMF*VCD 
+      ! find pressure for AMF*VCD
       !    1: Pclr = Pcld if Pcld > Psfc
       !    0: Pclr = Psfc (fixed) & Pcld > Psfc
       ! ????????????????????????????????????
@@ -665,7 +668,7 @@ subroutine cal_ocp
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff=abs(scdm-yy)
-          if(diff.ge.diff_save) then 
+          if(diff.ge.diff_save) then
             go to 970
           else
             diff_save=diff
@@ -710,7 +713,7 @@ subroutine cal_ocp
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff=abs(scdm-yy)
-          if(diff.ge.diff_save) then 
+          if(diff.ge.diff_save) then
             go to 980
           else
             diff_save=diff
@@ -726,32 +729,32 @@ subroutine cal_ocp
 
       !hqw adjust scd according to T at cpp
       ! use the temperature at temp_cpp when in range
-      ! try using T at half of the pressure 
-      temp_cpp = cpp * 0.5
+      ! try using T at half of the pressure
+      temp_cpp = real (cpp * 0.5, kind=4)
       if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
          call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
       else
-         temp_t8p = t8p
+         temp_t8p = real(t8p, kind=4)
       endif
       iternum = iternum + 1
-     
+
       !hqw debug
       !if ((it .eq. itdebug) .and. (ix .eq. itdebug)) then
       !   write(19,*) iternum, scdm, scdadj, temp_cpp, temp_t8p
       !endif
 
       !hqw test if terminate iteration
-      delta_temp = abs(t8p - temp_t8p)
-      if (delta_temp .lt. dt_threshold) then 
+      delta_temp = real(abs(t8p - temp_t8p), kind=4)
+      if (delta_temp .lt. dt_threshold) then
          goto 990 ! exit iteration
       endif
- 
-      if (iternum .lt. max_scd_iter) then 
+
+      if (iternum .lt. max_scd_iter) then
          t8p = temp_t8p  !update t8p from previous step
          scdm = scdadj !update scdm from previous step
          goto 777  ! goto iteration start
       endif
- 
+
 990   continue
 
       !hqw debug
@@ -763,7 +766,7 @@ subroutine cal_ocp
       !   scdadj & temp_t8p is the step right after final iterateion
       if (scdm .gt. 0.) then
          out_SlantColumnAmountO2O2(ix,it) = scdm ! scdadj
-         out_O2O2CloudTemperature(ix,it) = t8p ! temp_t8p
+         out_O2O2CloudTemperature(ix,it) = real(t8p, kind=4) ! temp_t8p
       else !hqw skipped pixels will end up here
          out_SlantColumnAmountO2O2(ix,it) = nasa_SlantColumnAmountO2O2(ix,it)
          out_O2O2CloudTemperature(ix,it) = 273.
@@ -778,12 +781,12 @@ subroutine cal_ocp
       if((cpp.gt.-9999.).and.(cpp.le.100.)) out_CloudPressure(ix,it)=100
       if((cpp.ge.psfc0).and.(cpp.lt.9999.)) out_CloudPressure(ix,it)=nint(psfc0, kind=2)
 
-      !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read 
+      !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read
       !out_CloudPressureSTD(ix,it)=inp_CloudPressureSTD(ix,it)
       !if(out_CloudPressureSTD(ix,it).le.iFillValue) &
       !     out_CloudPressureSTD(ix,it)=int(iFillValue, kind=2)
 
-      !hqw moved out_TerrainPressure here, as psfc0 is the actual surfp used 
+      !hqw moved out_TerrainPressure here, as psfc0 is the actual surfp used
       out_TerrainPressure(ix,it) = psfc0
 
       !hqw if BDEM replace with out_ with BDEM_
@@ -794,13 +797,13 @@ subroutine cal_ocp
         !out_TerrainHeightStdDev(ix,it)=BDEM_TerrainHeightStdDev(ix,it)
         !hqw LandAreaFraction is not used,  comment out
         !out_LandAreaFraction(ix,it)=int(BDEM_LandAreaFraction(ix,it), kind=2)
-      endif 
+      endif
 
       !  if(iflag.eq.0) out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
       !  if(iflag.eq.2) out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
 
       !=====
-888   continue
+!888   continue
     end do
   end do
   !=====
@@ -814,3 +817,4 @@ subroutine cal_ocp
   !**********************
 end subroutine cal_ocp
 !**********************
+end module m_cal_ocp

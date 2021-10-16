@@ -1,23 +1,3 @@
-$(ODIR)/cal_ecf.o: $(SDIR)/cal_ecf.f90 \
-  $(ODIR)/m_read_DEM.o \
-  $(ODIR)/m_read_GMI.o \
-  $(ODIR)/m_read_hdf5.o \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/cal_ecf.f90 -o $(ODIR)/cal_ecf.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/cal_ocp.o: $(SDIR)/cal_ocp.f90 \
-  $(ODIR)/m_read_DEM.o \
-  $(ODIR)/m_read_GMI.o \
-  $(ODIR)/m_read_hdf5.o \
-  $(ODIR)/m_scd_adjust.o \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/cal_ocp.f90 -o $(ODIR)/cal_ocp.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/cal_pscene.o: $(SDIR)/cal_pscene.f90 \
-  $(ODIR)/m_read_DEM.o \
-  $(ODIR)/m_read_GMI.o \
-  $(ODIR)/m_read_hdf5.o \
-  $(ODIR)/m_scd_adjust.o \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/cal_pscene.f90 -o $(ODIR)/cal_pscene.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/Constants_class.o: $(SDIR)/Constants_class.f90 \
   $(ODIR)/DataTypeDef.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/Constants_class.f90 -o $(ODIR)/Constants_class.o $(MODOUTFLG) $(ODIR)
@@ -34,15 +14,35 @@ $(ODIR)/hdfeos4_parameters.o: $(SDIR)/hdfeos4_parameters.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/hdfeos4_parameters.f90 -o $(ODIR)/hdfeos4_parameters.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/he5_swreader.o: $(SDIR)/he5_swreader.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/he5_swreader.f90 -o $(ODIR)/he5_swreader.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_cal_ecf.o: $(SDIR)/m_cal_ecf.f90 \
+  $(ODIR)/m_read_DEM.o \
+  $(ODIR)/m_read_GMI.o \
+  $(ODIR)/m_read_hdf5.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_ecf.f90 -o $(ODIR)/m_cal_ecf.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_cal_ocp.o: $(SDIR)/m_cal_ocp.f90 \
+  $(ODIR)/m_read_DEM.o \
+  $(ODIR)/m_read_GMI.o \
+  $(ODIR)/m_read_hdf5.o \
+  $(ODIR)/m_scd_adjust.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_ocp.f90 -o $(ODIR)/m_cal_ocp.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_cal_pscene.o: $(SDIR)/m_cal_pscene.f90 \
+  $(ODIR)/m_read_DEM.o \
+  $(ODIR)/m_read_GMI.o \
+  $(ODIR)/m_read_hdf5.o \
+  $(ODIR)/m_scd_adjust.o \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_pscene.f90 -o $(ODIR)/m_cal_pscene.o $(MODOUTFLG) $(ODIR)
+$(ODIR)/m_read_input_tio.o: $(SDIR)/m_read_input_tio.f90 \
+  $(ODIR)/m_vars.o
+	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_input_tio.f90 -o $(ODIR)/m_read_input_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_input_clim.o: $(SDIR)/m_read_input_clim.f90 \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_input_clim.f90 -o $(ODIR)/m_read_input_clim.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_input_gler.o: $(SDIR)/m_read_input_gler.f90 \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_input_gler.f90 -o $(ODIR)/m_read_input_gler.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_read_input_tio.o: $(SDIR)/m_read_input_tio.f90 \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_input_tio.f90 -o $(ODIR)/m_read_input_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_write_output_tio.o: $(SDIR)/m_write_output_tio.f90 \
   $(ODIR)/m_read_input_tio.o \
   $(ODIR)/m_vars.o

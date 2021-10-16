@@ -14,11 +14,9 @@ contains
 !  subroutine read_input
 !  111111111111111111111
 
-
     !1111111111111111111111111
 !  end subroutine read_input
   !1111111111111111111111111
-
 
 !hqw read_OMO4SCD is no longer needed, thus deleted
   !22222222222222222222222
@@ -28,7 +26,6 @@ contains
     !222222222222222222222222222
 !  end subroutine read_OMO4SCD
   !222222222222222222222222222
-
 
   !333333333333333333333333333333333333333333
   subroutine read_Kleipool_Rsfc(filename,m12)
@@ -42,15 +39,15 @@ contains
 
     !---------------------------------------------------------------------72
     ! ROUTINE: read_Kleipool_Rsfc
-    ! 
+    !
     ! DESCRIPTION: This program reads Earth surface reflectance climatology
     !
-    ! REVISION HISTORY: 
+    ! REVISION HISTORY:
     !  10/07/15 Yang original fortran 90
     !---------------------------------------------------------------------72
 
     ! Data Type                                Element Name
-    ! ==============================           ============ 
+    ! ==============================           ============
     ! Data fields
     !  real(kind=4),   dimension(:,:),pointer::Latitude
     !  real(kind=4),   dimension(:,:),pointer::Longitude
@@ -83,7 +80,7 @@ contains
     ! hqw allocate kleipool variables
     ! in fact, 477 is not actually used
     !          440 is only used to assign out_SurfaceReflectivity440
-    !     only 466 is used in calculation 
+    !     only 466 is used in calculation
     !----------------------------------
     allocate(kleipool_lon(nx), stat=ierr)
     allocate(kleipool_lat(nx), stat=ierr)
@@ -154,7 +151,7 @@ contains
         if(r471 .gt. 1.0) r471=1.0
         if(r463 .gt. 1.0) r463=1.0
         if(r440 .gt. 1.0) r440=1.0
-        !hqw commented 477 out 
+        !hqw commented 477 out
         !kleipool_SurfaceReflectivity477(ix,iy)=r477
         kleipool_SurfaceReflectivity440(ix,iy)=r440
         r466=(r463*5.+r471*3.)/8.
@@ -186,8 +183,8 @@ contains
     nx = rad_nXtrack
 
     ! 440 was used in cal_ocp to assign out_SurfaceReflectivity
-    ! in theory it should be allocated and assigned here 
-    !if (.not. allocated(BRDF_SurfaceReflectivity466)) then 
+    ! in theory it should be allocated and assigned here
+    !if (.not. allocated(BRDF_SurfaceReflectivity466)) then
        allocate(BRDF_SurfaceReflectivity466(nx,nt),stat=ierr)
     !endif
 

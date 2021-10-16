@@ -594,7 +594,7 @@ contains
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
-    character (len=32) :: epoch_buf
+    !character (len=32) :: epoch_buf
 
     if (errstat /= 0) return
     
@@ -748,7 +748,7 @@ contains
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
-    character (len=32) :: epoch_buf
+    !character (len=32) :: epoch_buf
 
     if (errstat /= 0) return
 
@@ -1101,7 +1101,7 @@ contains
 
     character(len=CFG_VAL_LEN) :: buf, attname
     integer (kind=4) :: tmpint
-    real (kind=4) :: tmpreal
+    !real (kind=4) :: tmpreal
 
     if (errstat /= 0) return
 

@@ -1,18 +1,19 @@
 # -*- sh -*-
 
-EXECUTABLE = OMCDO2N
+EXECUTABLE = L1_cloud_o4
 
 include ../../Makefile.defines
 
-srcdir     = $(config_dir)/new_cloud/src
+srcdir     = $(config_dir)/L1_cloud_o4/src
 objdir     = $(srcdir)/$(archobjs)
 msgdir     = $(srcdir)/msgs
 
 incdir     = $(prefix)/include
 bindir     = $(prefix)/bin
+libdir     = $(prefix)/lib
 
 ADDLIBD    = #
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llapack -lblas
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) # -llapack -lblas
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -24,55 +25,54 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-TIO_LIB  = $(prefix)/lib
+TIO_LIB  = $(libdir)
 TIO_SRC  = $(config_dir)/libtio/src
 TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 
-MD_LIB  = $(prefix)/lib
+MD_LIB  = $(libdir)
 MD_SRC  = $(config_dir)/libmd/src
 MD_SRC_OBJDIR = $(MD_SRC)/$(archobjs)
 
-CLI_LIB = $(prefix)/lib
-CLI_SRC = $(config_dir)/libclim/src
-CLI_SRC_OBJDIR = $(CLI_SRC)/$(archobjs)
+CLIM_LIB = $(libdir)
+CLIM_SRC = $(config_dir)/libclim/src
+CLIM_SRC_OBJDIR = $(CLIM_SRC)/$(archobjs)
 
-INTERP_LIB = $(prefix)/lib
+INTERP_LIB = $(libdir)
 INTERP_SRC = $(config_dir)/libndinterp/src
 INTERP_SRC_OBJDIR = $(INTERP_SRC)/$(archobjs)
 
-GLER_LIB = $(prefix)/lib
+GLER_LIB = $(libdir)
 GLER_SRC = $(config_dir)/libgler/src
 GLER_SRC_OBJDIR = $(GLER_SRC)/$(archobjs)
 
-LOCAL_OBJDIRS = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
-                -Wl,-rpath=$(MD_SRC_OBJDIR) -L$(MD_SRC_OBJDIR) \
-                -Wl,-rpath=$(CLI_SRC_OBJDIR) -L$(CLI_SRC_OBJDIR) \
-                -Wl,-rpath=$(INTERP_SRC_OBJDIR) -L$(INTERP_SRC_OBJDIR) \
-                -Wl,-rpath=$(GLER_SRC_OBJDIR) -L$(GLER_SRC_OBJDIR)
-
-PSPLINELIBS  = -lpspline -lezcdf
-TIOLIBS      = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
-	       -Wl,-rpath=$(MD_LIB) -L$(MD_LIB) -lmd_f \
-               -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f
-NETCDFLIBS   = -lnetcdf -lnetcdff
-HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
-HE5LIBS      = -lhe5_hdfeos -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
-PGSLIBS      = -lPGSTK
-YAMLLIBS     = -lyaml
-OMILIBS      =
-CLILIBS      = -lcsv -lioclib -lclim_f
-INTERPLIBS   = -lndinterp_f 
-GLERLIBS     = -lgler_f 
+YAML_LIB = $(OTS_LIBDIR)
+YAML_INC = $(OTS_INCDIR)
 
 OTS_INCDIR = $(OTS_ROOT)/include
 OTS_MODDIR = $(OTS_ROOT)/mod
 OTS_LIBDIR = $(OTS_ROOT)/lib
 
+LOCAL_OBJDIRS = -L$(TIO_SRC_OBJDIR) \
+                -L$(MD_SRC_OBJDIR) \
+                -L$(CLIM_SRC_OBJDIR) \
+                -L$(INTERP_SRC_OBJDIR) \
+                -L$(GLER_SRC_OBJDIR)
+
+PSPLINELIBS  = -lpspline -lezcdf
+TIOLIBS      = -L$(TIO_LIB) -ltio -ltio_f \
+	       -L$(MD_LIB) -lmd_f \
+               -L$(TELL_LIB) -ltell -ltell_f
+NETCDFLIBS   = -lnetcdf -lnetcdff
+HE4LIBS      = -lhdfeos -lmfhdf -lGctp -ldf -ljpeg -lz
+HE5LIBS      = -lhe5_hdfeos -lhdf5_hl -lhdf5_fortran -lhdf5hl_fortran -lhdf5
+PGSLIBS      = -lPGSTK
+YAMLLIBS     = -lyaml
+CLIM_LIBS    = -lcsv -lioclib -lclim_f
+INTERPLIBS   = -lndinterp_f
+GLERLIBS     = -lgler_f
+
 PSPLINEMOD = $(OTS_MODDIR)
 PSPLINELIB = $(OTS_LIBDIR)
-
-YAMLLIB = /home/eosulliv/lib
-YAMLINC = /home/eosulliv/include
 
 IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(HDF5INC) \
@@ -80,25 +80,27 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(PGSINC) \
          $(MODFLG)$(HDFEOS5_INC) \
          $(MODFLG)$(objdir) \
-         $(MODFLG)$(TIO_SRC_OBJDIR) \
-         $(MODFLG)$(MD_SRC_OBJDIR) \
-         $(MODFLG)$(CLI_SRC_OBJDIR) \
          $(MODFLG)$(TELL_INC) \
-         $(MODFLG)$(GLER_SRC_OBJDIR) \
-         $(MODFLG)$(INTERP_SRC_OBJDIR) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD) \
-	 $(MODFLG)$(YAMLINC)
+         $(MODFLG)$(OTS_MODDIR) $(MODFLG)$(OTS_INCDIR) \
+         $(MODFLG)$(TIO_SRC_OBJDIR) \
+         $(MODFLG)$(MD_SRC_OBJDIR) \
+         $(MODFLG)$(CLIM_SRC_OBJDIR) \
+         $(MODFLG)$(GLER_SRC_OBJDIR) \
+         $(MODFLG)$(INTERP_SRC_OBJDIR)
 
 LFLAGS = $(LOCAL_OBJDIRS) -L$(objdir) \
+         -Wl,-rpath=$(libdir) -L$(libdir) \
+         -Wl,-rpath=$(OTS_LIBDIR) -L$(OTS_LIBDIR) \
          -L$(HDFEOS_LIB) -L$(HDFLIB) -L$(PGSLIB) -L$(HDF5LIB) -L$(HDFEOS5_LIB) \
-         -L$(NETCDF_LIB) -L$(PSPLINELIB) -L$(YAMLLIB) $(ADDLIBD)
+         -L$(NETCDF_LIB) -L$(PSPLINELIB) $(ADDLIBD)
 
-LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(CLILIBS) $(INTERPLIBS) $(GLERLIBS) $(NETCDFLIBS) \
-         $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(YAMLLIBS) $(ADDLIBS)
+LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(CLIM_LIBS) $(INTERPLIBS) $(GLERLIBS) $(NETCDFLIBS) \
+         $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(YAMLLIBS) $(ADDLIBS)
 
-CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) \
-           -I$(YAMLINC) -I$(objdir) -Dgfortran
+CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(YAML_INC) \
+           -I$(objdir) -Dgfortran
 
 # During development, make it easy to change the list of source files.
 # For releases, use a static list of source files.
@@ -111,7 +113,6 @@ LINKOBJS   = $(addprefix $(objdir)/,$(F90SOURCES:.f90=.o) $(CSOURCES:.c=.o))
 #   make [all|install|clean]
 #---------------------------------
 
-#all:	dirs messages cld-names $(EXECUTABLE)
 all:	dirs messages $(EXECUTABLE)
 
 dirs:
@@ -130,12 +131,12 @@ install-header:
 	@echo installing $(NAME_INCLUDE) in $(incdir)/
 	$(INSTALL_DATA) $(srcdir)/$(NAME_INCLUDE) $(incdir)/$(NAME_INCLUDE)
 
-install:	install-executable install-header
+install:	install-executable # install-header
 
-clean:  clean-cld-names
+clean:
 	-$(RM) $(objdir)/*
 
-distclean:	clean        
+distclean:	clean
 	-$(RM) -rf $(objdir)
 
 tags:
@@ -175,38 +176,6 @@ $(msgdir)/OMI_52090:
 	$(PGSBIN)/smfcompile -r -f77 -f OMI_52090.t ; \
 	$(PGSBIN)/smfcompile -r      -f OMI_52090.t
 
-#
-# Name tables
-#
-NAME_FILE_BASENAMES = cld_names_dim cld_names_var cld_names_grp
-NAME_INCLUDE = cld_names.h
-
-NAME_FILE_SOURCES = $(addsuffix .csv, $(NAME_FILE_BASENAMES))
-NAME_FILE_TARGETS = $(addsuffix .inc, $(NAME_FILE_BASENAMES)) $(NAME_INCLUDE)
-cld-names:	$(NAME_FILE_TARGETS)
-	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   awk 'NF && !/^#/ {split($$0,a,","); printf("#define %35s   %s\n",a[1],a[2])}' \
-	        $${bn}.csv > .$${bn}_h.tmp ; \
-	   awk 'NF && !/^#/ {split($$0,a,","); printf("character (len=cld_max_name_len), public, parameter :: %35s = %s\n",tolower(a[1]),a[2])}' \
-	        $${bn}.csv > $${bn}.inc ; \
-	   sed -i -e "1i! Autogenerated from $${bn}.csv by Makefile. Do not edit." \
-	        $${bn}.inc ; \
-	done
-	sed -e '/@CSV_DIMS@/{r .cld_names_dim_h.tmp' -e 'd}' \
-	    -e '/@CSV_VARS@/{r .cld_names_var_h.tmp' -e 'd}' \
-	    $(srcdir)/$(NAME_INCLUDE)in > $(NAME_INCLUDE)
-	sed -i -e '1i/*! @brief Autogenerated by Makefile. Do not edit. \n *  @file */' \
-	     $(NAME_INCLUDE)
-
-clean-cld-names:
-	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   $(RM) -f .$${bn}_h.tmp ; \
-	done
-distclean-cld-names:	clean-cld-names
-	for bn in $(NAME_FILE_BASENAMES) ; do \
-	   $(RM) -f $${bn}.inc $(NAME_INCLUDE) ; \
-	done
-
 # ---- build dependencies ----
 # During development, the rules will be dynamically updated.
 # For releases, a static set of rules can be appended.
@@ -215,11 +184,11 @@ rules.inc:	$(F90SOURCES) $(CSOURCES) f90_files.lis c_files.lis
 ifeq (, $(shell which slsh))
    $(error "slsh is not available on $$PATH, please install S-Lang")
 endif
-#	$(DEPMOD) -r $(F90SOURCES) > rules.inc
-#	./mkrules.sh c $(CSOURCES) >> rules.inc
+	$(DEPMOD) -r $(F90SOURCES) > rules.inc
+	./mkrules.sh c $(CSOURCES) >> rules.inc
 
 ODIR = $(objdir)
 SDIR = $(srcdir)
 -include rules.inc
 
-.PHONY: tags cld-names $(NAME_FILE_TARGETS)
+.PHONY: tags $(NAME_FILE_TARGETS)

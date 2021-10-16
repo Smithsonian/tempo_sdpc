@@ -1,3 +1,6 @@
+module m_cal_ecf
+  public cal_ecf
+contains
 !******************
 subroutine cal_ecf
   !******************
@@ -19,7 +22,7 @@ subroutine cal_ecf
   real::   walb2,wsza2,wvza2,wraa2,wpsfc2
   integer(kind=4)::ierr
   integer(kind=4)::nt,nx
-  integer(kind=4)::it,iy,ix
+  integer(kind=4)::it,ix
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
@@ -36,7 +39,7 @@ subroutine cal_ecf
 
   real::pi,dtor
   real(kind=4), parameter:: fspecial = -9999. !make this a large negative value
-   
+
   ! ------
   ! define
   ! ------
@@ -49,7 +52,7 @@ subroutine cal_ecf
   nx=rad_nXtrack
 
   ! allocate dimensions & fill values for outputs
-  !hqw STDs are not calculated in OMCDO2N, thus disabled 
+  !hqw STDs are not calculated in OMCDO2N, thus disabled
 
   allocate(cal_rad_clr(nx,nt),stat=ierr)
   allocate(cal_rad_cld(nx,nt),stat=ierr)
@@ -108,7 +111,7 @@ subroutine cal_ecf
     do ix=1,nx
       ! ==========
 
-      !initialize to special negative values 
+      !initialize to special negative values
       rout_ecf =fspecial
       rout_crf440 =fspecial
       rout_crf466 =fspecial
@@ -133,9 +136,9 @@ subroutine cal_ecf
       if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
            (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
       !hqw RAA = SAA - VAA + PI, Why +PI?
-      !xliu: this is related to how the SAA and VAA are fined  
+      !xliu: this is related to how the SAA and VAA are fined
       !      RAA of forward scattering = 0, RAA of backward scattering = 180.
-      !also see Eun-su Yang email slide for explanation  
+      !also see Eun-su Yang email slide for explanation
         temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
         ! ensure temp_raa is within [0., 360.) range
         do while((temp_raa .lt. 0.0) .or. (temp_raa .ge. 360.0))
@@ -151,7 +154,7 @@ subroutine cal_ecf
       !hqw skip calculation if lat//angles are invalid
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990
 
-      ! get local radiances 
+      ! get local radiances
       rad466=rad_466nm(ix,it)
       rad477=rad_477nm(ix,it)
       rad440=rad_440nm(ix,it)
@@ -159,7 +162,7 @@ subroutine cal_ecf
       ! ------------------------
       ! calculate cloud fraction
       ! ------------------------
-      ! hqw alb0 & psfc0 were originally initialized to OMCLDO2 
+      ! hqw alb0 & psfc0 were originally initialized to OMCLDO2
       ! but will be overwritten later in this subroutine by climatology
       ! to get rid of dependency on OMCLDO2 , set to temporary values
        temp_psfc = 1000.
@@ -176,7 +179,7 @@ subroutine cal_ecf
       !rad_of_irr440(ix,it)=rad440/irr_out_irradiance_440nm(ix+izoom)*(rad_EarthSunDist/irr_EarthSunDist)**2
       !hqw removed izoom to declutter
       !hqw added safeguard condition
-      if (irr_out_irradiance_466nm(ix) .gt. 0.) then 
+      if (irr_out_irradiance_466nm(ix) .gt. 0.) then
          rad_of_irr466(ix,it)=rad466/irr_out_irradiance_466nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
          rad_of_irr466(ix,it) = fspecial
@@ -184,7 +187,7 @@ subroutine cal_ecf
       !hqw skip calculation if rad_of_irr < 0.
       if (rad_of_irr466(ix,it) .lt. 0.) go to 990
 
-      if (irr_out_irradiance_440nm(ix) .gt. 0.) then 
+      if (irr_out_irradiance_440nm(ix) .gt. 0.) then
          rad_of_irr440(ix,it)=rad440/irr_out_irradiance_440nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
          rad_of_irr440(ix,it) = fspecial
@@ -202,12 +205,12 @@ subroutine cal_ecf
       sza0=rad_SolarZenithAngle(ix,it)
       vza0=rad_ViewingZenithAngle(ix,it)
       raa0=temp_raa
-      !hqw Why 360.-raa? 
-      !xliu: +raa has the same effect as -raa, 
+      !hqw Why 360.-raa?
+      !xliu: +raa has the same effect as -raa,
       !      and RAA needs to be within [0.,180] for use with LUT
       !also consult E.Yang's slides for definition of RAA
-      if (raa0 .lt. 0.) raa0 = - raa0 
-      !hqw added the line above to make sure raa0>0. 
+      if (raa0 .lt. 0.) raa0 = - raa0
+      !hqw added the line above to make sure raa0>0.
       !though this may be redundant as temp_raa should be within [0..,360.)
       if (raa0 .gt. 180.) raa0=360.-raa0
       out_RelativeAzimuthAngle(ix,it)=raa0
@@ -491,7 +494,7 @@ subroutine cal_ecf
          rout_ecf = fspecial
       endif
 
-      ! caculate cloud radiance fraction at 440 
+      ! caculate cloud radiance fraction at 440
       if ((cal_rad_cld440(ix,it) .gt. 0.) .and. (rad_of_irr440(ix,it).gt. 0.)) then
          rout_crf440=rout_ecf*cal_rad_cld440(ix,it)/rad_of_irr440(ix,it)
       else
@@ -544,3 +547,4 @@ subroutine cal_ecf
 !**********************
 end subroutine cal_ecf
 !**********************
+end module m_cal_ecf

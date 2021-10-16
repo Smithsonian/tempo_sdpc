@@ -1,3 +1,6 @@
+module m_cal_pscene
+  public cal_pscene
+contains
 !*********************
 subroutine cal_pscene
   !*********************
@@ -30,7 +33,7 @@ subroutine cal_pscene
   real(kind=4),dimension(gmi_np+1)::pp !include Psfc
   real(kind=4),dimension(geos_np)::tt_geos
   real(kind=4),dimension(geos_np+1)::pp_geos !include Psfc
-  real(kind=4)::sum1_vcd,avg_tvcd
+  !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip!,gmi_ix,gmi_iy
 
   !real::a11111,a11112,a11121,a11122,a11211,a11212,a11221,a11222,a12111,a12112,a12121,a12122,a12211,a12212,a12221,a12222
@@ -63,7 +66,7 @@ subroutine cal_pscene
 
   real::vpsfc0
   integer::ipsfc0
-  real::cal_ecf,cal_crf
+  !real::cal_ecf,cal_crf
 
   ! ------
   ! refine
@@ -111,7 +114,7 @@ subroutine cal_pscene
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990 ! skip all, start next pixel
 
       !hqw seems that cal_ecf and cal_crf they should be divided by 1000.
-      !but it does not matter because they are not actually used 
+      !but it does not matter because they are not actually used
       !thus, the following has been commented out
       !cal_ecf=out_EffectiveCloudFraction(ix,it)
       !cal_crf=out_CloudRadianceFraction466(ix,it)
@@ -147,7 +150,7 @@ subroutine cal_pscene
       !hqw NASA product and the LUTs assumes O2O2 in unit of 10^43 molec^2/cm^5
       !  SCD < -9. are set to fFillValue (-1.2676506E30 in m_vars.f90
       !this is now taken care of in m_read_input_tio.f90, thus comment it out
-      !if(out_SlantColumnAmountO2O2(ix,it).le.-9.) out_SlantColumnAmountO2O2(ix,it)=fFillValue 
+      !if(out_SlantColumnAmountO2O2(ix,it).le.-9.) out_SlantColumnAmountO2O2(ix,it)=fFillValue
 
       !hqw add scdmorg, skip calculation if <0., start next pixel
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
@@ -316,7 +319,6 @@ subroutine cal_pscene
         !    write(*,*) " *** Pscene: Check Surface Pressure *** ",psfc0
         go to 990
       endif
-
 
       !------------------------------------------------------------
       ! name_option_SceneAlbedoAtTerrain
@@ -496,7 +498,7 @@ subroutine cal_pscene
           ! -----------------
           if((a1111.lt.0.0) .or. (a1112.lt.0.0)) then
             cal_ler_amf(ipcld)=-999.
-            go to 898 ! goto next cloud level 
+            go to 898 ! goto next cloud level
           endif
 
           a111=(wraa2*a1111+wraa1*a1112)/(wraa1+wraa2)
@@ -601,7 +603,7 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
-            if(diff.ge.diff_save) then 
+            if(diff.ge.diff_save) then
               go to 970
             else
               diff_save=diff
@@ -632,7 +634,7 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
-            if(diff.ge.diff_save) then 
+            if(diff.ge.diff_save) then
               go to 980
             else
               diff_save=diff
@@ -648,9 +650,9 @@ subroutine cal_pscene
 
         !hqw scd temperature correction
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then 
+        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
            call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
-        else 
+        else
            temp_t8p = t8p
         endif
         iternum = iternum + 1
@@ -661,7 +663,7 @@ subroutine cal_pscene
             t8p = temp_t8p
             scdm = scdadj
             go to 777
-        endif 
+        endif
 
         !hqw assign output
         if (scdm .gt. 0.) then
@@ -828,7 +830,7 @@ subroutine cal_pscene
         ! -----------------
         ! calculate AMF*VCD
         ! -----------------
-        !hqw re-assign local vairables 
+        !hqw re-assign local vairables
         scdm = scdmorg
         scdadj = scdm
         t8p = 273.
@@ -890,7 +892,7 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
-            if(diff.ge.diff_save) then 
+            if(diff.ge.diff_save) then
               go to 972
             else
               diff_save=diff
@@ -921,7 +923,7 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
-            if(diff.ge.diff_save) then 
+            if(diff.ge.diff_save) then
               go to 982
             else
               diff_save=diff
@@ -960,7 +962,7 @@ subroutine cal_pscene
             out_SlantColumnSceneO2O2(ix,it)=nasa_SlantColumnAMountO2O2(ix,it)
             out_O2O2SceneTemperature(ix,it) = 273.
         endif
-           
+
         !------------------------
         !calculate ler466 at cpp
         !------------------------
@@ -1115,3 +1117,4 @@ subroutine cal_pscene
   !************************
 end subroutine cal_pscene
 !************************
+end module m_cal_pscene
