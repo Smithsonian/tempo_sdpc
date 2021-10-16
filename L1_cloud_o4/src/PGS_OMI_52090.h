@@ -1,0 +1,43 @@
+#ifndef _PGS_OMI_52090_H
+#define _PGS_OMI_52090_H
+#define OMI_S_SUCCESS                         426721792 /* 0x196f4200L */
+#define OMI_E_FATAL                           426724865 /* 0x196f4e01L */
+#define OMI_W_GENERAL                         426724354 /* 0x196f4c02L */
+#define OMI_E_GENERAL                         426724867 /* 0x196f4e03L */
+#define OMI_E_MEM_ALLOC                       426724868 /* 0x196f4e04L */
+#define OMI_E_MEM_REF                         426724869 /* 0x196f4e05L */
+#define OMI_E_HDF                             426724870 /* 0x196f4e06L */
+#define OMI_E_HDFEOS                          426724871 /* 0x196f4e07L */
+#define OMI_E_FILE_OPEN                       426724872 /* 0x196f4e08L */
+#define OMI_E_FILE_READ                       426724873 /* 0x196f4e09L */
+#define OMI_E_FILE_WRITE                      426724874 /* 0x196f4e0aL */
+#define OMI_E_FILE_CLOSE                      426724875 /* 0x196f4e0bL */
+#define OMI_E_PCF_REFID                       426724876 /* 0x196f4e0cL */
+#define OMI_E_PCF_SPLIT                       426724877 /* 0x196f4e0dL */
+#define OMI_E_SWATH_OPEN                      426724878 /* 0x196f4e0eL */
+#define OMI_E_SWATH_CREATE                    426724879 /* 0x196f4e0fL */
+#define OMI_E_SWATH_ATTACH                    426724880 /* 0x196f4e10L */
+#define OMI_E_SWATH_DEF_DIM                   426724881 /* 0x196f4e11L */
+#define OMI_E_SWATH_DEF_GEO                   426724882 /* 0x196f4e12L */
+#define OMI_E_SWATH_DEF_DATA                  426724883 /* 0x196f4e13L */
+#define OMI_E_SWATH_WRITE_DATA                426724884 /* 0x196f4e14L */
+#define OMI_E_SWATH_WRITE_ATTR                426724885 /* 0x196f4e15L */
+#define OMI_E_SWATH_DETTACH                   426724886 /* 0x196f4e16L */
+#define OMI_E_SWATH_CLOSE                     426724887 /* 0x196f4e17L */
+#define OMI_E_MET_INIT                        426724888 /* 0x196f4e18L */
+#define OMI_E_MET_SD_START                    426724889 /* 0x196f4e19L */
+#define OMI_E_MET_READ                        426724890 /* 0x196f4e1aL */
+#define OMI_E_MET_WRITE                       426724891 /* 0x196f4e1bL */
+#define OMI_E_MET_SD_END                      426724892 /* 0x196f4e1cL */
+#define OMI_E_MET_REMOVE                      426724893 /* 0x196f4e1dL */
+#define OMI_E_INVALID_CHANNEL                 426724894 /* 0x196f4e1eL */
+#define OMI_E_VALID_RANGE                     426724895 /* 0x196f4e1fL */
+#define OMI_E_TYPE_INVALID                    426724896 /* 0x196f4e20L */
+#define OMI_E_TYPE_NOT_SET                    426724897 /* 0x196f4e21L */
+#define OMI_E_INPUT                           426724898 /* 0x196f4e22L */
+#define OMI_E_TOO_MANY_PIXELS                 426724899 /* 0x196f4e23L */
+#define OMI_E_GRAN_PROC_LEVEL                 426724900 /* 0x196f4e24L */
+#define OMI_E_GRAN_ID                         426724901 /* 0x196f4e25L */
+#define OMI_S_MET_READ                        426721830 /* 0x196f4226L */
+#define OMI_S_GRAN_ID                         426721831 /* 0x196f4227L */
+#endif
