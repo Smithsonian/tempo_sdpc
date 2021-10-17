@@ -185,7 +185,7 @@ module tio_module
   public tiof_create, tiof_open, tiof_close, &
     tiof_put_git_commit_hash, &
     tiof_def_group, tiof_push_group, tiof_pop_group, tiof_inq_group, &
-    tiof_inq_dimlen, &
+    tiof_inq_dimlen, tiof_inq_dimid, &
     tiof_dimlist_append, tiof_dimlist_free, tiof_def_dims, tiof_dimlist_lookup, &
     tiof_varlist_append, tiof_varlist_free, tiof_def_vars, tiof_varlist_lookup, &
     tiof_attlist_append, tiof_attlist_free, tiof_def_atts, &
@@ -856,6 +856,30 @@ contains
       return
     endif
   end subroutine tiof_inq_dimlen
+
+  !> Inquire the id number of a dimension
+  !! @param[in] obj  File type object, \a type(tiof_file_type)
+  !! @param[in] name  Dimension name.
+  !! @param[out] dimid  Dimension id number
+  !! @param[inout]  errstat  Integer error status code.
+  !! @see tiof_def_dims, tiof_dimlist_append
+  subroutine tiof_inq_dimid (obj, name, dimid, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    character (len=*), intent(in) :: name
+    integer, intent(out) :: dimid
+    integer, intent(inout) :: errstat
+
+    integer :: status
+
+    if (errstat < 0) return
+
+    status = nf90_inq_dimid (obj % groupid, name, dimid)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_read_error, "accessing dimension "//trim(name)//" ("//trim(nf90_strerror(status))//")", errstat)
+      return
+    endif
+  end subroutine tiof_inq_dimid
 
   !> Append a new dimension object to a dimension list
   !! @param[inout] list  Dimension list object, \a type(tiof_dimlist_type)
