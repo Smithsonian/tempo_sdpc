@@ -2,8 +2,8 @@
 module m_write_output_tio
   use tio_module
   use tell_module
-  use netcdf, only: nf90_clobber, nf90_double, nf90_float, nf90_short, &
-       nf90_uint, nf90_int
+  use netcdf, only: nf90_clobber, nf90_write, &
+    nf90_double, nf90_float, nf90_short, nf90_uint, nf90_int
   use m_read_input_tio, only: open_tio, close_tio
 
   private write_coordinate_vars, write_geo_struct, write_geo_data, &
@@ -11,6 +11,7 @@ module m_write_output_tio
   private write_product_struct, write_product_data
   private write_support_struct, write_support_data
 
+  public update_output_file_tio
   public create_output_file_tio
 
   type (tiof_file_type), private, target :: primary_output_file
@@ -22,6 +23,87 @@ module m_write_output_tio
 
 contains
 
+  !>Top-level subroutine to update an L2 O2O2 netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] outfile    name of L2 netCDF file to be updated
+  !> @param[in] nstep      along-track dimension size
+  !> @param[in] nxtrack    cross-track dimension size
+  !> @param     errstat    error tracking code, non-zero indicates problem
+  !
+  !> @author John Houck  Oct 2021
+  !-----------------------------------------------------------------------
+  subroutine update_output_file_tio (outfile, nstep, nxtrack, errstat)
+
+    implicit none
+
+    !input variables
+    character (len=*), intent(in) :: outfile
+    integer (kind=4), intent(in) :: nstep, nxtrack
+    !output variables
+    integer (kind=4), intent(inout) :: errstat
+    !local variables
+    type (tiof_file_type), pointer :: tio_l2obj
+    integer :: dimid_xtrack, dimid_step
+
+    if (errstat /= 0) return
+
+    tio_l2obj => primary_output_file
+
+    ! Open the file
+    call tiof_open (outfile, tio_l2obj, nf90_write, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+           "update_output_file_tio: opening file "//trim(outfile), &
+           errstat)
+      return
+    endif
+
+    call tiof_history_append_cmdline (tio_l2obj)
+
+    call tiof_inq_dimid (tio_l2obj, 'xtrack', dimid_xtrack, errstat)
+    call tiof_inq_dimid (tio_l2obj, 'mirror_step', dimid_step, errstat)
+
+    !hqw addition -------------------------------------------------
+    ! product variable definitions
+    call write_product_struct (tio_l2obj, dimid_xtrack, dimid_step, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+           "create_output_file: failed to write structures", &
+           errstat)
+      return
+    endif
+
+    ! product data
+    call write_product_data (tio_l2obj, nstep, nxtrack, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+           "create_output_file: failed to write data", &
+           errstat)
+      return
+    endif
+
+    ! support variable definitions
+    call write_support_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
+    if (errstat /= 0) then
+       call tell_error (tell_io_write_error, &
+            "creat_output_file: failed to write structures", &
+            errstat)
+       return
+    endif
+
+    ! support data
+    call write_support_data(tio_l2obj, nstep, nxtrack, errstat)
+    if (errstat /= 0) then
+       call tell_error (tell_io_write_error, &
+            "create_output_file: filed to write data", &
+            errstat)
+       return
+    endif
+
+    call close_tio (tio_l2obj, errstat)
+
+  end subroutine update_output_file_tio
 
   !>Top-level subroutine to create and populate an L2 Cloud netCDF file
   !-----------------------------------------------------------------------
@@ -48,6 +130,7 @@ contains
     !local variables
     type (tiof_file_type), pointer :: tio_l2obj
     type (tiof_dimlist_type) :: dimlist
+    integer, dimension(2) :: dimids_xtrack_step
 
     if (errstat /= 0) return
 
@@ -118,7 +201,12 @@ contains
 
     !hqw addition -------------------------------------------------
     ! product variable definitions
-    call write_product_struct (tio_l2obj, dimlist, errstat)
+    call tiof_dimlist_lookup (dimlist, &
+                              ["xtrack     ", "mirror_step"], &
+                              dimids_xtrack_step, &
+                              errstat)
+    call write_product_struct (tio_l2obj, dimids_xtrack_step(1), &
+                               dimids_xtrack_step(2), errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file: failed to write structures", &
@@ -138,8 +226,9 @@ contains
     endif
 
     ! support variable definitions
-    call write_support_struct(tio_l2obj, dimlist, errstat)
-    if (errstat /= 0) then 
+    call write_support_struct(tio_l2obj, dimids_xtrack_step(1), &
+                              dimids_xtrack_step(2), errstat)
+    if (errstat /= 0) then
        call tell_error (tell_io_write_error, &
             "creat_output_file: failed to write structures", &
             errstat)
@@ -193,7 +282,6 @@ contains
     integer (kind=4), dimension(2) :: dimids_xtrack_step
     integer :: i
 
-
     if (errstat /= 0) return
 
     call tiof_dimlist_lookup (dimlist, &
@@ -214,9 +302,7 @@ contains
     call tiof_put1d_i4 (tio_l2obj, "xtrack", [0], [nxtrack], &
          xtrack_indices, errstat)
 
-
   end subroutine write_coordinate_vars
-
 
   !> Create the structure for the geolocation data in L2 netCDF file
   !-----------------------------------------------------------------------
@@ -260,10 +346,8 @@ contains
                               dimids_corner_xtrack_step, &
                               errstat)
 
-
     epoch_buf(:)=''
     call tiof_mktimestamp_str (0.0_r8, epoch_buf, errstat)
-
 
     ! Geolocation Fields with optional attribute lists
     call tiof_attlist_append (att_geo, errstat, "coordinates", &
@@ -419,7 +503,6 @@ contains
 
   end subroutine write_geo_struct
 
-
   !> Write geolocation data into L2 netCDF file
   !-----------------------------------------------------------------------
   !
@@ -445,7 +528,6 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: tio_l2obj
-
 
     if (errstat /= 0) return
 
@@ -473,7 +555,7 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "viewing_azimuth_angle", [0,0], &
          [nstep, nxtrack], rad_ViewingAzimuthAngle, errstat)
- 
+
     call tiof_put2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
          [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
 
@@ -491,7 +573,6 @@ contains
     endif
 
   end subroutine write_geo_data
-
 
   !> Write geolocation data into L2 netCDF file
   !-----------------------------------------------------------------------
@@ -521,7 +602,6 @@ contains
     real (kind=4), dimension(4,1:nxtrack,1:nstep) :: tmp_lat, tmp_lon
 
     type (tiof_file_type), pointer :: tio_l2obj
-
 
     if (errstat /= 0) return
 
@@ -571,18 +651,17 @@ contains
 
   end subroutine copy_pixel_corners
 
-
 !-------------------------------
-! hqw addition below 
+! hqw addition below
 !-------------------------------
 
-   subroutine write_product_struct(tio_l2obj, dimlist, errstat)
+   subroutine write_product_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
 
       implicit none
 
       !input variables
     type (tiof_file_type), intent(inout) :: tio_l2obj
-    type (tiof_dimlist_type), intent(in) :: dimlist
+    integer, intent(in) :: dimid_xtrack, dimid_step
     !output variables
     integer, intent(inout) :: errstat
     !local variables
@@ -597,12 +676,9 @@ contains
     !character (len=32) :: epoch_buf
 
     if (errstat /= 0) return
-    
-    ! Define dimid arrays associated with common data field shapes.
-    call tiof_dimlist_lookup (dimlist, &
-                              ["xtrack     ", "mirror_step"], &
-                              dimids_xtrack_step, &
-                              errstat)
+
+    dimids_xtrack_step(1) = dimid_xtrack
+    dimids_xtrack_step(2) = dimid_step
 
     ! Product Fields with optional attributes
     call tiof_attlist_append (att_product, errstat, "coordinates", &
@@ -665,7 +741,6 @@ contains
                               fillvalue = fill_int, &
                               attlist=att_product)
 
-
     call tiof_push_group (tio_l2obj, "product", errstat)
     call tiof_def_vars (tio_l2obj, varlist, errstat)
     call tiof_pop_group (tio_l2obj, errstat)
@@ -726,16 +801,15 @@ contains
 
    end subroutine write_product_data
 
-
   !>Write support structure into L2 netCDF file
   !----------------------------------------------------------------------------
-  subroutine write_support_struct(tio_l2obj, dimlist, errstat)
+  subroutine write_support_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
     use m_vars, only: name_option_SurfaceReflectivity
     implicit none
 
     !input variables
     type (tiof_file_type), intent(inout) :: tio_l2obj
-    type (tiof_dimlist_type), intent(in) :: dimlist
+    integer, intent(in) :: dimid_xtrack, dimid_step
     !output variables
     integer, intent(inout) :: errstat
     !local variables
@@ -753,15 +827,12 @@ contains
     if (errstat /= 0) return
 
     ! Define dimid arrays associated with common data field shapes.
-    call tiof_dimlist_lookup (dimlist, &
-                              ["xtrack     ", "mirror_step"], &
-                              dimids_xtrack_step, &
-                              errstat)
+    dimids_xtrack_step(1) = dimid_xtrack
+    dimids_xtrack_step(2) = dimid_step
 
     ! Product Fields with optional attributes
     call tiof_attlist_append (att_support, errstat, "coordinates", &
                               att_text = "longitude latitude")
-
 
     call tiof_varlist_append (varlist, errstat, &
                               "ReflectanceFactor466", &
@@ -781,7 +852,7 @@ contains
            name466 = 'Kleipool466'
            name440 = 'Kleipool440'
      endif
-           
+
      call tiof_varlist_append (varlist, errstat, &
                               name466, &
                               nf90_float, &
@@ -971,7 +1042,6 @@ contains
                               fillvalue = fill_int, &
                               attlist=att_support)
 
-
     call tiof_push_group (tio_l2obj, "support_data", errstat)
     call tiof_def_vars (tio_l2obj, varlist, errstat)
     call tiof_pop_group (tio_l2obj, errstat)
@@ -1079,7 +1149,7 @@ contains
 
     call tiof_pop_group(tio_l2obj, errstat)
 
-    if (errstat /= 0) then 
+    if (errstat /= 0) then
        call tell_error (tell_io_write_error,"write_support_data: failed",errstat)
        return
     endif
@@ -1105,43 +1175,43 @@ contains
 
     if (errstat /= 0) return
 
-    attname = 'StartDate' 
+    attname = 'StartDate'
     buf = gmetadata%startdate
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'StartTime' 
+    attname = 'StartTime'
     buf = gmetadata%starttime
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'EndDate' 
+    attname = 'EndDate'
     buf = gmetadata%enddate
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'EndTime' 
+    attname = 'EndTime'
     buf = gmetadata%endtime
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'scan_num' 
+    attname = 'scan_num'
     tmpint = gmetadata%scan_num
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,tmpint)
 
-    attname = 'granule_num' 
+    attname = 'granule_num'
     tmpint = gmetadata%granule_num
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,tmpint)
 
-    attname = 'Collection' 
+    attname = 'Collection'
     buf = gmetadata%omi_collection
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'Instrument' 
+    attname = 'Instrument'
     buf = gmetadata%InstrumentName
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'platform' 
+    attname = 'platform'
     buf = gmetadata%platformShortName
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'ProcessingCenter' 
+    attname = 'ProcessingCenter'
     buf = gmetadata%ProcessingCenter
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
@@ -1149,15 +1219,15 @@ contains
     buf = gmetadata%ProcessingLevel
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'LeadScientist' 
+    attname = 'LeadScientist'
     buf = gmetadata%LeadScientist
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'author_name' 
+    attname = 'author_name'
     buf = gmetadata%author_name
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 
-    attname = 'author_affiliation' 
+    attname = 'author_affiliation'
     buf = gmetadata%author_affiliation
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global,attname,buf)
 

@@ -19,20 +19,17 @@ subroutine cal_pscene
   real::   walb1,wsza1,wvza1,wraa1,wpsfc1,vpsfc1!,apsfc1,vcd1,tvcd1,wrsfc1
   real::   walb2,wsza2,wvza2,wraa2,wpsfc2,vpsfc2!,apsfc2,vcd2,tvcd2,wrsfc2
   real::yy1,yy2,ww1,ww2,rr1,rr2,wr1,wr2!,xxx,yyy,xx1,xx2,
-  real(kind=8)::cpp
+  real(kind=8)::cpp, aaa
   integer(kind=4)::iflag
   integer(kind=4)::ierr!,status
-  integer(kind=4)::nt,nx,nw!,nwc
+  integer(kind=4)::nt,nx!nw,nwc
   integer(kind=4)::it,ix!,iw,iwc,iw1,iw2,dww
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2, iternum
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
-  real(kind=4),dimension(gmi_np)::tt
-  real(kind=4),dimension(gmi_np+1)::pp !include Psfc
-  real(kind=4),dimension(geos_np)::tt_geos
-  real(kind=4),dimension(geos_np+1)::pp_geos !include Psfc
+  real (kind=4), dimension(:), allocatable:: tt, pp
   !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip!,gmi_ix,gmi_iy
 
@@ -76,7 +73,7 @@ subroutine cal_pscene
 
   nt=rad_NumTimes
   nx=rad_nXtrack
-  nw=rad_nWavel
+  !nw=rad_nWavel
   !nwc=rad_nWavelCoef
 
   ! allocate dimensions for outputs
@@ -100,6 +97,11 @@ subroutine cal_pscene
   out_O2O2SceneTemperature=fFillValue
   out_O2O2TerrainTemperature=fFillValue
 
+  ! allocate and initialize local arrays
+  allocate(tt(nlayers), pp(nlayers+1))
+  tt(1:nlayers) = -999.0
+  pp(1:nlayers+1) = -999.0
+
   ! ==========
   do it=1,nt
     do ix=1,nx
@@ -109,13 +111,13 @@ subroutine cal_pscene
       pflag01=0
       if(rad_Latitude(ix,it) .lt. -90.) pflag00=pflag00+1
       !hqw changed 86. to max_SZA, 72. to max_VZA
-      if((rad_SolarZenithAngle(ix,it) .lt. 0.) .or. (rad_SolarZenithAngle(ix,it) .gt. max_SZA)) pflag01=pflag01+1
-      if((rad_ViewingZenithAngle(ix,it) .lt. 0.) .or. (rad_ViewingZenithAngle(ix,it) .gt. max_VZA)) pflag01=pflag01+1
+      sza0 = rad_SolarZenithAngle(ix,it)
+      vza0 = rad_ViewingZenithAngle(ix,it)
+      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
+      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990 ! skip all, start next pixel
 
-      !hqw seems that cal_ecf and cal_crf they should be divided by 1000.
-      !but it does not matter because they are not actually used
-      !thus, the following has been commented out
+      !the following has been commented out, as they are not used
       !cal_ecf=out_EffectiveCloudFraction(ix,it)
       !cal_crf=out_CloudRadianceFraction466(ix,it)
       !if((cal_ecf .gt. -990.0).and.(cal_ecf .lt. 0.0)) cal_ecf=0.0
@@ -123,32 +125,27 @@ subroutine cal_pscene
       !if((cal_crf .gt. -990.0).and.(cal_crf .lt. 0.0)) cal_crf=0.0
       !if((cal_crf .gt. 1.0).and.(cal_crf .lt. 990.0)) cal_crf=1.0
 
-      ! -----------------
-      ! set nodes for LUT
-      ! -----------------
-      sza0=rad_SolarZenithAngle(ix,it)
-      vza0=rad_ViewingZenithAngle(ix,it)
       raa0=out_RelativeAzimuthAngle(ix,it)
+      !hqw out_RelativeAzimuthAbgle is calculated in cal_ecf
+      ! it should have already be within [0.,180.] range
+      ! it does not hurt to check again here, though seems unnecessary
+      ! pixels with invalid angles should have been skipped vis pflag01
       if(raa0 .gt. 180.) raa0=360.-raa0
 
       !hqw inp_TerrainPressure used to come from OMCLDO2
       !psfc0 will be replaced by climatology
-      psfc0=real(l2_TerrainPressure(ix,it))
+      psfc0 = -999. ! set to a temporary value here
 
       ! -----------------------------
       ! option for SlantColumnDensity
       ! -----------------------------
-      !hqw out_SlantColumnAmount(ix,it) was assigned in cal_ocp.f90
-      !   comment out this section
-      !hqw 'KNMI' option should not be used for TEMPO, thus comment it out
-      !if(name_option_SlantColumnDensity.eq.'KNMI') then
-      !  out_SlantColumnAmountO2O2(ix,it)=inp_SlantColumnAmountO2O2(ix,it)
-      !endif
+      !hqw out_SlantColumnAmount(ix,it) was now assigned in cal_ocp.f90
+      !   thus comment out this section
       !if(name_option_SlantColumnDensity.eq.'NASA') then
       !  out_SlantColumnAmountO2O2(ix,it)=nasa_SlantColumnAmountO2O2(ix,it)
       !endif
       !hqw NASA product and the LUTs assumes O2O2 in unit of 10^43 molec^2/cm^5
-      !  SCD < -9. are set to fFillValue (-1.2676506E30 in m_vars.f90
+      !  SCD < -9. are set to fFillValue -1.2676506E30 defined in m_vars.f90
       !this is now taken care of in m_read_input_tio.f90, thus comment it out
       !if(out_SlantColumnAmountO2O2(ix,it).le.-9.) out_SlantColumnAmountO2O2(ix,it)=fFillValue
 
@@ -210,66 +207,73 @@ subroutine cal_pscene
           tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
         end do
         pp(gmi_np+1)=gmi_psfc
-        call read_GMI_VCD(pp,tt)
-        vvcd=gmi_vcd
+        if (psfc0.gt.0.0) then
+          call read_GMI_VCD(pp,tt)
+          vvcd=gmi_vcd
+        else
+          vvcd(1:npcld) = -999.0
+        endif
       endif
 
-      if(name_option_TemperaturePressure.eq.'DEM') then
-        !hqw TEMPO does not read inp_TerrainPressure
-        !psfc0=real(inp_TerrainPressure(ix,it))
-        psfc0 = l2_TerrainPressure(ix,it)
-        do ip=1,gmi_np
-          tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-          tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-          tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-          tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-          tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-          tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-          tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-        end do
-        call read_DEM_VCD(psfc0,tt,pp)
-        vvcd=dem_vcd
-      endif
+      !hqw DEM is not currently supported, DO NOT USE
+      !comment out for now
+      !if(name_option_TemperaturePressure.eq.'DEM') then
+      !  !hqw TEMPO does not read inp_TerrainPressure
+      !  !psfc0=real(inp_TerrainPressure(ix,it))
+      !  psfc0 = l2_TerrainPressure(ix,it)
+      !  do ip=1,gmi_np
+      !    tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
+      !    tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
+      !    tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
+      !    tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
+      !    tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
+      !    tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
+      !    tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
+      !  end do
+      !  call read_DEM_VCD(psfc0,tt,pp)
+      !  vvcd=dem_vcd
+      !endif
 
-      if(name_option_TemperaturePressure.eq.'BDEM') then
-        psfc0=BDEM_TerrainPressure(ix,it)
-        do ip=1,gmi_np
-          tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-          tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-          tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-          tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-          tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-          tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-          tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-        end do
-        call read_DEM_VCD(psfc0,tt,pp)
-        vvcd=dem_vcd
-      endif
+      !hqw BDEM is not currently supported, DO NOT USE
+      ! comment out for now
+      !if(name_option_TemperaturePressure.eq.'BDEM') then
+      !  psfc0=BDEM_TerrainPressure(ix,it)
+      !  do ip=1,gmi_np
+      !    tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
+      !    tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
+      !    tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
+      !    tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
+      !    tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
+      !    tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
+      !    tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
+      !  end do
+      !  call read_DEM_VCD(psfc0,tt,pp)
+      !  vvcd=dem_vcd
+      !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
+        !geos_Pressure & geos_temperature are assigned in read_geoscf
+        !they are TOA->BOA, the opposite of the GEOS-CF original order
         psfc0=geos_Pressure(ix,it,geos_np+1)
         do ip=1,geos_np
-          pp_geos(ip)=geos_Pressure(ix,it,ip)
-          tt_geos(ip)=geos_temperature(ix,it,ip)
+          pp(ip)=geos_Pressure(ix,it,ip)
+          tt(ip)=geos_temperature(ix,it,ip)
         end do
-        pp_geos(geos_np+1)=psfc0
-        call read_GEOS5_VCD(pp_geos,tt_geos)
-        vvcd=geos_vcd
+        pp(geos_np+1)=psfc0
+        if (psfc0 .gt. 0.0) then
+          call read_GEOS5_VCD(pp,tt)
+          vvcd=geos_vcd
+        else
+          vvcd(1:npcld) = -999.0
+        endif
       endif
 
-      !hqw KMNI is not an option for TEMPO, comment it out
-      !if(name_option_TemperaturePressure.eq.'KNMI') then
-      !  !knmi_vcd(1)=(6.765e-4)/2.0/tvcd(1)*(pvcd(1)**2)
-      !  knmi_vcd(1)=vcd_convfac/2.0/tvcd(1)*(pvcd(1)**2)
-      !  sum1_vcd=knmi_vcd(1)
-      !  do ipcld=1,npcld-1
-      !    avg_tvcd=(tvcd(ipcld)+tvcd(ipcld+1))/2.0
-      !    !sum1_vcd=sum1_vcd+(6.765e-4)/2.0/avg_tvcd*(pvcd(ipcld+1)**2-pvcd(ipcld)**2)
-      !    sum1_vcd=sum1_vcd+vcd_convfac/2.0/avg_tvcd*(pvcd(ipcld+1)**2-pvcd(ipcld)**2)
-      !    knmi_vcd(ipcld+1)=sum1_vcd
-      !  end do
-      !  vvcd=knmi_vcd
-      !endif
+      !hqw skip if vvcd<0. due to improper psfc0
+      if (vvcd(1) .lt. 0.) go to  990
+
+      ! -----------------
+      ! set nodes for LUT
+      ! -----------------
 
       isza1=-9; isza2=-9
       do isza=1,nsza-1
@@ -304,7 +308,8 @@ subroutine cal_pscene
       end do
       if(iraa1 .lt. 0) go to 990
 
-      !the following line ensures psfc0 within LUT range
+      !the following line ensures psfc0 to be within LUT range
+      !note psfc0 < 0. should have already been skipped before
       if(psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
       ipsfc1=-9; ipsfc2=-9
       do ipsfc=1,npsfc-1
@@ -342,9 +347,6 @@ subroutine cal_pscene
         !------------------------------------------
         ! calculate LER at terrain pressure (Psfc)
         !------------------------------------------
-        ! real(kind=8),dimension(npcld)::cal_ler_amf
-        ! real(kind=8),dimension(nalb)::cal_ler_r
-
         !------------------------
         !1. SurfaceLER at 466 nm
         !------------------------
@@ -387,7 +389,7 @@ subroutine cal_pscene
           cal_ler_r466(ialb)=(wsza2*a1+wsza1*a2)/(wsza1+wsza2)
         end do
 
-        ! calculate transmittanc and sbar at R=0.0(1),0.1(7), and 0.2(12)
+        ! calculate transmittance and sbar at R=0.0(1),0.1(7), and 0.2(12)
         rad0=real(cal_ler_r466(1), kind=4)
         rad1=real(cal_ler_r466(7), kind=4)
         rad2=real(cal_ler_r466(12), kind=4)
@@ -401,7 +403,7 @@ subroutine cal_pscene
         if(ler466.gt.1.0) ler466=1.0
 
         alb0=ler466
-        !  alb0=inp_SceneAlbedo(ix,it)
+        !  alb0=inp_SceneAlbedo(ix,it) ! this is from KNMI
 
         !------------------------
         !2. SurfaceLER at 440 nm
@@ -445,7 +447,7 @@ subroutine cal_pscene
           cal_ler_r440(ialb)=(wsza2*a1+wsza1*a2)/(wsza1+wsza2)
         end do
 
-        ! calculate transmittanc and sbar at R=0.0(1),0.1(7), and 0.2(12)
+        ! calculate transmittance and sbar at R=0.0(1),0.1(7), and 0.2(12)
         rad0=real(cal_ler_r440(1), kind=4)
         rad1=real(cal_ler_r440(7), kind=4)
         rad2=real(cal_ler_r440(12), kind=4)
@@ -459,6 +461,8 @@ subroutine cal_pscene
         if(ler440.gt.1.0) ler440=1.0
 
         !-----
+        ! find alb node for lut_amf_ler
+        ! alb0 was assigned ler466 above
 
         ialb1=-9; ialb2=-9
         do ialb=1,nalb-1
@@ -551,9 +555,18 @@ subroutine cal_pscene
         ! -----------------
         ! calculate AMF*VCD
         ! -----------------
-        !hqw: but cal_ler_amf may be -999., how is it handled?
+        !hqw: but cal_ler_amf may be -999., how is that handled?
         do ipcld=1,npcld
-          amfvcd(ipcld)=real(cal_ler_amf(ipcld), kind=4)*vvcd(ipcld)
+          aaa = real(cal_ler_amf(ipcld),kind=4)
+          !hqw added check for aaa>0.
+          !vvcd should always > 0., otherwise it should have been skipped
+          if (aaa .gt. 0.) then
+             amfvcd(ipcld)=real(aaa*vvcd(ipcld), kind=4)
+          else
+             ! skipped to next pixel
+             amfvcd(ipcld) = -999.
+             go to 990
+          endif
         end do
 
         !hqw initialize local vairable before scd T-correction iteration
@@ -563,7 +576,7 @@ subroutine cal_pscene
         temp_t8p = 273.
 
         iternum = 0
-777     continue ! iteration come back here
+777     continue ! T iteration come back here
 
         iflag=-1
 
@@ -649,9 +662,17 @@ subroutine cal_pscene
         endif
 
         !hqw scd temperature correction
+        !Oct2021 temporarily use T at half cpp
+        !       need to tune with synthetic profile
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
-           call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1100.) then
+          if (name_option_TemperaturePressure .eq. 'GMI') then
+            call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+          else if (name_option_TemperaturePressure .eq. 'GEOS5') then
+            call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+          else
+            temp_t8p = t8p
+          endif
         else
            temp_t8p = t8p
         endif
@@ -662,7 +683,7 @@ subroutine cal_pscene
         if (delta_temp .ge. dt_threshold .and. iternum .lt. max_scd_iter) then
             t8p = temp_t8p
             scdm = scdadj
-            go to 777
+            go to 777 ! do another iteration
         endif
 
         !hqw assign output
@@ -763,7 +784,7 @@ subroutine cal_pscene
             temp_ler_alb440(ialb)=(wsza2*a1+wsza1*a2)/(wsza1+wsza2)
           end do
 
-          ! calculate transmittanc and sbar at R=0.0(1),0.1(7), and 0.2(12)
+          ! calculate transmittance and sbar at R=0.0(1),0.1(7), and 0.2(12)
           rad0=real(temp_ler_alb440(1), kind=4)
           rad1=real(temp_ler_alb440(7), kind=4)
           rad2=real(temp_ler_alb440(12), kind=4)
@@ -939,8 +960,14 @@ subroutine cal_pscene
 
         !hqw scd T-correction
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
-           call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1100.) then
+          if (name_option_TemperaturePressure .eq. 'GMI') then
+            call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+          else if (name_option_TemperaturePressure .eq. 'GEOS5') then
+            call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+          else
+            temp_t8p = t8p
+          endif
         else
            temp_t8p = t8p
         endif
@@ -1070,22 +1097,24 @@ subroutine cal_pscene
           if((SceneLER466.ge.0.2).and.(pdiff.lt.100.)) then
             out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
             out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-            out_EffectiveCloudFraction(ix,it)=0
-            out_EffectiveCloudFractionNotClipped(ix,it)=0
-            out_CloudRadianceFraction466(ix,it)=0
-            out_CloudRadianceFractionNotClipped466(ix,it)=0
-            out_CloudRadianceFraction440(ix,it)=0
-            out_CloudRadianceFractionNotClipped440(ix,it)=0
+            out_EffectiveCloudFraction(ix,it)=0.
+            out_EffectiveCloudFractionNotClipped(ix,it)=0.
+            out_CloudRadianceFraction466(ix,it)=0.
+            out_CloudRadianceFractionNotClipped466(ix,it)=0.
+            out_CloudRadianceFraction440(ix,it)=0.
+            out_CloudRadianceFractionNotClipped440(ix,it)=0.
           endif
           if((SceneLER466.ge.0.2).and.(pdiff.ge.100.)) then
             out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
             out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-            out_EffectiveCloudFraction(ix,it)=1000
-            out_EffectiveCloudFractionNotClipped(ix,it)=1000
-            out_CloudRadianceFraction466(ix,it)=1000
-            out_CloudRadianceFractionNotClipped466(ix,it)=1000
-            out_CloudRadianceFraction440(ix,it)=1000
-            out_CloudRadianceFractionNotClipped440(ix,it)=1000
+            !hqw changed 1000 to 1. after out_EffectiveCloudFraction changed
+            ! from [0,1000] to [0.,1.] range
+            out_EffectiveCloudFraction(ix,it)=1.
+            out_EffectiveCloudFractionNotClipped(ix,it)=1.
+            out_CloudRadianceFraction466(ix,it)=1.
+            out_CloudRadianceFractionNotClipped466(ix,it)=1.
+            out_CloudRadianceFraction440(ix,it)=1.
+            out_CloudRadianceFractionNotClipped440(ix,it)=1.
           endif
         endif
       endif

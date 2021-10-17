@@ -246,9 +246,15 @@ contains
     irr_out_irradiance_440nm = -9999. !0.0 hqw changed to -9999.
     irr_out_irradiance_466nm = -9999. !0.0
     irr_out_irradiance_477nm = -9999. !0.0
-    if (errstat == 0) allocate (tio_irr(nwavel, nxtrack, 1), &
-         tio_wvl(nwavel, nxtrack, 1), tio_pqf(nwavel, nxtrack, 1), &
-         stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, "read_irr_tio: allocation failed",&
+           errstat)
+      return
+    endif
+    allocate (tio_irr(nwavel, nxtrack, 1), &
+              tio_wvl(nwavel, nxtrack, 1), &
+              tio_pqf(nwavel, nxtrack, 1), &
+              stat=errstat)
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, "read_irr_tio: allocation failed",&
            errstat)

@@ -732,7 +732,13 @@ subroutine cal_ocp
       ! try using T at half of the pressure
       temp_cpp = real (cpp * 0.5, kind=4)
       if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
-         call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+        if (name_option_TemperaturePressure .eq. 'GMI') then
+          call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+        else if (name_option_TemperaturePressure .eq. 'GEOS5') then
+          call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
+        else
+          temp_t8p = real(t8p, kind=4)
+        endif
       else
          temp_t8p = real(t8p, kind=4)
       endif

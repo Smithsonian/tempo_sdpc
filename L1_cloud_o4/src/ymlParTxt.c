@@ -346,7 +346,7 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
 
     int cnt; for( cnt = 0; cnt < max; cnt++ ) { stk[cnt] = '\0'; }	/* init	*/
 
-    yaml_event_t event;					/* YAML data structure	*/
+    yaml_event_t event = {0};				/* YAML data structure	*/
 
     while ( event.type != YAML_STREAM_END_EVENT )	/* loop YAML stream	*/
     {

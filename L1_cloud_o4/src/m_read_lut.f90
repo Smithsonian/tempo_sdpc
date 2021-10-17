@@ -53,7 +53,7 @@ contains
     !-------------------
     ! read lookup table
     !-------------------
-    filename=trim(name_lut_dir)//trim(name_lut_rad)
+    filename=trim(name_lut_dir)//'/'//trim(name_lut_rad)
     write(*,*) '   reading '//trim(filename)
 
     call h5open_f(ierr)
@@ -171,7 +171,7 @@ contains
     !-------------------
     ! read lookup table
     !-------------------
-    filename=trim(name_lut_dir)//trim(name_lut_rad440)
+    filename=trim(name_lut_dir)//'/'//trim(name_lut_rad440)
     write(*,*)'   reading '//trim(filename)
 
     call h5open_f(ierr)
@@ -280,7 +280,7 @@ contains
     !-------------------
     ! read lookup table
     !-------------------
-    filename=trim(name_lut_dir)//trim(name_lut_amf_clr)
+    filename=trim(name_lut_dir)//'/'//trim(name_lut_amf_clr)
     write(*,*)'   reading '//trim(filename)
 
     call h5open_f(ierr)
@@ -394,7 +394,7 @@ contains
     !-------------------
     ! read lookup table
     !-------------------
-    filename=trim(name_lut_dir)//trim(name_lut_amf_cld)
+    filename=trim(name_lut_dir)//'/'//trim(name_lut_amf_cld)
     !filename=trim(name_lut_amf_cld)
     write(*,*)'   reading '//trim(filename)
 
@@ -505,7 +505,7 @@ contains
     !-------------------
     ! read lookup table
     !-------------------
-    filename=trim(name_lut_dir)//trim(name_lut_ler)
+    filename=trim(name_lut_dir)//'/'//trim(name_lut_ler)
     !filename=trim(name_lut_ler)
     write(*,*)'   reading '//trim(filename)
 

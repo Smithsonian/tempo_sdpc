@@ -14,7 +14,7 @@ program OMCDO2N
   use tio_module
   use m_read_input_tio, only: read_rad_tio, read_irr_tio, read_cldo4_tio, &
                   get_tio_global_attr, get_tio_l1rad_glbattr
-  use m_write_output_tio, only: create_output_file_tio
+  use m_write_output_tio, only: create_output_file_tio, update_output_file_tio
   use m_read_input_clim, only: read_geoscf
   use m_read_input_gler, only: read_gler
   use m_cal_ecf, only : cal_ecf
@@ -34,25 +34,27 @@ program OMCDO2N
   integer::gmonth
   integer::status
 
-  character(len=255)::outfile, filename, l1radfnm
+  !character(len=255)::outfile
+  character(len=255)::filename, l1radfnm
   character(len=255)::name_gmi_psfc
   character(len=255)::name_gmi_tmp
   integer::id_gmi_psfc,id_gmi_tmp
   character(len=255)::name_kleipool_rsfc
 
-  integer(kind=4)::ierr
+  !integer(kind=4)::ierr
   integer(kind=4) :: errstat
   character(len=80) :: logmsg
   character(len=15), parameter :: swathname = "band_290_490_nm"
 
-  call tell_open ("new_cloud", 0)
+  call tell_open ("L1_cloud_o4", 0)
   errstat = 0
 
-  call tell_log(0, 'Staring OMCDO2N')
+  call tell_log(0, 'Starting L1_cloud_o4')
   ! ----------------------------------------
   ! READ IN INPUT FILENAMES from control.txt
   ! ----------------------------------------
 
+  buf(:) = ' '
   status=GetConfigString("E","Input Files TEMPOL1RAD_fnm",buf)
   if(status < 0) then
     call tell_error(tell_io_read_error,"Problem reading TEMPOL1RAD_fnm from control file", errstat)
@@ -347,17 +349,29 @@ program OMCDO2N
   name_lut_rad440 = trim(adjustl(buf))
 
   call read_lut_rad (errstat)
-  if (errstat == 0) call tell_log(0,'Read radiance look-up table at 466 nm')
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'read_lut_rad failed', errstat)
+    call exit(-1)
+  endif
+  call tell_log(0,'Read radiance look-up table at 466 nm')
 
   call read_lut_rad440 (errstat)
-  if (errstat == 0) call tell_log(0,'Read radiance look-up table at 440 nm')
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'read_lut_rad440 failed', errstat)
+    call exit(-1)
+  endif
+  call tell_log(0,'Read radiance look-up table at 440 nm')
 
   !===========================
   ! 4. read AMF LUT at 477 nm
   !===========================
   call read_lut_amf_clr (errstat)
   call read_lut_amf_cld (errstat)
-  if (errstat == 0) call tell_log(0,'Read AMF look-up table')
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'error reading AMF LUTs failed', errstat)
+    call exit(-1)
+  endif
+  call tell_log(0,'Read AMF look-up table')
 
   !hqw moved out_ProcessingQualityFlags to read_rad_tio to do
   ! allocate and initialize quality flags for better memory usage
@@ -368,22 +382,26 @@ program OMCDO2N
   ! 6. calculate ECF/CRF at 466 nm
   !================================
   call cal_ecf
-  if (errstat == 0) call tell_log(0,'Calculated effective cloud fraction')
+  call tell_log(0,'Calculated effective cloud fraction')
 
   !==================
   ! 7. calculate OCP
   !==================
   call cal_ocp
-  if (errstat == 0) call tell_log(0,'Calculated cloud pressure')
+  call tell_log(0,'Calculated cloud pressure')
 
   !=============================
   ! 8. calculate Scene Pressure
   !=============================
   call read_lut_amf_ler (errstat)
-  if (errstat == 0) call tell_log(0,'Read AMF LER look-up table')
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'error read_lut_amf_ler failed', errstat)
+    call exit(-1)
+  endif
+  call tell_log(0,'Read AMF LER look-up table')
 
   call cal_pscene
-  if (errstat == 0) call tell_log(0,'Calculated LER and scene pressure')
+  call tell_log(0,'Calculated LER and scene pressure')
 
   !===================
   ! 9. write outputs
@@ -393,9 +411,15 @@ program OMCDO2N
 
   !E. O'Sullivan TEMPO-format OUTPUT - only structure & geolocation so far
   !hqw added other components
-  call create_output_file_tio (name_out_ncdf, &
-       l1radfnm, swathname, &
-       rad_NumTimes, rad_nXtrack, errstat)
+  if (.true.) then
+    ! JCH: in this mode, we add variables to an existing output file
+    call update_output_file_tio (name_out_ncdf, &
+                                 rad_NumTimes, rad_nXtrack, errstat)
+  else
+    call create_output_file_tio (name_out_ncdf, &
+                                 l1radfnm, swathname, &
+                                 rad_NumTimes, rad_nXtrack, errstat)
+  endif
 
   call tell_log(0, 'Success! I have done everything.')
   call tell_close()
