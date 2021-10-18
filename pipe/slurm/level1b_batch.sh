@@ -137,9 +137,11 @@ tar_granule_dir_to_dest()
    dest_dir=$1
    mkdir -p "$dest_dir"
    cd $parent_dir
-   tarfile="${rad_basename}.tar"
-   tar c --remove-files -f $dest_dir/.${tarfile} $granule_dir
-   /bin/mv $dest_dir/.${tarfile} $dest_dir/${tarfile}
+   if test -d $granule_dir ; then
+      tarfile="${rad_basename}.tar"
+      tar c --remove-files -f $dest_dir/.${tarfile} $granule_dir
+      /bin/mv $dest_dir/.${tarfile} $dest_dir/${tarfile}
+   fi
 }
 
 finish()
@@ -382,6 +384,29 @@ derive_o2o2_slant_column()
   find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 }
 
+derive_cloud_o4_params()
+{
+   product_file="$1"
+
+   radiance_file="${rad_basename}.nc"
+   irradiance_file="${irr_basename}.nc"
+
+   refdata_dir="$SDPC_RUN_DIR/refdata/cloud_o4"
+   template_ctrl="${etc_dir}/cloud_o4/control.txt.in"
+   ctrl_file="cloud_o4_control.txt"
+
+   # edit the control file template
+   sed -e "s,@cldo4_file@,$product_file," \
+       -e "s,@radiance_file@,$radiance_file," \
+       -e "s,@irradiance_file@,$irradiance_file," \
+       -e "s,@product_file@,$product_file," \
+       -e "s,@refdata_dir@,$refdata_dir," \
+       $template_ctrl > $ctrl_file
+
+   srun --ntasks=1 --output=log_cloud_o4.txt \
+        L1_cloud_o4 $ctrl_file
+}
+
 run_cloud_o4()
 {
   cld_o4_dir="CLDO4"
@@ -395,7 +420,8 @@ run_cloud_o4()
   fix_cldo4_metadata.py "${cld_o4_basename}.nc"
   sed -i -e s,TEMPO_O2O2_L2,TEMPO_CLDO4_L2,g "${cld_o4_basename}.nc.met"
 
-  # TBD: Add cloud fields to CLDO4 product file:
+  # From O2O2 slant column, derive cloud parameters
+  derive_cloud_o4_params "${cld_o4_basename}.nc"
 
   tar_l2_cloud_to_dest "$cld_o4_dir" "$l2_out_dir"
 

@@ -1,0 +1,98 @@
+Input Files:
+  TEMPOL1RAD_dir:
+    - ../
+  TEMPOL1RAD_fnm:
+    - @radiance_file@
+  TEMPOO4SCD_dir:
+    - ./
+  TEMPOO4SCD_fnm:
+    - @cldo4_file@
+  TEMPOL1IRR_dir:
+    - ../
+  TEMPOL1IRR_fnm:
+    - @irradiance_file@
+  OMGLER:
+    - Not_used_for_TEMPO
+  Kleipool_dir:
+    - @refdata_dir@
+  Kleipool_fnm:
+    - OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5
+  LUT_dir:
+    - @refdata_dir@
+  400201:
+    - GMI_Psfc_01.txt
+  400202:
+    - GMI_Psfc_02.txt
+  400203:
+    - GMI_Psfc_03.txt
+  400204:
+    - GMI_Psfc_04.txt
+  400205:
+    - GMI_Psfc_05.txt
+  400206:
+    - GMI_Psfc_06.txt
+  400207:
+    - GMI_Psfc_07.txt
+  400208:
+    - GMI_Psfc_08.txt
+  400209:
+    - GMI_Psfc_09.txt
+  400210:
+    - GMI_Psfc_10.txt
+  400211:
+    - GMI_Psfc_11.txt
+  400212:
+    - GMI_Psfc_12.txt
+  400301:
+    - GMI_TMP_01.txt
+  400302:
+    - GMI_TMP_02.txt
+  400303:
+    - GMI_TMP_03.txt
+  400304:
+    - GMI_TMP_04.txt
+  400305:
+    - GMI_TMP_05.txt
+  400306:
+    - GMI_TMP_06.txt
+  400307:
+    - GMI_TMP_07.txt
+  400308:
+    - GMI_TMP_08.txt
+  400309:
+    - GMI_TMP_09.txt
+  400310:
+    - GMI_TMP_10.txt
+  400311:
+    - GMI_TMP_11.txt
+  400312:
+    - GMI_TMP_12.txt
+  LUT_RAD_440:
+    - LUT_4400_RAD.h5
+  LUT_RAD_466:
+    - LUT_4660_RAD.h5
+  477000:
+    - LUT_4770_CLEAR.h5
+  477001:
+    - LUT_4770_CLOUD_MLER.h5
+  477010:
+    - LUT_4770_CLOUD_LER_6D.h5
+
+Output Files:
+   TEMPOCLDO4:
+    - @product_file@
+
+Name Options:
+  T-P profile:
+   - GEOS5
+  Surface Reflectivity:
+   - BRDF
+
+Runtime Parameters:
+    APPShortName: TEMPOCLDO4
+    APPVersion: 1.0.0.0
+    AuthorName: H. Wang, G. Gonzalez Abad, E. O'Sullivan, J. Houck, E.Yang, A. Vasilkov, X. Liu, K. Chance
+    AuthorAffiliation: SAO, SAO, SAO, SAO, SSAI, SSAI, SAO, SAO
+    ProcessingCenter: SAO
+    TEMPO Footprint: Visible
+    Collection: 001
