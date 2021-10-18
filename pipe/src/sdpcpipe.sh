@@ -2,7 +2,10 @@
 
 exit_usage()
 {
-   echo "Usage: $(basename $0) {status|start|stop} /path/to/services"
+   echo "Usage: $(basename $0) [options] {status|start|stop}"
+   echo "   Options:"
+   echo "   --help              Print this listing"
+   echo "   --dir SERVICE_DIR   Pipeline service directory path"
    exit "$1"
 }
 
@@ -98,6 +101,12 @@ main ()
      exit_usage 0
    fi
 
+   if test -z "$SDPC_RUN_DIR_MASTER" ; then
+      _scan_dir=""
+   else
+      _scan_dir="$SDPC_RUN_DIR_MASTER/services"
+   fi
+
    # Process optional args
    while [ "$#" != "0" ]
    do
@@ -107,10 +116,11 @@ main ()
            --help)
              exit_usage 0
              ;;
-          # --init)
-          #    _do_init=1
-          #    shift;
-          #    ;;
+           --dir)
+              shift;
+              _scan_dir="$1"
+              shift;
+              ;;
            *)
              echo "Unknown option: $1"
              exit 1
@@ -123,12 +133,16 @@ main ()
      esac
    done
 
-  if [ "$#" != "2" ]; then
+  if test x"$_scan_dir" = x ; then
+    echo "SDPC_RUN_DIR_MASTER env var is undefined. Consider using the --dir option."
+    exit 1
+  fi
+
+  if test "$#" -ne 1 ; then
     exit_usage 1
   fi
 
   _action="$1"
-  _scan_dir="$2"
 
   case "$_action" in
       start)
