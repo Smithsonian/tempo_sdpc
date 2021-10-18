@@ -2,6 +2,7 @@
 program OMCDO2N
 !***************
 
+  use iso_fortran_env, only: output_unit
   use hdfeos4_parameters
   use he5_swreader
   use m_vars
@@ -48,6 +49,9 @@ program OMCDO2N
 
   call tell_open ("L1_cloud_o4", 0)
   errstat = 0
+
+  ! JCH: this doesn't seem to work.
+  !call unbufferstdout()
 
   call tell_log(0, 'Starting L1_cloud_o4')
   ! ----------------------------------------
@@ -194,6 +198,7 @@ program OMCDO2N
   endif
   gmetadata%omi_collection=trim(buf)
 
+  flush (output_unit)
   call tell_log(0,'Read control file')
 
   !===========================================
@@ -217,6 +222,7 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'read_irr_tio failed', errstat)
     call exit(-1);
   endif
+  flush (output_unit)
   call tell_log(0,'Read IRR '//filename)
 
   !hqw moved 5 to 2.1 because GEOS-CF TP needs rad/lon
@@ -230,19 +236,21 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'read_rad_tio failed', errstat)
     call exit(-1);
   endif
+  flush (output_unit)
   call tell_log(0,'Read RAD '//l1radfnm)
 
   ! --------------------
   ! 2.2 read TEMPO O4 SCD from intermediate L2 file
   ! --------------------
   ! GGA TIO cldo4 input tested, appears to work OK
-    filename = trim(adjustl(name_nasa_dir))//trim(adjustl(name_nasa_file))
-    call read_cldo4_tio(filename,errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_runtime_error, 'read_cldo4_tio failed', errstat)
-      call exit(-1);
-    endif
-    call tell_log(0, 'Read O4 SCD '//filename)
+  filename = trim(adjustl(name_nasa_dir))//trim(adjustl(name_nasa_file))
+  call read_cldo4_tio(filename,errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'read_cldo4_tio failed', errstat)
+    call exit(-1);
+  endif
+  flush (output_unit)
+  call tell_log(0, 'Read O4 SCD '//filename)
 
   !hqw debug read ixdebug and it debug
   !write(*,*) 'Input ixdebug'
@@ -257,6 +265,7 @@ program OMCDO2N
   !gmonth is used to decide filename for GMI, DEM, BDEM
   gmonth = gmetadata%granule_month
   write(*,*) '   gmonth=',gmonth
+  flush (output_unit)
 
   if(name_option_TemperaturePressure.eq.'GMI') then
     !hqw moved above read(gmeta_orbit_month,'(i2)') gmonth
@@ -298,6 +307,7 @@ program OMCDO2N
     call read_BDEM_Psfc_h5
     call tell_log(0,'Read DEM Psfc from GLER files')
   endif
+  flush (output_unit)
 
   !hqw TEMPO uses GEOS5 as the option for GEOS-CF
   if(name_option_TemperaturePressure.eq.'GEOS5') then
@@ -307,6 +317,7 @@ program OMCDO2N
        call tell_error (tell_runtime_error, 'read_geoscf failed', errstat)
        call exit(-1)
      endif
+     flush (output_unit)
      call tell_log(0,'Read GEOS-CF profiles')
   endif
 
@@ -319,6 +330,7 @@ program OMCDO2N
     status=GetConfigString("E","Input Files Kleipool_fnm",buf)
     name_kleipool_rsfc=trim(name_kleipool_dir)//trim(adjustl(buf))
     call read_Kleipool_Rsfc(name_kleipool_rsfc,gmonth)
+    flush (output_unit)
     call tell_log(0,'Read Kleipool Rsfc climatology')
   endif
 
@@ -333,6 +345,7 @@ program OMCDO2N
     if (name_option_TemperaturePressure .eq. 'GMI') then
         write(*,*)'   WARNING: wind speed = 0 for GMI+BRDF combo.'
     endif
+    flush (output_unit)
     call tell_log(0,'Read BRDF Rsfc from GLER')
   endif
 
@@ -353,6 +366,7 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'read_lut_rad failed', errstat)
     call exit(-1)
   endif
+  flush (output_unit)
   call tell_log(0,'Read radiance look-up table at 466 nm')
 
   call read_lut_rad440 (errstat)
@@ -360,6 +374,7 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'read_lut_rad440 failed', errstat)
     call exit(-1)
   endif
+  flush (output_unit)
   call tell_log(0,'Read radiance look-up table at 440 nm')
 
   !===========================
@@ -371,6 +386,7 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'error reading AMF LUTs failed', errstat)
     call exit(-1)
   endif
+  flush (output_unit)
   call tell_log(0,'Read AMF look-up table')
 
   !hqw moved out_ProcessingQualityFlags to read_rad_tio to do
@@ -382,12 +398,14 @@ program OMCDO2N
   ! 6. calculate ECF/CRF at 466 nm
   !================================
   call cal_ecf
+  flush (output_unit)
   call tell_log(0,'Calculated effective cloud fraction')
 
   !==================
   ! 7. calculate OCP
   !==================
   call cal_ocp
+  flush (output_unit)
   call tell_log(0,'Calculated cloud pressure')
 
   !=============================
@@ -398,9 +416,11 @@ program OMCDO2N
     call tell_error (tell_runtime_error, 'error read_lut_amf_ler failed', errstat)
     call exit(-1)
   endif
+  flush (output_unit)
   call tell_log(0,'Read AMF LER look-up table')
 
   call cal_pscene
+  flush (output_unit)
   call tell_log(0,'Calculated LER and scene pressure')
 
   !===================
