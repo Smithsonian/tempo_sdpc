@@ -120,9 +120,11 @@ fi
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
 
 if test x"$product_list_sans_o3p" != x ; then
+  num_products=$(echo "$product_list_sans_o3p" | wc -w)
   jid=$(sbatch --job-name=L2 --parsable \
          --comment=$SDPC_GRANULE_LABEL \
          --chdir $l2_run_dir \
+         --nodes=1-1 --ntasks=$num_products --ntasks-per-core=1 \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_batch-%j.out" \
          level2_batch.sh "$tar_file_notice" "$product_list_sans_o3p")
   log_message "submitted sbatch $jid: level2_batch.sh: $SDPC_GRANULE_LABEL: $product_list_sans_o3p"

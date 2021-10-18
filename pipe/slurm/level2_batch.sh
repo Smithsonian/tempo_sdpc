@@ -1,5 +1,4 @@
 #! /usr/bin/env bash
-#SBATCH --cpus-per-task=4
 #SBATCH --output=/dev/null
 
 # Assume this script is started in a writeable directory

@@ -1,5 +1,4 @@
 #! /bin/sh
-#SBATCH --cpus-per-task=1
 #SBATCH --output=/dev/null
 
 # 0. This script is intended to run on a compute node.
