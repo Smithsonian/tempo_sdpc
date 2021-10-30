@@ -282,7 +282,7 @@ AC_ARG_WITH(leapsec,
   [jh_with_leapsec=$withval],
   [jh_with_leapsec=no])
 if test "x$jh_with_leapsec" = "xno"; then
-   LEAP_SECONDS_LIST="/usr/share/zoneinfo/leap-seconds.list"
+   LEAP_SECONDS_LIST="$REFDATA_DIR/zoneinfo/leap-seconds.list"
 else
    LEAP_SECONDS_LIST="$jh_with_leapsec"
 fi

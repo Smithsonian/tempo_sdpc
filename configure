@@ -2934,7 +2934,7 @@ else
 fi
 
 if test "x$jh_with_leapsec" = "xno"; then
-   LEAP_SECONDS_LIST="/usr/share/zoneinfo/leap-seconds.list"
+   LEAP_SECONDS_LIST="$REFDATA_DIR/zoneinfo/leap-seconds.list"
 else
    LEAP_SECONDS_LIST="$jh_with_leapsec"
 fi
