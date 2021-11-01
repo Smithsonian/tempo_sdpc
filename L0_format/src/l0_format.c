@@ -38,7 +38,6 @@
 static int Have_Epoch;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
-static double Cache_Start_Time = 0.0;
 
 static const char *Public_Mirror_Root_Dir = NULL;
 
@@ -83,6 +82,7 @@ typedef struct
    char *incoming_dir;
    char *tpinfo_file;
    double monitor_wait_secs;
+   double start_time;
    double cache_flush_idle_wait_secs;
    double cache_flush_exprec_wait_secs;
    int exit_on_emptydir;
@@ -329,6 +329,7 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
        || (CONFIG_TRUE != config_setting_lookup_string (s, "input_filename_glob_pattern", &ctrl->input_filename_glob_pattern))
        || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &tpinfo_file))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
+       || (CONFIG_TRUE != config_setting_lookup_float (s, "start_time", &ctrl->start_time))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_exprec_wait_secs", &ctrl->cache_flush_exprec_wait_secs))
       )
@@ -643,20 +644,23 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
 
    filetype = chdr.filetype;
 
-   /* If we're processing the science data cache, we may want to skip files
-    * prior to some user-specified time */
-   if (Cache_Start_Time > 0)
+   /* We may want to skip files prior to some user-specified time */
+   if (ctrl->start_time > 0)
      {
         if (0 != verify_epoch (chdr.epoch))
           return -1;
-        if (chdr.last_packet_time < Cache_Start_Time)
-          return 0;
+        if (chdr.last_packet_time < ctrl->start_time)
+          {
+             tell_vinfo (1, "skipped: %s", file);
+             return 0;
+          }
      }
 
    if (NULL == (pmt = find_process_method (tbl, filetype)))
      return -1;
 
    status = pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
+   if (status == 0) tell_vinfo (1, "processed: %s", file);
 
    /* Complain when logging fails, but don't stop processing */
    (void) log_processed_file (ctrl->log_incoming, file, st.st_mtim.tv_sec, status);
@@ -664,9 +668,9 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
    return status;
 }
 
-static int process_dir_files (const Process_Method_Table_Type *tbl,
-                              const TPInfo_Type *tpinfo, Control_Type *ctrl,
-                              char **file_list, size_t num_files)
+static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
+                                          const TPInfo_Type *tpinfo, Control_Type *ctrl,
+                                          char **file_list, size_t num_files)
 {
    size_t i;
 
@@ -675,7 +679,6 @@ static int process_dir_files (const Process_Method_Table_Type *tbl,
         char *file = file_list[i];
         if (0 == process_file (tbl, tpinfo, ctrl, file))
           {
-             tell_vinfo (1, "processed: %s", file);
              /* If processing involved a rename, then deletion
               * will be handled elsewhere. */
              if (ioclib_isfile (file, NULL))
@@ -854,6 +857,10 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
                                 ctrl->input_filename_glob_pattern);
 
    tell_vinfo (0, "processing %s", pattern);
+   if (ctrl->start_time > 0)
+     {
+        tell_vinfo (0, "start time = %f sec since the epoch", ctrl->start_time);
+     }
 
    if (NULL == pattern)
      {
@@ -878,7 +885,7 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
         if (ctrl->exit_on_emptydir && (gt->num_files == 0))
           break;
 
-        if (-1 == process_dir_files (tbl, tpinfo, ctrl, gt->files, gt->num_files))
+        if (-1 == process_live_stream_dir_files (tbl, tpinfo, ctrl, gt->files, gt->num_files))
           goto return_status;
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
@@ -949,9 +956,9 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
           goto return_status;
 
         tell_vinfo (0, "begin processing %ld files from directory %s", num_files, dir);
-        if (Cache_Start_Time > 0)
+        if (ctrl->start_time > 0)
           {
-             tell_vinfo (0, "start time = %f sec since the epoch", Cache_Start_Time);
+             tell_vinfo (0, "start time = %f sec since the epoch", ctrl->start_time);
           }
 
         for (k = 0; k < num_files; k++)
@@ -1643,6 +1650,7 @@ int main (int argc, char **argv)
    int cache_method = EXPREC_CACHE_DISK;
    const char *cache_dir_pattern = NULL;
    int status = EXIT_FAILURE;
+   double start_time = 0.0;
    static struct option long_options[] =
      {
         {"help",     no_argument,       0, 'h'},
@@ -1696,7 +1704,7 @@ int main (int argc, char **argv)
              Perform_Archive_Registration++;
              break;
            case 't':
-             if (1 != sscanf (optarg, "%le", &Cache_Start_Time))
+             if (1 != sscanf (optarg, "%le", &start_time))
                {
                   fprintf (stderr, "*** Error parsing start time: %s\n", optarg);
                   goto return_status;
@@ -1744,6 +1752,12 @@ int main (int argc, char **argv)
 
    if (-1 == parse_param_file (&cfg, param_file, &ctrl))
      goto return_status;
+
+   /* command-line start_time overrides the control file */
+   if (start_time != 0.0)
+     {
+        ctrl.start_time = start_time;
+     }
 
    if (NULL == (tp = tpinfo_init (ctrl.tpinfo_file)))
      goto return_status;
