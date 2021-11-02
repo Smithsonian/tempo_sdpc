@@ -37,6 +37,7 @@ o3_profile/default_main_control_uv.inp
 o3_profile/default_main_control_uvvis.inp
 o3_profile/profoz_uv.inp
 o3_profile/profoz_uvvis.inp
+o3prof_config.sh
 level1/radiance.met.template
 level1/irradiance.met.template
 level3/simple.met.template

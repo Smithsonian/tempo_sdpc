@@ -71,12 +71,11 @@ for p in $product_list_tokens ; do
    fi
 done
 
-# When O3PROF is selected, we generate the product only
-# when this granule is also a selected scene:
 if test x"$have_o3p" != x ; then
-: "${SDPC_O3PROF_SCAN_STEP:=3}"
-: "${SDPC_O3PROF_SCAN_OFFSET:=0}"
-  have_o3p=$(o3p_select.sl --step $SDPC_O3PROF_SCAN_STEP --offset $SDPC_O3PROF_SCAN_OFFSET $SDPC_GRANULE_LABEL)
+  # load o3prof config parameters
+  . $SDPC_RUN_DIR_MASTER/etc/o3prof_config.sh
+  # generate a product only if this scene is selected
+  have_o3p=$(o3p_select.sl --step $o3p_scan_step --offset $o3p_scan_offset $SDPC_GRANULE_LABEL)
   if test x"$have_o3p" != x ; then
      log_message "O3PROF selected: $SDPC_GRANULE_LABEL"
   else
@@ -95,11 +94,7 @@ fi
 
 if test x"$have_o3p" != x ; then
 
-  # FIXME: put these parameters in a control file somewhere(?)
-  ntasks_per_op3_host=20
-  num_o3p_hosts=3
-  o3p_partition="part2"
-  o3p_host_list=$(seq 0 $((num_o3p_hosts-1)))
+  o3p_host_list=$(seq 0 $((o3p_num_hosts-1)))
 
   for k in $o3p_host_list ; do
      # To enable parallel cleanup, make a per-host hard link to the tar file
@@ -146,13 +141,13 @@ if test x"$have_o3p" != x ; then
   job_o3p="O3PROF:${SDPC_GRANULE_LABEL}"
 
   for k in $o3p_host_list ; do
-     host_spec="${k}-${num_o3p_hosts}"
+     host_spec="${k}-${o3p_num_hosts}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
 
      jid=$(sbatch --job-name="$job_o3p" --parsable \
             --comment=$SDPC_GRANULE_LABEL \
             --partition="$o3p_partition" \
-            --nodes=1-1 --ntasks=$ntasks_per_op3_host --ntasks-per-core=1 \
+            --nodes=1-1 --ntasks=$o3p_ntasks_per_host --ntasks-per-core=1 \
             --chdir=$l2_run_dir \
             --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_batch-%j.out" \
             o3prof_batch.sh "$host_spec" "$tar_file_notice_alias")
