@@ -57,9 +57,10 @@ extern void plan_list_free (Plan_List_Type *head);
  * @param[in]  mirror_tilt  Pointer to optional function to compute mirror
  *                          tilt angle (NULL is ok)
  * @param[in]  head  The head of a plan list.
+ * @param[in]  plan_id  The planID string given in the spacecraft maneuver table.
  * @return 0 on success, -1 on error.
 */
 extern int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
-                            const Plan_List_Type *head);
+                            const Plan_List_Type *head, const char *plan_id);
 
 #endif
