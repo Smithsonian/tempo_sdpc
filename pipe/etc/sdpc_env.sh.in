@@ -23,9 +23,9 @@ export SDPC_S6_ROOT="@S6_ROOT_DIR@"
 # (e.g. GOES data, meteorology data, snow & ice cover)
 export SDPC_ANCILLARY_ROOT="@ANCILLARY_DATA_DIR@"
 
-# SDPC_ANCILLARY_IMS_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
-: "${SDPC_ANCILLARY_IMS_DBFILE:=${SDPC_ANCILLARY_ROOT}/ims/ims.sqlite}"
-export SDPC_ANCILLARY_IMS_DBFILE
+# SDPC_ANCILLARY_IMS_DBFILE = path to IMS sqlite file
+# (technically, this should be on a local disk, and not be NFS mounted)
+export SDPC_ANCILLARY_IMS_DBFILE="${SDPC_ANCILLARY_ROOT}/ims/ims.sqlite"
 
 # SDPC_REFDATA_DIR contains static reference data,
 # shared by all processing nodes
@@ -51,20 +51,16 @@ export SDPC_PROCESSING_VERSION
 export SDPC_ARCHIVE_HOME
 
 # SDPC_ARCHIVE_DIR = root directory for the pipeline-specific archive
-: "${SDPC_ARCHIVE_DIR:=${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}}"
-export SDPC_ARCHIVE_DIR
+export SDPC_ARCHIVE_DIR="${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
-: "${SDPC_ARCHIVE_DBFILE:=/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite}"
-export SDPC_ARCHIVE_DBFILE
+export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
 
 # Level 0 IRU, SMC, HK file lookup can use a separate database
-: "${SDPC_ARCHIVE_DBFILE_L0:=${SDPC_ARCHIVE_DBFILE}}"
-export SDPC_ARCHIVE_DBFILE_L0
+export SDPC_ARCHIVE_DBFILE_L0="${SDPC_ARCHIVE_DBFILE}"
 
 # Level 1 IRR file lookup can use a separate database
-: "${SDPC_ARCHIVE_DBFILE_L1:=${SDPC_ARCHIVE_DBFILE}}"
-export SDPC_ARCHIVE_DBFILE_L1
+export SDPC_ARCHIVE_DBFILE_L1="${SDPC_ARCHIVE_DBFILE}"
 
 #---------------------------------
 #  Live processing directory paths
