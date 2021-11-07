@@ -645,6 +645,14 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
+    call tiof_varlist_append (varlist, errstat, &
+                              cld_var_proc_qf, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "processing quality flags", &
+                              valid_range = [0.0_r8, 32767.0_r8], &
+                              fillvalue = fill_short, &
+                              attlist=att_cld)
     if (do_cloud_mask .and. allocated(cloud_mask)) then
       call tiof_varlist_append (varlist, errstat, &
                               cld_var_cloud_mask, &
@@ -822,14 +830,6 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_cld)
-    call tiof_varlist_append (varlist, errstat, &
-                              cld_var_proc_qf, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "processing quality flags", &
-                              valid_range = [0.0_r8, 32767.0_r8], &
-                              fillvalue = fill_short, &
-                              attlist=att_cld)
 
     call tiof_push_group (obj, cld_grp_qa_stats, errstat)
     call tiof_def_vars (obj, varlist, errstat)
@@ -923,6 +923,8 @@ contains
          [num_steps,num_xtrack], eff_cld_frac2(0:num_xtrack-1,1:num_steps), &
          errstat)
 
+    call tiof_put2d_i2 (obj, cld_var_proc_qf, [0,0], &
+         [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
     call tiof_pop_group (obj, errstat)
 
     !Support_data group
@@ -979,9 +981,6 @@ contains
 
     !QA_statistics group
     call tiof_push_group (obj, cld_grp_qa_stats, errstat)
-    call tiof_put2d_i2 (obj, cld_var_proc_qf, [0,0], &
-         [num_steps,num_xtrack], qc2(0:num_xtrack-1,1:num_steps), errstat)
-
     call tiof_put2d_r4 (obj, cld_var_resid_bias, [0,0], &
          [num_steps,num_xtrack], biases2(0:num_xtrack-1,1:num_steps), errstat)
 
