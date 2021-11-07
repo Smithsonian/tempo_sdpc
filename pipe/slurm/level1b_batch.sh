@@ -500,9 +500,9 @@ fi
 (run_cloud_o4)
 (run_cloud_rr)
 
-# FIXME:  For now, we'll delete CLDO4, and use CLDRR for retrievals.
-/bin/rm -f "${cld_o4_basename}.nc"
-create_file_listing  "$cld_rr_basename"
+# FIXME:  delete one cloud product, and use the other for retrievals
+/bin/rm -f "${cld_rr_basename}.nc"
+create_file_listing  "$cld_o4_basename"
 
 catch()
 {
