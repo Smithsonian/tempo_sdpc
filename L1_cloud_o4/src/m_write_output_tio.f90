@@ -327,7 +327,7 @@ contains
     type (tiof_attlist_type) :: att_geo, att_latbnd, att_lonbnd
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
-    integer, parameter :: deflate_level = 5
+    integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
@@ -668,7 +668,7 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_product
     integer, dimension(2) :: dimids_xtrack_step
-    integer, parameter :: deflate_level = 5
+    integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
@@ -685,7 +685,7 @@ contains
                               att_text = "longitude latitude")
 
     call tiof_varlist_append (varlist, errstat, &
-                              "CloudPressure", &
+                              "cloud_pressure", &
                               nf90_int, &
                               dimids = dimids_xtrack_step,  &
                               comment = "cloud pressure", &
@@ -697,7 +697,7 @@ contains
                               attlist=att_product)
 
      call tiof_varlist_append (varlist, errstat, &
-                              "EffectiveCloudFraction", &
+                              "cloud_fraction", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               comment = "effective cloud fraction", &
@@ -733,12 +733,12 @@ contains
                               attlist=att_product)
 
     call tiof_varlist_append (varlist, errstat, &
-                              "ProcessingQualityFlags", &
-                              nf90_int, &
+                              "processing_quality_flag", &
+                              nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               comment = "processing quality flags", &
                               valid_range = [0.0_r8, 65535.0_r8], &
-                              fillvalue = fill_int, &
+                              fillvalue = fill_short, &
                               attlist=att_product)
 
     call tiof_push_group (tio_l2obj, "product", errstat)
@@ -777,10 +777,10 @@ contains
 
     call tiof_push_group (tio_l2obj, "product", errstat)
 
-    call tiof_put2d_i2 (tio_l2obj, "CloudPressure", [0,0], &
+    call tiof_put2d_i2 (tio_l2obj, "cloud_pressure", [0,0], &
          [nstep, nxtrack], out_CloudPressure, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "EffectiveCloudFraction", [0,0], &
+    call tiof_put2d_r4 (tio_l2obj, "cloud_fraction", [0,0], &
          [nstep, nxtrack], out_EffectiveCloudFraction, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction466", [0,0], &
@@ -789,7 +789,9 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction440", [0,0], &
          [nstep, nxtrack], out_CloudRadianceFraction440, errstat)
 
-    call tiof_put2d_i2 (tio_l2obj, "ProcessingQualityFlags", [0,0], &
+    write(*,*)'FIXME: forcing processing_quality_flag = 0 in output file'
+    out_ProcessingQualityFlags(:,:) = 0
+    call tiof_put2d_i2 (tio_l2obj, "processing_quality_flag", [0,0], &
          [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
 
     call tiof_pop_group (tio_l2obj, errstat)
@@ -817,7 +819,7 @@ contains
     type (tiof_attlist_type) :: att_support
     integer, dimension(2) :: dimids_xtrack_step
     character(len=255) :: name466, name440
-    integer, parameter :: deflate_level = 5
+    integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
 
     !define r8 kind for use in setting parameter valid ranges
