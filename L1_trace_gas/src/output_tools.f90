@@ -2018,9 +2018,9 @@ contains
     call tell_log (1, logmsg)
 
     call tiof_push_group (cld, "/product", errstat)
-    call tiof_get2d_r8 (cld, "cloud_pressure_for_O3", [0,0], [ntimes,nxtrack], &
+    call tiof_get2d_r8 (cld, "cloud_pressure", [0,0], [ntimes,nxtrack], &
                         cloud_top_pressure, errstat, replace_fill=r8_missval)
-    call tiof_get2d_r8 (cld, "cloud_fraction_for_O3", [0,0], [ntimes,nxtrack], &
+    call tiof_get2d_r8 (cld, "cloud_fraction", [0,0], [ntimes,nxtrack], &
                         cloud_fraction, errstat, replace_fill=r8_missval)
     call tiof_close (cld, errstat)
     if (errstat /= 0) then
