@@ -32,6 +32,12 @@ define slsh_main ()
    if (__argc - i < 1)
      usage();
 
+   if (step <= 0)
+     {
+        () = fprintf (stdout, "yes");
+        exit (0);
+     }
+
    variable path = __argv[i];
    variable tok = strtok (path_basename_sans_extname(path), "_");
 
