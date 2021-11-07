@@ -281,8 +281,8 @@ contains
          cfr(1:nxtrack, 0:nstep-1), errstat)
     call tiof_get2d_r4 (tio_l2obj, cld_var_cld_pres, [0,0], [nstep, nxtrack], &
          ctp(1:nxtrack, 0:nstep-1), errstat)
-    call tiof_pop_group (tio_l2obj, errstat)
-    call tiof_push_group (tio_l2obj, o3p_grp_qa_stats, errstat)
+!rr    call tiof_pop_group (tio_l2obj, errstat)
+!rr    call tiof_push_group (tio_l2obj, o3p_grp_qa_stats, errstat)
 !    call tiof_inq_group (tio_l2obj, "/", errstat)
 !    call tiof_inq_group (tio_l2obj, o3p_grp_qa_stats, errstat)
     call tiof_get2d_i2 (tio_l2obj, cld_var_qflag, [0,0], [nstep, nxtrack], &
