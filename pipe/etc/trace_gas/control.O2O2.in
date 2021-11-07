@@ -121,7 +121,7 @@ UV1
 # ------------------------------------------------------------------------
 # Air Mass Factor calculation
 #
-# 1st line: amf_wvl, amf_max_sza
+# 1st line: amf_wvl, yn_gler
 #     Wavelength of AMF calculation (amf_wvl): wavelength for calculation,
 #         if not available in scattering weights LUT will find the closest
 # 
@@ -130,7 +130,7 @@ UV1
 #           clouds (amf_alb_cld)
 # ------------------------------------------------------------------------
 AMF calculation settings
--1.0 #this number is different for each molecule, negative to skip AMF
+-1.0 T #this number is different for each molecule, negative to skip AMF
 0.10 0.50 0.80
 
 # ------------------------------------------------------------------------

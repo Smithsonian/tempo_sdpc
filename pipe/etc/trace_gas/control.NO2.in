@@ -118,7 +118,7 @@ UV1   # JCH use UV1 for tempo file format
 # ------------------------------------------------------------------------
 # Air Mass Factor calculation
 #
-# 1st line: amf_wvl, amf_max_sza
+# 1st line: amf_wvl, yn_gler
 #     Wavelength of AMF calculation (amf_wvl): wavelength for calculation,
 #         if not available in scattering weights LUT will find the closest
 #
@@ -127,7 +127,7 @@ UV1   # JCH use UV1 for tempo file format
 #           clouds (amf_alb_cld)
 # ------------------------------------------------------------------------
 AMF calculation settings
-440.0
+466.0 T   # 440.0
 0.10 0.50 0.80
 
 # ------------------------------------------------------------------------
