@@ -135,8 +135,8 @@ MODULE O3T_cloudPres_class
       call tiof_push_group (cld, "/product", errstat)
       call tiof_get2d_r4 (cld, "cloud_pressure"//suffix, [0,0], [ntimes,nxtrack], &
                           cloud_blk % cloud_pressure, errstat)
-      call tiof_pop_group (cld, errstat)
-      call tiof_push_group (cld, "/qa_statistics", errstat)
+!rr      call tiof_pop_group (cld, errstat)
+!rr      call tiof_push_group (cld, "/qa_statistics", errstat)
       call tiof_get2d_i2 (cld, "processing_quality_flag", [0,0], [ntimes,nxtrack], &
                           cloud_blk % processing_quality_flags, errstat)
       call tiof_close (cld, errstat)
