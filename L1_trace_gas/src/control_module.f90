@@ -89,9 +89,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
   USE OMSAO_casestring_module, ONLY: lower_case
   USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
-  USE OMSAO_wfamf_module, ONLY: &
-    amf_alb_lnd, amf_alb_sno, amf_wvl, &
-    amf_alb_cld
+  USE OMSAO_wfamf_module, ONLY: amf_wvl, yn_gler, &
+    amf_alb_lnd, amf_alb_sno, amf_alb_cld
   USE sao_pge_utils, ONLY: skip_to_filemark
 
   IMPLICIT NONE
@@ -519,7 +518,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
   !  modulename//f_sep//wfmod_amf_str, vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) amf_wvl
+  READ (fit_ctrl_unit, *) amf_wvl, yn_gler
   READ (fit_ctrl_unit, *) amf_alb_lnd, amf_alb_sno, amf_alb_cld
 
   ! ---------------------------------------------------------

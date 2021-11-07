@@ -44,6 +44,7 @@ MODULE OMSAO_wfamf_module
   ! AMF factor specific variables
   ! =============================
   REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld
+  logical, public :: yn_gler
 
   ! ------------------------------
   ! amfdiag bit meaning parameters
@@ -156,6 +157,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: cli_wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: cli_idx_ozo_pro
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: wind_speed
 
     real    (kind=r4), dimension (:), allocatable, target :: eta_a, eta_b
     integer :: nz
@@ -179,6 +181,7 @@ CONTAINS
     climatology  = r8_missval
     cli_wgh_ozo_pro = r8_missval ! Not output
     cli_idx_ozo_pro = i4_missval ! Not output
+    wind_speed      = 0.0
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
@@ -233,32 +236,12 @@ CONTAINS
           return
        endif
 
-       ! --------------------------------------------------------------
-       ! Read and interpolate albedo database. If no albedo information
-       ! set amfdiag bit 2. Set amfdiag bit 3 for glint.
-       ! ------------------------------------------------------------
-       call tell_log (1, 'amf_calculation: read and prepare albedo')
-       call read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
-            albedo, errstat)
-       if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "reading albedo", errstat)
-          return
-       endif
-
-       ! -------------------------------
-       ! Apply snow correction to albedo
-       ! -------------------------------
-       call tell_log (1, 'amf_calculation: snow correction')
-       call snow_correction ( nt, nx, snow, albedo, amfdiag )
-
-       ! ---------------------------------------
-       ! Write the albedo to the output file he5
-       ! ---------------------------------------
-       IF (do_write) then
-          call tell_log (1, 'amf_calculation: write albedo to L2 file')
-          call write_albedo (albedo, nx, nt, errstat)
-          if (errstat /= 0) return
-       endif
+       ! ---------------------------
+       ! Set amfdiag bit 3 for glint
+       ! ---------------------------
+       where (glint(1:nx,0:nt-1) /= 0)
+         amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_glint)
+       end where
 
        ! ---------------------
        ! Read L2 cloud product
@@ -293,8 +276,8 @@ CONTAINS
        ! Read climatology and interpolate to lon/lat/time
        ! ------------------------------------------------
        call tell_log (1, 'amf_calculation: read gas profile climatology')
-       CALL get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-            cli_idx_ozo_pro, lat, lon, time, nt, nx, errstat, amfdiag)
+       CALL clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
+            cli_idx_ozo_pro, wind_speed, lat, lon, time, nt, nx, errstat, amfdiag)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, 'reading gas profile climatology', errstat)
           return
@@ -307,6 +290,42 @@ CONTAINS
           call tell_log (1, 'amf_calculation: write gas profile climatology to L2 file')
           call write_gas_profile (climatology, nx, nt, CmETA, errstat)
           if (errstat /= 0) return
+       endif
+
+       call tell_log (1, 'amf_calculation: read and prepare albedo')
+       if (yn_gler) then
+         call get_gler_albedo (nt, nx, lat, lon, time,  wind_speed, snow, &
+                               amfdiag, albedo, errstat)
+         if (errstat /= 0) then
+           call tell_error (tell_runtime_error, &
+                            "computing albedo (GLER)", errstat)
+           return
+         endif
+       else
+         ! --------------------------------------------------------------
+         ! Read and interpolate albedo database. If no albedo information
+         ! set amfdiag bit 2.
+         ! ------------------------------------------------------------
+         call read_albedo ( nt, nx, lat, lon, amfdiag, albedo, errstat)
+         if (errstat /= 0) then
+           call tell_error (tell_io_read_error, "reading albedo", errstat)
+           return
+         endif
+
+         ! -------------------------------
+         ! Apply snow correction to albedo
+         ! -------------------------------
+         call tell_log (1, 'amf_calculation: snow correction')
+         call snow_correction ( nt, nx, snow, albedo, amfdiag )
+       endif
+
+       ! ---------------------------------------
+       ! Write the albedo to the output file he5
+       ! ---------------------------------------
+       IF (do_write) then
+         call tell_log (1, 'amf_calculation: write albedo to L2 file')
+         call write_albedo (albedo, nx, nt, errstat)
+         if (errstat /= 0) return
        endif
 
        ! --------------------------------------------------------
@@ -440,8 +459,71 @@ CONTAINS
     return
   end subroutine compute_geometric_amf
 
-  subroutine read_albedo ( nt, nx, lat, lon, glint, amfdiag, &
-            albedo, errstat)
+  subroutine get_gler_albedo (nt, nx, lat, lon, time, wind_speed, snow, &
+                              amfdiag, albedo, errstat)
+    use gler_module
+    use OMSAO_omidata_module, only: NISE_snowfree, NISE_permice
+    implicit none
+    integer (kind=i4), intent (in) :: nt, nx
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
+    real (kind=r8), dimension (0:nt-1), intent (in) :: time
+    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: wind_speed
+    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (in) :: snow
+    integer (kind=i4), intent (inout) :: errstat
+    real (kind=r8), dimension (1:nx,0:nt-1), intent (inout) :: albedo
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
+
+    type (gler_type) :: glt
+    real (kind=r8) :: taix
+    real (kind=r4) :: snow_ice_fraction, alb
+    integer :: iwavelen, ix, it
+
+    if (errstat /= 0) return
+
+    ! amf_wvl is defined in the the control file
+    iwavelen = int(amf_wvl)
+
+    call gler_open (glt, iwavelen, errstat)
+    if (errstat /= 0) return
+
+    taix = 0.5 * (minval (time, time /= r8_missval) &
+                  + maxval(time, time /= r8_missval))
+    call gler_interp_time (glt, taix, errstat)
+    if (errstat /= 0) return
+
+    do it = 0, nt-1
+      do ix = 1, nx
+
+        ! Skip this pixel if geolocation information is not available
+        if (btest(amfdiag(ix,it),yn_amf_cor)) then
+          amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_gas_cli)
+          cycle
+        end if
+
+        if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
+          snow_ice_fraction = real(snow(ix,it),kind=r4)/100.0_r4
+        else
+          snow_ice_fraction = 0.0
+        endif
+
+        call gler_albedo (glt, lon(ix,it), lat(ix,it), wind_speed(ix,it), &
+                          snow_ice_fraction, alb, errstat)
+        albedo(ix,it) = real(alb, kind=r8)
+
+        if (errstat /= 0) then
+          write (*,*)'gler_albedo failed: ix=',ix,'it=',it, &
+            'lon=',lon(ix,it),'lat=',lat(ix,it)
+          errstat = 0
+          call tell_set_error (0)
+        endif
+      enddo
+    enddo
+
+    call gler_close (glt)
+
+  end subroutine get_gler_albedo
+
+  subroutine read_albedo ( nt, nx, lat, lon, amfdiag, albedo, errstat)
 
     ! ==================================================================
     ! This subroutine reads the OMLER albedo data base for the month of
@@ -465,7 +547,6 @@ CONTAINS
     ! ---------------
     integer (kind=i4), intent (in) :: nt, nx
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (in) :: glint
 
     ! ------------------
     ! Modified variables
@@ -735,13 +816,6 @@ CONTAINS
        return
     endif
 
-    ! ---------------------------
-    ! Set amfdiag bit 3 for glint
-    ! ---------------------------
-    where (glint(1:nx,0:nt-1) /= 0)
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_glint)
-    end where
-
     errstat = max(errstat, locerrstat)
 
   end subroutine read_albedo
@@ -864,7 +938,8 @@ CONTAINS
   end subroutine read_cloud_climatology
 
   subroutine clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
+                                   cli_idx_ozo_pro, wind_speed, &
+                                   lat, lon, time, nt, nx, &
                                    errstat, amfdiag)
     use clim_module
     use omsao_indices_module, only: sao_molecule_names
@@ -876,6 +951,7 @@ CONTAINS
     real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
     real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
     integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
+    real (kind=r4), dimension(1:nx,0:nt-1), intent (inout) :: wind_speed
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
@@ -883,12 +959,12 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     type (clim_pres_bounds_type) :: bounds
-    type (clim_val_type) :: cvt, cvt_o3
+    type (clim_val_type) :: cvt, cvt_o3, cvt_u2m, cvt_v2m
     integer :: year(2), month(2), day(2)
     integer :: nz, nlayers, itimes, ixtrack
     real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end, tai93_offset
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column
-    real (kind=r4) :: hour_f, lon_f, lat_f, o3_col
+    real (kind=r4) :: hour_f, lon_f, lat_f, o3_col, u2m(1), v2m(1)
     character (len=6) :: clim_db_molecule_name
     real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
     logical :: water_vapor
@@ -963,6 +1039,14 @@ CONTAINS
        call tell_error ( tell_io_read_error, "libclim_climatology: initializing O3", errstat)
     end if
 
+    ! GLER albedo needs wind speed
+    call clim_val_init (cvt_u2m, cpt, 'U2M', errstat, single_layer=.true.)
+    call clim_val_init (cvt_v2m, cpt, 'V2M', errstat, single_layer=.true.)
+    if (errstat /= 0) then
+       call tell_error ( tell_io_read_error, "libclim_climatology: initializing U2M,V2M", errstat)
+       return
+    end if
+
     do itimes = 0, nt-1
       ! Work out hour of interest
       if (time(itimes) == r8_missval) cycle
@@ -989,6 +1073,20 @@ CONTAINS
              call tell_set_error (0)
              cycle
           end if
+
+          ! Get wind speed
+          call clim_val_interp (cvt_u2m, cpt, hour_f, lon_f, lat_f, u2m, errstat)
+          call clim_val_interp (cvt_v2m, cpt, hour_f, lon_f, lat_f, v2m, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_climatology: calculating wind speed", errstat)
+             u2m = 0.0
+             v2m = 0.0
+             ! Clear the global errstat before proceeding, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
+          end if
+          wind_speed(ixtrack, itimes) = hypot (u2m(1), v2m(1))
+
           ! Get vmr profile
           call clim_val_interp (cvt, cpt, hour_f, lon_f, lat_f, vmr, errstat)
           if (errstat /= 0) then
@@ -1053,27 +1151,6 @@ CONTAINS
        enddo
     enddo
   end subroutine clim_get_climatology
-
-  subroutine get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                                   cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                                   errstat, amfdiag)
-    use clim_module
-    implicit none
-    type (clim_pres_type), intent(inout) :: cpt
-    integer (kind=i4), intent(in) :: pge_idx
-    real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: climatology
-    real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_wgh_ozo_pro
-    integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: cli_idx_ozo_pro
-    real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
-    real (kind=r8), dimension (0:nt-1), intent (in) :: time
-    integer (kind=i4), intent (in) :: nt, nx
-    integer (kind=i4), intent (inout) :: errstat
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
-
-    call clim_get_climatology (cpt, pge_idx, climatology, cli_wgh_ozo_pro, &
-                               cli_idx_ozo_pro, lat, lon, time, nt, nx, &
-                               errstat, amfdiag)
-  end subroutine
 
   SUBROUTINE vlidort_deallocate (errstat)
     implicit none
