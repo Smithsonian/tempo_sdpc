@@ -27,6 +27,7 @@ Prefix = "register:"
 
 Have_Rad_L1_Table = False
 Have_Rad_L1a_Table = False
+Alt_Rad_L1a_Dbfile_Path = None
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -249,20 +250,36 @@ EOF
     write_pathlist (os.path.basename (paths[0]), pathlist)
 
 def maybe_handle_scan_completion (conn, product_name, scan_id):
+    """
+    To see when all products for a given scan are complete, we compare the number
+    of products with the number of archived RAD_L1a files for that scan.
+
+    During normal processing, all of the RAD_L1a files will have been archived
+    by the time the associated L2 products start appearing because no L2 product
+    generation starts until the INR 2nd pass is finished, and the INR 2nd pass
+    cannot finish until after all of the RAD_L1a files have been delivered to INR.
+
+    During L2 reprocessing, the RAD_L1a files may be in a different archive, so we
+    may need to query a different sqlite database for a count of RAD_L1a files.
+
+    If we support near-real-time processing, then the INR 2nd pass may not be performed.
+    In that case, it may be possible for L2 products to be produced before all RAD_L1a
+    products from a given scan are archived.  In that case, we may need a different
+    method to detect scan completion for a given NRT product.
+    """
     if not "L2" in product_name:
         return
-    if not Have_Rad_L1a_Table:
-        return
-    # This approach assumes that all of the RAD_L1a files will have been archived
-    # by the time the associated L2 products start appearing.  This should be
-    # true for normal processing because no L2 product generation starts until the
-    # INR 2nd pass is finished, and the INR 2nd pass cannot finish until after all
-    # of the RAD_L1a files have been delivered to INR.
-    # However, this condition may not hold if near-real-time processing occurs
-    # without the INR 2nd pass.
     cur = conn.cursor()
-    num_radiance = count_archived_granules (cur, "RAD_L1a", scan_id)
     num_products = count_archived_granules (cur, product_name, scan_id)
+
+    if Have_Rad_L1a_Table:
+        num_radiance = count_archived_granules (cur, "RAD_L1a", scan_id)
+    elif Alt_Rad_L1a_Dbfile_Path == None:
+        return
+    else:
+        with connect_database (Alt_Rad_L1a_Dbfile_Path) as conn_sep:
+            num_radiance = count_archived_granules (conn_sep.cursor(), "RAD_L1a", scan_id)
+
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
 
@@ -446,6 +463,11 @@ def init_registry ():
     if db_file_path == None:
         eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
+
+    db_l1_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_L1")
+    if db_l1_file_path != None and db_l1_file_path != db_file_path:
+        global Alt_Rad_L1a_Dbfile_Path
+        Alt_Rad_L1a_Dbfile_Path = db_l1_file_path
 
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     if arch_dir == None:
