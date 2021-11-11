@@ -62,7 +62,7 @@ def ims_entry_exists (conn, table_name, entry):
     ims.create(c)
     c.execute ("select path from {} where daytag == {}".format (table_name, entry["daytag"]));
     path = c.fetchone()
-    return (path == None)
+    return path != None
 
 def update_ims_entry (conn, table_name, entry):
     c = conn.cursor()
@@ -90,10 +90,10 @@ def process_file (conn, path):
 
     table_name = 'IMS'
 
-    if 0 != ims_entry_exists (conn, table_name, keys):
-        status = insert_ims_entry (conn, table_name, keys)
-    else:
+    if ims_entry_exists (conn, table_name, keys):
         status = update_ims_entry (conn, table_name, keys)
+    else:
+        status = insert_ims_entry (conn, table_name, keys)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(path))
@@ -101,11 +101,6 @@ def process_file (conn, path):
     return status
 
 def connect_database (db_path):
-    conn = sqlite3.connect (db_path)
-    conn.execute("pragma foreign_keys=on")
-    return conn
-
-def register_files (db_path, filenames):
     """
     For back-compatibility sqlite has foreign keys turned off by default,
     and foreign_keys=off is ALWAYS stored in the database, regardless of
@@ -113,26 +108,32 @@ def register_files (db_path, filenames):
     we apparently need to turn it on explicitly, each time the database
     connection is established.
     """
-    for fn in filenames:
-        with connect_database (db_path) as conn:
+    conn = sqlite3.connect (db_path)
+    conn.execute("pragma foreign_keys=on")
+    return conn
+
+def register_files (db_path, filenames):
+    with connect_database (db_path) as conn:
+        for fn in filenames:
             status = process_file (conn, fn)
             if status != 0:
                 eprint('Error processing file: {}'.format(fn))
 
 def main():
     parser = argparse.ArgumentParser(description='Register IMS files')
+    parser.add_argument('--dbfile', metavar='DBFILE', default=None,
+                        help="sqlite database path")
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
 
-    dbfile_path = os.getenv ("SDPC_ANCILLARY_IMS_DBFILE")
-    if dbfile_path == None:
-        eprint ('*** Error: SDPC_ANCILLARY_IMS_DBFILE is not set')
+    if args.dbfile == None:
+        eprint ('*** Error: DBFILE is not set')
         sys.exit(1)
 
-    register_files (dbfile_path, args.filenames)
+    register_files (args.dbfile, args.filenames)
 
 if __name__ == "__main__":
     main()

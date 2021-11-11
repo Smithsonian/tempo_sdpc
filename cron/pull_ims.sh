@@ -34,7 +34,6 @@ fi
 new_list=$(find $target_dir -name "ims???????_1km_GIS_v*.tif.gz" $newer)
 
 if test x"$new_list" != x ; then
-   export SDPC_ANCILLARY_IMS_DBFILE="$rootdir/ims.sqlite"
-   $SDPC_ANCILLARY_ROOT/src/register_ims.py $new_list
+   $SDPC_ANCILLARY_ROOT/src/register_ims.py --dbfile $rootdir/ims.sqlite $new_list
 fi
 
