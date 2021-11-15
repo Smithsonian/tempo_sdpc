@@ -110,6 +110,56 @@ define process_file_raw (types, path)
    types[product_type] = lst;
 }
 
+define process_file_ancillary (types, path)
+{
+   variable st = stat_file (path);
+   if (st == NULL)
+     return;
+
+   variable basename = path_basename (path);
+
+   variable product_type = NULL;
+   if (0 == strncmp ("GEOS-CF", basename, 7))
+     {
+        product_type = "GEOSCF";
+     }
+   else if (0 == strncmp ("OR_ABI", basename, 6))
+     {
+        variable tok = strtok (basename, "_");
+        if (tok[2] == "G16" || tok[2] == "G17")
+          {
+             product_type = tok[2];
+          }
+     }
+
+   if (product_type == NULL)
+     {
+        () = fprintf (stderr, "*** unrecognized file type: skipping file: %s\n", path);
+        return;
+     }
+
+   variable data_type    = "TEMPO_NONORDERABLE";
+   variable data_version = "1";
+   variable entry = make_file_entry (path, data_type, st, "SCIENCE");
+
+   variable group = struct
+     {
+        data_version = data_version,
+        entry = entry,
+        met_entry = NULL
+     };
+
+   if (assoc_key_exists (types, product_type))
+     {
+        list_append (types[product_type], group);
+        return;
+     }
+
+   variable lst = {};
+   list_append (lst, group);
+   types[product_type] = lst;
+}
+
 define read_file_list (list_file)
 {
    variable fp = fopen (list_file, "r");
@@ -267,12 +317,20 @@ define process_file_list (dest, file_list, script_file)
 {
    variable path_list = read_file_list (file_list);
 
-   variable types = Assoc_Type[];
-   variable path, extname;
+   variable path, types = Assoc_Type[];
 
    foreach path (path_list)
      {
-        extname = path_extname (path);
+        variable basename = path_basename (path);
+        % TEMPO data products are prefixed with "TEMPO_"
+        % TEMPO raw files are prefixed with "tempo_"
+        % Ancillary data files do not have a "tempo" prefix.
+        if (0 != strncmp ("TEMPO", strup(basename), 5))
+          {
+             process_file_ancillary (types, path);
+             continue;
+          }
+        variable extname = path_extname (path);
         if (extname == ".met")
           {
              % Silently skip .met files.  They get handled
