@@ -15,6 +15,15 @@ rootdir="${SDPC_ANCILLARY_ROOT}/goes"
 # for time zones *west* of the prime meridian.
 subdir="$(TZ='UTC+6' date +%Y/%j)"
 
+# To simply tracking what we've downloaded,
+# we first download files to an 'incoming' directory.
+incoming_dir="$rootdir/incoming"
+if ! test -d $incoming_dir ; then
+   mkdir -p $incoming_dir
+fi
+
+# After database entry the files will be moved
+# to their final location:
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
    mkdir -p $target_dir
@@ -28,9 +37,42 @@ lftp AO_TEMPO_SERV1@140.90.190.143 <<- EOF
    set mirror:require-source true
    set mirror:sort-by name
    set mirror:order *.sha1 *.nc
-   mirror -c -O $target_dir -F /PDAFileLinks/g1?_cmi
+   mirror -c -O $incoming_dir -F /PDAFileLinks/g1?_cmi
    quit
 EOF
+
+# Move files to their final location, and
+# register them in the asdc upload database
+
+move_and_register_files()
+{
+   dir="$1"
+   dbfile="$2"
+   files=$(find $incoming_dir/$dir -name "*.nc")
+
+   dest_dir="$target_dir/$dir"
+   # make sure the destination dir exists
+   if ! test -d $dest_dir ; then
+       mkdir -p $dest_dir
+   fi
+
+   for f in $files ; do
+      bn=$(basename $f)
+      final_path="$dest_dir/$bn"
+      /bin/mv $f $final_path
+      src/asdc_files.py --dbfile $dbfile --add $final_path
+      # move the sha1 files too
+      if test -f ${f}.sha1 ; then
+         /bin/mv ${f}.sha1 $dest_dir
+      fi
+   done
+}
+
+# Use a separate sqlite database for each year.
+year_dir=$(dirname $target_dir)
+
+move_and_register_files g16_cmi $year_dir/g16.sqlite
+move_and_register_files g17_cmi $year_dir/g17.sqlite
 
 # The 'today' symlink always points to today's GOES data
 cd $rootdir
