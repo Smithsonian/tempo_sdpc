@@ -28,26 +28,20 @@ contains
 
   subroutine irradiance_data_init (rpt_rad, errstat)
 
-    use OMSAO_variables_module, only: Radiance_Paras_Type
-    use ctrlvars, only: yn_solar_comp, yn_solmonthave
+    use OMSAO_variables_module, only: Radiance_Paras_Type, OMSAO_I0_filename
+    use ctrlvars, only: yn_I0
     implicit none
     type(Radiance_Paras_Type), intent(in) :: rpt_rad
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
 
-    ! --------------------------------------------------------------------
-    ! Solar Irradiance Processing: If we don't do a solar composite, we can
-    ! use a solar monthly average, if not we have to read the irradiance
-    ! data.
-    ! Otherwise we need to compute them from the solar composite
-    ! parameterization on a equidistant grid.
+    ! ----------------------------------------------------------------------
+    ! Solar Irradiance Processing: If we don't use I0 irradiance-replacement
+    ! we have to read the irradiance data.
     ! -------------------------------------------------------------------
-
-    if ( yn_solar_comp ) then
-      call omi_create_solcomp_irradiance (rpt_rad%nxtrack, errstat)
-    else if (yn_solmonthave) then
-      call omi_read_monthly_average_irradiance (errstat)
+    if ( yn_I0 ) then
+      call read_I0_irradiance(OMSAO_I0_filename, errstat)
     else
       call read_irradiance_data (errstat)
     end if
@@ -311,448 +305,206 @@ contains
     return
   end subroutine read_irradiance_data
 
-  ! ========================================================================
+  !--------------------------------------------------------------------
+  !> Read I0 irradiance-replacement spectra from file designated in PCF
+  !--------------------------------------------------------------------
+  !
+  ! @param[in]  filename   Name of I0 spectra file
+  ! @param      errstat    Error tracking integer, non-zero = problem
+  !
+  ! @author  E. O'Sullivan   November 2020
+  !-------------------------------------------------------------------------
+  subroutine read_I0_irradiance (filename, errstat)
 
-  SUBROUTINE omi_create_solcomp_irradiance (nxtrack, errstat)
+    implicit none
 
-    ! ------------------------------------------------------------------
-    ! Compute an initial spectrum for an equidistant wavelength array.
-    ! This will be used in the solar wavelength calibration to determine
-    ! the shift of the composite solar spectrum.
-    ! ------------------------------------------------------------------
-
-    USE OMSAO_parameters_module, ONLY: i2, i4, r8, N_FIT_WINWAV
-    USE OMSAO_solcomp_module,    ONLY: soco_compute
-    USE arrayutils, only: array_locate_r8
-    use OMSAO_variables_module, only: ctrl_fit_winwav_lim
-    IMPLICIT NONE
-    INTEGER (KIND=i4), INTENT (IN) :: nxtrack
-    integer, intent(inout) :: errstat
-
-    ! --------------------------------------------
-    ! Spacing of the wavelength array to be set up
-    ! --------------------------------------------
-    REAL    (KIND=r8), PARAMETER :: dwvl = 0.1_r8
-
-    INTEGER (KIND=i4)                         :: j, ix, nwvl
-    REAL    (KIND=r8)                         :: swvl, ewvl
-    real (kind=r8), dimension (:), allocatable :: tmpwvl
-    real (kind=r8), dimension(:,:), allocatable :: &
-      tmp_wavelengths, tmp_spectrum
-    integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags
-    integer :: locerrstat
-
-    if (errstat /= 0) return;
-
-    ! -----------------------------------------------------------
-    ! Compute number of wavelengths and assign to temporary array
-    ! -----------------------------------------------------------
-    swvl = ctrl_fit_winwav_lim(1) ; ewvl = ctrl_fit_winwav_lim(N_FIT_WINWAV)
-    nwvl = INT ( (ewvl-swvl) / dwvl, KIND=i4 ) + 1
-
-    allocate (tmp_wavelengths(nwvl, nxtrack), &
-              tmp_spectrum(nwvl, nxtrack), &
-              tmp_qflags (nwvl, nxtrack), &
-              tmpwvl(0:nwvl-1), stat=locerrstat)
-    if (locerrstat /= 0) then
-      call tell_error (tell_malloc_error, "omi_create_solcomp_irradiance: allocate failed", errstat)
-      return
-    endif
-
-    tmpwvl = swvl + (/ (REAL(j, KIND=r8), j = 0, nwvl-1) /) * dwvl
-
-    tmp_qflags = 0
-
-    DO ix = 1, nxtrack
-
-      tmp_wavelengths(:,ix) = tmpwvl
-
-      ! ---------------------------------------------------------------
-      ! Compute the solar spectrum. Note that we are not requesting the
-      ! normalized spectrum here, even in cases where we DO want to use
-      ! one. Rather, we are keeping the Solar Composite branch as close
-      ! as possible to the regular L1b irradiance branch, which at this
-      ! point is not normalized. This will be done in a later routine.
-      ! ---------------------------------------------------------------
-      CALL soco_compute (.FALSE., ix, nwvl, tmpwvl, tmp_spectrum(:,ix))
-      !call print_array (tmp_spectrum(:,ix), nwvl)
-    end do
-
-    call package_irradiance_data (nwvl, nxtrack, &
-                                  tmp_wavelengths, tmp_spectrum, tmp_qflags, &
-                                  errstat)
-
-    RETURN
-  END SUBROUTINE omi_create_solcomp_irradiance
-
-  SUBROUTINE omi_read_monthly_average_irradiance (errstat)
-
-    ! ---------------------------------------------------------------------
-    ! At this point the subroutine is ready to read the solar monthly mean
-    ! irradiance from the ASCII files supplied by X. Liu, maybe in the futu
-    ! re we will move to an hdf file. However, having to produce a new spec
-    ! tra for each day makes that option no too charming
-    ! ---------------------------------------------------------------------
-
-    USE OMSAO_precision_module, ONLY: r4, i2
-    USE OMSAO_parameters_module, ONLY: nwavel_max, nxtrack_max
-    USE OMSAO_variables_module, ONLY: &
-      OMSAO_solmonthave_filename, l1b_channel
-    USE OMSAO_omidata_module, only: EarthSunDistance
-    USE OMSAO_indices_module,   ONLY: &
-      OMSAO_solmonthave_lun
-    USE arrayutils, only: array_locate_r4
-    USE OMSAO_errstat_module, only: pge_errstat_ok, pgs_smf_mask_lev_s, &
-      pgsd_io_gen_rseqfrm
-    IMPLICIT NONE
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    INTEGER (KIND=i4), INTENT (INOUT) :: errstat
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    INTEGER (KIND=i4) :: funit, ios, dummy, ix, jw, nwavel, iw
-    !REAL    (KIND=r8), DIMENSION (nwavel_max,nxtrack_max) :: tmp_spc, tmp_wvl, tmp_prc
-    REAL    (KIND=r8), DIMENSION (:,:), allocatable :: tmp_spc, tmp_wvl, tmp_prc
-    !INTEGER (KIND=i2), DIMENSION (nwavel_max,nxtrack_max) :: tmp_flg, tmp_n
-    INTEGER (KIND=i2), DIMENSION (:,:), allocatable :: tmp_flg, tmp_n
-    ! ------------------------------
-    ! Astronomical unit AU in meters
-    ! ------------------------------
-    REAL (KIND=r8), PARAMETER :: AU_m = 1.495978707d11
-    REAL (KIND=r8)            :: sun_earth_distance
-    ! --------------------------------------------------------------------
-    ! Variable that holds the solar monthly averaged spectra
-    ! --------------------------------------------------------------------
-    INTEGER   (KIND = i4)     :: nxUV1
-    INTEGER   (KIND = i4)     :: nxUV2
-    INTEGER   (KIND = i4)     :: nxVIS
-    INTEGER   (KIND = i4)     :: nwUV1
-    INTEGER   (KIND = i4)     :: nwUV2
-    INTEGER   (KIND = i4)     :: nwVIS
-    REAL      (KIND = r4), DIMENSION(:,:,:), ALLOCATABLE :: comUV1
-    REAL      (KIND = r4), DIMENSION(:,:,:), ALLOCATABLE :: comUV2
-    REAL      (KIND = r4), DIMENSION(:,:,:), ALLOCATABLE :: comVIS
-    INTEGER   (KIND = i4), DIMENSION(:,:),   ALLOCATABLE :: ncomUV1
-    INTEGER   (KIND = i4), DIMENSION(:,:),   ALLOCATABLE :: ncomUV2
-    INTEGER   (KIND = i4), DIMENSION(:,:),   ALLOCATABLE :: ncomVIS
-    INTEGER (KIND=i4) :: nxtrack
-
-    ! ------------------------
-    ! Error handling variables
-    ! ------------------------
-    INTEGER (KIND=i4) :: version, locerrstat
-
-    ! ---------------------------------
-    ! External OMI and Toolkit routines
-    ! ---------------------------------
-    INTEGER (KIND=i4), EXTERNAL :: &
-      pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=35), PARAMETER :: modulename = 'omi_read_monthly_average_irradiance'
+    !input variables
+    character (len=*), intent(in) :: filename
+    integer (kind=4), intent(inout) :: errstat
+    !local variables
+    integer (kind=4) :: nxtrack, nwavel
+    real (kind=8), dimension(:,:), allocatable :: spectra, wavelengths
+    integer (kind=2), dimension(:,:), allocatable :: qflags
 
     if (errstat /= 0) return
 
-    locerrstat = pge_errstat_ok
+    call read_I0_dims (filename, nxtrack, nwavel, errstat)
+    if (errstat /= 0) return
 
-    nxtrack = 0 ; nwavel = 0 ;
+    allocate ( spectra(nwavel,nxtrack), wavelengths(nwavel, nxtrack), &
+         qflags(nwavel, nxtrack), stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_I0_irradiance: allocation error", errstat)
+      return
+    endif
 
-    ! -------------------------
-    ! Open monthly average file
-    ! -------------------------
-    version = 1
-    locerrstat = PGS_IO_GEN_OPENF ( OMSAO_solmonthave_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
-    locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    if (locerrstat > pgs_smf_mask_lev_s) then
+    call read_I0_spectra (filename, nxtrack, nwavel, spectra, wavelengths, &
+         qflags, errstat)
+    if (errstat /= 0) return
+
+    call package_irradiance_data (nwavel, nxtrack, wavelengths, spectra, &
+         qflags, errstat)
+
+    deallocate (spectra, wavelengths, qflags, stat=errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error, &
+           "read_I0_irradiance: deallocation error", errstat)
+    endif
+
+  end subroutine read_I0_irradiance
+
+  !> Subroutine to read precalculated irradiance-like I0 spectra
+  !--------------------------------------------------------------------------
+  !
+  ! @param[in]  filename      Name of I0 spectra netCDF4 file
+  ! @param[out]  nxtrack       size of xtrack dimension
+  ! @param[out]  nwavel        size of I0 wavelength dimension
+  ! @param      errstat       error tracking integer (non-zero = problem)
+  !
+  ! @ author  E. O'Sullivan  November 2020
+  !--------------------------------------------------------------------------
+  subroutine read_I0_dims (filename, nxtrack, nwavel, errstat)
+    use tio_module
+    implicit none
+
+    !input variables
+    character (len=*), intent(in) :: filename
+    !output variables
+    integer (kind=4), intent(out) :: nxtrack
+    integer (kind=4), intent(out) :: nwavel
+    integer, intent(inout) :: errstat
+    !local variables
+    type (tiof_file_type) :: tio_obj
+
+    if (errstat /= 0) return
+
+    call open_nc (trim(adjustl(filename)), tio_obj, errstat)
+    call tiof_inq_dimlen (tio_obj, "dim_xtrack", nxtrack, errstat)
+    call tiof_inq_dimlen (tio_obj, "dim_channel", nwavel, errstat)
+    call close_nc (tio_obj, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, "read_IO_dims: failed", errstat)
+      return
+    endif
+
+  end subroutine read_I0_dims
+
+  !> Subroutine to read precalculated irradiance-like I0 spectra
+  !--------------------------------------------------------------------------
+  !
+  ! @param[in]  filename      Name of I0 spectra netCDF4 file
+  ! @param[in]  nxtrack       size of xtrack dimension
+  ! @param[in]  nwavel        size of I0 wavelength dimension
+  ! @param[out] spectra       2D array of spectra
+  ! @param[out] wavelength    2D array of wavelengths
+  ! @param[out] quality_flag  2D array of quality flags (non-zero = bad)
+  ! @param      errstat       error tracking integer (non-zero = problem)
+  !
+  ! @ author  E. O'Sullivan  November 2020
+  !--------------------------------------------------------------------------
+  subroutine read_I0_spectra (filename, nxtrack, nwavel, spectra, wavelength, &
+    quality_flag, errstat)
+    use tio_module
+    implicit none
+
+    !input variables
+    character (len=*), intent(in) :: filename
+    integer (kind=4), intent(in) :: nxtrack
+    integer (kind=4), intent(in) :: nwavel
+    !output variables
+    real (kind=8), dimension(:,:), intent(out) :: spectra, &
+          wavelength
+    integer (kind=2), dimension(:,:), intent(out) :: quality_flag
+    integer, intent(inout) :: errstat
+    !local variables
+    type (tiof_file_type) :: tio_obj
+
+    if (errstat /= 0) return
+
+    call open_nc (trim(adjustl(filename)), tio_obj, errstat)
+    call tiof_get2d_r8 (tio_obj, "spectrum", [0,0], [nxtrack, nwavel], &
+          spectra, errstat)
+    call tiof_get2d_r8 (tio_obj, "wavelength", [0,0], [nxtrack, nwavel], &
+          wavelength, errstat)
+    call tiof_get2d_i2 (tio_obj, "quality_flag", [0,0], [nxtrack, nwavel], &
+          quality_flag, errstat)
+    call close_nc (tio_obj, errstat)
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_read_error, "read_IO_spectra: failed", errstat)
+      return
+    endif
+
+  end subroutine read_I0_spectra
+
+  !---------------------------------------------------------------------
+  !
+  !> @param l1file filename for L1 netCDF file
+  !> @param tio_l1obj file object
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan October 2018
+  !---------------------------------------------------------------------
+  subroutine open_nc (l1file, tio_l1obj, errstat)
+    use tio_module
+    use netcdf, only: nf90_nowrite
+    implicit none
+
+    !input variables
+    character (len=*), intent (in) :: l1file
+
+    !output variables
+    integer (kind=4), intent (inout) :: errstat
+
+    !local variables
+    type (tiof_file_type) :: tio_l1obj
+
+    if (errstat /= 0) return
+
+    call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
+
+    if (errstat /= 0) then
       call tell_error (tell_io_open_error, &
-                       "opening solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                       errstat)
-      return
-    endif
-    !CALL error_check ( &
-    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_error, OMSAO_E_OPEN_SOLMONAVE_FILE, &
-    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-    !IF (  errstat /= pge_errstat_ok ) RETURN
-
-    ! --------------------------------
-    ! Reading the monthly average file
-    ! --------------------------------
-    ! UV1 channel
-    ! -----------
-    READ(UNIT=funit, FMT=*, IOSTAT=ios) nxUV1, nwUV1
-    IF ( ios /= 0 ) THEN
-      call tell_error (tell_io_read_error, &
-                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                       errstat)
-      return
-      !CALL error_check ( &
-      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      !IF (  errstat /= pge_errstat_ok ) RETURN
-    END IF
-
-    ALLOCATE (comUV1(nwUV1,3,nxUV1), ncomUV1(nwUV1,nxUV1), stat=locerrstat)
-    !ALLOCATE (ncomUV1(nwUV1,nxUV1))
-    if (locerrstat /= 0) then
-      call tell_error(tell_malloc_error, &
-           "omi_read_monthly_average_irradiance: allocate failed", errstat)
-      return
-    endif
-
-    DO ix = 1, nxUV1
-
-      READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
-      IF ( ios /= 0 ) THEN
-        call tell_error (tell_io_read_error, &
-                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                         errstat)
-        return
-        !CALL error_check ( &
-        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        !IF (  errstat /= pge_errstat_ok ) RETURN
-      END IF
-
-      DO jw = 1, nwUV1
-
-        READ(UNIT=funit, FMT=*, IOSTAT=ios) comUV1(jw,1,ix), &
-          comUV1(jw,2,ix), comUV1(jw,3,ix), dummy, ncomUV1(jw,ix)
-        IF ( ios /= 0 ) THEN
-          call tell_error (tell_io_read_error, &
-                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                           errstat)
-          return
-          !CALL error_check ( &
-          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-          !  vb_lev_default, errstat )
-          !IF (  errstat /= pge_errstat_ok ) RETURN
-        END IF
-
-      END DO
-
-    END DO
-
-    ! -----------
-    ! UV2 channel
-    ! -----------
-    READ(UNIT=funit, FMT=*, IOSTAT=ios) nxUV2, nwUV2
-    IF ( ios /= 0 ) THEN
-      call tell_error (tell_io_read_error, &
-                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                       errstat)
-      return
-      !CALL error_check ( &
-      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      !IF (  errstat /= pge_errstat_ok ) RETURN
-    END IF
-
-    ALLOCATE (comUV2(nwUV2,3,nxUV2), ncomUV2(nwUV2,nxUV2), stat=locerrstat)
-    !ALLOCATE (ncomUV2(nwUV2,nxUV2))
-    if (locerrstat /= 0) then
-      call tell_error(tell_malloc_error, &
-           "omi_read_monthly_average_irradiance: second allocate failed", &
+           "open_nc: failed to open L1 file", &
            errstat)
       return
     endif
 
-    DO ix = 1, nxUV2
+  end subroutine open_nc
+ 
+  !> Subroutine to close a netCDF file
+  !---------------------------------------------------------------------
+  !
+  !> @param[in] tio_l1obj file object
+  !> @param errstat error handling integer, non-zero indicates failure
+  !
+  !> @author E. O'Sullivan October 2018
+  !---------------------------------------------------------------------
+  subroutine close_nc (tio_l1obj, errstat)
+    use tio_module
+    implicit none
 
-      READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
-      IF ( ios /= 0 ) THEN
-        call tell_error (tell_io_read_error, &
-                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                         errstat)
-        return
-        !CALL error_check ( &
-        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        !IF (  errstat /= pge_errstat_ok ) RETURN
-      END IF
+    !input variables
 
-      DO jw = 1, nwUV2
+    !output variables
+    integer (kind=4), intent (inout) :: errstat
 
-        READ(UNIT=funit, FMT=*, IOSTAT=ios) comUV2(jw,1,ix), comUV2(jw,2,ix), comUV2(jw,3,ix), &
-          dummy, ncomUV2(jw,ix)
-        IF ( ios /= 0 ) THEN
-          call tell_error (tell_io_read_error, &
-                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                           errstat)
-          return
-          !CALL error_check ( &
-          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-          !  vb_lev_default, errstat )
-          !IF (  errstat /= pge_errstat_ok ) RETURN
-        END IF
+    !local variables
+    type (tiof_file_type) :: tio_l1obj
 
-      END DO
+    if (errstat /= 0) return
 
-    END DO
+    call tiof_close (tio_l1obj, errstat)
 
-    ! -----------
-    ! VIS channel
-    ! -----------
-    READ(UNIT=funit, FMT=*, IOSTAT=ios) nxVIS, nwVIS
-    IF ( ios /= 0 ) THEN
-      call tell_error (tell_io_read_error, &
-                       "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                       errstat)
-      return
-      !CALL error_check ( &
-      !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-      !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-      !IF (  errstat /= pge_errstat_ok ) RETURN
-    END IF
-
-    ALLOCATE (comVIS(nwVIS,3,nxVIS), ncomVIS(nwVIS,nxVIS), stat=locerrstat)
-    !ALLOCATE (ncomVIS(nwVIS,nxVIS))
-    if (locerrstat /= 0) then
-      call tell_error(tell_malloc_error, &
-           "omi_read_monthly_average_irradiance: third allocate failed", &
-           errstat)
-      return
-    endif
-
-    DO ix = 1, nxVIS
-
-      READ(UNIT=funit, FMT=*, IOSTAT=ios) dummy
-      IF ( ios /= 0 ) THEN
-        call tell_error (tell_io_read_error, &
-                         "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                         errstat)
-        return
-        !CALL error_check ( &
-        !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-        !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-        !IF (  errstat /= pge_errstat_ok ) RETURN
-      END IF
-
-      DO jw = 1, nwVIS
-
-        READ(UNIT=funit, FMT=*, IOSTAT=ios) comVIS(jw,1,ix), comVIS(jw,2,ix), comVIS(jw,3,ix), &
-          dummy, ncomVIS(jw,ix)
-        IF ( ios /= 0 ) THEN
-          call tell_error (tell_io_read_error, &
-                           "reading solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                           errstat)
-          return
-          !CALL error_check ( &
-          !  ios, file_read_ok, pge_errstat_error, OMSAO_E_READ_SOLMONAVE_FILE, &
-          !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)),      &
-          !  vb_lev_default, errstat )
-          !IF (  errstat /= pge_errstat_ok ) RETURN
-        END IF
-
-      END DO
-
-    END DO
-
-    ! -----------------------------------------------
-    ! Close monthly average file, report SUCCESS read
-    ! -----------------------------------------------
-    locerrstat = PGS_IO_GEN_CLOSEF ( funit )
-    locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    if (locerrstat > pgs_smf_mask_lev_s) then
+    if (errstat /= 0) then
       call tell_error (tell_io_error, &
-                       "closing solar monthly average file "//trim(OMSAO_solmonthave_filename), &
-                       errstat)
-      return
-    endif
-    !CALL error_check ( &
-    !  locerrstat, pgs_smf_mask_lev_s, pge_errstat_warning, OMSAO_W_CLOSE_SOLMONAVE_FILE, &
-    !  modulename//f_sep//TRIM(ADJUSTL(OMSAO_solmonthave_filename)), vb_lev_default, errstat )
-    !
-    !IF ( errstat >= pge_errstat_error ) RETURN
-
-    ! ---------------------------------------------
-    ! Now is time to convert EarthSunDistance to AU
-    ! The averaged irradiance is normalized to 1 AU
-    ! so below I have to apply the scaling factor:
-    ! 1.0 / sun_earth_distance / sun_earth_distance
-    ! ---------------------------------------------
-    sun_earth_distance = EarthSunDistance / AU_m
-
-    allocate (tmp_spc(nwavel_max,nxtrack_max), &
-              tmp_wvl(nwavel_max,nxtrack_max), &
-              tmp_prc(nwavel_max,nxtrack_max), &
-              tmp_flg(nwavel_max,nxtrack_max), &
-              tmp_n(nwavel_max,nxtrack_max), stat=errstat)
-    if (errstat /= 0) then
-      call tell_error (tell_malloc_error, "omi_read_monthly_average_irradiance:  allocate failed", &
-                       errstat)
-      return
-    endif
-    ! ---------------------------------------------------------------
-    ! Work out which channel we are interested on, UV1, UV2 or VIS
-    ! Find out number of wavelengths and number of cross track pixels
-    ! ---------------------------------------------------------------
-    SELECT CASE (l1b_channel)
-    CASE ('UV1')
-      nwavel = nwUV1 ; nxtrack = nxUV1
-      tmp_wvl(1:nwavel,1:nxtrack) = comUV1(1:nwavel,1,1:nxtrack)
-      tmp_spc(1:nwavel,1:nxtrack) = REAL(comUV1(1:nwavel,2,1:nxtrack) / sun_earth_distance / sun_earth_distance, KIND=r4)
-      DO iw = 1, nwavel
-        DO ix = 1, nxtrack
-          tmp_prc(iw,ix) = REAL(comUV1(iw,3,ix) / SQRT(REAL(ncomUV1(iw,ix), KIND=r8)), KIND=r4)
-        END DO
-      END DO
-      tmp_flg(1:nwavel,1:nxtrack) = 128_i2 ! No problem with the pixel set for all of them
-      tmp_n(1:nwavel, 1:nxtrack)  = INT(ncomUV1(1:nwavel,1:nxtrack),KIND=i2) !Number of irradiance averaged
-    CASE ('UV2')
-      nwavel = nwUV2 ; nxtrack = nxUV2
-      tmp_wvl(1:nwavel,1:nxtrack) = comUV2(1:nwavel,1,1:nxtrack)
-      tmp_spc(1:nwavel,1:nxtrack) = REAL( comUV2(1:nwavel,2,1:nxtrack) / sun_earth_distance / sun_earth_distance, KIND=r4)
-      DO iw = 1, nwavel
-        DO ix = 1, nxtrack
-          tmp_prc(iw,ix) = REAL(comUV2(iw,3,ix) / SQRT(REAL(ncomUV2(iw,ix), KIND=r8)), KIND=r4)
-        END DO
-      END DO
-      tmp_flg(1:nwavel,1:nxtrack) = 128_i2 ! No problem with the pixel set for all of them
-      tmp_n(1:nwavel, 1:nxtrack)  = INT(ncomUV2(1:nwavel,1:nxtrack),KIND=i2) !Number of irradiance averaged
-    CASE ('VIS')
-      nwavel = nwVIS ; nxtrack = nxVIS
-      tmp_wvl(1:nwavel,1:nxtrack) = comVIS(1:nwavel,1,1:nxtrack)
-      tmp_spc(1:nwavel,1:nxtrack) = REAL(comVIS(1:nwavel,2,1:nxtrack) / sun_earth_distance / sun_earth_distance, KIND=r4)
-      DO iw = 1, nwavel
-        DO ix = 1, nxtrack
-          tmp_prc(iw,ix) = REAL(comVIS(iw,3,ix) / SQRT(REAL(ncomVIS(iw,ix), KIND=r8)), KIND=r4)
-        END DO
-      END DO
-      tmp_flg(1:nwavel,1:nxtrack) = 128_i2 ! No problem with the pixel set for all of them
-      tmp_n(1:nwavel, 1:nxtrack)  = INT(ncomVIS(1:nwavel,1:nxtrack),KIND=i2) !Number of irradiance averaged
-    CASE DEFAULT
-      !Nothing to do here except to fold
-    END SELECT
-
-    DEALLOCATE(comUV1, comUV2, comVIS, ncomUV1, ncomUV2, ncomVIS, &
-         stat=errstat)
-    if (errstat /= 0) then
-      call tell_error ( tell_malloc_error, &
-           "omi_read_monthly_average_irradiance: deallocate failed", errstat)
-      return
-    endif
-
-    call package_irradiance_data (nwavel, nxtrack, &
-                                  tmp_wvl, tmp_spc, tmp_flg, &
-                                  errstat)
-
-    ! FIXME (JCH) tmp_n unused??
-    deallocate (tmp_spc,tmp_wvl,tmp_prc,tmp_flg, tmp_n, stat=errstat)
-    if (errstat /= 0) then
-      call tell_error ( tell_malloc_error, &
-           "omi_read_monthly_average_irradiance: second deallocate failed", &
+           "close_nc: failed to close L1 file", &
            errstat)
       return
     endif
 
-  END SUBROUTINE omi_read_monthly_average_irradiance
-
+  end subroutine close_nc
+ 
 end module
