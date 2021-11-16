@@ -3,6 +3,7 @@
 # for eprint definition
 from __future__ import print_function
 
+import re
 import os, sys
 import sqlite3
 import argparse
@@ -161,7 +162,7 @@ def longpan_entry (thefile, parse):
     entry["time_stamp"] = tok[1]
     return entry
 
-def process_longpan(cur, table_name, longpan_file):
+def process_longpan(cur, table_name, longpan_file, status_dict):
     """
     A LONGPAN file has a 2-line header:
         MESSAGE_TYPE = LONGPAN;
@@ -187,9 +188,9 @@ def process_longpan(cur, table_name, longpan_file):
             if entry == None:
                 break
             if entry["disposition"] == "SUCCESSFUL":
-                update_file_status (cur, entry["basename"], table_name, self.status_dict["accepted"])
+                update_file_status (cur, entry["basename"], table_name, status_dict["accepted"])
             else:
-                update_file_status (cur, entry["basename"], table_name, self.status_dict["problem"])
+                update_file_status (cur, entry["basename"], table_name, status_dict["problem"])
                 num_bad += 1
 
     return num_bad
@@ -227,7 +228,7 @@ class Db_File_Type:
             cur = conn.cursor()
             for longpan_file in longpan_file_list:
                 try:
-                    num_bad = process_longpan (cur, self.table_name, longpan_file)
+                    num_bad = process_longpan (cur, self.table_name, longpan_file, self.status_dict)
                     if num_bad > 0:
                         print ('{} has {} bad files'.format(longpan_file, num_bad))
                 except:
