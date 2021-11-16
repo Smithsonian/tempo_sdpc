@@ -12,6 +12,8 @@ private variable Dest_Target_Dir = ".";
 % different from those viewed from outside ASDC. To avoid
 % confusion, we use "."
 
+private variable Ancillary_Type_List = ["GEOSCF", "CMIG16", "CMIG17"];
+
 define make_file_entry (path, data_type, st, file_type)
 {
    variable s = struct
@@ -128,7 +130,8 @@ define process_file_ancillary (types, path)
         variable tok = strtok (basename, "_");
         if (tok[2] == "G16" || tok[2] == "G17")
           {
-             product_type = tok[2];
+             % Must match something in Ancillary_Type_List[]
+             product_type = "CMI" + tok[2];
           }
      }
 
@@ -310,7 +313,10 @@ define write_lftp_script (dest, types, pdr_files, script_file)
 
 define make_manifest_filename (type)
 {
-   return strftime ("TEMPO_${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
+   if (any (type == Ancillary_Type_List))
+     return strftime ("${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
+   else
+     return strftime ("TEMPO_${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
 }
 
 define process_file_list (dest, file_list, script_file)
