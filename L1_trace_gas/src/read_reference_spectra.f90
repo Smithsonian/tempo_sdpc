@@ -11,9 +11,8 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   USE OMSAO_parameters_module, ONLY: zerospec_string, r8_missval
   USE OMSAO_variables_module,  ONLY: &
     winwav_min, winwav_max, reference_spectrum_type, refspecs_original, &
-    common_mode_spec, &
-    OMSAO_solcomp_filename, l1b_channel
-  use ctrlvars, only: yn_common_iter, yn_solar_comp, solar_comp_typ
+    common_mode_spec
+  use ctrlvars, only: yn_common_iter
   USE datafields, ONLY: o3_prefit_he5fields
   USE OMSAO_solcomp_module, ONLY: soco_pars_read
   !USE OMSAO_errstat_module
@@ -154,35 +153,6 @@ SUBROUTINE read_ref_spectra ( pge_idx, n_max_rspec, errstat) !pge_error_status )
       i = i+1
     enddo
   endif
-
-  ! -----------------------------
-  ! Read composite solar spectrum
-  ! -----------------------------------------------------------------------
-  ! Practically, this isn't a reference spectrum of the same ilk, but it is
-  ! ingested here since it is used in a similar way than all the others.
-  ! -----------------------------------------------------------------------
-  IF ( yn_solar_comp ) THEN
-    !errstat = pge_errstat_ok
-    CALL soco_pars_read ( &
-      OMSAO_solcomp_filename, solar_comp_typ, l1b_channel, &
-      winwav_min, winwav_max, errstat )
-    !v002 CALL soco_pars_read ( &
-    !v002      OMSAO_solcomp_filename, solar_comp_typ-1, solar_comp_orb, l1b_channel, &
-    !v002      l1br_opf_version, winwav_min, winwav_max, errstat )
-    if (errstat /= 0) then
-      call tell_error (tell_io_read_error, "reading composite solar spectrum parameters", &
-                       errstat)
-      return
-    endif
-    !CALL error_check ( &
-    !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_READ_REFSPEC_FILE, &
-    !  modulename//f_sep//'Composite Solar Spectrum Parameters',       &
-    !  vb_lev_default, pge_error_status )
-  ElSE
-    continue
-    ! In this case, the solar spectrum is read in later when the
-    ! when irradiance data are read.  Can this be done here??? --JED
-  END IF
 
   ! ------------------------------------
   ! Report successful reading of spectra
