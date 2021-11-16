@@ -228,16 +228,10 @@ MODULE OMSAO_variables_module
   ! -------------------------------------
   CHARACTER (LEN=MAX_STR_LEN), DIMENSION (N_VOC_AMF_LUNS)   :: VOC_AMF_Filenames
 
-  ! ---------------------------------------------------------------
-  ! Filename, logical and type indices for composite Solar Spectrum
-  ! ---------------------------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_solcomp_filename
-  !INTEGER (KIND=i4)        :: solar_comp_orb
-
-  ! -------------------------------------------------------
-  ! Filename and logical for solar monthly average spectrum
-  ! -------------------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_solmonthave_filename
+  ! ----------------------------------------------
+  ! Filename for I0 irradiance-replacement spectra
+  ! ----------------------------------------------
+  CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_I0_filename
 
   ! --------------------------------------------
   ! * Logical for Common Mode Iteration
