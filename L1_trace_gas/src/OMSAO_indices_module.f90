@@ -434,16 +434,6 @@ MODULE OMSAO_indices_module
   ! ------------------------
   INTEGER (KIND=i4), PARAMETER :: pge_l2_output_lun = 700999
 
-  ! -------------------------------------------
-  ! * LUNs for HCHO Pre-Fitted O3 and BrO Input
-  ! -------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: o3_prefit_lun = 700301, bro_prefit_lun = 700302
-
-  ! -----------------------------------------------
-  ! * LUNs for CHOCHO Pre-Fitted Liquid Water Input
-  ! -----------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: lqh2o_prefit_lun = 700310
-
   ! -------------------------------------------------------
   ! Strings to search for in the fitting control input file
   ! -------------------------------------------------------
@@ -462,10 +452,9 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=27), PARAMETER :: rafline_str     = 'Radiance fitting parameters'
   CHARACTER (LEN=26), PARAMETER :: rrsline_str     = 'Radiance reference setting'
   CHARACTER (LEN=24), PARAMETER :: rspline_str     = 'Input reference spectra'
-  CHARACTER (LEN=24), PARAMETER :: scpline_str     = 'Solar composite spectrum'
+  CHARACTER (LEN=22), PARAMETER :: I0_str          = 'I0 irradiance spectrum'
   CHARACTER (LEN=28), PARAMETER :: socline_str     = 'Solar calibration parameters'
   CHARACTER (LEN=23), PARAMETER :: wavwindow_str   = 'Fitting window settings'
-  CHARACTER (LEN=21), PARAMETER :: solmonthave_str = 'Solar monthly average'
   CHARACTER (LEN=21), PARAMETER :: newshift_str    = 'New shift and squeeze'
   CHARACTER (LEN=27), PARAMETER :: refseccor_str   = 'Reference sector correction'
   CHARACTER (LEN=25), PARAMETER :: scattweight_str = 'Scattering weights output'
@@ -496,15 +485,10 @@ MODULE OMSAO_indices_module
   INTEGER (KIND=i4), DIMENSION (N_VOC_AMF_LUNS), PARAMETER :: &
     VOC_AMF_LUNS = (/ 700210, 700230, OMI_CLOUD_LUN /)
 
-  ! --------------------------------
-  ! LUN for composite solar spectrum
-  ! --------------------------------
-  INTEGER (KIND=i4), PARAMETER :: OMSAO_solcomp_lun = 700400
-
-  ! -----------------------------------
-  ! LUN for solar monthly mean spectrum
-  ! -----------------------------------
-  INTEGER (KIND=i4), PARAMETER :: OMSAO_solmonthave_lun = 700500
+  ! -----------------------------------------
+  ! LUN for I0 irradiance-replacement spectra
+  ! -----------------------------------------
+  INTEGER (KIND=i4), PARAMETER :: OMSAO_I0_lun = 700400
 
   ! ------------------------------------------------------------
   ! LUN for GEOS-Chem background Reference Sector concentrations
