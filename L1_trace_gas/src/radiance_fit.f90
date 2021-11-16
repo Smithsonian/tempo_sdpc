@@ -581,14 +581,12 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
     USE OMSAO_variables_module,  ONLY: &
       n_database_wvl, curr_sol_spec, &
-      database, curr_xtrack_pixnum
-    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, &
-      yn_doas, yn_newshift, yn_solar_comp
+      database
+    use ctrlvars, only: &
+      yn_doas, yn_newshift
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
-    USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
     USE cache_module, ONLY: saved_shift, saved_squeeze
     !USE OMSAO_errstat_module
-    USE OMSAO_solcomp_module, ONLY: soco_compute
     USE sao_pge_utils, ONLY: interpolation
     USE arrayutils, only: array_locate_r8, array_sort_r8
 
@@ -613,16 +611,15 @@ CONTAINS
     ! ===============
     REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
     REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
-    LOGICAL                                       :: did_full_range, is_solsynth
+    LOGICAL                                       :: did_full_range
     INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos
-    REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
+    REAL    (KIND=r8)                             :: shift, squeeze
 
     ! Try to save some stack space by reusing some arrays via pointers.  --JED
     REAL (KIND=r8), DIMENSION(npts), TARGET       :: tmpspace
     REAL (KIND=r8), POINTER                       :: del(:), sunspec_ss(:), sumexp(:)
     ! REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, sumexp
     REAL    (KIND=r8), DIMENSION (npts)           :: database_j, fit_final_add_on
-    REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
     REAL    (KIND=r8), DIMENSION (max_spec_pts)   :: sunpos_ss, sunspec_loc, sunspec_save
     ! ------------------------------
     ! Name of this subroutine/module
@@ -640,34 +637,6 @@ CONTAINS
 
     ! set fit array to zero in case we hit an error and return early
     fit = 0.0_r8
-
-    ! ----------------------------------------------------------------------------
-    ! Here is a logical to determine whether we need to compute a "sythetic"
-    ! solar spectrum from the solar composite. The cases for YES are
-    !
-    ! (1) We are using the solar composite and are NOT doing a radiance reference
-    ! (2) We are using the solar composite and ARE doing a radiance reference, and
-    !     this happens to be the radiance reference fit.
-    ! ----------------------------------------------------------------------------
-    ! ---------------------------------------------------------------------
-    ! The solar composite spectrum may have an additional shift, which was
-    ! determined during the solar wavelength calibration. This needs to be
-    ! taken into account when computing the spectra. But careful: It should
-    ! NOT be added to the local wavelength array, since that is related to
-    ! the radiance only. The Solar Composite shift must be subtracted from
-    ! the wavelength array, hence the negative sign.
-    ! ---------------------------------------------------------------------
-    !IF (( yn_solar_comp .AND. (.NOT. yn_radiance_reference) ) &
-    !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
-    !          .AND. yn_reference_fit)) ) THEN
-    ! The above test can be simplified to the following: --JED
-    IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
-      is_solsynth = .TRUE.
-      soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
-    ELSE
-      is_solsynth = .FALSE.
-      soco_shi = 0.0_r8
-    END IF
 
     shift   = rad_fitvar(shi_idx)
     squeeze = rad_fitvar(squ_idx)
@@ -704,11 +673,7 @@ CONTAINS
     ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
     ! ---------------------------------------------------------------------
     j1 = -1; j2 = -1
-    IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
-      locwvl_shift(1:npts) = locwvl(1:npts) - shift
-      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
-    ELSE IF (yn_newshift) THEN !gga
+    IF (yn_newshift .EQV. .true.) THEN !gga
       sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
         shift - rad_wav_avg * squeeze
       CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
@@ -740,31 +705,19 @@ CONTAINS
 
       IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
 
-        IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
-          CALL soco_compute ( &
-            yn_spectrum_norm, curr_xtrack_pixnum, npts, &
-            locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts) )
-        ELSE
-          CALL interpolation (                                                 &
-            n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
-            npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
-            did_full_range, errstat)
-          if (errstat /= 0) then
-            !call tell_error (tell_runtime_error, &
-            !          "spectrum_earthshine: interpolation failed: "// &
-            !                 "resampling to radiance grid", errstat)
-            call tell_log (0, "spectrum_earthshine: interpolation failed: "// &
-                             "resampling to radiance grid")
-            return
-          endif
-          !CALL error_check ( &
-          !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL,      &
-          !  modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
-          !  vb_lev_default, errstat )
-        END IF
+        CALL interpolation (                                                 &
+          n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),       &
+          npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8,  &
+          did_full_range, errstat)
+        if (errstat /= 0) then
+          call tell_log (0, "spectrum_earthshine: interpolation failed: "// &
+                            "resampling to radiance grid")
+          return
+        endif
         sunspec_save(1:npts) = sunspec_ss(1:npts)
         saved_shift          = shift
         saved_squeeze        = squeeze
+
       ELSE
         sunspec_ss(1:npts) = sunspec_save(1:npts)
       END IF
@@ -918,14 +871,11 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: max_spec_pts, downweight
     USE OMSAO_variables_module,  ONLY: &
       n_database_wvl, curr_sol_spec, &
-      database, curr_xtrack_pixnum
-    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_doas, &
-      yn_solar_comp, yn_newshift
+      database
+    use ctrlvars, only: yn_doas, &
+      yn_newshift
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
-    USE OMSAO_omidata_module,      ONLY: omi_solcal_pars
     USE cache_module, ONLY: saved_shift, saved_squeeze
-    !USE OMSAO_errstat_module
-    USE OMSAO_solcomp_module, ONLY: soco_compute
     USE sao_pge_utils, ONLY: interpolation
     USE arrayutils, only: array_locate_r8, array_sort_r8
 
@@ -952,11 +902,10 @@ CONTAINS
     ! ===============
     REAL    (KIND=r8), PARAMETER                  :: expmax = REAL(MAXEXPONENT(1.0_r4), KIND=r8)
     REAL    (KIND=r8), PARAMETER                  :: expmin = REAL(MINEXPONENT(1.0_r4), KIND=r8)
-    LOGICAL                                       :: did_full_range, is_solsynth
+    LOGICAL                                       :: did_full_range
     INTEGER (KIND=i4)                             :: i, j, errstat, j1, j2, n_sunpos, k1, k2
-    REAL    (KIND=r8)                             :: shift, squeeze, soco_shi
+    REAL    (KIND=r8)                             :: shift, squeeze
     REAL    (KIND=r8), DIMENSION (npts)           :: del, sunspec_ss, tmpexp, sumexp
-    REAL    (KIND=r8), DIMENSION (npts)           :: locwvl_shift
     REAL    (KIND=r8), DIMENSION (max_spec_pts)   :: sunpos_ss, sunspec_loc, sunspec_save
 
     ! ------------------------------
@@ -972,35 +921,6 @@ CONTAINS
     !  OMI data.
 
     errstat = 0  ! as long as errstat is local, it should be initialized to zero
-
-    ! ----------------------------------------------------------------------------
-    ! Here is a logical to determine whether we need to compute a "sythetic"
-    ! solar spectrum from the solar composite. The cases for YES are
-    !
-    ! (1) We are using the solar composite and are NOT doing a radiance reference
-    ! (2) We are using the solar composite and ARE doing a radiance reference, and
-    !     this happens to be the radiance reference fit.
-    ! ----------------------------------------------------------------------------
-    ! ---------------------------------------------------------------------
-    ! The solar composite spectrum may have an additional shift, which was
-    ! determined during the solar wavelength calibration. This needs to be
-    ! taken into account when computing the spectra. But careful: It should
-    ! NOT be added to the local wavelength array, since that is related to
-    ! the radiance only. The Solar Composite shift must be subtracted from
-    ! the wavelength array, hence the negative sign.
-    ! ---------------------------------------------------------------------
-
-    !IF (( yn_solar_comp .AND. (.NOT. yn_radiance_reference) ) &
-    !    .OR. (yn_solar_comp .AND. yn_radiance_reference &
-    !          .AND. yn_reference_fit)) ) THEN
-    ! The above test can be simplified to the following: --JED
-    IF (yn_solar_comp .and. (.not.yn_radiance_reference)) then
-      is_solsynth = .TRUE.
-      soco_shi = -omi_solcal_pars(shi_idx,curr_xtrack_pixnum)
-    ELSE
-      is_solsynth = .FALSE.
-      soco_shi = 0.0_r8
-    END IF
 
     shift   = rad_fitvar(shi_idx)
     squeeze = rad_fitvar(squ_idx)
@@ -1028,11 +948,7 @@ CONTAINS
     ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
     ! ---------------------------------------------------------------------
     j1 = -1; j2 = -1
-    IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
-      locwvl_shift(1:npts) = locwvl(1:npts) - shift
-      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(   1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), locwvl_shift(npts), 'LE', j2 )
-    ELSE IF (yn_newshift .EQV. .true.) THEN !gga
+    IF (yn_newshift .EQV. .true.) THEN !gga
       sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
         shift - rad_wav_avg * squeeze
       CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
@@ -1055,40 +971,24 @@ CONTAINS
       call tell_log (1, "WARNING: spectrum_earthshine_o3exp: interpolation found"// &
                      " incomplete wavelength range, resampling to radiance grid "// &
                      "-- no solar spectrum!!!")
-      !CALL error_check ( &
-      !  0, 1, pge_errstat_warning, OMSAO_W_INTERPOL_RANGE, &
-      !  modulename//f_sep//'Resampling to Radiance Grid -- no solar spectrum!!!', &
-      !  vb_lev_default, errstat )
     ELSE
 
       IF ( squeeze /= saved_squeeze .OR. shift /= saved_shift ) THEN
 
-        IF ( squeeze == 0.0_r8 .AND. is_solsynth ) THEN
-          CALL soco_compute ( &
-            yn_spectrum_norm, curr_xtrack_pixnum, npts, &
-            locwvl_shift(1:npts)+soco_shi, sunspec_ss(1:npts))
-        ELSE
-          CALL interpolation (                                                         &
-            n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
-            npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
-            did_full_range, errstat)
-          if (errstat /= 0) then
-            !call tell_error (tell_runtime_error, &
-            !                 "spectrum_earthshine_o3exp: interpolation failed: "// &
-            !                 "resampling to radiance grid", errstat)
-            call tell_log (0, "spectrum_earthshine_o3exp: interpolation failed: "// &
-                           "resampling to radiance grid")
-            return
-          endif
-          !CALL error_check ( &
-          !  errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-          !  modulename//f_sep//'Resampling to Radiance Grid -- interpolation', &
-          !  vb_lev_default, errstat )
-        END IF
+        CALL interpolation (                                                         &
+          n_sunpos, sunpos_ss(1:n_sunpos), sunspec_loc(1:n_sunpos),               &
+          npts, locwvl(1:npts), sunspec_ss(1:npts), 'endpoints', 0.0_r8, &
+          did_full_range, errstat)
+        if (errstat /= 0) then
+          call tell_log (0, "spectrum_earthshine_o3exp: interpolation failed: "// &
+                          "resampling to radiance grid")
+          return
+        endif
 
         sunspec_save(1:npts) = sunspec_ss(1:npts)
         saved_shift   = shift
         saved_squeeze = squeeze
+
       ELSE
         sunspec_ss(1:npts) = sunspec_save(1:npts)
       END IF
