@@ -278,22 +278,10 @@
 700290|@met_file1@|@met_dir1@||||1
 700291|@met_file2@|@met_dir2@||||1
 #
-# -----------------------------------------------------------------------
-# Prefitted output from other PGEs
-# -----------------------------------------------------------------------
-700301|OMSAO3-o00000.he5|./input|||OMSAO3-o00000.he5|1
-700302|OMBRO-o08541.he5|./input|||OMBRO-o08541.he5|1
-#700302|OMBRO-o00000.he5|./input|||OMBRO-o00000.he5|1
-#
-# ------------------------
-# Composite Solar Spectrum
-# ------------------------
-700400|OMSAO_SolarComposite_Global.he5|@refdata_dir@/trace_gas/data||||1
-#
-# ---------------------
-# Solar Monthly average
-# ---------------------
-700500|omisol_v003_avg_nshi_backup.dat|/home/xliu/OzoneFit/tbl/OMI||||1
+# -------------------------
+# I0 replacement irradiance
+# -------------------------
+700400|not needed now|@refdata_dir@/trace_gas/data||||1
 #
 # -------------------------------------
 # GEOS-Chem reference sector background
