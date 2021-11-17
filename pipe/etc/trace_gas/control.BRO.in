@@ -29,25 +29,14 @@ General fitting parameters
  1.0E-04       # absolute    convergence constant  (EPSABS = mach. prec.)
  1.0E-04       # parameter   convergence constant  (EPSX   = SQRT(mach. prec.))
 
-
 # ========================================================================
-# Selection of Solar Composite Spectrum
-# (1) Logical for Yes/No Solar Composite spectrum
-# (2) INTEGER value ("Yes" case only, otherwise ignored):
-#     1 = Mean Solar Spectrum
-#     2 = Median Solar Spectrum
-#     3 = First Principal Component Solar Spectrum
+# Selection of I0 irradiance replacement spectrum
+# (1) Logical for Yes/No I0 spectrum. If it is set to T the I0 spectrum
+#     specified in PCF LUN 700400 would be used (netCDF format). See
+#     subroutine read_I0_spectra in irradiance_data.f90 for format details.
+#     If F, irradiance file is used.
 # ========================================================================
-Solar composite spectrum
-F
-3
-
-# ========================================================================
-# Selection of solar monthly average spectrum
-# (1) Logical for Yes/No solar monthly average spectrum. If it is set to T
-#     solar composite spectrum should be F or viceversa. Both to F is OK
-# ========================================================================
-Solar monthly average
+I0 irradiance spectrum
 F
 
 # ========================================================================
@@ -130,7 +119,7 @@ UV1
 #           clouds (amf_alb_cld)
 # ------------------------------------------------------------------------
 AMF calculation settings
-340.0 #this number is different for each molecule
+466.0 T #this number is different for each molecule
 0.10 0.50 0.80
 
 # ------------------------------------------------------------------------
@@ -158,10 +147,10 @@ AMF calculation settings
 # ------------------------------------------------------------------------
 Solar calibration parameters
  20           # maximum number of iterations for (solar) wvl.cal. (<0: default)
-bl0   0         0         0 0.0250   -1.0e+30   1.0e+30
-bl1   0         0         0 0.0030   -1.0e+30   1.0e+30
-bl2   0         0         0 0.0001   -1.0e+30   1.0e+30
-bl3   0         0         0 -5.0E-05  -1.0e+30   1.0e+30
+bl0   0.0250   -1.0e+30   1.0e+30
+bl1   0.0030   -1.0e+30   1.0e+30
+bl2   0.0001   -1.0e+30   1.0e+30
+bl3   0.0001   -1.0e+30   1.0e+30
 bl4   0         0         0 0.0001   -1.0e+30   1.0e+30
 bl5   0         0         0 0.0001   -1.0e+30   1.0e+30
 sc0   1.0       1.0       1.0    
@@ -195,8 +184,8 @@ sc0    1.0        1.0        1.0
 sc1    0.001     -1.0e+30    1.0e+30
 sc2    0.001     -1.0e+30    1.0e+30
 sc3    0.001     -1.0e+30    1.0e+30
-sc4    0.0001    -1.0e+30    1.0e+30
-sc5    0          0          0        0.0001    -1.0e+30    1.0e+30
+sc4    0          0          0       0.0001    -1.0e+30    1.0e+30
+sc5    0          0          0       0.0001    -1.0e+30    1.0e+30
 sin    0.6       -1.0e+30    1.0e+30
 hwe   -1.0       -1.0       -1.0     # Gaussian HW@1/e
 asy   -1.0       -1.0       -1.0     # Gaussian asymmetry
@@ -287,8 +276,8 @@ hono
 lbe    0         0          0
 eoi    0         0          0
 vraman
-ad1    0.001    -1.0e+30    1.0e+30
-lbe    0     0          0
+ad1    1.0E-03  -1.0e+30    1.0e+30
+lbe    0         0          0
 ad2    0         0          0
 eoi    0         0          0
 commod
@@ -298,10 +287,10 @@ pseudo
 lbe    0         0          0 1.0E-03  -1.0e+30   1.0e+30
 eoi    0         0          0
 usamp1
-ad1    0         0          0 -0.01    -1.0e+30   1.0e+30
+ad1   -0.01    -1.0e+30   1.0e+30
 eoi    0         0          0
 usamp2
-ad1   +0.01     -1.0e+30    1.0e+30
+ad1    0         0          0 +0.01     -1.0e+30    1.0e+30
 eoi    0         0          0
 end_of_input
 

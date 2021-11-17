@@ -30,23 +30,13 @@ General fitting parameters
  1.0E-04       # parameter   convergence constant  (EPSX   = SQRT(mach. prec.))
 
 # ========================================================================
-# Selection of Solar Composite Spectrum
-# (1) Logical for Yes/No Solar Composite spectrum
-# (2) INTEGER value ("Yes" case only, otherwise ignored):
-#     1 = Mean Solar Spectrum
-#     2 = Median Solar Spectrum
-#     3 = First Principal Component Solar Spectrum
+# Selection of I0 irradiance replacement spectrum
+# (1) Logical for Yes/No I0 spectrum. If it is set to T the I0 spectrum
+#     specified in PCF LUN 700400 would be used (netCDF format). See
+#     subroutine read_I0_spectra in irradiance_data.f90 for format details.
+#     If F, irradiance file is used.
 # ========================================================================
-Solar composite spectrum
-F
-3
-
-# ========================================================================
-# Selection of solar monthly average spectrum
-# (1) Logical for Yes/No solar monthly average spectrum. If it is set to T
-#     solar composite spectrum should be F or viceversa. Both to F is OK
-# ========================================================================
-Solar monthly average
+I0 irradiance spectrum
 F
 
 # ========================================================================
@@ -84,7 +74,7 @@ Fitting Residual Constraints
 -3   -2      # Solar    Calibration
 -3   -2      # Radiance Calibration
 -4   -1      # Radiance Reference
--3   -2      # Radiance Fit
+ 3    1      # Radiance Fit
 
 # ========================================================================
 # Setting for the Radiance Reference/Wavelength Calibration line.
@@ -113,7 +103,7 @@ T 0
 # ========================================================================
 Fitting window settings
 UV1   # JCH use UV1 for tempo file format
-424.0 426.0 450.0 452.0 0.0 0.0
+403.0 405.0 465.0 467.0 0.0 0.0
 
 # ------------------------------------------------------------------------
 # Air Mass Factor calculation
@@ -127,7 +117,7 @@ UV1   # JCH use UV1 for tempo file format
 #           clouds (amf_alb_cld)
 # ------------------------------------------------------------------------
 AMF calculation settings
-466.0 T   # 440.0
+466.0 T # 440.0
 0.10 0.50 0.80
 
 # ------------------------------------------------------------------------
@@ -158,14 +148,14 @@ Solar calibration parameters
 bl0   0.0250   -1.0e+30   1.0e+30
 bl1   0.0030   -1.0e+30   1.0e+30
 bl2   0.0001   -1.0e+30   1.0e+30
-bl3  -5.0E-05  -1.0e+30   1.0e+30
-bl4   0         0         0       0.0001   -1.0e+30   1.0e+30
+bl3   0.0001   -1.0e+30   1.0e+30
+bl4   0.0001   -1.0e+30   1.0e+30
 bl5   0         0         0       0.0001   -1.0e+30   1.0e+30
 sc0   1.0       1.0       1.0
 sc1  -0.0050   -1.0e+30   1.0e+30
 sc2  -0.0003   -1.0e+30   1.0e+30
 sc3  -8.0E-05  -1.0e+30   1.0e+30
-sc4   0         0         0       -8.0E-05  -1.0e+30   1.0e+30
+sc4  -8.0E-05  -1.0e+30   1.0e+30
 sc5   0         0         0        0.0001   -1.0e+30   1.0e+30
 sin   0.6      -1.0e+30   1.0e+30
 hwe   -0.3       0.0       3.0     # Gaussian HW@1/e
@@ -192,7 +182,7 @@ sc0    1.0        1.0        1.0
 sc1    0.001    -1.0e+30    1.0e+30
 sc2    5.0E-05   -1.0e+30    1.0e+30
 sc3    5.0E-05   -1.0e+30    1.0e+30
-sc4    0          0          0        0.0001    -1.0e+30    1.0e+30
+sc4    0.0001    -1.0e+30    1.0e+30
 sc5    0          0          0        0.0001    -1.0e+30    1.0e+30
 sin    0.6       -1.0e+30    1.0e+30
 hwe   -1.0       -1.0       -1.0     # Gaussian HW@1/e
@@ -239,7 +229,7 @@ ad2    0         0          0
 eoi    0         0          0
 o3_t2
 ad1    0         0          0
-lbe    1.00E-3   -1.0e+30    1.0e+30
+lbe    0         0          0 1.00E-3   -1.0e+30    1.0e+30
 ad2    0         0          0
 eoi    0         0          0
 o3_t3
@@ -272,10 +262,10 @@ h2o
 lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 lqh2o
-lbe    0         0          0
+lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 glyox
-lbe    1.0e-03  -1.0e+30    1.0e+30
+lbe    0         0          0 1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 io
 lbe    0         0          0
@@ -358,7 +348,7 @@ T
 # T/F
 # --------------------------------------------------------------------
 Reference sector correction
-T
+F
 
 # --------------------------------------------------------------------
 # Logical for the computation and output of Scattering weights, Target

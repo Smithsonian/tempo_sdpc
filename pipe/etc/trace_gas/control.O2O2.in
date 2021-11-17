@@ -29,25 +29,14 @@ General fitting parameters
  1.0E-04       # absolute    convergence constant  (EPSABS = mach. prec.)
  1.0E-04       # parameter   convergence constant  (EPSX   = SQRT(mach. prec.))
 
-
 # ========================================================================
-# Selection of Solar Composite Spectrum
-# (1) Logical for Yes/No Solar Composite spectrum
-# (2) INTEGER value ("Yes" case only, otherwise ignored):
-#     1 = Mean Solar Spectrum
-#     2 = Median Solar Spectrum
-#     3 = First Principal Component Solar Spectrum
+# Selection of I0 irradiance replacement spectrum
+# (1) Logical for Yes/No I0 spectrum. If it is set to T the I0 spectrum
+#     specified in PCF LUN 700400 would be used (netCDF format). See
+#     subroutine read_I0_spectra in irradiance_data.f90 for format details.
+#     If F, irradiance file is used.
 # ========================================================================
-Solar composite spectrum
-F
-3
-
-# ========================================================================
-# Selection of solar monthly average spectrum
-# (1) Logical for Yes/No solar monthly average spectrum. If it is set to T
-#     solar composite spectrum should be F or viceversa. Both to F is OK
-# ========================================================================
-Solar monthly average
+I0 irradiance spectrum
 F
 
 # ========================================================================
@@ -82,10 +71,10 @@ F
 # Input Format: First No of SDEVs then No of Iterations
 # ========================================================================
 Fitting Residual Constraints
- 3  2      # Solar    Calibration
- 3  2      # Radiance Calibration
+-3  -2      # Solar    Calibration
+-3  -2      # Radiance Calibration
 -3  -2      # Radiance Reference
- 3   2      # Radiance Fit
+ 3   1      # Radiance Fit
 
 
 # ========================================================================
@@ -256,7 +245,7 @@ end_of_input
 # constrain the absolute value of the fitting result.
 # -------------------------------------------------------------
 Maximum Good Column Amount
-1.0E+44
+5.0E+44
 
 # ----------------------------------------------------------------
 # The next block controls the cross-track smoothing procedure.
