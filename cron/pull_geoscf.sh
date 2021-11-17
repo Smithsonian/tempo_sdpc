@@ -13,7 +13,7 @@ if test $# -gt 1; then
    dateargs="$@"
 fi
 
-rootdir="${SDPC_ANCILLARY_ROOT}/geos_cf"
+rootdir="${SDPC_ANCILLARY_ROOT}/geoscf"
 subdir="$(date -u $dateargs +%Y/%j)"
 daytag="$(date -u $dateargs +%Y%m%d)"
 

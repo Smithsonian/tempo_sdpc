@@ -15,7 +15,7 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geos_cf/geoscf.sqlite"
+geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geoscf/geoscf.sqlite"
 cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
 cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
 
