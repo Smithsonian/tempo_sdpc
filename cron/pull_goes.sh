@@ -68,11 +68,8 @@ move_and_register_files()
    done
 }
 
-# Use a separate sqlite database for each year.
-year_dir=$(dirname $target_dir)
-
-move_and_register_files g16_cmi $year_dir/cmig16.sqlite
-move_and_register_files g17_cmi $year_dir/cmig17.sqlite
+move_and_register_files g16_cmi $rootdir/cmig16.sqlite
+move_and_register_files g17_cmi $rootdir/cmig17.sqlite
 
 # The 'today' symlink always points to today's GOES data
 cd $rootdir

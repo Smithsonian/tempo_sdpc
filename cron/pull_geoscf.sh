@@ -59,10 +59,6 @@ export -f reorder_dims
 
 find $incoming_dir -name $filename_regex | parallel --will-cite --max-procs 12 reorder_dims {}
 
-# Use a separate sqlite database for each year.
-year_dir=$(dirname $target_dir)
-sql="$year_dir/geoscf.sqlite"
-
 # Move files to their final location, and
 # register them in the asdc upload database
 
@@ -71,5 +67,5 @@ for f in $files ; do
    bn=$(basename $f)
    final_path="$target_dir/$bn"
    /bin/mv $f $final_path
-   src/asdc_files.py --dbfile $sql --add $final_path
+   src/asdc_files.py --dbfile $rootdir/geoscf.sqlite --add $final_path
 done

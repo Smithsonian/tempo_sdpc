@@ -15,6 +15,17 @@ user_at_host=$1
 prefix=$2
 dbfile=$3
 
+# lftp will need an ssh-agent with the relevant keys loaded.
+# The file should contain something like:
+# export SSH_AUTH_SOCK=/home/temposdpc/.ssh/ssh-agent
+# export SSH_AGENT_PID=26882
+agent_env_file="$HOME/.ssh/ssh-agent-env"
+if ! test -r $agent_env_file ; then
+   echo "*** Error: can't find ssh-agent config file: $agent_env_file"
+   exit 1
+fi
+. $agent_env_file
+
 asdc_user=$(echo $user_at_host | cut -d@ -f1)
 asdc_host=$(echo $user_at_host | cut -d@ -f2)
 
@@ -67,7 +78,6 @@ do_asdc_download()
   fi
 }
 
-dbfile_dir=$(dirname $dbfile)
 dbfile_name=$(basename $dbfile)
 
 num=$(asdc_files.py --dbfile $dbfile --num pending)
@@ -76,7 +86,8 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-download_dir_path="${dbfile_dir}/asdc/pull/$(date -u +${dbfile_name}_pan_%Y%jT%H%M%SZ)"
+pull_dir="${SDPC_ANCILLARY_ROOT}/asdc/${dbfile_name}/pull"
+download_dir_path="${pull_dir}/$(date -u +%Y/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
 do_asdc_download $download_dir_path
 
 num_pending=$(asdc_files.py --dbfile $dbfile --num pending)

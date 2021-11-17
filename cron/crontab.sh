@@ -2,6 +2,8 @@
 
 set -u
 
+: "${SDPC_ASDC_DROPBOX:=jhouck@waps.cfa.harvard.edu}"
+
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
@@ -13,7 +15,11 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-export PATH="${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
+geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geos_cf/geoscf.sqlite"
+cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
+cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
+
+export PATH="${SDPC_ANCILLARY_ROOT}/src:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 tstamp=$(date -u +%Y%m%d%H%M%SZ)
 tbeg=$(date +%s)
@@ -22,19 +28,31 @@ _task=$1
 
 case $_task in
    MET )
-   src/dl_met.sl
+   dl_met.sl
    ;;
 
    SNOW )
-   src/pull_ims.sh
+   pull_ims.sh
    ;;
 
    GOES )
-   src/pull_goes.sh
+   pull_goes.sh
+   ;;
+
+   GOES_ASDC )
+   asdc_pull.sh $SDPC_ASDC_DROPBOX CMIG16 $cmig16_sqlite
+   asdc_pull.sh $SDPC_ASDC_DROPBOX CMIG17 $cmig17_sqlite
+   asdc_push.sh $SDPC_ASDC_DROPBOX $cmig16_sqlite
+   asdc_push.sh $SDPC_ASDC_DROPBOX $cmig17_sqlite
    ;;
 
    GEOSCF )
-   src/pull_geoscf.sh
+   pull_geoscf.sh
+   ;;
+
+   GEOSCF_ASDC )
+   asdc_pull.sh $SDPC_ASDC_DROPBOX GEOSCF $geoscf_sqlite
+   asdc_push.sh $SDPC_ASDC_DROPBOX $geoscf_sqlite
    ;;
 
    CLEANUP )
