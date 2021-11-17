@@ -867,8 +867,7 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: &
       qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     USE OMSAO_parameters_module,    ONLY: downweight, r4_missval
-    use ctrlvars, only: yn_radiance_reference, yn_spectrum_norm, yn_solar_comp
-    USE OMSAO_solcomp_module,       ONLY: solarcomp_pars
+    use ctrlvars, only: yn_spectrum_norm
     !USE OMSAO_errstat_module
 
     IMPLICIT NONE
@@ -1027,23 +1026,12 @@ CONTAINS
       ! -----------------------------------------
       ! Finally, normalize the radiance spectrum.
       ! -----------------------------------------
-      ! There are three possibilities:
+      ! There are two possibilities:
       ! (1) If YN_SPECTRUM_NORM = .TRUE. the spectrum will be normalized to 1.
-      ! (2) If YN_SPECTRUM_NORM = .FALSE. but YN_SOLAR_COMP = .TRUE. and
-      !     YN_RADIANCE_REFERENCE = .FALSE. then the radiance spectrum will be
-      !      normalized with the composite solar norm.
-      ! (3) If both of the above are .FALSE. do nothing.
-      !
-      ! "(2)" assures that radiance and irradiance retain their relative
-      ! magnitudes, which means that the Solar Intensity parameter will be more
-      ! closely associated with (but not necessarily identical to) the scene albedo.
+      ! (2) If YN_SPECTRUM_NORM = .FALSE. do nothing.
       ! -----------------------------------------------------------------------------
-      IF ( .NOT. yn_spectrum_norm ) THEN                               ! branch for "(2)" or "(3)"
-        IF ( yn_solar_comp .AND. (.NOT. yn_radiance_reference) ) THEN ! "(2)"
-          rad_spec_avg = solarcomp_pars%SolarNorm
-        ELSE                                                          ! "(3)"
+      IF ( .NOT. yn_spectrum_norm ) THEN                              ! branch for "(2)"
           rad_spec_avg = 1.0_r8
-        END IF
       END IF
       adj_spec(1:n_adj) = adj_spec(1:n_adj) / rad_spec_avg
     END IF

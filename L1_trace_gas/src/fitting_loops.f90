@@ -16,14 +16,14 @@ CONTAINS
       max_calfit_idx, max_rs_idx, hwe_idx, asy_idx, sgk_idx, &
       shi_idx, squ_idx, solar_idx,    &
       radcal_idx
-    USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, normweight, &
+    USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, &
       NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
       database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg,
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original
-    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_solar_comp, yn_do_he5_output
+    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_do_he5_output
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE OMSAO_omidata_module, ONLY: omi_nwav_radref, omi_nwav_rad, &
@@ -165,20 +165,15 @@ CONTAINS
       ! -----------------------------------------------------
       ! Assign (hopefully predetermined) "reference" weights.
       ! -----------------------------------------------------
-      IF ( .NOT. yn_solar_comp ) THEN
-        ref_wgt(1:n_irradwvl) = omi_irradiance_wght(1:n_irradwvl,ipix)
+      ref_wgt(1:n_irradwvl) = omi_irradiance_wght(1:n_irradwvl,ipix)
 
-        ! -----------------------------------------------------
-        ! Catch the possibility that adj_num > N_IRRADWVL
-        ! -----------------------------------------------------
-        IF ( adj_num > n_irradwvl ) THEN
-          i = adj_num - n_irradwvl
-          ref_wgt(n_irradwvl+1:adj_num) = downweight
-          ! n_irradwvl = adj_num !! BAD BAD  --JED
-        END IF
-      ELSE
-        ! n_irradwvl          = adj_num !! BAD BAD --JED
-        ref_wgt(1:adj_num) = normweight
+      ! -----------------------------------------------------
+      ! Catch the possibility that adj_num > N_IRRADWVL
+      ! -----------------------------------------------------
+      IF ( adj_num > n_irradwvl ) THEN
+        i = adj_num - n_irradwvl
+        ref_wgt(n_irradwvl+1:adj_num) = downweight
+        ! n_irradwvl = adj_num !! BAD BAD  --JED
       END IF
 
       ! ---------------------------------------------------------------
