@@ -24,14 +24,10 @@ module ctrlvars
   logical, public :: yn_solar_i0
   logical, public :: yn_diagnostic_run
 
-  logical, public :: yn_solar_comp
-  ! If TRUE, read a composite solar spectrum from a file.
-  ! The solar_comp_typ determines the type to read.
-  integer, public :: solar_comp_typ
+  logical, public :: yn_I0
 
 
   logical, public :: yn_o3amf_cor
-  logical, public :: yn_solmonthave
   logical, public :: yn_refseccor   !reference sector correction
 
   ! Scattering weights, gas profile, averaging kernels

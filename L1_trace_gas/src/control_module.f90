@@ -64,10 +64,9 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     hwe_idx, sgk_idx, refspec_strings,    icf_idx, pge_static_input_luns,                        &
     genline_str, socline_str, racline_str, rrsline_str, procline_str,                   &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
-    pge_hcho_idx, pge_gly_idx,                &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
-    destriping_str, scpline_str, nrmline_str, comline_str, o3amf_str, maxgoodcol_str,   &
-    comm_idx, procmode_diag, solmonthave_str, amf_str,             &
+    destriping_str, nrmline_str, comline_str, o3amf_str, maxgoodcol_str,   &
+    comm_idx, procmode_diag, amf_str, I0_str,            &
     newshift_str, refseccor_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
@@ -83,7 +82,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     common_fitpos, common_fitvar, common_latrange, &
     max_good_col, &
     radref_latrange, target_npol
-  USE OMSAO_prefitcol_module, ONLY: yn_bro_prefit, yn_o3_prefit, yn_lqh2o_prefit
   USE OMSAO_destriping_module, ONLY: &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
     ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
@@ -260,53 +258,17 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   IF ( pixnum_lim(1) > pixnum_lim(2) ) pixnum_lim(1) = pixnum_lim(2)
   IF ( pixnum_lim(3) > pixnum_lim(4) ) pixnum_lim(3) = pixnum_lim(4)
 
-  ! -------------------------------------------------
-  ! Position cursor to read solar composite selection
-  ! -------------------------------------------------
+  ! ------------------------------------------------------------------------
+  ! Position cursor to read I0 pre-calculated irradiance-replacement spectra
+  ! ------------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, scpline_str, tmpchar, file_read_stat )
+  CALL skip_to_filemark ( fit_ctrl_unit, I0_str, tmpchar, file_read_stat )
   if (file_read_stat /= 0) then
     call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(scpline_str), errstat)
+                     trim(I0_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-
-  READ (fit_ctrl_unit, *) yn_solar_comp
-  IF ( yn_solar_comp ) READ (fit_ctrl_unit,*) solar_comp_typ
-
-  ! -----------------------------------------------------
-  ! Position cursor to read solar monthly average section
-  ! -----------------------------------------------------
-  REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, solmonthave_str, tmpchar, file_read_stat )
-  if (file_read_stat /= 0) then
-    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(solmonthave_str), errstat)
-    return
-  endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//scpline_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-
-  READ (fit_ctrl_unit, *) yn_solmonthave
-
-  ! --------------------------------------------------------------------------
-  ! Check than only one or non of yn_solar_comp are yn_solmonthva are set True
-  ! --------------------------------------------------------------------------
-  IF ( yn_solar_comp .AND. yn_solmonthave ) THEN
-    call tell_error (tell_usage_error, &
-                     "Unsupported option: both yn_solar_comp, yn_solmonthave=.true.", &
-                     errstat)
-    return
-    !CALL error_check ( 1, 0, pge_errstat_fatal, OMSAO_F_SOLCOM_VS_SOLAVE, &
-    !                  modulename, vb_lev_gt1mb, errstat )
-    !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  END IF
+  READ (fit_ctrl_unit, *) yn_I0
 
   ! -------------------------------------------------------
   ! Position cursor to read spectum normalization selection
@@ -418,28 +380,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(racline_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//racline_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-
-  ! --------------------------------------------------------------------
-  ! Special logicals for HCHO - O3 and BrO prefits. Two-dimensional:
-  ! (1) Use O3/BrO prefitted columns?
-  ! (2) Vary those prefitted columns within their fitting uncertainties?
-  !
-  ! Special logicals for CHOCHO - Liquid Water prefits. Two-dimensional:
-  ! (1) Use Liquid Water prefitted columns?
-  ! (2) Vary those prefitted columns within their fitting uncertainties?
-  ! --------------------------------------------------------------------
-  SELECT CASE ( pge_idx )
-  CASE ( pge_hcho_idx )
-    READ (fit_ctrl_unit, *) yn_o3_prefit (1:2)
-    READ (fit_ctrl_unit, *) yn_bro_prefit(1:2)
-  CASE ( pge_gly_idx )
-    READ (fit_ctrl_unit, *) yn_lqh2o_prefit (1:2)
-  CASE DEFAULT
-  END SELECT
 
   READ (fit_ctrl_unit, *) yn_solar_i0
   READ (fit_ctrl_unit, *) max_itnum_rad

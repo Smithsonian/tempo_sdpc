@@ -100,12 +100,9 @@ CONTAINS
          verb_thresh_lev, orbit_number, &
          ecs_version_id, l1b_rad_filename, l1b_irrad_filename, l2_filename,  &
          static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,            &
-         OMSAO_solcomp_filename, voc_amf_filenames,                          &
-         refspecs_original, OMSAO_solmonthave_filename,                      &
-         OMSAO_refseccor_filename, OMSAO_OMLER_filename,                     &
+         OMSAO_I0_filename, voc_amf_filenames,                               &
+         refspecs_original, OMSAO_refseccor_filename, OMSAO_OMLER_filename,  &
          OMSAO_refseccor_cld_filename, l1b_radref_filename
-    USE OMSAO_prefitcol_module, ONLY: o3_prefit_fname, bro_prefit_fname, &
-         lqh2o_prefit_fname
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
          OMSAO_wfamf_table_filename, OMSAO_climatology_filename, &
          num_met_luns, meteorology_lun, OMSAO_meteorology_filename
@@ -408,23 +405,12 @@ CONTAINS
                                  OMSAO_meteorology_filename(i), pge_error_status)
     enddo
 
-    ! -------------------------------------------------------------------------
-    ! Read name of file with Solar Spectrum Composite
-    ! (whether we use it or not, since we find that out only after we read the
-    !  fitting control file)
-    ! -------------------------------------------------------------------------
-    call do_pgs_get_reference (OMSAO_solcomp_lun, "PGE_STATIC_INPUT_LUN", &
+    ! --------------------------------------------------------
+    ! Read name of file with I0 irradiance-replacement spectra
+    ! --------------------------------------------------------
+    call do_pgs_get_reference (OMSAO_I0_lun, "PGE_STATIC_INPUT_LUN", &
          OMSAO_W_GETLUN, pge_errstat_warning, &
-         OMSAO_solcomp_filename, pge_error_status)
-
-    ! -------------------------------------------------------------------------
-    ! Read name of file with Monthly Average Irradiace !gga
-    ! (whether we use it or not, since we find that out only after we read the
-    !  fitting control file) !gga
-    ! -------------------------------------------------------------------------
-    call do_pgs_get_reference (OMSAO_solmonthave_lun, "PGE_STATIC_INPUT_LUN", &
-         OMSAO_W_GETLUN, pge_errstat_warning, &
-         OMSAO_solmonthave_filename, pge_error_status)
+         OMSAO_I0_filename, pge_error_status)
 
     ! ------------------------------------------------------------
     ! Read name of file with GEOS-Chem background Reference Sector
@@ -473,37 +459,6 @@ CONTAINS
     !    return
     !  endif
     !endif
-
-    ! ---------------------------------------------------------
-    ! For OMHCHO read HE5 file names with pre-fitted O3 and BrO
-    ! ---------------------------------------------------------
-    SELECT CASE ( pge_idx )
-
-    CASE ( pge_hcho_idx )
-      ! -----------
-      ! O3 pre-fits
-      ! -----------
-      call do_pgs_get_reference (o3_prefit_lun, "O3_PREFIT_LUN", &
-           OMSAO_E_GETLUN, pge_errstat_error, &
-           o3_prefit_fname, pge_error_status)
-      ! ------------
-      ! BrO pre-fits
-      ! ------------
-      call do_pgs_get_reference (bro_prefit_lun, "BRO_PREFIT_LUN", &
-           OMSAO_E_GETLUN, pge_errstat_error, &
-           bro_prefit_fname, pge_error_status)
-
-    CASE ( pge_gly_idx )
-      ! ---------------------
-      ! Liquid Water pre-fits
-      ! ---------------------
-      call do_pgs_get_reference (lqh2o_prefit_lun, "LQH2O_PREFIT_LUN", &
-           OMSAO_E_GETLUN, pge_errstat_error, &
-           lqh2o_prefit_fname, pge_error_status)
-
-    CASE DEFAULT
-      ! Do Nothing
-    END SELECT
 
     RETURN
   END SUBROUTINE read_pcf_file
