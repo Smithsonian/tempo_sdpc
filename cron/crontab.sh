@@ -2,8 +2,6 @@
 
 set -u
 
-: "${SDPC_ASDC_DROPBOX:=jhouck@waps.cfa.harvard.edu}"
-
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
@@ -15,9 +13,12 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geoscf/geoscf.sqlite"
-cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
-cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
+if test -f "etc/crontab.conf" ; then
+   . etc/crontab.conf
+else
+   printf "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
+   exit 1
+fi
 
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
@@ -28,31 +29,48 @@ _task=$1
 
 case $_task in
    MET )
-   dl_met.sl
+   if test x"$state_met" = xon ; then
+      dl_met.sl
+   fi
    ;;
 
    SNOW )
-   pull_ims.sh
+   if test x"$state_snow" = xon ; then
+      pull_ims.sh $ims_url $ims_dir
+   fi
    ;;
 
    GOES )
-   pull_goes.sh
+   if test x"$state_goes" = xon ; then
+      pull_goes.sh $pda_service_account
+   fi
    ;;
 
    GEOSCF )
-   pull_geoscf.sh
+   if test x"$state_geoscf" = xon ; then
+      pull_geoscf.sh $geoscf_source_url
+   fi
    ;;
 
    ASDC_GOES )
-   asdc_pull_ack.sh $SDPC_ASDC_DROPBOX CMIG16 $cmig16_sqlite
-   asdc_pull_ack.sh $SDPC_ASDC_DROPBOX CMIG17 $cmig17_sqlite
-   asdc_push_files.sh $SDPC_ASDC_DROPBOX $cmig16_sqlite
-   asdc_push_files.sh $SDPC_ASDC_DROPBOX $cmig17_sqlite
+   if test x"$state_asdc_goes" = xon ; then
+      cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
+      cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
+
+      asdc_pull_ack.sh $asdc_dropbox CMIG16 $cmig16_sqlite
+      asdc_pull_ack.sh $asdc_dropbox CMIG17 $cmig17_sqlite
+      asdc_push_files.sh $asdc_dropbox $cmig16_sqlite
+      asdc_push_files.sh $asdc_dropbox $cmig17_sqlite
+   fi
    ;;
 
    ASDC_GEOSCF )
-   asdc_pull_ack.sh $SDPC_ASDC_DROPBOX GEOSCF $geoscf_sqlite
-   asdc_push_files.sh $SDPC_ASDC_DROPBOX $geoscf_sqlite
+   if test x"$state_asdc_geoscf" = xon ; then
+      geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geoscf/geoscf.sqlite"
+
+      asdc_pull_ack.sh $asdc_dropbox GEOSCF $geoscf_sqlite
+      asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
+   fi
    ;;
 
    CLEANUP )

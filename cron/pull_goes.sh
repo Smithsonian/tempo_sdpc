@@ -5,6 +5,12 @@
 set -e
 set -u
 
+if test $# -ne 1 ; then
+    echo "Usage: $0 USER@HOST"
+    exit 0
+fi
+user_at_host=$1
+
 rootdir="${SDPC_ANCILLARY_ROOT}/goes"
 
 # It's convenient if a single directory contains
@@ -29,7 +35,7 @@ if ! test -d $target_dir ; then
    mkdir -p $target_dir
 fi
 
-lftp AO_TEMPO_SERV1@140.90.190.143 <<- EOF
+lftp $user_at_host <<- EOF
    set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp

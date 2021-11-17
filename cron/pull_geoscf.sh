@@ -5,11 +5,18 @@
 set -e
 set -u
 
+if test $# -lt 1 ; then
+    echo "Usage: $0 <source-url>"
+    exit 0
+fi
+source_url="$1"
+
 # Any command line args are passed to 'date'.
 # For example, to pull data for a particular date, do something like:
 #     pull_geoscf.sh -d 2020-07-01
 dateargs=""
 if test $# -gt 1; then
+   shift
    dateargs="$@"
 fi
 
@@ -32,8 +39,6 @@ if ! test -d $target_dir ; then
 fi
 
 # Download using lftp:
-
-source_url="https://gmao.gsfc.nasa.gov/gmaoftp/kknowlan/TEMPO"
 filename_regex="GEOS-CF.v01.rpl.sat_inst_1hr_r720x361_v72.${daytag}_????z.nc4"
 
 lftp <<- EOF

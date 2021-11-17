@@ -9,7 +9,7 @@ SCRIPT_FILES = crontab.sh register_ims.py \
                pull_ims.sh pull_goes.sh pull_geoscf.sh \
                asdc_files.py asdc_push_files.sh asdc_pull_ack.sh
 
-ETC_FILES = crontab
+ETC_FILES = crontab crontab.conf
 
 SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/bin
 ETC_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/etc

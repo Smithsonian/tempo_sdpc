@@ -5,6 +5,13 @@
 set -e
 set -u
 
+if test $# -ne 2 ; then
+    echo "Usage: $0 <source-url> <source-dir>"
+    exit 0
+fi
+source_url="$1"
+source_dir="$2"
+
 rootdir="${SDPC_ANCILLARY_ROOT}/ims"
 subdir="$(date -u +%Y)"
 
@@ -17,12 +24,12 @@ else
    prev_path="$target_dir/$prev_file"
 fi
 
-lftp ftp://sidads.colorado.edu <<- EOF
+lftp $source_url <<- EOF
    set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set mirror:require-source true
-   cd pub/DATASETS/NOAA/G02156/GIS/1km
+   cd $source_dir
    mirror -c --newer-than=now-4days $subdir $target_dir
    quit
 EOF
