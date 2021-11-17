@@ -39,18 +39,18 @@ case $_task in
    pull_goes.sh
    ;;
 
-   GOES_ASDC )
+   GEOSCF )
+   pull_geoscf.sh
+   ;;
+
+   ASDC_GOES )
    asdc_pull_ack.sh $SDPC_ASDC_DROPBOX CMIG16 $cmig16_sqlite
    asdc_pull_ack.sh $SDPC_ASDC_DROPBOX CMIG17 $cmig17_sqlite
    asdc_push_files.sh $SDPC_ASDC_DROPBOX $cmig16_sqlite
    asdc_push_files.sh $SDPC_ASDC_DROPBOX $cmig17_sqlite
    ;;
 
-   GEOSCF )
-   pull_geoscf.sh
-   ;;
-
-   GEOSCF_ASDC )
+   ASDC_GEOSCF )
    asdc_pull_ack.sh $SDPC_ASDC_DROPBOX GEOSCF $geoscf_sqlite
    asdc_push_files.sh $SDPC_ASDC_DROPBOX $geoscf_sqlite
    ;;
