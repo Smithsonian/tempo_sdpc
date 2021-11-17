@@ -24,7 +24,7 @@ if ! test -r $agent_env_file ; then
 fi
 . $agent_env_file
 
-export PATH="${SDPC_ANCILLARY_ROOT}/src:$PATH"
+export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 do_asdc_upload()
 {

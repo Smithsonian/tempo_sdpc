@@ -5,17 +5,31 @@ SDPC_ANCILLARY_ROOT = @ANCILLARY_DATA_DIR@
 all:
 	@echo "targets: install"
 
-SCRIPT_FILES = crontab crontab.sh register_ims.py \
+SCRIPT_FILES = crontab.sh register_ims.py \
                pull_ims.sh pull_goes.sh pull_geoscf.sh \
                asdc_files.py asdc_push.sh asdc_pull.sh
 
-SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/src
+ETC_FILES = crontab
+
+SCRIPT_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/bin
+ETC_FILES_INSTALL_DIR = $(SDPC_ANCILLARY_ROOT)/etc
 
 INSTALL = @INSTALL@
+INSTALL_DATA = ${INSTALL} -m 644
 MKINSDIR = ../autoconf/mkinsdir.sh
 
 install_directories:
 	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
+
+install_etc:
+	@for X in $(ETC_FILES); \
+	do \
+		echo $(INSTALL_DATA) $$X $(ETC_FILES_INSTALL_DIR); \
+		$(INSTALL_DATA) $$X $(ETC_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
 
 install_scripts:
 	@for X in $(SCRIPT_FILES); \
@@ -27,5 +41,5 @@ install_scripts:
 		fi; \
 	done
 
-install:	install_directories install_scripts
+install:	install_directories install_scripts install_etc
 

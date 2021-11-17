@@ -29,7 +29,7 @@ fi
 asdc_user=$(echo $user_at_host | cut -d@ -f1)
 asdc_host=$(echo $user_at_host | cut -d@ -f2)
 
-export PATH="${SDPC_ANCILLARY_ROOT}/src:$PATH"
+export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 # The -E option means "delete source file after successful transfer"
 emit_script()

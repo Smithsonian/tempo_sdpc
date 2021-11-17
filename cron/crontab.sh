@@ -19,7 +19,7 @@ geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geoscf/geoscf.sqlite"
 cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
 cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
 
-export PATH="${SDPC_ANCILLARY_ROOT}/src:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
+export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 tstamp=$(date -u +%Y%m%d%H%M%SZ)
 tbeg=$(date +%s)
@@ -56,8 +56,8 @@ case $_task in
    ;;
 
    CLEANUP )
-   if test -f src/cleanup.sh ; then
-      src/cleanup.sh
+   if test -f bin/cleanup.sh ; then
+      bin/cleanup.sh
    fi
    ;;
 
