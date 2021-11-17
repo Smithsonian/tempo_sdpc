@@ -7,13 +7,13 @@ set -e
 set -u
 
 if test $# -ne 3 ; then
-    echo "Usage: $0 USER@HOST <pan-prefix> <dbfile-path>"
+    echo "Usage: $0 USER@HOST <dbfile-path> <pan-prefix>"
     exit 0
 fi
 
 user_at_host=$1
-prefix=$2
-dbfile=$3
+dbfile=$2
+prefix=$3
 
 # lftp will need an ssh-agent with the relevant keys loaded.
 # The file should contain something like:

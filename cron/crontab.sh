@@ -57,8 +57,8 @@ case $_task in
       cmig16_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig16.sqlite"
       cmig17_sqlite="$SDPC_ANCILLARY_ROOT/goes/cmig17.sqlite"
 
-      asdc_pull_ack.sh $asdc_dropbox CMIG16 $cmig16_sqlite
-      asdc_pull_ack.sh $asdc_dropbox CMIG17 $cmig17_sqlite
+      asdc_pull_ack.sh $asdc_dropbox $cmig16_sqlite CMIG16 
+      asdc_pull_ack.sh $asdc_dropbox $cmig17_sqlite CMIG17 
       asdc_push_files.sh $asdc_dropbox $cmig16_sqlite
       asdc_push_files.sh $asdc_dropbox $cmig17_sqlite
    fi
@@ -68,7 +68,7 @@ case $_task in
    if test x"$state_asdc_geoscf" = xon ; then
       geoscf_sqlite="$SDPC_ANCILLARY_ROOT/geoscf/geoscf.sqlite"
 
-      asdc_pull_ack.sh $asdc_dropbox GEOSCF $geoscf_sqlite
+      asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF 
       asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
    fi
    ;;
