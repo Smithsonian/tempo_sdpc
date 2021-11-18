@@ -4,8 +4,6 @@ require ("process");
 require ("chksum");
 require ("cmdopt");
 
-private variable Node_Name = "$HOST"$;
-
 private variable Dest_Subdir   = "ingest/tempo";
 private variable Dest_Target_Dir = ".";
 % Weirdly, absolute directory paths viewed from inside ASDC are
@@ -13,6 +11,7 @@ private variable Dest_Target_Dir = ".";
 % confusion, we use "."
 
 private variable Ancillary_Type_List = ["GEOSCF", "CMIG16", "CMIG17"];
+private variable Node_Name;
 
 define make_file_entry (path, data_type, st, file_type)
 {
@@ -396,6 +395,30 @@ private define cmdopt_error (msg)
    usage ();
 }
 
+private define get_hostname ()
+{
+   variable name = "$HOST"$;
+   if (0 != strlen(name))
+     return name;
+
+   % In a cron job environment, HOST may not be set.
+   % In that case, we run /bin/hostname, which should exist.
+
+   variable obj, s;
+
+   obj = new_process ("/bin/hostname"; write=1);
+   name = fgetslines (obj.fp1);
+   s = obj.wait();
+   () = fclose (obj.fp1);
+
+   if (s.exit_status != 0)
+     {
+        name = "unknown";
+     }
+
+   return name;
+}
+
 define slsh_main ()
 {
    variable show_usage = 0;
@@ -427,6 +450,8 @@ define slsh_main ()
 
    if (NULL != stat_file (script_file))
      throw IOError, "Target file exists: $script_file"$;
+
+   Node_Name = get_hostname();
 
    process_file_list (dest, file_list_file, script_file);
 }
