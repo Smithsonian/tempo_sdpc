@@ -47,7 +47,7 @@ do_asdc_upload()
   asdc_mkscript.sl --dest $user_at_host --output $script $file_list
 
   # perform the upload
-  lftp -f $script > /dev/null 2>&1
+  lftp -f $script
 }
 
 dbfile_name=$(basename $dbfile)
