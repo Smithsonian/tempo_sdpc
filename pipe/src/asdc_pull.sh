@@ -63,7 +63,7 @@ do_asdc_download()
   emit_script $script
 
   # When there are no files, lftp should exit with zero status
-  lftp -f $script > /dev/null 2>&1
+  lftp -f $script
 
   # If PANs were retrieved, process them:
   panfiles=$(find . -maxdepth 1 -name "TEMPO*.PAN")

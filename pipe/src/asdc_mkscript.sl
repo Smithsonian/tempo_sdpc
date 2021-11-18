@@ -327,6 +327,12 @@ define process_file_list (dest, file_list, script_file)
 
    foreach path (path_list)
      {
+        variable st = stat_file (path);
+        if (st == NULL)
+          {
+             vmessage ("file not found:  $path"$);
+             continue;
+          }
         variable basename = path_basename (path);
         % TEMPO data products are prefixed with "TEMPO_"
         % TEMPO raw files are prefixed with "tempo_"
