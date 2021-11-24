@@ -245,7 +245,7 @@ end_of_input
 # constrain the absolute value of the fitting result.
 # -------------------------------------------------------------
 Maximum Good Column Amount
-5.0E+44
+1.0E+44
 
 # ----------------------------------------------------------------
 # The next block controls the cross-track smoothing procedure.

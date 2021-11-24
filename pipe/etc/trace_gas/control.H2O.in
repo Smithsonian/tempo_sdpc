@@ -160,7 +160,7 @@ sc3   0.0001   -1.0e+30   1.0e+30
 sc4   0         0         0 0.0001   -1.0e+30   1.0e+30
 sc5   0         0         0 0.0001   -1.0e+30   1.0e+30
 sin   0.6      -1.0e+30   1.0e+30
-hwe   0.4       0.0       3.0     # Gaussian HW@1/e
+hwe  -0.3       0.0       3.0     # Gaussian HW@1/e
 asy   0.0       0.0       0.0     # Gaussian asymmetry
 sgk   2.0       2.0       2.0     # super-Gaussian shape factor
 shi   0.05     -0.1       0.1
@@ -270,7 +270,7 @@ glyox
 lbe    1.0e-03  -1.0e+30    1.0e+30  
 eoi    0         0          0
 io
-lbe    1.0e-03  -1.0e+30    1.0e+30
+lbe    0         0          0
 eoi    0         0          0
 hono
 lbe    0         0          0
@@ -284,7 +284,7 @@ commod
 ad2    0         0          0 
 eoi    0         0          0
 pseudo
-ad1    1.0E-03  -1.0e+30   1.0e+30
+ad1    0         0          0 
 eoi    0         0          0
 usamp1
 ad1   -0.01    -1.0e+30   1.0e+30
