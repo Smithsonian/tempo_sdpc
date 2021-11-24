@@ -108,7 +108,7 @@ contains
       sin_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, squ_idx 
     USE OMSAO_variables_module,  ONLY: &
       refspecs_original, curr_xtrack_pixnum
-    use ctrlvars, only: yn_spectrum_norm, yn_newshift
+    use ctrlvars, only: yn_spectrum_norm, yn_newshift, yn_use_labslitfunc
     use slitfunction, only : slitfunction_convolve
     USE cache_module, ONLY: saved_shift, saved_squeeze, saved_hwe, saved_asy, &
          saved_sgk
@@ -164,56 +164,47 @@ contains
         + loc_cal_parms(shi_idx)
     END IF
 
-    ! ----------------------------------------------
-    ! Convolve only if we don't do a solar composite
-    ! ----------------------------------------------
-    !IF ( yn_use_labslitfunc ) THEN
-    !  ! ------------------------------------------------------------------------
-    !  ! Only if either SHIFT or SQUEEZE have changed from the last iteration do
-    !  ! we need to reconvolve the solar spectrum.
-    !  !
-    !  ! The choice of OMI lab slit function vs. Gaussian is made in the fitting
-    !  ! control file: If the initial value of FITVAR(hwe_idx) is 0.0 then we are
-    !  ! using the lab measurements, otherwise the Gaussian.
-    !  ! ------------------------------------------------------------------------
-    !  IF ( loc_cal_parms(squ_idx) /= saved_squeeze .OR. &
-    !    loc_cal_parms(shi_idx) /= saved_shift ) THEN
-    !    saved_squeeze = loc_cal_parms(squ_idx)
-    !    saved_shift   = loc_cal_parms(shi_idx)
-    !    saved_solar_spec_convolved = 0.0_r8
-    !    CALL omi_slitfunc_convolve (                                  &
-    !      curr_xtrack_pixnum, npts, solar_wvls(1:npts),             &
-    !      solar_spec(1:npts), saved_solar_spec_convolved(1:npts), errstat )
-    !    CALL error_check ( &
-    !      errstat, pge_errstat_ok, pge_errstat_error, OMSAO_E_INTERPOL, &
-    !      modulename//f_sep//'Convolution', vb_lev_default, errstat )
-    !    IF ( errstat >= pge_errstat_error ) RETURN
-    !  END IF
-    !ELSE
-    !  CALL asymmetric_gaussian_sf (                                           &
-    !    npts, loc_cal_parms(hwe_idx), loc_cal_parms(asy_idx),                    &
-    !    solar_wvls(1:npts), solar_spec(1:npts), saved_solar_spec_convolved(1:npts) )
-    !END IF
-
-!    if (loc_cal_parms(squ_idx) /= saved_squeeze &
-!        .OR. loc_cal_parms(shi_idx) /= saved_shift) then
-    if (loc_cal_parms(hwe_idx) /= saved_hwe &
-        .OR. loc_cal_parms(asy_idx) /= saved_asy) then
+    ! ---------------------------------------
+    ! Convolve high resolutioin solar spectra
+    ! ---------------------------------------
+    if ( yn_use_labslitfunc ) then
+      if (loc_cal_parms(shi_idx) /= saved_shift &
+        .OR. loc_cal_parms(squ_idx) /= saved_squeeze) then
+        ! If using laboratory slit functions we only need
+        ! to re-convolve when there is shift and squeeze
+        saved_squeeze = loc_cal_parms(squ_idx)
+        saved_shift   = loc_cal_parms(shi_idx)
+        saved_solar_spec_convolved = 0.0_r8
+        CALL slitfunction_convolve ( &
+          npts, solar_wvls(1:npts), solar_spec(1:npts), &
+          saved_solar_spec_convolved(1:npts), &
+          curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx, sgk_idx]), 3, &
+          err)
+        if (err /= 0) return
+      endif
+    else
+      if (loc_cal_parms(hwe_idx) /= saved_hwe &
+        .or. loc_cal_parms(asy_idx) /= saved_asy ) then
+      ! If convolution is done when shift and squeeze makes
+      ! the code extreamly slow; hopefully convolving when
+      ! the HWE or the asymmetry parameter changes is enough
+      !  .or. loc_cal_parms(shi_idx) /= saved_shift &
+      !  .or. loc_cal_parms(squ_idx) /= saved_asy) then
       ! The slit-function convolved solar spectrum is cached in
-      ! saved_solar_spec_convolved and need not be updated unless the
-      ! shift/squeeze parameters have changed, modifying the wavelength grid.
-      saved_squeeze = loc_cal_parms(squ_idx)
-      saved_shift   = loc_cal_parms(shi_idx)
-      saved_hwe   = loc_cal_parms(hwe_idx)
-      saved_asy   = loc_cal_parms(asy_idx)
-      saved_sgk   = loc_cal_parms(sgk_idx)
-      saved_solar_spec_convolved = 0.0_r8
-      CALL slitfunction_convolve ( &
-        npts, solar_wvls(1:npts), solar_spec(1:npts), &
-        saved_solar_spec_convolved(1:npts), &
-        curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx, sgk_idx]), 3, &
-        err)
-      if (err /= 0) return
+      ! saved_solar_spec_convolved
+        saved_squeeze = loc_cal_parms(squ_idx)
+        saved_shift   = loc_cal_parms(shi_idx)
+        saved_hwe   = loc_cal_parms(hwe_idx)
+        saved_asy   = loc_cal_parms(asy_idx)
+        saved_sgk   = loc_cal_parms(sgk_idx)
+        saved_solar_spec_convolved = 0.0_r8
+        CALL slitfunction_convolve ( &
+          npts, solar_wvls(1:npts), solar_spec(1:npts), &
+          saved_solar_spec_convolved(1:npts), &
+          curr_xtrack_pixnum, loc_cal_parms ([hwe_idx, asy_idx, sgk_idx]), 3, &
+          err)
+        if (err /= 0) return
+      endif
     endif
 
     ! =============================================
