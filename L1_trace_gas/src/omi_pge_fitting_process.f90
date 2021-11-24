@@ -163,7 +163,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        xtrack_radiance_reference_loop
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
   !USE OMSAO_errstat_module
-  USE OMSAO_wfamf_module, ONLY: read_climatology_dimensions, CmETA, amf_wvl
+  USE OMSAO_wfamf_module, ONLY: read_profiles_dimensions, CmETA, amf_wvl
   use output_tools, only : create_output_file, close_output_file, &
        write_fitting_statistics, write_common_mode, write_wavcal_output, &
        write_solar_wavecal_diagnostics, write_radiance_wavecal_diagnostics, &
@@ -354,17 +354,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        radiance_wavcal_lnums, errstat)
   if (errstat /= 0) return
 
-  ! ---------------------------------------------------------------
-  ! The Climatology is going to be read here and kept in memory. If
-  ! this has a bad impact in the efficiency of the application then
-  ! I will find a different way. We are doing this to be able to in
-  ! itialize the output he5 with the correct number of levels for
-  ! the Scattering weights and Gas_profiles output. We are going to
-  ! use the number of levels in the climatology as the number of le
-  ! vels of the reported scattering weights.
-  ! ---------------------------------------------------------------
-  call tell_log (1, 'omi_fitting: calling read_climatology_dimensions')
-  CALL read_climatology_dimensions ( errstat )
+  ! -------------------------------------------------
+  ! Obtain vertical dimension of apriori gas profiles
+  ! -------------------------------------------------
+  call tell_log (1, 'omi_fitting: calling read_profiles_dimensions')
+  CALL read_profiles_dimensions ( errstat )
 
   ! ----------------------------------------
   ! Initialization of HE5 output data fields
