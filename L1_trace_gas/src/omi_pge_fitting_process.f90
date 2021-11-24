@@ -7,19 +7,15 @@ MODULE omi_pge_fitting_process
 
 CONTAINS
 
-SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
+SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat)
 
   USE OMSAO_precision_module
-  !USE OMSAO_errstat_module,      ONLY: pge_errstat_ok, pge_errstat_error, pge_errstat_fatal, &
-  !  OMSAO_F_XTRMISRAD, vb_lev_default, error_check
-  !USE OMSAO_he5_module,          ONLY: NrofScanLines, NrofCrossTrackPixels
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
     l1b_radref_filename, l1b_channel
   use ctrlvars, only: yn_radiance_reference, yn_gems
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
-  USE omi_read_l1b_data, ONLY: read_earth_sun_distance !L1Bga_EarthSunDistance
-  !use l1bread, only: l1bread_radiance_info
+  USE omi_read_l1b_data, ONLY: read_earth_sun_distance 
   USE OMSAO_solcomp_module, ONLY: soco_pars_deallocate
   use m_read_gems, only: gems_read_l1_rad_info, gems_read_latitude, &
        gems_read_earth_sun_distance
@@ -33,36 +29,24 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   ! ---------------
   ! Output variable
   ! ---------------
-  INTEGER (KIND=i4), INTENT (INOUT) :: errstat !pge_error_status
+  INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
   ! ---------------
   ! Local variables
   ! ---------------
-  !INTEGER (KIND=i4) :: errstat
   TYPE(Radiance_Paras_Type) :: rpt_rad, rpt_rr
 
-  ! ------------------------------
-  ! Name of this module/subroutine
-  ! ------------------------------
-  !CHARACTER (LEN=23), PARAMETER :: modulename = 'omi_pge_fitting_process'
-
   if (errstat /= 0) return
-  !pge_error_status = pge_errstat_ok
 
   ! -------------------------------------------------------------------------------------
   ! Set the swath name of various ESDTs
   ! -------------------------------------------------------------------------------------
   CALL omi_set_fitting_parameters ( pge_idx, errstat )
   if (errstat /= 0) goto 666
-  ! -------------------------------------------------------------------------------------
-  !pge_error_status = MAX ( pge_error_status, errstat )
-  !IF ( pge_error_status >= pge_errstat_error ) GO TO 666
 
   ! -----------------------------------------------------------------------------------
   ! Get dimensions the L1B radiance granule
   ! -----------------------------------------------------------------------------------
-  !errstat = pge_errstat_ok
-  !CALL l1bread_radiance_info (l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   if (.not. yn_gems) then
     call read_l1_radiance_info(l1b_rad_filename, l1b_channel, rpt_rad, errstat)
   else ! GEMS
@@ -79,9 +63,6 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   if (errstat /= 0) goto 666
   omi_radiance_swathname = rpt_rad%swathname
 
-  !NrofScanLines        = rpt_rad%ntimes
-  !NrofCrossTrackPixels = rpt_rad%nxtrack
-
   ! ---------------------------------------------------------------
   ! Dimensions for Radiance Reference granule
   ! ---------------------------------------------------------------
@@ -93,7 +74,6 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
     rpt_rr%nwavel_ccd = rpt_rad%nwavel_ccd
     rpt_rr%swathname = rpt_rad%swathname
   ELSE
-    !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, errstat)
     if (.not. yn_gems) then !TEMPO
       call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, &
            errstat)
@@ -110,18 +90,11 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
     call tell_error (tell_runtime_error, &
                      "Cross-track position different between L1b radiance granules", &
                      errstat)
-    !CALL error_check ( 0, 1, pge_errstat_fatal, OMSAO_F_XTRMISRAD, &
-    !                  modulename, vb_lev_default, errstat )
     GO TO 666
   END IF
 
-  ! -----------------------------------------------------------------------------------
-  !pge_error_status = MAX ( pge_error_status, errstat )
-  !IF ( pge_error_status >= pge_errstat_error )  GO TO 666
-  ! -----------------------------------------------------------------
-  CALL omi_fitting (pge_idx, rpt_rad, rpt_rr, n_max_rspec, errstat) !pge_error_status)
+  CALL omi_fitting (pge_idx, rpt_rad, rpt_rr, n_max_rspec, errstat)
   if (errstat /= 0) goto 666
-  !IF ( pge_error_status >= pge_errstat_fatal ) GO TO 666
 
   ! -------------------------------------------------------------
   ! Here is the place to jump to in case some error has occurred.
@@ -135,8 +108,6 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat) !pge_error_status )
   ! Deallocation of some potentially allocated memory
   ! -------------------------------------------------
   CALL soco_pars_deallocate (errstat)
-
-  !IF ( pge_error_status >= pge_errstat_fatal ) RETURN
 
   RETURN
 END SUBROUTINE omi_pge_fitting
@@ -162,7 +133,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
        xtrack_radiance_reference_loop
   USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
-  !USE OMSAO_errstat_module
   USE OMSAO_wfamf_module, ONLY: read_profiles_dimensions, CmETA, amf_wvl
   use output_tools, only : create_output_file, close_output_file, &
        write_fitting_statistics, write_common_mode, write_wavcal_output, &
@@ -171,7 +141,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE he5_output_tools, ONLY: he5_init_swath, he5_define_fields, &
        he5_close_output_file, he5_set_field_attributes, &
        he5_write_global_attributes, he5_write_swath_attributes, &
-       he5_write_wavcal_output, he5_write_common_mode !, he5_open_readwrite
+       he5_write_wavcal_output, he5_write_common_mode
   USE omi_read_l1b_data, ONLY: omi_read_binning_factor, &
        omi_read_radiance_lines, omi_read_radiance_lines
   USE omi_pge_fitting_aux, ONLY: omi_set_xtrpix_range, &
@@ -242,17 +212,9 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! ------------------------------
   ! Name of this module/subroutine
   ! ------------------------------
-  !CHARACTER (LEN=11), PARAMETER :: modulename = 'omi_fitting'
   type (fitting_statistics_type) :: fit_stats
   character (len=256) :: logmsg
 
-  ! ------------------
-  ! External functions
-  ! ------------------
-  !INTEGER (KIND=i4), EXTERNAL :: &
-  !  he5_init_swath, he5_define_fields, he5_close_output_file, &
-  !  he5_set_field_attributes, he5_write_global_attributes,    &
-  !  he5_write_swath_attributes, he5_open_readwrite
 
   if (errstat /= 0) return
 
@@ -339,7 +301,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! JCH:  The radiance reference also yields a value for n_comm_wvl
   !       that accounts for the fit window definition.
   ! ---------------------------------------------------------------
-
   ! Should radiance and radiance-ref swathnames be equal?  The original
   ! code did not have this restriction.  --JED
   if (.not.yn_gems .and. trim(omi_radiance_swathname) /= trim(rpt_rr%swathname)) then
@@ -360,9 +321,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   call tell_log (1, 'omi_fitting: calling read_profiles_dimensions')
   CALL read_profiles_dimensions ( errstat )
 
-  ! ----------------------------------------
-  ! Initialization of HE5 output data fields
-  ! ----------------------------------------
 
   ! FIXME: for now, we'll define the netcdf output file name by
   ! changing the file extension.
@@ -418,7 +376,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
          nwavel_rad, errstat )
     if (errstat /= 0) return
   END IF
-
+  
   ! -----------------------------------------------------
   ! Across-track loop for radiance wavelength calibration
   ! -----------------------------------------------------
@@ -429,7 +387,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        save_radcal_wvl, save_radcal_resid, &
        errstat )
   if (errstat /= 0) return
-
+  
   if (yn_diagnostic_run) then
     call write_solar_wavecal_diagnostics (nwavel_max, nxtrack_rad, &
          save_solcal_wvl, save_solcal_resid, &
@@ -462,7 +420,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
       call init_prefit_files (pge_idx, ntimes_rad, nxtrack_rad, errstat)
       if (errstat /= 0) return
     endif
-
+    
     ! ---------------------------------------------------------------------
     ! If we are using a radiance reference AND want to remove the target
     ! gas from it (important for BrO, for example), we have to run through
@@ -471,7 +429,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! (owing to the fact that the average of hundreds of OMI spectra still
     !  doesn't produce a decently fitted column).
     ! ---------------------------------------------------------------------
-    IF ( yn_radiance_reference .AND. yn_remove_target ) THEN
+    IF ( yn_radiance_reference ) THEN
 
       iline = SUM ( radiance_reference_lnums(1:2) ) / 2
       IF ( iline < 0 .OR. iline > ntimes_rr ) iline = ntimes_rr / 2
@@ -515,7 +473,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! read, particularly since the current algorithm settings would
     ! require it anyway.
     ! -----------------------------------------------------------------
-
     allocate (l1b_rad_latitudes (1:nxtrack_rad, 0:ntimes_rad-1), &
          stat=locerrstat)
     if (locerrstat /= 0) then
@@ -533,7 +490,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        call gems_read_latitude (trim(adjustl(l1b_rad_filename)), &
            0, ntimes_rad, l1b_rad_latitudes, errstat)
     endif
-
     if (errstat /= 0) return
 
     ! -----------------------------------------------------------------
@@ -556,28 +512,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
              common_latrange(1:2), is_common_range, errstat )
       endif
 
-      ! -------------------------------------------------------------
-      ! First and last swath line number will be overwritten. Hence
-      ! we save them for further reference.
-      ! -------------------------------------------------------------
-      !first_line_save = first_line
-      !last_line_save  = last_line
-
-      ! ------------------------------------------------------------------
-      ! There is a time saver catch built into the assignment below,
-      ! which we probably want to rethink. If we are only doing a few
-      ! lines but the common mode extends over a wide range of a
-      ! latitudes, then we would be processing a lot of lines to derive
-      ! the common mode. This is currently being excluded, but the better
-      ! way may be to remember that we can control everything through
-      ! the fitting control file.
-      ! ------------------------------------------------------------------
-      !IF ( MINVAL(common_latlines(1:2)) >= 0 .AND. &
-      !     MAXVAL(common_latlines(1:2)) <= ntimes_rad ) THEN
-      !   first_line = common_latlines(1) !MAX(first_line, common_latlines(1))
-      !   last_line  = common_latlines(2) !MIN(last_line,  common_latlines(2))
-      !END IF
-
       ! ------------------------------------------
       ! Interface to the loop over all swath lines
       ! ------------------------------------------
@@ -590,12 +524,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
            .TRUE., errstat )
 
       if (errstat /= 0) return
-
-      ! -----------------------------------------------------------------
-      ! Reset first and last swath line number to non-common mode values.
-      ! -----------------------------------------------------------------
-      !first_line = first_line_save
-      !last_line  = last_line_save
 
       ! ---------------------------------------------------
       ! Set the index value of the Common Mode spectrum and
@@ -623,28 +551,18 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     ! Now into the proper fitting, with or without common mode.
     ! ----------------------------------------------------------
 
+    ! --------------------------------------------------------------
+    ! Radiance Reference Fit: Only if we have selected to remove the
+    ! target gas from the radiance reference
     ! -------------------------------------------------------------------
-    ! Radiance Reference Fit: Only if we have not selected to remove the
-    ! target gas from the radiance reference (in which case we have done
-    ! this fit already), or N_COMM_ITER==0 (which means that we can refit
-    ! with a common mode spectrum)
-    ! -------------------------------------------------------------------
-    IF ( radiance_wavcal_lnums(1) >= 0 ) THEN
+    !IF ( radiance_wavcal_lnums(1) >= 0 ) THEN
+    IF (yn_radiance_reference .and. yn_remove_target) then
 
       ! --------------------------------
       ! The number of scan lines to read
       ! --------------------------------
       ntimes_loop = 1
       iline = radiance_wavcal_lnums(1)
-
-      ! -------------------------------------------------
-      ! Only use prefit if not using a Radiance Reference
-      ! -------------------------------------------------
-      IF (.NOT. yn_radiance_reference ) THEN
-        CALL read_prefit_columns ( pge_idx, nxtrack_rad, ntimes_loop, iline, &
-             errstat )
-        if (errstat /= 0) return
-      END IF
 
       ! ------------------------------
       ! Get NTIMES_LOOP radiance lines
