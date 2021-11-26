@@ -3,6 +3,8 @@
 # for eprint definition
 from __future__ import print_function
 
+import traceback
+
 import os, sys
 import signal
 import time
@@ -436,7 +438,9 @@ def register_files (db_path, filenames):
         if os.path.islink(fn):
             try:
                 status = register_one_file (db_path, fn)
-            except:
+            except BaseException as e:
+                print('An exception occurred: {}'.format(e))
+                print(traceback.print_exc())
                 status_list.append(-1)
                 move_failing(fn)
             else:
