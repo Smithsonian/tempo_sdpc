@@ -19,7 +19,6 @@ CONTAINS
     USE OMSAO_indices_module,         ONLY: &
       qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     use ctrlvars, only: yn_spectrum_norm
-    !USE OMSAO_errstat_module
     USE ezspline_interpolation, ONLY: ezspline_1d_interpolation
     USE irradiance_data, only: Irradiance_Data_Type
 
@@ -255,12 +254,10 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: r8_missval, &
       i2_missval, i4_missval
     USE OMSAO_variables_module,  ONLY: fitvar_cal, fitvar_cal_saved, &
-      fitvar_sol_init, & !sol_wav_avg,
+      fitvar_sol_init, &
       max_itnum_sol, up_sunbnd, lo_sunbnd
-    use ctrlvars, only: yn_newshift
     USE OMSAO_indices_module, ONLY: asy_idx, hwe_idx, sgk_idx, &
       shi_idx, squ_idx, max_calfit_idx
-    !USE OMSAO_errstat_module, ONLY: pge_errstat_ok
     use optimizer_interface_module, only: opt_convergence_good
     use wavecal
 
@@ -289,13 +286,9 @@ CONTAINS
     ! ---------------
     ! Local variables
     ! ---------------
-    INTEGER (KIND=i4)  :: locitnum !locerrstat,
-
-    ! ----------------------------------------------------------------
-    ! Initialize local error status variable; note that error handling
-    ! is rudimentary in this subroutine - no error is reported.
-    ! ----------------------------------------------------------------
-    !locerrstat = pge_errstat_ok
+    INTEGER (KIND=i4)  :: locitnum
+    integer (kind=i4) :: i, num_fitvar
+    real (kind=r8), dimension(max_calfit_idx) :: fitvar_saved, fitvar, lobnd, upbnd
 
     solcal_exval = i4_missval
     solcal_itnum = i2_missval
@@ -326,11 +319,25 @@ CONTAINS
     if (errstat /= 0) return
     solcal_itnum = int (locitnum, kind=i2)
 
+    ! unpack parameters to update fitvar_cal
+    num_fitvar = 0
+    do i = 1, max_calfit_idx
+      if (lo_sunbnd(i) >= up_sunbnd(i)) cycle
+      num_fitvar = num_fitvar + 1
+      fitvar_saved(num_fitvar) = fitvar_cal_saved(i)
+      fitvar(num_fitvar) = fitvar_cal(i)
+      lobnd (num_fitvar) = lo_sunbnd(i)
+      upbnd (num_fitvar) = up_sunbnd(i)
+    enddo
+
     ! ---------------------------------------------------------------
     ! The following assignment makes sense only because FITVAR_CAL is
     ! updated with FITVAR (using the proper mask) in SPECTRUM_SOLAR.
     ! ---------------------------------------------------------------
-    IF ( solcal_exval == opt_convergence_good ) THEN
+    IF ( solcal_exval == opt_convergence_good .and. &
+         ( any(fitvar(1:num_fitvar) .ne. fitvar_saved(1:num_fitvar)) .and. &
+           all(fitvar(1:num_fitvar) .ne. lobnd(1:num_fitvar)) .and. &
+           all(fitvar(1:num_fitvar) .ne. upbnd(1:num_fitvar))        )    ) THEN
       fitvar_cal_saved(1:max_calfit_idx) = fitvar_cal(1:max_calfit_idx)
     ELSE
       fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
@@ -339,22 +346,11 @@ CONTAINS
     ! ---------------------------------------------------------------
     ! Save shifted&squeezed wavelength array, and the fitting weights
     ! ---------------------------------------------------------------
-    if (yn_newshift) then !gga
-      ! JCH: <comment-start>
-      !      This is the assignment from the old code.
-      !      I think 'sol_wav_avg' was supposed to be 'avg_sol_wav'.  When
-      !      I made that replacement, the computed numbers didn't change, so I
-      !      got rid of the reference to 'sol_wav_avg' from OMSAO_variables_module.
-      !sol_wvl(1:n_irradwvl) = &
-      !  (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
-      !   + sol_wav_avg * fitvar_cal_saved(squ_idx)) &
-      !  / (1.0_r8 + fitvar_cal_saved(squ_idx))
-      ! JCH: <comment-end>
-      sol_wvl(1:n_irradwvl) = &
-        (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
+    sol_wvl(1:n_irradwvl) = &
+         (sol_wvl(1:n_irradwvl) - fitvar_cal_saved(shi_idx) &
          + avg_sol_wav * fitvar_cal_saved(squ_idx)) &
-        / (1.0_r8 + fitvar_cal_saved(squ_idx))
-    endif
+         / (1.0_r8 + fitvar_cal_saved(squ_idx))
+
     ! ------------------------------------------------
     !  Save the slit function parameters for later use
     ! in the undersampling correction.

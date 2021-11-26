@@ -17,11 +17,9 @@ SUBROUTINE radiance_wavecal ( &
     max_calfit_idx, shi_idx, squ_idx, &
     hwe_idx, asy_idx, sgk_idx
   USE OMSAO_variables_module,   ONLY: &
-    fitvar_cal, fitvar_rad_init, fitvar_cal_saved, & !fitvar_sol_init,
+    fitvar_cal, fitvar_rad_init, fitvar_cal_saved, &
     lo_radbnd, up_radbnd, max_itnum_sol, &
-    Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor!, sol_wav_avg
-  use ctrlvars, only: yn_newshift
-  !USE OMSAO_errstat_module
+    Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor
   USE commonmode, ONLY: compute_common_mode
   use wavecal
   use optimizer_interface_module, only: opt_convergence_good
@@ -47,17 +45,17 @@ SUBROUTINE radiance_wavecal ( &
   ! ---------------
   ! Local variables
   ! ---------------
-  INTEGER (KIND=i4)  :: locitnum ! locerrstat, 
+  INTEGER (KIND=i4)  :: locitnum
   real (kind=r8) :: sol_wav_avg
+
+  integer (kind=i4) :: i, num_fitvar
+  real (kind=r8), dimension(max_calfit_idx) :: fitvar_saved, fitvar, lobnd, upbnd
 
   if (errstat /= 0) return
 
   is_bad_pixel = .FALSE.
 
   ! Select and wavelength calibrate radiance spectrum
-
-  !locerrstat = pge_errstat_ok
-
   radcal_exval = i4_missval
   radcal_itnum = i2_missval
   chisquav     = r8_missval
@@ -79,8 +77,6 @@ SUBROUTINE radiance_wavecal ( &
   ! has gone well.
   ! -------------------------------------------------------------
   fitvar_cal(1:max_calfit_idx) = fitvar_cal_saved(1:max_calfit_idx)
-  !fitvar_cal(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
-  !fitvar_cal(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
 
   ! -------------------------------------------------------------------------
   ! Keep the slit function variables from solar fit fixed. Remember to reduce
@@ -111,11 +107,25 @@ SUBROUTINE radiance_wavecal ( &
   if (errstat /= 0) return
   radcal_itnum = int(locitnum, kind=i2)
 
+  ! pack paramters to update fitvar_cal
+  num_fitvar = 0
+  do i = 1, max_calfit_idx
+    if (lo_radbnd(i) >= up_radbnd(i)) cycle
+    num_fitvar = num_fitvar + 1
+    fitvar_saved(num_fitvar) = fitvar_cal_saved(i)
+    fitvar(num_fitvar) = fitvar_cal(i)
+    lobnd (num_fitvar) = lo_radbnd(i)
+    upbnd (num_fitvar) = up_radbnd(i)
+  enddo
+
   ! ------------------------------------------------------------------
   ! The following assignment makes sense only because FITVAR_CAL is
   ! updated with FITVAR (using the proper mask) in SPECTRUM_SOLAR.
   ! ------------------------------------------------------------------
-  IF ( radcal_exval == opt_convergence_good ) THEN
+  IF ( radcal_exval == opt_convergence_good .and. &
+     ( any(fitvar(1:num_fitvar) .ne. fitvar_saved(1:num_fitvar)) .and. &
+       all(fitvar(1:num_fitvar) .ne. lobnd(1:num_fitvar)) .and. &
+       all(fitvar(1:num_fitvar) .ne. upbnd(1:num_fitvar))        )   ) THEN
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_cal(1:max_calfit_idx)
   ELSE
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_rad_init(1:max_calfit_idx)
@@ -129,24 +139,9 @@ SUBROUTINE radiance_wavecal ( &
   ! ---------------------
   ! Perform Shift&Squueze
   ! ---------------------
-  ! gga to include Xiong comments
-  !  write(*,*) adj_wvls(1:n_rad_wvl), fitvar_cal(shi_idx), fitvar_cal(squ_idx)
-  IF (yn_newshift) THEN
-    adj_wvls(1:n_rad_wvl) = ( &
+  adj_wvls(1:n_rad_wvl) = ( &
       adj_wvls(1:n_rad_wvl) - fitvar_cal(shi_idx) + sol_wav_avg * fitvar_cal(squ_idx)) / &
       (1.0_r8 + fitvar_cal(squ_idx))
-  ELSE
-    adj_wvls(1:n_rad_wvl) = ( &
-      adj_wvls(1:n_rad_wvl) - fitvar_cal(shi_idx) ) / (1.0_r8 + fitvar_cal(squ_idx))
-  END IF
-  !  write(*,*) adj_wvls(1:n_rad_wvl)
-
-  ! -----------------------------------------------------------------
-  ! We haven't implemented any error checks in this subroutine, hence
-  ! it doesn't make sense yet to update the error variable. We'll do
-  ! it anyway to make ourselves feel better.
-  ! -----------------------------------------------------------------
-  !IF ( locerrstat /= pge_errstat_ok ) errstat = MAX ( errstat, locerrstat )
 
   RETURN
 
