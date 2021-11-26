@@ -29,7 +29,7 @@ l1_run_dir="$2"
 PROGNAME="$(basename $0)"
 error_exit()
 {
-   echo "${PROGNAME}[$$]: ${1:-'Unknown Error'}" 1>&2
+   echo "${PROGNAME}[$$]: ERROR: ${1:-'Unknown Error'}" 1>&2
    exit 1
 }
 
