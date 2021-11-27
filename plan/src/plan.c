@@ -53,7 +53,7 @@ int Plan_Verbose;
 
 #define IRRADIANCE_SUN_ANGLE_DEG 30.0
 
-#define MIN_SCAN_DURATION_SEC (2 * 60.0)
+static double Min_Scan_Duration_Sec;
 
 static double __Unix_Epoch_JD;
 
@@ -103,6 +103,7 @@ static void usage (void)
    fprintf (stderr, "Usage: plan [options]\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -h | --help              Print this usage message\n");
+   fprintf (stderr, "   -e | --epoch EPOCH       Define the epoch as a UTC time: YYYY-MM-DDTHH:MM:SSZ\n");
    fprintf (stderr, "   -d | --date DATE         Plan start date:\n");
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
@@ -411,27 +412,42 @@ static int generate_master_scan_table (config_t *cfg, const char *type, FILE *fp
    return generate_scan_table (cfg, fp, print_standard_scan_table);
 }
 
-static int read_epoch (config_t *cfg)
+static int use_epoch_in_maneuver_file (const char *maneuver_file)
 {
-   config_setting_t *s;
-   const char *epoch;
+   IOCLib_String_Table_Type *st = NULL;
+   IOCLib_KV_Table_Type *kv = NULL;
+   double epoch;
+   const char *column_names[] = {"window_start_time", "window_end_time"};
+   unsigned int num_columns = sizeof(column_names) / sizeof (*column_names);
+   int status = -1;
 
-   if (NULL == (s = config_lookup (cfg, "sat_config")))
+   if (NULL == (st = ioclib_csv_read_string_table (maneuver_file, column_names, num_columns)))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing sat_config in param file: %s",
-                     __func__, config_error_file (cfg));
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading maneuver times from: %s", __func__, maneuver_file);
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string (s, "epoch", &epoch))
+   if (NULL == (kv = ioclib_extract_csv_metadata (st)))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading : %s",
-                     __func__, config_error_file (cfg));
-        return -1;
+        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
+        goto return_status;
      }
 
-   return tio_time_set_taix_epoch (epoch);
+   if (0 != ioclib_kv_table_get_double (kv, "epoch", &epoch))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
+        goto return_status;
+     }
+
+   if (0 != (status = tio_time_set_taix_epoch_timet ((time_t) epoch)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: failed setting epoch = %f", __func__, epoch);
+     }
+
+return_status:
+   ioclib_free_string_table (st);
+   ioclib_kv_table_free (kv);
+   return status;
 }
 
 static int read_sat_time_zone (config_t *cfg, double *hour)
@@ -652,23 +668,26 @@ static int verify_safety_constraints (Solar_Geom_Type *solar_geom, const Scan_Ty
 static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Type *solar_geom, const Scan_Type *scan,
                             const char *scan_method, const Plan_List_Type *plan_list, const char *plan_id)
 {
+   time_t epoch;
    char epoch_str[32];
 
-   /* Write out scan plan */
+   epoch = tio_time_taix_epoch_timet();
    if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
      return -1;
 
    timestamp_created (fp);
+
    (void) fprintf (fp, "# %s = scan method\n", scan_method);
+   (void) fprintf (fp, "# plan_id = %s\n", plan_id ? plan_id : "");
+   (void) fprintf (fp, "# epoch = %s = %ld (time_t)\n", epoch_str, epoch);
    if (0 != scan->st_print_params (scan, "#", fp))
      return -1;
    if (0 != solar_geom->sgt_print_params (solar_geom, "#", fp))
      return -1;
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_name);
-   (void) fprintf (fp, "# TEMPO epoch: %s\n", epoch_str);
    (void) fprintf (fp, "#\n");
 
-   return plan_list_write (fp, mirror_tilt, plan_list, plan_id);
+   return plan_list_write (fp, mirror_tilt, plan_list);
 }
 
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)
@@ -677,8 +696,9 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
    double jd_utc0, jd_utc1, jd_utc;
    double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
    char epoch_str[32];
+   time_t epoch;
 
-   /* Write out scan plan */
+   epoch = tio_time_taix_epoch_timet();
    if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
      return -1;
 
@@ -686,7 +706,7 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
    jd_utc1 = jd_utc0 + num_days;
 
    timestamp_created (fp);
-   if (fprintf (fp, "# Epoch = %s\ntime,solar_theta,solar_phi,timestamp\n", epoch_str) < 0)
+   if (fprintf (fp, "#time,solar_theta,solar_phi,timestamp\n:epoch=%ld,%s,,\n", epoch, epoch_str) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
         return -1;
@@ -794,7 +814,7 @@ static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bou
         tstart = t_bound - duration_sec / SEC_PER_DAY;
      }
 
-   if (duration_sec < MIN_SCAN_DURATION_SEC)
+   if (duration_sec < Min_Scan_Duration_Sec)
      return 0;
 
    if (NULL == (new_entry = plan_list_entry_alloc (entry->scan_type)))
@@ -836,16 +856,16 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
 
         if (Plan_Verbose)
           {
-             fprintf (stderr, "maneuver window=(%f,%f) overlaps radiance scan=(%f,%f)\n",
+             fprintf (stderr, "maneuver window=(%f,%f) overlaps radiance scan plan entry=(%f,%f)\n",
                       mnv_beg, mnv_end, entry_beg, entry_end);
           }
 
-        if ((mnv_beg < entry_beg) && (entry_end < mnv_end))
+        if ((mnv_beg < entry_beg) && (entry_end < mnv_end))  /* plan entry entirely within a maneuver */
           {
              /* Entire plan entry is lost */
              entry->num_repeats = 0;
           }
-        else if ((entry_beg < mnv_beg) && (mnv_end < entry_end))
+        else if ((entry_beg < mnv_beg) && (mnv_end < entry_end)) /* maneuver entirely within a plan entry */
           {
              Plan_List_Type *curr = entry;
              Plan_List_Type *save_next = entry->next;
@@ -901,7 +921,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              curr->next = save_next;
              entry = curr;
           }
-        else if (entry_beg < mnv_beg)
+        else if ((entry_beg < mnv_beg) && (mnv_beg < entry_end))  /* maneuver begins during plan entry */
           {
              /* pre-gap partial scan */
              if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
@@ -915,7 +935,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              /* pre-gap full scans */
              entry->num_repeats = floor((mnv_beg - entry_beg) / scan_duration_days);
           }
-        else
+        else if ((entry_beg < mnv_end) && (mnv_end < entry_end))  /* maneuver ends during plan entry */
           {
              /* post-gap partial scan */
              if (parent_entry)
@@ -935,6 +955,18 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              prev_num = entry->num_repeats - num_remaining;
              entry->tstart = entry->tstart + prev_num * scan_duration_days;
              entry->num_repeats = num_remaining;
+          }
+        else if ((entry_beg < mnv_end) && (mnv_beg < entry_end))
+          {
+             /* Maneuver and plan entry overlap, but none of the previous (exhaustive)
+              * inequality comparisons match, therefore the plan entry and maneuver must
+              * coincide to machine precision. Entire plan entry is lost. */
+             entry->num_repeats = 0;
+          }
+        else
+          {
+             tell_verror (TELL_INTERNAL_ERROR, "%s: inserting maneuver (this should never happen)", __func__);
+             return -1;
           }
      }
 
@@ -1053,7 +1085,7 @@ static void free_maneuver_table (Maneuver_Table_Type *mt)
 
 static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_file,
                                   double plan_beg_timet, double plan_end_timet,
-                                  char **plan_id)
+                                  int maneuver_margin, char **plan_id)
 {
    IOCLib_String_Table_Type *st = NULL;
    IOCLib_KV_Table_Type *kv = NULL;
@@ -1088,6 +1120,10 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
         tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
         goto return_status;
      }
+
+   /* Expand the table boundaries to include the specified margin */
+   table_beg_timet -= maneuver_margin;
+   table_end_timet += maneuver_margin;
 
    /* Does this maneuver table overlap the target plan interval?
     * If not, do nothing.
@@ -1152,6 +1188,10 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
                           __func__, i, maneuver_file);
              goto return_status;
           }
+
+        /* Expand the maneuver window to include the specified margin */
+        beg_timet -= maneuver_margin;
+        end_timet += maneuver_margin;
 
         /* Skip maneuver windows outside the target plan interval */
         if (end_timet < plan_beg_timet)
@@ -1228,7 +1268,8 @@ return_status:
    return status;
 }
 
-static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_file,
+static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
+                              const char *maneuver_file,
                               const Cal_Date_Type *t0, int num_plan_days,
                               char **plan_id)
 {
@@ -1236,12 +1277,26 @@ static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_fi
    Maneuver_Window_Type *win;
    double jd_utc0, jd_utc1, plan_beg_timet, plan_end_timet;
    double unix_epoch_jd = get_unix_epoch_jd();
+   int maneuver_margin;
    int status = -1;
 
    if (maneuver_file == NULL)
      {
         fprintf (stderr, "*** WARNING: spacecraft maneuvers not included\n");
         return 0;
+     }
+
+   if (CONFIG_TRUE != config_lookup_int (cfg, "limits_config.maneuver_margin", &maneuver_margin))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading limits_config.maneuver_margin: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+   if (CONFIG_TRUE != config_lookup_float (cfg, "limits_config.min_scan_duration", &Min_Scan_Duration_Sec))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading limits_config.min_scan_duration: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
      }
 
    /* Set target plan time interval */
@@ -1252,7 +1307,8 @@ static int include_maneuvers (Plan_List_Type *plan_list, const char *maneuver_fi
    plan_beg_timet = (jd_utc0 - unix_epoch_jd) * SEC_PER_DAY;
    plan_end_timet = (jd_utc1 - unix_epoch_jd) * SEC_PER_DAY;
 
-   if (0 != process_maneuver_file (&mt, maneuver_file, plan_beg_timet, plan_end_timet, plan_id))
+   if (0 != process_maneuver_file (&mt, maneuver_file, plan_beg_timet, plan_end_timet,
+                                   maneuver_margin, plan_id))
      return -1;
 
    for (win = mt.lst; win != NULL; win = win->next)
@@ -1355,6 +1411,7 @@ int main (int argc, char **argv)
    int irr_only = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
+   const char *epoch_string = NULL;
    const char *maneuver_file = NULL;
    const char *scan_tailoring_file = NULL;
    const char *sza_check_string = NULL;
@@ -1366,8 +1423,9 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"help",         no_argument,       0, 'h'},
-        {"date",         required_argument, 0, 'd'},
         {"config",       required_argument, 0, 'c'},
+        {"date",         required_argument, 0, 'd'},
+        {"epoch",        required_argument, 0, 'e'},
         {"ndays",        required_argument, 0, 'n'},
         {"nightlights",  no_argument,       0, 'N'},
         {"scan",         required_argument, 0, 's'},
@@ -1411,7 +1469,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNvZ:M:c:d:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNvZ:M:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1449,6 +1507,9 @@ int main (int argc, char **argv)
                   usage();
                }
              have_date++;
+             break;
+           case 'e':
+             epoch_string = optarg;
              break;
            case 'h':
              usage();
@@ -1537,10 +1598,21 @@ int main (int argc, char **argv)
 
    set_unix_epoch_jd ();
 
+   /* Define the epoch */
+   if (maneuver_file)
+     {
+        if (0 != use_epoch_in_maneuver_file (maneuver_file))
+          goto return_status;
+     }
+   else
+     {
+        if (0 != tio_time_set_taix_epoch (epoch_string))
+          goto return_status;
+     }
+
    if (sza_check_string)
      {
-        if ((0 != read_epoch (&cfg))
-            || (0 != ephem_open (&cfg, &eph))
+        if ((0 != ephem_open (&cfg, &eph))
             || (NULL == (solar_geom = solar_geom_init (&cfg))))
           goto return_status;
         if (0 == perform_sza_check (solar_geom, sza_check_string))
@@ -1559,9 +1631,6 @@ int main (int argc, char **argv)
         fprintf (stderr, "Usage error: plan start date not specified (--date option missing)\n");
         goto return_status;
      }
-
-   if (0 != read_epoch (&cfg))
-     goto return_status;
 
    if (ndays_since_epoch > 0)
      {
@@ -1627,7 +1696,7 @@ int main (int argc, char **argv)
    if (NULL == plan_list)
      goto return_status;
 
-   if (0 != include_maneuvers (plan_list, maneuver_file, &t0, num_plan_days, &plan_id))
+   if (0 != include_maneuvers (plan_list, &cfg, maneuver_file, &t0, num_plan_days, &plan_id))
      goto return_status;
 
    if (0 != verify_safety_constraints (solar_geom, scan, plan_list))

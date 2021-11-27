@@ -86,7 +86,7 @@ int plan_list_append (Plan_List_Type **phead,
 #define TIME_BUFSIZE 32
 
 int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
-                     const Plan_List_Type *head, const char *plan_id)
+                     const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
@@ -97,8 +97,7 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
-   if ((fprintf (fp, header_comment) < 0)
-       || (fprintf (fp, ":plan_id= %s\n", plan_id ? plan_id : "") < 0))
+   if (fprintf (fp, header_comment) < 0)
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
         return -1;
