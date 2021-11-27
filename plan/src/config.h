@@ -9,5 +9,6 @@
 
 extern int Plan_Verbose;
 extern int mkjdtimestr (double jd_utc, char *buf, int bufsize);
+extern char *expand_string (const char *s);
 
 #endif

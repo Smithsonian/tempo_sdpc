@@ -148,8 +148,9 @@ iers_config: {
   ut1_utc = 0.494792;
 };
 
-novas_config: {
-  ephem_name = "$SDPC_OTS_ROOT/share/libnovas/JPLEPH";
+refdata_config: {
+  ephemeris_path = "$SDPC_OTS_ROOT/share/libnovas/JPLEPH";
+  ccdtiming_path = "$SDPC_REFDATA_DIR/instrument/ccdtiming.nc";
 };
 
 output_sza_map_config: {

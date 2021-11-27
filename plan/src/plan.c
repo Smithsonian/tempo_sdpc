@@ -65,7 +65,7 @@ enum
 
 typedef struct
 {
-   char *ephem_name;
+   char *ephem_path;
    double jd_begin;
    double jd_end;
    short int de_number;
@@ -180,7 +180,7 @@ static int ephem_close (Ephem_Type *eph)
 {
    short int error = 0;
 
-   FREE(eph->ephem_name);
+   FREE(eph->ephem_path);
    memset ((char *)eph, 0, sizeof (*eph));
 
    if ((error = novas_ephem_close ()) != 0)
@@ -193,7 +193,7 @@ static int ephem_close (Ephem_Type *eph)
    return error ? -1 : 0;
 }
 
-static char *expand_string (const char *s)
+char *expand_string (const char *s)
 {
    wordexp_t we = {0};
    char *s_exp = NULL;
@@ -222,35 +222,26 @@ static char *expand_string (const char *s)
 
 static int ephem_open (config_t *cfg, Ephem_Type *eph)
 {
-   config_setting_t *s;
-   const char *ephem_name;
+   const char *ephem_path;
    short int error;
 
-   if (NULL == (s = config_lookup (cfg, "novas_config")))
+   if (CONFIG_TRUE != config_lookup_string (cfg, "refdata_config.ephemeris_path", &ephem_path))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing novas_config in param file: %s",
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading ephemeris_path: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string (s, "ephem_name", &ephem_name))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading ephem_name: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (NULL == (eph->ephem_name = expand_string (ephem_name)))
+   if (NULL == (eph->ephem_path = expand_string (ephem_path)))
      return -1;
 
-   if ((error = novas_ephem_open (eph->ephem_name,
+   if ((error = novas_ephem_open (eph->ephem_path,
                                   &eph->jd_begin, &eph->jd_end,
                                   &eph->de_number)) != 0)
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: error %d while opening ephemeris %s",
-                     __func__, error, eph->ephem_name);
+                     __func__, error, eph->ephem_path);
         return -1;
      }
 
@@ -684,7 +675,7 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
      return -1;
    if (0 != solar_geom->sgt_print_params (solar_geom, "#", fp))
      return -1;
-   (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_name);
+   (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_path);
    (void) fprintf (fp, "#\n");
 
    return plan_list_write (fp, mirror_tilt, plan_list);

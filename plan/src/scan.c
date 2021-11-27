@@ -12,6 +12,7 @@
 
 #include <libconfig.h>
 #include <tell.h>
+#include <tio.h>
 
 #include "bisect.h"
 #include "solar.h"
@@ -125,21 +126,189 @@ static int read_surface_point (config_setting_t *s, const char *name,
    return 0;
 }
 
-static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
+static int bsearch_f (float t, const float *x, int n)
+{
+   int n0, n1, n2;
+   float xt;
+
+   n0 = 0;
+   n1 = n;
+
+   while (n1 > n0 + 1)
+     {
+        n2 = (n0 + n1) / 2;
+        xt = x[n2];
+        if (t <= xt)
+          {
+             if (xt == t) return n2;
+             n1 = n2;
+          }
+        else n0 = n2;
+     }
+
+   return n0;
+}
+
+static int lookup_int_time_and_dwell_time (const char *ccdtiming_path, int num_coadds,
+                                           Step_Config_Type *dt)
+{
+   float *int_time = NULL;
+   size_t s_num;
+   const char *grp_name;
+   int ncid, dimid, start[2], count[2];
+   int grp_long, grp_short, grp_nom, grp;
+   int k, is_nominal_mode, num_int_lines;
+   float integration_time, total_time;
+   float max_short_int_time, min_long_int_time, nominal_int_time;
+   int status = -1;
+
+   integration_time = (float) dt->integration_time;
+
+   if (0 != TIO_open (ccdtiming_path, NC_NOWRITE, &ncid))
+     return -1;
+
+   if (0 != TIO_inq_dim (ncid, "int_lines", &dimid, &s_num))
+     goto return_status;
+   num_int_lines = s_num;
+
+   count[0] = 1;
+
+   if (0 != TIO_inq_grp (ncid, "nominal_mode", &grp_nom))
+     goto return_status;
+   start[0] = 0;
+   if (0 != TIO_get_var_section (grp_nom, "integration_time", start, count, NC_FLOAT, &nominal_int_time))
+     goto return_status;
+
+   if (0 != TIO_inq_grp (ncid, "short_mode", &grp_short))
+     goto return_status;
+   start[0] = num_int_lines-1;
+   if (0 != TIO_get_var_section (grp_short, "integration_time", start, count, NC_FLOAT, &max_short_int_time))
+     goto return_status;
+
+   if (0 != TIO_inq_grp (ncid, "long_mode", &grp_long))
+     goto return_status;
+   start[0] = 0;
+   if (0 != TIO_get_var_section (grp_long, "integration_time", start, count, NC_FLOAT, &min_long_int_time))
+     goto return_status;
+
+   is_nominal_mode = ((max_short_int_time < integration_time)
+                      && (integration_time < min_long_int_time));
+
+   if (is_nominal_mode)
+     {
+        grp = grp_nom;
+        grp_name = "nominal_mode";
+     }
+   else if (integration_time < nominal_int_time)
+     {
+        grp = grp_short;
+        grp_name = "short_mode";
+     }
+   else
+     {
+        grp = grp_long;
+        grp_name = "long_mode";
+     }
+
+   if (is_nominal_mode)
+     {
+        count[0] = 1;
+        start[0] = num_coadds-1;
+        if (0 != TIO_get_var_section (grp, "total_time", start, count, NC_FLOAT, &total_time))
+          goto return_status;
+
+        if (Plan_Verbose)
+          {
+             fprintf (stderr, "%d coadds x %f sec => %s => pos total_time = %f sec\n",
+                      num_coadds, integration_time, grp_name, total_time);
+          }
+
+        dt->integration_time = (double) nominal_int_time;
+        dt->position_dwell = (double) total_time;
+     }
+   else
+     {
+        if (NULL == (int_time = (float *)MALLOC (num_int_lines * sizeof(float))))
+          {
+             tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+             goto return_status;
+          }
+        start[0] = 0;
+        count[0] = num_int_lines;
+        if (0 != TIO_get_var_section (grp, "integration_time", start, count, NC_FLOAT, int_time))
+          goto return_status;
+
+        if (integration_time < int_time[0]) {
+           k = 0;
+        } else if (integration_time > int_time[num_int_lines-1]) {
+           k = num_int_lines-1;
+        } else {
+           k = bsearch_f (integration_time, int_time, num_int_lines);
+        }
+
+        start[0] = k;               /* k = int_lines-1 */
+        start[1] = num_coadds-1;
+        count[0] = 1;
+        count[1] = 1;
+        if (0 != TIO_get_var_section (grp, "total_time", start, count, NC_FLOAT, &total_time))
+          goto return_status;
+
+        if (Plan_Verbose)
+          {
+             fprintf (stderr, "%d coadds x %f sec (%d int lines) => %s => pos total_time = %f sec\n",
+                      num_coadds, int_time[k], k+1, grp_name, total_time);
+          }
+
+        dt->integration_time = (double) int_time[k];
+        dt->position_dwell = (double) total_time;
+     }
+
+   status = 0;
+
+return_status:
+   if (status)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: lookup failed", __func__);
+     }
+   FREE(int_time);
+   TIO_close (ncid);
+   return status;
+}
+
+static int read_step_config (config_t *cfg, config_setting_t *s, Step_Config_Type *dt)
 {
    config_setting_t *sub;
+   const char *timing_file_var = "refdata_config.ccdtiming_path";
+   const char *ccdtiming_path;
+   char *path = NULL;
    double frame_transfer_time;
    double readout_time;
-   int num_coadds;
+   int num_coadds, status;
 
    if (NULL == (sub = config_setting_get_member (s, "step_config")))
      return -1;
 
    if ((CONFIG_TRUE != config_setting_lookup_float (sub, "integration_time", &dt->integration_time))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_timing_margin", &dt->scan_timing_margin))
        || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_coadds", &num_coadds))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &frame_transfer_time))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_timing_margin", &dt->scan_timing_margin)))
+     return -1;
+
+   /* Try to get the integration time and dwell time from the lookup table */
+   if (CONFIG_TRUE == config_lookup_string (cfg, timing_file_var, &ccdtiming_path))
+     {
+        if (NULL == (path = expand_string (ccdtiming_path)))
+          return -1;
+        status = lookup_int_time_and_dwell_time (path, num_coadds, dt);
+        FREE(path);
+        return status;
+     }
+
+   fprintf (stderr, "*** WARNING: %s: config file variable '%s' is not defined (CCD timing file)\n",
+            __func__, timing_file_var);
+
+   /* If we don't have the lookup table, fall back to a crude approximation */
+   if ((CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &frame_transfer_time))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &readout_time)))
      return -1;
 
@@ -230,7 +399,7 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
-   if (0 != read_step_config (s, &st->dt))
+   if (0 != read_step_config (cfg, s, &st->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading step_config: %s",
@@ -297,7 +466,7 @@ static int read_twilight_scan_config (config_t *cfg, Twilight_Scan_Type *twiligh
         return -1;
      }
 
-   if (0 != read_step_config (s, &twilight_scan->dt))
+   if (0 != read_step_config (cfg, s, &twilight_scan->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading twilight_scan_config:step_config: %s",
@@ -337,7 +506,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
         return -1;
      }
 
-   if (0 != read_step_config (s, &sst->dt))
+   if (0 != read_step_config (cfg, s, &sst->dt))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading step_config: %s",
@@ -542,7 +711,7 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
         return -1;
      }
 
-   if (Plan_Verbose)
+   if (Plan_Verbose > 1)
      {
         char buf[32];
         if (0 != mkjdtimestr (jd_utc, buf, sizeof(buf)))
