@@ -16,6 +16,8 @@
 #include "bisect.h"
 #include "solar.h"
 
+#define CCD_NOMINAL_MODE_INTEGRATION_TIME 0.118  /* sec */
+
 typedef struct
 {
    double lon;
@@ -26,12 +28,9 @@ Surface_Point_Type;
 typedef struct
 {
    double integration_time;
-   double frame_transfer_time;
-   double readout_time;
-   double step_dwell;
+   double position_dwell;
    double scan_reset;
    double scan_timing_margin;
-   int num_coadds;
 }
 Step_Config_Type;
 
@@ -129,21 +128,32 @@ static int read_surface_point (config_setting_t *s, const char *name,
 static int read_step_config (config_setting_t *s, Step_Config_Type *dt)
 {
    config_setting_t *sub;
+   double frame_transfer_time;
+   double readout_time;
+   int num_coadds;
 
    if (NULL == (sub = config_setting_get_member (s, "step_config")))
      return -1;
 
    if ((CONFIG_TRUE != config_setting_lookup_float (sub, "integration_time", &dt->integration_time))
-       || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_coadds", &dt->num_coadds))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_timing_margin", &dt->scan_timing_margin))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &dt->frame_transfer_time))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &dt->readout_time)))
+       || (CONFIG_TRUE != config_setting_lookup_int (sub, "num_coadds", &num_coadds))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &frame_transfer_time))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &readout_time)))
      return -1;
 
-   dt->step_dwell =
-     dt->num_coadds * (dt->integration_time + dt->frame_transfer_time)
-       + dt->frame_transfer_time + dt->readout_time;
+   dt->position_dwell = (num_coadds * (dt->integration_time + frame_transfer_time)
+                         + frame_transfer_time + readout_time);
+
+   /* For shorter than nominal integration times, the instrument
+    * must generate a delay frame to avoid overloading the data formatter.
+    * The delay frame increases the time spent at each mirror position.
+    */
+   if (dt->integration_time <= CCD_NOMINAL_MODE_INTEGRATION_TIME)
+     {
+        dt->position_dwell += (frame_transfer_time + readout_time);
+     }
 
    return 0;
 }
@@ -652,7 +662,7 @@ static double scan_step_size (const Scan_Type *st)
 /* scan duration [days] */
 static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
 {
-   double duration = (dt->step_dwell * num_steps
+   double duration = (dt->position_dwell * (num_steps + 1)
                       + 2*dt->scan_reset
                       + dt->scan_timing_margin) / SEC_PER_DAY;
    /* adjust scan duration to an integer number of seconds [in units of days] */
