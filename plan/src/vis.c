@@ -326,13 +326,43 @@ return_error:
    return NULL;
 }
 
+static void vec_norm (const double *a, double *norm)
+{
+   double r = sqrt (a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
+   norm[0] = a[0]/r;
+   norm[1] = a[1]/r;
+   norm[2] = a[2]/r;
+}
+
+static double vec_dot (const double *a, const double *b)
+{
+   return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+}
+
+static void vec_unit (double lon_deg, double lat_deg, double *p)
+{
+   double theta = (90.0 - lat_deg) * DEGTORAD;
+   double phi = lon_deg * DEGTORAD;
+   double sin_t = sin(theta);
+   p[0] = sin_t * cos(phi);
+   p[1] = sin_t * sin(phi);
+   p[2] = cos(theta);
+}
+
 double *vis_sza (const Vis_Type *v, double jd_utc, double *psza)
 {
+   int compare_with_actual_sza = 0; /* non-zero turns on slow comparison */
+   double sun_itrs[3], p_sun[3], p[3];
+   double max_diff, max_pos[2];
    double *sza = NULL;
    double *lon = v->lon;
    double *lat = v->lat;
    Solar_Geom_Type *sgt = v->solar_geom;
    int i, n = v->num_lon * v->num_lat;
+
+   if (0 != sgt->sgt_solar_xyz (sgt, jd_utc, sun_itrs))
+     return NULL;
+   vec_norm (sun_itrs, p_sun);
 
    if (psza == NULL)
      {
@@ -344,6 +374,17 @@ double *vis_sza (const Vis_Type *v, double jd_utc, double *psza)
      }
    else sza = psza;
 
+   /* Because the Earth radius is small compared to the Earth-Sun
+    * distance, the SZA at a surface point, P, is about the same as
+    * the geocenter angle (sun)-(geocenter)-(P).
+    * The angle at the geocenter is faster to compute, and the
+    * accuracy should be good enough for visualization.
+    */
+
+   max_diff = 0.0;
+   max_pos[0] = 0.0;
+   max_pos[1] = 0.0;
+
    for (i = 0; i < n; i++)
      {
         if ((lat[i] == TIO_FILL_FLOAT) || (lon[i] == TIO_FILL_FLOAT))
@@ -351,11 +392,30 @@ double *vis_sza (const Vis_Type *v, double jd_utc, double *psza)
              sza[i] = TIO_FILL_FLOAT;
              continue;
           }
-        if (0 != sgt->sgt_solar_zenith_angle (sgt, jd_utc, lon[i], lat[i], &sza[i]))
+
+        /* Approximate the SZA using the angle at the geocenter. */
+        vec_unit (lon[i], lat[i], p);
+        sza[i] = acos(vec_dot (p_sun, p)) / DEGTORAD;
+
+        if (compare_with_actual_sza)
           {
-             if (psza == NULL) FREE(sza);
-             return NULL;
+             double sza_novas, diff;
+             if (0 != sgt->sgt_solar_zenith_angle (sgt, jd_utc, lon[i], lat[i], &sza_novas))
+               return NULL;
+             diff = sza_novas - sza[i];
+             if (fabs(diff) > max_diff)
+               {
+                  max_diff = diff;
+                  max_pos[0] = lon[i];
+                  max_pos[1] = lat[i];
+               }
           }
+     }
+
+   if (compare_with_actual_sza)
+     {
+        fprintf (stderr, "visualization: max SZA error = %10.6f deg at lon=%10.6f lat=%10.6f\n",
+                 max_diff, max_pos[0], max_pos[1]);
      }
 
    return sza;

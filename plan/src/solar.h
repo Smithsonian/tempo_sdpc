@@ -24,6 +24,9 @@ struct Solar_Geom_Type
                                  double *psza);
    /**< compute the solar zenith angle for the specified place and time */
 
+   int (*sgt_solar_xyz) (Solar_Geom_Type *sgt, double jd_utc, double sun_itrs[3]);
+   /**< compute the ITRS coordinates of the sun (e.g. WGS84 XYZ) */
+
    int (*sgt_sat_sun_position)(Solar_Geom_Type *sgt, double jd_utc,
                                double *ptheta, double *pphi, double *earth_sun_distance);
    /**< Compute the position angles of the sun relative to the instrument boresight.

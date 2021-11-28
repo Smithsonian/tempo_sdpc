@@ -195,6 +195,53 @@ static double vec_angle (double *pa, double *pb)
    return acos (vec_dot(a, b));
 }
 
+static int sgt_solar_xyz (Solar_Geom_Type *sgt, double jd_utc, double sun_itrs[3])
+{
+   Times_Type tt;
+   Novas_sky_pos_t sun_place;
+   Novas_object_t sun = sgt->sun;  /* struct copy */
+   short int error;
+   short int coord_sys = 0;     /* 0 means GCRS coordinates */
+   double r_sun, sun_gcrs[3];
+   int method = 1; /* 1 = equinox-based method */
+   int option = 0; /* 0 = output vector referred to GCRS axes */
+   int i, leap_secs;
+
+   if (0 != leap_seconds (sgt, jd_utc, &leap_secs))
+     return -1;
+
+   if (0 != times_eval (&tt, jd_utc, leap_secs, sgt->ut1_utc))
+     return -1;
+
+   if ((error = novas_place (tt.jd_tt, &sun, &sgt->geocenter, tt.delta_t,
+                             coord_sys, sgt->accuracy, &sun_place)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_place",
+                     __func__, error);
+        return -1;
+     }
+
+   r_sun = sun_place.dis * KM_PER_AU;
+   for (i = 0; i < 3; i++)
+     {
+        sun_gcrs[i] = r_sun * sun_place.r_hat[i];
+     }
+
+   /* convert sun position from GCRS to ITRS system
+    * returns sun_itrs [km] */
+   if ((error = novas_cel2ter (tt.jd_ut1, 0.0, tt.delta_t,
+                               method, sgt->accuracy, option,
+                               sgt->xpole, sgt->ypole, sun_gcrs,
+                               sun_itrs)) != 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: Error %d from novas_cel2ter",
+                     __func__, error);
+        return -1;
+     }
+
+   return 0;
+}
+
 static int sgt_sat_sun_position (Solar_Geom_Type *sgt, double jd_utc, double *ptheta, double *pphi,
                                  double *earth_sun_distance)
 {
@@ -555,6 +602,7 @@ static Solar_Geom_Type *solar_geom_init_using_method (int (*init_method)(Solar_G
 
    sgt->sgt_delete = sgt_delete;
    sgt->sgt_solar_zenith_angle = sgt_solar_zenith_angle;
+   sgt->sgt_solar_xyz = sgt_solar_xyz;
    sgt->sgt_sat_sun_position = sgt_sat_sun_position;
    sgt->sgt_geosat_longitude = sgt_geosat_longitude;
    sgt->sgt_boresight_angles = sgt_boresight_angles;
