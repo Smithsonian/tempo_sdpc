@@ -76,6 +76,7 @@ install-executables:
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/szaplot.py $(bindir)/
+	$(INSTALL_PROGRAM) $(srcdir)/mkplan.sh $(bindir)/
 
 install:	install-executables
 

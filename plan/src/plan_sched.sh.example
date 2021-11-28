@@ -1,0 +1,18 @@
+
+config_file="plan.cfg"
+maneuver_file="tempo_d07996m00005000u000_r0_maneuver.csv"
+tailoring_file=""
+
+#prefix="tempo_plan_$(date -u +%Y%m%d%H%M%SZ)"
+prefix="tempo_plan_YYYYMMDDTHHMMSSZ"
+
+plan_type=opt1
+plan_num_days=14
+plan_start_day=2021-11-26
+
+# when tailoring_file is empty, define these variables
+# to generate a dummy scan tailoring file:
+tailor_num_days=21
+tailor_start_day=2021-11-21
+tailor_epoch="1980-01-06T00:00:00Z"
+
