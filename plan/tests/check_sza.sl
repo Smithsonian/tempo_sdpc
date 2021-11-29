@@ -5,7 +5,7 @@ require ("process");
 
 define compute_sza (sza_str)
 {
-   variable argv = ["../src/gnuobjs/plan", "--Zenith", sza_str];
+   variable argv = ["../src/gnuobjs/plan", "--epoch", "2000-01-01T12:00:00Z", "--Zenith", sza_str];
    variable obj = new_process (argv; write=1);
    variable result = fgetslines (obj.fp1);
    variable s = obj.wait();
