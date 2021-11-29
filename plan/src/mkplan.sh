@@ -9,6 +9,10 @@ fi
 
 sched_file="$1"
 
+# SDPC_OTS_ROOT is used in the plan.cfg file
+: "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT is not set}"
+: "${SDPC_ROOT:?SDPC_ROOT is not set}"
+
 if test -r "$sched_file" ; then
    . $sched_file
 else
@@ -16,18 +20,18 @@ else
    exit 1
 fi
 
-: "${config_file:?config_file is not defined}"
-: "${maneuver_file:?maneuver_file is not defined}"
+if test x"$prefix" = x ; then
+   prefix="tempo_plan_$(date -u +%Y%m%d%H%M%SZ)"
+fi
 
+if test x"$config_file" = x ; then
+   config_file="$SDPC_ROOT/share/plan.cfg"
+fi
+
+: "${maneuver_file:?maneuver_file is not defined}"
 : "${plan_type:?plan_type is not defined}"
 : "${plan_num_days:?plan_num_days is not defined}"
 : "${plan_start_day:?plan_start_day is not defined}"
-
-: "${prefix:?prefix is not defined}"
-
-# SDPC_OTS_ROOT is used in the plan.cfg file
-: "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT is not set}"
-: "${SDPC_ROOT:?SDPC_ROOT is not set}"
 
 error_exit()
 {

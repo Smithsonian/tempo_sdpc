@@ -70,6 +70,7 @@ tags:
 bindir = $(prefix)/bin
 incdir = $(prefix)/include
 libdir = $(prefix)/lib
+sharedir = $(prefix)/share
 
 install-executables:
 	mkdir -p $(bindir)
@@ -78,7 +79,11 @@ install-executables:
 	$(INSTALL_PROGRAM) $(srcdir)/szaplot.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/mkplan.sh $(bindir)/
 
-install:	install-executables
+install-share:
+	mkdir -p $(sharedir)
+	$(INSTALL_DATA) $(srcdir)/plan.cfg $(sharedir)
+
+install:	install-executables install-share
 
 # --------------------------------------------------------------------------
 # Housekeeping
