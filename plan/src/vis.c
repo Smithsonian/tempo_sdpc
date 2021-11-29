@@ -426,13 +426,23 @@ int vis_write_grid (Vis_Type *v, int ncid)
    const char name_lon[] = "longitude";
    const char name_lat[] = "latitude";
    float float_missing = TIO_FILL_FLOAT;
-   int varid_lon, varid_lat;
+   int varid_lon, varid_lat, varid_x, varid_y;
    int dimid_lon, dimid_lat;
    int start[2], count[2];
    int status = -1;
 
-   if ((0 != TIO_def_dim (ncid, name_lon, v->num_lon, &dimid_lon))
-       ||(0 != TIO_def_dim (ncid, name_lat, v->num_lat, &dimid_lat)))
+   if ((0 != TIO_def_dim (ncid, "x", v->num_lon, &dimid_lon))
+       ||(0 != TIO_def_dim (ncid, "y", v->num_lat, &dimid_lat)))
+     goto return_status;
+
+   if ((0 != TIO_def_var (ncid, "x", NC_FLOAT, 1, &dimid_lon, &varid_x))
+       || (0 != TIO_def_var (ncid, "y", NC_FLOAT, 1, &dimid_lat, &varid_y)))
+     goto return_status;
+
+   start[0] = 0;
+
+   if ((0 != TIO_put_var_section (ncid, "x", start, &v->num_lon, NC_DOUBLE, v->x))
+       ||(0 != TIO_put_var_section (ncid, "y", start, &v->num_lat, NC_DOUBLE, v->y)))
      goto return_status;
 
    v->dimids_lon_lat[0] = dimid_lat;
@@ -498,13 +508,15 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
                      const char *name, const double *value,
                      double step_size, const Plan_List_Type *entry)
 {
+   const char coord_attr[] = "longitude latitude";
    int varid, start[2], count[2];
    char buf[32];
    float float_missing = TIO_FILL_FLOAT;
    double pos[2], scan_angle;
    int status = -1;
 
-   if (0 != TIO_def_var (ncid, name, NC_FLOAT, 2, v->dimids_lon_lat, &varid))
+   if ((0 != TIO_def_var (ncid, name, NC_FLOAT, 2, v->dimids_lon_lat, &varid))
+       || (0 != TIO_put_att (ncid, varid, "coordinates", NC_CHAR, strlen(coord_attr), &coord_attr)))
      goto return_status;
 
    if (0 != mkjdtimestr (jd_utc, buf, sizeof(buf)))
