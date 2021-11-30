@@ -82,6 +82,7 @@ install-executables:
 install-share:
 	mkdir -p $(sharedir)
 	$(INSTALL_DATA) $(srcdir)/plan.cfg $(sharedir)
+	$(INSTALL_DATA) $(srcdir)/plan_sched.sh.example $(sharedir)
 
 install:	install-executables install-share
 

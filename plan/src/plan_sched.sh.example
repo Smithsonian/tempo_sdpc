@@ -21,6 +21,9 @@ tailor_epoch="1980-01-06T00:00:00Z"
 config_file=""
 # config_file = plan config file (empty string means use default)
 
+plan_options=""
+# plan_options = any additional options to be passed to 'plan'
+
 prefix=""
 # prefix = prefix for all output files (empty string means use default)
 
