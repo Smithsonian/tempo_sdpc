@@ -328,6 +328,8 @@ contains
 
     if (errstat /= 0) return
 
+    call tell_log (1, 'reading I0 irradiances = '//trim(filename))
+
     call read_I0_dims (filename, nxtrack, nwavel, errstat)
     if (errstat /= 0) return
 
@@ -380,8 +382,8 @@ contains
     if (errstat /= 0) return
 
     call open_nc (trim(adjustl(filename)), tio_obj, errstat)
-    call tiof_inq_dimlen (tio_obj, "dim_xtrack", nxtrack, errstat)
-    call tiof_inq_dimlen (tio_obj, "dim_channel", nwavel, errstat)
+    call tiof_inq_dimlen (tio_obj, "xtrack", nxtrack, errstat)
+    call tiof_inq_dimlen (tio_obj, "spectral_channel", nwavel, errstat)
     call close_nc (tio_obj, errstat)
 
     if (errstat /= 0) then
