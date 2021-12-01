@@ -139,6 +139,8 @@ extern int create_hidden (const char *dirname, const char *basename, int *ncid);
  */
 extern int copy_hidden (const char *dirname, const char *basename, const char *copydir);
 
+extern int copy_file_to_dir (const char *path, const char *copydir, const char *basename);
+
 /** Rename a hidden file, removing a "." prefix from the name
  *  @param[in] dirname   Path to the target directory that contains the file.
  *  @param[in] basename  The file basename that will be prefixed by a "." to construct
@@ -217,5 +219,8 @@ extern Process_Method_Type *init_smc_method (config_t *cfg);
  * @return A @c Process_Method_Type structure on success, or @c NULL on error
  */
 extern Process_Method_Type *init_iru_method (config_t *cfg);
+
+extern Process_Method_Type *init_maneuver_method (config_t *cfg);
+extern Process_Method_Type *init_ephemeris_method (config_t *cfg);
 
 #endif

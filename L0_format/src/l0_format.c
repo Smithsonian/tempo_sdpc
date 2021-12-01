@@ -35,6 +35,9 @@
 # define PROCESSED_FILE_MAX_LOG_ENTRIES 100000
 #endif
 
+#define SDPC_FILETYPE_MANEUVER   (-100)
+#define SDPC_FILETYPE_EPHEMERIS  (-101)
+
 static int Have_Epoch;
 static int Perform_Archive_Registration;
 static const char *Archive_Root_Dir = NULL;
@@ -627,33 +630,70 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
    return 0;
 }
 
-static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
-                         Control_Type *ctrl, const char *file)
+static int classify_file (const char *file, const Control_Type *ctrl, int *filetype, int *skip)
 {
-   Process_Method_Type *pmt;
    IOCSDPC_Common_Header_Type chdr = {0};
-   struct stat st = {0};
-   int fd, filetype, status;
+   char *ext;
+   int fd;
 
-   if (0 != lstat (file, &st))
-     return -1;
+   /* The file stream may contain:
+    *  - maneuver files: <prefix>_maneuver.csv
+    *  - ephemeris files: <prefix>_lt_pred.eph
+    *  - L0 sciextract-produced data products <prefix>_*.*
+    * where prefix looks like tempo_dDDDDDmMMMMMMMMuUUU_rR
+    */
+
+   *skip = 0;
+
+   if (NULL != (ext = ioclib_extname (file)))
+     {
+        if (0 == strcmp (ext, ".csv"))
+          {
+             *filetype = SDPC_FILETYPE_MANEUVER;
+             return 0;
+          }
+        else if (0 == strcmp (ext, ".eph"))
+          {
+             *filetype = SDPC_FILETYPE_EPHEMERIS;
+             return 0;
+          }
+        /* FALLTHRU */
+     }
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
    (void) ioclib_fd_close (fd);
 
-   filetype = chdr.filetype;
+   *filetype = chdr.filetype;
 
    /* We may want to skip files prior to some user-specified time */
    if (ctrl->start_time > 0)
      {
         if (0 != verify_epoch (chdr.epoch))
           return -1;
-        if (chdr.last_packet_time < ctrl->start_time)
-          {
-             tell_vinfo (1, "skipped: %s", file);
-             return 0;
-          }
+        *skip = (chdr.last_packet_time < ctrl->start_time);
+     }
+
+   return 0;
+}
+
+static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
+                         Control_Type *ctrl, const char *file)
+{
+   Process_Method_Type *pmt;
+   struct stat st = {0};
+   int filetype, skip, status;
+
+   if (0 != lstat (file, &st))
+     return -1;
+
+   if (0 != classify_file (file, ctrl, &filetype, &skip))
+     return -1;
+
+   if (skip)
+     {
+        tell_vinfo (1, "skipped: %s", file);
+        return 0;
      }
 
    if (NULL == (pmt = find_process_method (tbl, filetype)))
@@ -756,7 +796,8 @@ static Process_Method_Table_Type Method_Table[] =
    PROCESS_METHOD(IOCSDPC_FILETYPE_TPSEC, init_tpsec_method, NULL),
    PROCESS_METHOD(IOCSDPC_FILETYPE_IRU, init_iru_method, iru_post_process_callback),
    PROCESS_METHOD(IOCSDPC_FILETYPE_SMC, init_smc_method, NULL),
-   /* PROCESS_METHOD(IOCSDPC_FILETYPE_TLMRAW, init_tlmraw_method), */
+   PROCESS_METHOD(SDPC_FILETYPE_MANEUVER, init_maneuver_method, NULL),
+   PROCESS_METHOD(SDPC_FILETYPE_EPHEMERIS, init_ephemeris_method, NULL),
    PROCESS_METHODS_TABLE_END
 };
 
@@ -1352,7 +1393,7 @@ static int enforce_path_uniqueness (char **path)
    return 0;
 }
 
-static int perform_copy (const char *path, const char *copydir, const char *basename)
+int copy_file_to_dir (const char *path, const char *copydir, const char *basename)
 {
    char *copypath = NULL;
    int status = -1;
@@ -1520,7 +1561,7 @@ int copy_hidden (const char *dirname, const char *basename, const char *copydir)
        || (NULL == (newpath = ioclib_pathconcat (dirname, basename))))
      goto return_status;
 
-   if (0 != perform_copy (oldpath, copydir, basename))
+   if (0 != copy_file_to_dir (oldpath, copydir, basename))
      goto return_status;
 
    if (0 != register_with_symlink (copydir, basename))

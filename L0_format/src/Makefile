@@ -41,7 +41,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
 OFILES   = l0_format.o tpsec.o exprec_cache_disk.o exprec_cache_mem.o \
-           exprec.o tpinfo.o smc.o iru.o enum.o
+           exprec.o tpinfo.o smc.o iru.o enum.o maneuver.o ephemeris.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
@@ -116,3 +116,9 @@ $(objdir)/tpinfo.o:	$(srcdir)/tpinfo.c
 
 $(objdir)/enum.o:	$(srcdir)/enum.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/enum.c
+
+$(objdir)/maneuver.o:	$(srcdir)/maneuver.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/maneuver.c
+
+$(objdir)/ephemeris.o:	$(srcdir)/ephemeris.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/ephemeris.c

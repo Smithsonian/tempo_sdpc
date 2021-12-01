@@ -1,32 +1,45 @@
 
 main: {
-   incoming_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out";
+   incoming_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/spool";
    input_filename_glob_pattern = "tempo_d*.???";
-   tpinfo_file = "/vex/d0/tmp/ioc_sdpc_interface/tempo_tpmeta_r7.csv";
+   tpinfo_file = "$SDPC_ROOT/share/tempo_tpinfo_r9.csv";
    monitor_wait_secs = 5.0;
+   start_time = 0.0;
    cache_flush_idle_wait_secs = 360.0;
    cache_flush_exprec_wait_secs = 900.0;
 };
 
 tpsec: {
-   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
-   outfile_deltat_sec = 300.0;
+   output_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/telem";
+   outfile_deltat_sec = 240.0;
 };
 
 exprec: {
-   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
-   cache_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc/cache";
-   granule_size_default = 128;
+   cache_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/spool/.exprec_cache";
+   output_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/ccd";
+   granule_size_default = 122;
    granule_size_max = 140;
 };
 
 smc: {
-   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
-   outfile_deltat_sec = 300.0;
+   output_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/telem";
+   outfile_deltat_sec = 240.0;
 };
 
 iru: {
-   output_dir = "/vex/d0/tmp/ioc_sdpc_interface/ioc_out_nc";
-   outfile_deltat_sec = 300.0;
-   inr_update_interval = 360.0;
+   output_dir = "$SDPC_RUN_DIR_MASTER/stage/level0/telem";
+   outfile_deltat_sec = 240.0;
+   #
+   # To turn off the telemetry-only granules, set inr_update_interval<0
+   #
+   #inr_update_interval = 360.0;
+   inr_update_interval = -1.0;
+};
+
+maneuver: {
+   output_dir = "$SDPC_ANCILLARY_ROOT/host/maneuver";
+};
+
+ephemeris: {
+   output_dir = "$SDPC_ANCILLARY_ROOT/host/ephemeris";
 };
