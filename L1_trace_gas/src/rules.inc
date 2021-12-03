@@ -125,7 +125,6 @@ $(ODIR)/omi_pge_fitting_aux.o: $(SDIR)/omi_pge_fitting_aux.f90 \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_prefitcol_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/optimizer_interface_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_pge_fitting_aux.f90 -o $(ODIR)/omi_pge_fitting_aux.o $(MODOUTFLG) $(ODIR)
@@ -299,7 +298,6 @@ $(ODIR)/OMSAO_radiance_ref_module.o: $(SDIR)/OMSAO_radiance_ref_module.f90 \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_prefitcol_module.o \
-  $(ODIR)/OMSAO_solcomp_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/radiance_fit.o \
   $(ODIR)/SLATEC_davint.o
@@ -381,11 +379,9 @@ $(ODIR)/radiance_fit.o: $(SDIR)/radiance_fit.f90 \
   $(ODIR)/commonmode.o \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_prefitcol_module.o \
-  $(ODIR)/OMSAO_solcomp_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/optimizer_interface_module.o \
   $(ODIR)/sao_pge_utils.o \
@@ -393,7 +389,6 @@ $(ODIR)/radiance_fit.o: $(SDIR)/radiance_fit.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/radiance_fit.f90 -o $(ODIR)/radiance_fit.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/radiance_wavcal.o: $(SDIR)/radiance_wavcal.f90 \
   $(ODIR)/commonmode.o \
-  $(ODIR)/ctrlvars.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
@@ -424,7 +419,6 @@ $(ODIR)/pcf_file_module.o: $(SDIR)/pcf_file_module.f90 \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_prefitcol_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/OMSAO_wfamf_module.o \
   $(ODIR)/sao_pge_utils.o \
@@ -481,12 +475,7 @@ $(ODIR)/irradiance_data.o: $(SDIR)/irradiance_data.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/l1bread_utils.o \
   $(ODIR)/m_read_gems.o \
-  $(ODIR)/OMSAO_errstat_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
-  $(ODIR)/OMSAO_omidata_module.o \
-  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_solcomp_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/sao_pge_utils.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/irradiance_data.f90 -o $(ODIR)/irradiance_data.o $(MODOUTFLG) $(ODIR)
