@@ -148,6 +148,48 @@ return_error:
    return -1;
 }
 
+static int _pTIO_num_printed_out_of_range_warnings = 0;
+static void warn_time_value_out_of_range (void)
+{
+   if (_pTIO_num_printed_out_of_range_warnings < 10)
+     {
+        tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+     }
+   _pTIO_num_printed_out_of_range_warnings++;
+}
+
+static int _pTIO_printed_expiration_warning = 0;
+static void warn_leapsec_file_expiration (long long expire_timet)
+{
+   struct timespec tp;
+   struct tm tm;
+   time_t tt;
+   long long sec_per_day = 86400LL;
+   long long delta;
+
+   if (0 != clock_gettime (CLOCK_REALTIME, &tp))
+     return;
+   delta = expire_timet - tp.tv_sec;
+   if (delta > 30 * sec_per_day)
+     return;
+   if (_pTIO_printed_expiration_warning)
+     return;
+   tt = expire_timet;
+   if (NULL != gmtime_r (&tt, &tm))
+     {
+        char buf[32];
+        buf[0] = 0;
+        (void) strftime (buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm);
+        tell_vwarn (0, "Leap-second file expires %s (%lld days %s)",
+                    buf, delta/sec_per_day, (delta < 0) ? "ago" : "from now");
+        if (_pTIO_Leap_Sec_File)
+          {
+             tell_vwarn (0, "Leap-second file needs updating: %s", _pTIO_Leap_Sec_File);
+          }
+        _pTIO_printed_expiration_warning++;
+     }
+}
+
 static int read_leapsecond_table (const char *file)
 {
    Leap_Second_Table_Type *lstt;
@@ -198,6 +240,7 @@ static int read_leapsecond_table (const char *file)
                        goto return_error;
                     }
                   lstt->expiration_time -= UNIX_EPOCH_NTP;
+                  warn_leapsec_file_expiration (lstt->expiration_time);
                }
              TIO_FREE (line);
              continue;
@@ -290,7 +333,7 @@ refresh_table:
                   Leap_Second_Table = NULL;
                   goto refresh_table;
                }
-             tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+             warn_time_value_out_of_range();
           }
 
         *tai_time = tai;
@@ -353,7 +396,7 @@ refresh_table:
                   Leap_Second_Table = NULL;
                   goto refresh_table;
                }
-             tell_vwarn (0, "time value out of range, consider updating the leapsecond table");
+             warn_time_value_out_of_range ();
           }
 
         return 0;
