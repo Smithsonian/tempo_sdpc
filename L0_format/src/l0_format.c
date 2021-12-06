@@ -638,26 +638,30 @@ static int classify_file (const char *file, const Control_Type *ctrl, int *filet
 
    /* The file stream may contain:
     *  - maneuver files: <prefix>_maneuver.csv
-    *  - ephemeris files: <prefix>_lt_pred.eph
+    *  - ephemeris files: <prefix>_ephemeris.csv
     *  - L0 sciextract-produced data products <prefix>_*.*
     * where prefix looks like tempo_dDDDDDmMMMMMMMMuUUU_rR
     */
 
    *skip = 0;
 
-   if (NULL != (ext = ioclib_extname (file)))
+   if ((NULL != (ext = ioclib_extname (file)))
+       && (0 == strcmp (ext, ".csv")))
      {
-        if (0 == strcmp (ext, ".csv"))
+        char *basename = ioclib_basename (file);
+        if (NULL != strstr (basename, "_maneuver.csv"))
           {
              *filetype = SDPC_FILETYPE_MANEUVER;
              return 0;
           }
-        else if (0 == strcmp (ext, ".eph"))
+        else if (NULL != strstr (basename, "_ephemeris.csv"))
           {
              *filetype = SDPC_FILETYPE_EPHEMERIS;
              return 0;
           }
-        /* FALLTHRU */
+        /* reject unrecognized file */
+        tell_vinfo (0, "%s: unrecognized CSV file type: %s", __func__, file);
+        return -1;
      }
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
@@ -1013,8 +1017,7 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
                   goto return_status;
                }
 
-             if (-1 == process_file (tbl, tpinfo, ctrl, path))
-               goto return_status;
+             (void) process_file (tbl, tpinfo, ctrl, path);
 
              ioclib_free (path);
              path = NULL;
