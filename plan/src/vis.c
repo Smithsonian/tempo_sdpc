@@ -429,7 +429,7 @@ int vis_write_grid (Vis_Type *v, int ncid)
    int varid_lon, varid_lat, varid_x, varid_y;
    int dimid_lon, dimid_lat;
    int start[2], count[2];
-   int status = -1;
+   int i, status = -1;
 
    if ((0 != TIO_def_dim (ncid, "x", v->num_lon, &dimid_lon))
        ||(0 != TIO_def_dim (ncid, "y", v->num_lat, &dimid_lat)))
@@ -441,9 +441,19 @@ int vis_write_grid (Vis_Type *v, int ncid)
 
    start[0] = 0;
 
-   if ((0 != TIO_put_var_section (ncid, "x", start, &v->num_lon, NC_DOUBLE, v->x))
-       ||(0 != TIO_put_var_section (ncid, "y", start, &v->num_lat, NC_DOUBLE, v->y)))
+   if (0 != TIO_put_var_section (ncid, "x", start, &v->num_lon, NC_DOUBLE, v->x))
      goto return_status;
+
+   start[1] = 0;
+   count[0] = 1;
+   count[1] = 1;
+   for (i = 0; i < v->num_lat; i++)
+     {
+        double *v_y = v->y + i * v->num_lon;
+        start[0] = i;
+        if (0 != TIO_put_var_section (ncid, "y", start, count, NC_DOUBLE, v_y))
+          goto return_status;
+     }
 
    v->dimids_lon_lat[0] = dimid_lat;
    v->dimids_lon_lat[1] = dimid_lon;
