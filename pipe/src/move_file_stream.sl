@@ -48,12 +48,14 @@ private define move_file (infile, outdir)
 	return -1;
      }
 
+   vmessage ("copying %s to %s", infile, outdir);
+
    variable buf;
    while (-1 != fread_bytes (&buf, 8192, fpin))
      {
 	if (-1 == fwrite (buf, fp))
 	  {
-	     () = fprintf (stderr, "Write error: %S\n");
+	     () = fprintf (stderr, "Write error: %S\n", tmp);
 	     () = fclose (fpin);
 	     () = fclose (fp);
 	     () = remove (tmp);
@@ -61,9 +63,20 @@ private define move_file (infile, outdir)
 	  }
      }
    () = fclose (fpin);
-   () = fclose (fp);
 
-   () = rename (tmp, outfile);
+   if (-1 == fclose (fp))
+     {
+        () = fprintf (stderr, "Close error: %S\n", tmp);
+        () = remove (tmp);
+        return -1;
+     }
+
+   if (-1 == rename (tmp, outfile))
+     {
+        () = fprintf (stderr, "Rename error: %S -> %S\n", tmp, outfile);
+        return -1;
+     }
+
    () = remove (infile);
    return 0;
 }

@@ -108,7 +108,7 @@ private define pull_file (infile, outdir_root)
      {
 	if (-1 == fwrite (buf, fp))
 	  {
-	     () = fprintf (stderr, "Write error: %S\n");
+	     () = fprintf (stderr, "Write error: %S\n", tmp);
 	     () = fclose (fpin);
 	     () = fclose (fp);
 	     () = remove (tmp);
@@ -116,9 +116,19 @@ private define pull_file (infile, outdir_root)
 	  }
      }
    () = fclose (fpin);
-   () = fclose (fp);
 
-   () = rename (tmp, target_path);
+   if (-1 == fclose (fp))
+     {
+        () = fprintf (stderr, "Close error: %S\n", tmp);
+        () = remove (tmp);
+        return -1;
+     }
+
+   if (-1 == rename (tmp, target_path))
+     {
+        () = fprintf (stderr, "Rename error: %S -> %S\n", tmp, target_path);
+        return -1;
+     }
 
    if (Register_With_Symlink != 0)
      {
