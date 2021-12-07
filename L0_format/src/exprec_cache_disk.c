@@ -217,10 +217,14 @@ static int valid_cache_directory_path (const char *path)
         DIR *d;
         int is_empty;
         if (NULL == (d = opendir (path)))
-          return 0;  /* inaccessible is not ok */
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: opendir failed: %s", __func__, path);
+             return 0;  /* inaccessible is not ok */
+          }
         is_empty = dir_empty (d);
         (void) closedir(d);
         if (is_empty) return 1;
+        tell_verror (TELL_RUNTIME_ERROR, "%s: cache directory is not empty: %s", __func__, path);
      }
 
    /* 0 means invalid */
