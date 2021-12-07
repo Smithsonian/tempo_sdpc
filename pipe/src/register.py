@@ -128,6 +128,7 @@ def insert_raw_entry (conn, table_name, entry):
     raw.create(c)
     try:
         raw.new_entry (c, entry.keys(), entry.values())
+        conn.commit()
         return 0
     except sqlite3.IntegrityError:
         eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))

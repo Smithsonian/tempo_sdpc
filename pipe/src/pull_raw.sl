@@ -39,7 +39,7 @@ private define exit_usage ()
 
 private define make_target_path (infile, outdir)
 {
-   variable basename = path_basename (infile);
+   variable basename = path_basename_sans_extname (infile);
 
    % tempo_YYYYMMDDThhmmssZ_ccccc_type.raw
    % where type=grddp_XXX
