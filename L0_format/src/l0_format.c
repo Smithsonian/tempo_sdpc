@@ -48,6 +48,9 @@ static int Processing_Version = 1;
 
 static Process_Method_Type *Exprec_Process_Method;
 
+static int caught_signal (void);
+static void log_caught_signal (void);
+
 typedef struct
 {
    int filetype;
@@ -721,6 +724,10 @@ static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
    for (i = 0; i < num_files; i++)
      {
         char *file = file_list[i];
+
+        if (caught_signal())
+          break;
+
         if (0 == process_file (tbl, tpinfo, ctrl, file))
           {
              /* If processing involved a rename, then deletion
