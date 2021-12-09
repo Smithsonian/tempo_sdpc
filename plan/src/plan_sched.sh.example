@@ -5,18 +5,18 @@
 
 plan_type="opt1"
 plan_num_days=14
-plan_start_day=2021-11-26
+plan_start_day=YYYY-MM-DD
 
-maneuver_file="tempo_d07996m00005000u000_r0_maneuver.csv"
+maneuver_file=""
 # spacecraft maneuver file
 
 tailoring_file=""
 # tailoring_file = scan tailoring file (empty string means
 #                 generate a dummy scan tailoring file
 #                 using the following parameters)
-tailor_num_days=21
-tailor_start_day=2021-11-21
-tailor_epoch="1980-01-06T00:00:00Z"
+#tailor_num_days=21
+#tailor_start_day=yyyy-mm-dd
+#tailor_epoch="1980-01-06T00:00:00Z"
 
 config_file=""
 # config_file = plan config file (empty string means use default)
