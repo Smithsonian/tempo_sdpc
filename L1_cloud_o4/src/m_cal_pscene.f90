@@ -6,7 +6,7 @@ subroutine cal_pscene
   !*********************
   use m_vars
   use m_read_GMI
-  use m_read_DEM
+!  use m_read_DEM
   use m_read_hdf5
   use m_scd_adjust
 
@@ -156,9 +156,9 @@ subroutine cal_pscene
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
       ! ----------------------------------------------
-      if((name_option_TemperaturePressure.eq.'GMI').or. &
-           (name_option_TemperaturePressure.eq.'DEM').or. &
-           (name_option_TemperaturePressure.eq.'BDEM')) then
+      if((name_option_TemperaturePressure.eq.'GMI')) then !.or. &
+!           (name_option_TemperaturePressure.eq.'DEM').or. &
+!           (name_option_TemperaturePressure.eq.'BDEM')) then
         gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
 
@@ -216,7 +216,6 @@ subroutine cal_pscene
       endif
 
       !hqw DEM is not currently supported, DO NOT USE
-      !comment out for now
       !if(name_option_TemperaturePressure.eq.'DEM') then
       !  !hqw TEMPO does not read inp_TerrainPressure
       !  !psfc0=real(inp_TerrainPressure(ix,it))

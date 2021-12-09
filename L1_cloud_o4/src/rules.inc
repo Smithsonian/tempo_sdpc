@@ -28,7 +28,6 @@ $(ODIR)/m_cal_ocp.o: $(SDIR)/m_cal_ocp.f90 \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_ocp.f90 -o $(ODIR)/m_cal_ocp.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cal_pscene.o: $(SDIR)/m_cal_pscene.f90 \
-  $(ODIR)/m_read_DEM.o \
   $(ODIR)/m_read_GMI.o \
   $(ODIR)/m_read_hdf5.o \
   $(ODIR)/m_scd_adjust.o \

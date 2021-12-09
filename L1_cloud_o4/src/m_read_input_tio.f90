@@ -542,7 +542,7 @@ contains
       rad_440nm(ix,it) = rad440
 
       !-------------------------------
-      ! set out_ProcessingQualityFlags
+      ! set out_ProcessingQualityFlags bit 8 & 9
       !-------------------------------
       if(btest(rad_PixelQualityFlags(iw1,ix,it),0).or. &
            btest(rad_PixelQualityFlags(iw1,ix,it),1).or. &
@@ -587,8 +587,8 @@ contains
   subroutine read_cldo4_tio (l2_file, errstat)
      ! original code by gga
      use m_vars, only: nasa_SlantColumnAmountO2O2, fFillValue
-     use m_vars, only: nasa_NumTimes, nasa_nXtrack
-     use m_vars, only: scd_mdqfl!, l2_TerrainPressure
+     use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
+     use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
 
      implicit none
 
@@ -609,7 +609,7 @@ contains
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)
 
-     ! get information for support_data group
+     ! get information from support_data group
      call read_cldo4_dims(tio_l2obj, 'support_data', nXtrack, nTimes, errstat)
      if (errstat /= 0) then
           call tell_error (tell_runtime_error, "read_cldo4_dims: failed", errstat)
@@ -626,45 +626,7 @@ contains
           return
      endif
 
-     ! allocate tmp_dbl array
-     allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
-     if (errstat /= 0) then
-          call tell_error (tell_runtime_error, "allocate tmp_dbl: failed in read_cldo4_tio", errstat)
-          return
-     endif
-
-     call tiof_push_group (tio_l2obj,"support_data", errstat)
-     if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "read_cldo4_tio: pushing support_data group failed", errstat)
-          return
-     endif
-
-    !hqw inteded to read spfc from O4 L2 file, but all = -1.e+30 now
-    ! as is actually a placeholder in that file
-    ! l2_TerrainPressure will be assigned using GEOS-CF values
-    ! call tiof_get2d_r4(tio_l2obj, "surface_pressure",[0,0],[ntimes,nxtrack],&
-    !       l2_TerrainPressure, errstat)
-    ! if (errstat /= 0) then
-    !      call tell_error(tell_runtime_error, "read_cldo4_tio: surface_pressure failed", errstat)
-    !      return
-    ! endif
-
-     ! read fitted_slant_column
-     call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
-           tmp_dbl, errstat)
-     if (errstat /= 0) then
-          call tell_error (tell_runtime_error, "read_cldo4_tio: failed", errstat)
-          return
-     endif
-
-     ! Get out of support_data group
-     call tiof_pop_group(tio_l2obj, errstat)
-     if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "read_cldo4_tio: pop surport_data group failed", errstat)
-          return
-     endif
-
-     ! Open product group
+     ! Open product group to read main_data_quality flag
      call tiof_push_group(tio_l2obj, "product", errstat)
 
      ! Read main data quality flag
@@ -678,36 +640,81 @@ contains
      ! Get out of product group
      call tiof_pop_group (tio_l2obj, errstat)
 
-     !----------------------------------------------------------------
+     ! allocate tmp_dbl array 
+     allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
+     if (errstat /= 0) then
+          call tell_error (tell_runtime_error, "allocate tmp_dbl: failed in read_cldo4_tio", errstat)
+          return
+     endif
+
+     ! read information from support_data group
+     call tiof_push_group (tio_l2obj,"support_data", errstat)
+     if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "read_cldo4_tio: pushing support_data group failed", errstat)
+          return
+     endif
+
+     ! read fitted_slant_column
+     call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
+           tmp_dbl, errstat)
+     if (errstat /= 0) then
+          call tell_error (tell_runtime_error, "read_cldo4_tio: failed", errstat)
+          return
+     endif
      ! normalize scd by norm
      tmp_dbl = tmp_dbl/norm
      ! set values outside -10 to 10 to fFillValue=-1.2676506E30
      ! set mdqfl ne 0 to fFillValue
      where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. scd_mdqfl .ne. 0)
-     !     tmp_dbl = -1d30
            tmp_dbl = fFillValue
      end where
-
+     ! assign nasa_SlantColumnAmountO2O2
      nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
 
-     ! deallocate tmp_dbl array and mdqfl
+     ! read fitted SCD rms and SCD uncertainty
+     if (run_mode .NE. 'production') then
+         call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
+              [ntimes, nxtrack], tmp_dbl, errstat)
+         if (errstat /=0) then
+             call tell_error(tell_runtime_error,"read_cldo4_tio: failed scduncertainty", errstat)
+             return
+         endif
+         ! normalize scd uncertainty and assign nasa_scduncertainty
+         tmp_dbl = tmp_dbl/norm
+         where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. scd_mdqfl .ne. 0)
+               tmp_dbl = fFillValue
+         endwhere
+         nasa_scduncertainty = real(tmp_dbl,kind=4)
+     endif ! run_mode
+
+     ! deallocate tmp_dbl array
      deallocate(tmp_dbl)
+
+     ! Get out of support_data group
+     call tiof_pop_group(tio_l2obj, errstat)
+     if (errstat /= 0) then
+          call tell_error (tell_io_read_error, "read_cldo4_tio: surport_data failed", errstat)
+          return
+     endif
+
+     if (run_mode .NE. 'production') then
+        ! open qa_statistics group to read fit_rms_residual
+        call tiof_push_group(tio_l2obj, "qa_statistics", errstat)
+        call tiof_get2d_r4(tio_l2obj, "fit_rms_residual", [0,0], [ntimes, nXtrack], &
+              nasa_scdrms, errstat)
+         if (errstat /= 0) then 
+              call tell_error(tell_runtime_error,"read_cldo4_tio: failed scdrms", errstat) 
+              return
+         endif
+     endif ! run_mode
+         
+     ! Close level 2 file
+     call close_tio (tio_l2obj, errstat)
+
      if (errstat /= 0) then
        call tell_error (tell_io_read_error, "read_cldo4_tio: failed", errstat)
        return
      endif
-
-     !hqw debug
-     !write(*,*) 'writing debug_mdqfl.txt'
-     !open(unit=19, file = 'debug_mdqfl.txt')
-     !do ix = 1, nxtrack
-     !   write(19,*) scd_mdqfl(ix,30), nasa_SlantColumnAmountO2O2(ix,30)
-     !enddo
-     !close(19)
-
-     ! Close level 2 file
-     call close_tio (tio_l2obj, errstat)
-
    end subroutine read_cldo4_tio
 
   !> Use simple linear interpolation to find irrad at target wavelength
@@ -855,7 +862,8 @@ end subroutine read_cldo4_dims
   subroutine allocate_cldo4_vars (ntimes, nxtrack, errstat)
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
-                       scd_mdqfl
+                       scd_mdqfl,run_mode,&
+                       nasa_scdrms, nasa_scduncertainty
 
      implicit none
 
@@ -875,9 +883,14 @@ end subroutine read_cldo4_dims
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
 
      if (errstat /= 0) then
-       call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed", &
+       call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed at scd_msqfl", &
             errstat)
        return
+     endif
+
+     if (run_mode .NE. 'production') then
+         allocate (nasa_scdrms(nxtrack, ntimes),stat=errstat)
+         allocate (nasa_scduncertainty(nxtrack, ntimes),stat=errstat)
      endif
 
    end subroutine allocate_cldo4_vars

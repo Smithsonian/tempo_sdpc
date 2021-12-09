@@ -1,7 +1,7 @@
-!****************
+
 module m_read_DEM
 !****************
-
+!hqw this module is not actually needed by TEMPO
 use m_vars
 
 contains

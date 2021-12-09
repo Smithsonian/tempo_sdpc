@@ -51,7 +51,7 @@ contains
     tio_l2obj => primary_output_file
 
     ! Open the file
-    call tiof_open (outfile, tio_l2obj, nf90_write, errstat)
+    call tiof_open (trim(adjustl(outfile)), tio_l2obj, nf90_write, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
            "update_output_file_tio: opening file "//trim(outfile), &
@@ -183,7 +183,7 @@ contains
     call write_geo_struct (tio_l2obj, dimlist, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
-           "create_output_file: failed to write structures", &
+           "create_output_file: failed to write geolocation structures", &
            errstat)
       return
     endif
@@ -194,7 +194,7 @@ contains
          errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
-           "create_output_file: failed to write data", &
+           "create_output_file: failed to write geolocation data", &
            errstat)
       return
     endif
@@ -209,18 +209,16 @@ contains
                                dimids_xtrack_step(2), errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
-           "create_output_file: failed to write structures", &
+           "create_output_file: failed to write product structures", &
            errstat)
       return
     endif
 
     ! product data
     call write_product_data (tio_l2obj, nstep, nxtrack, errstat)
-    call copy_pixel_corners (l1_file, swathname, tio_l2obj, nstep, nxtrack, &
-         errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, &
-           "create_output_file: failed to write data", &
+           "create_output_file: failed to write product data", &
            errstat)
       return
     endif
@@ -230,7 +228,7 @@ contains
                               dimids_xtrack_step(2), errstat)
     if (errstat /= 0) then
        call tell_error (tell_io_write_error, &
-            "creat_output_file: failed to write structures", &
+            "creat_output_file: failed to write support structures", &
             errstat)
        return
     endif
@@ -239,7 +237,7 @@ contains
     call write_support_data(tio_l2obj, nstep, nxtrack, errstat)
     if (errstat /= 0) then
        call tell_error (tell_io_write_error, &
-            "create_output_file: filed to write data", &
+            "create_output_file: filed to write support data", &
             errstat)
        return
     endif
@@ -356,7 +354,7 @@ contains
                               "time", &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
-                              comment = "radiance exposure start time", &
+                              long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
                               valid_range = [0.0_r8, 1.0e30_r8], &
                               deflate_level = deflate_level, &
@@ -368,7 +366,7 @@ contains
                               "latitude", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "latitude at pixel center", &
+                              long_name = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -381,7 +379,7 @@ contains
                               "longitude", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "longitude at pixel center", &
+                              long_name= "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -414,7 +412,7 @@ contains
                               "solar_zenith_angle", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "solar zenith angle at pixel center", &
+                              long_name = "solar zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -425,7 +423,7 @@ contains
                               "solar_azimuth_angle", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "solar azimuth angle at pixel center", &
+                              long_name = "solar azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -436,7 +434,7 @@ contains
                               "viewing_zenith_angle", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "viewing zenith angle at pixel center", &
+                              long_name = "viewing zenith angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -447,7 +445,7 @@ contains
                               "viewing_azimuth_angle", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "viewing azimuth angle at pixel center", &
+                              long_name = "viewing azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -459,7 +457,7 @@ contains
                               "relative_azimuth_angle", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "relative azimuth angle at pixel center", &
+                              long_name = "relative azimuth angle at pixel center", &
                               units = "degrees", &
                               valid_range = [0.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -467,15 +465,6 @@ contains
                               shuffle = shuffle, &
                               attlist=att_geo)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              "terrain_height", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "terrain height", &
-                              units = "m", &
-                              valid_range = [-100.0_r8, 10000.0_r8], &
-                              fillvalue = fill_float, &
-                              attlist=att_geo)
 ! note that using a nf90_short causes the flags to be written out wrong
 ! should be nf90_ushort, but the fill value is unsupported...
 !    call tiof_varlist_append (varlist, errstat, &
@@ -517,7 +506,7 @@ contains
     use m_vars, only: rad_Latitude, rad_Longitude, rad_Time, &
          rad_SolarZenithAngle, rad_SolarAzimuthAngle, &
          rad_ViewingZenithAngle, rad_ViewingAzimuthAngle, &
-         out_RelativeAzimuthAngle, out_TerrainHeight!, &
+         out_RelativeAzimuthAngle !, out_TerrainHeight!, &
 !        rad_GroundPixelQualityFlags
 
     implicit none
@@ -558,9 +547,6 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
          [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
-
-    call tiof_put2d_r4 (tio_l2obj, "terrain_height", [0,0], &
-         [nstep, nxtrack], out_TerrainHeight, errstat)
 
 !    call tiof_put2d_ui4 (tio_l2obj, "ground_pixel_quality_flag", [0,0], &
 !         [nstep, nxtrack], rad_GroundPixelQualityFlags, errstat)
@@ -688,7 +674,7 @@ contains
                               "cloud_pressure", &
                               nf90_int, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "cloud pressure", &
+                              long_name = "cloud pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
                               fillvalue = fill_int, &
@@ -700,7 +686,7 @@ contains
                               "cloud_fraction", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "effective cloud fraction", &
+                              long_name = "effective cloud fraction at 466nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -712,7 +698,7 @@ contains
                               "CloudRadianceFraction466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "cloud radiance fraction at 466nm", &
+                              long_name = "cloud radiance fraction at 466nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -724,7 +710,7 @@ contains
                               "CloudRadianceFraction440", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "cloud radiance fraction at 440nm", &
+                              long_name = "cloud radiance fraction at 440nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -736,7 +722,7 @@ contains
                               "processing_quality_flag", &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "processing quality flags", &
+                              long_name = "processing quality flags", &
                               valid_range = [0.0_r8, 65535.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_product)
@@ -806,7 +792,7 @@ contains
   !>Write support structure into L2 netCDF file
   !----------------------------------------------------------------------------
   subroutine write_support_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
-    use m_vars, only: name_option_SurfaceReflectivity
+    use m_vars, only: name_option_SurfaceReflectivity,run_mode
     implicit none
 
     !input variables
@@ -836,17 +822,6 @@ contains
     call tiof_attlist_append (att_support, errstat, "coordinates", &
                               att_text = "longitude latitude")
 
-    call tiof_varlist_append (varlist, errstat, &
-                              "ReflectanceFactor466", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
-                              units = "no unit", &
-                              valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
 
      name466 = 'GLER466'
      name440 = 'GLER440'
@@ -859,7 +834,7 @@ contains
                               name466, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "466nm surface reflectivity used in calculation", &
+                              long_name = "466nm surface reflectivity used in calculation", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -871,7 +846,7 @@ contains
                               name440, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "440nm surface reflectivity used in calculation", &
+                              long_name = "440nm surface reflectivity used in calculation", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -883,7 +858,7 @@ contains
                               "SurfaceLER466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "LER at 466nm calculated at TerrainPressure", &
+                              long_name = "LER at 466nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -895,7 +870,7 @@ contains
                               "SurfaceLER440", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "LER at 440nm calculated at TerrainPressure", &
+                              long_name = "LER at 440nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -907,7 +882,7 @@ contains
                               "SceneLER466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "LER at 466nm calculated at ScenePressure", &
+                              long_name = "LER at 466nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -919,7 +894,7 @@ contains
                               "SceneLER440", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "LER at 440nm calculated at ScenePressure", &
+                              long_name = "LER at 440nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -931,7 +906,7 @@ contains
                               "ScenePressure", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "ScenePressure", &
+                              long_name = "scene pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.5e3_r8], &
                               fillvalue = fill_float, &
@@ -939,22 +914,12 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              "TerrainPressure", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "Pixel Surface Pressure", &
-                              units = "hPa", &
-                              valid_range = [0.0_r8, 1.5e3_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
-
+    if (run_mode .NE. 'production') then 
     call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnAmountO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "O2-O2 SCD used for cloud pressure", &
                               comment = "O2-O2 slant column at EffectiveTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
@@ -964,33 +929,10 @@ contains
                               attlist=att_support)
 
     call tiof_varlist_append (varlist, errstat, &
-                              "SlantColumnReferenceO2O2", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "O2-O2 slant column at 273K", &
-                              units = "1.e43 molec^2 cm^-5", &
-                              valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
-
-    call tiof_varlist_append (varlist, errstat, &
-                              "O2O2CloudTemperature", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              comment = "effective T for SlantColumnAmountO2O2", &
-                              units = "K", &
-                              valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
-
-    call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnSceneO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "O2-O2 SCD used for scene pressure", &
                               comment = "O2-O2 slant column at O2O2SceneTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
@@ -1003,9 +945,103 @@ contains
                               "SlantColumnTerrainO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              long_name = "O2-O2 SCD used for surface pressure", &
                               comment = "O2-O2 slant column at O2O2TerrainTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "ReflectanceFactor466", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
+                              units = "no unit", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "fitted_slant_column", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                          long_name = "fitted O2-O2 SCD at reference temperature" , &
+                              comment = "fitted O2-O2 slant column at 273K", &
+                              units = "1.e43 molec^2 cm^-5", &
+                              valid_range = [0.0_r8, 20.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+   
+    call tiof_varlist_append (varlist, errstat, &
+                              "fitted_slant_column_uncertainty", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                          long_name = "fitted reference O2-O2 SCD uncertainty" , &
+                              units = "1.e43 molec^2 cm^-5", &
+                              valid_range = [0.0_r8, 20.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+    
+    call tiof_varlist_append (varlist, errstat, &
+                              "fit_rms_residual", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                          long_name = "fitted reference O2-O2 SCD uncertainty" , &
+                              units = "unitless", &
+                              valid_range = [0.0_r8, 20.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+    
+    call tiof_varlist_append (varlist, errstat, &
+                              "surface_pressure", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "Pixel Surface Pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1.5e3_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "terrain_height", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "terrain height", &
+                              units = "m", &
+                              valid_range = [-100.0_r8, 10000.0_r8], &
+                              fillvalue = fill_float, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "snow_ice_fraction", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                  long_name = "Fraction of pixel area covered by snow and/or ice", &
+                              units = "unitless", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "O2O2CloudTemperature", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "effective T for SlantColumnAmountO2O2", &
+                              units = "K", &
+                              valid_range = [160.0_r8, 310.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1034,14 +1070,16 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               "SCD_MainDataQualityFlags", &
                               nf90_int, &
                               dimids = dimids_xtrack_step,  &
-                              comment = "main data quality flags for SlantColumnReferenceO2O2", &
-                              valid_range = [0.0_r8, 65535.0_r8], &
-                              fillvalue = fill_int, &
+                   long_name = "main data quality flags for fitted_slant_column", &
+                              comment = "0=normal, 1=suspicious, 2=bad", &
+                              valid_range = [0.0_r8, 2.0_r8], &
+                              fillvalue = -1.0_r8, &
                               attlist=att_support)
 
     call tiof_push_group (tio_l2obj, "support_data", errstat)
@@ -1065,13 +1103,14 @@ contains
      use m_vars, only: out_SlantColumnAmountO2O2, nasa_SlantColumnAmountO2O2,&
                out_ReflectanceFactor, out_O2O2CloudTemperature, out_TerrainPressure,&
                out_SurfaceReflectivity440, out_SurfaceReflectivity466,&
-               out_SurfaceLER440, out_SurfaceLER466,&
+               out_SurfaceLER440, out_SurfaceLER466, out_TerrainHeight,&
                out_SceneLer440, out_SceneLER466, out_ScenePressure,&
                out_SlantColumnSceneO2O2, out_O2O2SceneTemperature,&
                out_SlantColumnTerrainO2O2, out_O2O2TerrainTemperature,&
+               rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
                name_option_SurfaceReflectivity
 
-     use m_vars, only: scd_mdqfl
+     use m_vars, only: scd_mdqfl, run_mode
 
      implicit none
 
@@ -1098,9 +1137,6 @@ contains
 
     call tiof_push_group (tio_l2obj, "support_data", errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
-         [nstep, nxtrack], out_ReflectanceFactor, errstat)
-
     call tiof_put2d_r4 (tio_l2obj, name466, [0,0], &
          [nstep, nxtrack], out_SurfaceReflectivity466, errstat)
 
@@ -1122,29 +1158,46 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "ScenePressure", [0,0], &
          [nstep, nxtrack], out_ScenePressure, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
-         [nstep, nxtrack], out_TerrainPressure, errstat)
-
+    if (run_mode .NE. 'production') then
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
-
-    call tiof_put2d_r4 (tio_l2obj, "SlantColumnReferenceO2O2", [0,0], &
-         [nstep, nxtrack], nasa_SlantColumnAmountO2O2, errstat)
-
-    call tiof_put2d_r4 (tio_l2obj, "O2O2CloudTemperature", [0,0], &
-         [nstep, nxtrack], out_O2O2CloudTemperature, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnSceneO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnSceneO2O2, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "O2O2SceneTemperature", [0,0], &
-         [nstep, nxtrack], out_O2O2SceneTemperature, errstat)
-
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnTerrainO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnTerrainO2O2, errstat)
 
+    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
+         [nstep, nxtrack], out_ReflectanceFactor, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "surface_pressure", [0,0], &
+         [nstep, nxtrack], out_TerrainPressure, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "terrain_height", [0,0], &
+         [nstep, nxtrack], out_TerrainHeight, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "snow_ice_fraction", [0,0], &
+         [nstep, nxtrack], rad_SnowIceFraction, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "fitted_slant_column", [0,0], &
+         [nstep, nxtrack], nasa_SlantColumnAmountO2O2, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "fitted_slant_column_uncertainty", [0,0], &
+         [nstep, nxtrack], nasa_scduncertainty, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "fit_rms_residual", [0,0], &
+         [nstep, nxtrack], nasa_scdrms, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "O2O2CloudTemperature", [0,0], &
+         [nstep, nxtrack], out_O2O2CloudTemperature, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "O2O2SceneTemperature", [0,0], &
+         [nstep, nxtrack], out_O2O2SceneTemperature, errstat)
+
     call tiof_put2d_r4 (tio_l2obj, "O2O2TerrainTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2TerrainTemperature, errstat)
+    endif
 
     call tiof_put2d_i2 (tio_l2obj,"SCD_MainDataQualityFlags", [0,0], &
          [nstep, nxtrack], scd_mdqfl, errstat)

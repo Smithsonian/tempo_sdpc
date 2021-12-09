@@ -8,7 +8,7 @@ program OMCDO2N
   use m_vars
   use m_read_input_kleipool
   use m_read_GMI
-  use m_read_DEM
+!  use m_read_DEM
   use m_read_lut
   use m_read_hdf5
   use tell_module
@@ -91,8 +91,8 @@ program OMCDO2N
 
 !hqw TEMPO GLER is now handled by m_read_input_gler
 !explicit GLER fnm is no longer needed for TEMPO, but is needed for OMI
-  if((name_option_SurfaceReflectivity.eq.'BRDF').or. &
-       (name_option_TemperaturePressure.eq.'BDEM')) then
+  if((name_option_SurfaceReflectivity.eq.'BRDF')) then !.or. &
+    !   (name_option_TemperaturePressure.eq.'BDEM')) then
     status=GetConfigString("E","Input Files OMGLER",buf)
     if(status < 0) then
       call tell_error(tell_io_read_error,"Problem reading GLER from control file", errstat)
@@ -149,6 +149,14 @@ program OMCDO2N
   ! -------------------------------------------
   ! READ RUNTIME PARAMETERS from control.txt
   ! -------------------------------------------
+  status=GetConfigString("E","Runtime Parameters RunMode",buf)
+  if(status <0) then
+    call tell_error(tell_io_read_error,"Problem reading RunMode from control file", errstat)
+    call exit(-1)
+  endif
+  run_mode = trim(buf)
+  write(*,*)'run_mode=',trim(run_mode)
+
   status=GetConfigString("E","Runtime Parameters APPShortName",buf)
   if(status < 0) then
     call tell_error(tell_io_read_error,"Problem reading APPName from control file", errstat)
@@ -262,7 +270,7 @@ program OMCDO2N
   ! 2.3 T/P/Psfc from GMI
   ! ---------------------
   !hqw added the following for gmonth
-  !gmonth is used to decide filename for GMI, DEM, BDEM
+  !gmonth is used to decide filename for GMI
   gmonth = gmetadata%granule_month
   write(*,*) '   gmonth=',gmonth
   flush (output_unit)
@@ -284,32 +292,33 @@ program OMCDO2N
   endif
 
   !hqw do not use DEM for TEMPO without further development
-  if(name_option_TemperaturePressure.eq.'DEM') then
-    write(*,*)'      WARNING: DEM is not tested. DO NOT USE THIS!'
-    status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
-    name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-    id_gmi_tmp=ilun_gmi_tmp(gmonth)
-
-    call read_DEM_GMI_TMP(name_gmi_tmp)
-    logmsg='read_DEM_GMI_TMP'//TRIM(name_gmi_tmp)
-    call tell_log(0,logmsg)
-  endif
+  !if(name_option_TemperaturePressure.eq.'DEM') then
+  !  write(*,*)'      WARNING: DEM is not tested. DO NOT USE THIS!'
+  !  status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
+  !  name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
+  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
+  !
+  !  call read_DEM_GMI_TMP(name_gmi_tmp)
+  !  logmsg='read_DEM_GMI_TMP'//TRIM(name_gmi_tmp)
+  !  call tell_log(0,logmsg)
+  !endif
 
   !hqw do not use BDEM for TEMPO without further development
-  if(name_option_TemperaturePressure.eq.'BDEM') then
-    write(*,*)'     WARNING: BDEM is not tested. DO NOT USE THIS!'
-    status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
-    name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-    id_gmi_tmp=ilun_gmi_tmp(gmonth)
+  !if(name_option_TemperaturePressure.eq.'BDEM') then
+  !  write(*,*)'     WARNING: BDEM is not tested. DO NOT USE THIS!'
+  !  status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
+  !  name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
+  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
+  !
+  !  call read_DEM_GMI_TMP(name_gmi_tmp)
+  !
+  !  call read_BDEM_Psfc_h5
+  !  call tell_log(0,'Read DEM Psfc from GLER files')
+  !endif
 
-    call read_DEM_GMI_TMP(name_gmi_tmp)
-
-    call read_BDEM_Psfc_h5
-    call tell_log(0,'Read DEM Psfc from GLER files')
-  endif
   flush (output_unit)
 
-  !hqw TEMPO uses GEOS5 as the option for GEOS-CF
+  !hqw TEMPO operational uses GEOS5 as the option for GEOS-CF
   if(name_option_TemperaturePressure.eq.'GEOS5') then
   !T-P is not needed in cal_ecf, but surface pressure is needed
      call read_geoscf (errstat)
@@ -426,16 +435,18 @@ program OMCDO2N
   !===================
   ! 9. write outputs
   !===================
-  logmsg = 'All job done. Now writing output to '//trim(name_out_ncdf)
+  logmsg = 'All job done. Now writing '//trim(name_out_ncdf)
   call tell_log(0, logmsg)
 
   !E. O'Sullivan TEMPO-format OUTPUT - only structure & geolocation so far
   !hqw added other components
-  if (.true.) then
+  if (run_mode .EQ. 'production') then
     ! JCH: in this mode, we add variables to an existing output file
+    write(*,*) 'update file with output'
     call update_output_file_tio (name_out_ncdf, &
                                  rad_NumTimes, rad_nXtrack, errstat)
   else
+    write(*,*) 'create file for output'
     call create_output_file_tio (name_out_ncdf, &
                                  l1radfnm, swathname, &
                                  rad_NumTimes, rad_nXtrack, errstat)

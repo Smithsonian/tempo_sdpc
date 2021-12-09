@@ -14,7 +14,6 @@ subroutine cal_ecf
   real::temp_raa,temp_psfc,temp_rsfc
   real::rad466,rad477,rad440
   real(kind=4)::rout_ecf,rout_crf440,rout_crf466
-  real(kind=4)::special1
   integer::ialb, isza, ivza, iraa, ipsfc
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2
@@ -45,8 +44,6 @@ subroutine cal_ecf
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
-
-  special1 = fspecial + 1.
 
   nt=rad_NumTimes
   nx=rad_nXtrack
@@ -254,14 +251,14 @@ subroutine cal_ecf
       endif
 
       !hqw do not use BDEM without further development
-      if(name_option_TemperaturePressure.eq.'BDEM') then
-        psfc0=BDEM_TerrainPressure(ix,it)
-        l2_TerrainPressure(ix,it) = psfc0
-      endif
+      !if(name_option_TemperaturePressure.eq.'BDEM') then
+      !  psfc0=BDEM_TerrainPressure(ix,it)
+      !  l2_TerrainPressure(ix,it) = psfc0
+      !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         !hqw l2_TerrainPressure already assigned in read_geoscf
-        ! which has been called before this subroutine
+        ! which has been called before this subroutine, use it as psfc0
         psfc0=l2_TerrainPressure(ix,it)
       endif
 
@@ -515,6 +512,7 @@ subroutine cal_ecf
       ! clip cloud fraction
       !hqw added .gt. logic to differentiate skipped or bad calculation
       if((rout_ecf .lt. 0.) .and. (rout_ecf .gt. -0.2)) rout_ecf=0.
+      if(rout_ecf .gt. 1.) rout_ecf=1.
       if((rout_crf440 .lt. 0.).and.(rout_crf440 .gt. -0.2)) rout_crf440=0.
       if(rout_crf440 .gt. 1.) rout_crf440=1.
       if((rout_crf466 .lt. 0.).and.(rout_crf440 .gt. -0.2)) rout_crf466=0.

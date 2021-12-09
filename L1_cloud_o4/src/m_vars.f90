@@ -10,9 +10,16 @@ module m_vars
 ! REVISION HISTORY: 
 !
 !  04/23/15 Yang original fortran 90
+!  2021 Wang adaption to TEMPO
 !---------------------------------------------------------------------72
 
   implicit none
+
+!------------
+! misc
+!-----------
+! operation mode ='production' or 'development', set through control
+   character(len=255):: run_mode='development'
 
 !-------------
 ! allocatable
@@ -109,6 +116,7 @@ module m_vars
 ! name_PSFC=(/'055','065','076','089','104','121','142','166','194','227',&
 !             '265','308','357','411','472','541','617','701','795','899','1013','1050','1100'/) 
 
+!hqw these initialized names can be changed through control file
   character(len=255)::name_lut_dir='./refdata/'
   character(len=255)::name_lut_rad440='LUT_4400_RAD.h5'
   character(len=255)::name_lut_rad='LUT_4660_RAD.h5'
@@ -225,7 +233,7 @@ integer,dimension(12):: &
 !   SCD: KNMI vs. NASA 	!KNMI(OMCLDO2)   vs. NASA direct fit
 
 !  character(len=255)::name_option_SlantColumnDensity='KNMI'
-!hqw TEMPO always use NASA,change it to a parameter
+!hqw TEMPO always use NASA, thus changed to a parameter
   character(len=255), parameter::name_option_SlantColumnDensity='NASA'
 
 ! -----------------------------
@@ -406,6 +414,8 @@ integer,dimension(12):: &
   integer(kind=4)::nasa_NumTimes
   integer(kind=4)::nasa_nXtrack
   real(kind=4),dimension(:,:),pointer::nasa_SlantColumnAmountO2O2
+  real(kind=4),dimension(:,:),allocatable::nasa_scduncertainty
+  real(kind=4),dimension(:,:),allocatable::nasa_scdrms
   !hqw adds l2_TerrainPressure 
   real(kind=4),dimension(:,:),pointer::l2_TerrainPressure
   integer(kind=2), dimension(:,:),  pointer::scd_mdqfl
@@ -496,6 +506,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_SceneLER440
   real(kind=4),dimension(:,:),pointer::out_ScenePressure
   real(kind=4),dimension(:,:),pointer::out_ReflectanceFactor
+!hqw added temperature variables for SCD T correction
   real(kind=4),dimension(:,:),pointer::out_O2O2CloudTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2SceneTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2TerrainTemperature
