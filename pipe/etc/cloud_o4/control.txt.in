@@ -89,6 +89,7 @@ Name Options:
    - BRDF
 
 Runtime Parameters:
+    RunMode: production
     APPShortName: TEMPOCLDO4
     APPVersion: 1.0.0.0
     AuthorName: H. Wang, G. Gonzalez Abad, E. O'Sullivan, J. Houck, E.Yang, A. Vasilkov, X. Liu, K. Chance
