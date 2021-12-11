@@ -405,6 +405,9 @@ derive_cloud_o4_params()
 
    srun --ntasks=1 --output=log_cloud_o4.txt \
         L1_cloud_o4 $ctrl_file
+
+   ncks -x -v main_data_quality_flag $product_file ${product_file}.tmp
+   /bin/mv ${product_file}.tmp $product_file
 }
 
 run_cloud_o4()
