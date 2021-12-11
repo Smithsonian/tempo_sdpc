@@ -34,14 +34,22 @@ def get_product_table_names (cur):
     table_names = [item for t in cur.fetchall() for item in t]
     return table_names
 
-def table_files_matching_status (cur, table_name, asdc_status):
-    cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
+def table_files_matching_status (cur, table_name, asdc_status, limit=0):
+    if limit > 0:
+        nc_query  = "select path from {} where asdc_status == {} order by path limit {}".format(table_name, asdc_status, limit)
+        met_query = "select path from {} where asdc_status_met == {} order by path limit {}".format(table_name, asdc_status, limit)
+    else:
+        nc_query  = "select path from {} where asdc_status == {} order by path".format(table_name, asdc_status)
+        met_query = "select path from {} where asdc_status_met == {} order by path".format(table_name, asdc_status)
+
+    cur.execute (nc_query)
     nc_paths = [item for t in cur.fetchall() for item in t]
-    cur.execute ("select path from {} where asdc_status_met == {} order by path".format(table_name, asdc_status))
+    cur.execute (met_query)
     met_paths = [item + ".met" for t in cur.fetchall() for item in t]
+
     return sorted (nc_paths + met_paths)
 
-def files_matching_status (cur, asdc_status):
+def files_matching_status (cur, asdc_status, **kwargs):
     """
     Returns a dict type, e.g:
         list["RAD_L1"] = list of RAD_L1 files with the specified asdc_status
@@ -52,7 +60,7 @@ def files_matching_status (cur, asdc_status):
     for tbl in table_names:
         if tbl == "RAD_L1a":
             continue
-        paths[tbl] = table_files_matching_status (cur, tbl, asdc_status)
+        paths[tbl] = table_files_matching_status (cur, tbl, asdc_status, **kwargs)
 
     return paths
 
@@ -94,9 +102,9 @@ def count_files_matching_status (asdc_status):
         num_files += len(table_lists[table])
     print(num_files)
 
-def print_files_matching_status (asdc_status):
+def print_files_matching_status (asdc_status, **kwargs):
     with connect_database() as conn:
-        table_lists = files_matching_status (conn.cursor(), asdc_status)
+        table_lists = files_matching_status (conn.cursor(), asdc_status, **kwargs)
     for table in table_lists.keys():
         for f in table_lists[table]:
             print(f)
@@ -203,6 +211,8 @@ def main():
                         help="Count files matching status: {}".format(Asdc_Status))
     parser.add_argument('--list', metavar='STATUS', default=None,
                         help="List files matching status: {}".format(Asdc_Status))
+    parser.add_argument('--limit', metavar='LIMIT', default=0, type=int,
+                        help="Maximum number of query results to list from each database table")
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
@@ -220,7 +230,7 @@ def main():
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])
     elif args.list:
-        print_files_matching_status (Asdc_Status[args.list])
+        print_files_matching_status (Asdc_Status[args.list], limit=args.limit)
     elif args.set:
         set_file_status (args.set[0], args.set[1])
     elif args.pans:

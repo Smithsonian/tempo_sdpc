@@ -16,6 +16,10 @@ fi
 
 user_at_host=$1
 
+# Per-table limit on the number of results from database query
+# (limit<=0 means no limit)
+: "${SDPC_ASDC_LIMIT:=0}"
+
 PROGNAME="$(basename $0)"
 catch()
 {
@@ -39,7 +43,7 @@ do_asdc_upload()
   exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.csv"
 
   # make list of new data product files
-  asdc_track_uploads.py --list new > $file_list
+  asdc_track_uploads.py --limit $SDPC_ASDC_LIMIT --list new > $file_list
 
   # apply the upload filter
   if test -f "$exclude_list" ; then
