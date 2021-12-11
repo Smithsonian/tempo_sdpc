@@ -986,14 +986,14 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
    if (0 != TIO_inq_grp (ncid, "support_data", &grp_support))
      goto close_and_return;
 
-   if (-1 == TIO_inq_var (grp_support, "vertical_column_total", &vi))
-     goto close_and_return;
-
    if ((0 != tio_inq_varid (grp_support, "fitted_slant_column", &varid_slant_col))
        || (0 != TIO_get_att (grp_support, varid_slant_col, "units", TIO_CHAR, units_slant_col)))
      goto close_and_return;
 
    if (0 != TIO_inq_grp (ncid, "product", &grp_product))
+     goto close_and_return;
+
+   if (-1 == TIO_inq_var (grp_product, "vertical_column_total", &vi))
      goto close_and_return;
 
    if (0 != tio_inq_varid (grp_product, vtrop.name, &vtrop.varid))
