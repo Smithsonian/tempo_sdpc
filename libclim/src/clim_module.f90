@@ -1234,12 +1234,20 @@ contains
     lon0 = cct % lon(1)
     dlon = cct % lon(2) - lon0
     ilon0 = ceiling ((lon - lon0)/dlon)
-    if (ilon0 == 0) ilon0 = 1
+    if (ilon0 <= 0) then
+      ilon0 = 1
+    else if (ilon0 > cct % nlon) then
+      ilon0 = cct % nlon
+    endif
 
     lat0 = cct % lat(1)
     dlat = cct % lat(2) - lat0
     ilat0 = ceiling ((lat - lat0)/dlat)
-    if (ilat0 == 0) ilat0 = 1
+    if (ilat0 <= 0) then
+      ilat0 = 1
+    else if (ilat0 > cct % nlat) then
+      ilat0 = cct % nlat
+    endif
 
     cloud_pressure = (wt0 * cct % cloud_pressure (ilon0, ilat0, month0) &
                       + (1.0 - wt0) * cct % cloud_pressure (ilon0, ilat0, month1))
