@@ -5,6 +5,7 @@ module m_write_output_tio
   use netcdf, only: nf90_clobber, nf90_write, &
     nf90_double, nf90_float, nf90_short, nf90_uint, nf90_int
   use m_read_input_tio, only: open_tio, close_tio
+  use m_vars, only: iFillValue, fFillValue
 
   private write_coordinate_vars, write_geo_struct, write_geo_data, &
        copy_pixel_corners
@@ -18,8 +19,8 @@ module m_write_output_tio
 
   !fill values
   real (kind=8), private, parameter :: fill_bit = -128, &
-       fill_short = -32768, fill_int = fill_short, fill_float=-9999.0, &
-       fill_double = fill_float
+       fill_short = iFillValue, fill_int = iFillValue, fill_float = fFillValue, &
+       fill_double = fill_float, fill_float_nines = -9999.0
 
 contains
 
@@ -689,7 +690,7 @@ contains
                               long_name = "effective cloud fraction at 466nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -701,7 +702,7 @@ contains
                               long_name = "cloud radiance fraction at 466nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -713,7 +714,7 @@ contains
                               long_name = "cloud radiance fraction at 440nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)

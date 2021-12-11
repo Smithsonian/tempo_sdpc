@@ -511,8 +511,8 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_O2O2SceneTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2TerrainTemperature
 
-  real::fFillValue=-1.2676506E30
-  integer::iFillValue=-32767
+  real, parameter ::fFillValue=-1.2676506E30
+  integer, parameter ::iFillValue=-32767
 
 !-------------
 ! write gmeta 
