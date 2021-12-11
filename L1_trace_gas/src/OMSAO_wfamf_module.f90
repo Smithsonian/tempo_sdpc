@@ -918,7 +918,8 @@ CONTAINS
     !reset epoch if gems data is in use
     do ix=1,nx
        do it=0,nt-1
-          if (time(it) == r8_missval) cycle
+          ! Skip this pixel if time or geolocation information is not available
+          if (time(it) == r8_missval .or. btest(amfdiag(ix,it),yn_amf_cor)) cycle
           if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
              call tio_f_taix_time_to_utc_caldate (time(it)-tai93_offset, year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)

@@ -591,7 +591,7 @@ contains
   end subroutine append_diagnostic_vars
 
   subroutine append_column_vars (obj, dimlist, amf_wvl, errstat)
-    use OMSAO_indices_module, only : pge_no2_idx, pge_hcho_idx
+    use OMSAO_indices_module, only : pge_no2_idx, pge_hcho_idx, pge_o2o2_idx
     implicit none
 
     type (tiof_file_type), intent(inout) :: obj
@@ -601,12 +601,12 @@ contains
 
     type (tiof_varlist_type) :: varlist_geo, varlist_qa
     type (tiof_varlist_type), target :: varlist, varlist_supp
-    type (tiof_varlist_type), pointer :: varlist_with_vertical_column
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     type (tiof_attlist_type) :: att_main_dqf, att_convergence_flag
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
 
+    character (len=32) :: slant_column_units
     character (len=32) :: epoch_buf
 
     ! Define dimid arrays associated with common data field shapes.
@@ -645,17 +645,14 @@ contains
 
     if (target_molecule % pge_idx == pge_no2_idx) then
       ! For NO2, separate contributions from stratosphere/troposphere will be derived
-      ! in post-processing.  Preparing for that, vertical column goes to the "support data"
-      ! group, and post-processing will store troposphere_vertical_column in the product group.
-      ! For this reason, selected NO2 file variable names have the word "total".
-      varlist_with_vertical_column => varlist_supp
+      ! in post-processing. For this reason, selected NO2 file variable names have
+      ! the word "total".
       var_amf       = trim(tg_var_amf)//"_total"
       var_amf_error = trim(tg_var_amf)//"_total_uncertainty"
       var_vertical_column       = trim(tg_var_vertical_column)//"_total"
       var_vertical_column_error = trim(tg_var_vertical_column)//"_total_uncertainty"
     else
       ! For all other molecules, the vertical column goes to the "product" group.
-      varlist_with_vertical_column => varlist
       var_amf       =      tg_var_amf
       var_amf_error = trim(tg_var_amf)//"_uncertainty"
       var_vertical_column       =      tg_var_vertical_column
@@ -664,7 +661,7 @@ contains
 
     ! data field variables with optional attribute lists:
     if (amf_wvl > 0.0) then
-      call tiof_varlist_append (varlist_with_vertical_column, errstat, &
+      call tiof_varlist_append (varlist, errstat, &
                                 var_vertical_column, &
                                 nf90_double, &
                                 dimids = dimids_xtrack_step,  &
@@ -675,7 +672,7 @@ contains
                                 " and total AMF calculated from surface to top of atmosphere", &
                                 fillvalue = fill_double, &
                                 attlist=att_coord)
-      call tiof_varlist_append (varlist_with_vertical_column, errstat, &
+      call tiof_varlist_append (varlist, errstat, &
                                 var_vertical_column_error, &
                                 nf90_double, &
                                 dimids = dimids_xtrack_step,  &
@@ -826,12 +823,18 @@ contains
     call tiof_pop_group (obj, errstat)
     call tiof_varlist_free (varlist_geo)
 
+    if (target_molecule % pge_idx == pge_o2o2_idx) then
+      slant_column_units = "molec^2/cm^5"
+    else
+      slant_column_units = "molec/cm^2"
+    endif
+
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_fitted_slant_column, &
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" fitted slant column", &
-                              units = "molec/cm^2", &
+                              units = trim(slant_column_units), &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_supp, errstat, &
@@ -839,7 +842,7 @@ contains
                               nf90_double, &
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" fitted slant column uncertainty", &
-                              units = "molec/cm^2", &
+                              units = trim(slant_column_units), &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     if (.not.yn_gems) then
@@ -1436,7 +1439,6 @@ contains
                                    amf_corr_column, amf_corr_column_uncertainty, &
                                    yn_write_cloud_variables, crfrc, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
-    use OMSAO_indices_module, only : pge_no2_idx
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes
@@ -1497,14 +1499,7 @@ contains
 
     call tiof_pop_group (obj, errstat)
 
-    ! Separate NO2 contributions from stratosphere/troposphere will be derived in
-    ! post-processing, so the NO2 vertical column goes to the "support data" group.
-    ! For all other molecules, the vertical column goes to the "product" group.
-    if (target_molecule % pge_idx == pge_no2_idx) then
-      call tiof_push_group (obj, tg_grp_support_data, errstat)
-    else
-      call tiof_push_group (obj, tg_grp_product, errstat)
-    endif
+    call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_put2d_r8 (obj, var_vertical_column, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, var_vertical_column_error, [0,0], [ntimes,nxtrack], &
@@ -1754,7 +1749,8 @@ contains
     ! return errstat=0, corners_copied=.false.
     call tell_push_queue
     call tiof_get3d_r4 (l1b, tg_var_latitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
-                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat, &
+                        replace_fill=real(fill_float, kind=4))
     if (errstat /= 0) then
       call tell_pop_queue (1)
       errstat = 0
@@ -1773,7 +1769,8 @@ contains
     call tiof_put3d_r4 (obj, tg_var_latitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
                         tmp(1:4,1:nxtrack,1:ntimes), errstat)
     call tiof_get3d_r4 (l1b, tg_var_longitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
-                        tmp(1:4,1:nxtrack,1:ntimes), errstat)
+                        tmp(1:4,1:nxtrack,1:ntimes), errstat, &
+                        replace_fill=real(fill_float, kind=4))
     call tiof_put3d_r4 (obj, tg_var_longitude_bounds, [0,0,0], [ntimes, nxtrack, 4], &
                         tmp(1:4,1:nxtrack,1:ntimes), errstat)
 
