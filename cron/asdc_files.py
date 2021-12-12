@@ -106,8 +106,12 @@ def connect_database (db_path):
     #conn.set_trace_callback(print)
     return conn
 
-def files_matching_status1 (cur, table_name, asdc_status):
-    cur.execute ("select path from {} where asdc_status == {} order by path".format(table_name, asdc_status))
+def files_matching_status1 (cur, table_name, asdc_status, limit=0):
+    if limit > 0:
+        query = "select path from {} where asdc_status == {} order by path limit {}".format(table_name, asdc_status, limit)
+    else:
+        query = "select path from {} where asdc_status == {} order by path".format(table_name, asdc_status)
+    cur.execute (query)
     paths = [item for t in cur.fetchall() for item in t]
     return sorted (paths)
 
@@ -209,9 +213,9 @@ class Db_File_Type:
                 if status != 0:
                     eprint('Error processing file: {}'.format(fn))
 
-    def files_matching_status (self, asdc_status):
+    def files_matching_status (self, asdc_status, **kwargs):
         with connect_database (self.db_path) as conn:
-            file_list = files_matching_status1 (conn.cursor(), self.table_name, asdc_status)
+            file_list = files_matching_status1 (conn.cursor(), self.table_name, asdc_status, **kwargs)
         return file_list
 
     def set_file_status (self, status, file_list):
@@ -244,6 +248,8 @@ def main():
                         help="Count files matching status")
     parser.add_argument('--list', metavar='STATUS', default=None,
                         help="List files matching status:")
+    parser.add_argument('--limit', metavar='LIMIT', default=0, type=int,
+                        help="Maximum number of query results to list")
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
     parser.add_argument('--dryrun', action='store_true',
@@ -270,7 +276,7 @@ def main():
         file_list = db.files_matching_status (status_dict[args.num])
         print(len(file_list))
     elif args.list:
-        file_list = db.files_matching_status (status_dict[args.list])
+        file_list = db.files_matching_status (status_dict[args.list], limit=args.limit)
         for f in file_list:
             print(f)
     elif args.set:
