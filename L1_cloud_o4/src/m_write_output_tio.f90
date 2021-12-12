@@ -915,7 +915,21 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    if (run_mode .NE. 'production') then 
+    if (run_mode .EQ. 'production') then 
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "SurfacePressure", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "Pixel Surface Pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1.5e3_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    else 
     call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnAmountO2O2", &
                               nf90_float, &
@@ -1159,7 +1173,12 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "ScenePressure", [0,0], &
          [nstep, nxtrack], out_ScenePressure, errstat)
 
-    if (run_mode .NE. 'production') then
+    if (run_mode .EQ. 'production') then
+
+    call tiof_put2d_r4 (tio_l2obj, "SurfacePressure", [0,0], &
+         [nstep, nxtrack], out_TerrainPressure, errstat)
+
+    else
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
 
