@@ -40,7 +40,7 @@ subroutine cal_ecf
   real(kind=4), parameter:: fspecial = -9999. !make this a large negative value
 
   ! ------
-  ! define
+  ! initialization
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
@@ -48,8 +48,8 @@ subroutine cal_ecf
   nt=rad_NumTimes
   nx=rad_nXtrack
 
-  ! allocate dimensions & fill values for outputs
-  !hqw STDs are not calculated in OMCDO2N, thus disabled
+
+  ! allocate arrays & fill values with fspecial
 
   allocate(cal_rad_clr(nx,nt),stat=ierr)
   allocate(cal_rad_cld(nx,nt),stat=ierr)
@@ -58,7 +58,7 @@ subroutine cal_ecf
   allocate(rad_of_irr440(nx,nt),stat=ierr)
   allocate(rad_of_irr466(nx,nt),stat=ierr)
   allocate(rad_of_irr477(nx,nt),stat=ierr)
-!hqw added initialization for the above
+
   cal_rad_clr=fspecial
   cal_rad_cld=fspecial
   cal_rad_cld440=fspecial
@@ -66,6 +66,7 @@ subroutine cal_ecf
   rad_of_irr466=fspecial
   rad_of_irr477=fspecial
 
+!  hqw STDs are not calculated in OMCDO2N, thus disabled
   allocate(out_EffectiveCloudFraction(nx,nt),stat=ierr)
   allocate(out_EffectiveCloudFractionNotClipped(nx,nt),stat=ierr)
 !  allocate(out_EffectiveCloudFractionSTD(nx,nt),stat=ierr)
@@ -115,7 +116,8 @@ subroutine cal_ecf
 
       pflag00=0
       pflag01=0
-      if((rad_Latitude(ix,it) .lt. -90.) .or. (rad_Latitude(ix,it) .gt. 90.)) then
+      if((rad_Latitude(ix,it) .lt. -90.) .or. (rad_Latitude(ix,it) .gt. 90.) .or. &
+        (rad_Longitude(ix,it) .lt. -180.) .or. (rad_Longitude(ix,it) .gt. 180.)) then
         pflag00=pflag00+1
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
       endif
@@ -165,17 +167,13 @@ subroutine cal_ecf
        temp_psfc = 1000.
        temp_rsfc = 0.03
 
-      ! radiance unavailable at 440 or 466, set out_ProcessingQualityFalgs bit 7
+      ! radiance unavailable at 440 or 466, set out_ProcessingQualityFlags bit 7
       if((rad440 .le. 0.) .or. (rad466 .le. 0.)) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
         go to 990
       endif
 
       !hqw izoom=0 for TEMPO in m_vars.f90 as a parameter
-      !rad_of_irr466(ix,it)=rad466/irr_out_irradiance_466nm(ix+izoom)*(rad_EarthSunDist/irr_EarthSunDist)**2
-      !rad_of_irr440(ix,it)=rad440/irr_out_irradiance_440nm(ix+izoom)*(rad_EarthSunDist/irr_EarthSunDist)**2
-      !hqw removed izoom to declutter
-      !hqw added safeguard condition
       if (irr_out_irradiance_466nm(ix) .gt. 0.) then
          rad_of_irr466(ix,it)=rad466/irr_out_irradiance_466nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
@@ -191,7 +189,7 @@ subroutine cal_ecf
       endif
       if (rad_of_irr440(ix,it) .lt. 0.) go to 990
 
-      !hqw 477 is currently not used in cloud fraction calculation
+      !hqw 477nm is currently not used in cloud fraction calculation
       ! thus even if rad_of_irr477< 0., still do the rest of the calculation
       if (rad477 .gt. 0.) then
          rad_of_irr477(ix,it)=rad477/irr_out_irradiance_477nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
@@ -207,7 +205,7 @@ subroutine cal_ecf
       !      and RAA needs to be within [0.,180] for use with LUT
       !also consult E.Yang's slides for definition of RAA
       if (raa0 .lt. 0.) raa0 = - raa0
-      !hqw added the line above to make sure raa0>0.
+      !hqw added the line above to make sure raa0>0. because of LUT RAA range
       !though this may be redundant as temp_raa should be within [0..,360.)
       if (raa0 .gt. 180.) raa0=360.-raa0
       out_RelativeAzimuthAngle(ix,it)=raa0
@@ -218,16 +216,13 @@ subroutine cal_ecf
 
       !----------------
       !get actual psfc0
+      !out-of-range rad_Longitude should have been skipped
       if(name_option_TemperaturePressure.eq.'GMI') then
         gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
-        gmi_wx1=rad_Longitude(ix,it)-gmi_lon(gmi_ix1)
-        gmi_wx2=gmi_lon(gmi_ix2)-rad_Longitude(ix,it)
 
         gmi_iy1=floor(rad_Latitude(ix,it)+90.)+1
         gmi_iy2=gmi_iy1+1
-        gmi_wy1=rad_Latitude(ix,it)-gmi_lat(gmi_iy1)
-        gmi_wy2=gmi_lat(gmi_iy2)-rad_Latitude(ix,it)
 
         if(gmi_ix1.lt.1) gmi_ix1=1
         if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
@@ -238,6 +233,11 @@ subroutine cal_ecf
         if(gmi_iy2.lt.1) gmi_iy2=1
         if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
 
+        gmi_wx1=rad_Longitude(ix,it)-gmi_lon(gmi_ix1)
+        gmi_wx2=gmi_lon(gmi_ix2)-rad_Longitude(ix,it)
+        gmi_wy1=rad_Latitude(ix,it)-gmi_lat(gmi_iy1)
+        gmi_wy2=gmi_lat(gmi_iy2)-rad_Latitude(ix,it)
+
         pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
         pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
         pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
@@ -245,6 +245,7 @@ subroutine cal_ecf
         pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
         pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
         gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
         psfc0=gmi_psfc
         !hqw assign l2_TerrainPressure for GMI here
         l2_TerrainPressure(ix,it) = psfc0
@@ -286,10 +287,24 @@ subroutine cal_ecf
       if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) go to 990
       if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
       if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
-
+ 
       !-------------------
       ! interpolation prep for alb/sza/vza/raa/psfc
+
+      ! initialize local weight for interpolation
+      walb1 = fspecial
+      walb2 = fspecial
+      wsza1 = fspecial
+      wsza2 = fspecial
+      wvza1 = fspecial
+      wvza2 = fspecial
+      wraa1 = fspecial
+      wraa2 = fspecial
+      wpsfc1 = fspecial
+      wpsfc2 = fspecial
+ 
       ! if interpolation nodes cannot be found skip calculation
+      ! find nodes for alb0
       ialb1=-9; ialb2=-9
       do ialb=1,nalb-1
         if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
@@ -299,8 +314,10 @@ subroutine cal_ecf
           walb2=lut_alb(ialb+1)-alb0
         endif
       end do
-      if (ialb1 .lt. 0) go to 990
+      if ((ialb1 .lt. 0) .or. (ialb2 .lt. 0) .or. (walb1 .lt. 0.) &
+          .or. (walb2 .lt. 0.)) go to 990
 
+      ! find nodes for sza0
       isza1=-9; isza2=-9
       do isza=1,nsza-1
         if((sza0 .ge. lut_sza(isza)) .and. (sza0 .le. lut_sza(isza+1))) then
@@ -310,8 +327,10 @@ subroutine cal_ecf
           wsza2=lut_sza(isza+1)-sza0
         endif
       end do
-      if (isza1 .lt. 0) go to 990
+      if ((isza1 .lt. 0) .or. (isza2 .lt. 0) .or. (wsza1 .lt. 0.) &
+          .or. (wsza2 .lt. 0)) go to 990
 
+      ! find nodes for vza0
       ivza1=-9; ivza2=-9
       do ivza=1,nvza-1
         if((vza0 .ge. lut_vza(ivza)) .and. (vza0 .le. lut_vza(ivza+1))) then
@@ -321,8 +340,10 @@ subroutine cal_ecf
           wvza2=lut_vza(ivza+1)-vza0
         endif
       end do
-      if (ivza1 .lt. 0) go to 990
+      if ((ivza1 .lt. 0) .or. (ivza2 .lt. 0) .or. (wvza1 .lt. 0.) &
+          .or. (wvza2 .lt. 0.)) go to 990
 
+      ! find nodes for raa0
       iraa1=-9; iraa2=-9
       do iraa=1,nraa-1
         if((raa0 .ge. lut_raa(iraa)) .and. (raa0 .le. lut_raa(iraa+1))) then
@@ -332,26 +353,29 @@ subroutine cal_ecf
           wraa2=lut_raa(iraa+1)-raa0
         endif
       end do
-      if (iraa1 .lt. 0) go to 990
+      if ((iraa1 .lt. 0) .or. (iraa2 .lt. 0) .or. (wraa1 .lt. 0.) &
+           .or. (wraa2 .lt. 0.)) go to 990
 
+      !find nodes for psfc0
       !bound psfc by the largest lut_psfc
       if (psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
       ipsfc1=-9; ipsfc2=-9
       do ipsfc=1,npsfc-1
-        if((psfc0 .gt. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
+        if((psfc0 .ge. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
           ipsfc1=ipsfc
           ipsfc2=ipsfc+1
           wpsfc1=psfc0-lut_psfc(ipsfc)
           wpsfc2=lut_psfc(ipsfc+1)-psfc0
         endif
       end do
-      if (ipsfc1 .lt. 0) then
+      if ((ipsfc1 .lt. 0) .or. (ipsfc2 .lt. 0)) then
         write(*,*) " *** Surface Pressure too small *** ",ix,it
         go to 990
       endif
+      if ((wpsfc1 .lt. 0.) .or. (wpsfc2 .lt. 0.)) go to 990
 
       !-------------
-      ! get LUT values at interp nodes
+      ! get LUT values at interpolation nodes
       !-------------
       !------------------------------
       !radiance at surface: clear sky
@@ -439,7 +463,7 @@ subroutine cal_ecf
       !radiance at 700 hPa: cloudy sky
       !hqw in LUT_4660_RAD.h5, ALB(18)=0.8, Psfc(18)=701hPa
       !--------------------------------
-      ialb= LUT466rad_cloud_albid !hqw remove hardcoded 18
+      ialb= LUT466rad_cloud_albid !hqw remove hardcoded index 18
       ipsfc= LUT466rad_cloud_psfcid !18
 
       r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
@@ -510,13 +534,16 @@ subroutine cal_ecf
       out_CloudRadianceFractionNotClipped466(ix,it)= rout_crf466
 
       ! clip cloud fraction
-      !hqw added .gt. logic to differentiate skipped or bad calculation
-      if((rout_ecf .lt. 0.) .and. (rout_ecf .gt. -0.2)) rout_ecf=0.
-      if(rout_ecf .gt. 1.) rout_ecf=1.
-      if((rout_crf440 .lt. 0.).and.(rout_crf440 .gt. -0.2)) rout_crf440=0.
-      if(rout_crf440 .gt. 1.) rout_crf440=1.
-      if((rout_crf466 .lt. 0.).and.(rout_crf440 .gt. -0.2)) rout_crf466=0.
-      if(rout_crf466 .gt. 1.) rout_crf466=1.
+      !hqw added logic to differentiate skipped or bad calculation
+      if((rout_ecf .lt. 0.) .and. (rout_ecf .ge. -0.2)) rout_ecf=0.
+      if((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) rout_ecf=1.
+      if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) rout_ecf=fspecial 
+      if((rout_crf440 .lt. 0.).and.(rout_crf440 .ge. -0.2)) rout_crf440=0.
+      if((rout_crf440 .gt. 1.).and.(rout_crf440 .le. 1.2)) rout_crf440=1.
+      if((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) rout_crf440=fspecial
+      if((rout_crf466 .lt. 0.).and.(rout_crf466 .ge. -0.2)) rout_crf466=0.
+      if((rout_crf466 .gt. 1.).and.(rout_crf466 .le. 1.2)) rout_crf466=1.
+      if((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) rout_crf466=fspecial
 
       out_EffectiveCloudFraction(ix,it)=rout_ecf
       out_CloudRadianceFraction440(ix,it)=rout_crf440
@@ -524,8 +551,6 @@ subroutine cal_ecf
 
       !hqw out_Reflectance is equivalent to observed Lambertian reflectance at 466
       out_ReflectanceFactor(ix,it)=pi*rad_of_irr466(ix,it)/cos(dtor*sza0)
-      if(out_ReflectanceFactor(ix,it).ge.1.0) out_ReflectanceFactor(ix,it)=1.0
-      if(out_ReflectanceFactor(ix,it).le.0.0) out_ReflectanceFactor(ix,it)=0.0
       if(rad_of_irr466(ix,it).le.0.0) out_ReflectanceFactor(ix,it)=fFillValue
 
 990   continue
