@@ -76,8 +76,14 @@ subroutine cal_ecf
   allocate(out_CloudRadianceFraction466(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFractionNotClipped466(nx,nt),stat=ierr)
 !  allocate(out_CloudRadianceFractionSTD466(nx,nt),stat=ierr)
-  allocate(out_RelativeAzimuthAngle(nx,nt),stat=ierr)
+
   allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
+  out_ReflectanceFactor=fspecial
+
+! hqw out_RelativeAzimuthAngle is now allocated and read and adjusted
+!  in m_read_input_tio which is called before this module
+!  allocate(out_RelativeAzimuthAngle(nx,nt),stat=ierr)
+!  out_RelativeAzimuthAngle=fspecial
 
   out_EffectiveCloudFraction=fspecial
   out_EffectiveCloudFractionNotClipped=fspecial
@@ -88,9 +94,6 @@ subroutine cal_ecf
   out_CloudRadianceFraction466=fspecial
   out_CloudRadianceFractionNotClipped466=fspecial
 !  out_CloudRadianceFractionSTD466=int(iFillValue, kind=2)
-
-  out_RelativeAzimuthAngle=fspecial
-  out_ReflectanceFactor=fspecial
 
   !hqw moved GMI lat/lon to read_GMI_TMP and read_DEM_GMI_TMP
   !-----------------
@@ -132,25 +135,26 @@ subroutine cal_ecf
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),1)
       endif
 
-      if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
-           (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
-      !hqw RAA = SAA - VAA + PI, Why +PI?
-      !xliu: this is related to how the SAA and VAA are fined
-      !      RAA of forward scattering = 0, RAA of backward scattering = 180.
-      !also see Eun-su Yang email slide for explanation
-        temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
-        ! ensure temp_raa is within [0., 360.) range
-        do while((temp_raa .lt. 0.0) .or. (temp_raa .ge. 360.0))
-          if(temp_raa .ge. 360.0) temp_raa=temp_raa-360.
-          if(temp_raa .lt. 0.0) temp_raa=temp_raa+360.
-        end do
-      else
-        temp_raa= fspecial
-        pflag01 = pflag01 + 1
-        ! temp_raa = -9999. will be skipped in calculation
-      endif
+!hqw out_RelativeAzimuthAngle is now taken care of within m_read_input_tio
+!      if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
+!           (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
+!      !hqw RAA = SAA - VAA + PI, Why +PI?
+!      !xliu: this is related to how the SAA and VAA are fined
+!      !      RAA of forward scattering = 0, RAA of backward scattering = 180.
+!      !also see Eun-su Yang email slide for explanation
+!        temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
+!        ! ensure temp_raa is within [0., 360.) range
+!        do while((temp_raa .lt. 0.0) .or. (temp_raa .ge. 360.0))
+!          if(temp_raa .ge. 360.0) temp_raa=temp_raa-360.
+!          if(temp_raa .lt. 0.0) temp_raa=temp_raa+360.
+!        end do
+!      else
+!        temp_raa= fspecial
+!        pflag01 = pflag01 + 1
+!        ! temp_raa = -9999. will be skipped in calculation
+!      endif
 
-      !hqw skip calculation if lat//angles are invalid
+      !hqw skip calculation if latlon//angles are invalid
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990
 
       ! get local radiances
@@ -199,16 +203,18 @@ subroutine cal_ecf
 
       sza0=rad_SolarZenithAngle(ix,it)
       vza0=rad_ViewingZenithAngle(ix,it)
-      raa0=temp_raa
-      !hqw Why 360.-raa?
-      !xliu: +raa has the same effect as -raa,
-      !      and RAA needs to be within [0.,180] for use with LUT
-      !also consult E.Yang's slides for definition of RAA
-      if (raa0 .lt. 0.) raa0 = - raa0
-      !hqw added the line above to make sure raa0>0. because of LUT RAA range
-      !though this may be redundant as temp_raa should be within [0..,360.)
-      if (raa0 .gt. 180.) raa0=360.-raa0
-      out_RelativeAzimuthAngle(ix,it)=raa0
+      raa0 = out_RelativeAzimuthAngle(ix,it) 
+! hqw now use the out_RelativeAzimuthAngle from m_read_input_tio
+!      raa0=temp_raa
+!      !hqw Why 360.-raa?
+!      !xliu: +raa has the same effect as -raa,
+!      !      and RAA needs to be within [0.,180] for use with LUT
+!      !also consult E.Yang's slides for definition of RAA
+!      if (raa0 .lt. 0.) raa0 = - raa0
+!      !hqw added the line above to make sure raa0>0. because of LUT RAA range
+!      !though this may be redundant as temp_raa should be within [0..,360.)
+!      if (raa0 .gt. 180.) raa0=360.-raa0
+!      out_RelativeAzimuthAngle(ix,it)=raa0
 
       !initialize alb0 and psfc0 to temporary value
       alb0=temp_rsfc

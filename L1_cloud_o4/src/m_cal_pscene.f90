@@ -19,7 +19,7 @@ subroutine cal_pscene
   real::   walb1,wsza1,wvza1,wraa1,wpsfc1,vpsfc1!,apsfc1,vcd1,tvcd1,wrsfc1
   real::   walb2,wsza2,wvza2,wraa2,wpsfc2,vpsfc2!,apsfc2,vcd2,tvcd2,wrsfc2
   real::yy1,yy2,ww1,ww2,rr1,rr2,wr1,wr2!,xxx,yyy,xx1,xx2,
-  real(kind=8)::cpp, aaa
+  real(kind=4)::cpp, aaa, temp_cpp
   integer(kind=4)::iflag
   integer(kind=4)::ierr!,status
   integer(kind=4)::nt,nx!nw,nwc
@@ -45,7 +45,7 @@ subroutine cal_pscene
   real::SceneLER440,SceneLER466
   real::SceneCPP
   real::scdm!,omi_amf,vsfc0,cal_vcd
-  real::scdmorg, scdadj, temp_cpp, t8p, temp_t8p, delta_temp !hqw addition
+  real::scdmorg, scdadj, t8p, temp_t8p, delta_temp !hqw addition
   real(kind=8),dimension(nalb)::temp_ler_alb466,temp_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_alb466,lev_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_amf

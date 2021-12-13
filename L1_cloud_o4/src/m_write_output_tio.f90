@@ -505,9 +505,13 @@ contains
   !-----------------------------------------------------------------------
   subroutine write_geo_data(tio_l2obj, nstep, nxtrack, errstat)
     use m_vars, only: rad_Latitude, rad_Longitude, rad_Time, &
-         rad_SolarZenithAngle, rad_SolarAzimuthAngle, &
-         rad_ViewingZenithAngle, rad_ViewingAzimuthAngle, &
-         out_RelativeAzimuthAngle !, out_TerrainHeight!, &
+         rad_SolarZenithAngle, &
+         rad_SolarAzimuthAngle, &
+         rad_ViewingZenithAngle, &
+         rad_ViewingAzimuthAngle, &
+         rad_RelativeAzimuthAngle !, &
+!         out_RelativeAzimuthAngle !,&
+!         out_TerrainHeight!, &
 !        rad_GroundPixelQualityFlags
 
     implicit none
@@ -547,7 +551,7 @@ contains
          [nstep, nxtrack], rad_ViewingAzimuthAngle, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
-         [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
+         [nstep, nxtrack], rad_RelativeAzimuthAngle, errstat)
 
 !    call tiof_put2d_ui4 (tio_l2obj, "ground_pixel_quality_flag", [0,0], &
 !         [nstep, nxtrack], rad_GroundPixelQualityFlags, errstat)
@@ -1085,6 +1089,18 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "RelativeAzimuthAngle", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              comment = "RAA used in calculation", &
+                              units = "degree", &
+                              valid_range = [0._r8, 180.0_r8], &
+                              fillvalue = -9999._r8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
     endif
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1123,7 +1139,7 @@ contains
                out_SlantColumnSceneO2O2, out_O2O2SceneTemperature,&
                out_SlantColumnTerrainO2O2, out_O2O2TerrainTemperature,&
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
-               name_option_SurfaceReflectivity
+               name_option_SurfaceReflectivity, out_RelativeAzimuthAngle
 
      use m_vars, only: scd_mdqfl, run_mode
 
@@ -1217,10 +1233,14 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "O2O2TerrainTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2TerrainTemperature, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "RelativeAzimuthAngle", [0,0], &
+         [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
     endif
 
     call tiof_put2d_i2 (tio_l2obj,"SCD_MainDataQualityFlags", [0,0], &
          [nstep, nxtrack], scd_mdqfl, errstat)
+
 
     call tiof_pop_group(tio_l2obj, errstat)
 

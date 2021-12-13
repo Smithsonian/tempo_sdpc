@@ -14,14 +14,14 @@ contains
 
    real(kind=4), dimension(gmi_np+1), intent(in) :: pp
    real(kind=4), dimension(gmi_np), intent(in) :: tt
-   real, intent(in) :: cpp ! pressure to output t8p
+   real(kind=4), intent(in) :: cpp ! pressure to output t8p
    real, intent(in) :: scdm ! 273K reference scd
    real, intent(out) ::scdadj, t8p ! adjusted SCD, T at cpp
 
    !local variables
    integer(kind=4):: kk, kkfound
-   real :: ptop, pbot, wtop, wbot, ttop, tbot, ppmax
-   real :: y1, y2, w1,w2
+   real(kind=4) :: ptop, pbot, wtop, wbot, ttop, tbot, ppmax
+   real(kind=4) :: y1, y2, w1,w2
 
    t8p = -999.
    ptop = -999.

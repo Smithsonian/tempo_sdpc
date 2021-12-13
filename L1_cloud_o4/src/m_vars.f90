@@ -74,6 +74,7 @@ module m_vars
   real(kind=4),   dimension(:,:),  pointer::rad_SolarAzimuthAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingZenithAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingAzimuthAngle
+  real(kind=4),   dimension(:,:),  pointer::rad_RelativeAzimuthAngle
 !hqw to save memory, use out_TerrainHeight in reading for each option
 !  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice

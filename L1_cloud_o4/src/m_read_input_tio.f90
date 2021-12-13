@@ -326,8 +326,8 @@ contains
   subroutine read_rad_tio (l1_file, swathname, errstat)
 
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
-         rad_SolarZenithAngle, rad_SolarAzimuthAngle, rad_ViewingZenithAngle, &
-         rad_ViewingAzimuthAngle, &
+         rad_SolarZenithAngle, rad_ViewingZenithAngle, &
+         rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
          out_TerrainHeight, &
          !rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
@@ -352,7 +352,6 @@ contains
     real(kind=4) :: rad466, rad477, rad440
     real(kind=4) :: ww1, ww2, dww, yy1, yy2
 
-    !real (kind=4), parameter :: r4_missval=-1.0e+30
     real (kind=8), parameter :: r8_missval=-1.0d+30
 
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
@@ -397,12 +396,13 @@ contains
          rad_Latitude, errstat)
     call tiof_get2d_r4 (tio_l1obj, "solar_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_SolarZenithAngle, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
-         [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingZenithAngle, errstat)
+    call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
+         [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingAzimuthAngle, errstat)
+
     !hqw added rad_SnowIceFraction
     call tiof_get2d_r4 (tio_l1obj, "snow_ice_fraction", [0,0], &
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
@@ -589,6 +589,7 @@ contains
      use m_vars, only: nasa_SlantColumnAmountO2O2, fFillValue
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
+     use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
 
      implicit none
 
@@ -600,11 +601,15 @@ contains
 
      !local variables
      type(tiof_file_type) :: tio_l2obj
-     integer (kind=4) :: ntimes, nxtrack!, ix
+     integer (kind=4) :: ntimes, nxtrack, ix, it
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
      real (kind=8), parameter :: norm = 1.0d43
 
+     real(kind=4):: tmp_raa, temp_raa, fspecial
+
      if (errstat /= 0) return
+
+     fspecial = -9999.
 
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)
@@ -647,7 +652,7 @@ contains
           return
      endif
 
-     ! read information from support_data group
+     ! open support_data group to read SCD
      call tiof_push_group (tio_l2obj,"support_data", errstat)
      if (errstat /= 0) then
           call tell_error (tell_io_read_error, "read_cldo4_tio: pushing support_data group failed", errstat)
@@ -697,6 +702,15 @@ contains
           return
      endif
 
+    !hqw now read rad_RelativeAzimuthAngle here
+    ! open geolocation group to read angle
+    call tiof_push_group(tio_l2obj,"geolocation", errstat)
+
+    call tiof_get2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
+         [ntimes, nxtrack], rad_RelativeAzimuthAngle, errstat)
+
+    call tiof_pop_group(tio_l2obj, errstat)
+
      if (run_mode .NE. 'production') then
         ! open qa_statistics group to read fit_rms_residual
         call tiof_push_group(tio_l2obj, "qa_statistics", errstat)
@@ -707,7 +721,7 @@ contains
               return
          endif
      endif ! run_mode
-         
+
      ! Close level 2 file
      call close_tio (tio_l2obj, errstat)
 
@@ -715,6 +729,34 @@ contains
        call tell_error (tell_io_read_error, "read_cldo4_tio: failed", errstat)
        return
      endif
+ 
+    ! rad_RelativeAzimuthAngle -> out_RelativeAzimuthAngle 
+    ! so that RAA is within [0.,180) range for valid pixels
+    ! to be consistent with LUT RAA range
+    do it = 1, ntimes
+      do ix = 1, nxtrack
+         tmp_raa = rad_RelativeAzimuthAngle(ix,it)
+         ! bad value above should be a large negative fill value
+         if ((tmp_raa .lt. -360.)) then
+             out_RelativeAzimuthAngle(ix,it) = fspecial
+         else
+             ! correct to [0., 360.) range first
+             temp_raa = tmp_raa
+             do while(temp_raa .lt. 0.)
+                temp_raa = temp_raa + 360.
+             end do
+             do while(temp_raa .ge. 360.)
+                temp_raa = temp_raa - 360.
+             end do
+             
+             ! change to [0.,180.] range, using symmetry
+             if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
+    
+             out_RelativeAzimuthAngle(ix,it) = temp_raa
+         endif
+      end do
+    end do
+    
    end subroutine read_cldo4_tio
 
   !> Use simple linear interpolation to find irrad at target wavelength
@@ -772,8 +814,9 @@ contains
   subroutine allocate_rad_vars (ntimes, nxtrack, nwavel, errstat)
 
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
-         rad_SolarZenithAngle, rad_SolarAzimuthAngle, rad_ViewingZenithAngle, &
-         rad_ViewingAzimuthAngle, out_TerrainHeight, rad_SnowIceFraction,&
+         rad_SolarZenithAngle, rad_ViewingZenithAngle, &
+         rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
+         out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm,out_ProcessingQualityFlags
 !         rad_GroundPixelQualityFlags, rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
@@ -784,15 +827,18 @@ contains
     integer (kind=4), intent(in) :: ntimes, nxtrack, nwavel
     !output variables
     integer (kind=4), intent(inout) :: errstat
+    real(kind=4) :: fspecial
 
     if (errstat /= 0) return
+
+    fspecial = -9999.
 
     allocate (rad_Time(ntimes), &
          rad_Latitude(nxtrack, ntimes), &
          rad_Longitude(nxtrack, ntimes), &
          rad_SolarZenithAngle(nxtrack, ntimes), &
-         rad_SolarAzimuthAngle(nxtrack, ntimes), &
          rad_ViewingZenithAngle(nxtrack, ntimes), &
+         rad_SolarAzimuthAngle(nxtrack, ntimes), &
          rad_ViewingAzimuthAngle(nxtrack, ntimes), &
          out_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
@@ -811,6 +857,9 @@ contains
            errstat)
       return
     endif
+
+    ! initizlize
+    out_ProcessingQualityFlags = 0
 
   end subroutine allocate_rad_vars
 
@@ -863,7 +912,8 @@ end subroutine read_cldo4_dims
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
                        scd_mdqfl,run_mode,&
-                       nasa_scdrms, nasa_scduncertainty
+                       nasa_scdrms, nasa_scduncertainty,&
+                    rad_RelativeAzimuthAngle,out_RelativeAzimuthAngle
 
      implicit none
 
@@ -879,6 +929,9 @@ end subroutine read_cldo4_dims
 
      allocate (l2_TerrainPressure(nxtrack, ntimes), &
           stat = errstat)
+ 
+     allocate (rad_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
+     allocate (out_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
 
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
 
