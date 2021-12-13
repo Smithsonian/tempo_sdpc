@@ -267,41 +267,38 @@ define write_lftp_script (dest, types, pdr_files, script_file)
    % Use a relative path to work around some confusion at ASDC
    () = fprintf (fp, "cd %s\n", Dest_Subdir);
 
-   variable f, g, t, lst = {};
-
-   foreach t (types) using ("keys")
-     {
-        foreach g (types[t])
-          {
-             list_append (lst, g.entry.path);
-             if (g.met_entry != NULL)
-               list_append (lst, g.met_entry.path);
-          }
-     }
-
-   % Transfer large data files first, then the manifest (PDR) files.
-   % The ASDC ingest system assumes the PDR files are uploaded last.
+   % Transfer data files first, then the manifest (PDR) file.
+   % The ASDC ingest system assumes the PDR file is uploaded last.
    % When a PDR file is detected, the system immediately starts
    % looking for the files it refers to, and if those files aren't
    % available, the ingest system fails with "FILE NOT FOUND".
-   % Yet another rule not mentioned in the ICD...
 
    % "mput -P N" means transfer N files in parallel.
    % In testing data transfer of 2GB files from SAO to ASDC,
    % N=4 reduced the transfer time from 296 sec to 84 sec,
    % a factor of 3.5 speedup.
-   if (length(lst) > 0)
-     {
-        variable ary = list_to_array (lst);
-        % To avoid long lines, continue lines with a trailing '\\n'
-        () = fprintf (fp, "mput -P 4 \\\n");
-        () = fprintf (fp, "%s\n", strjoin (ary, " \\\n"));
-     }
 
-   % PDR files are very small, so serial transfer is quick.
-   foreach f (pdr_files)
+   variable type_list = assoc_get_keys (types);
+   variable i, num_types = length(type_list);
+
+   _for i (0, num_types-1, 1)
      {
-        () = fprintf (fp, "put %s\n", f);
+        variable this_type = type_list[i];
+        variable g, lst = {};
+        foreach g (types[this_type])
+          {
+             list_append (lst, g.entry.path);
+             if (g.met_entry != NULL)
+               list_append (lst, g.met_entry.path);
+          }
+        if (length(lst) > 0)
+          {
+             variable ary = list_to_array (lst);
+             % To avoid long lines, continue lines with a trailing '\\n'
+             () = fprintf (fp, "mput -P 4 \\\n");
+             () = fprintf (fp, "%s\n", strjoin (ary, " \\\n"));
+             () = fprintf (fp, "put %s\n", pdr_files[i]);
+          }
      }
 
    () = fputs ("exit\n", fp);
