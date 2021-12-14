@@ -222,7 +222,7 @@ contains
     !output variables
     integer (kind=4), intent(inout) :: errstat
     !local variables
-    integer (kind=4) :: nxtrack, ntimes, nwavel, ix
+    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, iw
     real (kind=4), dimension(:,:,:), allocatable :: tio_irr, tio_wvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     character(len=80) :: logmsg
@@ -243,14 +243,15 @@ contains
     allocate ( irr_out_irradiance_440nm(nxtrack), &
          irr_out_irradiance_466nm(nxtrack), &
          irr_out_irradiance_477nm(nxtrack), stat=errstat)
-    irr_out_irradiance_440nm = -9999. !0.0 hqw changed to -9999.
-    irr_out_irradiance_466nm = -9999. !0.0
-    irr_out_irradiance_477nm = -9999. !0.0
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, "read_irr_tio: allocation failed",&
            errstat)
       return
     endif
+    irr_out_irradiance_440nm = -9999. !0.0 hqw changed to -9999.
+    irr_out_irradiance_466nm = -9999. !0.0
+    irr_out_irradiance_477nm = -9999. !0.0
+
     allocate (tio_irr(nwavel, nxtrack, 1), &
               tio_wvl(nwavel, nxtrack, 1), &
               tio_pqf(nwavel, nxtrack, 1), &
@@ -283,25 +284,27 @@ contains
 
     ! interpolate values at 440, 466, 477nm
     ! problem with pixel_quality_flag, set to -9999.0
-    where ( btest(tio_pqf,0) .or. btest(tio_pqf,1) .or. btest(tio_pqf,2))
-      tio_irr = -9999.0
-    endwhere
-
+    !where ( btest(tio_pqf,0) .or. btest(tio_pqf,1) .or. btest(tio_pqf,2))
+    !  tio_irr = -9999.0
+    !endwhere
+    !hqw pqf now considered inside quick_in_interpol
+    !   nonzero tio_pqf will cause irr_out_irradiance set to -9999.
+     
     do ix = 1, nxtrack
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
-           irr_out_irradiance_440nm(ix), errstat)
+           irr_out_irradiance_440nm(ix), tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "440nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-           irr_out_irradiance_466nm(ix), errstat)
+           irr_out_irradiance_466nm(ix), tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "466nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
-           irr_out_irradiance_477nm(ix), errstat)
+           irr_out_irradiance_477nm(ix), tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "477nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -375,9 +378,6 @@ contains
     call allocate_rad_vars (ntimes, nxtrack, nwavel, errstat)
     if (errstat /= 0) return
 
-    !initialize out_ProcessingQualityFlags
-    out_ProcessingQualityFlags = 0
-
     !allocate local arrays
     allocate(rad_Radiance(nwavel, nxtrack, ntimes), stat=errstat)
     allocate(rad_Wavelength(nwavel, nxtrack, ntimes), stat=errstat)
@@ -408,7 +408,8 @@ contains
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
     call tiof_get2d_r4 (tio_l1obj, "terrain_height", [0,0], &
          [ntimes,nxtrack], out_TerrainHeight, errstat)
-    !hqw removed rad_GroundPixelQualityFlags, it does not do a lot
+    !hqw removed rad_GroundPixelQualityFlags, it was used for snow/ice
+    ! but not needed any more because of rad_SnowIceFraction
     !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
     !     [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
     call tiof_get3d_ui2 (tio_l1obj, "pixel_quality_flag", [0,0,0], &
@@ -771,12 +772,13 @@ contains
   !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
   subroutine quick_lin_interpol (w_array, w_target, irr_array, irr_out, &
-       errstat)
+       q_array, errstat)
 
     implicit none
 
     !input variables
     real (kind=4), dimension(:), intent(in) :: w_array, irr_array
+    integer (kind=2), dimension(:), intent(in) :: q_array
     real (kind=4), intent(in) :: w_target
     !output variables
     real (kind=4), intent(out) :: irr_out
@@ -789,12 +791,17 @@ contains
 
     iw1=maxloc(w_array-w_target, mask=w_array-w_target.lt.0)
     iw2=minloc(w_array-w_target, mask=w_array-w_target.gt.0)
-    if (iw2(1) > iw1(1)) then
+    if (iw2(1) >= iw1(1)) then
       yy1=irr_array(iw1(1))
       yy2=irr_array(iw2(1))
-      ww1=w_target-w_array(iw1(1))
-      ww2=w_array(iw2(1))-w_target
-      irr_out=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+      if ((yy1 .GT. 0.) .and. (yy2 .GT. 0.) .and. &
+         (q_array(iw1(1)) .EQ. 0) .and. (q_array(iw2(1)) .EQ. 0)) then 
+         ww1=w_target-w_array(iw1(1))
+         ww2=w_array(iw2(1))-w_target
+         irr_out=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+      else
+         irr_out = -9999.
+      endif
     else
       errstat = -1
     endif
@@ -858,7 +865,7 @@ contains
       return
     endif
 
-    ! initizlize
+    ! initizlize out_ProcessingQualityFalgs 
     out_ProcessingQualityFlags = 0
 
   end subroutine allocate_rad_vars
