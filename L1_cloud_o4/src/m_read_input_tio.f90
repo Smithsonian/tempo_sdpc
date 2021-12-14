@@ -215,6 +215,7 @@ contains
          irr_out_irradiance_477nm, irr_EarthSunDist, w440, w466, w477, &
          irr_NumTimes, irr_nXtrack, irr_nWavel
 
+    use m_vars, only: rad_NumTimes, rad_nXtrack, out_ProcessingQualityFlags
     implicit none
 
     !input variables
@@ -222,9 +223,10 @@ contains
     !output variables
     integer (kind=4), intent(inout) :: errstat
     !local variables
-    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, iw
+    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, iw, it
     real (kind=4), dimension(:,:,:), allocatable :: tio_irr, tio_wvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
+    real (kind=4) :: thisirr440, thisirr466, thisirr477
     character(len=80) :: logmsg
 
     type(tiof_file_type) :: tio_l1obj
@@ -239,6 +241,12 @@ contains
     irr_NumTimes = ntimes
     irr_nXtrack = nxtrack
     irr_nWavel = nwavel
+    !write(*,*)'IRR dimension:',ntimes,nxtrack,nwavel
+
+    if (irr_nXtrack .NE. rad_nXtrack) then
+         write(*,*) 'irr_nXtrack .NE. rad_nXtrack'
+         errstat = -1
+    endif
 
     allocate ( irr_out_irradiance_440nm(nxtrack), &
          irr_out_irradiance_466nm(nxtrack), &
@@ -287,29 +295,53 @@ contains
     !where ( btest(tio_pqf,0) .or. btest(tio_pqf,1) .or. btest(tio_pqf,2))
     !  tio_irr = -9999.0
     !endwhere
-    !hqw pqf now considered inside quick_in_interpol
+    !hqw pixel_qality_flag is now considered inside quick_in_interpol
     !   nonzero tio_pqf will cause irr_out_irradiance set to -9999.
      
     do ix = 1, nxtrack
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
-           irr_out_irradiance_440nm(ix), tio_pqf(:,ix,1),errstat)
+           thisirr440, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "440nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
+      if (thisirr440 .GT. 0.) then
+          irr_out_irradiance_440nm(ix) = thisirr440
+      else
+          irr_out_irradiance_440nm(ix) = -9999.
+          do it = 1, rad_NumTimes
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+          end do 
+      endif
+
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-           irr_out_irradiance_466nm(ix), tio_pqf(:,ix,1),errstat)
+           thisirr466, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "466nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
+      if (thisirr466 .GT. 0.) then
+           irr_out_irradiance_466nm(ix) = thisirr466
+      else
+           irr_out_irradiance_466nm(ix) = -9999.
+           do it = 1, rad_NumTimes
+              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it), 11)
+           end do
+      endif
+
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
-           irr_out_irradiance_477nm(ix), tio_pqf(:,ix,1),errstat)
+           thisirr477, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "477nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
-    enddo
+      if (thisirr477 .GT. 0.) then
+           irr_out_irradiance_477nm(ix) = thisirr477
+      else
+           irr_out_irradiance_477nm(ix) = -9999.
+      endif
+      
+    enddo !ix
 
     deallocate (tio_wvl, tio_irr, tio_pqf, stat=errstat)
 
@@ -436,12 +468,14 @@ contains
 
    do it = 1, ntimes
       do ix = 1, nxtrack
-        ! get local spectrum
+        ! get local spectrum, if any bit of PixelQualiyFlags is set
+        ! set the corresponding temp_rad to -9999.
         do iw = 1, nw
          temp_wav(iw) = rad_Wavelength(iw,ix,it)
-         if(btest(rad_PixelQualityFlags(iw,ix,it),0) .or. &
-             btest(rad_PixelQualityFlags(iw,ix,it),1) .or. &
-             btest(rad_PixelQualityFlags(iw,ix,it),2)) then
+        ! if(btest(rad_PixelQualityFlags(iw,ix,it),0) .or. &
+        !     btest(rad_PixelQualityFlags(iw,ix,it),1) .or. &
+        !     btest(rad_PixelQualityFlags(iw,ix,it),2)) then
+        if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
           temp_rad(iw)=-9999.
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
@@ -477,6 +511,7 @@ contains
         dww=iw2-iw1
       else
         rad466=-999.
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
       endif
 
       rad_466nm(ix,it) = rad466
@@ -507,6 +542,8 @@ contains
         rad477=(ww1*yy2+ww2*yy1)/(ww1+ww2)
         dww=iw2-iw1
       else
+        ! rad477 is not actually used for acutal calculation
+        ! thus did not assign ProcessingQualityFlaf for it
         rad477=-999.
       endif
       rad_477nm(ix,it) = rad477
@@ -539,39 +576,41 @@ contains
         dww=iw2-iw1
       else
         rad440=-999.
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
       rad_440nm(ix,it) = rad440
 
-      !-------------------------------
-      ! set out_ProcessingQualityFlags bit 8 & 9
-      !-------------------------------
-      if(btest(rad_PixelQualityFlags(iw1,ix,it),0).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),1).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),2).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),0).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),1).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),2)) then
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
-      end if
-
-      if(btest(rad_PixelQualityFlags(iw1,ix,it),3).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),4).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),5).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),6).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),7).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),8).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),9).or. &
-           btest(rad_PixelQualityFlags(iw1,ix,it),10).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),3).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),4).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),5).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),6).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),7).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),8).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),9).or. &
-           btest(rad_PixelQualityFlags(iw2,ix,it),10)) then
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
-      end if
+      !hqw the following are obsolete
+!      !-------------------------------
+!      ! set out_ProcessingQualityFlags bit 8 & 9
+!      !-------------------------------
+!      if(btest(rad_PixelQualityFlags(iw1,ix,it),0).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),1).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),2).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),0).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),1).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),2)) then
+!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
+!      end if
+!
+!      if(btest(rad_PixelQualityFlags(iw1,ix,it),3).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),4).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),5).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),6).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),7).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),8).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),9).or. &
+!           btest(rad_PixelQualityFlags(iw1,ix,it),10).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),3).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),4).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),5).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),6).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),7).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),8).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),9).or. &
+!           btest(rad_PixelQualityFlags(iw2,ix,it),10)) then
+!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
+!      end if
 
       enddo !ix
       !write(*,*)it,rad440,rad466,rad477
@@ -824,7 +863,8 @@ contains
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
          out_TerrainHeight, rad_SnowIceFraction,&
-         rad_440nm, rad_466nm, rad_477nm,out_ProcessingQualityFlags
+         rad_440nm, rad_466nm, rad_477nm, &
+         out_ProcessingQualityFlags
 !         rad_GroundPixelQualityFlags, rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
 

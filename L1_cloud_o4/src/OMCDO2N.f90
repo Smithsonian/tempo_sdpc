@@ -219,6 +219,21 @@ program OMCDO2N
      call exit(-1)
   endif
 
+  !hqw moved 5 to 2.1 because GEOS-CF TP needs rad/lon
+  !  and read_irr_tio need out_ProcessingQualityFlags
+  !==============================
+  ! 5. read inputs from radiance file -> 2.1
+  !==============================
+  !call read_rad
+  ! Ewan Tested read_rad_tio, reports no errors
+  call read_rad_tio (l1radfnm, swathname, errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'read_rad_tio failed', errstat)
+    call exit(-1);
+  endif
+  flush (output_unit)
+  call tell_log(0,'Read RAD '//l1radfnm)
+
   !============================================
   ! 1. read inputs from OML1BIRR on 12/22/2004
   !============================================
@@ -233,20 +248,6 @@ program OMCDO2N
   flush (output_unit)
   call tell_log(0,'Read IRR '//filename)
 
-  !hqw moved 5 to 2.1 because GEOS-CF TP needs rad/lon
-  !==============================
-  ! 5. read inputs from radiance file -> 2.1
-  !==============================
-  !call read_rad
-  ! Ewan Tested read_rad_tio, reports no errors
-  call read_rad_tio (l1radfnm, swathname, errstat)
-  if (errstat /= 0) then
-    call tell_error (tell_runtime_error, 'read_rad_tio failed', errstat)
-    call exit(-1);
-  endif
-  flush (output_unit)
-  call tell_log(0,'Read RAD '//l1radfnm)
-
   ! --------------------
   ! 2.2 read TEMPO O4 SCD from intermediate L2 file
   ! --------------------
@@ -259,12 +260,6 @@ program OMCDO2N
   endif
   flush (output_unit)
   call tell_log(0, 'Read O4 SCD '//filename)
-
-  !hqw debug read ixdebug and it debug
-  !write(*,*) 'Input ixdebug'
-  !read(*,*) ixdebug
-  !write(*,*) 'Input itdebug'
-  !read(*,*) itdebug
 
   ! ---------------------
   ! 2.3 T/P/Psfc from GMI
