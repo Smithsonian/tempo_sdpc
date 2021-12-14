@@ -8,6 +8,5 @@
 # interval is specified, the filter applies at all times.
 #--------------------------------------------------------------------
 pattern,begin_exclude_hour,end_exclude_hour
-TEMPO_CLDO4,,
 TEMPO_GRDDP,6,18
 TEMPO_CCSDS,6,18
