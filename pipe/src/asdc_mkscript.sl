@@ -253,7 +253,7 @@ TOTAL_FILE_COUNT = $num_files
      throw IOError, "closing $filename"$;
 }
 
-define write_lftp_script (dest, types, pdr_files, script_file)
+define write_lftp_script (dest, types, type_list, pdr_files, script_file)
 {
    variable fp = fopen (script_file, "w");
    if (NULL == fp)
@@ -278,7 +278,6 @@ define write_lftp_script (dest, types, pdr_files, script_file)
    % N=4 reduced the transfer time from 296 sec to 84 sec,
    % a factor of 3.5 speedup.
 
-   variable type_list = assoc_get_keys (types);
    variable i, num_types = length(type_list);
 
    _for i (0, num_types-1, 1)
@@ -313,6 +312,29 @@ define make_manifest_filename (type)
      return strftime ("${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
    else
      return strftime ("TEMPO_${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
+}
+
+define upload_priority (product_type)
+{
+   variable tok = string_matches (product_type, "_L[0-3]_");
+   if (NULL == tok)
+     {
+        % assign Level 0 priority (raw and ancillary data)
+        return 0;
+     }
+   variable level;
+   () = sscanf (tok[0], "_L%d_", &level);
+   return level;
+}
+
+define priority_ordered_type_list (types)
+{
+   variable type_list = assoc_get_keys (types);
+   if (length(type_list) == 0)
+     return type_list;
+   variable priority = array_map (Integer_Type, &upload_priority, type_list);
+   % Sort the types by descending order of upload priority
+   return type_list [reverse(array_sort(priority))];
 }
 
 define process_file_list (dest, file_list, script_file)
@@ -360,7 +382,10 @@ define process_file_list (dest, file_list, script_file)
           }
      }
 
-   variable type_list = assoc_get_keys (types);
+   variable type_list = priority_ordered_type_list (types);
+   if (length(type_list) == 0)
+     return;
+
    variable mf_files = array_map (String_Type, &make_manifest_filename, type_list);
 
    variable i, num_types = length(type_list);
@@ -370,7 +395,7 @@ define process_file_list (dest, file_list, script_file)
         write_manifest (dest, types[type_list[i]], mf_files[i]);
      }
 
-   write_lftp_script (dest, types, mf_files, script_file);
+   write_lftp_script (dest, types, type_list, mf_files, script_file);
 }
 
 private define usage ()
