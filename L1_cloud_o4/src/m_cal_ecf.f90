@@ -80,7 +80,7 @@ subroutine cal_ecf
   allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
   out_ReflectanceFactor=fspecial
 
-! hqw out_RelativeAzimuthAngle is now allocated and read and adjusted
+! hqw out_RelativeAzimuthAngle is now allocated, read and adjusted
 !  in m_read_input_tio which is called before this module
 !  allocate(out_RelativeAzimuthAngle(nx,nt),stat=ierr)
 !  out_RelativeAzimuthAngle=fspecial
@@ -106,6 +106,12 @@ subroutine cal_ecf
       open(unit=19, file='debug_ecf.txt')
       write(19,*)'ix, alb0,  psfc0,  rad_of_irr466, cal_rad_clr, cal_rad_cld,cldfrac'
    endif
+
+   ! hqw alb0 & psfc0 were originally initialized to OMCLDO2
+   ! but will be overwritten later in this subroutine by climatology
+   ! psfc0 and alb0 will be initialized to these temporary values in loop
+    temp_psfc = 1000.
+    temp_rsfc = 0.03
 
   ! ==========
   do it=1,nt
@@ -155,7 +161,10 @@ subroutine cal_ecf
 !      endif
 
       !hqw skip calculation if latlon//angles are invalid
-      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990
+      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+           go to 990
+      endif
 
       ! get local radiances
       rad466=rad_466nm(ix,it)
@@ -165,15 +174,10 @@ subroutine cal_ecf
       ! ------------------------
       ! calculate cloud fraction
       ! ------------------------
-      ! hqw alb0 & psfc0 were originally initialized to OMCLDO2
-      ! but will be overwritten later in this subroutine by climatology
-      ! to get rid of dependency on OMCLDO2 , set to temporary values
-       temp_psfc = 1000.
-       temp_rsfc = 0.03
 
-      ! radiance unavailable at 440 or 466, set out_ProcessingQualityFlags bit 7
       if((rad440 .le. 0.) .or. (rad466 .le. 0.)) then
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
+      ! bit 7 and 8 are already set in m_read_input_tio
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
         go to 990
       endif
 
@@ -184,14 +188,20 @@ subroutine cal_ecf
          rad_of_irr466(ix,it) = fspecial
       endif
       !hqw skip calculation if rad_of_irr < 0.
-      if (rad_of_irr466(ix,it) .lt. 0.) go to 990
+      if (rad_of_irr466(ix,it) .lt. 0.) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12) 
+         go to 990
+      endif
 
       if (irr_out_irradiance_440nm(ix) .gt. 0.) then
          rad_of_irr440(ix,it)=rad440/irr_out_irradiance_440nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
          rad_of_irr440(ix,it) = fspecial
       endif
-      if (rad_of_irr440(ix,it) .lt. 0.) go to 990
+      if (rad_of_irr440(ix,it) .lt. 0.) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+         go to 990
+      endif
 
       !hqw 477nm is currently not used in cloud fraction calculation
       ! thus even if rad_of_irr477< 0., still do the rest of the calculation
@@ -201,6 +211,7 @@ subroutine cal_ecf
          rad_of_irr477(ix,it) = fspecial
       endif
 
+      ! get local angles
       sza0=rad_SolarZenithAngle(ix,it)
       vza0=rad_ViewingZenithAngle(ix,it)
       raa0 = out_RelativeAzimuthAngle(ix,it) 
@@ -224,6 +235,11 @@ subroutine cal_ecf
       !get actual psfc0
       !out-of-range rad_Longitude should have been skipped
       if(name_option_TemperaturePressure.eq.'GMI') then
+        gmi_wx1 = 0.
+        gmi_wx2 = 0.
+        gmi_wy1 = 0.
+        gmi_wy2 = 0.
+
         gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
 
@@ -264,13 +280,17 @@ subroutine cal_ecf
       !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
-        !hqw l2_TerrainPressure already assigned in read_geoscf
-        ! which has been called before this subroutine, use it as psfc0
+        !hqw l2_TerrainPressure is assigned in read_geoscf
+        ! which is called before this subroutine, use it as psfc0
         psfc0=l2_TerrainPressure(ix,it)
       endif
 
       !hqw if psfc0[hPa] is out of range, skip calculation
-      if ((psfc0 .lt. 0.) .or. (psfc0 .gt. 1200.)) goto 990
+      if ((psfc0 .lt. 0.) .or. (psfc0 .gt. 1150.)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+         goto 990
+      endif
 
       !---------------
       ! get actual alb0
@@ -290,7 +310,11 @@ subroutine cal_ecf
 
       ! bound alb0 within [0.,1.] if it is in reasonable range
       ! otherwise skip the calculation
-      if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) go to 990
+      if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),5)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+          go to 990
+      endif
       if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
       if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
  
@@ -308,7 +332,9 @@ subroutine cal_ecf
       wraa2 = fspecial
       wpsfc1 = fspecial
       wpsfc2 = fspecial
- 
+
+      !hqw added exit within do loops for alb,sza,vza,raa,psfc
+      ! to terminate loop when nodes are already found 
       ! if interpolation nodes cannot be found skip calculation
       ! find nodes for alb0
       ialb1=-9; ialb2=-9
@@ -318,10 +344,14 @@ subroutine cal_ecf
           ialb2=ialb+1
           walb1=alb0-lut_alb(ialb)
           walb2=lut_alb(ialb+1)-alb0
+          exit
         endif
       end do
       if ((ialb1 .lt. 0) .or. (ialb2 .lt. 0) .or. (walb1 .lt. 0.) &
-          .or. (walb2 .lt. 0.)) go to 990
+          .or. (walb2 .lt. 0.)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+         go to 990
+      endif
 
       ! find nodes for sza0
       isza1=-9; isza2=-9
@@ -331,10 +361,14 @@ subroutine cal_ecf
           isza2=isza+1
           wsza1=sza0-lut_sza(isza)
           wsza2=lut_sza(isza+1)-sza0
+          exit
         endif
       end do
       if ((isza1 .lt. 0) .or. (isza2 .lt. 0) .or. (wsza1 .lt. 0.) &
-          .or. (wsza2 .lt. 0)) go to 990
+          .or. (wsza2 .lt. 0)) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+          go to 990
+      endif
 
       ! find nodes for vza0
       ivza1=-9; ivza2=-9
@@ -344,10 +378,14 @@ subroutine cal_ecf
           ivza2=ivza+1
           wvza1=vza0-lut_vza(ivza)
           wvza2=lut_vza(ivza+1)-vza0
+          exit
         endif
       end do
       if ((ivza1 .lt. 0) .or. (ivza2 .lt. 0) .or. (wvza1 .lt. 0.) &
-          .or. (wvza2 .lt. 0.)) go to 990
+          .or. (wvza2 .lt. 0.)) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+          go to 990
+      endif
 
       ! find nodes for raa0
       iraa1=-9; iraa2=-9
@@ -357,14 +395,19 @@ subroutine cal_ecf
           iraa2=iraa+1
           wraa1=raa0-lut_raa(iraa)
           wraa2=lut_raa(iraa+1)-raa0
+          exit
         endif
       end do
       if ((iraa1 .lt. 0) .or. (iraa2 .lt. 0) .or. (wraa1 .lt. 0.) &
-           .or. (wraa2 .lt. 0.)) go to 990
+           .or. (wraa2 .lt. 0.)) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+          go to 990
+      endif
 
-      !find nodes for psfc0
       !bound psfc by the largest lut_psfc
       if (psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
+
+      !find nodes for psfc0
       ipsfc1=-9; ipsfc2=-9
       do ipsfc=1,npsfc-1
         if((psfc0 .ge. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
@@ -372,13 +415,18 @@ subroutine cal_ecf
           ipsfc2=ipsfc+1
           wpsfc1=psfc0-lut_psfc(ipsfc)
           wpsfc2=lut_psfc(ipsfc+1)-psfc0
+          exit
         endif
       end do
       if ((ipsfc1 .lt. 0) .or. (ipsfc2 .lt. 0)) then
         write(*,*) " *** Surface Pressure too small *** ",ix,it
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
         go to 990
       endif
-      if ((wpsfc1 .lt. 0.) .or. (wpsfc2 .lt. 0.)) go to 990
+      if ((wpsfc1 .lt. 0.) .or. (wpsfc2 .lt. 0.)) then
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+        go to 990
+      endif
 
       !-------------
       ! get LUT values at interpolation nodes
@@ -422,6 +470,7 @@ subroutine cal_ecf
       ! -----------------
       ! in case wsfc2=0.0
       ! -----------------
+      !hqw shouldn't entries in lut_rad_clr be always >0.?
       if((r11111.lt.0.0) .or. (r11112.lt.0.0)) then
         cal_rad_clr(ix,it)= fspecial
         go to 897
@@ -519,6 +568,7 @@ subroutine cal_ecf
          rout_ecf=(rad_of_irr466(ix,it)-cal_rad_clr(ix,it))/(cal_rad_cld(ix,it)-cal_rad_clr(ix,it))
       else
          rout_ecf = fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       ! caculate cloud radiance fraction at 440
@@ -526,6 +576,7 @@ subroutine cal_ecf
          rout_crf440=rout_ecf*cal_rad_cld440(ix,it)/rad_of_irr440(ix,it)
       else
         rout_crf440 = fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       ! calculate cloud radiance fraction at 466
@@ -533,6 +584,7 @@ subroutine cal_ecf
          rout_crf466=rout_ecf*cal_rad_cld(ix,it)/rad_of_irr466(ix,it)
       else
          rout_crf466 = fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       out_EffectiveCloudFractionNotClipped(ix,it)= rout_ecf
@@ -543,13 +595,24 @@ subroutine cal_ecf
       !hqw added logic to differentiate skipped or bad calculation
       if((rout_ecf .lt. 0.) .and. (rout_ecf .ge. -0.2)) rout_ecf=0.
       if((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) rout_ecf=1.
-      if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) rout_ecf=fspecial 
+      if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) then
+         rout_ecf=fspecial 
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+      endif
+
       if((rout_crf440 .lt. 0.).and.(rout_crf440 .ge. -0.2)) rout_crf440=0.
       if((rout_crf440 .gt. 1.).and.(rout_crf440 .le. 1.2)) rout_crf440=1.
-      if((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) rout_crf440=fspecial
+      if((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) then
+        rout_crf440=fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+      endif
+
       if((rout_crf466 .lt. 0.).and.(rout_crf466 .ge. -0.2)) rout_crf466=0.
       if((rout_crf466 .gt. 1.).and.(rout_crf466 .le. 1.2)) rout_crf466=1.
-      if((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) rout_crf466=fspecial
+      if((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) then
+        rout_crf466=fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+      endif
 
       out_EffectiveCloudFraction(ix,it)=rout_ecf
       out_CloudRadianceFraction440(ix,it)=rout_crf440
@@ -557,7 +620,7 @@ subroutine cal_ecf
 
       !hqw out_Reflectance is equivalent to observed Lambertian reflectance at 466
       out_ReflectanceFactor(ix,it)=pi*rad_of_irr466(ix,it)/cos(dtor*sza0)
-      if(rad_of_irr466(ix,it).le.0.0) out_ReflectanceFactor(ix,it)=fFillValue
+      if(rad_of_irr466(ix,it).le.0.0) out_ReflectanceFactor(ix,it)=fspecial
 
 990   continue
 

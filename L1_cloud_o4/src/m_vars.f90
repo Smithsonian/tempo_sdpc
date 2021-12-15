@@ -376,7 +376,7 @@ integer,dimension(12):: &
 ! -----------------------------------
 ! 0 (global mode); 15 (zoom mode)
 !hqw TEMPO does not use izoom, keep it 0
-  integer(kind=4), parameter::izoom=0
+!  integer(kind=4), parameter::izoom=0
  
 ! ===== end of input options =====
 !hqw inp_ variables are from OMCLDO2 product, not needed for TEMPO
