@@ -8,11 +8,8 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 
 @reboot	echo "temposdpc00 rebooted" | mailx -s reboot jhouck@cfa.harvard.edu
 
-# met data: 4 times per day at 15 after the hour
-# 15 4-16/4 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh MET >> $SDPC_ANCILLARY_ROOT/log/met.log 2>&1
-
-# snow cover: daily
-15 11 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh SNOW >> $SDPC_ANCILLARY_ROOT/log/snow.log 2>&1
+# IMS snow cover: daily
+15 11 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh IMS >> $SDPC_ANCILLARY_ROOT/log/ims.log 2>&1
 
 # GOES data: Mode 6 updates every 10 min
 5-59/10 * * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh GOES >> $SDPC_ANCILLARY_ROOT/log/goes.log 2>&1

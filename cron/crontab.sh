@@ -28,14 +28,8 @@ tbeg=$(date +%s)
 _task=$1
 
 case $_task in
-   MET )
-   if test x"$state_met" = xon ; then
-      dl_met.sl
-   fi
-   ;;
-
-   SNOW )
-   if test x"$state_snow" = xon ; then
+   IMS )
+   if test x"$state_ims" = xon ; then
       pull_ims.sh $ims_url $ims_dir
    fi
    ;;
