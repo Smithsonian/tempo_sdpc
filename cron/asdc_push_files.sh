@@ -3,6 +3,9 @@
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 
+# Max number of files to upload in one batch.
+: "${SDPC_ASDC_LIMIT:=500}"
+
 set -e
 set -u
 
@@ -38,7 +41,7 @@ do_asdc_upload()
   script="lftp.script"
 
   # make list of new data product files
-  asdc_files.py --dbfile $dbfile --list new > $file_list
+  asdc_files.py --dbfile $dbfile --limit $SDPC_ASDC_LIMIT --list new > $file_list
 
   # mark the new files as "pending"
   asdc_files.py --dbfile $dbfile --set pending $file_list
