@@ -109,7 +109,7 @@ prep_inr_goes_source()
 
    tstart=$(radiance_attribute.py --attr time_coverage_start "$granule_path")
    yday_subdir="$(TZ='UTC+6' date -d $tstart +%Y/%j)"
-   goes_srcdir="${SDPC_ANCILLARY_ROOT}/goes/${yday_subdir}"
+   goes_srcdir="${SDPC_ANCILLARY_ROOT}/var/goes/${yday_subdir}"
 
    if test -d "$goes_srcdir" ; then
       target_dir="$SDPC_RUN_DIR_INR/Staging"

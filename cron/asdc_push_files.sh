@@ -61,7 +61,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-push_dir="${SDPC_ANCILLARY_ROOT}/asdc/${dbfile_name}/push"
+push_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}/push"
 upload_dir_path="${push_dir}/$(date -u +%Y/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
 do_asdc_upload $upload_dir_path
 

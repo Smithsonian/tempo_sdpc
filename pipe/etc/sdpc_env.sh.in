@@ -25,7 +25,7 @@ export SDPC_ANCILLARY_ROOT="@ANCILLARY_DATA_DIR@"
 
 # SDPC_ANCILLARY_IMS_DBFILE = path to IMS sqlite file
 # (technically, this should be on a local disk, and not be NFS mounted)
-export SDPC_ANCILLARY_IMS_DBFILE="${SDPC_ANCILLARY_ROOT}/ims/ims.sqlite"
+export SDPC_ANCILLARY_IMS_DBFILE="${SDPC_ANCILLARY_ROOT}/var/ims/ims.sqlite"
 
 # SDPC_REFDATA_DIR contains static reference data,
 # shared by all processing nodes

@@ -9,17 +9,17 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 @reboot	echo "temposdpc00 rebooted" | mailx -s reboot jhouck@cfa.harvard.edu
 
 # IMS snow cover: daily
-15 11 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh IMS >> $SDPC_ANCILLARY_ROOT/log/ims.log 2>&1
+15 11 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh IMS >> $SDPC_ANCILLARY_ROOT/var/log/ims.log 2>&1
 
 # GOES data: Mode 6 updates every 10 min
-5-59/10 * * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh GOES >> $SDPC_ANCILLARY_ROOT/log/goes.log 2>&1
+5-59/10 * * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh GOES >> $SDPC_ANCILLARY_ROOT/var/log/goes.log 2>&1
 
 # GEOS-CF data: daily
-15 6 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh GEOSCF >> $SDPC_ANCILLARY_ROOT/log/geoscf.log 2>&1
+15 6 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh GEOSCF >> $SDPC_ANCILLARY_ROOT/var/log/geoscf.log 2>&1
 
 # Ancillary data to ASDC:
-45 0,4 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh ASDC_GOES >> $SDPC_ANCILLARY_ROOT/log/asdc_goes.log 2>&1
-45 2,22 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh ASDC_GEOSCF >> $SDPC_ANCILLARY_ROOT/log/asdc_geoscf.log 2>&1
+45 0,4 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh ASDC_GOES >> $SDPC_ANCILLARY_ROOT/var/log/asdc_goes.log 2>&1
+45 2,22 * * * $SDPC_ANCILLARY_ROOT/bin/crontab.sh ASDC_GEOSCF >> $SDPC_ANCILLARY_ROOT/var/log/asdc_geoscf.log 2>&1
 
 # cleanup
-@daily $SDPC_ANCILLARY_ROOT/bin/crontab.sh CLEANUP >> $SDPC_ANCILLARY_ROOT/log/cleanup.log 2>&1
+@daily $SDPC_ANCILLARY_ROOT/bin/crontab.sh CLEANUP >> $SDPC_ANCILLARY_ROOT/var/log/cleanup.log 2>&1

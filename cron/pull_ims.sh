@@ -12,7 +12,7 @@ fi
 source_url="$1"
 source_dir="$2"
 
-rootdir="${SDPC_ANCILLARY_ROOT}/ims"
+rootdir="${SDPC_ANCILLARY_ROOT}/var/ims"
 subdir="$(date -u +%Y)"
 
 target_dir="$rootdir/$subdir"

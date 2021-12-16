@@ -11,7 +11,7 @@ if test $# -ne 1 ; then
 fi
 user_at_host=$1
 
-rootdir="${SDPC_ANCILLARY_ROOT}/goes"
+rootdir="${SDPC_ANCILLARY_ROOT}/var/goes"
 
 # It's convenient if a single directory contains
 # all GOES imagery needed for a single operational day.
