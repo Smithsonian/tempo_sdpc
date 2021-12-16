@@ -18,8 +18,11 @@ INSTALL = @INSTALL@
 INSTALL_DATA = ${INSTALL} -m 664
 MKINSDIR = ../autoconf/mkinsdir.sh
 
-install_etc:
+install_dirs:
 	$(MKINSDIR) $(ETC_FILES_INSTALL_DIR)
+	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
+
+install_etc:
 	@for X in $(ETC_FILES); \
 	do \
 		echo $(INSTALL_DATA) $$X $(ETC_FILES_INSTALL_DIR); \
@@ -30,7 +33,6 @@ install_etc:
 	done
 
 install_scripts:
-	$(MKINSDIR) $(SCRIPT_FILES_INSTALL_DIR)
 	@for X in $(SCRIPT_FILES); \
 	do \
 		echo $(INSTALL) $$X $(SCRIPT_FILES_INSTALL_DIR); \
@@ -40,5 +42,5 @@ install_scripts:
 		fi; \
 	done
 
-install:	install_scripts install_etc
+install:	install_dirs install_scripts install_etc
 

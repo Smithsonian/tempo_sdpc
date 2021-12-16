@@ -13,7 +13,7 @@ source_url="$1"
 
 # Any command line args are passed to 'date'.
 # For example, to pull data for a particular date, do something like:
-#     pull_geoscf.sh -d 2020-07-01
+#     pull_geoscf.sh <source-url> -d 2020-07-01
 dateargs=""
 if test $# -gt 1; then
    shift
