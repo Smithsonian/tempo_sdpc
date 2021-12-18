@@ -728,7 +728,7 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "processing quality flags", &
-                              valid_range = [0.0_r8, 65535.0_r8], &
+                              valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_product)
 
