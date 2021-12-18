@@ -29,6 +29,9 @@ subroutine cal_ecf
 
   integer(kind=4)::kleipool_ix,kleipool_iy
 
+!hqw moved pflag00, pflag01 from m_vars.f90 to local variable
+  integer(kind=4):: pflag00, pflag01
+
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
   real::r21111,r21112,r21121,r21122,r21211,r21212,r21221,r21222,r22111,r22112,r22121,r22122,r22211,r22212,r22221,r22222
   real::r1111,r1112,r1121,r1122,r1211,r1212,r1221,r1222,r2111,r2112,r2121,r2122,r2211,r2212,r2221,r2222
@@ -311,7 +314,7 @@ subroutine cal_ecf
       ! bound alb0 within [0.,1.] if it is in reasonable range
       ! otherwise skip the calculation
       if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),5)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
           go to 990
       endif
@@ -593,11 +596,18 @@ subroutine cal_ecf
 
       ! clip cloud fraction
       !hqw added logic to differentiate skipped or bad calculation
-      if((rout_ecf .lt. 0.) .and. (rout_ecf .ge. -0.2)) rout_ecf=0.
-      if((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) rout_ecf=1.
+      !hqw out_ProcessingQualityFlag bit 9 for out-of-range, but clipped
+      !                              bit12 for unreasonable values
+      if((rout_ecf .lt. 0.) .and. (rout_ecf .ge. -0.2)) then
+         rout_ecf=0.
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
+      endif
+      if((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) then
+         rout_ecf=1.
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
+      endif
       if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) then
          rout_ecf=fspecial 
-         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 

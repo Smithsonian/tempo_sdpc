@@ -24,11 +24,6 @@ module m_vars
 !-------------
 ! allocatable
 !-------------
-!  real,dimension(:),allocatable::tmp01
-!  real(kind=4),dimension(:,:),allocatable::tmp02
-!  real(kind=4),dimension(:,:,:),allocatable::tmp03
-!  real,dimension(:,:,:,:),allocatable::tmp04
-!  real,dimension(:,:,:,:,:),allocatable::tmp05
   integer(kind=8),dimension(:),allocatable::edge
   integer(kind=8),dimension(:),allocatable::start
   integer(kind=8),dimension(:),allocatable::stride
@@ -144,9 +139,8 @@ module m_vars
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
 
-  integer,parameter::nalb=20,nsza=30,nvza=19,nraa=37
-  integer,parameter::npsfc=23,npcld=23,nrsfc=23
-  integer(kind=4)::pflag00,pflag01 !invalid geolocation(0) and SZA,VZA(1)
+  integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
+  integer,parameter::npsfc=23, npcld=23, nrsfc=23
 
   !hqw added the following to remove hard_code in various places
   ! these are limited by LUTs
@@ -169,22 +163,24 @@ module m_vars
 ! vertical column density
 !-------------------------
   integer,parameter::nvcd=npcld
-  integer,dimension(nvcd):: &
-    lvcd=(/ 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, &
-            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48/)
-  real,dimension(nvcd):: &
-    pvcd=(/ 55., 65., 76., 89.,104.,121.,142.,166.,194.,227., &
-           265.,308.,357.,411.,472.,541.,617.,701.,795.,899.,1013.,1050.,1100./)
-  !vvcd is replaced within cal_ocp with gmi_vcd//dem_vcd//geos_vcd
+!hqw comment out lvcd, pvcd, tvcd  which are not used in program
+!  integer,dimension(nvcd):: &
+!    lvcd=(/ 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, &
+!            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48/)
+!  real,dimension(nvcd):: &
+!    pvcd=(/ 55., 65., 76., 89.,104.,121.,142.,166.,194.,227., &
+!           265.,308.,357.,411.,472.,541.,617.,701.,795.,899.,1013.,1050.,1100./)
+!  real,dimension(nvcd):: &
+!    tvcd=(/216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.80, &
+!           223.30,229.70,236.20,242.70,249.20,255.70,262.20,268.70,275.20,281.70, &
+!    288.20,290.16,292.68/)
+!hqw vvcd initialized here is replaced with actual gmi_vcd//dem_vcd//geos_vcd 
   real,dimension(nvcd):: &
     vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
            0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
            0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
-    0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  1.32557,1.41490,1.53974/)
-  real,dimension(nvcd):: &
-    tvcd=(/216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.80, &
-           223.30,229.70,236.20,242.70,249.20,255.70,262.20,268.70,275.20,281.70, &
-    288.20,290.16,292.68/)
+           0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
+           1.32557,1.41490,1.53974/)
 
  !hqw added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
@@ -442,7 +438,7 @@ integer,dimension(12):: &
   real::alb0,sza0,vza0,raa0,psfc0,rsfc0 ! input values
   real::alb1,sza1,vza1,raa1,psfc1,rsfc1 ! LUT node1 for interpolation
   real::alb2,sza2,vza2,raa2,psfc2,rsfc2 ! LUT node2 for interpolation
-  real::tsfc0                           ! surface temperature
+!  real::tsfc0                           ! surface temperature
   real::cal_ler_rad
   real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld,cal_rad_cld440
   real(kind=8),dimension(npsfc)::cal_amf_clr

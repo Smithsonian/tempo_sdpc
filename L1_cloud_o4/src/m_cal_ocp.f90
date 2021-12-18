@@ -9,21 +9,21 @@ subroutine cal_ocp
   ! -----------------------------
   ! bit00  (Error) invalid geolocation: m_cal_ecf.f90
   ! bit01  (Error) SZA,VZA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
-  ! bit02  ecf < minECF (0.05): m_cal_ocp.f90 
-  ! bit03  (ERROR) input surface pressure error: m_cal_ecf.f90
-  ! bit04  snow/ice fraction > 0.01
-  ! bit05  (ERROR) input surface albedo error : m_ca_ecf.f90 
+  ! bit02  (Warning) ecf < minECF (0.05): m_cal_ocp.f90 
+  ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
+  ! bit04  (Warning) snow/ice fraction > 0.01
+  ! bit05  (Warning) SCD correction max_scd_iter reached
   ! bit06  (Error) SCD < 0, skip cloud pressure: m_cal_ocp.f90
-  ! bit07  440nm radiance error: m_read_input_tio.f90
+  ! bit07  (Warning) 440nm radiance error: m_read_input_tio.f90
   ! bit08  (ERROR) 466nm radiance error: m_read_input_tio.f90
   ! bit09  ecf out of normal range, clipped: m_cal_ecf.g90
-  ! bit10  440nm irradiance error: m_read_input_tio.f90 
+  ! bit10  (Warning) 440nm irradiance error: m_read_input_tio.f90 
   ! bit11  (ERROR) 466nm irradiance error: m_read_input_tio.f90
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation
   !        due to any problem during processing: m_cal_ocp.f90
-  ! bit14  ocp out of normal range, clipped: m_cal_ocp.f90
+  ! bit14  (Error) ocp out of normal range, clipped: m_cal_ocp.f90
   ! bit15  N/A
 
   use m_vars
@@ -68,6 +68,9 @@ subroutine cal_ocp
   integer(kind=4)::kleipool_ix,kleipool_iy
 
   integer ::isnowice
+
+!hqw move pflag00, pflag01 from m_vars.f90 to local variable
+  integer(kind=4):: pflag00, pflag01
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -375,7 +378,6 @@ subroutine cal_ocp
 
       ! -------------------------------------------
       ! set ProcessingQualityFlags:
-      ! see also m_cal_ecf.f90 for bit00/bit01/bit08/bit09
       ! -------------------------------------------
 
       if(isnowice .gt. 0) then
@@ -393,7 +395,7 @@ subroutine cal_ocp
       ! skip calcultion if these bits are set
       if(btest(out_ProcessingQualityFlags(ix,it),0).or. & ! geolocation error
            btest(out_ProcessingQualityFlags(ix,it),1).or. & ! SZA//VZA//RAA error
-           !hqw do not skip ocp calculation even if 0<=ecf<min_ecf  
+           !hqw do not skip ocp calculation when 0<ecf<min_ecf  
            !btest(out_ProcessingQualityFlags(ix,it),2).or. & ! < min_ecf
            !hqw do not skip snow/ice scene for ocp calculation
            !btest(out_ProcessingQualityFlags(ix,it),4).or. & !snowice
@@ -404,9 +406,10 @@ subroutine cal_ocp
             go to 990 
       endif
 
-      ! skip calculation if cal_ecf are out of range
-      ! though this may be unnecessary because bit12 is already checked above
-      if((cal_ecf.lt.0.0).or.(cal_ecf.gt.1.0)) then
+      ! skip calculation if cal_ecf are out of range or ecf=0.0
+      ! NOTE: cloud pressure is skipped when ecf=0.0
+      ! when there is no cloud there is no need to calculate cloud pressure 
+      if((cal_ecf.le.0.0).or.(cal_ecf.gt.1.0)) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
          go to 990
       endif
@@ -604,8 +607,8 @@ subroutine cal_ocp
       scdm = scdmorg
       scdadj = scdmorg
 
-!hqw temperature iteration comes back here to 777
-777   continue ! iteration
+!hqw moved 777 downward, because amfvcds do not depend on scdm
+!777   continue
 
       do ipcld=1,npcld
         !ipsfc=ipcld !hqw seems unnecessary
@@ -621,6 +624,9 @@ subroutine cal_ocp
       !    1: Pclr = Pcld if Pcld > Psfc
       !    0: Pclr = Psfc (fixed) & Pcld > Psfc
       ! ????????????????????????????????????
+
+!hqw temperature iteration comes back here to 777
+777   continue ! iteration
 
       iflag=-1
 
@@ -655,7 +661,7 @@ subroutine cal_ocp
 
         xx=x1
         !hqw 1st & 3rd term below is always 0, yy=y1,is it needed?
-        !including it makes the formula consistent with the one inside ipp loop
+        !but it makes the formula consistent with the one inside ipp loop
         yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
              +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
              +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -727,7 +733,7 @@ subroutine cal_ocp
           else
             diff_save=diff
             if(ipp.ge.5000) then !this should not happen
-              xx=-9999.
+              xx=-9999. ! if it ever does, set to invalid value
             endif
           endif
         end do
@@ -758,7 +764,7 @@ subroutine cal_ocp
       !   write(19,*) iternum, scdm, scdadj, temp_cpp, temp_t8p
       !endif
 
-      !hqw test if terminate iteration
+      !hqw test if terminate temperature iteration
       delta_temp = real(abs(t8p - temp_t8p), kind=4)
       if (delta_temp .lt. dt_threshold) then
          goto 990 ! exit iteration
@@ -787,18 +793,24 @@ subroutine cal_ocp
          out_O2O2CloudTemperature(ix,it) = 273.
       endif
 
+      !set out_ProcessingQualityFlags digit 5 for max_scd_iter
+      if (iternum .eq. max_scd_iter) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),5)
+      endif
+
       out_CloudPressure(ix,it)=nint(cpp, kind=2)
       out_CloudPressureNotClipped(ix,it)=nint(cpp, kind=2)
-      if((cpp.gt.9999.).or.(cpp.lt.-9999.)) then
+      if(cpp.lt. 0.) then
         out_CloudPressure(ix,it)=int(iFillValue, kind=2)
         out_CloudPressureNotClipped(ix,it)=int(iFillValue, kind=2)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
-      if((cpp.gt.-9999.).and.(cpp.le.100.)) then
+      ! clip slightly out-of-range values and set out_ProcessingQualityFlags
+      if((cpp.gt.0.).and.(cpp.le.100.)) then
           out_CloudPressure(ix,it)=100
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
       endif
-      if((cpp.ge.psfc0).and.(cpp.lt.9999.)) then
+      if((cpp.gt.psfc0).and.(cpp.lt.1200.)) then
           out_CloudPressure(ix,it)=nint(psfc0, kind=2)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
       endif

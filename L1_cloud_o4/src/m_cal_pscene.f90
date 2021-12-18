@@ -33,6 +33,9 @@ subroutine cal_pscene
   !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip!,gmi_ix,gmi_iy
 
+  !hqw make pflag00, pflag01 from  m_vars.f90 as local variable
+  integer(kind=4):: pflag00, pflag01
+
   !real::a11111,a11112,a11121,a11122,a11211,a11212,a11221,a11222,a12111,a12112,a12121,a12122,a12211,a12212,a12221,a12222
   !real::a21111,a21112,a21121,a21122,a21211,a21212,a21221,a21222,a22111,a22112,a22121,a22122,a22211,a22212,a22221,a22222
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
