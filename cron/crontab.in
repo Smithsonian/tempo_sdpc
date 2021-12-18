@@ -22,4 +22,5 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 45	2,22	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
 
 # cleanup
+@weekly		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && /usr/sbin/logrotate -s var/log/logstate etc/logrotate.conf
 @daily		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh CLEANUP >> var/log/cleanup.log 2>&1
