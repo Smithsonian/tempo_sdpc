@@ -597,6 +597,7 @@ subroutine cal_ecf
       if((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) rout_ecf=1.
       if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) then
          rout_ecf=fspecial 
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
@@ -604,14 +605,12 @@ subroutine cal_ecf
       if((rout_crf440 .gt. 1.).and.(rout_crf440 .le. 1.2)) rout_crf440=1.
       if((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) then
         rout_crf440=fspecial
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       if((rout_crf466 .lt. 0.).and.(rout_crf466 .ge. -0.2)) rout_crf466=0.
       if((rout_crf466 .gt. 1.).and.(rout_crf466 .le. 1.2)) rout_crf466=1.
       if((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) then
         rout_crf466=fspecial
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       out_EffectiveCloudFraction(ix,it)=rout_ecf

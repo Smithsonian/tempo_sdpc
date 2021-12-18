@@ -7,34 +7,34 @@ subroutine cal_ocp
   ! -----------------------------
   ! define ProcessingQualityFlags
   ! -----------------------------
-  ! bit00  (Error) invalid geolocation: latitude, longitude: ECF
-  ! bit01  (Error) out of range: SZA > 86 deg; VZA > 72 deg: ECF
-  ! bit02  scene pressure retrieved because cloud fraction < minECF (0.05): OCP
-  ! bit03  N/A
-  ! bit04 - snow/ice (if second byte of GroundPixelQualityFlags = 10 - 100, 101, and 103): OCP
-  ! bit05  N/A
-  ! bit06  (Error) SCD < 0 for OCP
-  ! bit06  (Error) SCD < -10; (WARNING) -10 < SCD < 0 for SceneLER
-  ! bit07  radiance not available or not reliable (440 nm, 466 nm): ECF
-  ! bit08  (Error) radiance PixelQuality error (466 nm): ECF
-  ! bit09  (Warning) radiance PixelQuality warning (466 nm): ECF
-  ! bit10  (Error) irradiance PixelQuality error on 12/22/2004: read_irr
-  ! bit11  (Warning) irradiance PixelQuality warning on 12/22/2004: read_irr
-  ! bit12  N/A
-  ! bit13  N/A
-  ! bit14  N/A
+  ! bit00  (Error) invalid geolocation: m_cal_ecf.f90
+  ! bit01  (Error) SZA,VZA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
+  ! bit02  ecf < minECF (0.05): m_cal_ocp.f90 
+  ! bit03  (ERROR) input surface pressure error: m_cal_ecf.f90
+  ! bit04  snow/ice fraction > 0.01
+  ! bit05  (ERROR) input surface albedo error : m_ca_ecf.f90 
+  ! bit06  (Error) SCD < 0, skip cloud pressure: m_cal_ocp.f90
+  ! bit07  440nm radiance error: m_read_input_tio.f90
+  ! bit08  (ERROR) 466nm radiance error: m_read_input_tio.f90
+  ! bit09  ecf out of normal range, clipped: m_cal_ecf.g90
+  ! bit10  440nm irradiance error: m_read_input_tio.f90 
+  ! bit11  (ERROR) 466nm irradiance error: m_read_input_tio.f90
+  ! bit12  (ERROR) skipped cloud ecf calculation 
+  !        due to any problem during processing: m_cal_ecf.f90
+  ! bit13  (ERROR) skipped cloud ocp calculation
+  !        due to any problem during processing: m_cal_ocp.f90
+  ! bit14  ocp out of normal range, clipped: m_cal_ocp.f90
   ! bit15  N/A
 
   use m_vars
   use m_read_GMI
-  use m_read_DEM
+  !use m_read_DEM
   use m_read_hdf5
   use m_scd_adjust
 
   implicit none
 
-  !real,dimension(nsza)::lut_rsza
-  real::cal_ecf,cal_crf
+  real:: cal_ecf,cal_crf
   integer::ialb, isza, ivza, iraa, ipsfc, ipcld
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2
@@ -67,7 +67,6 @@ subroutine cal_ocp
 
   integer(kind=4)::kleipool_ix,kleipool_iy
 
-  !integer::bit08to14,i0,i1,i2,i3,i4,i5,i6,i7
   integer ::isnowice
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -88,7 +87,7 @@ subroutine cal_ocp
 
   ! hqw comments out DEM and BDEM related stuff
   ! ------
-  ! refine
+  ! local useful variables 
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
@@ -120,15 +119,16 @@ subroutine cal_ocp
   allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
 
+!hqw initialize to (negative) fill value
   out_CloudPressure=int(iFillValue, kind=2)
   out_CloudPressureNotClipped=int(iFillValue, kind=2)
-  out_TerrainPressure=fFillValue
+  out_TerrainPressure=fFillValue ! surface pressure used in ocp calculation 
   out_SurfaceReflectivity440=fFillValue
   out_SurfaceReflectivity466=fFillValue
   out_SlantColumnAmountO2O2=fFillValue
   out_O2O2CloudTemperature=fFillValue
 
-  !hqw allocate local variable
+  !hqw allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
   allocate(pp(nlayers+1),stat=ierr)
 
@@ -155,19 +155,40 @@ subroutine cal_ocp
       ! initialize iflag to -1
       iflag=-1
 
+      !---------------------
+      ! geolocation check
+      !--------------------
       pflag00=0
+      if(abs(rad_Latitude(ix,it)) .gt. 90.) pflag00=pflag00+1
+      if(abs(rad_longitude(ix,it)) .gt. 180.) pflag00=pflag00+1
+
+      ! --------------------
+      ! input angles check
+      ! --------------------
       pflag01=0
-      if(rad_Latitude(ix,it) .lt. -90.) pflag00=pflag00+1
+      sza0=rad_SolarZenithAngle(ix,it)
+      vza0=rad_ViewingZenithAngle(ix,it)
+      raa0=out_RelativeAzimuthAngle(ix,it)
       !hqw changed 86. to max_SZA
-      if((rad_SolarZenithAngle(ix,it) .lt. 0.) .or. (rad_SolarZenithAngle(ix,it) .gt. max_SZA)) pflag01=pflag01+1
+      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
       !hqw changed 72. to max_VZA
-      if((rad_ViewingZenithAngle(ix,it) .lt. 0.) .or. (rad_ViewingZenithAngle(ix,it) .gt. max_VZA)) pflag01=pflag01+1
-      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990
+      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
+      !hqw skip invalid RAA
+      !valid RAA is converted to [0.,180) range in m_read_input_tio.f90
+      !invalid RAA is set to fspecial < 0. there
+      if (raa0 .lt. 0.) pflag01=pflag01+1
+      ! skip ocp calculation if any angle is invalid 
+      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         ! bit 1 is also set in m_cal_ecf.f90, but only for SZA&VZA
+         ! thus the following provides a safeguard for RAA
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),1)
+         go to 990
+      endif
 
       ! ----------------------------
       ! trim cloud fraction, fc & fr
       ! ----------------------------
-      ! convert back to range using scaling factor applied in cal_ecf.f90
       ! EffectiveCloudFraction and CloudRadianceFraction are clipped within
       ! [0.,1.), negative values signal bad data
       cal_ecf=out_EffectiveCloudFraction(ix,it)
@@ -175,26 +196,18 @@ subroutine cal_ocp
 
       !hqw skip calculation if cal_ecf or cal_crf are bad
       if ((cal_ecf .lt. 0.) .or. (cal_crf .lt. 0.)) then
-            go to 990
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)  
+         go to 990
       endif
-
-      ! --------------------
-      ! input angles
-      ! --------------------
-      sza0=rad_SolarZenithAngle(ix,it)
-      vza0=rad_ViewingZenithAngle(ix,it)
-      raa0=out_RelativeAzimuthAngle(ix,it)
-      ! as cal_ecf is called before, out_RelativeAzimuthAngle should already be within
-      ! [0., 180.), unless the value is bad which is  <0.
-      ! thus, the following line is not needed
-      !if(raa0 .gt. 180.) raa0=360.-raa0
-      !hqw added skip calculation for bad angles here
-      !Out_ProcessingQUalityFlags bit 0&1 are set in cal_ecf.f90
-      !  according to sza0,vza0
 
       !hqw temporaryalb0 and psfc0 which will be replaced by climatology
       alb0 = 0.05
       psfc0 = 1000.
+
+      ! initialize local array
+      tt = fFillValue
+      pp = fFillValue
+      vvcd = fFillValue
 
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
@@ -258,7 +271,6 @@ subroutine cal_ocp
         vvcd=gmi_vcd
       endif
 
-     !hqw TEMPO does not read inp_TerrainPressure
      !This option should not be used for TEMPO without development
      ! if(name_option_TemperaturePressure.eq.'DEM') then
      !!   psfc0=real(inp_TerrainPressure(ix,it))
@@ -337,11 +349,13 @@ subroutine cal_ocp
 
       if(name_option_SurfaceReflectivity.eq.'BRDF') then
         alb0=BRDF_SurfaceReflectivity466(ix,it)
-        !hqw current BRDF tables does not have 440
+        !hqw current BRDF tables does not have 440, thus
         !  all BRDF_SurfaceReflectivity440 are filled with fspecial
         alb440=BRDF_SurfaceReflectivity440(ix,it)
       endif
 
+      ! clip and assign out_SurfaceReflectivity which contains 
+      ! input LER or GLER depending on name_option
       if((alb0 .ge. -2.0) .and. (alb0 .lt. 0.0)) alb0=0.0
       if((alb0 .gt.  1.0) .and. (alb0 .le. 2.0)) alb0=1.0
       out_SurfaceReflectivity466(ix,it)=alb0
@@ -357,36 +371,6 @@ subroutine cal_ocp
       ! -----------------------------------------------------
       isnowice=0
 
-      !hqw temporarily skip these rad_GroundPixelQualityFlags
-      !isnowice is used to set out_ProcessingQualityFlagsbit 4 later
-!      goto 1101
-!      i0=0
-!      i1=0
-!      i2=0
-!      i3=0
-!      i4=0
-!      i5=0
-!      i6=0
-!      i7=0
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),8)) i0=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),9)) i1=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),10)) i2=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),11)) i3=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),12)) i4=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),13)) i5=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),14)) i6=1
-!      if(btest(rad_GroundPixelQualityFlags(ix,it),15)) i7=1
-!
-!      bit08to14=i0*1+i1*2+i2*4+i3*8+i4*16+i5*32+i6*64
-!
-!      if((bit08to14.ge.10).and.(bit08to14.le.100)) isnowice=1 ! Sea ice concentration (%)
-!      if(bit08to14.eq.101) isnowice=2    ! Permanent ice
-!      if(bit08to14.eq.103) isnowice=3    ! Dry snow
-      !  if(bit08to14.eq.125) isnowice=4    ! Suspect ice value
-!1101  continue
-
-      !hqw use rad_SnowIceFraction [0.,1.] for isnowice instead
-      ! isnowice = 1 means snowice exists,  different from above
       if (rad_SnowIceFraction(ix,it) .gt. 0.01) isnowice = 1
 
       ! -------------------------------------------
@@ -394,43 +378,37 @@ subroutine cal_ocp
       ! see also m_cal_ecf.f90 for bit00/bit01/bit08/bit09
       ! -------------------------------------------
 
-      if(isnowice.gt.0) then
+      if(isnowice .gt. 0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
       end if
-
-      !  if((isnowice.eq.1).or.(isnowice.eq.3)) then
-      !    out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),5)
-      !  end if
 
       if((cal_ecf .gt. 0.).and.(cal_ecf .lt. min_ecf)) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
       endif
 
-      !hqw changed from out_SlantColumnAmountO2O2 to
       if(nasa_SlantColumnAmountO2O2(ix,it).lt.0.0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
       endif
 
-      !hqw temporarily skip groudpixelqualityflags
-      !if(btest(rad_GroundPixelQualityFlags(ix,it),6)) then
-      !  out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
-      !endif
-
       ! skip calcultion if these bits are set
       if(btest(out_ProcessingQualityFlags(ix,it),0).or. & ! geolocation error
-           btest(out_ProcessingQualityFlags(ix,it),1).or. & ! SZA//VZA error
-           btest(out_ProcessingQualityFlags(ix,it),2).or. & ! < min_ecf
-           ! btest(out_ProcessingQualityFlags(ix,it),4).or. & !snowice
+           btest(out_ProcessingQualityFlags(ix,it),1).or. & ! SZA//VZA//RAA error
+           !hqw do not skip ocp calculation even if 0<=ecf<min_ecf  
+           !btest(out_ProcessingQualityFlags(ix,it),2).or. & ! < min_ecf
+           !hqw do not skip snow/ice scene for ocp calculation
+           !btest(out_ProcessingQualityFlags(ix,it),4).or. & !snowice
            btest(out_ProcessingQualityFlags(ix,it),6).or. & ! scd<0
-           btest(out_ProcessingQualityFlags(ix,it),7).or. & !rad unavailable
-           btest(out_ProcessingQualityFlags(ix,it),8).or. & !rad pixel error
-           btest(out_ProcessingQualityFlags(ix,it),10)) go to 990 !irr pixel error
+           !hqw skip ocp calculation if effective cloud fraction is invalid (<0.)
+           btest(out_ProcessingQualityFlags(ix,it),12)) then
+            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
+            go to 990 
+      endif
 
       ! skip calculation if cal_ecf are out of range
-      ! though this seems unecessary as cal_ecf is clipped
-      ! and <0. values are already skipped
+      ! though this may be unnecessary because bit12 is already checked above
       if((cal_ecf.lt.0.0).or.(cal_ecf.gt.1.0)) then
-           go to 990
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
+         go to 990
       endif
 
       !hqw moved this section from before to after check ProcessingQualityFlags
@@ -439,6 +417,7 @@ subroutine cal_ocp
       ! set nodes for LUT
       ! -----------------
       ialb1=-9; ialb2=-9
+      walb1=0.; walb2=0.
       do ialb=1,nalb-1
         if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
           ialb1=ialb
@@ -447,9 +426,13 @@ subroutine cal_ocp
           walb2=lut_alb(ialb+1)-alb0
         endif
       end do
-      if(ialb1 .lt. 0) go to 990
+      if(ialb1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+      endif
 
       isza1=-9; isza2=-9
+      wsza1=0.; wsza2=0.
       do isza=1,nsza-1
         if((sza0 .ge. lut_sza(isza)) .and. (sza0 .le. lut_sza(isza+1))) then
           isza1=isza
@@ -458,9 +441,13 @@ subroutine cal_ocp
           wsza2=lut_sza(isza+1)-sza0
         endif
       end do
-      if(isza1 .lt. 0) go to 990
+      if(isza1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+      endif
 
       ivza1=-9; ivza2=-9
+      wvza1=0.; wvza2=0.
       do ivza=1,nvza-1
         if((vza0 .ge. lut_vza(ivza)) .and. (vza0 .le. lut_vza(ivza+1))) then
           ivza1=ivza
@@ -469,9 +456,13 @@ subroutine cal_ocp
           wvza2=lut_vza(ivza+1)-vza0
         endif
       end do
-      if(ivza1 .lt. 0) go to 990
+      if(ivza1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+      endif
 
       iraa1=-9; iraa2=-9
+      wraa1=0.; wraa2=0.
       do iraa=1,nraa-1
         if((raa0 .ge. lut_raa(iraa)) .and. (raa0 .le. lut_raa(iraa+1))) then
           iraa1=iraa
@@ -480,7 +471,10 @@ subroutine cal_ocp
           wraa2=lut_raa(iraa+1)-raa0
         endif
       end do
-      if(iraa1 .lt. 0) go to 990
+      if(iraa1 .lt. 0) then
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+        go to 990
+      endif
 
       ! -------------------------
       ! AMF at surface: clear sky
@@ -573,13 +567,17 @@ subroutine cal_ocp
       end do
 
       if(ipsfc1 .lt. 0) then
-        write(*,*) " *** Pcld: Check Surface Pressure *** ",psfc0
+        write(*,*) " *** Pcld: Check Surface Pressure *** ",ix,it,psfc0
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
         go to 990
       else
         vpsfc0=(wpsfc1*vpsfc2+wpsfc2*vpsfc1)/(wpsfc1+wpsfc2)
         apsfc0=(wpsfc1*apsfc2+wpsfc2*apsfc1)/(wpsfc1+wpsfc2)
       endif
 
+      !hqw added initizlization to ipm?
+      !ipm? are used for extrapolation at the large pressure end
+      ipm0=-9; ipm1=-9; ipm2=-9
       if(ipsfc0 .gt. 0) then
         ipm0=ipsfc0-0
         ipm1=ipsfc0-1
@@ -632,6 +630,8 @@ subroutine cal_ocp
         ! 311 format(2i3,3f10.4,5f10.4)
       endif
 
+      yy1=0. ; yy2=0.
+      ww1=0. ; ww2=0.
       do ipcld=1,npcld-1
         if((scdm.gt.amfvcd_int(ipcld)).and.(scdm.le.amfvcd_int(ipcld+1))) then
           iflag=1
@@ -642,8 +642,9 @@ subroutine cal_ocp
         endif
       end do
 
-      if(iflag .eq. 1) then
+      if(iflag .eq. 1) then ! normal interpolation
         cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+      ! the choice below is for low pressure cases
       else if(iflag .eq. 0) then ! scdm<= amfvcd_int(5)
         x0=0.0
         x1=lut_pcld(5)
@@ -660,7 +661,7 @@ subroutine cal_ocp
              +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
         diff_save=abs(scdm-yy)
 
-        !hqw increment ipp 1Pa at a time until min diff found
+        !hqw increment ipp by 1Pa at a time until min diff found
         ! 150 Pa > lut_pcld[5:6], thus a safe choice
         ! may need work if LUT is changed
         do ipp=1,150
@@ -682,8 +683,15 @@ subroutine cal_ocp
         cpp=real(nint(xx))
         !    write(3,312) '0',it,ix,cal_ecf,cal_crf,scdm,x0,x1,x2,y0,y1,y2,cpp
         ! 312 format(a1,2x,2i3,3f10.4,7f10.4)
-      else
+      else ! very large scdm case, ipm0 should tend to npsfc
         iflag=2
+        !hqw added safeguard logic, though the program is expected to
+        !actually bypass it because all ipms should be valid
+        if ((ipm2 .lt. 1) .or. (ipm1 .lt. 1) .or. (ipm0 .lt. 1)) then
+           write(*,*) 'ipm < 0 for large scdm, which should not happen.'
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+           go to 990
+        endif
         x0=lut_pcld(ipm0)
         x1=lut_pcld(ipm1)
         x2=lut_pcld(ipm2)
@@ -707,7 +715,7 @@ subroutine cal_ocp
 
         !hqw seems this tries ipp one at a time until mininal difference is found
         ! 5000 is a large number which safely covers psfc, 2000 should be enough
-        ! but makes no difference to the computer
+        ! but should make no difference to the computer
         do ipp=1,5000
           xx=psfc0+real(ipp)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
@@ -718,8 +726,8 @@ subroutine cal_ocp
             go to 980
           else
             diff_save=diff
-            if(ipp.ge.5000) then
-              xx=9999.
+            if(ipp.ge.5000) then !this should not happen
+              xx=-9999.
             endif
           endif
         end do
@@ -741,7 +749,7 @@ subroutine cal_ocp
           temp_t8p = real(t8p, kind=4)
         endif
       else
-         temp_t8p = real(t8p, kind=4)
+         temp_t8p = real(t8p, kind=4) !this will terminate iteration below
       endif
       iternum = iternum + 1
 
@@ -756,7 +764,7 @@ subroutine cal_ocp
          goto 990 ! exit iteration
       endif
 
-      if (iternum .lt. max_scd_iter) then
+      if (iternum .lt. max_scd_iter) then 
          t8p = temp_t8p  !update t8p from previous step
          scdm = scdadj !update scdm from previous step
          goto 777  ! goto iteration start
@@ -784,9 +792,16 @@ subroutine cal_ocp
       if((cpp.gt.9999.).or.(cpp.lt.-9999.)) then
         out_CloudPressure(ix,it)=int(iFillValue, kind=2)
         out_CloudPressureNotClipped(ix,it)=int(iFillValue, kind=2)
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
-      if((cpp.gt.-9999.).and.(cpp.le.100.)) out_CloudPressure(ix,it)=100
-      if((cpp.ge.psfc0).and.(cpp.lt.9999.)) out_CloudPressure(ix,it)=nint(psfc0, kind=2)
+      if((cpp.gt.-9999.).and.(cpp.le.100.)) then
+          out_CloudPressure(ix,it)=100
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+      endif
+      if((cpp.ge.psfc0).and.(cpp.lt.9999.)) then
+          out_CloudPressure(ix,it)=nint(psfc0, kind=2)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+      endif
 
       !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read
       !out_CloudPressureSTD(ix,it)=inp_CloudPressureSTD(ix,it)
