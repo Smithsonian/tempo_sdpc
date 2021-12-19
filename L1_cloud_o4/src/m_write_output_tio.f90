@@ -935,6 +935,18 @@ contains
 
     else 
     call tiof_varlist_append (varlist, errstat, &
+                              "nonclipped_cloud_fraction", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                    long_name = "nonclipped 466nm effective cloud fraction", &
+                              units = "no unit", &
+                              valid_range = [-10.0_r8, 10.0_r8], &
+                              fillvalue = fill_float_nines, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnAmountO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -1139,7 +1151,9 @@ contains
                out_SlantColumnSceneO2O2, out_O2O2SceneTemperature,&
                out_SlantColumnTerrainO2O2, out_O2O2TerrainTemperature,&
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
-               name_option_SurfaceReflectivity, out_RelativeAzimuthAngle
+               name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
+               out_EffectiveCloudFractionNotClipped, &
+               out_CloudPressureNotClipped
 
      use m_vars, only: scd_mdqfl, run_mode
 
@@ -1195,6 +1209,9 @@ contains
          [nstep, nxtrack], out_TerrainPressure, errstat)
 
     else
+    call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
+         [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
+
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
 

@@ -36,15 +36,6 @@ module m_vars
   character(len=255)::name_irr_swath='Sun Volume VIS Swath'
   real(kind=8)::irr_Time
   real(kind=4)::irr_SecondsInDay
-!hqw comments out OMI specific variables 
-!  integer(kind=2),dimension(:,:),pointer::irr_IrradianceMantissa
-!  integer(kind=2),dimension(:,:),pointer::irr_IrradiancePrecision
-!  integer(kind=1),dimension(:,:),pointer::irr_IrradianceExponent
-!  integer(kind=2),dimension(:,:),pointer::irr_PixelQualityFlags
-!  real(kind=4),   dimension(:,:),pointer::irr_WavelengthCoefficient
-!  real(kind=4),   dimension(:,:),pointer::irr_WavelengthCoefficientPrecision
-!  integer(kind=2)::irr_WavelengthReferenceColumn
-!  integer(kind=2)::irr_MeasurementQualityFlags
   integer(kind=4)::irr_NumTimes
   integer(kind=4)::irr_nXtrack
   integer(kind=4)::irr_nWavel
@@ -76,19 +67,15 @@ module m_vars
 !TEMPO uses L1 snow_ice_fraction instead
 !  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
 !hqw comments out OMI specific variables
-!  integer(kind=2),dimension(:,:,:),pointer::rad_RadianceMantissa
-!  integer(kind=2),dimension(:,:,:),pointer::rad_RadiancePrecision
-!  integer(kind=1),dimension(:,:,:),pointer::rad_RadianceExponent
-!  integer(kind=1),dimension(:,:),  pointer::rad_XTrackQualityFlags
 !hqw moved rad_Radiance and rad_Wavelength inside read_rad_tio
 !  real(kind=4), dimension(:,:,:), pointer :: rad_Radiance, rad_Wavelength
 !hqw added rad_466nm,rad_477nm,rad_440nm which is what really needed
   real(kind=4), dimension(:,:), pointer::rad_466nm,rad_477nm,rad_440nm
 !  integer(kind=2),dimension(:,:,:),pointer::rad_PixelQualityFlags
-  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficient
-  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficientPrecision
-  integer(kind=2),dimension(:),    pointer::rad_WavelengthReferenceColumn
-  integer(kind=2),dimension(:),    pointer::rad_MeasurementQualityFlags
+!  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficient
+!  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficientPrecision
+!  integer(kind=2),dimension(:),    pointer::rad_WavelengthReferenceColumn
+!  integer(kind=2),dimension(:),    pointer::rad_MeasurementQualityFlags
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
   integer(kind=4)::rad_nWavel
@@ -155,9 +142,9 @@ module m_vars
    real, parameter:: a253=0.9680, b253=-5.8256e-3
    real, parameter:: a293=1.0270, b293=-2.4064e-3
    ! maximum number of iteration for SCD temperature adjustment
-   integer, parameter :: max_scd_iter = 10
+   integer, parameter :: max_scd_iter = 20
    ! if dT < dt_threshold, then stop iteration
-   real, parameter :: dt_threshold = 0.5 
+   real, parameter :: dt_threshold = 0.5 !K 
 
 !-------------------------
 ! vertical column density
@@ -347,16 +334,6 @@ integer,dimension(12):: &
   character(len=255)::name_option_MinECF='yes'
 !  character(len=255)::name_option_MinECF='no'
 
-!hqw newKNMI is not an option for TEMPO
-! -----------------
-! option 6: NewKNMI
-! -----------------
-! name_option_NewKNMI:
-!   read NewKNMI?: yes or no
-
-!character(len=255)::name_option_NewKNMI='yes'
-! character(len=255)::name_option_NewKNMI='no'
-
 ! -----------------------------------
 ! option 7: SceneAlbedo/ScenePressure
 ! -----------------------------------
@@ -367,40 +344,12 @@ integer,dimension(12):: &
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
 
-! -----------------------------------
-! Test: zoom-mode
-! -----------------------------------
-! 0 (global mode); 15 (zoom mode)
-!hqw TEMPO does not use izoom, keep it 0
-!  integer(kind=4), parameter::izoom=0
- 
 ! ===== end of input options =====
-!hqw inp_ variables are from OMCLDO2 product, not needed for TEMPO
-!   they are allocated in m_read_input.f90/read_input
-!    which is no longer called
 !------------
 ! input data 
 !------------
-!  character(len=255)::name_he5_dir='./'
-!  character(len=255)::name_he5_file
-!  character(len=255)::name_inp_swath='CloudFractionAndPressure'
-!  integer(kind=4)::inp_NumTimes
-!  integer(kind=4)::inp_nXtrack
-!  real(kind=8),dimension(:),  pointer::inp_Time
-!  real(kind=4),dimension(:,:),pointer::inp_Longitude
-!  real(kind=4),dimension(:,:),pointer::inp_Latitude
-!  real(kind=4),dimension(:,:),pointer::inp_CloudFraction
-!  real(kind=4),dimension(:,:),pointer::inp_CloudFractionNotClipped
-!  real(kind=4),dimension(:,:),pointer::inp_CloudFractionSTD
-!  real(kind=4),dimension(:,:),pointer::inp_SlantColumnAmountO2O2
-!  real(kind=4),dimension(:,:),pointer::inp_SlantColumnAmountO2O2cf
-!  real(kind=4),dimension(:,:),pointer::inp_SceneAlbedo
-!  real(kind=4),dimension(:,:),pointer::inp_ScenePressure
-!  integer(kind=2),dimension(:,:),pointer::inp_CloudPressure
-!  integer(kind=2),dimension(:,:),pointer::inp_CloudPressureNotClipped
-!  integer(kind=2),dimension(:,:),pointer::inp_CloudPressureSTD
-!  integer(kind=1),dimension(:,:),pointer::inp_TerrainReflectivity
-!  integer(kind=2),dimension(:,:),pointer::inp_TerrainPressure
+!hqw inp_ variables are from OMCLDO2 product, not needed for TEMPO
+!    which is no longer needed, thus deleted
 
 !----------------
 ! input NASA SCD
@@ -421,7 +370,8 @@ integer,dimension(12):: &
 ! input extra
 !------------
 ! layer
-  integer,parameter::nlay=48 !46 standard layers + 2 bottom layers to extend to 1100 hPa
+!46 standard layers + 2 bottom layers to extend to 1100 hPa
+  integer,parameter::nlay=48 
 
 ! wavelength
   real::w440=440.0 ! nm for cloud fraction calculation
@@ -438,7 +388,7 @@ integer,dimension(12):: &
   real::alb0,sza0,vza0,raa0,psfc0,rsfc0 ! input values
   real::alb1,sza1,vza1,raa1,psfc1,rsfc1 ! LUT node1 for interpolation
   real::alb2,sza2,vza2,raa2,psfc2,rsfc2 ! LUT node2 for interpolation
-!  real::tsfc0                           ! surface temperature
+
   real::cal_ler_rad
   real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld,cal_rad_cld440
   real(kind=8),dimension(npsfc)::cal_amf_clr
@@ -549,6 +499,7 @@ end type gmeta
 !hqw moved gmetadata def from OMCDO2N.f90 here
 type (gmeta) :: gmetadata
 
+!TEMPO time stamp
 real(kind=8)::gmeta_tai
 
 !*****************

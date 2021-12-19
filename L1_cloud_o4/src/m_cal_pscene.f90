@@ -13,17 +13,17 @@ subroutine cal_pscene
   implicit none
 
   !real,dimension(nsza)::lut_rsza
-  integer::ialb, isza, ivza, iraa, ipsfc, ipcld!, irsfc
-  integer::ialb1,isza1,ivza1,iraa1,ipsfc1!,irsfc1
-  integer::ialb2,isza2,ivza2,iraa2,ipsfc2!,irsfc2
-  real::   walb1,wsza1,wvza1,wraa1,wpsfc1,vpsfc1!,apsfc1,vcd1,tvcd1,wrsfc1
-  real::   walb2,wsza2,wvza2,wraa2,wpsfc2,vpsfc2!,apsfc2,vcd2,tvcd2,wrsfc2
-  real::yy1,yy2,ww1,ww2,rr1,rr2,wr1,wr2!,xxx,yyy,xx1,xx2,
+  integer::ialb, isza, ivza, iraa, ipsfc, ipcld
+  integer::ialb1,isza1,ivza1,iraa1,ipsfc1
+  integer::ialb2,isza2,ivza2,iraa2,ipsfc2
+  real::   walb1,wsza1,wvza1,wraa1,wpsfc1,vpsfc1
+  real::   walb2,wsza2,wvza2,wraa2,wpsfc2,vpsfc2
+  real::yy1,yy2,ww1,ww2,rr1,rr2,wr1,wr2
   real(kind=4)::cpp, aaa, temp_cpp
   integer(kind=4)::iflag
-  integer(kind=4)::ierr!,status
-  integer(kind=4)::nt,nx!nw,nwc
-  integer(kind=4)::it,ix!,iw,iwc,iw1,iw2,dww
+  integer(kind=4)::ierr
+  integer(kind=4)::nt,nx
+  integer(kind=4)::it,ix
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2, iternum
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
@@ -31,23 +31,21 @@ subroutine cal_pscene
   real::tt11,tt12,tt21,tt22,tt1,tt2
   real (kind=4), dimension(:), allocatable:: tt, pp
   !real(kind=4)::sum1_vcd,avg_tvcd
-  integer(kind=4)::ip!,gmi_ix,gmi_iy
+  integer(kind=4)::ip
 
   !hqw make pflag00, pflag01 from  m_vars.f90 as local variable
   integer(kind=4):: pflag00, pflag01
 
-  !real::a11111,a11112,a11121,a11122,a11211,a11212,a11221,a11222,a12111,a12112,a12121,a12122,a12211,a12212,a12221,a12222
-  !real::a21111,a21112,a21121,a21122,a21211,a21212,a21221,a21222,a22111,a22112,a22121,a22122,a22211,a22212,a22221,a22222
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
   real::a11,a12,a21,a22
   real::a1,a2
   real::rad0,rad1,rad2,rrr0,rrr1,rrr2
-  real::sbar,tran!,ler
+  real::sbar,tran
   real::TerrainLER440,TerrainLER466
   real::SceneLER440,SceneLER466
   real::SceneCPP
-  real::scdm!,omi_amf,vsfc0,cal_vcd
+  real::scdm
   real::scdmorg, scdadj, t8p, temp_t8p, delta_temp !hqw addition
   real(kind=8),dimension(nalb)::temp_ler_alb466,temp_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_alb466,lev_ler_alb440
@@ -59,14 +57,12 @@ subroutine cal_pscene
   real::diff,diff_save,pdiff
   real::x0,x1,x2,xx
   real::y0,y1,y2,yy
-  integer(kind=4)::ipp!,ipsfc_save
-  !integer::iyes
+  integer(kind=4)::ipp
 
   real::pi,dtor
 
   real::vpsfc0
   integer::ipsfc0
-  !real::cal_ecf,cal_crf
 
   ! ------
   ! refine
@@ -76,8 +72,6 @@ subroutine cal_pscene
 
   nt=rad_NumTimes
   nx=rad_nXtrack
-  !nw=rad_nWavel
-  !nwc=rad_nWavelCoef
 
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
@@ -120,38 +114,15 @@ subroutine cal_pscene
       if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990 ! skip all, start next pixel
 
-      !the following has been commented out, as they are not used
-      !cal_ecf=out_EffectiveCloudFraction(ix,it)
-      !cal_crf=out_CloudRadianceFraction466(ix,it)
-      !if((cal_ecf .gt. -990.0).and.(cal_ecf .lt. 0.0)) cal_ecf=0.0
-      !if((cal_ecf .gt. 1.0).and.(cal_ecf .lt. 990.0)) cal_ecf=1.0
-      !if((cal_crf .gt. -990.0).and.(cal_crf .lt. 0.0)) cal_crf=0.0
-      !if((cal_crf .gt. 1.0).and.(cal_crf .lt. 990.0)) cal_crf=1.0
-
       raa0=out_RelativeAzimuthAngle(ix,it)
-      !hqw out_RelativeAzimuthAbgle is calculated in cal_ecf
-      ! it should have already be within [0.,180.] range
-      ! it does not hurt to check again here, though seems unnecessary
-      ! pixels with invalid angles should have been skipped vis pflag01
       if(raa0 .gt. 180.) raa0=360.-raa0
 
-      !hqw inp_TerrainPressure used to come from OMCLDO2
       !psfc0 will be replaced by climatology
       psfc0 = -999. ! set to a temporary value here
 
       ! -----------------------------
       ! option for SlantColumnDensity
       ! -----------------------------
-      !hqw out_SlantColumnAmount(ix,it) was now assigned in cal_ocp.f90
-      !   thus comment out this section
-      !if(name_option_SlantColumnDensity.eq.'NASA') then
-      !  out_SlantColumnAmountO2O2(ix,it)=nasa_SlantColumnAmountO2O2(ix,it)
-      !endif
-      !hqw NASA product and the LUTs assumes O2O2 in unit of 10^43 molec^2/cm^5
-      !  SCD < -9. are set to fFillValue -1.2676506E30 defined in m_vars.f90
-      !this is now taken care of in m_read_input_tio.f90, thus comment it out
-      !if(out_SlantColumnAmountO2O2(ix,it).le.-9.) out_SlantColumnAmountO2O2(ix,it)=fFillValue
-
       !hqw add scdmorg, skip calculation if <0., start next pixel
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
       if (scdmorg .lt. 0.) go to 990
@@ -405,7 +376,6 @@ subroutine cal_pscene
         if(ler466.gt.1.0) ler466=1.0
 
         alb0=ler466
-        !  alb0=inp_SceneAlbedo(ix,it) ! this is from KNMI
 
         !------------------------
         !2. SurfaceLER at 440 nm
@@ -721,9 +691,6 @@ subroutine cal_pscene
         !--------------------------------------
         ! calculate LER at each pressure level
         !--------------------------------------
-        ! real(kind=8),dimension(nalb)::temp_ler_alb
-        ! real(kind=8),dimension(npsfc)::lev_ler_alb
-        ! real(kind=8),dimension(npsfc)::lev_ler_amf
 
         !----------------------
         !1. SceneLER at 466 nm
@@ -962,7 +929,7 @@ subroutine cal_pscene
 
         !hqw scd T-correction
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1100.) then
+        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then
           if (name_option_TemperaturePressure .eq. 'GMI') then
             call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
           else if (name_option_TemperaturePressure .eq. 'GEOS5') then
