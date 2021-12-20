@@ -295,8 +295,8 @@ subroutine cal_pscene
          go to 990
       endif
 
-      !the following line ensures psfc0 to be within LUT range
       !note psfc0 < 0. should have already been skipped 
+      !the following ensures psfc0 to be within LUT range
       if(psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
 
       ipsfc1=-9; ipsfc2=-9; wpsfc1=0.; wpsfc2=0.
@@ -395,8 +395,8 @@ subroutine cal_pscene
            alb0=ler466
         else
            ler466 = -999.
-           alb0 = -999.
-           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+           alb0 = ler466
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
            go to 333
         endif
 
@@ -473,14 +473,18 @@ subroutine cal_pscene
             walb2=lut_alb(ialb+1)-alb0
           endif
         end do
+        !if node not found, calculation will be skipped
         if(ialb1 .lt. 0) then
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
           go to 333
         endif
 
         ! -----------------------
         ! AMF at each cloud level
-        ! -----------------------
+        ! ----------------------- 
+        !hqw Dec21: lut_amf_ler(alb,sza,vza,raa,pcld,psfc),thus,
+        !it is better to switch ipsfc and ipcld below
+        !however, it does not matter for running, as ipsfc=ipcld
         do ipcld=1,npcld
           ipsfc=ipcld
           a1111=lut_amf_ler(ialb1,isza1,ivza1,iraa1,ipsfc,ipcld)
@@ -501,10 +505,14 @@ subroutine cal_pscene
           a2222=lut_amf_ler(ialb2,isza2,ivza2,iraa2,ipsfc,ipcld)
 
           ! -----------------
-          ! in case wsfc2=0.0
+          ! in case wpsfc2=0.0
           ! -----------------
+          !in AMF LUT, when Pcld>Psfc, entries are set to -999.
+          !when clouds are below surface,the condition will be true
+          !however, ipsfc=ipcld ensures this will not happen
+          !as it assumes clouds are at the surface for each cloud level
           if((a1111.lt.0.0) .or. (a1112.lt.0.0)) then
-            cal_ler_amf(ipcld)=-999.
+            cal_ler_amf(ipcld)=-999. 
             go to 898 ! goto next cloud level
           endif
 
@@ -551,7 +559,7 @@ subroutine cal_pscene
         if(ipsfc1 .lt. 0) then
           write(*,*) " *** Pcld2: Check Surface Pressure *** ",psfc0,ix,it
           vpsfc0 = -999.
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
           go to 333 !goto next name_option_SceneAlbedoAtTerrain 
         else
           vpsfc0=(wpsfc1*vpsfc2+wpsfc2*vpsfc1)/(wpsfc1+wpsfc2)
@@ -560,7 +568,7 @@ subroutine cal_pscene
         ! -----------------
         ! calculate AMF*VCD
         ! -----------------
-        !hqw: but cal_ler_amf may be -999., how is that handled?
+        !hqw: note cal_ler_amf may be -999., they are skipped below
         do ipcld=1,npcld
           aaa = real(cal_ler_amf(ipcld),kind=4)
           !hqw added check for aaa>0.
@@ -570,8 +578,12 @@ subroutine cal_pscene
           else
              ! skipped to next pixel
              amfvcd(ipcld) = -999.
+             ! when this happens, no need to go further, skip calculation
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+             go to 333
           endif
         end do
+        ! all amfvcds should >0. from here on
 
         !hqw initialize local vairable before scd T-correction iteration
         scdm = scdmorg
@@ -599,9 +611,9 @@ subroutine cal_pscene
           endif
         end do
 
-        if(iflag .ge. 1) then
+        if(iflag .ge. 1) then !found node, normal interpolation
           cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        else if(iflag .eq. 0) then
+        else if(iflag .eq. 0) then !low pressure end
           x0=0.0
           x1=lut_pcld(1)
           x2=lut_pcld(2)
@@ -615,7 +627,8 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff_save=abs(scdm-yy)
 
-          do ipp=1,100
+          ! decrement 1Pa at a time until minimum diff found
+          do ipp=1,100 !safe as pcld(1)=55 < 100
             xx=x1-real(ipp)
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
@@ -626,13 +639,13 @@ subroutine cal_pscene
             else
               diff_save=diff
               if(ipp.le.1) then
-                xx=-9999.
+                xx=-9999. !no solution found, set to -9999.
               endif
             endif
           end do
 970       continue
           cpp=xx
-        else
+        else ! high pressure end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -646,6 +659,7 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff_save=abs(scdm-yy)
 
+          ! increment 1Pa at a time until minimum diff found
           do ipp=1,1000
             xx=x0+real(ipp)
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
@@ -656,30 +670,36 @@ subroutine cal_pscene
               go to 980
             else
               diff_save=diff
-              if(ipp.ge.5000) then
-                xx=9999.
+              if(ipp.ge.1000) then
+                xx=-9999. !no solution found, set to -9999.
               endif
             endif
           end do
-
 980       continue
           cpp=xx
         endif
 
+        !hqw if cpp < 0., skip
+        if (cpp .lt. 0.) then
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+           go to 333
+        endif
+
         !hqw scd temperature correction
-        !Oct2021 temporarily use T at half cpp
-        !       need to tune with synthetic profile
+        !Oct2021 temporarily use T at half cpp, need to tune later
         temp_cpp = cpp * 0.5
         if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1100.) then
           if (name_option_TemperaturePressure .eq. 'GMI') then
             call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
           else if (name_option_TemperaturePressure .eq. 'GEOS5') then
             call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
-          else
+          else ! the following should not happen
             temp_t8p = t8p
           endif
-        else
+        else ! temp_cpp is not reasonable   
+           ! set temp_t8p to t8p to terminate iteration below
            temp_t8p = t8p
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
         iternum = iternum + 1
 
@@ -691,13 +711,19 @@ subroutine cal_pscene
             go to 777 ! do another iteration
         endif
 
+        if (iternum .eq. max_scd_iter) then
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+        endif
+
         !hqw assign output
         if (scdm .gt. 0.) then
+           !scdm is right before iteration terminates, scdadj right afterwards
            out_SlantColumnTerrainO2O2(ix,it) = scdm
            out_O2O2TerrainTemperature(ix,it) = t8p
         else
-           out_SlantColumnTerrainO2O2(ix,it)=nasa_SlantColumnAmountO2O2(ix,it)
-           out_O2O2TerrainTemperature(ix,it) = 273.
+           out_SlantColumnTerrainO2O2(ix,it) = -999.
+           out_O2O2TerrainTemperature(ix,it) = -999.
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10) 
         endif
 
       !+0+0+0+0+0+0+0+0+0+0
