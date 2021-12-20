@@ -308,9 +308,9 @@ contains
       if (thisirr440 .GT. 0.) then
           irr_out_irradiance_440nm(ix) = thisirr440
       else
-          irr_out_irradiance_440nm(ix) = -9999.
+          irr_out_irradiance_440nm(ix) = -999.
           do it = 1, rad_NumTimes
-             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
           end do 
       endif
 
@@ -323,9 +323,9 @@ contains
       if (thisirr466 .GT. 0.) then
            irr_out_irradiance_466nm(ix) = thisirr466
       else
-           irr_out_irradiance_466nm(ix) = -9999.
+           irr_out_irradiance_466nm(ix) = -999.
            do it = 1, rad_NumTimes
-              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it), 11)
+              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it), 8)
            end do
       endif
 
@@ -338,7 +338,7 @@ contains
       if (thisirr477 .GT. 0.) then
            irr_out_irradiance_477nm(ix) = thisirr477
       else
-           irr_out_irradiance_477nm(ix) = -9999.
+           irr_out_irradiance_477nm(ix) = -999.
       endif
       
     enddo !ix
@@ -580,37 +580,6 @@ contains
       endif
       rad_440nm(ix,it) = rad440
 
-      !hqw the following are obsolete
-!      !-------------------------------
-!      ! set out_ProcessingQualityFlags bit 8 & 9
-!      !-------------------------------
-!      if(btest(rad_PixelQualityFlags(iw1,ix,it),0).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),1).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),2).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),0).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),1).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),2)) then
-!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
-!      end if
-!
-!      if(btest(rad_PixelQualityFlags(iw1,ix,it),3).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),4).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),5).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),6).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),7).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),8).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),9).or. &
-!           btest(rad_PixelQualityFlags(iw1,ix,it),10).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),3).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),4).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),5).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),6).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),7).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),8).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),9).or. &
-!           btest(rad_PixelQualityFlags(iw2,ix,it),10)) then
-!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
-!      end if
 
       enddo !ix
       !write(*,*)it,rad440,rad466,rad477

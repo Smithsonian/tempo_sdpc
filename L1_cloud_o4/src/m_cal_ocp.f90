@@ -7,24 +7,25 @@ subroutine cal_ocp
   ! -----------------------------
   ! define ProcessingQualityFlags
   ! -----------------------------
+  ! bit??  meaning:WhereSet
   ! bit00  (Error) invalid geolocation: m_cal_ecf.f90
-  ! bit01  (Error) SZA,VZA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
+  ! bit01  (Error) SZA,VZA,RAA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
   ! bit02  (Warning) ecf < minECF (0.05): m_cal_ocp.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
-  ! bit04  (Warning) snow/ice fraction > 0.01
-  ! bit05  (Warning) SCD correction max_scd_iter reached
-  ! bit06  (Error) SCD < 0, skip cloud pressure: m_cal_ocp.f90
-  ! bit07  (Warning) 440nm radiance error: m_read_input_tio.f90
-  ! bit08  (ERROR) 466nm radiance error: m_read_input_tio.f90
-  ! bit09  ecf out of normal range, clipped: m_cal_ecf.g90
-  ! bit10  (Warning) 440nm irradiance error: m_read_input_tio.f90 
-  ! bit11  (ERROR) 466nm irradiance error: m_read_input_tio.f90
+  ! bit04  (Warning) snow_ice_fraction > 0.01
+  ! bit05  (Warning) SCD correction max_scd_iter reached in ocp : m_cal_ocp.f90
+  ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
+  ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
+  ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
+  ! bit09  (Warning) ecf out of normal range, clipped: m_cal_ecf.g90
+  ! bit10  N/A
+  ! bit11  N/A
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation
   !        due to any problem during processing: m_cal_ocp.f90
-  ! bit14  (Error) ocp out of normal range, clipped: m_cal_ocp.f90
-  ! bit15  N/A
+  ! bit14  (Warning) ocp out of normal range, clipped: m_cal_ocp.f90
+  ! bit15  (Warning) skipped pscene calculation during processing
 
   use m_vars
   use m_read_GMI

@@ -129,7 +129,7 @@ subroutine cal_ecf
       pflag00=0
       pflag01=0
       if((rad_Latitude(ix,it) .lt. -90.) .or. (rad_Latitude(ix,it) .gt. 90.) .or. &
-        (rad_Longitude(ix,it) .lt. -180.) .or. (rad_Longitude(ix,it) .gt. 180.)) then
+        (rad_Longitude(ix,it) .lt. -360.) .or. (rad_Longitude(ix,it) .gt. 360.)) then
         pflag00=pflag00+1
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
       endif

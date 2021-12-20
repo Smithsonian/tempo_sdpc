@@ -1,5 +1,6 @@
 module m_cal_pscene
   public cal_pscene
+
 contains
 !*********************
 subroutine cal_pscene
@@ -33,7 +34,6 @@ subroutine cal_pscene
   !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip
 
-  !hqw make pflag00, pflag01 from  m_vars.f90 as local variable
   integer(kind=4):: pflag00, pflag01
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -84,6 +84,7 @@ subroutine cal_pscene
   allocate(out_O2O2SceneTemperature(nx,nt),stat=ierr)
   allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
 
+  !initialize array
   out_SurfaceLER440=fFillValue
   out_SurfaceLER466=fFillValue
   out_SceneLER440=fFillValue
@@ -103,29 +104,30 @@ subroutine cal_pscene
   do it=1,nt
     do ix=1,nx
       ! ==========
-
-      pflag00=0
-      pflag01=0
-      if(rad_Latitude(ix,it) .lt. -90.) pflag00=pflag00+1
-      !hqw changed 86. to max_SZA, 72. to max_VZA
+! m_cal_ocp is called before this module, out_ProcessingQualityFlags
+! bit 0 and 1 can be used to skip pixels with invalid geo or angles
+      if (btest(out_ProcessingQualityFlags(ix,it),0) .or. &
+          btest(out_ProcessingQualityFlags(ix,it),1)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          go to 990
+      endif
+      
       sza0 = rad_SolarZenithAngle(ix,it)
       vza0 = rad_ViewingZenithAngle(ix,it)
-      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
-      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
-      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) go to 990 ! skip all, start next pixel
-
-      raa0=out_RelativeAzimuthAngle(ix,it)
-      if(raa0 .gt. 180.) raa0=360.-raa0
+      raa0 = out_RelativeAzimuthAngle(ix,it)
 
       !psfc0 will be replaced by climatology
-      psfc0 = -999. ! set to a temporary value here
+      psfc0 = -999. 
 
       ! -----------------------------
       ! option for SlantColumnDensity
       ! -----------------------------
       !hqw add scdmorg, skip calculation if <0., start next pixel
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
-      if (scdmorg .lt. 0.) go to 990
+      if (scdmorg .lt. 0.) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15) 
+         go to 990
+      endif
 
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
@@ -135,7 +137,6 @@ subroutine cal_pscene
 !           (name_option_TemperaturePressure.eq.'BDEM')) then
         gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
-
         gmi_iy1=floor(rad_Latitude(ix,it)+90.)+1
         gmi_iy2=gmi_iy1+1
 
@@ -164,6 +165,7 @@ subroutine cal_pscene
         pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
         gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
         psfc0=gmi_psfc
+
         do ip=1,gmi_np
           pp11=gmi_Pressure(gmi_ix1,gmi_iy1,ip)
           pp12=gmi_Pressure(gmi_ix1,gmi_iy2,ip)
@@ -242,13 +244,16 @@ subroutine cal_pscene
       endif
 
       !hqw skip if vvcd<0. due to improper psfc0
-      if (vvcd(1) .lt. 0.) go to  990
+      if ((vvcd(1) .lt. 0.) .and. (vvcd(npcld) .lt. 0.)) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          go to 990
+      endif
 
       ! -----------------
       ! set nodes for LUT
       ! -----------------
 
-      isza1=-9; isza2=-9
+      isza1=-9; isza2=-9; wsza1=0. ; wsza2=0.
       do isza=1,nsza-1
         if((sza0 .ge. lut_sza(isza)) .and. (sza0 .le. lut_sza(isza+1))) then
           isza1=isza
@@ -257,9 +262,12 @@ subroutine cal_pscene
           wsza2=lut_sza(isza+1)-sza0
         endif
       end do
-      if(isza1 .lt. 0) go to 990
+      if(isza1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+         go to 990
+      endif
 
-      ivza1=-9; ivza2=-9
+      ivza1=-9; ivza2=-9; wvza1=0.; wvza2=0.
       do ivza=1,nvza-1
         if((vza0 .ge. lut_vza(ivza)) .and. (vza0 .le. lut_vza(ivza+1))) then
           ivza1=ivza
@@ -268,9 +276,12 @@ subroutine cal_pscene
           wvza2=lut_vza(ivza+1)-vza0
         endif
       end do
-      if(ivza1 .lt. 0) go to 990
+      if(ivza1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+         go to 990
+      endif
 
-      iraa1=-9; iraa2=-9
+      iraa1=-9; iraa2=-9; wraa1=0.; wraa2=0.
       do iraa=1,nraa-1
         if((raa0 .ge. lut_raa(iraa)) .and. (raa0 .le. lut_raa(iraa+1))) then
           iraa1=iraa
@@ -279,12 +290,16 @@ subroutine cal_pscene
           wraa2=lut_raa(iraa+1)-raa0
         endif
       end do
-      if(iraa1 .lt. 0) go to 990
+      if(iraa1 .lt. 0) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+         go to 990
+      endif
 
       !the following line ensures psfc0 to be within LUT range
-      !note psfc0 < 0. should have already been skipped before
+      !note psfc0 < 0. should have already been skipped 
       if(psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
-      ipsfc1=-9; ipsfc2=-9
+
+      ipsfc1=-9; ipsfc2=-9; wpsfc1=0.; wpsfc2=0.
       do ipsfc=1,npsfc-1
         if((psfc0 .gt. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
           ipsfc1=ipsfc
@@ -294,7 +309,8 @@ subroutine cal_pscene
         endif
       end do
       if(ipsfc1 .lt. 0) then
-        !    write(*,*) " *** Pscene: Check Surface Pressure *** ",psfc0
+         write(*,*) " Pscene: Check Surface Pressure *** ",psfc0,ix,it
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
         go to 990
       endif
 
@@ -305,7 +321,7 @@ subroutine cal_pscene
 
       !+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0
       if((name_option_SceneAlbedoAtTerrain.eq.'yes') .or. &
-           (name_option_SceneAlbedoAtTerrain.eq.'both')) then
+         (name_option_SceneAlbedoAtTerrain.eq.'both')) then
       !+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0
 
          !hqw add local variable initialization for pixel
@@ -371,11 +387,18 @@ subroutine cal_pscene
         rrr2=lut_alb(12)
         tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
         sbar=1./rrr1-tran/(rad1-rad0)
-        ler466=(rad_of_irr466(ix,it)-rad0)/(tran+sbar*(rad_of_irr466(ix,it)-rad0))
-        if(ler466.lt.0.0) ler466=0.0
-        if(ler466.gt.1.0) ler466=1.0
-
-        alb0=ler466
+        !hqw added logic
+        if (rad_of_irr466(ix,it) .gt. 0.) then
+           ler466=(rad_of_irr466(ix,it)-rad0)/(tran+sbar*(rad_of_irr466(ix,it)-rad0))
+           if(ler466.lt.0.0) ler466=0.0
+           if(ler466.gt.1.0) ler466=1.0
+           alb0=ler466
+        else
+           ler466 = -999.
+           alb0 = -999.
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+           go to 333
+        endif
 
         !------------------------
         !2. SurfaceLER at 440 nm
@@ -428,15 +451,20 @@ subroutine cal_pscene
         rrr2=lut_alb(12)
         tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
         sbar=1./rrr1-tran/(rad1-rad0)
-        ler440=(rad_of_irr440(ix,it)-rad0)/(tran+sbar*(rad_of_irr440(ix,it)-rad0))
-        if(ler440.lt.0.0) ler440=0.0
-        if(ler440.gt.1.0) ler440=1.0
+        !hqw added logic
+        if (rad_of_irr440(ix,it) .gt. 0.) then
+           ler440=(rad_of_irr440(ix,it)-rad0)/(tran+sbar*(rad_of_irr440(ix,it)-rad0))
+           if(ler440.lt.0.0) ler440=0.0
+           if(ler440.gt.1.0) ler440=1.0
+        else
+           ler440 = -999.
+        endif 
 
         !-----
         ! find alb node for lut_amf_ler
         ! alb0 was assigned ler466 above
 
-        ialb1=-9; ialb2=-9
+        ialb1=-9; ialb2=-9; walb1=0.; walb2=0.
         do ialb=1,nalb-1
           if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
             ialb1=ialb
@@ -445,7 +473,10 @@ subroutine cal_pscene
             walb2=lut_alb(ialb+1)-alb0
           endif
         end do
-        if(ialb1 .lt. 0) go to 990
+        if(ialb1 .lt. 0) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          go to 333
+        endif
 
         ! -----------------------
         ! AMF at each cloud level
@@ -502,7 +533,7 @@ subroutine cal_pscene
         ! check psfc0
         ! -----------
         ipsfc0=-9
-        ipsfc1=-9; ipsfc2=-9
+        ipsfc1=-9; ipsfc2=-9; wpsfc1=0.; wpsfc2=0.
         do ipsfc=1,npsfc-1
           if((psfc0 .gt. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
             ipsfc1=ipsfc
@@ -518,8 +549,10 @@ subroutine cal_pscene
         end do
 
         if(ipsfc1 .lt. 0) then
-          write(*,*) " *** Pcld2: Check Surface Pressure *** ",psfc0
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
+          write(*,*) " *** Pcld2: Check Surface Pressure *** ",psfc0,ix,it
+          vpsfc0 = -999.
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+          go to 333 !goto next name_option_SceneAlbedoAtTerrain 
         else
           vpsfc0=(wpsfc1*vpsfc2+wpsfc2*vpsfc1)/(wpsfc1+wpsfc2)
         endif
@@ -537,7 +570,6 @@ subroutine cal_pscene
           else
              ! skipped to next pixel
              amfvcd(ipcld) = -999.
-             go to 990
           endif
         end do
 
@@ -548,11 +580,12 @@ subroutine cal_pscene
         temp_t8p = 273.
 
         iternum = 0
-777     continue ! T iteration come back here
+
+777     continue ! SCD T iteration come back here
 
         iflag=-1
 
-        if(scdm.le.amfvcd(1)) then
+        if((scdm.le.amfvcd(1)).and.(scdm .gt. 0.)) then
           iflag=0
         endif
 
@@ -671,13 +704,16 @@ subroutine cal_pscene
       endif !name_option_SceneAlbedoAtTerrain=='yes'//'both'
       !+0+0+0+0+0+0+0+0+0+0
 
+333   continue !skip here if something goes wrong within this name option
+
       TerrainLER466=ler466
       TerrainLER440=ler440
 
+      !**************************************************************
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
       if((name_option_SceneAlbedoAtTerrain.eq.'no') .or. &
            (name_option_SceneAlbedoAtTerrain.eq.'both')) then
-        !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
+      !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
 
          !hqw initialize local variables for name_option
          scdm = fFillValue
