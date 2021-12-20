@@ -18,8 +18,10 @@ subroutine cal_ocp
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
   ! bit09  (Warning) ecf out of normal range, clipped: m_cal_ecf.g90
-  ! bit10  N/A
-  ! bit11  N/A
+  ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
+  !        SCD correction proble or max_scd_iter reached
+  ! bit11  SceneAlbedoAtTerrain.eq.'np' // 'both' skipped,
+  !        SCD correction problem or max_scd_iter reeached
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation

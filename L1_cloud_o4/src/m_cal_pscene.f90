@@ -732,9 +732,15 @@ subroutine cal_pscene
 
 333   continue !skip here if something goes wrong within this name option
 
+      ! assign 
       TerrainLER466=ler466
       TerrainLER440=ler440
 
+      ! re-init ler466, ler440, cpp
+      ler466 = -999.
+      ler440 = -999.
+      cpp = -999.
+ 
       !**************************************************************
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
       if((name_option_SceneAlbedoAtTerrain.eq.'no') .or. &
@@ -777,7 +783,7 @@ subroutine cal_pscene
             temp_ler_alb466(ialb)=(wsza2*a1+wsza1*a2)/(wsza1+wsza2)
           end do
 
-          ! calculate transmittanc and sbar at R=0.0(1),0.1(7), and 0.2(12)
+          ! calculate transmitance and sbar at R=0.0(1),0.1(7), and 0.2(12)
           rad0=real(temp_ler_alb466(1), kind=4)
           rad1=real(temp_ler_alb466(7), kind=4)
           rad2=real(temp_ler_alb466(12), kind=4)
@@ -786,11 +792,18 @@ subroutine cal_pscene
           rrr2=lut_alb(12)
           tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
           sbar=1./rrr1-tran/(rad1-rad0)
-          ler466=(rad_of_irr466(ix,it)-rad0)/(tran+sbar*(rad_of_irr466(ix,it)-rad0))
-          if(ler466.lt.0.0) ler466=0.0
-          if(ler466.gt.1.0) ler466=1.0
+          !hqw add logic for rad_of_irr
+          if (rad_of_irr466(ix,it) .gt. 0.) then
+             ler466=(rad_of_irr466(ix,it)-rad0)/(tran+sbar*(rad_of_irr466(ix,it)-rad0))
+             if(ler466.lt.0.0) ler466=0.0
+             if(ler466.gt.1.0) ler466=1.0
+          else
+             ler466 = -999.
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+             go to 444
+          endif 
           lev_ler_alb466(ipsfc)=ler466
-        end do
+        end do ! ipsfc
 
         !----------------------
         !2. SceneLER at 440 nm
@@ -824,9 +837,13 @@ subroutine cal_pscene
           rrr2=lut_alb(12)
           tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
           sbar=1./rrr1-tran/(rad1-rad0)
-          ler440=(rad_of_irr440(ix,it)-rad0)/(tran+sbar*(rad_of_irr440(ix,it)-rad0))
-          if(ler440.lt.0.0) ler440=0.0
-          if(ler440.gt.1.0) ler440=1.0
+          if (rad_of_irr440(ix,it) .gt. 0.) then
+             ler440=(rad_of_irr440(ix,it)-rad0)/(tran+sbar*(rad_of_irr440(ix,it)-rad0))
+             if(ler440.lt.0.0) ler440=0.0
+             if(ler440.gt.1.0) ler440=1.0
+          else
+             ler440 = -999.
+          endif
           lev_ler_alb440(ipsfc)=ler440
         end do
 
@@ -836,7 +853,9 @@ subroutine cal_pscene
         do ipsfc=1,npsfc
           ipcld=ipsfc
           alb0=real(lev_ler_alb466(ipsfc), kind=4)
-          ialb1=-9; ialb2=-9
+
+          ! negative alb0 should have already been skipped above
+          ialb1=-9; ialb2=-9 ; walb1=0.; walb2=0.
           do ialb=1,nalb-1
             if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
               ialb1=ialb
@@ -844,67 +863,70 @@ subroutine cal_pscene
               walb1=alb0-lut_alb(ialb)
               walb2=lut_alb(ialb+1)-alb0
             endif
-          end do
+          end do !iab
 
-          a1111=lut_amf_ler(ialb1,isza1,ivza1,iraa1,ipsfc,ipcld)
-          a1112=lut_amf_ler(ialb1,isza1,ivza1,iraa2,ipsfc,ipcld)
-          a1121=lut_amf_ler(ialb1,isza1,ivza2,iraa1,ipsfc,ipcld)
-          a1122=lut_amf_ler(ialb1,isza1,ivza2,iraa2,ipsfc,ipcld)
-          a1211=lut_amf_ler(ialb1,isza2,ivza1,iraa1,ipsfc,ipcld)
-          a1212=lut_amf_ler(ialb1,isza2,ivza1,iraa2,ipsfc,ipcld)
-          a1221=lut_amf_ler(ialb1,isza2,ivza2,iraa1,ipsfc,ipcld)
-          a1222=lut_amf_ler(ialb1,isza2,ivza2,iraa2,ipsfc,ipcld)
-          a2111=lut_amf_ler(ialb2,isza1,ivza1,iraa1,ipsfc,ipcld)
-          a2112=lut_amf_ler(ialb2,isza1,ivza1,iraa2,ipsfc,ipcld)
-          a2121=lut_amf_ler(ialb2,isza1,ivza2,iraa1,ipsfc,ipcld)
-          a2122=lut_amf_ler(ialb2,isza1,ivza2,iraa2,ipsfc,ipcld)
-          a2211=lut_amf_ler(ialb2,isza2,ivza1,iraa1,ipsfc,ipcld)
-          a2212=lut_amf_ler(ialb2,isza2,ivza1,iraa2,ipsfc,ipcld)
-          a2221=lut_amf_ler(ialb2,isza2,ivza2,iraa1,ipsfc,ipcld)
-          a2222=lut_amf_ler(ialb2,isza2,ivza2,iraa2,ipsfc,ipcld)
-          a111=(wraa2*a1111+wraa1*a1112)/(wraa1+wraa2)
-          a112=(wraa2*a1121+wraa1*a1122)/(wraa1+wraa2)
-          a121=(wraa2*a1211+wraa1*a1212)/(wraa1+wraa2)
-          a122=(wraa2*a1221+wraa1*a1222)/(wraa1+wraa2)
-          a211=(wraa2*a2111+wraa1*a2112)/(wraa1+wraa2)
-          a212=(wraa2*a2121+wraa1*a2122)/(wraa1+wraa2)
-          a221=(wraa2*a2211+wraa1*a2212)/(wraa1+wraa2)
-          a222=(wraa2*a2221+wraa1*a2222)/(wraa1+wraa2)
-          a11=(wvza2*a111+wvza1*a112)/(wvza1+wvza2)
-          a12=(wvza2*a121+wvza1*a122)/(wvza1+wvza2)
-          a21=(wvza2*a211+wvza1*a212)/(wvza1+wvza2)
-          a22=(wvza2*a221+wvza1*a222)/(wvza1+wvza2)
-          a1=(wsza2*a11+wsza1*a12)/(wsza1+wsza2)
-          a2=(wsza2*a21+wsza1*a22)/(wsza1+wsza2)
-          lev_ler_amf(ipsfc)=(walb2*a1+walb1*a2)/(walb1+walb2)
-        end do
+          !hqw adds logic for iab1
+          if (ialb1 .gt. 0) then
+            a1111=lut_amf_ler(ialb1,isza1,ivza1,iraa1,ipsfc,ipcld)
+            a1112=lut_amf_ler(ialb1,isza1,ivza1,iraa2,ipsfc,ipcld)
+            a1121=lut_amf_ler(ialb1,isza1,ivza2,iraa1,ipsfc,ipcld)
+            a1122=lut_amf_ler(ialb1,isza1,ivza2,iraa2,ipsfc,ipcld)
+            a1211=lut_amf_ler(ialb1,isza2,ivza1,iraa1,ipsfc,ipcld)
+            a1212=lut_amf_ler(ialb1,isza2,ivza1,iraa2,ipsfc,ipcld)
+            a1221=lut_amf_ler(ialb1,isza2,ivza2,iraa1,ipsfc,ipcld)
+            a1222=lut_amf_ler(ialb1,isza2,ivza2,iraa2,ipsfc,ipcld)
+            a2111=lut_amf_ler(ialb2,isza1,ivza1,iraa1,ipsfc,ipcld)
+            a2112=lut_amf_ler(ialb2,isza1,ivza1,iraa2,ipsfc,ipcld)
+            a2121=lut_amf_ler(ialb2,isza1,ivza2,iraa1,ipsfc,ipcld)
+            a2122=lut_amf_ler(ialb2,isza1,ivza2,iraa2,ipsfc,ipcld)
+            a2211=lut_amf_ler(ialb2,isza2,ivza1,iraa1,ipsfc,ipcld)
+            a2212=lut_amf_ler(ialb2,isza2,ivza1,iraa2,ipsfc,ipcld)
+            a2221=lut_amf_ler(ialb2,isza2,ivza2,iraa1,ipsfc,ipcld)
+            a2222=lut_amf_ler(ialb2,isza2,ivza2,iraa2,ipsfc,ipcld)
+            a111=(wraa2*a1111+wraa1*a1112)/(wraa1+wraa2)
+            a112=(wraa2*a1121+wraa1*a1122)/(wraa1+wraa2)
+            a121=(wraa2*a1211+wraa1*a1212)/(wraa1+wraa2)
+            a122=(wraa2*a1221+wraa1*a1222)/(wraa1+wraa2)
+            a211=(wraa2*a2111+wraa1*a2112)/(wraa1+wraa2)
+            a212=(wraa2*a2121+wraa1*a2122)/(wraa1+wraa2)
+            a221=(wraa2*a2211+wraa1*a2212)/(wraa1+wraa2)
+            a222=(wraa2*a2221+wraa1*a2222)/(wraa1+wraa2)
+            a11=(wvza2*a111+wvza1*a112)/(wvza1+wvza2)
+            a12=(wvza2*a121+wvza1*a122)/(wvza1+wvza2)
+            a21=(wvza2*a211+wvza1*a212)/(wvza1+wvza2)
+            a22=(wvza2*a221+wvza1*a222)/(wvza1+wvza2)
+            a1=(wsza2*a11+wsza1*a12)/(wsza1+wsza2)
+            a2=(wsza2*a21+wsza1*a22)/(wsza1+wsza2)
+            lev_ler_amf(ipsfc)=(walb2*a1+walb1*a2)/(walb1+walb2)
+          else ! ialb1 <= 0
+             lev_ler_amf(ipsfc) = -999.
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+             go to 444
+          endif ! ialb1
+
+        end do !ipsfc
 
         ! -----------------
         ! calculate AMF*VCD
         ! -----------------
+        do ipcld=1,npcld
+          ipsfc=ipcld
+          amfvcd(ipcld)=real(lev_ler_amf(ipsfc), kind=4)*vvcd(ipcld)
+        end do
+
         !hqw re-assign local vairables
         scdm = scdmorg
         scdadj = scdm
         t8p = 273.
         temp_t8p = t8p
 
-        !hqw comment out the following
-        !if((scdm.gt.-10.0).and.(scdm.lt.0.0)) scdm=0.1
-        !the following would not happen, as scdmorg<0. has been skipped
-        if(scdm.lt.0.0) then
-          !out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6) in cal_ocp
-          cpp=fFillValue
-         ! ler=fFillValue
-          go to 988
-        endif
-
         iternum = 0
 776     continue !hqw iteration come back here
 
-        do ipcld=1,npcld
-          ipsfc=ipcld
-          amfvcd(ipcld)=real(lev_ler_amf(ipsfc), kind=4)*vvcd(ipcld)
-        end do
+        if (scdm .lt. 0.) then 
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+          go to 444
+        endif
 
         iflag=-1
 
@@ -912,6 +934,7 @@ subroutine cal_pscene
           iflag=0
         endif
 
+        yy1=-999.; yy2=-999.; ww1=0.; ww2=0.
         do ipcld=1,npcld-1
           if((scdm.gt.amfvcd(ipcld)).and.(scdm.le.amfvcd(ipcld+1))) then
             iflag=1
@@ -922,9 +945,9 @@ subroutine cal_pscene
           endif
         end do
 
-        if(iflag .ge. 1) then
+        if(iflag .ge. 1) then !normal interpolation
           cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        else if(iflag .eq. 0) then
+        else if(iflag .eq. 0) then !low P end
           x0=0.0
           x1=lut_pcld(1)
           x2=lut_pcld(2)
@@ -955,7 +978,7 @@ subroutine cal_pscene
           end do
 972       continue
           cpp=xx
-        else
+        else ! high P end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -980,13 +1003,18 @@ subroutine cal_pscene
             else
               diff_save=diff
               if(ipp.ge.5000) then
-                xx=9999.
+                xx=-9999.
               endif
             endif
           end do
 
 982       continue
           cpp=xx
+        endif
+
+        if (cpp .lt. 0.) then 
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+          go to 444
         endif
 
         !hqw scd T-correction
@@ -1017,14 +1045,23 @@ subroutine cal_pscene
             out_SlantColumnSceneO2O2(ix,it) = scdm
             out_O2O2SceneTemperature(ix,it) = t8p
         else
-            out_SlantColumnSceneO2O2(ix,it)=nasa_SlantColumnAMountO2O2(ix,it)
-            out_O2O2SceneTemperature(ix,it) = 273.
+            out_SlantColumnSceneO2O2(ix,it)= -999.
+            out_O2O2SceneTemperature(ix,it) = -999.
+            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+            go to 444
         endif
 
+        if (iternum .eq. max_scd_iter) then
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+        endif
         !------------------------
         !calculate ler466 at cpp
         !------------------------
+        ler466 = -999.
+
         iflag=-1
+
+        rr1=-9. ; rr2=-9.; wr1=0. ; wr2=0.
         do ipcld=1,npcld-1
           if((cpp.gt.lut_pcld(ipcld)).and.(cpp.le.lut_pcld(ipcld+1))) then
             iflag=1
@@ -1050,13 +1087,18 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           ler466=yy
         endif
+
         if(ler466.lt.0.0) ler466=0.0
         if(ler466.gt.1.0) ler466=1.0
 
         !-------------------------------
         !calculate ler440 at cpp level
         !-------------------------------
+        ler440 = -999.
+
         iflag=-1
+
+        rr1=-9.; rr2=-9; wr1=0.; wr2=0. 
         do ipcld=1,npcld-1
           if((cpp.gt.lut_pcld(ipcld)).and.(cpp.le.lut_pcld(ipcld+1))) then
             iflag=1
@@ -1082,40 +1124,56 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           ler440=yy
         endif
+
         if(ler440.lt.0.0) ler440=0.0
         if(ler440.gt.1.0) ler440=1.0
 
-988     continue
+!988     continue
 
-        !+1+1+1+1+1+1+1+1
-      endif
       !+1+1+1+1+1+1+1+1
+      endif !name_option_SceneAlbedoAtTerrain .eq. 'no' // 'both'
+      !+1+1+1+1+1+1+1+1
+
+444   continue
 
       SceneLER466=ler466
       SceneLER440=ler440
       SceneCPP=real(cpp, kind=4)
 
-      if((TerrainLER466 .lt. -990.) .or. (TerrainLER466 .gt. 990.)) TerrainLER466=fFillValue
+      if((TerrainLER466 .lt. -990.) .or. (TerrainLER466 .gt. 990.)) then
+         TerrainLER466=fFillValue
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10) 
+      endif
       if((TerrainLER466 .ge. -990.) .and. (TerrainLER466 .lt. 0.0)) TerrainLER466=0.0
       if((TerrainLER466 .gt.  1.0) .and. (TerrainLER466 .le. 990.)) TerrainLER466=1.0
+
       if((TerrainLER440 .lt. -990.) .or. (TerrainLER440 .gt. 990.)) TerrainLER440=fFillValue
       if((TerrainLER440 .ge. -990.) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
       if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 990.)) TerrainLER440=1.0
-      if((SceneLER466 .lt. -990.) .or. (SceneLER466 .gt. 990.)) SceneLER466=fFillValue
+
+      if((SceneLER466 .lt. -990.) .or. (SceneLER466 .gt. 990.)) then
+         SceneLER466=fFillValue
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+      endif
       if((SceneLER466 .ge. -990.) .and. (SceneLER466 .lt. 0.0)) SceneLER466=0.0
       if((SceneLER466 .gt.  1.0) .and. (SceneLER466 .le. 990.)) SceneLER466=1.0
+
       if((SceneLER440 .lt. -990.) .or. (SceneLER440 .gt. 990.)) SceneLER440=fFillValue
       if((SceneLER440 .ge. -990.) .and. (SceneLER440 .lt. 0.0)) SceneLER440=0.0
       if((SceneLER440 .gt.  1.0) .and. (SceneLER440 .le. 990.)) SceneLER440=1.0
-      if(SceneCPP .gt. 9999.) SceneCPP=fFillValue
-      if(SceneCPP .lt. -9999.) SceneCPP=fFillValue
+
+      if ((SceneCPP .gt. 9999.) .or. (SceneCPP .lt. -9999.)) then
+         SceneCPP=fFillValue
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+      endif
       if((SceneCPP.gt.psfc0).and.(SceneCPP.lt.9999.)) SceneCPP=psfc0
+
+      out_SurfaceLER466(ix,it)=TerrainLER466
+      out_SurfaceLER440(ix,it)=TerrainLER440
 
       out_ScenePressure(ix,it)=SceneCPP
       out_SceneLER466(ix,it)=SceneLER466
       out_SceneLER440(ix,it)=SceneLER440
-      out_SurfaceLER466(ix,it)=TerrainLER466
-      out_SurfaceLER440(ix,it)=TerrainLER440
 
       ! ---------------------------------------------------------
       ! Use scene pressure
@@ -1138,8 +1196,6 @@ subroutine cal_pscene
           if((SceneLER466.ge.0.2).and.(pdiff.ge.100.)) then
             out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
             out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-            !hqw changed 1000 to 1. after out_EffectiveCloudFraction changed
-            ! from [0,1000] to [0.,1.] range
             out_EffectiveCloudFraction(ix,it)=1.
             out_EffectiveCloudFractionNotClipped(ix,it)=1.
             out_CloudRadianceFraction466(ix,it)=1.
@@ -1155,17 +1211,11 @@ subroutine cal_pscene
           out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
           out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
         endif
-        if((out_CloudPressure(ix,it).gt.iFillValue).and.(out_CloudPressure(ix,it).le.100)) &
+        if((out_CloudPressure(ix,it).gt.0).and.(out_CloudPressure(ix,it).le.100)) &
              out_CloudPressure(ix,it)=100
         if((out_CloudPressure(ix,it).ge.nint(psfc0)).and.(out_CloudPressure(ix,it).lt.5000)) &
              out_CloudPressure(ix,it)=nint(psfc0, kind=2)
       endif
-
-      !  if(btest(out_ProcessingQualityFlags(ix,it),4)) then
-      !    if(SceneLER466.lt.0.2) then
-      !      write(48,*) it,ix,out_EffectiveCloudFraction(ix,it),SceneLER466,out_CloudPressure(ix,it),out_ScenePressure(ix,it),psfc0
-      !    endif
-      !  endif
 
 990   continue
 
