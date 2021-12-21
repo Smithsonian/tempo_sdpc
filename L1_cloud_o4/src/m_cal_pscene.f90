@@ -1289,12 +1289,17 @@ subroutine cal_pscene
       out_SceneLER440(ix,it)=SceneLER440
 
       ! ---------------------------------------------------------
-      ! Use scene pressure
-      !   1. Over snow/ice
+      ! Use scene pressure for
+      !   1. snow/ice > min_snowice
       ! ---------------------------------------------------------
       if(name_option_SnowIce.eq.'Pscene') then
-        if(btest(out_ProcessingQualityFlags(ix,it),4)) then
+        !if(btest(out_ProcessingQualityFlags(ix,it),4)) then
+        !hqw replce condition
+         if((rad_SnowIceFraction(ix,it) .gt. min_snowice).and. &
+            (rad_SnowIceFraction(ix,it) .le. 1.0)) then
+
           pdiff=psfc0-SceneCPP
+
           if((SceneLER466.ge.0.2).and.(pdiff.lt.100.)) then
             out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
             out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
@@ -1305,6 +1310,7 @@ subroutine cal_pscene
             out_CloudRadianceFraction440(ix,it)=0.
             out_CloudRadianceFractionNotClipped440(ix,it)=0.
           endif
+
           if((SceneLER466.ge.0.2).and.(pdiff.ge.100.)) then
             out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
             out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
@@ -1315,23 +1321,31 @@ subroutine cal_pscene
             out_CloudRadianceFraction440(ix,it)=1.
             out_CloudRadianceFractionNotClipped440(ix,it)=1.
           endif
-        endif
-      endif
+
+          !signal pcld replacement by pscene
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
+        endif ! min_snowice
+      endif !name_option_SnowIce
 
       !--------------------------------------------------------
-      ! Use scene pressure  
+      ! Use scene pressure for 
       !   2. ECF < min_ecf
       !--------------------------------------------------------
       if(name_option_MinECF.eq.'yes') then
-        if(btest(out_ProcessingQualityFlags(ix,it),2)) then
+!        if(btest(out_ProcessingQualityFlags(ix,it),2)) then 
+        if ((out_EffectiveCloudFraction(ix,it).gt.0.).and. &
+            (out_EffectiveCloudFraction(ix,it).lt. min_ecf)) then 
           out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
           out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-        endif
-        if((out_CloudPressure(ix,it).gt.0).and.(out_CloudPressure(ix,it).le.100)) &
+          !clip
+          if((out_CloudPressure(ix,it).gt.0).and.(out_CloudPressure(ix,it).le.100)) &
              out_CloudPressure(ix,it)=100
-        if((out_CloudPressure(ix,it).ge.nint(psfc0)).and.(out_CloudPressure(ix,it).lt.2000)) &
+          if((out_CloudPressure(ix,it).ge.nint(psfc0)).and.(out_CloudPressure(ix,it).lt.maxpress)) &
              out_CloudPressure(ix,it)=nint(psfc0, kind=2)
-      endif
+          !signal pcld replacement by pscene
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
+        endif ! min_ecf
+      endif !name_option_MinECF
 
 990   continue
 

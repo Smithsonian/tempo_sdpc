@@ -10,9 +10,9 @@ subroutine cal_ocp
   ! bit??  meaning:WhereSet
   ! bit00  (Error) invalid geolocation: m_cal_ecf.f90
   ! bit01  (Error) SZA,VZA,RAA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
-  ! bit02  (Warning) ecf < minECF (0.05): m_cal_ocp.f90 
+  ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
-  ! bit04  (Warning) snow_ice_fraction > min_snowice
+  ! bit04  (Warning) pcld replaced by pscene becaues snow_ice_fraction>min_snowice: m_cal_pscene.f90
   ! bit05  (Warning) SCD correction max_scd_iter reached in ocp : m_cal_ocp.f90
   ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
@@ -61,16 +61,11 @@ subroutine cal_ocp
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
-!hqw changed tt,pp to allocatable and removed pp_geos and tt_geos
-!  real(kind=4),dimension(gmi_np)::tt
-!  real(kind=4),dimension(gmi_np+1)::pp !include Psfc
-!  real(kind=4),dimension(geos_np)::tt_geos
-!  real(kind=4),dimension(geos_np+1)::pp_geos !include Psfc
   real(kind=4), dimension(:), allocatable :: tt, pp
 
   integer(kind=4)::kleipool_ix,kleipool_iy
 
-  integer ::isnowice
+!  integer ::isnowice
 
 !hqw move pflag00, pflag01 from m_vars.f90 to local variable
   integer(kind=4):: pflag00, pflag01
@@ -370,26 +365,25 @@ subroutine cal_ocp
       if((alb440 .gt.  1.0) .and. (alb440 .le. 2.0)) alb440=1.0
       out_SurfaceReflectivity440(ix,it)=alb440
 
+!bit 2 and 4 are now handled in pscene
       ! -----------------------------------------------------
-      ! option for SnowIce:
+      ! option for SnowIce
       !   - 'Pscene': calculate Pscene
       !   - 'Pcld': calculate Pcld over snow/ice
       ! -----------------------------------------------------
-      isnowice=0
-
-      if (rad_SnowIceFraction(ix,it) .gt. min_snowice) isnowice = 1
+!      isnowice=0
+!      if (rad_SnowIceFraction(ix,it) .gt. min_snowice) isnowice = 1
 
       ! -------------------------------------------
       ! set ProcessingQualityFlags:
       ! -------------------------------------------
+      !if(isnowice .gt. 0) then
+      !  out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
+      !end if
 
-      if(isnowice .gt. 0) then
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
-      end if
-
-      if((cal_ecf .gt. 0.).and.(cal_ecf .lt. min_ecf)) then
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
-      endif
+!      if((cal_ecf .gt. 0.).and.(cal_ecf .lt. min_ecf)) then
+!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
+!      endif
 
       if(nasa_SlantColumnAmountO2O2(ix,it).lt.0.0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
@@ -399,9 +393,9 @@ subroutine cal_ocp
       if(btest(out_ProcessingQualityFlags(ix,it),0).or. & ! geolocation error
            btest(out_ProcessingQualityFlags(ix,it),1).or. & ! SZA//VZA//RAA error
            !hqw do not skip ocp calculation when 0<ecf<min_ecf  
-           !btest(out_ProcessingQualityFlags(ix,it),2).or. & ! < min_ecf
+           !btest(out_ProcessingQualityFlags(ix,it),2).or. & ! ecf< min_ecf
            !hqw do not skip snow/ice scene for ocp calculation
-           !btest(out_ProcessingQualityFlags(ix,it),4).or. & !snowice
+           !btest(out_ProcessingQualityFlags(ix,it),4).or. & ! snowice
            btest(out_ProcessingQualityFlags(ix,it),6).or. & ! scd<0
            !hqw skip ocp calculation if effective cloud fraction is invalid (<0.)
            btest(out_ProcessingQualityFlags(ix,it),12)) then
