@@ -12,7 +12,7 @@ subroutine cal_ocp
   ! bit01  (Error) SZA,VZA,RAA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
   ! bit02  (Warning) ecf < minECF (0.05): m_cal_ocp.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
-  ! bit04  (Warning) snow_ice_fraction > 0.01
+  ! bit04  (Warning) snow_ice_fraction > min_snowice
   ! bit05  (Warning) SCD correction max_scd_iter reached in ocp : m_cal_ocp.f90
   ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
@@ -377,7 +377,7 @@ subroutine cal_ocp
       ! -----------------------------------------------------
       isnowice=0
 
-      if (rad_SnowIceFraction(ix,it) .gt. 0.01) isnowice = 1
+      if (rad_SnowIceFraction(ix,it) .gt. min_snowice) isnowice = 1
 
       ! -------------------------------------------
       ! set ProcessingQualityFlags:

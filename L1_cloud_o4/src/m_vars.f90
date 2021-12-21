@@ -331,7 +331,7 @@ integer,dimension(12):: &
 ! name_option_ECF005:
 !   Pcld calculations ECF >= 0.05  vs. ECF >= 0.00
 
-  real,parameter::min_ecf=0.05
+  real,parameter::min_ecf=0.05, min_snowice=0.05
   character(len=255)::name_option_MinECF='yes'
 !  character(len=255)::name_option_MinECF='no'
 
