@@ -1209,12 +1209,20 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           ler466=yy
-        endif
-
-        !hqw do not clip here, done later 
-        !if(ler466.lt.0.0) ler466=0.0
-        !if(ler466.gt.1.0) ler466=1.0
-
+        else if (iflag .eq. 0) then !hqw add low pressure end
+          x0=lut_pcld(1)
+          x1=lut_pcld(2)
+          x2=lut_pcld(3)
+          y0=real(lev_ler_alb466(1),kind=4)
+          y1=real(lev_ler_alb466(2),kind=4)
+          y2=real(lev_ler_alb466(3),kind=4)
+          xx=real(cpp,kind=4)
+          yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
+               +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
+               +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
+          ler466=yy
+       endif
+          
         !-------------------------------
         !calculate ler440 at cpp level
         !-------------------------------
@@ -1237,7 +1245,7 @@ subroutine cal_pscene
           endif
         end do
 
-        if(iflag .ge. 1) then
+        if(iflag .ge. 1) then !normal interpolation
           ler440=(wr1*rr2+wr2*rr1)/(wr1+wr2)
         else if (iflag .eq. -1) then ! high pressure end
           x0=lut_pcld(npcld-0)
@@ -1251,11 +1259,19 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           ler440=yy
-        endif
-
-        !do not clip here, done later 
-        !if(ler440.lt.0.0) ler440=0.0
-        !if(ler440.gt.1.0) ler440=1.0
+        else if (iflag .eq. 0) then !hqw add low pressure end
+          x0=lut_pcld(1)
+          x1=lut_pcld(2)
+          x2=lut_pcld(3)
+          y0=real(lev_ler_alb440(1),kind=4)
+          y1=real(lev_ler_alb440(2),kind=4)
+          y2=real(lev_ler_alb440(3),kind=4)
+          xx=real(cpp,kind=4)
+          yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
+               +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
+               +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
+          ler466=yy
+       endif
 
       !+1+1+1+1+1+1+1+1
       endif !name_option_SceneAlbedoAtTerrain .eq. 'no' // 'both'
