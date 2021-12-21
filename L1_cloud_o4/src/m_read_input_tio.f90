@@ -678,8 +678,12 @@ contains
      ! normalize scd by norm
      tmp_dbl = tmp_dbl/norm
      ! set values outside -10 to 10 to fFillValue=-1.2676506E30
-     ! set mdqfl ne 0 to fFillValue
-     where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. scd_mdqfl .ne. 0)
+     ! set mdqfl 2 (bad) to fFillValue
+     ! note: mdqfl=0 (normal) and mdqfl=1 (suspicious) remain
+     !  as any scd<0. will be skipped for ocp and pscene,
+     !  can  use 0. instead of -10. below, but it does not matter
+     where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. &
+            (scd_mdqfl .eq. 2)) !scd_mdqfl .ne. 0)
            tmp_dbl = fFillValue
      end where
      ! assign nasa_SlantColumnAmountO2O2
