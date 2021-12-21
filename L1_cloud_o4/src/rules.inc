@@ -15,7 +15,6 @@ $(ODIR)/hdfeos4_parameters.o: $(SDIR)/hdfeos4_parameters.f90
 $(ODIR)/he5_swreader.o: $(SDIR)/he5_swreader.f90
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/he5_swreader.f90 -o $(ODIR)/he5_swreader.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cal_ecf.o: $(SDIR)/m_cal_ecf.f90 \
-  $(ODIR)/m_read_DEM.o \
   $(ODIR)/m_read_GMI.o \
   $(ODIR)/m_read_hdf5.o \
   $(ODIR)/m_vars.o

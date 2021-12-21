@@ -1,12 +1,13 @@
 module m_cal_ecf
   public cal_ecf
+
 contains
 !******************
 subroutine cal_ecf
   !******************
   use m_vars
   use m_read_GMI
-  use m_read_DEM
+!  use m_read_DEM
   use m_read_hdf5
 
   implicit none
@@ -178,13 +179,12 @@ subroutine cal_ecf
       ! calculate cloud fraction
       ! ------------------------
 
-      if((rad440 .le. 0.) .or. (rad466 .le. 0.)) then
+      if(rad466 .le. 0.) then
       ! bit 7 and 8 are already set in m_read_input_tio
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
         go to 990
       endif
 
-      !hqw izoom=0 for TEMPO in m_vars.f90 as a parameter
       if (irr_out_irradiance_466nm(ix) .gt. 0.) then
          rad_of_irr466(ix,it)=rad466/irr_out_irradiance_466nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
@@ -200,10 +200,6 @@ subroutine cal_ecf
          rad_of_irr440(ix,it)=rad440/irr_out_irradiance_440nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       else
          rad_of_irr440(ix,it) = fspecial
-      endif
-      if (rad_of_irr440(ix,it) .lt. 0.) then
-         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
-         go to 990
       endif
 
       !hqw 477nm is currently not used in cloud fraction calculation
@@ -407,7 +403,9 @@ subroutine cal_ecf
           go to 990
       endif
 
+      !----------------------------------
       !bound psfc by the largest lut_psfc
+      !----------------------------------
       if (psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
 
       !find nodes for psfc0
@@ -579,7 +577,6 @@ subroutine cal_ecf
          rout_crf440=rout_ecf*cal_rad_cld440(ix,it)/rad_of_irr440(ix,it)
       else
         rout_crf440 = fspecial
-        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
       ! calculate cloud radiance fraction at 466
