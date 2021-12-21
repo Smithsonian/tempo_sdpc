@@ -666,6 +666,8 @@ contains
     integer, parameter :: r8 = kind(1.0d0)
     !character (len=32) :: epoch_buf
 
+    character(len=1000) :: comment1
+
     if (errstat /= 0) return
 
     dimids_xtrack_step(1) = dimid_xtrack
@@ -723,11 +725,29 @@ contains
                               shuffle = shuffle, &
                               attlist=att_product)
 
+    comment1="0: (ERROR)geolocation error; "// &
+            "1: (ERROR) SZA/VZA/RAA error; "// &
+            "2: (WARNING) pcloud replaced by pscene as 0.<ecf<min_ecf; " // &
+            "3: (ERROR) input psfc or rsfc error "// &
+            "4: (WARNING) pcloud replaced by pscene as snow_ice_fraction>min_snowice; " // &
+            "5: (WARNING) SCD iteration max_iter reached in ocp; "// &
+            "6: (ERROR) SCD<0. or SCD_MainDataQualityFlag=2(bad); "// &
+            "7: (WARNING) 440nm rad or irr error; "// &
+            "8: (ERROR) 466nm rad or irr error; " // &
+            "9: (WARNING) calculated ecf out of normal range; "// &
+            "10:(WARNING) SceneAlbedoAtTerrain.eq.'yes' skipped or SCD correction problem; " // &
+            "11:(WARNING) SceneAlbedoAtTerrain.eq.'no' skpped or SCD correction problem; " // &
+            "12:(ERROR) ecf calculation skipped during processing; "// &
+            "13:(ERROR) ocp calculation skipped during processing; "// &
+            "14:(WARNING) calculated ocp out of normal range; "// &
+            "15:(WARNING) pscene calculation skipped during processing;"
+
     call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "processing quality flags", &
+                              long_name = "bitwise processing quality flag", &
+                              comment = comment1, &
                               valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_product)
