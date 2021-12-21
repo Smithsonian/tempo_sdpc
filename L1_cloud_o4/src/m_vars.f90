@@ -126,6 +126,7 @@ module m_vars
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
 
+  !LUT dimension
   integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
   integer,parameter::npsfc=23, npcld=23, nrsfc=23
 
@@ -144,7 +145,7 @@ module m_vars
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20
    ! if dT < dt_threshold, then stop iteration
-   real, parameter :: dt_threshold = 0.5 !K 
+   real, parameter :: dt_threshold = 1.0 !K 
 
 !-------------------------
 ! vertical column density
@@ -389,7 +390,6 @@ integer,dimension(12):: &
   real::alb1,sza1,vza1,raa1,psfc1,rsfc1 ! LUT node1 for interpolation
   real::alb2,sza2,vza2,raa2,psfc2,rsfc2 ! LUT node2 for interpolation
 
-  real::cal_ler_rad
   real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld,cal_rad_cld440
   real(kind=8),dimension(npsfc)::cal_amf_clr
   real(kind=8),dimension(npcld)::cal_amf_cld
