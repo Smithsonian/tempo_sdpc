@@ -51,6 +51,7 @@ subroutine cal_pscene
   real(kind=8),dimension(npsfc)::lev_ler_alb466,lev_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_amf
   real::ler440,ler466
+  real:: fFillValue9
 
   real,dimension(npcld)::amfvcd
 
@@ -73,6 +74,8 @@ subroutine cal_pscene
   nt=rad_NumTimes
   nx=rad_nXtrack
 
+  fFillValue9 = -9999.
+
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
   allocate(out_SurfaceLER466(nx,nt),stat=ierr)
@@ -85,20 +88,20 @@ subroutine cal_pscene
   allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
 
   !initialize array
-  out_SurfaceLER440=fFillValue
-  out_SurfaceLER466=fFillValue
-  out_SceneLER440=fFillValue
-  out_SceneLER466=fFillValue
-  out_ScenePressure=fFillValue
-  out_SlantColumnSceneO2O2=fFillValue
-  out_SlantColumnTerrainO2O2=fFillValue
-  out_O2O2SceneTemperature=fFillValue
-  out_O2O2TerrainTemperature=fFillValue
+  out_SurfaceLER440=fFillValue9
+  out_SurfaceLER466=fFillValue9
+  out_SceneLER440=fFillValue9
+  out_SceneLER466=fFillValue9
+  out_ScenePressure=fFillValue9
+  out_SlantColumnSceneO2O2=fFillValue9
+  out_SlantColumnTerrainO2O2=fFillValue9
+  out_O2O2SceneTemperature=fFillValue9
+  out_O2O2TerrainTemperature=fFillValue9
 
   ! allocate and initialize local arrays
   allocate(tt(nlayers), pp(nlayers+1))
-  tt(1:nlayers) = -999.0
-  pp(1:nlayers+1) = -999.0
+  tt(1:nlayers) = fFillValue9
+  pp(1:nlayers+1) = fFillValue9
 
   ! ==========
   do it=1,nt
@@ -663,7 +666,9 @@ subroutine cal_pscene
               go to 970
             else
               diff_save=diff
-              if(ipp.le.1) then
+!hqw corrected the following logic
+!              if(ipp.le.1) then
+               if(ipp .ge. 100) then
                 xx=-9999. !no solution found, set to -9999.
               endif
             endif
@@ -741,14 +746,14 @@ subroutine cal_pscene
 
         !hqw test if terminate iteration
         delta_temp = abs(t8p - temp_t8p)
-        if (delta_temp .ge. dt_threshold .and. iternum .le. max_scd_iter) then
+        if (delta_temp .ge. dt_threshold .and. iternum .lt. max_scd_iter) then
             t8p = temp_t8p
             scdm = scdadj
             go to 777 ! do another iteration
         endif
 
         ! signal exceeded max_scd_iter 
-        if (iternum .gt. max_scd_iter) then
+        if (iternum .ge. max_scd_iter) then
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
 
@@ -800,13 +805,12 @@ subroutine cal_pscene
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
 
          !hqw initialize local variables for name_option
-         scdm = fFillValue
-         scdadj = fFillValue
-         temp_cpp = fFillValue
-         delta_temp = fFillValue
+         scdm = -999.
+         scdadj = -999.
+         temp_cpp = -999.
+         delta_temp = -999.
          t8p = 273.
          temp_t8p = 273.
-         cpp = fFillValue
 
         !--------------------------------------
         ! calculate LER at each pressure level
@@ -1003,7 +1007,7 @@ subroutine cal_pscene
 
         if(iflag .ge. 1) then !normal interpolation
           cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        else if(iflag .eq. 0) then !low P end
+        else if(iflag .eq. 0) then !low pressure end
           x0=0.0
           x1=lut_pcld(1)
           x2=lut_pcld(2)
@@ -1027,14 +1031,17 @@ subroutine cal_pscene
               go to 972
             else
               diff_save=diff
-              if(ipp.le.1) then
+!hqw corrected the following logic, so that
+!when solution not found within the loop, set to invalid value
+!              if(ipp.le.1) then
+              if (ipp .ge.100) then
                 xx=-9999.
               endif
             endif
           end do
 972       continue
           cpp=xx
-        else ! high P end
+        else ! high pressure end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -1091,6 +1098,8 @@ subroutine cal_pscene
            temp_t8p = t8p ! to terminate iteration below
            cpp = cpp1st ! use values before iteration
            scdm = scdmorg
+           ! indicate SCD correction problem 
+           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
         endif
 
         ! increment iternum
@@ -1098,7 +1107,7 @@ subroutine cal_pscene
 
         !hqw iteration termination
         delta_temp = abs(t8p - temp_t8p)
-        if (delta_temp .gt. dt_threshold .and. iternum .le. max_scd_iter) then
+        if (delta_temp .gt. dt_threshold .and. iternum .lt. max_scd_iter) then
            scdm = scdadj
            t8p = temp_t8p
            go to 776
@@ -1115,7 +1124,7 @@ subroutine cal_pscene
             go to 444
         endif
 
-        if (iternum .gt. max_scd_iter) then
+        if (iternum .ge. max_scd_iter) then
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
         endif
 
@@ -1124,7 +1133,7 @@ subroutine cal_pscene
         !-----------------------
         SceneCPP=real(cpp, kind=4)
         if ((SceneCPP .lt. -9990.).or.(SceneCPP .gt. 9990)) then
-         SceneCPP=fFillValue
+         SceneCPP=-9999.
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
          go to 444
         endif
