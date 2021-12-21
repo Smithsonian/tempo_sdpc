@@ -866,7 +866,7 @@ contains
                               long_name = "LER at 466nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -878,7 +878,7 @@ contains
                               long_name = "LER at 440nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -890,7 +890,7 @@ contains
                               long_name = "LER at 466nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -902,7 +902,7 @@ contains
                               long_name = "LER at 440nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -914,7 +914,7 @@ contains
                               long_name = "scene pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.5e3_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -967,7 +967,7 @@ contains
                               comment = "O2-O2 slant column at O2O2SceneTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -980,7 +980,7 @@ contains
                               comment = "O2-O2 slant column at O2O2TerrainTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1085,7 +1085,7 @@ contains
                               comment = "effective T for SlantColumnSceneO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1097,7 +1097,7 @@ contains
                               comment = "effective T for SlantColumnTerrainO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1109,7 +1109,7 @@ contains
                               comment = "RAA used in calculation", &
                               units = "degree", &
                               valid_range = [0._r8, 180.0_r8], &
-                              fillvalue = -9999._r8, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)

@@ -51,7 +51,7 @@ subroutine cal_pscene
   real(kind=8),dimension(npsfc)::lev_ler_alb466,lev_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_amf
   real::ler440,ler466
-  real:: fFillValue9
+  real:: fFillValue9, maxpress
 
   real,dimension(npcld)::amfvcd
 
@@ -75,6 +75,7 @@ subroutine cal_pscene
   nx=rad_nXtrack
 
   fFillValue9 = -9999.
+  maxpress = 1500. !Pa for pscene
 
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
@@ -120,7 +121,7 @@ subroutine cal_pscene
       raa0 = out_RelativeAzimuthAngle(ix,it)
 
       !psfc0 will be replaced by climatology
-      psfc0 = -999. 
+      psfc0 = fFillValue9
 
       ! -----------------------------
       ! option for SlantColumnDensity
@@ -190,7 +191,7 @@ subroutine cal_pscene
           call read_GMI_VCD(pp,tt)
           vvcd=gmi_vcd
         else
-          vvcd(1:npcld) = -999.0
+          vvcd(1:npcld) = -9999.
         endif
       endif
 
@@ -242,7 +243,7 @@ subroutine cal_pscene
           call read_GEOS5_VCD(pp,tt)
           vvcd=geos_vcd
         else
-          vvcd(1:npcld) = -999.0
+          vvcd(1:npcld) = -9999.
         endif
       endif
 
@@ -337,14 +338,14 @@ subroutine cal_pscene
          (name_option_SceneAlbedoAtTerrain.eq.'both')) then
       !+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0
 
-         !hqw add local variable initialization for pixel
-         scdm = fFillValue
-         scdadj = fFillValue
+         !hqw local variable initialization for pixel
+         scdm = fFillValue9
+         scdadj = fFillValue9
          t8p = 273.
          temp_t8p = 273.
-         delta_temp = fFillValue
-         temp_cpp = fFillValue
-         cpp = fFillValue
+         delta_temp = fFillValue9
+         temp_cpp = fFillValue9
+         cpp = fFillValue9
 
         !------------------------------------------
         ! calculate LER at terrain pressure (Psfc)
@@ -407,7 +408,7 @@ subroutine cal_pscene
            if(ler466.gt.1.0) ler466=1.0
            alb0=ler466
         else
-           ler466 = -999.
+           ler466 = fFillValue9
            alb0 = ler466
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
            go to 333
@@ -470,12 +471,12 @@ subroutine cal_pscene
            if(ler440.lt.0.0) ler440=0.0
            if(ler440.gt.1.0) ler440=1.0
         else
-           ler440 = -999.
+           ler440 = fFillValue9
         endif 
 
         !-----
         ! find alb node for lut_amf_ler using the calculated ler466
-        ! alb0 was assigned ler466 above
+        ! alb0 was assigned ler466 before
         !-----
 
         ialb1=-9; ialb2=-9; walb1=0.; walb2=0.
@@ -528,7 +529,7 @@ subroutine cal_pscene
           !however, ipsfc=ipcld ensures this will not happen
           !as it assumes clouds are at the 'surface' for each cloud level
           if((a1111.lt.0.0) .or. (a1112.lt.0.0)) then
-            cal_ler_amf(ipcld)=-999. 
+            cal_ler_amf(ipcld)=-9999. 
             go to 898 ! goto next cloud level
           endif
 
@@ -574,7 +575,7 @@ subroutine cal_pscene
 
         if(ipsfc1 .lt. 0) then
           write(*,*) " *** Pcld2: Surface Pressure error *** ",psfc0,ix,it
-          vpsfc0 = -999.
+          vpsfc0 = -9999.
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
           go to 333 !goto next name_option_SceneAlbedoAtTerrain 
         else
@@ -584,7 +585,7 @@ subroutine cal_pscene
         ! -----------------
         ! calculate AMF*VCD for each cloud level using cal_ler_amf
         ! -----------------
-        !hqw: note cal_ler_amf may be -999., they are skipped below
+        !hqw: note cal_ler_amf may be -9999., they are skipped below
         do ipcld=1,npcld
           aaa = real(cal_ler_amf(ipcld),kind=4)
           !hqw added check for aaa>0.
@@ -593,7 +594,7 @@ subroutine cal_pscene
              amfvcd(ipcld)=real(aaa*vvcd(ipcld), kind=4)
           else
              ! skipped to next pixel
-             amfvcd(ipcld) = -999.
+             amfvcd(ipcld) = -9999.
              ! when this happens, no need to go further, skip calculation
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
              go to 333
@@ -609,7 +610,7 @@ subroutine cal_pscene
 
         iternum = 0
 
-777     continue ! SCD T iteration come back here
+777     continue ! SCD T iteration comes back here
 
         iflag=-1
 
@@ -636,8 +637,8 @@ subroutine cal_pscene
         end do
 
         ! calculate cpp
-        cpp = -9999. ! initialization
-        cpp1st = -9999.
+        cpp = fFillValue9 ! initialization
+        cpp1st = fFillValue9
 
         if(iflag .ge. 1) then !found node, normal interpolation
           cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
@@ -658,6 +659,11 @@ subroutine cal_pscene
           ! decrease pressure by 1Pa at a time until minimum diff found
           do ipp=1,100 !safe as pcld(1)=55 < 100
             xx=x1-real(ipp)
+!hqw adds condition to exit loop when xx becomes negative
+            if (xx .lt. 0.) then
+               xx = -9999.
+               go to 970 
+            endif
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -693,6 +699,12 @@ subroutine cal_pscene
           ! increment 1Pa at a time until minimum diff found
           do ipp=1,1000
             xx=x0+real(ipp)
+!hqw adds condition to exit loop when xx becomes too large
+            if (xx .gt. maxpress) then
+               xx = -9999.
+               go to 980
+            endif
+                
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -723,7 +735,7 @@ subroutine cal_pscene
         !hqw scd temperature correction
         !Oct2021 temporarily use T at half cpp, need to tune later
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 5. .and. temp_cpp .lt. 1100.) then !reasonable
+        if (temp_cpp .gt. 0. .and. temp_cpp .lt. maxpress) then !reasonable
           ! adjustment always start from scdmorg
           if (name_option_TemperaturePressure .eq. 'GMI') then
             call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
@@ -738,6 +750,7 @@ subroutine cal_pscene
            ! use cpp1st  & scdmorg
            scdm = scdmorg
            cpp = cpp1st
+           ! signal SCD correction problem during processing
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
 
@@ -752,7 +765,7 @@ subroutine cal_pscene
             go to 777 ! do another iteration
         endif
 
-        ! signal exceeded max_scd_iter 
+        ! signal max_scd_iter reached
         if (iternum .ge. max_scd_iter) then
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
@@ -763,8 +776,8 @@ subroutine cal_pscene
            out_SlantColumnTerrainO2O2(ix,it) = scdm
            out_O2O2TerrainTemperature(ix,it) = t8p
         else
-           out_SlantColumnTerrainO2O2(ix,it) = -999.
-           out_O2O2TerrainTemperature(ix,it) = -999.
+           out_SlantColumnTerrainO2O2(ix,it) = fFillValue9
+           out_O2O2TerrainTemperature(ix,it) = fFillValue9
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10) 
         endif
 
@@ -780,23 +793,23 @@ subroutine cal_pscene
       TerrainLER466=ler466
       TerrainLER440=ler440
 
-      if((TerrainLER466 .lt. -990.) .or. (TerrainLER466 .gt. 990.)) then
-         TerrainLER466=fFillValue
+      if ((TerrainLER466 .lt. -0.2).or.(TerrainLER466 .gt. 1.2)) then
+         TerrainLER466=fFillValue9
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
       endif
-      if((TerrainLER466 .ge. -990.) .and. (TerrainLER466 .lt. 0.0)) TerrainLER466=0.0
-      if((TerrainLER466 .gt.  1.0) .and. (TerrainLER466 .le. 990.)) TerrainLER466=1.0
+      if((TerrainLER466 .ge. -0.2) .and. (TerrainLER466 .lt. 0.0)) TerrainLER466=0.0
+      if((TerrainLER466 .gt. 1.0) .and. (TerrainLER466 .le. 1.2)) TerrainLER466=1.0
 
-      if((TerrainLER440 .lt. -990.) .or. (TerrainLER440 .gt. 990.)) TerrainLER440=fFillValue
-      if((TerrainLER440 .ge. -990.) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
-      if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 990.)) TerrainLER440=1.0
+      if((TerrainLER440 .lt. -0.2) .or. (TerrainLER440 .gt. 1.2)) TerrainLER440=fFillValue9
+      if((TerrainLER440 .ge. -0.2) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
+      if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 1.2)) TerrainLER440=1.0
 
       
       ! re-init ler466, ler440, cpp
-      ler466 = -999.
-      ler440 = -999.
-      cpp = -9999.
-      cpp1st = -9999.
+      ler466 = fFillValue9
+      ler440 = fFillValue9
+      cpp = fFillValue9
+      cpp1st = fFillValue9
  
       !**************************************************************
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
@@ -805,10 +818,10 @@ subroutine cal_pscene
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
 
          !hqw initialize local variables for name_option
-         scdm = -999.
-         scdadj = -999.
-         temp_cpp = -999.
-         delta_temp = -999.
+         scdm = fFillValue9
+         scdadj = fFillValue9
+         temp_cpp = fFillValue9
+         delta_temp = fFillValue9
          t8p = 273.
          temp_t8p = 273.
 
@@ -854,7 +867,7 @@ subroutine cal_pscene
              if(ler466.lt.0.0) ler466=0.0
              if(ler466.gt.1.0) ler466=1.0
           else
-             ler466 = -999.
+             ler466 = fFillValue9
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
              go to 444
           endif 
@@ -898,7 +911,7 @@ subroutine cal_pscene
              if(ler440.lt.0.0) ler440=0.0
              if(ler440.gt.1.0) ler440=1.0
           else
-             ler440 = -999.
+             ler440 = fFillValue9
           endif
           lev_ler_alb440(ipsfc)=ler440
         end do
@@ -910,7 +923,7 @@ subroutine cal_pscene
           ipcld=ipsfc
           alb0=real(lev_ler_alb466(ipsfc), kind=4)
 
-          ! negative alb0 should have already been skipped above
+          ! negative alb0 should have already been skipped before
           ialb1=-9; ialb2=-9 ; walb1=0.; walb2=0.
           do ialb=1,nalb-1
             if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
@@ -955,7 +968,7 @@ subroutine cal_pscene
             a2=(wsza2*a21+wsza1*a22)/(wsza1+wsza2)
             lev_ler_amf(ipsfc)=(walb2*a1+walb1*a2)/(walb1+walb2)
           else ! ialb1 <= 0
-             lev_ler_amf(ipsfc) = -999.
+             lev_ler_amf(ipsfc) = -9999.
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
              go to 444
           endif ! ialb1
@@ -981,7 +994,7 @@ subroutine cal_pscene
 
         iternum = 0
 
-776     continue !hqw iteration come back here
+776     continue !SCD iteration comes back here
 
         if (scdm .lt. 0.) then 
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
@@ -990,11 +1003,11 @@ subroutine cal_pscene
 
         iflag=-1
 
-        if(scdm.le.amfvcd(1)) then ! low P end
+        if(scdm.le.amfvcd(1)) then ! low pressure end
           iflag=0
         endif
 
-        yy1=-999.; yy2=-999.; ww1=0.; ww2=0.
+        yy1=-9999.; yy2=-9999.; ww1=0.; ww2=0.
         do ipcld=1,npcld-1
           if((scdm.gt.amfvcd(ipcld)).and.(scdm.le.amfvcd(ipcld+1))) then
             iflag=1
@@ -1022,7 +1035,12 @@ subroutine cal_pscene
           diff_save=abs(scdm-yy)
 
           do ipp=1,100
-            xx=x1-real(ipp)
+            xx=x1-real(ipp) 
+!hqw adds condition to terminate loop when xx<0.
+            if (xx .lt. 0.) then
+                xx = -9999.
+                go to 972
+            endif
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -1032,15 +1050,18 @@ subroutine cal_pscene
             else
               diff_save=diff
 !hqw corrected the following logic, so that
-!when solution not found within the loop, set to invalid value
+!when solution not found within the loop, set xx=-9999.
 !              if(ipp.le.1) then
               if (ipp .ge.100) then
                 xx=-9999.
               endif
             endif
           end do
+
 972       continue
+
           cpp=xx
+
         else ! high pressure end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
@@ -1056,7 +1077,12 @@ subroutine cal_pscene
           diff_save=abs(scdm-yy)
 
           do ipp=1,1000
-            xx=x0+real(ipp)
+            xx=x0+real(ipp) !increment xx 1Pa at a time
+!hqw adds condition to terminate loop when xx too large
+            if (xx .gt. maxpress) then
+                xx = -9999.
+                go to 982
+            endif
             yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -1072,7 +1098,9 @@ subroutine cal_pscene
           end do
 
 982       continue
+
           cpp=xx
+
         endif
 
         if (cpp .lt. 0.) then 
@@ -1080,13 +1108,13 @@ subroutine cal_pscene
           go to 444
         endif
 
-        if (iternum .eq. 0) then
+        if (iternum .eq. 0) then !iternum has not been incremented yet
            cpp1st = cpp
         endif
 
         !hqw scd T-correction
         temp_cpp = cpp * 0.5
-        if (temp_cpp .gt. 50. .and. temp_cpp .lt. 1200.) then !reasonable
+        if ((temp_cpp .gt. 0.).and.(temp_cpp.lt.maxpress)) then !reasonable
           if (name_option_TemperaturePressure .eq. 'GMI') then
             call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
           else if (name_option_TemperaturePressure .eq. 'GEOS5') then
@@ -1118,8 +1146,8 @@ subroutine cal_pscene
             out_SlantColumnSceneO2O2(ix,it) = scdm
             out_O2O2SceneTemperature(ix,it) = t8p
         else
-            out_SlantColumnSceneO2O2(ix,it)= -999.
-            out_O2O2SceneTemperature(ix,it) = -999.
+            out_SlantColumnSceneO2O2(ix,it)= fFillValue9
+            out_O2O2SceneTemperature(ix,it) = fFillValue9
             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
             go to 444
         endif
@@ -1132,20 +1160,29 @@ subroutine cal_pscene
         ! Assign SceneCPP
         !-----------------------
         SceneCPP=real(cpp, kind=4)
-        if ((SceneCPP .lt. -9990.).or.(SceneCPP .gt. 9990)) then
-         SceneCPP=-9999.
+
+        if ((SceneCPP .lt. 0.)) then
+         SceneCPP=fFillValue9
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
          go to 444
         endif
-        if((SceneCPP.gt.psfc0).and.(SceneCPP.lt.9990.)) SceneCPP=psfc0
- 
 
+        !clip SceneCPP
+        if((SceneCPP.gt.psfc0).and.(SceneCPP.le.maxpress)) SceneCPP=psfc0
+ 
+        !-----------------------------
         !calculate ler466 at SceneCPP
-        !------------------------
+        !-----------------------------
         cpp = SceneCPP
-        ler466 = -999.
+
+        ler466 = fFillValue9
 
         iflag=-1
+
+        ! cpp < 0. should have been skipped before
+        if (cpp .lt. lut_pcld(1)) then ! low pressure end 
+           iflag = 0
+        endif
 
         rr1=-9. ; rr2=-9.; wr1=0. ; wr2=0.
         do ipcld=1,npcld-1
@@ -1158,9 +1195,9 @@ subroutine cal_pscene
           endif
         end do
 
-        if(iflag .ge. 1) then
+        if(iflag .ge. 1) then ! normal interpolation
           ler466=(wr1*rr2+wr2*rr1)/(wr1+wr2)
-        else
+        else if (iflag .eq. -1) then ! high pressure end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -1174,15 +1211,20 @@ subroutine cal_pscene
           ler466=yy
         endif
 
-        if(ler466.lt.0.0) ler466=0.0
-        if(ler466.gt.1.0) ler466=1.0
+        !hqw do not clip here, done later 
+        !if(ler466.lt.0.0) ler466=0.0
+        !if(ler466.gt.1.0) ler466=1.0
 
         !-------------------------------
         !calculate ler440 at cpp level
         !-------------------------------
-        ler440 = -999.
+        ler440 = fFillValue9
 
         iflag=-1
+
+        if (cpp .le. lut_pcld(1)) then ! low pressure end
+           iflag = 0
+        endif
 
         rr1=-9.; rr2=-9; wr1=0.; wr2=0. 
         do ipcld=1,npcld-1
@@ -1197,7 +1239,7 @@ subroutine cal_pscene
 
         if(iflag .ge. 1) then
           ler440=(wr1*rr2+wr2*rr1)/(wr1+wr2)
-        else
+        else if (iflag .eq. -1) then ! high pressure end
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -1211,10 +1253,9 @@ subroutine cal_pscene
           ler440=yy
         endif
 
-        if(ler440.lt.0.0) ler440=0.0
-        if(ler440.gt.1.0) ler440=1.0
-
-!988     continue
+        !do not clip here, done later 
+        !if(ler440.lt.0.0) ler440=0.0
+        !if(ler440.gt.1.0) ler440=1.0
 
       !+1+1+1+1+1+1+1+1
       endif !name_option_SceneAlbedoAtTerrain .eq. 'no' // 'both'
@@ -1225,35 +1266,17 @@ subroutine cal_pscene
       SceneLER466=ler466
       SceneLER440=ler440
 
-!      if((TerrainLER466 .lt. -990.) .or. (TerrainLER466 .gt. 990.)) then
-!         TerrainLER466=fFillValue
-!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10) 
-!      endif
-!      if((TerrainLER466 .ge. -990.) .and. (TerrainLER466 .lt. 0.0)) TerrainLER466=0.0
-!      if((TerrainLER466 .gt.  1.0) .and. (TerrainLER466 .le. 990.)) TerrainLER466=1.0
-!
-!      if((TerrainLER440 .lt. -990.) .or. (TerrainLER440 .gt. 990.)) TerrainLER440=fFillValue
-!      if((TerrainLER440 .ge. -990.) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
-!      if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 990.)) TerrainLER440=1.0
-
-      if((SceneLER466 .lt. -990.) .or. (SceneLER466 .gt. 990.)) then
-         SceneLER466=-999.
+      if((SceneLER466 .lt. -0.2) .or. (SceneLER466 .gt. 1.2)) then
+         SceneLER466=fFillValue9
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
       endif
-      if((SceneLER466 .ge. -990.) .and. (SceneLER466 .lt. 0.0)) SceneLER466=0.0
-      if((SceneLER466 .gt.  1.0) .and. (SceneLER466 .le. 990.)) SceneLER466=1.0
+      if((SceneLER466 .ge. -0.2) .and. (SceneLER466 .lt. 0.0)) SceneLER466=0.0
+      if((SceneLER466 .gt.  1.0) .and. (SceneLER466 .le. 1.2)) SceneLER466=1.0
 
-      if((SceneLER440 .lt. -990.) .or. (SceneLER440 .gt. 990.)) SceneLER440=-999.
-      if((SceneLER440 .ge. -990.) .and. (SceneLER440 .lt. 0.0)) SceneLER440=0.0
-      if((SceneLER440 .gt.  1.0) .and. (SceneLER440 .le. 990.)) SceneLER440=1.0
+      if((SceneLER440 .lt. -0.2) .or. (SceneLER440 .gt. 0.2)) SceneLER440=fFillValue9
+      if((SceneLER440 .ge. -0.2) .and. (SceneLER440 .lt. 0.0)) SceneLER440=0.0
+      if((SceneLER440 .gt.  1.0) .and. (SceneLER440 .le. 0.2)) SceneLER440=1.0
 
-!      SceneCPP=real(cpp, kind=4)
-!      if ((SceneCPP .gt. 9999.) .or. (SceneCPP .lt. -9999.)) then
-!         SceneCPP=fFillValue
-!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
-!      endif
-!      if((SceneCPP.gt.psfc0).and.(SceneCPP.lt.9999.)) SceneCPP=psfc0
-!
       !--------------
       ! Assign result to array
       !--------------
