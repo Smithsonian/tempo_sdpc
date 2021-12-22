@@ -12,7 +12,7 @@ subroutine cal_ocp
   ! bit01  N/A
   ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
-  ! bit04  (Warning) pcld replaced by pscene becaues snow_ice_fraction>min_snowice: m_cal_pscene.f90
+  ! bit04  (Warning) pcld replaced by pscene as snow_ice_fraction>min_snowice: m_cal_pscene.f90
   ! bit05  (Warning) SCD correction max_scd_iter reached in ocp : m_cal_ocp.f90
   ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
@@ -205,21 +205,32 @@ subroutine cal_ocp
 !      endif
 
       ! ----------------------------
-      ! trim cloud fraction, fc & fr
+      ! cloud fraction
       ! ----------------------------
       ! ecf and crf are clipped within [0.,1.), negative values signal bad data
       cal_ecf=out_EffectiveCloudFraction(ix,it)
       cal_crf=out_CloudRadianceFraction466(ix,it)
 
-      !hqw skip calculation if cal_ecf or cal_crf are bad
-      if ((cal_ecf .lt. 0.) .or. (cal_crf .lt. 0.)) then
+      !hqw skip ocp if cal_ecf or cal_crf are bad or ZERO
+      !Note when ecf//crf=0, there is no need to calculate ocp
+      if ((cal_ecf .le. 0.) .or. (cal_crf .le. 0.) .or. (cal_ecf .gt. 1.)) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)  
          go to 990
       endif
 
-      !hqw temporaryalb0 and psfc0 which will be replaced by climatology
-      alb0 = 0.05
-      psfc0 = 1000.
+      !hqw skip if bit3 is set (psfc//rsfc error)
+      if (btest(out_ProcessingQualityFlags(ix,it),3)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+      endif
+
+      !----------------------------------------------
+      ! T-P profile and vvcd
+      !----------------------------------------------
+      !hqw temporary alb0 and psfc0 which will be replaced by climatology
+      alb0 = -9999.
+      alb440 = -9999.
+      psfc0 = -9999.
 
       ! initialize local array
       tt = fFillValue
@@ -232,10 +243,9 @@ subroutine cal_ocp
       if((name_option_TemperaturePressure.eq.'GMI')) then !.or. &
       !     (name_option_TemperaturePressure.eq.'DEM').or. &
       !     (name_option_TemperaturePressure.eq.'BDEM')) then
-        gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
+        gmi_ix1=floor((lon0+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
-
-        gmi_iy1=floor(rad_Latitude(ix,it)+90.)+1
+        gmi_iy1=floor(lat0+90.)+1
         gmi_iy2=gmi_iy1+1
 
         if(gmi_ix1.lt.1) gmi_ix1=1
@@ -247,11 +257,11 @@ subroutine cal_ocp
         if(gmi_iy2.lt.1) gmi_iy2=1
         if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
 
-        gmi_wx1=rad_Longitude(ix,it)-gmi_lon(gmi_ix1)
-        gmi_wx2=gmi_lon(gmi_ix2)-rad_Longitude(ix,it)
+        gmi_wx1=lon0-gmi_lon(gmi_ix1)
+        gmi_wx2=gmi_lon(gmi_ix2)-lon0
 
-        gmi_wy1=rad_Latitude(ix,it)-gmi_lat(gmi_iy1)
-        gmi_wy2=gmi_lat(gmi_iy2)-rad_Latitude(ix,it)
+        gmi_wy1=lat0-gmi_lat(gmi_iy1)
+        gmi_wy2=gmi_lat(gmi_iy2)-lat0
       endif
 
       if(name_option_TemperaturePressure.eq.'GMI') then
@@ -262,11 +272,19 @@ subroutine cal_ocp
         pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
         pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
         gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
         psfc0=gmi_psfc
+        !hqw adds safeguard
+        if ((psfc0 .lt. lut_psfc(1)).or.(psfc0.gt.lut_psfc(npsfc))) then 
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+          go to 990
+        endif
         if (nlayers .NE. gmi_np) then
            write(*,*)'gmi_np,nlayers incompatible',gmi_np,nlayers
            call exit(-1)
         endif
+
         do ip=1,gmi_np
           pp11=gmi_Pressure(gmi_ix1,gmi_iy1,ip)
           pp12=gmi_Pressure(gmi_ix1,gmi_iy2,ip)
@@ -275,6 +293,7 @@ subroutine cal_ocp
           pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
           pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
           pp(ip)=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
           tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
           tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
           tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
@@ -284,6 +303,7 @@ subroutine cal_ocp
           tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
         end do
         pp(gmi_np+1)=gmi_psfc
+
         call read_GMI_VCD(pp,tt)
         vvcd=gmi_vcd
       endif
@@ -321,15 +341,23 @@ subroutine cal_ocp
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         psfc0=l2_TerrainPressure(ix,it)
+        !hqw safeguard
+        if ((psfc0.lt.lut_psfc(1)).or.(psfc0.gt.lut_psfc(npsfc))) then
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
+          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+          go to 990
+        endif
         if (nlayers .NE. geos_np) then
            write(*,*)'ERROR: geos_np nlayers mismatch',geos_np,nlayers
            call exit(-1)
         endif
+
         do ip=1,geos_np
           pp(ip)=geos_Pressure(ix,it,ip)
           tt(ip)=geos_temperature(ix,it,ip)
         end do
         pp(geos_np+1) = psfc0
+
         call read_GEOS5_VCD(pp,tt)
         vvcd=geos_vcd
       endif
@@ -354,8 +382,8 @@ subroutine cal_ocp
       ! option for SurfaceReflectivity
       ! ------------------------------
       if(name_option_SurfaceReflectivity.eq.'Kleipool') then
-        kleipool_ix=nint((rad_Longitude(ix,it)+180.0)/0.5)
-        kleipool_iy=nint((rad_Latitude(ix,it)+90.0)/0.5)
+        kleipool_ix=nint((lon0+180.0)/0.5)
+        kleipool_iy=nint((lat0+90.0)/0.5)
         if(kleipool_ix.lt.1) kleipool_ix=1
         if(kleipool_ix.gt.kleipool_nx) kleipool_ix=kleipool_nx
         if(kleipool_iy.lt.1) kleipool_iy=1
@@ -371,17 +399,21 @@ subroutine cal_ocp
         alb440=BRDF_SurfaceReflectivity440(ix,it)
       endif
 
-      ! clip and assign out_SurfaceReflectivity which contains 
-      ! input LER or GLER depending on name_option
-      if((alb0 .ge. -2.0) .and. (alb0 .lt. 0.0)) alb0=0.0
-      if((alb0 .gt.  1.0) .and. (alb0 .le. 2.0)) alb0=1.0
+      !hqw safeguard
+      if((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+      endif
+      if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
+      if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
       out_SurfaceReflectivity466(ix,it)=alb0
 
-      if((alb440 .ge. -2.0) .and. (alb440 .lt. 0.0)) alb440=0.0
-      if((alb440 .gt.  1.0) .and. (alb440 .le. 2.0)) alb440=1.0
+      if ((alb440 .lt. -0.2) .or. (alb440 .gt. 1.2)) alb440=-9999.
+      if((alb440 .ge. -0.2) .and. (alb440 .lt. 0.0)) alb440=0.0
+      if((alb440 .gt.  1.0) .and. (alb440 .le. 1.2)) alb440=1.0
       out_SurfaceReflectivity440(ix,it)=alb440
 
-!bit 2 and 4 are now handled in pscene
+!hqw bit 2 and 4 are now handled in pscene
       ! -----------------------------------------------------
       ! option for SnowIce
       !   - 'Pscene': calculate Pscene
@@ -401,34 +433,29 @@ subroutine cal_ocp
 !        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
 !      endif
 
+      !hqw in read_cldo4_tio, negative or bad SCD are set to fspecial=-9999.,
       if(nasa_SlantColumnAmountO2O2(ix,it).lt.0.0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
+        go to 990
       endif
 
       ! skip calcultion if these bits are set
-      if(btest(out_ProcessingQualityFlags(ix,it),0).or. & ! geolocation error
-           btest(out_ProcessingQualityFlags(ix,it),1).or. & ! SZA//VZA//RAA error
+      if(btest(out_ProcessingQualityFlags(ix,it),0).or. & !geo//angle error
            !hqw do not skip ocp calculation when 0<ecf<min_ecf  
            !btest(out_ProcessingQualityFlags(ix,it),2).or. & ! ecf< min_ecf
+           ! bit2 is now handled in pscene
            !hqw do not skip snow/ice scene for ocp calculation
            !btest(out_ProcessingQualityFlags(ix,it),4).or. & ! snowice
-           btest(out_ProcessingQualityFlags(ix,it),6).or. & ! scd<0
-           !hqw skip ocp calculation if effective cloud fraction is invalid (<0.)
+           ! bit4 is now handled in pscene
+           !btest(out_ProcessingQualityFlags(ix,it),6).or. & ! handled before
+           !hqw skip ocp if effective cloud fraction is skipped 
            btest(out_ProcessingQualityFlags(ix,it),12)) then
             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
             go to 990 
       endif
 
-      ! skip calculation if cal_ecf are out of range or ecf=0.0
-      ! NOTE: cloud pressure is skipped when ecf=0.0
-      ! when there is no cloud there is no need to calculate cloud pressure 
-      if((cal_ecf.le.0.0).or.(cal_ecf.gt.1.0)) then
-         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
-         go to 990
-      endif
-
       !hqw moved this section from before to after check ProcessingQualityFlags
-      ! as these calculation is not needed if we deice to skip calculation
+      ! as these are not needed if we decide to skip 
       ! -----------------
       ! set nodes for LUT
       ! -----------------

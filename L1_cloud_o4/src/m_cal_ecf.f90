@@ -299,6 +299,7 @@ subroutine cal_ecf
 
       !---------------
       ! get actual alb0
+      !---------------
       if(name_option_SurfaceReflectivity.eq.'Kleipool') then
         kleipool_ix=nint((lon0+180.0)/0.5)
         kleipool_iy=nint((lat0+90.0)/0.5)

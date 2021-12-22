@@ -682,14 +682,14 @@ contains
      ! note: mdqfl=0 (normal) and mdqfl=1 (suspicious) remain
      !  as any scd<0. will be skipped for ocp and pscene,
      !  can  use 0. instead of -10. below, but it does not matter
-     where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. &
+     where ((tmp_dbl < 0.) .or. (tmp_dbl > 10.) .or. &
             (scd_mdqfl .eq. 2)) !scd_mdqfl .ne. 0)
-           tmp_dbl = fFillValue
+           tmp_dbl = fspecial
      end where
      ! assign nasa_SlantColumnAmountO2O2
      nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
 
-     ! read fitted SCD rms and SCD uncertainty
+     ! read fitted SCD uncertainty
      if (run_mode .NE. 'production') then
          call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
               [ntimes, nxtrack], tmp_dbl, errstat)
@@ -699,8 +699,8 @@ contains
          endif
          ! normalize scd uncertainty and assign nasa_scduncertainty
          tmp_dbl = tmp_dbl/norm
-         where (tmp_dbl < -10. .or. tmp_dbl > 10. .or. scd_mdqfl .ne. 0)
-               tmp_dbl = fFillValue
+         where((tmp_dbl < 0.).or.(tmp_dbl > 10.).or.(scd_mdqfl .eq. 2))
+               tmp_dbl = fspecial
          endwhere
          nasa_scduncertainty = real(tmp_dbl,kind=4)
      endif ! run_mode
