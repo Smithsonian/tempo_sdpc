@@ -1347,6 +1347,8 @@ subroutine cal_pscene
       ! Use scene pressure for 
       !   2. ECF < min_ecf
       !--------------------------------------------------------
+      ! original default choice was 'yes', now changed to 'no'
+      ! so that user has the choice of if/how to clip
       if(name_option_MinECF.eq.'yes') then
 !        if(btest(out_ProcessingQualityFlags(ix,it),2)) then 
         if ((out_EffectiveCloudFraction(ix,it).gt.0.).and. &

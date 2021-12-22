@@ -734,12 +734,12 @@ contains
             "6: (ERROR) SCD<0. or SCD_MainDataQualityFlag=2(bad); "// &
             "7: (WARNING) 440nm rad or irr error; "// &
             "8: (ERROR) 466nm rad or irr error; " // &
-            "9: (WARNING) calculated ecf out of normal range; "// &
+            "9: (ERROR) calculated ecf out of normal range; "// &
             "10:(WARNING) SceneAlbedoAtTerrain.eq.'yes' skipped or SCD correction problem; " // &
             "11:(WARNING) SceneAlbedoAtTerrain.eq.'no' skpped or SCD correction problem; " // &
             "12:(ERROR) ecf calculation skipped during processing; "// &
             "13:(ERROR) ocp calculation skipped during processing; "// &
-            "14:(WARNING) calculated ocp out of normal range; "// &
+            "14:(ERROR) calculated ocp out of normal range; "// &
             "15:(WARNING) pscene calculation skipped during processing;"
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1142,7 +1142,7 @@ contains
                    long_name = "main data quality flags for fitted_slant_column", &
                               comment = "0=normal, 1=suspicious, 2=bad", &
                               valid_range = [0.0_r8, 2.0_r8], &
-                              fillvalue = -1.0_r8, &
+                              fillvalue = -30000.0_r8, &
                               attlist=att_support)
 
     call tiof_push_group (tio_l2obj, "support_data", errstat)
@@ -1303,7 +1303,6 @@ contains
 
     character(len=CFG_VAL_LEN) :: buf, attname
     integer (kind=4) :: tmpint
-    !real (kind=4) :: tmpreal
 
     if (errstat /= 0) return
 

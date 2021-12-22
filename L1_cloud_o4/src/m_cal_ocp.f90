@@ -8,8 +8,8 @@ subroutine cal_ocp
   ! define ProcessingQualityFlags
   ! -----------------------------
   ! bit??  meaning:WhereSet
-  ! bit00  (Error) invalid geolocation: m_cal_ecf.f90
-  ! bit01  (Error) SZA,VZA,RAA out of LUT range: m_cal_ecf.f90, m_cal_ocp.f90 
+  ! bit00  (Error) invalid lat/lon/SZA/VZA/RAA: m_cal_ecf.f90
+  ! bit01  N/A
   ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
   ! bit04  (Warning) pcld replaced by pscene becaues snow_ice_fraction>min_snowice: m_cal_pscene.f90
@@ -17,7 +17,7 @@ subroutine cal_ocp
   ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
-  ! bit09  (Warning) ecf out of normal range, clipped: m_cal_ecf.g90
+  ! bit09  (ERROR) ecf out of normal range, clipped: m_cal_ecf.g90
   ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
   !        SCD correction proble or max_scd_iter reached
   ! bit11  SceneAlbedoAtTerrain.eq.'np' // 'both' skipped,
@@ -26,7 +26,7 @@ subroutine cal_ocp
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation
   !        due to any problem during processing: m_cal_ocp.f90
-  ! bit14  (Warning) ocp out of normal range, clipped: m_cal_ocp.f90
+  ! bit14  (ERROR) ocp out of normal range, clipped: m_cal_ocp.f90
   ! bit15  (Warning) skipped pscene calculation during processing
 
   use m_vars
@@ -68,7 +68,7 @@ subroutine cal_ocp
 !  integer ::isnowice
 
 !hqw move pflag00, pflag01 from m_vars.f90 to local variable
-  integer(kind=4):: pflag00, pflag01
+!  integer(kind=4):: pflag00, pflag01 !no longer needed
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -85,6 +85,9 @@ subroutine cal_ocp
   integer::option_psfc_clear
 
   real::pi,dtor
+
+!hqw add local variables
+  real:: lat0, lon0
 
   ! hqw comments out DEM and BDEM related stuff
   ! ------
@@ -132,6 +135,8 @@ subroutine cal_ocp
   !hqw allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
   allocate(pp(nlayers+1),stat=ierr)
+  tt = fFillValue
+  pp = fFillValue
 
 !hqw debug
   !write(*,*) 'writing debug_scd_adjust.txt'
@@ -153,45 +158,56 @@ subroutine cal_ocp
       temp_cpp = fFillValue
       scdmorg = fFillValue
 
-      ! initialize iflag to -1
-      iflag=-1
-
-      !---------------------
-      ! geolocation check
-      !--------------------
-      pflag00=0
-      if(abs(rad_Latitude(ix,it)) .gt. 90.) pflag00=pflag00+1
-      if(abs(rad_longitude(ix,it)) .gt. 180.) pflag00=pflag00+1
-
-      ! --------------------
-      ! input angles check
-      ! --------------------
-      pflag01=0
+      ! get local angles and geolocation
       sza0=rad_SolarZenithAngle(ix,it)
       vza0=rad_ViewingZenithAngle(ix,it)
       raa0=out_RelativeAzimuthAngle(ix,it)
-      !hqw changed 86. to max_SZA
-      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
-      !hqw changed 72. to max_VZA
-      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
-      !hqw skip invalid RAA
-      !valid RAA is converted to [0.,180) range in m_read_input_tio.f90
-      !invalid RAA is set to fspecial < 0. there
-      if (raa0 .lt. 0.) pflag01=pflag01+1
-      ! skip ocp calculation if any angle is invalid 
-      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
+      lat0=rad_Latitude(ix,it)
+      lon0=rad_Longitude(ix,it)
+
+      ! initialize iflag to -1
+      iflag=-1
+
+!hqw geolocation and angles were checked in m_cal_ecf
+!invalid values triggers bit0 to be set
+!thus, check bit0 to decide whether to skip calculation
+      if (btest(out_ProcessingQualityFlags(ix,it),0)) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
-         ! bit 1 is also set in m_cal_ecf.f90, but only for SZA&VZA
-         ! thus the following provides a safeguard for RAA
-         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),1)
          go to 990
       endif
+!      !---------------------
+!      ! geolocation check
+!      !--------------------
+!      pflag00=0
+!      if(abs(rad_Latitude(ix,it)) .gt. 90.) pflag00=pflag00+1
+!      if(abs(rad_longitude(ix,it)) .gt. 180.) pflag00=pflag00+1
+!
+!      ! --------------------
+!      ! input angles check
+!      ! --------------------
+!      pflag01=0
+!
+!      !hqw changed 86. to max_SZA
+!      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
+!      !hqw changed 72. to max_VZA
+!      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
+!      !hqw skip invalid RAA
+!      !valid RAA is converted to [0.,180) range in m_read_input_tio.f90
+!      !invalid RAA is set to fspecial < 0. there
+!      if (raa0 .lt. 0.) pflag01=pflag01+1
+!      ! skip ocp calculation if any angle is invalid 
+!      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
+!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+!         ! bit 0 is also set in m_cal_ecf.f90, but only for SZA&VZA
+!         ! thus the following provides a safeguard for RAA
+!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
+!         go to 990
+!      endif
 
       ! ----------------------------
       ! trim cloud fraction, fc & fr
       ! ----------------------------
-      ! EffectiveCloudFraction and CloudRadianceFraction are clipped within
-      ! [0.,1.), negative values signal bad data
+      ! ecf and crf are clipped within [0.,1.), negative values signal bad data
       cal_ecf=out_EffectiveCloudFraction(ix,it)
       cal_crf=out_CloudRadianceFraction466(ix,it)
 
