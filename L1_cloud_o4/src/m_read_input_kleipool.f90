@@ -79,7 +79,7 @@ contains
     !----------------------------------
     ! hqw allocate kleipool variables
     ! in fact, 477 is not actually used
-    !          440 is only used to assign out_SurfaceReflectivity440
+    !  currently 440 is only used to assign out_SurfaceReflectivity440
     !     only 466 is used in calculation
     !----------------------------------
     allocate(kleipool_lon(nx), stat=ierr)

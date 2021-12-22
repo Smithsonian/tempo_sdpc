@@ -862,7 +862,7 @@ contains
                               long_name = "466nm surface reflectivity used in calculation", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -874,7 +874,7 @@ contains
                               long_name = "440nm surface reflectivity used in calculation", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -974,7 +974,7 @@ contains
                               comment = "O2-O2 slant column at EffectiveTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1012,7 +1012,7 @@ contains
                               long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1025,7 +1025,7 @@ contains
                               comment = "fitted O2-O2 slant column at 273K", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1037,7 +1037,7 @@ contains
                           long_name = "fitted reference O2-O2 SCD uncertainty" , &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1093,7 +1093,7 @@ contains
                               comment = "effective T for SlantColumnAmountO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)

@@ -12,7 +12,7 @@ subroutine cal_ecf
 
   implicit none
 
-  real::temp_raa,temp_psfc,temp_rsfc
+!  real::temp_raa
   real::rad466,rad440!, rad477
   real(kind=4)::rout_ecf,rout_crf440,rout_crf466
   integer::ialb, isza, ivza, iraa, ipsfc
@@ -35,6 +35,7 @@ subroutine cal_ecf
 
 !hqw add local variable
   real::lat0, lon0
+  real:: alb440
 
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
   real::r21111,r21112,r21121,r21122,r21211,r21212,r21221,r21222,r22111,r22112,r22121,r22122,r22211,r22212,r22221,r22222
@@ -66,12 +67,18 @@ subroutine cal_ecf
   !rad_of_irr477 is not used anywhere, comment out
   !allocate(rad_of_irr477(nx,nt),stat=ierr)
 
+  allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
+  allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
+
   cal_rad_clr=fspecial
   cal_rad_cld=fspecial
   cal_rad_cld440=fspecial
   rad_of_irr440=fspecial
   rad_of_irr466=fspecial
   !rad_of_irr477=fspecial
+
+  out_SurfaceReflectivity466=fspecial
+  out_SurfaceReflectivity440=fspecial
 
 !  hqw STDs are not calculated in OMCDO2N, thus disabled
   allocate(out_EffectiveCloudFraction(nx,nt),stat=ierr)
@@ -113,12 +120,6 @@ subroutine cal_ecf
       open(unit=19, file='debug_ecf.txt')
       write(19,*)'ix, alb0,  psfc0,  rad_of_irr466, cal_rad_clr, cal_rad_cld,cldfrac'
    endif
-
-   ! hqw alb0 & psfc0 were originally initialized to OMCLDO2
-   ! but will be overwritten later in this subroutine by climatology
-   ! psfc0 and alb0 will be initialized to these temporary values in loop
-    temp_psfc = 1000.
-    temp_rsfc = 0.03
 
   ! ==========
   do it=1,nt
@@ -231,13 +232,14 @@ subroutine cal_ecf
       !endif
 
       !initialize alb0 and psfc0 to temporary value
-      alb0=temp_rsfc
-      psfc0=temp_psfc
+      psfc0=fspecial
+      alb0=fspecial
+      alb440=fspecial
 
       !----------------
       !get actual psfc0
-      !out-of-range rad_Longitude should have been skipped
       !----------------
+      !out-of-range rad_Longitude should have been skipped
       if(name_option_TemperaturePressure.eq.'GMI') then
         gmi_wx1 = 0.
         gmi_wx2 = 0.
@@ -285,7 +287,7 @@ subroutine cal_ecf
       !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
-        !hqw l2_TerrainPressure is assigned in read_geoscf
+        !hqw l2_TerrainPressure was assigned in read_geoscf
         ! which is called before this subroutine, use it as psfc0
         psfc0=l2_TerrainPressure(ix,it)
       endif
@@ -308,21 +310,33 @@ subroutine cal_ecf
         if(kleipool_iy.lt.1) kleipool_iy=1
         if(kleipool_iy.gt.kleipool_ny) kleipool_iy=kleipool_ny
         alb0=kleipool_SurfaceReflectivity466(kleipool_ix,kleipool_iy)
+        alb440=kleipool_SurfaceReflectivity440(kleipool_ix,kleipool_iy)
       endif
 
       if(name_option_SurfaceReflectivity.eq.'BRDF') then
         alb0=BRDF_SurfaceReflectivity466(ix,it)
+        alb440=BRDF_SurfaceReflectivity440(ix,it)
       endif
 
+      ! hqw moved out_SurfaceReflectivity assignment from m_cal_ocp here
       ! bound alb0 within [0.,1.] if it is in reasonable range
+      if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
+      if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
+      out_SurfaceReflectivity466(ix,it)=alb0
+ 
       ! otherwise set processing quality flag (pqf) and skip the calculation
       if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
+          out_SurfaceReflectivity466(ix,it)=fspecial
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
           go to 990
       endif
-      if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
-      if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
+
+      !bound alb440 within [0.,1.] if it is reasonable
+      if((alb440 .ge. -0.2) .and. (alb440 .lt. 0.0)) alb440=0.0
+      if((alb440 .gt.  1.0) .and. (alb440 .le. 1.2)) alb440=1.0
+      if ((alb440 .lt. -0.2) .or. (alb440 .gt. 1.2)) alb440=fspecial
+      out_SurfaceReflectivity440(ix,it)=alb440
  
       !-------------------
       ! interpolation prep for alb/sza/vza/raa/psfc

@@ -66,8 +66,6 @@ subroutine cal_ocp
   integer(kind=4)::kleipool_ix,kleipool_iy
 
 !  integer ::isnowice
-
-!hqw move pflag00, pflag01 from m_vars.f90 to local variable
 !  integer(kind=4):: pflag00, pflag01 !no longer needed
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -88,6 +86,7 @@ subroutine cal_ocp
 
 !hqw add local variables
   real:: lat0, lon0
+  real:: fFillValue9
 
   ! hqw comments out DEM and BDEM related stuff
   ! ------
@@ -95,6 +94,8 @@ subroutine cal_ocp
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
+
+  fFillValue9 = -9999.
 
   nt=rad_NumTimes
   nx=rad_nXtrack
@@ -105,12 +106,12 @@ subroutine cal_ocp
 !  allocate(out_CloudPressureSTD(nx,nt),stat=ierr)
 !  out_CloudPressureSTD=int(iFillValue, kind=2)
 !  allocate(out_TerrainPressureStdDev(nx,nt),stat=ierr)
-!  out_TerrainPressureStdDev=fFillValue
+!  out_TerrainPressureStdDev=fFillValue9
 !hqw out_TerrainHeight now moved to m_read_input_tio.f90
 !  allocate(out_TerrainHeight(nx,nt),stat=ierr)
-!  out_TerrainHeight=fFillValue
+!  out_TerrainHeight=fFillValue9
 !  allocate(out_TerrainHeightStdDev(nx,nt),stat=ierr)
-!  out_TerrainHeightStdDev=fFillValue
+!  out_TerrainHeightStdDev=fFillValue9
 !hqw LandAreaFraction is not actually used
 !  allocate(out_LandAreaFraction(nx,nt),stat=ierr)
 !  out_LandAreaFraction=int(iFillValue, kind=2)
@@ -118,25 +119,26 @@ subroutine cal_ocp
   allocate(out_CloudPressure(nx,nt),stat=ierr)
   allocate(out_CloudPressureNotClipped(nx,nt),stat=ierr)
   allocate(out_TerrainPressure(nx,nt),stat=ierr)
-  allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
-  allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
+!hqw moved out_SurfaceReflectivity assignment to m_cal_ecf
+!  allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
+!  allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
   allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
 
 !hqw initialize to (negative) fill value
   out_CloudPressure=int(iFillValue, kind=2)
   out_CloudPressureNotClipped=int(iFillValue, kind=2)
-  out_TerrainPressure=fFillValue ! surface pressure used in ocp calculation 
-  out_SurfaceReflectivity440=fFillValue
-  out_SurfaceReflectivity466=fFillValue
-  out_SlantColumnAmountO2O2=fFillValue
-  out_O2O2CloudTemperature=fFillValue
+  out_TerrainPressure=fFillValue9 ! psfc used in ocp calculation 
+!  out_SurfaceReflectivity440=fFillValue9
+!  out_SurfaceReflectivity466=fFillValue9
+  out_SlantColumnAmountO2O2=fFillValue9
+  out_O2O2CloudTemperature=fFillValue9
 
   !hqw allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
   allocate(pp(nlayers+1),stat=ierr)
-  tt = fFillValue
-  pp = fFillValue
+  tt = fFillValue9
+  pp = fFillValue9
 
 !hqw debug
   !write(*,*) 'writing debug_scd_adjust.txt'
@@ -147,16 +149,16 @@ subroutine cal_ocp
   do it=1,nt
     do ix=1,nx
       ! ==========
-      ! initialize cloud pressure to fFillValue
-      cpp=fFillValue
+      ! initialize cloud pressure to fFillValue9
+      cpp=fFillValue9
 
       ! initialize for next iteration
-      scdadj = fFillValue
-      temp_t8p = fFillValue
-      scdm = fFillValue
-      t8p = fFillValue
-      temp_cpp = fFillValue
-      scdmorg = fFillValue
+      scdadj = fFillValue9
+      temp_t8p = fFillValue9
+      scdm = fFillValue9
+      t8p = fFillValue9
+      temp_cpp = fFillValue9
+      scdmorg = fFillValue9
 
       ! get local angles and geolocation
       sza0=rad_SolarZenithAngle(ix,it)
@@ -233,9 +235,9 @@ subroutine cal_ocp
       psfc0 = -9999.
 
       ! initialize local array
-      tt = fFillValue
-      pp = fFillValue
-      vvcd = fFillValue
+      tt = fFillValue9
+      pp = fFillValue9
+      vvcd = fFillValue9
 
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
@@ -406,12 +408,12 @@ subroutine cal_ocp
       endif
       if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
       if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
-      out_SurfaceReflectivity466(ix,it)=alb0
+      !out_SurfaceReflectivity466(ix,it)=alb0 !moved to m_cal_ecf
 
       if ((alb440 .lt. -0.2) .or. (alb440 .gt. 1.2)) alb440=-9999.
       if((alb440 .ge. -0.2) .and. (alb440 .lt. 0.0)) alb440=0.0
       if((alb440 .gt.  1.0) .and. (alb440 .le. 1.2)) alb440=1.0
-      out_SurfaceReflectivity440(ix,it)=alb440
+      !out_SurfaceReflectivity440(ix,it)=alb440
 
 !hqw bit 2 and 4 are now handled in pscene
       ! -----------------------------------------------------
