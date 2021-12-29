@@ -725,21 +725,21 @@ contains
                               shuffle = shuffle, &
                               attlist=att_product)
 
-    comment1="0: (ERROR)geolocation error; "// &
-            "1: (ERROR) SZA/VZA/RAA error; "// &
+    comment1="0: (ERROR) lat/lon/SZA/VZA/RAA error; "// &
+            "1: "// &
             "2: (WARNING) pcloud replaced by pscene as 0.<ecf<min_ecf; " // &
-            "3: (ERROR) input psfc or rsfc error "// &
+            "3: (ERROR) input psfc/rsfc error "// &
             "4: (WARNING) pcloud replaced by pscene as snow_ice_fraction>min_snowice; " // &
-            "5: (WARNING) SCD iteration max_iter reached in ocp; "// &
+            "5: (WARNING) ocp SCD iteration max_iter reached; "// &
             "6: (ERROR) SCD<0. or SCD_MainDataQualityFlag=2(bad); "// &
             "7: (WARNING) 440nm rad or irr error; "// &
             "8: (ERROR) 466nm rad or irr error; " // &
-            "9: (ERROR) calculated ecf out of normal range; "// &
+            "9: (ERROR) calculated ecf beyond normal range; "// &
             "10:(WARNING) SceneAlbedoAtTerrain.eq.'yes' skipped or SCD correction problem; " // &
             "11:(WARNING) SceneAlbedoAtTerrain.eq.'no' skpped or SCD correction problem; " // &
             "12:(ERROR) ecf calculation skipped during processing; "// &
             "13:(ERROR) ocp calculation skipped during processing; "// &
-            "14:(ERROR) calculated ocp out of normal range; "// &
+            "14:(ERROR) calculated ocp beyond normal range; "// &
             "15:(WARNING) pscene calculation skipped during processing;"
 
     call tiof_varlist_append (varlist, errstat, &

@@ -346,6 +346,16 @@ integer,dimension(12):: &
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
 
+!hqw moved option_psfc from m_cal_ocp here
+!-------------------------------------
+! option 8: option_psfc_clear
+! clear/cloud for high-P interp
+! find pressure for AMF*VCD
+! 0: Pclr=Psfc (fixed) & Pcld>Psfc (original default)
+! 1: Pclr=Pcld if Pcld>Psfc
+!-------------------------------------
+ integer :: option_psfc_clear = 0
+
 ! ===== end of input options =====
 !------------
 ! input data 

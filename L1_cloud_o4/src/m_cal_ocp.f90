@@ -19,7 +19,7 @@ subroutine cal_ocp
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
   ! bit09  (ERROR) ecf out of normal range, clipped: m_cal_ecf.g90
   ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
-  !        SCD correction proble or max_scd_iter reached
+  !        SCD correction problem or max_scd_iter reached
   ! bit11  SceneAlbedoAtTerrain.eq.'np' // 'both' skipped,
   !        SCD correction problem or max_scd_iter reeached
   ! bit12  (ERROR) skipped cloud ecf calculation 
@@ -80,7 +80,7 @@ subroutine cal_ocp
   real::x0,x1,x2,xx
   real::y0,y1,y2,yy
   integer(kind=4)::ipp
-  integer::option_psfc_clear
+!  integer::option_psfc_clear !hqw moved to m_vars
 
   real::pi,dtor
 
@@ -163,8 +163,9 @@ subroutine cal_ocp
       lat0=rad_Latitude(ix,it)
       lon0=rad_Longitude(ix,it)
 
-      ! initialize iflag to -1
+      ! initialize iflag, iternum 
       iflag=-1
+      iternum = 0
 
 !hqw geolocation and angles were checked in m_cal_ecf
 !invalid values triggers bit0 to be set
@@ -581,7 +582,7 @@ subroutine cal_ocp
       ! -----------
       ! AMF at Pcld
       ! -----------
-      !hqw when ipcld>ipsfc, lut_amf_cld<0.
+      !hqw in LUT when ipcld>ipsfc, lut_amf_cld<0.
       ! but this would not happen below, as ipsfc=ipcld 
       do ipcld=1,npcld
         ipsfc=ipcld
@@ -638,14 +639,14 @@ subroutine cal_ocp
         apsfc0=(wpsfc1*apsfc2+wpsfc2*apsfc1)/(wpsfc1+wpsfc2)
       endif
 
-      !hqw added initizlization to ipm?
+      !hqw added initizlization to ipms
       !ipms are used for extrapolation at high pressure end
       ipm0=-9; ipm1=-9; ipm2=-9
-      if(ipsfc0 .gt. 0) then
+      if(ipsfc0 .gt. 0) then ! psfc0 < lut_psfc(npsfc)
         ipm0=ipsfc0-0
         ipm1=ipsfc0-1
         ipm2=ipsfc0-2
-      else
+      else ! psfc0>=lut_psfc(npsfc)
         ipm0=npsfc-0
         ipm1=npsfc-1
         ipm2=npsfc-2
@@ -666,6 +667,7 @@ subroutine cal_ocp
       scdadj = scdmorg
 
       !hqw amfvcd_int uses psfc0, amfvcd_ext uses Pcld
+      !hqw amfvcd_ext > amfvcd_int when pcld > psfc0
       do ipcld=1,npcld
         !ipsfc=ipcld !hqw seems unnecessary
         amfvcd_int(ipcld)=vvcd(ipcld)*cal_crf*real(cal_amf_cld(ipcld),kind=4) &
@@ -674,14 +676,18 @@ subroutine cal_ocp
              +vvcd(ipcld)*(1.0-cal_crf)*real(cal_amf_clr(ipcld), kind=4)
       end do
 
-      !hqw looks like this hardcode Pclr=Psfc
-      option_psfc_clear=0
+      !????????????????????????????????????????
+      ! hqw move option_psfc_clear to m_vars.f90
+      !hqw looks like this hardcodes Pclr=Psfc
+      !option_psfc_clear=0
       ! find pressure for AMF*VCD
       !    0: Pclr = Psfc (fixed) & Pcld > Psfc
       !    1: Pclr = Pcld if Pcld > Psfc
-      ! ????????????????????????????????????
+      ! ???????????????????????????????????????
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !hqw SCD iteration comes back here to 777
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 777   continue ! iteration
 
       iflag=-1
@@ -693,11 +699,11 @@ subroutine cal_ocp
         ! 311 format(2i3,3f10.4,5f10.4)
       endif
 
-      yy1=0. ; yy2=0.
+      yy1=-9. ; yy2=-9.
       ww1=0. ; ww2=0.
       do ipcld=1,npcld-1
         if((scdm.gt.amfvcd_int(ipcld)).and.(scdm.le.amfvcd_int(ipcld+1))) then
-          iflag=1
+          iflag=1 ! node found
           yy1=lut_pcld(ipcld)
           yy2=lut_pcld(ipcld+1)
           ww1=scdm-amfvcd_int(ipcld)
@@ -708,7 +714,7 @@ subroutine cal_ocp
       if(iflag .eq. 1) then ! normal interpolation
         cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
 
-      ! the choice below is for low pressure cases
+      ! the choice below is for low pressure end
       else if(iflag .eq. 0) then ! scdm<= amfvcd_int(5)
         x0=0.0
         x1=lut_pcld(5)
@@ -719,7 +725,7 @@ subroutine cal_ocp
 
         xx=x1
         !hqw 1st & 3rd term below is always 0, yy=y1,it is verbose, but
-        !it makes the formula consistent with the one inside ipp loop below
+        !it makes the formula consistent with the one inside ipp loop later
         yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
              +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
              +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -740,7 +746,7 @@ subroutine cal_ocp
             diff_save=diff
             !hqw logic change
             !if(ipp.le.1) then
-            if ((xx .le. 0.).or.(ipp .le.1))then
+            if (xx .le. 0.)then
               xx=-9999.
               go to 970 !hqw addition, exit when no solution found
             endif
@@ -754,7 +760,7 @@ subroutine cal_ocp
       else ! large scdm case: scdm>amfvcd_int(npcld) 
         iflag=2 
         !hqw added safeguard, though the program is expected to
-        !actually bypass it because all ipms should be valid
+        !bypass it because all ipms should be valid
         if ((ipm2 .lt. 1) .or. (ipm1 .lt. 1) .or. (ipm0 .lt. 1)) then
            write(*,*) 'ipm <= 0 for large scdm, this should not happen.'
            cpp = fFillValue9
@@ -766,13 +772,13 @@ subroutine cal_ocp
         x2=lut_pcld(ipm2)
 
         if(option_psfc_clear.eq.0) then !current hardcoded choice
-        !hqw use pclr=psfc
+        !hqw use pclr=psfc,ipm0=ipsfc0
           y0=amfvcd_int(ipm0)
           y1=amfvcd_int(ipm1)
           y2=amfvcd_int(ipm2)
         endif
         if(option_psfc_clear.eq.1) then
-        !hqw use pcld=pcld 
+        !hqw use pcld=pcld,ipm0=npsfc
           y0=amfvcd_ext(ipm0)
           y1=amfvcd_ext(ipm1)
           y2=amfvcd_ext(ipm2)
@@ -786,9 +792,9 @@ subroutine cal_ocp
 
         !hqw this increase xx 1Pa at a time from psfc0
         !until mininal difference is found
-        ! 5000 is large and safely covers psfc, 2000 should be enough
+        ! 5000 is large and safely covers psfc, 1100 should be enough
         ! but should make no difference to the computer
-        do ipp=1,2000 ! 5000
+        do ipp=1,1100 ! 5000
           xx=psfc0+real(ipp)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
@@ -798,13 +804,12 @@ subroutine cal_ocp
             go to 980 !inflection point found 
           else
             diff_save=diff
-            if((xx.gt.lut_psfc(npsfc)).or.(ipp.ge.2000)) then !no inflection found
+            if (xx.gt.lut_psfc(npsfc)) then !no inflection found
               xx=-9999. ! if it ever does, set to invalid value
               go to 980
             endif
           endif
         end do
-
 980     continue
         cpp=real(nint(xx))
       endif
@@ -816,7 +821,7 @@ subroutine cal_ocp
           go to 990
       endif
 
-      !hqw add clip cpp to within LUT range
+      !hqw add clip cpp to within LUT range, safeguard
       if (cpp .gt. lut_psfc(npsfc)) then
           cpp = lut_psfc(npsfc)
          !signal ocp clipping
@@ -827,7 +832,7 @@ subroutine cal_ocp
       ! use the temperature at temp_cpp when in range
       ! try using T at half of the pressure
       temp_cpp = real (cpp * 0.5, kind=4)
-      if (temp_cpp .gt. 50. .and. temp_cpp .le. psfc0) then
+      if ((temp_cpp .ge. pp(1)) .and. (temp_cpp .le. psfc0)) then
         if (name_option_TemperaturePressure .eq. 'GMI') then
           call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
         else if (name_option_TemperaturePressure .eq. 'GEOS5') then
@@ -885,30 +890,28 @@ subroutine cal_ocp
 
       out_CloudPressure(ix,it)=nint(cpp, kind=2)
       out_CloudPressureNotClipped(ix,it)=nint(cpp, kind=2)
-      if((cpp.lt. 0.).or.(cpp.gt.lut_psfc(npsfc))) then
+      if((cpp.le. 0.).or.(cpp.gt.lut_psfc(npsfc))) then
         out_CloudPressure(ix,it)=int(iFillValue, kind=2)
         out_CloudPressureNotClipped(ix,it)=int(iFillValue, kind=2)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
 
       ! clip slightly out-of-range values and set out_ProcessingQualityFlags
-      if((cpp.gt.0.).and.(cpp.le.100.)) then
-          out_CloudPressure(ix,it)=100
-          !signal clipping
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-      endif
-      if((cpp.gt.psfc0).and.(cpp.lt.lut_psfc(npsfc))) then
-          out_CloudPressure(ix,it)=nint(psfc0, kind=2)
-          !signal clipping
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-      endif
+      !if((cpp.gt.0.).and.(cpp.le.100.)) then
+      !    out_CloudPressure(ix,it)=100
+      !    out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+      !endif
+      !if((cpp.gt.psfc0).and.(cpp.lt.lut_psfc(npsfc))) then
+      !    out_CloudPressure(ix,it)=nint(psfc0, kind=2)
+      !    out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+      !endif
 
       !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read
       !out_CloudPressureSTD(ix,it)=inp_CloudPressureSTD(ix,it)
       !if(out_CloudPressureSTD(ix,it).le.iFillValue) &
       !     out_CloudPressureSTD(ix,it)=int(iFillValue, kind=2)
 
-      !hqw moved out_TerrainPressure here, as psfc0 is the actual surfp used
+      !hqw moved out_TerrainPressure here, as psfc0 is the actual psurf used
       out_TerrainPressure(ix,it) = psfc0
 
       !hqw if BDEM replace with out_ with BDEM_
