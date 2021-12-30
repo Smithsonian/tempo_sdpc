@@ -71,7 +71,7 @@ def define_common_fields (fields):
     fields["trend_status"] = "integer not null"
     fields["asdc_status"] = "integer"
     fields["asdc_status_met"] = "integer"
-    fields["asdc_time_accepted"] = "integer"
+    fields["asdc_ingest_time"] = "integer"
 
 def init_radiance_table (table_name):
     fields = {}
@@ -117,7 +117,7 @@ def init_raw_file_table (table_name):
     fields["mtime"] = "integer"
     fields["size"] = "integer"
     fields["asdc_status"] = "integer"
-    fields["asdc_time_accepted"] = "integer"
+    fields["asdc_ingest_time"] = "integer"
     fields["asdc_status_met"] = "integer"
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
@@ -327,7 +327,7 @@ def process_file (conn, filename, nc):
     keys["versionid"] = versionid
     keys["trend_status"] = 0
     keys["asdc_status"] = 0
-    keys["asdc_time_accepted"] = 0
+    keys["asdc_ingest_time"] = 0
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
     keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
@@ -381,7 +381,7 @@ def process_file_raw (conn, filename):
     keys["mtime"] = int(st.st_mtime)
     keys["size"] = st.st_size
     keys["asdc_status"] = 0
-    keys["asdc_time_accepted"] = 0
+    keys["asdc_ingest_time"] = 0
     keys["asdc_status_met"] = -2 # nonexistent
 
     status = insert_raw_entry (conn, table_name, keys)

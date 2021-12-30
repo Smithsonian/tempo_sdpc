@@ -3,6 +3,7 @@
 import os, sys
 import time
 from datetime import date
+import dateutil.parser
 import sqlite3
 import re
 import argparse
@@ -72,7 +73,7 @@ def table_name_for_file_raw (filename):
     tok = filename.split('_')
     return tok[1]
 
-def update_file_status (cur, filename, asdc_status):
+def update_file_status (cur, filename, asdc_status, asdc_ingest_time=None):
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
@@ -88,7 +89,10 @@ def update_file_status (cur, filename, asdc_status):
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
-    sql = "update {} set {}={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, file_basename)
+    if asdc_ingest_time is None:
+        sql = "update {} set {}={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, file_basename)
+    else:
+        sql = "update {} set {}={},asdc_ingest_time={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, asdc_ingest_time, file_basename)
     if DryRun:
         print(sql)
     else:
@@ -149,7 +153,8 @@ def longpan_entry (thefile, parse):
     if tok[0] != 'TIME_STAMP':
         print ('*** invalid entry: {}'.format(line))
         return None
-    entry["time_stamp"] = tok[1]
+    parsed_t = dateutil.parser.isoparse(tok[1])
+    entry["time_stamp"] = int(parsed_t.timestamp())
     return entry
 
 def process_longpan(cur, longpan_file):
@@ -178,9 +183,9 @@ def process_longpan(cur, longpan_file):
             if entry == None:
                 break
             if entry["disposition"] == "SUCCESSFUL":
-                update_file_status (cur, entry["basename"], Asdc_Status["accepted"])
+                update_file_status (cur, entry["basename"], Asdc_Status["accepted"], asdc_ingest_time=entry["time_stamp"])
             else:
-                update_file_status (cur, entry["basename"], Asdc_Status["problem"])
+                update_file_status (cur, entry["basename"], Asdc_Status["problem"], asdc_ingest_time=entry["time_stamp"])
                 num_bad += 1
 
     return num_bad
