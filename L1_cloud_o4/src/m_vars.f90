@@ -126,13 +126,18 @@ module m_vars
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
 
-  !LUT dimension
-  integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
-  integer,parameter::npsfc=23, npcld=23, nrsfc=23
+  !old LUT dimension
+  !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
+  !integer,parameter::npsfc=23, npcld=23, nrsfc=23
+  !new LUT dimension
+  integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
+  integer,parameter:: npsfc=23, npcld=23, nrsfc=23
 
   !hqw added the following to remove hard_code in various places
-  ! these are limited by LUTs
-  real(kind=4),parameter::max_SZA=89.,max_VZA=72.
+  ! these are limited by oldLUTs
+  !real(kind=4),parameter::max_SZA=89.,max_VZA=72.
+  ! these are limited by newLUTs
+  real(kind=4),parameter:: max_SZA=89., max_VZA=89.
 
 !------------------------
 ! hqw O4 SCD temperature correction coefficients
