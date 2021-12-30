@@ -34,8 +34,6 @@ subroutine cal_pscene
   !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip
 
-  integer(kind=4):: pflag00, pflag01
-
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
   real::a11,a12,a21,a22
@@ -75,7 +73,7 @@ subroutine cal_pscene
   nx=rad_nXtrack
 
   fFillValue9 = -9999.
-  maxpress = 1500. !Pa for pscene
+  maxpress = 2000 !Pa for pscene
 
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
@@ -698,8 +696,9 @@ subroutine cal_pscene
 
           ! increment 1Pa at a time until minimum diff found
           do ipp=1,1000
-            xx=x0+real(ipp)
-!hqw adds condition to exit loop when xx becomes too large
+          !hqw replaced x0 with x2, as x0=lut_pcld(npcld)
+            xx=x2+real(ipp) !x0+real(ipp)
+          !hqw adds condition to exit loop 
             if (xx .gt. maxpress) then
                xx = -9999.
                go to 980
