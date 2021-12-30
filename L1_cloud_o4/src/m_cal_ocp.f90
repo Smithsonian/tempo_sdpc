@@ -76,7 +76,7 @@ subroutine cal_ocp
   real::vpsfc0,apsfc0, scdm, scdadj, scdmorg
   real,dimension(npcld)::amfvcd_int,amfvcd_ext
 
-  real::diff,diff_save
+  real::diff,diff_save, maxpress
   real::x0,x1,x2,xx
   real::y0,y1,y2,yy
   integer(kind=4)::ipp
@@ -99,6 +99,8 @@ subroutine cal_ocp
 
   nt=rad_NumTimes
   nx=rad_nXtrack
+
+  maxpress = 2000 !Pa
 
 ! allocate m_vars variables
 !hqw disabled STD arrays, they are not actually calculated
@@ -771,7 +773,7 @@ subroutine cal_ocp
         x1=lut_pcld(ipm1)
         x2=lut_pcld(ipm2)
 
-        if(option_psfc_clear.eq.0) then !current hardcoded choice
+        if(option_psfc_clear.eq.0) then !original hardcoded choice
         !hqw use pclr=psfc,ipm0=ipsfc0
           y0=amfvcd_int(ipm0)
           y1=amfvcd_int(ipm1)
@@ -792,9 +794,9 @@ subroutine cal_ocp
 
         !hqw this increase xx 1Pa at a time from psfc0
         !until mininal difference is found
-        ! 5000 is large and safely covers psfc, 1100 should be enough
+        ! 5000 is large and safe, 2000 should be enough
         ! but should make no difference to the computer
-        do ipp=1,1100 ! 5000
+        do ipp=1,2000 ! 5000
           xx=psfc0+real(ipp)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
@@ -804,7 +806,7 @@ subroutine cal_ocp
             go to 980 !inflection point found 
           else
             diff_save=diff
-            if (xx.gt.lut_psfc(npsfc)) then !no inflection found
+            if (xx .gt. maxpress) then !no solution found
               xx=-9999. ! if it ever does, set to invalid value
               go to 980
             endif
