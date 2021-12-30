@@ -725,6 +725,8 @@ contains
                               shuffle = shuffle, &
                               attlist=att_product)
 
+!refer to m_cal_ocp for confirmation
+!this string is too long to fit as a comment
     comment1="0: (ERROR) lat/lon/SZA/VZA/RAA error; "// &
             "1: "// &
             "2: (WARNING) pcloud replaced by pscene as 0.<ecf<min_ecf; " // &
@@ -747,7 +749,7 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "bitwise processing quality flag", &
-                              comment = comment1, &
+                              comment = " ", &
                               valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_product)

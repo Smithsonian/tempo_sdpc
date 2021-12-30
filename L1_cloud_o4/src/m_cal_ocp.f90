@@ -9,12 +9,12 @@ subroutine cal_ocp
   ! -----------------------------
   ! bit??  meaning:WhereSet
   ! bit00  (Error) invalid lat/lon/SZA/VZA/RAA: m_cal_ecf.f90
-  ! bit01  N/A
+  ! bit01  N/A reserved
   ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
   ! bit04  (Warning) pcld replaced by pscene as snow_ice_fraction>min_snowice: m_cal_pscene.f90
-  ! bit05  (Warning) SCD correction max_scd_iter reached in ocp : m_cal_ocp.f90
-  ! bit06  (Error) SCD < 0, : m_cal_ocp.f90
+  ! bit05  (Warning) SCD correction problem or max_scd_iter reached in ocp : m_cal_ocp.f90
+  ! bit06  (Error) SCD < 0 or SCD quality issue, : m_cal_ocp.f90
   ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
   ! bit09  (ERROR) ecf out of normal range, clipped: m_cal_ecf.g90
