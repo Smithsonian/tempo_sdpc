@@ -41,7 +41,7 @@ assert_dir_absent()
    fi
 }
 
-assert_dir_absent $SDPC_RUN_DIR
+#assert_dir_absent $SDPC_RUN_DIR
 assert_dir_exists $SDPC_REFDATA_DIR
 assert_dir_exists $SDPC_RUN_DIR_MASTER
 assert_dir_exists $SDPC_RUN_DIR_INR
@@ -63,7 +63,7 @@ link_existing_dir()
   to=$2
 
   assert_dir_exists $from
-  ln -s -n $from $to
+  ln -s -f -n $from $to
 }
 
 PIPE_NODE_DIRS="L0 L1 L2"
