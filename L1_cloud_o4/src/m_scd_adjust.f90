@@ -28,10 +28,12 @@ contains
    pbot = -999.
    kkfound = -9
 
-   ! initialize
+   ! initialize 
    scdadj = scdm
+
+   !scdm<0 should have been skipped,just a safeguard
    if (scdm .lt. 0.) then
-       return
+       return !in this case t8p=-999.
    endif
 
    ppmax = pp(gmi_np)
@@ -135,8 +137,8 @@ contains
 
    ! initialize
    scdadj = scdm
-   if (scdm .lt. 0.) then
-       return
+   if (scdm .lt. 0.) then !safeguard, should have been skipped
+       return ! t8p = -999. when this happens
    endif
 
    ppmax = pp(geos_np)
@@ -210,7 +212,7 @@ contains
 
    !ensure scdadj is positive
    if (scdadj .lt. 0.) then
-      scdadj = scdm
+      scdadj = scdm !scdm>0. otherwise should have returned
       t8p =  273.
    endif
 

@@ -809,7 +809,7 @@ subroutine cal_pscene
       ler440 = fFillValue9
       cpp = fFillValue9
       cpp1st = fFillValue9
- 
+      iternum = 0 
       !**************************************************************
       !+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1
       if((name_option_SceneAlbedoAtTerrain.eq.'no') .or. &
@@ -1075,9 +1075,11 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff_save=abs(scdm-yy)
 
+          !increment xx 1Pa at a time
           do ipp=1,1000
-            xx=x0+real(ipp) !increment xx 1Pa at a time
-!hqw adds condition to terminate loop when xx too large
+            !hqw changed x0 to x2 as x0 is the largest possible
+            xx=x2+real(ipp) ! x0+real(ipp) 
+            !hqw adds condition to terminate loop 
             if (xx .gt. maxpress) then
                 xx = -9999.
                 go to 982

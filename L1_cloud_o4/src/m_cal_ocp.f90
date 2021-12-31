@@ -796,7 +796,7 @@ subroutine cal_ocp
         !until mininal difference is found
         ! 5000 is large and safe, 2000 should be enough
         ! but should make no difference to the computer
-        do ipp=1,2000 ! 5000
+        do ipp=1,5000
           xx=psfc0+real(ipp)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
@@ -838,6 +838,9 @@ subroutine cal_ocp
         if (name_option_TemperaturePressure .eq. 'GMI') then
           call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
         else if (name_option_TemperaturePressure .eq. 'GEOS5') then
+      ! scdmorg<0. should already been skipped
+      ! returned scdadj always > 0., because if negative
+      ! scdadj = scdmorg and temp_t8p=273K
           call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
         else
           temp_t8p = real(t8p, kind=4)
@@ -857,8 +860,12 @@ subroutine cal_ocp
       !endif
 
       !hqw test if terminate temperature iteration
+      !technically, temp_t8p can be -999. when scdmorg<0.
+      !but it won't happen as they should have been skipped
+      !if negative scdadj occurs within scd_adjust_geos,
+      ! scdadj=scdmorg and temp_t8p=273. 
       delta_temp = real(abs(t8p - temp_t8p), kind=4)
-      if (delta_temp .lt. dt_threshold) then
+      if ((delta_temp .lt. dt_threshold).or.(temp_t8p .eq. 273.)) then
          goto 990 ! exit iteration
       endif
 
@@ -868,6 +875,7 @@ subroutine cal_ocp
          goto 777  ! goto iteration start
       endif
 
+! skipped calculation will end up here
 990   continue
 
       !set out_ProcessingQualityFlags bit 5 for max_scd_iter
@@ -885,7 +893,7 @@ subroutine cal_ocp
       if (scdm .gt. 0.) then
          out_SlantColumnAmountO2O2(ix,it) = scdm ! scdadj
          out_O2O2CloudTemperature(ix,it) = real(t8p, kind=4) ! temp_t8p
-      else !hqw skipped pixels will end up here
+      else !hqw skipped pixels will satisfy this condition
          out_SlantColumnAmountO2O2(ix,it) = nasa_SlantColumnAmountO2O2(ix,it)
          out_O2O2CloudTemperature(ix,it) = 273.
       endif
