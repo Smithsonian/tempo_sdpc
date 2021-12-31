@@ -361,6 +361,12 @@ subroutine cal_pscene
         !------------------------------------------
         ! calculate LER at terrain pressure (Psfc)
         !------------------------------------------
+        ! hqw add local array initialization
+        amfvcd = fFillValue9
+        cal_ler_r466 = fFillValue9
+        cal_ler_r440 = fFillValue9
+        cal_ler_amf = fFillValue9
+
         !------------------------
         !1. SurfaceLER at 466 nm
         !------------------------
@@ -805,7 +811,7 @@ subroutine cal_pscene
 
       !****************************************************************
 
-      ! assign and clip result
+      ! assign and clip TerrainLER
       TerrainLER466=ler466
       TerrainLER440=ler440
 
@@ -821,8 +827,8 @@ subroutine cal_pscene
       if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 1.2)) TerrainLER440=1.0
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !hqw seems like cpp calculated above is not used to assign anything yet
-      !within the 'no'//'both' option below, cpp will be recalculated
+      !hqw seems cpp calculated above is not used to assign anything yet
+      !within the 'no'//'both' option below, cpp will be re-calculated
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       ! re-init ler466, ler440, cpp
@@ -848,6 +854,13 @@ subroutine cal_pscene
         !--------------------------------------
         ! calculate LER at each pressure level
         !--------------------------------------
+        !initialize local array
+        lev_ler_alb466 = fFillValue9
+        lev_ler_alb440 = fFillValue9
+        lev_ler_amf = fFillValue9
+        temp_ler_alb466 = fFillValue9
+        temp_ler_alb440 = fFillValue9
+        amfvcd = fFillValue9
 
         !----------------------
         !1. SceneLER at 466 nm
