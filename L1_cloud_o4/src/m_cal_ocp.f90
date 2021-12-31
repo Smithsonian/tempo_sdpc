@@ -24,9 +24,9 @@ subroutine cal_ocp
   !        SCD correction problem or max_scd_iter reeached
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
-  ! bit13  (ERROR) skipped cloud ocp calculation
-  !        due to any problem during processing: m_cal_ocp.f90
-  ! bit14  (ERROR) ocp out of normal range, clipped: m_cal_ocp.f90
+  ! bit13  (ERROR) skipped cloud ocp calculation due to
+  !        any problem during processing,or invalid ocp: m_cal_ocp.f90
+  ! bit14  (ERROR) ocp out of normal range and clipped: m_cal_ocp.f90
   ! bit15  (Warning) skipped pscene calculation during processing
 
   use m_vars
@@ -181,7 +181,7 @@ subroutine cal_ocp
       ! ----------------------------
       ! cloud fraction
       ! ----------------------------
-      ! ecf and crf are already clipped within [0.,1.)
+      ! ecf and crf are already clipped within [0.,1.) in m_cal_ecf
       ! negative values signal bad data
       cal_ecf=out_EffectiveCloudFraction(ix,it)
       cal_crf=out_CloudRadianceFraction466(ix,it)
@@ -744,8 +744,6 @@ subroutine cal_ocp
       !hqw add clip cpp to within LUT range, safeguard
       if (cpp .gt. lut_psfc(npsfc)) then
           cpp = lut_psfc(npsfc)
-         !signal ocp clipping
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
       endif
 
       !hqw adjust scd according to T at temp_cpp
@@ -824,6 +822,17 @@ subroutine cal_ocp
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
 
+       if (option_clip_pcld .eq. 'yes') then
+          if ((cpp .gt. psfc0).and.(cpp.le.lut_psfc(npsfc))) then
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+             out_CloudPressure(ix,it) = nint(psfc0)
+          endif
+          if ((cpp.gt.0.).and.(cpp .lt. lut_pcld(1))) then
+             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
+             out_CloudPressure(ix,it) = nint(lut_pcld(1))
+          endif
+       endif
+
       !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read
       !out_CloudPressureSTD(ix,it)=inp_CloudPressureSTD(ix,it)
       !if(out_CloudPressureSTD(ix,it).le.iFillValue) &
@@ -832,18 +841,7 @@ subroutine cal_ocp
       !hqw moved out_TerrainPressure here, as psfc0 is the actual psurf used
       out_TerrainPressure(ix,it) = psfc0
 
-      !hqw if BDEM replace with out_ with BDEM_
-      !if(name_option_TemperaturePressure.eq.'BDEM') then
-      !  out_TerrainPressure(ix,it)=BDEM_TerrainPressure(ix,it)
-      !  !out_TerrainPressureStdDev(ix,it)=BDEM_TerrainPressureStdDev(ix,it)
-      !  out_TerrainHeight(ix,it)=BDEM_TerrainHeight(ix,it)
-      !  !out_TerrainHeightStdDev(ix,it)=BDEM_TerrainHeightStdDev(ix,it)
-      !  !hqw LandAreaFraction is not used,  comment out
-      !  !out_LandAreaFraction(ix,it)=int(BDEM_LandAreaFraction(ix,it), kind=2)
-      !endif
-
       !=====
-!888   continue
     end do
   end do
   !=====

@@ -351,15 +351,21 @@ integer,dimension(12):: &
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
 
-!hqw moved option_psfc from m_cal_ocp here
-!-------------------------------------
+!-----------------------------------------
 ! option 8: option_psfc_clear
+!hqw moved option_psfc_clear from m_cal_ocp here
 ! clear/cloud for high-P interp
 ! find pressure for AMF*VCD
 ! 0: Pclr=Psfc (fixed) & Pcld>Psfc (original default)
 ! 1: Pclr=Pcld if Pcld>Psfc
 !-------------------------------------
  integer :: option_psfc_clear = 0
+
+!-----------------------------------------
+! option 9: option_clip_pcld
+! hqw adds this option for whether to clip pcld within [lut_pcld[1], psfc0]
+!-----------------------------------------
+ character(len=255):: option_clip_pcld='no'
 
 ! ===== end of input options =====
 !------------
