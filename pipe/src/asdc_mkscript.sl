@@ -337,7 +337,23 @@ define priority_ordered_type_list (types)
    return type_list [reverse(array_sort(priority))];
 }
 
-define process_file_list (dest, file_list, script_file)
+define write_pdr_list (pdr_names, list_file)
+{
+   if (list_file == NULL)
+     return;
+
+   variable fp = fopen (list_file, "w");
+   if (NULL == fp)
+     throw IOError, "opening $list_file for writing"$;
+
+   if (1 != fputslines (strjoin (pdr_names, "\n"), fp))
+     throw IOError, "writing $list_file"$;
+
+   if (0 != fclose (fp))
+     throw IOError, "closing $list_file"$;
+}
+
+define process_file_list (dest, file_list, script_file, pdr_file_list)
 {
    variable path_list = read_file_list (file_list);
 
@@ -388,6 +404,8 @@ define process_file_list (dest, file_list, script_file)
 
    variable mf_files = array_map (String_Type, &make_manifest_filename, type_list);
 
+   write_pdr_list (mf_files, pdr_file_list);
+
    variable i, num_types = length(type_list);
 
    _for i (0, num_types-1, 1)
@@ -405,6 +423,7 @@ private define usage ()
 Options:
     -d|--dest USER@HOST   Destination account
     -o|--output FILE      Write lftp script to FILE
+    -p|--pdr FILE         Write PDR filenames to FILE
     -h|--help             Show usage message
 `;
    () = fprintf (stderr, msg);
@@ -445,12 +464,14 @@ define slsh_main ()
 {
    variable show_usage = 0;
    variable script_file = "script.lftp";
+   variable pdr_file_list = NULL;
    variable user_at_host = "tempo@xfr140.larc.nasa.gov";
 
    variable opts = cmdopt_new (&cmdopt_error);
    opts.add ("h|help", &show_usage; inc);
    opts.add ("d|dest", &user_at_host; type="string");
    opts.add ("o|output", &script_file; type="string");
+   opts.add ("p|pdr", &pdr_file_list; type="string");
    variable i = opts.process (__argv,1);
 
    if (__argc != i+1 || show_usage != 0)
@@ -475,5 +496,5 @@ define slsh_main ()
 
    Node_Name = get_hostname();
 
-   process_file_list (dest, file_list_file, script_file);
+   process_file_list (dest, file_list_file, script_file, pdr_file_list);
 }

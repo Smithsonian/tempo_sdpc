@@ -20,6 +20,8 @@ user_at_host=$1
 # (limit<=0 means no limit)
 : "${SDPC_ASDC_LIMIT:=0}"
 
+pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs.sqlite"
+
 PROGNAME="$(basename $0)"
 catch()
 {
@@ -38,6 +40,7 @@ do_asdc_upload()
 
   cd $dir
   file_list="files.lis"
+  pdr_list="pdrfiles.lis"
   script="lftp.script"
 
   exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.csv"
@@ -57,10 +60,13 @@ do_asdc_upload()
   asdc_track_uploads.py --set pending $file_list
 
   # generate manifest files and upload script
-  asdc_mkscript.sl --dest $user_at_host --output $script $file_list
+  asdc_mkscript.sl --dest $user_at_host --pdr $pdr_list --output $script $file_list
 
   # perform the upload
   lftp -f $script
+
+  # track PDR files for asdc_pull.sh
+  asdc_files.py --dbfile $pdr_dbfile --add $(cat $pdr_list)
 }
 
 num=$(asdc_track_uploads.py --num new)

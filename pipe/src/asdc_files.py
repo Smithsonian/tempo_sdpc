@@ -123,6 +123,16 @@ def update_file_status (cur, filename, table_name, asdc_status):
     else:
         cur.execute (sql)
 
+def query_file_status (cur, filename, table_name, missing):
+    basename = os.path.basename(filename)
+    query = "select asdc_status from {} where filename=\"{}\"".format (table_name, basename)
+    cur.execute (query)
+    asdc_status = cur.fetchone()
+    if asdc_status == None:
+        return missing
+    else:
+        return asdc_status[0]
+
 def longpan_header (thefile, parse):
     # MESSAGE_TYPE = LONGPAN
     line = thefile.readline()
@@ -227,6 +237,13 @@ class Db_File_Type:
             for f in files:
                 update_file_status (cur, f, self.table_name, self.status_dict[status])
 
+    def print_file_status (self, filenames):
+        with connect_database (self.db_path) as conn:
+            cur = conn.cursor()
+            for fn in filenames:
+                asdc_status = query_file_status (cur, fn, self.table_name, self.status_dict["unknown"])
+                print(asdc_status)
+
     def process_longpan_files (self, longpan_file_list):
         with connect_database(self.db_path) as conn:
             cur = conn.cursor()
@@ -239,7 +256,7 @@ class Db_File_Type:
                     print ("Error processing file: {}".format(longpan_file))
 
 def main():
-    status_dict = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "accepted":2}
+    status_dict = {"unknown": -3, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "accepted":2}
 
     parser = argparse.ArgumentParser(description='Track ASDC upload status of ancillary data files using {}'.format(status_dict.keys()))
     parser.add_argument('--dbfile', metavar='DBFILE', default=None,
@@ -258,6 +275,8 @@ def main():
                         help="Add new files to the database")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
                         help="Process LONGPAN files (changes status 'pending' to 'accepted'|'problem')")
+    parser.add_argument('--status', metavar='FILE', default=None, nargs="*",
+                        help="Query status of specified files")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
@@ -285,6 +304,8 @@ def main():
         db.register_files (args.add)
     elif args.pans:
         db.process_longpan_files(args.pans)
+    elif args.status:
+        db.print_file_status (args.status)
 
 if __name__ == "__main__":
     main()

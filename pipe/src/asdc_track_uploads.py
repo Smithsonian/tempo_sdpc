@@ -198,7 +198,8 @@ def process_longpan_files (longpan_file_list):
                 num_bad = process_longpan (cur, longpan_file)
                 if num_bad > 0:
                     print ('{} has {} bad files'.format(longpan_file, num_bad))
-            except:
+            except BaseException as e:
+                print('An exception occurred: {}'.format(e))
                 print ("Error processing file: {}".format(longpan_file))
 
 def set_file_status (status, file_list):
