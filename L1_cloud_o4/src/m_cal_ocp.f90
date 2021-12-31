@@ -109,14 +109,8 @@ subroutine cal_ocp
 !  out_CloudPressureSTD=int(iFillValue, kind=2)
 !  allocate(out_TerrainPressureStdDev(nx,nt),stat=ierr)
 !  out_TerrainPressureStdDev=fFillValue9
-!hqw out_TerrainHeight now moved to m_read_input_tio.f90
-!  allocate(out_TerrainHeight(nx,nt),stat=ierr)
-!  out_TerrainHeight=fFillValue9
 !  allocate(out_TerrainHeightStdDev(nx,nt),stat=ierr)
 !  out_TerrainHeightStdDev=fFillValue9
-!hqw LandAreaFraction is not actually used
-!  allocate(out_LandAreaFraction(nx,nt),stat=ierr)
-!  out_LandAreaFraction=int(iFillValue, kind=2)
 
   allocate(out_CloudPressure(nx,nt),stat=ierr)
   allocate(out_CloudPressureNotClipped(nx,nt),stat=ierr)
@@ -127,7 +121,7 @@ subroutine cal_ocp
 !hqw initialize to (negative) fill value
   out_CloudPressure=int(iFillValue, kind=2)
   out_CloudPressureNotClipped=int(iFillValue, kind=2)
-  out_TerrainPressure=fFillValue9 ! psfc used in ocp calculation 
+  out_TerrainPressure=fFillValue9 
   out_SlantColumnAmountO2O2=fFillValue9
   out_O2O2CloudTemperature=fFillValue9
 
@@ -146,17 +140,24 @@ subroutine cal_ocp
   do it=1,nt
     do ix=1,nx
       ! ==========
-      ! initialize cloud pressure to fFillValue9
+      ! initialize local variables
       ! this is also the value if calculation skipped
+      alb0 = fFillValue9
+      alb440 = fFillValue9
+      psfc0 = fFillValue9
       cpp=fFillValue9
 
-      ! initialize for next iteration
+      ! initialize local variable for T correction
       scdadj = fFillValue9
       temp_t8p = fFillValue9
       scdm = fFillValue9
       t8p = fFillValue9
       temp_cpp = fFillValue9
       scdmorg = fFillValue9
+
+      !initialize local array
+      cal_amf_clr = fFillValue
+      cal_amf_cld = fFillValue
 
       ! get local angles and geolocation
       sza0=rad_SolarZenithAngle(ix,it)
@@ -176,34 +177,6 @@ subroutine cal_ocp
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
          go to 990
       endif
-!      !---------------------
-!      ! geolocation check
-!      !--------------------
-!      pflag00=0
-!      if(abs(rad_Latitude(ix,it)) .gt. 90.) pflag00=pflag00+1
-!      if(abs(rad_longitude(ix,it)) .gt. 180.) pflag00=pflag00+1
-!
-!      ! --------------------
-!      ! input angles check
-!      ! --------------------
-!      pflag01=0
-!
-!      !hqw changed 86. to max_SZA
-!      if((sza0 .lt. 0.) .or. (sza0 .gt. max_SZA)) pflag01=pflag01+1
-!      !hqw changed 72. to max_VZA
-!      if((vza0 .lt. 0.) .or. (vza0 .gt. max_VZA)) pflag01=pflag01+1
-!      !hqw skip invalid RAA
-!      !valid RAA is converted to [0.,180) range in m_read_input_tio.f90
-!      !invalid RAA is set to fspecial < 0. there
-!      if (raa0 .lt. 0.) pflag01=pflag01+1
-!      ! skip ocp calculation if any angle is invalid 
-!      if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
-!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
-!         ! bit 0 is also set in m_cal_ecf.f90, but only for SZA&VZA
-!         ! thus the following provides a safeguard for RAA
-!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
-!         go to 990
-!      endif
 
       ! ----------------------------
       ! cloud fraction
@@ -229,11 +202,6 @@ subroutine cal_ocp
       !----------------------------------------------
       ! T-P profile and vvcd
       !----------------------------------------------
-      !hqw temporary alb0 and psfc0 which will be replaced by climatology
-      alb0 = fFillValue9
-      alb440 = fFillValue9
-      psfc0 = fFillValue9
-
       ! initialize local array
       tt = fFillValue9
       pp = fFillValue9
@@ -382,9 +350,11 @@ subroutine cal_ocp
          close(20)
       endif
 
-!hqw get local surface reflectivity
+     !---------------------------------
+     ! surface reflectivity
+     !---------------------------------
 !hqw now directly use out_SurfaceReflectivity assigned in ecf
-!   instead of repeating calculation here
+!   instead of repeating calculation
 
       ! skip if bit 3 (psfc or rsfc error) is set
       if (btest(out_ProcessingQualityFlags(ix,it),3)) then
@@ -400,58 +370,6 @@ subroutine cal_ocp
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
          go to 990
       endif
-!      ! ------------------------------
-!      ! option for SurfaceReflectivity
-!      ! ------------------------------
-!      if(name_option_SurfaceReflectivity.eq.'Kleipool') then
-!        kleipool_ix=nint((lon0+180.0)/0.5)
-!        kleipool_iy=nint((lat0+90.0)/0.5)
-!        if(kleipool_ix.lt.1) kleipool_ix=1
-!        if(kleipool_ix.gt.kleipool_nx) kleipool_ix=kleipool_nx
-!        if(kleipool_iy.lt.1) kleipool_iy=1
-!        if(kleipool_iy.gt.kleipool_ny) kleipool_iy=kleipool_ny
-!        alb0=kleipool_SurfaceReflectivity466(kleipool_ix,kleipool_iy)
-!        alb440=kleipool_SurfaceReflectivity440(kleipool_ix,kleipool_iy)
-!      endif
-!
-!      if(name_option_SurfaceReflectivity.eq.'BRDF') then
-!        alb0=BRDF_SurfaceReflectivity466(ix,it)
-!        !hqw current BRDF tables does not have 440, thus
-!        !  all BRDF_SurfaceReflectivity440 are filled with fspecial
-!        alb440=BRDF_SurfaceReflectivity440(ix,it)
-!      endif
-!
-!      !hqw safeguard
-!      if((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
-!         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
-!         go to 990
-!      endif
-!      if((alb0 .ge. -0.2) .and. (alb0 .lt. 0.0)) alb0=0.0
-!      if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
-!
-!      if ((alb440 .lt. -0.2) .or. (alb440 .gt. 1.2)) alb440=-9999.
-!      if((alb440 .ge. -0.2) .and. (alb440 .lt. 0.0)) alb440=0.0
-!      if((alb440 .gt.  1.0) .and. (alb440 .le. 1.2)) alb440=1.0
-!
-!hqw bit 2 (for min_ecf) and 4 (for snowice) are now handled in pscene
-!      ! -----------------------------------------------------
-!      ! option for SnowIce
-!      !   - 'Pscene': calculate Pscene
-!      !   - 'Pcld': calculate Pcld over snow/ice
-!      ! -----------------------------------------------------
-!      isnowice=0
-!      if (rad_SnowIceFraction(ix,it) .gt. min_snowice) isnowice = 1
-!
-!      ! -------------------------------------------
-!      ! set ProcessingQualityFlags:
-!      ! -------------------------------------------
-!      !if(isnowice .gt. 0) then
-!      !  out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
-!      !end if
-!
-!      if((cal_ecf .gt. 0.).and.(cal_ecf .lt. min_ecf)) then
-!        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
-!      endif
 
       !hqw in read_cldo4_tio, negative or bad SCD are set to fspecial=-9999.,
       if(nasa_SlantColumnAmountO2O2(ix,it).lt.0.0) then
@@ -466,11 +384,11 @@ subroutine cal_ocp
            ! bit2 (min_ecf)is now handled in pscene
            !hqw do not skip snow/ice scene for ocp calculation
            !btest(out_ProcessingQualityFlags(ix,it),4).or. & ! snowice
-           ! bit4 (snowice) is now handled in pscene
+           ! snowice is now handled in pscene
            !btest(out_ProcessingQualityFlags(ix,it),6).or. & ! checked before
-           !hqw skip ocp if effective cloud fraction is skipped 
-      !hqw
-        if (btest(out_ProcessingQualityFlags(ix,it),12)) then
+
+      !hqw skip ocp if effective cloud fraction is skipped 
+      if (btest(out_ProcessingQualityFlags(ix,it),12)) then
             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13) 
             go to 990 
       endif
@@ -900,21 +818,11 @@ subroutine cal_ocp
 
       out_CloudPressure(ix,it)=nint(cpp, kind=2)
       out_CloudPressureNotClipped(ix,it)=nint(cpp, kind=2)
-      if((cpp.le. 0.).or.(cpp.gt.lut_psfc(npsfc))) then
+      if((cpp.le. 0.).or.(cpp.ge.lut_psfc(npsfc))) then
         out_CloudPressure(ix,it)=int(iFillValue, kind=2)
         out_CloudPressureNotClipped(ix,it)=int(iFillValue, kind=2)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
-
-      ! clip slightly out-of-range values and set out_ProcessingQualityFlags
-      !if((cpp.gt.0.).and.(cpp.le.100.)) then
-      !    out_CloudPressure(ix,it)=100
-      !    out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-      !endif
-      !if((cpp.gt.psfc0).and.(cpp.lt.lut_psfc(npsfc))) then
-      !    out_CloudPressure(ix,it)=nint(psfc0, kind=2)
-      !    out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-      !endif
 
       !hqw skip out_CloudPressureSTD as inp_CloudPressureSTD is not read
       !out_CloudPressureSTD(ix,it)=inp_CloudPressureSTD(ix,it)
