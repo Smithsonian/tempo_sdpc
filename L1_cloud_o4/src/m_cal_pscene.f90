@@ -696,8 +696,7 @@ subroutine cal_pscene
 
           ! increment 1Pa at a time until minimum diff found
           do ipp=1,1000
-          !hqw replaced x0 with x2, as x0=lut_pcld(npcld)
-            xx=x2+real(ipp) !x0+real(ipp)
+            xx=x0+real(ipp)
           !hqw adds condition to exit loop 
             if (xx .gt. maxpress) then
                xx = -9999.
@@ -1016,6 +1015,8 @@ subroutine cal_pscene
             ww2=amfvcd(ipcld+1)-scdm
           endif
         end do
+        !if scdm is within range of amfvcd, node should have be found,iflag=1 
+        !otherwise, scdm>amfvcd(npcld) which requires extrapolation,iflag=-1
 
         if(iflag .ge. 1) then !normal interpolation
           cpp=(ww1*yy2+ww2*yy1)/(ww1+ww2)
@@ -1061,7 +1062,7 @@ subroutine cal_pscene
 
           cpp=xx
 
-        else ! high pressure end
+        else ! high pressure end, iflag=-1
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -1077,8 +1078,7 @@ subroutine cal_pscene
 
           !increment xx 1Pa at a time
           do ipp=1,1000
-            !hqw changed x0 to x2 as x0 is the largest possible
-            xx=x2+real(ipp) ! x0+real(ipp) 
+            xx= x0+real(ipp) 
             !hqw adds condition to terminate loop 
             if (xx .gt. maxpress) then
                 xx = -9999.
@@ -1136,7 +1136,7 @@ subroutine cal_pscene
 
         !hqw iteration termination
         delta_temp = abs(t8p - temp_t8p)
-        if (delta_temp .gt. dt_threshold .and. iternum .lt. max_scd_iter) then
+        if ((delta_temp.gt.dt_threshold).and.(iternum.lt.max_scd_iter)) then
            scdm = scdadj
            t8p = temp_t8p
            go to 776
@@ -1168,7 +1168,9 @@ subroutine cal_pscene
          go to 444
         endif
 
-        !clip SceneCPP
+        !-----------------------
+        ! clip SceneCPP
+        !-----------------------
         if((SceneCPP.gt.psfc0).and.(SceneCPP.le.maxpress)) SceneCPP=psfc0
  
         !-----------------------------
