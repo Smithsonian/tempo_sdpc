@@ -66,7 +66,7 @@ move_and_register_files()
       bn=$(basename $f)
       final_path="$dest_dir/$bn"
       /bin/mv $f $final_path
-      bin/asdc_files.py --dbfile $dbfile --add $final_path
+      asdc_files.py --dbfile $dbfile --add $final_path
       # move the sha1 files too
       if test -f ${f}.sha1 ; then
          /bin/mv ${f}.sha1 $dest_dir

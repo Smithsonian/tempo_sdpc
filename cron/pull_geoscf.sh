@@ -72,5 +72,5 @@ for f in $files ; do
    bn=$(basename $f)
    final_path="$target_dir/$bn"
    /bin/mv $f $final_path
-   bin/asdc_files.py --dbfile $rootdir/geoscf.sqlite --add $final_path
+   asdc_files.py --dbfile $rootdir/geoscf.sqlite --add $final_path
 done
