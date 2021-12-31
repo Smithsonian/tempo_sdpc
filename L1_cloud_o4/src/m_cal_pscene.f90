@@ -73,7 +73,8 @@ subroutine cal_pscene
   nx=rad_nXtrack
 
   fFillValue9 = -9999.
-  maxpress = 2000 !Pa for pscene
+  
+  maxpress = 2000 !Pa for high pressure end 
 
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
@@ -106,6 +107,13 @@ subroutine cal_pscene
   do it=1,nt
     do ix=1,nx
       ! ==========
+      !hqw add local variable initialization 
+      TerrainLER466 = fFillValue9
+      TerrainLER440 = fFillValue9
+      SceneLER466 = fFillValue9
+      SceneLER440 = fFillValue9
+      SceneCPP = fFillValue9
+    
 ! m_cal_ocp is called before this module, out_ProcessingQualityFlags
 ! bit 0 and 1 can be used to skip pixels with invalid geo or angles
       if (btest(out_ProcessingQualityFlags(ix,it),0) .or. &
@@ -330,6 +338,11 @@ subroutine cal_pscene
         endif
       endif
       !------------------------------------------------------------
+      !hqw adds initialization for ler466 & ler440
+      ! as they are used to assign TerrainLER after +0+0+0
+      ler466 = fFillValue9
+      ler440 = fFillValue9
+      cpp = fFillValue9
 
       !+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0+0
       if((name_option_SceneAlbedoAtTerrain.eq.'yes') .or. &
@@ -495,7 +508,7 @@ subroutine cal_pscene
         ! -----------------------
         ! AMF at each cloud level
         ! ----------------------- 
-        ! use iab1 & iab2 found for the calculated ler466 
+        ! use ialb1 & ialb2 found for the calculated ler466 
         ! to interpolate AMF at each cloud level: cal_ler_amf(ipcld)
         !hqw lut_amf_ler(alb,sza,vza,raa,pcld,psfc),thus,
         !it is better to switch ipsfc and ipcld below
@@ -554,6 +567,7 @@ subroutine cal_pscene
 
         ! -----------
         ! calculate VCD (vpsfc0) at psfc0
+        ! psfc0 has been clipped by lut_psfc(npsfc) before
         ! -----------
         ipsfc0=-9
         ipsfc1=-9; ipsfc2=-9; wpsfc1=0.; wpsfc2=0.
@@ -599,6 +613,7 @@ subroutine cal_pscene
           endif
         end do
         ! all amfvcds should >0. from here on
+        ! scdm will be compared against thes amfvcds to derive pressure
 
         !hqw initialize local vairable before scd T-correction iteration
         scdm = scdmorg
@@ -657,8 +672,8 @@ subroutine cal_pscene
           ! decrease pressure by 1Pa at a time until minimum diff found
           do ipp=1,100 !safe as pcld(1)=55 < 100
             xx=x1-real(ipp)
-!hqw adds condition to exit loop when xx becomes negative
-            if (xx .lt. 0.) then
+           !hqw adds condition to exit loop when xx<=0. 
+            if (xx .le. 0.) then
                xx = -9999.
                go to 970 
             endif
@@ -666,21 +681,24 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
-            if(diff.ge.diff_save) then
+            !hqw diff is expected to decrease towards the real cpp
+            if (diff.ge.diff_save) then
               go to 970
             else
               diff_save=diff
-!hqw corrected the following logic
-!              if(ipp.le.1) then
+               !hqw changed the following logic
+               !as 1st ipp=1 will lead to xx=-9999, has no affect on loop
+               !if(ipp.le.1) then
                if(ipp .ge. 100) then
                 xx=-9999. !no solution found, set to -9999.
-              endif
+               endif
             endif
           end do
 970       continue
           cpp=xx 
 
         else ! iflag .eq. -1: high pressure end
+        ! this happens when scdm>amfvcd(npcld)
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -688,7 +706,7 @@ subroutine cal_pscene
           y1=amfvcd(npcld-1)
           y2=amfvcd(npcld-2)
 
-          xx=lut_pcld(npcld-0)
+          xx=x0 !lut_pcld(npcld-0)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
@@ -757,7 +775,7 @@ subroutine cal_pscene
 
         !hqw test if terminate iteration
         delta_temp = abs(t8p - temp_t8p)
-        if (delta_temp .ge. dt_threshold .and. iternum .lt. max_scd_iter) then
+        if ((delta_temp.ge.dt_threshold).and.(iternum.lt.max_scd_iter)) then
             t8p = temp_t8p
             scdm = scdadj
             go to 777 ! do another iteration
@@ -783,11 +801,11 @@ subroutine cal_pscene
       endif !name_option_SceneAlbedoAtTerrain=='yes'//'both'
       !+0+0+0+0+0+0+0+0+0+0
 
-333   continue !skip here if something goes wrong within this name option
+333   continue !skip here if something goes wrong for this name option
 
       !****************************************************************
 
-      ! assign result
+      ! assign and clip result
       TerrainLER466=ler466
       TerrainLER440=ler440
 
@@ -802,7 +820,11 @@ subroutine cal_pscene
       if((TerrainLER440 .ge. -0.2) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
       if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 1.2)) TerrainLER440=1.0
 
-      
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !hqw seems like cpp calculated above is not used to assign anything yet
+      !within the 'no'//'both' option below, cpp will be recalculated
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
       ! re-init ler466, ler440, cpp
       ler466 = fFillValue9
       ler440 = fFillValue9
@@ -932,7 +954,7 @@ subroutine cal_pscene
             endif
           end do !iab
 
-          !hqw adds logic for iab1
+          !hqw adds logic for ialb1
           if (ialb1 .gt. 0) then
             a1111=lut_amf_ler(ialb1,isza1,ivza1,iraa1,ipsfc,ipcld)
             a1112=lut_amf_ler(ialb1,isza1,ivza1,iraa2,ipsfc,ipcld)
