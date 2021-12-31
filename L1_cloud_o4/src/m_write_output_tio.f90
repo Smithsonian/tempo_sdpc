@@ -512,7 +512,6 @@ contains
          rad_RelativeAzimuthAngle !, &
 !         out_RelativeAzimuthAngle !,&
 !         out_TerrainHeight!, &
-!        rad_GroundPixelQualityFlags
 
     implicit none
 
@@ -552,9 +551,6 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
          [nstep, nxtrack], rad_RelativeAzimuthAngle, errstat)
-
-!    call tiof_put2d_ui4 (tio_l2obj, "ground_pixel_quality_flag", [0,0], &
-!         [nstep, nxtrack], rad_GroundPixelQualityFlags, errstat)
 
     call tiof_pop_group (tio_l2obj, errstat)
 
@@ -1175,7 +1171,7 @@ contains
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
                name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
                out_EffectiveCloudFractionNotClipped, &
-               out_CloudPressureNotClipped
+               out_CloudPressureNotClipped,l2_TerrainPressure
 
      use m_vars, only: scd_mdqfl, run_mode
 
@@ -1228,7 +1224,7 @@ contains
     if (run_mode .EQ. 'production') then
 
     call tiof_put2d_r4 (tio_l2obj, "SurfacePressure", [0,0], &
-         [nstep, nxtrack], out_TerrainPressure, errstat)
+         [nstep, nxtrack], l2_TerrainPressure, errstat)
 
     else
     call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
@@ -1247,7 +1243,7 @@ contains
          [nstep, nxtrack], out_ReflectanceFactor, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "surface_pressure", [0,0], &
-         [nstep, nxtrack], out_TerrainPressure, errstat)
+         [nstep, nxtrack], l2_TerrainPressure, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "terrain_height", [0,0], &
          [nstep, nxtrack], out_TerrainHeight, errstat)

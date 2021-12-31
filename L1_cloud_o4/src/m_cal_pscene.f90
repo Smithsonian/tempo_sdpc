@@ -959,7 +959,7 @@ subroutine cal_pscene
           ! negative alb0 should have already been skipped before
           ialb1=-9; ialb2=-9 ; walb1=0.; walb2=0.
           do ialb=1,nalb-1
-            if((alb0 .ge. lut_alb(ialb)) .and. (alb0 .le. lut_alb(ialb+1))) then
+            if((alb0 .ge. lut_alb(ialb)).and.(alb0 .le. lut_alb(ialb+1))) then
               ialb1=ialb
               ialb2=ialb+1
               walb1=alb0-lut_alb(ialb)
@@ -1009,14 +1009,14 @@ subroutine cal_pscene
         end do !ipsfc
 
         ! -----------------
-        ! calculate AMF*VCD
+        ! calculate AMF*VCD for each ipcld
         ! -----------------
         do ipcld=1,npcld
           ipsfc=ipcld
           amfvcd(ipcld)=real(lev_ler_amf(ipsfc), kind=4)*vvcd(ipcld)
         end do
 
-        !hqw re-assign local vairables
+        !hqw re-init local vairables
         scdm = scdmorg
         scdadj = scdm
         t8p = 273.
@@ -1071,7 +1071,7 @@ subroutine cal_pscene
 
           do ipp=1,100
             xx=x1-real(ipp) 
-!hqw adds condition to terminate loop when xx<0.
+          !hqw adds condition to terminate loop when xx<0.
             if (xx .lt. 0.) then
                 xx = -9999.
                 go to 972
@@ -1080,13 +1080,15 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
+            ! diff is expected to decrease towards real cpp
             if(diff.ge.diff_save) then
               go to 972
             else
               diff_save=diff
-!hqw corrected the following logic, so that
-!when solution not found within the loop, set xx=-9999.
-!              if(ipp.le.1) then
+            !hqw corrected the following logic, so that
+            !when solution not found, set xx=-9999.
+            !note when ipp=100,loop terminates, no need for goto
+            !if(ipp.le.1) then
               if (ipp .ge.100) then
                 xx=-9999.
               endif
@@ -1098,6 +1100,7 @@ subroutine cal_pscene
           cpp=xx
 
         else ! high pressure end, iflag=-1
+        !hqw this happens when scdm>amfvcd(npcld)
           x0=lut_pcld(npcld-0)
           x1=lut_pcld(npcld-1)
           x2=lut_pcld(npcld-2)
@@ -1111,7 +1114,7 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           diff_save=abs(scdm-yy)
 
-          !increment xx 1Pa at a time
+          !increment xx 1Pa at a time from x0
           do ipp=1,1000
             xx= x0+real(ipp) 
             !hqw adds condition to terminate loop 
@@ -1123,6 +1126,7 @@ subroutine cal_pscene
                  +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                  +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
             diff=abs(scdm-yy)
+            ! diff is expected to decrease until real cpp
             if(diff.ge.diff_save) then
               go to 982
             else
@@ -1134,11 +1138,10 @@ subroutine cal_pscene
           end do
 
 982       continue
-
           cpp=xx
-
         endif
 
+        !check cpp
         if (cpp .lt. 0.) then 
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
           go to 444
@@ -1203,9 +1206,10 @@ subroutine cal_pscene
          go to 444
         endif
 
-        !-----------------------
+        !***********************
         ! clip SceneCPP
         !-----------------------
+        ! hqw this will lose calculated cpp when scdm>max(amfvcd)
         if((SceneCPP.gt.psfc0).and.(SceneCPP.le.maxpress)) SceneCPP=psfc0
  
         !-----------------------------
