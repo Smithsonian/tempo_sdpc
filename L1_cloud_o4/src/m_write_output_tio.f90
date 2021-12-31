@@ -509,9 +509,7 @@ contains
          rad_SolarAzimuthAngle, &
          rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, &
-         rad_RelativeAzimuthAngle !, &
-!         out_RelativeAzimuthAngle !,&
-!         out_TerrainHeight!, &
+         rad_RelativeAzimuthAngle 
 
     implicit none
 
@@ -937,6 +935,18 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+    call tiof_varlist_append (varlist, errstat, &
+                              "TerrainPressure", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "calculated terrain pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1.5e3_r8], &
+                              fillvalue = fill_float_nines, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
     if (run_mode .EQ. 'production') then 
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1220,6 +1230,9 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "ScenePressure", [0,0], &
          [nstep, nxtrack], out_ScenePressure, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
+         [nstep, nxtrack], out_TerrainPressure, errstat)
 
     if (run_mode .EQ. 'production') then
 
