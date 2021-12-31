@@ -939,7 +939,7 @@ contains
                               "TerrainPressure", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "calculated terrain pressure", &
+          long_name = "terrain pressure calculated for SurfaceLER466", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.5e3_r8], &
                               fillvalue = fill_float_nines, &

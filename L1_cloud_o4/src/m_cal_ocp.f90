@@ -114,14 +114,16 @@ subroutine cal_ocp
 
   allocate(out_CloudPressure(nx,nt),stat=ierr)
   allocate(out_CloudPressureNotClipped(nx,nt),stat=ierr)
-  allocate(out_TerrainPressure(nx,nt),stat=ierr)
+!hqw moved out_TerrainPressure to m_cal_pscene
+! repurpose to hold calculated cpp for name_optio_SceneAlbedoAtTerrain='yes' 
+!  allocate(out_TerrainPressure(nx,nt),stat=ierr)
   allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
 
 !hqw initialize to (negative) fill value
   out_CloudPressure=int(iFillValue, kind=2)
   out_CloudPressureNotClipped=int(iFillValue, kind=2)
-  out_TerrainPressure=fFillValue9 
+!  out_TerrainPressure=fFillValue9 
   out_SlantColumnAmountO2O2=fFillValue9
   out_O2O2CloudTemperature=fFillValue9
 
@@ -838,8 +840,8 @@ subroutine cal_ocp
       !if(out_CloudPressureSTD(ix,it).le.iFillValue) &
       !     out_CloudPressureSTD(ix,it)=int(iFillValue, kind=2)
 
-      !hqw moved out_TerrainPressure here, as psfc0 is the actual psurf used
-      out_TerrainPressure(ix,it) = psfc0
+      !hqw moved out_TerrainPressure to m_cal_pscene and repurposed it
+      !out_TerrainPressure(ix,it) = psfc0
 
       !=====
     end do

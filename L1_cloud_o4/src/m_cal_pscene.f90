@@ -86,6 +86,8 @@ subroutine cal_pscene
   allocate(out_SlantColumnTerrainO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2SceneTemperature(nx,nt),stat=ierr)
   allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
+  !hqw moved out_TerrainPressure from m_cal_ocp here
+  allocate(out_TerrainPressure(nx,nt),stat=ierr)
 
   !initialize array
   out_SurfaceLER440=fFillValue9
@@ -97,6 +99,7 @@ subroutine cal_pscene
   out_SlantColumnTerrainO2O2=fFillValue9
   out_O2O2SceneTemperature=fFillValue9
   out_O2O2TerrainTemperature=fFillValue9
+  out_TerrainPressure=fFillValue9
 
   ! allocate and initialize local arrays
   allocate(tt(nlayers), pp(nlayers+1))
@@ -830,6 +833,8 @@ subroutine cal_pscene
       !hqw seems cpp calculated above is not used to assign anything yet
       !within the 'no'//'both' option below, cpp will be re-calculated
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !hqw use out_TerrainPressure to hold cpp here
+      out_TerrainPressure(ix,it) = cpp
 
       ! re-init ler466, ler440, cpp
       ler466 = fFillValue9
