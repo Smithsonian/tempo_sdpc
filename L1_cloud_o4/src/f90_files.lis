@@ -11,7 +11,6 @@ m_read_input_tio.f90
 m_read_input_clim.f90
 m_read_input_gler.f90
 m_write_output_tio.f90
-m_read_DEM.f90
 m_read_GMI.f90
 m_read_hdf5.f90
 m_read_input_kleipool.f90

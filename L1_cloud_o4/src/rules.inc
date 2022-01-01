@@ -44,9 +44,6 @@ $(ODIR)/m_write_output_tio.o: $(SDIR)/m_write_output_tio.f90 \
   $(ODIR)/m_read_input_tio.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_write_output_tio.f90 -o $(ODIR)/m_write_output_tio.o $(MODOUTFLG) $(ODIR)
-$(ODIR)/m_read_DEM.o: $(SDIR)/m_read_DEM.f90 \
-  $(ODIR)/m_vars.o
-	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_DEM.f90 -o $(ODIR)/m_read_DEM.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_GMI.o: $(SDIR)/m_read_GMI.f90 \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_GMI.f90 -o $(ODIR)/m_read_GMI.o $(MODOUTFLG) $(ODIR)

@@ -61,7 +61,7 @@ module m_vars
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingZenithAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingAzimuthAngle
   real(kind=4),   dimension(:,:),  pointer::rad_RelativeAzimuthAngle
-!hqw to save memory, use out_TerrainHeight in reading for each option
+!hqw use out_TerrainHeight in reading for each option
 !  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
@@ -69,7 +69,7 @@ module m_vars
 !hqw comments out OMI specific variables
 !hqw moved rad_Radiance and rad_Wavelength inside read_rad_tio
 !  real(kind=4), dimension(:,:,:), pointer :: rad_Radiance, rad_Wavelength
-!hqw added rad_466nm,rad_477nm,rad_440nm which is what really needed
+!hqw added rad_466nm,rad_477nm,rad_440nm which is what needed
   real(kind=4), dimension(:,:), pointer::rad_466nm,rad_477nm,rad_440nm
 !  integer(kind=2),dimension(:,:,:),pointer::rad_PixelQualityFlags
 !  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficient
@@ -88,18 +88,7 @@ module m_vars
 !--------------
 ! Lookup table
 !--------------
-!
-! ALB=(/0.00,0.01,0.02,0.04,0.06,0.08,0.10,0.12,0.14,0.16,0.18,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1.00/)
-! SZA=(/0,5,10,15,20,25,30,34,38,42,46,50,54,57,60,63,66,69,72,75,78,80,82,84,85,86,87,88,88.5,89/)
-! VZA=(/0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68,72/)
-! RAA=(/0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95, &
-!       100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180/)
-! name_LCLD=(/'026','027','028','029','030','031','032','033','034','035',&
-!             '036','037','038','039','040','041','042','043','044','045','046','047','048'/)
-! name_PSFC=(/'055','065','076','089','104','121','142','166','194','227',&
-!             '265','308','357','411','472','541','617','701','795','899','1013','1050','1100'/) 
-
-!hqw these initialized names can be changed through control file
+!hqw these initial names can be changed through control file
   character(len=255)::name_lut_dir='./refdata/'
   character(len=255)::name_lut_rad440='LUT_4400_RAD.h5'
   character(len=255)::name_lut_rad='LUT_4660_RAD.h5'
@@ -131,7 +120,7 @@ module m_vars
   !integer,parameter::npsfc=23, npcld=23, nrsfc=23
   !new LUT dimension
   integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
-  integer,parameter:: npsfc=23, npcld=23, nrsfc=23
+  integer,parameter:: npsfc=23, npcld=23
 
   !hqw added the following to remove hard_code in various places
   ! these are limited by oldLUTs
@@ -156,18 +145,7 @@ module m_vars
 ! vertical column density
 !-------------------------
   integer,parameter::nvcd=npcld
-!hqw comment out lvcd, pvcd, tvcd  which are not used in program
-!  integer,dimension(nvcd):: &
-!    lvcd=(/ 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, &
-!            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48/)
-!  real,dimension(nvcd):: &
-!    pvcd=(/ 55., 65., 76., 89.,104.,121.,142.,166.,194.,227., &
-!           265.,308.,357.,411.,472.,541.,617.,701.,795.,899.,1013.,1050.,1100./)
-!  real,dimension(nvcd):: &
-!    tvcd=(/216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.70,216.80, &
-!           223.30,229.70,236.20,242.70,249.20,255.70,262.20,268.70,275.20,281.70, &
-!    288.20,290.16,292.68/)
-!hqw vvcd initialized here is replaced with actual gmi_vcd//dem_vcd//geos_vcd 
+!hqw vvcd here is replaced with actual gmi_vcd//geos_vcd 
   real,dimension(nvcd):: &
     vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
            0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
@@ -183,10 +161,6 @@ module m_vars
 !-----------
 ! input LUN
 !-----------
-!character(len=6)::lun_irr_file='400100' !hqw no longer needed
-!character(len=6)::lun_kleipool_file='400110'
-!character(len=6)::lun_lut_rad440='440000'
-!character(len=6)::lun_lut_rad='466000'
 character(len=6)::lun_lut_amf_clear='477000'
 character(len=6)::lun_lut_amf_cloud='477001'
 character(len=6)::lun_lut_amf_ler6d='477010'
@@ -198,10 +172,6 @@ character(len=6),dimension(12):: &
   lun_gmi_tmp=(/'400301','400302','400303','400304','400305','400306', &
                 '400307','400308','400309','400310','400311','400312'/)
 
-!integer::ilun_irr_file=400100 !hqw no longer needed
-!integer::ilun_kleipool_file=400110
-!integer::ilun_lut_rad440=440000
-!integer::ilun_lut_rad=466000
 integer::ilun_lut_amf_clear=477000
 integer::ilun_lut_amf_cloud=477001
 integer::ilun_lut_amf_ler6d=477010
@@ -264,20 +234,19 @@ integer,dimension(12):: &
 
 ! calculate VCD at the LUT pressure level
   real,dimension(npcld)::gmi_vcd        
-  real,dimension(npcld)::dem_vcd
   real,dimension(npcld)::geos_vcd
-  real,dimension(npcld)::knmi_vcd
 
 ! -----------------------------
 ! option 3: SurfaceReflectivity
 ! -----------------------------
 ! name_option_SurfaceReflectivity:
-!   Rsfc(OMCLDO2)  vs. Rsfc(Kleipool) vs. Rsfc(BRDF)
+!   Rsfc(Kleipool) vs. Rsfc(BRDF)
 
 !name_kleipool_dir can be changed by control.txt
-  character(len=255)::name_kleipool_dir='./refdata/'
   character(len=255)::name_option_SurfaceReflectivity='Kleipool'
 !  character(len=255)::name_option_SurfaceReflectivity='BRDF'
+
+  character(len=255)::name_kleipool_dir='./refdata/'
   integer,parameter::kleipool_nx=720,kleipool_ny=360
 !hqw changed these to pointer so that they won't allocate if not needed
 !  real,dimension(kleipool_nx)::kleipool_lon
