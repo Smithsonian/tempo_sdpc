@@ -813,7 +813,8 @@ contains
   !>Write support structure into L2 netCDF file
   !----------------------------------------------------------------------------
   subroutine write_support_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
-    use m_vars, only: name_option_SurfaceReflectivity,run_mode
+    use m_vars, only: name_option_SurfaceReflectivity,run_mode, &
+                option_clip_pcld
     implicit none
 
     !input variables
@@ -974,7 +975,8 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    call tiof_varlist_append (varlist, errstat, &
+    if (option_clip_pcld .eq. 'yes') then
+       call tiof_varlist_append (varlist, errstat, &
                               "nonclipped_cloud_pressure", &
                               nf90_int, &
                               dimids = dimids_xtrack_step,  &
@@ -985,6 +987,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnAmountO2O2", &
@@ -1230,7 +1233,7 @@ contains
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
                name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
                out_EffectiveCloudFractionNotClipped, &
-               out_CloudPressureNotClipped,&
+               out_CloudPressureNotClipped,option_clip_pcld,&
                l2_TerrainPressure, &
                rad_of_irr466, cal_rad_clr, cal_rad_cld
 
@@ -1294,8 +1297,10 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
          [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
 
+    if (option_clip_pcld .eq. 'yes') then
     call tiof_put2d_i2 (tio_l2obj, "nonclipped_cloud_pressure", [0,0], &
          [nstep,nxtrack], out_CloudPressureNotClipped, errstat)
+    endif
 
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
