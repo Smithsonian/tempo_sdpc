@@ -220,9 +220,6 @@ integer,dimension(12):: &
 ! option 1: SlantColumnDensity
 ! ----------------------------
 ! name_option_SlantColumnDensity:
-!   SCD: KNMI vs. NASA 	!KNMI(OMCLDO2)   vs. NASA direct fit
-
-!  character(len=255)::name_option_SlantColumnDensity='KNMI'
 !hqw TEMPO always use NASA, thus changed to a parameter
   character(len=255), parameter::name_option_SlantColumnDensity='NASA'
 
@@ -232,10 +229,7 @@ integer,dimension(12):: &
 ! name_option_TemperaturePressure:
 !   This option will change VCD and Psfc values, but will not affect AMFcalculated
 !    GMI: GMI monthly T/P/Psfc
-!    DEM: GMI monthly T/P and DEM Psfc
-!   BDEM: GMI monthly T/P and (GLER) DEM Psfc
 !  GEOS5: GEOS-5 T/P/Psfc
-!   KNMI: US Standard T/P and DEM Psfc
 
   character(len=255)::name_gmi_dir='refdata/'
 ! geos5 is replaced with geoscf using libclim
@@ -243,11 +237,7 @@ integer,dimension(12):: &
 !  character(len=255)::name_geos5_file
 
 ! character(len=255)::name_option_TemperaturePressure='GMI'
-! character(len=255)::name_option_TemperaturePressure='DEM'
-! character(len=255)::name_option_TemperaturePressure='BDEM'
  character(len=255)::name_option_TemperaturePressure='GEOS5'
-! TEMPO does not use KNMI
-! character(len=255)::name_option_TemperaturePressure='KNMI'
 
   integer :: nlayers
   integer :: ixdebug=-1800 !set to negative to prevent writing debug output
@@ -268,13 +258,6 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
   real::gmi_psfc
   
-  real(kind=4),dimension(:,:),pointer::BDEM_TerrainPressure
-  real(kind=4),dimension(:,:),pointer::BDEM_TerrainPressureStdDev
-  real(kind=4),dimension(:,:),pointer::BDEM_TerrainHeight
-  real(kind=4),dimension(:,:),pointer::BDEM_TerrainHeightStdDev
-!  integer,dimension(:,:),pointer::BDEM_LandAreaFraction
-!  integer(kind=2),dimension(:,:),pointer::BDEM_LandAreaFraction
-
   integer,parameter::geos_np=72
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure
@@ -293,8 +276,6 @@ integer,dimension(12):: &
 
 !name_kleipool_dir can be changed by control.txt
   character(len=255)::name_kleipool_dir='./refdata/'
-!hqw OMCLDO2 is not an option for TEMPO
-!  character(len=255)::name_option_SurfaceReflectivity='OMCLDO2'
   character(len=255)::name_option_SurfaceReflectivity='Kleipool'
 !  character(len=255)::name_option_SurfaceReflectivity='BRDF'
   integer,parameter::kleipool_nx=720,kleipool_ny=360

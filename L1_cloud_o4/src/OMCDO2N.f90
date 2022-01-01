@@ -8,7 +8,6 @@ program OMCDO2N
   use m_vars
   use m_read_input_kleipool
   use m_read_GMI
-!  use m_read_DEM
   use m_read_lut
   use m_read_hdf5
   use tell_module
@@ -91,8 +90,7 @@ program OMCDO2N
 
 !hqw TEMPO GLER is now handled by m_read_input_gler
 !explicit GLER fnm is no longer needed for TEMPO, but is needed for OMI
-  if((name_option_SurfaceReflectivity.eq.'BRDF')) then !.or. &
-    !   (name_option_TemperaturePressure.eq.'BDEM')) then
+  if((name_option_SurfaceReflectivity.eq.'BRDF')) then 
     status=GetConfigString("E","Input Files OMGLER",buf)
     if(status < 0) then
       call tell_error(tell_io_read_error,"Problem reading GLER from control file", errstat)
@@ -285,31 +283,6 @@ program OMCDO2N
     call read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
     call tell_log(0, "Read GMI T/P & GMI Ps for month ")
   endif
-
-  !hqw do not use DEM for TEMPO without further development
-  !if(name_option_TemperaturePressure.eq.'DEM') then
-  !  write(*,*)'      WARNING: DEM is not tested. DO NOT USE THIS!'
-  !  status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
-  !  name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
-  !
-  !  call read_DEM_GMI_TMP(name_gmi_tmp)
-  !  logmsg='read_DEM_GMI_TMP'//TRIM(name_gmi_tmp)
-  !  call tell_log(0,logmsg)
-  !endif
-
-  !hqw do not use BDEM for TEMPO without further development
-  !if(name_option_TemperaturePressure.eq.'BDEM') then
-  !  write(*,*)'     WARNING: BDEM is not tested. DO NOT USE THIS!'
-  !  status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
-  !  name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
-  !
-  !  call read_DEM_GMI_TMP(name_gmi_tmp)
-  !
-  !  call read_BDEM_Psfc_h5
-  !  call tell_log(0,'Read DEM Psfc from GLER files')
-  !endif
 
   flush (output_unit)
 

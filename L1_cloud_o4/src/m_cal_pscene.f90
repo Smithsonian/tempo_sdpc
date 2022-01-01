@@ -7,7 +7,6 @@ subroutine cal_pscene
   !*********************
   use m_vars
   use m_read_GMI
-!  use m_read_DEM
   use m_read_hdf5
   use m_scd_adjust
 
@@ -145,9 +144,7 @@ subroutine cal_pscene
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
       ! ----------------------------------------------
-      if((name_option_TemperaturePressure.eq.'GMI')) then !.or. &
-!           (name_option_TemperaturePressure.eq.'DEM').or. &
-!           (name_option_TemperaturePressure.eq.'BDEM')) then
+      if((name_option_TemperaturePressure.eq.'GMI')) then 
         gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
         gmi_ix2=gmi_ix1+1
         gmi_iy1=floor(rad_Latitude(ix,it)+90.)+1
@@ -203,41 +200,6 @@ subroutine cal_pscene
           vvcd(1:npcld) = -9999.
         endif
       endif
-
-      !hqw DEM is not currently supported, DO NOT USE
-      !if(name_option_TemperaturePressure.eq.'DEM') then
-      !  !hqw TEMPO does not read inp_TerrainPressure
-      !  !psfc0=real(inp_TerrainPressure(ix,it))
-      !  psfc0 = l2_TerrainPressure(ix,it)
-      !  do ip=1,gmi_np
-      !    tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-      !    tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-      !    tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-      !    tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-      !    tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-      !    tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-      !    tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-      !  end do
-      !  call read_DEM_VCD(psfc0,tt,pp)
-      !  vvcd=dem_vcd
-      !endif
-
-      !hqw BDEM is not currently supported, DO NOT USE
-      ! comment out for now
-      !if(name_option_TemperaturePressure.eq.'BDEM') then
-      !  psfc0=BDEM_TerrainPressure(ix,it)
-      !  do ip=1,gmi_np
-      !    tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-      !    tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-      !    tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-      !    tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-      !    tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-      !    tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-      !    tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-      !  end do
-      !  call read_DEM_VCD(psfc0,tt,pp)
-      !  vvcd=dem_vcd
-      !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         !geos_Pressure & geos_temperature are assigned in read_geoscf

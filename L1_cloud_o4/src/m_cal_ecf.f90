@@ -7,7 +7,6 @@ subroutine cal_ecf
   !******************
   use m_vars
   use m_read_GMI
-!  use m_read_DEM
   use m_read_hdf5
 
   implicit none
@@ -278,12 +277,6 @@ subroutine cal_ecf
         !hqw assign l2_TerrainPressure for GMI here
         l2_TerrainPressure(ix,it) = psfc0
       endif
-
-      !hqw do not use BDEM without further development
-      !if(name_option_TemperaturePressure.eq.'BDEM') then
-      !  psfc0=BDEM_TerrainPressure(ix,it)
-      !  l2_TerrainPressure(ix,it) = psfc0
-      !endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         !hqw l2_TerrainPressure was assigned in read_geoscf
