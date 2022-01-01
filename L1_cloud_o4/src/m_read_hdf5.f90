@@ -2,22 +2,17 @@
 module m_read_hdf5
 !******************
 ! this module contains misc subroutines
-use HDF5
-use m_vars
 
 contains
 
-!hqw subroutines used inp_Numtimes & inp_nXtrack originally from OMCLDO2
-!    changed to rad_NumTimes * rad_Xtrack
-
 !111111111111111111111
-subroutine read_GEOS5
+!subroutine read_GEOS5
 !111111111111111111111
 
 !hqw read_GEOS5 is replaced with read_geoscf, thus remove it
 
 !1111111111111111111111111
-end subroutine read_GEOS5
+!end subroutine read_GEOS5
 !1111111111111111111111111
 
 !2222222222222222222222222222222
@@ -26,18 +21,18 @@ subroutine read_GEOS5_VCD(pp,tt)
 
 ! for an individual pixel 
 
-  use m_vars, only : vcd_convfac
+  use m_vars, only : vcd_convfac, geos_np, geos_vcd, &
+                    npcld, lut_pcld
 
   implicit none
 
   real(kind=4),dimension(geos_np)::tt
   real(kind=4),dimension(geos_np+1)::pp !include Psfc
   real(kind=4),dimension(geos_np+1)::tmp_vcd
-  real::sum_vcd!,psfc
+  real::sum_vcd
   real::xx1,xx2,yy1,yy2,xxx,yyy
-  !real::x1,x2,x3,y1,y2,y3
-  integer(kind=4)::iflag,ipcld!,iline
-  integer(kind=4)::ip!,ix,iy
+  integer(kind=4)::iflag,ipcld
+  integer(kind=4)::ip
 
 ! ---------------------------
 ! GEOS-5 pressure coordinate
@@ -87,6 +82,8 @@ end subroutine read_GEOS5_VCD
 !5555555555555555555555555555
 subroutine read_BRDF_Rsfc_h5
 !5555555555555555555555555555
+  use m_vars
+  use HDF5
 
   IMPLICIT NONE
 
@@ -168,7 +165,8 @@ end subroutine read_BRDF_Rsfc_h5
 !6666666666666666666666666666
 subroutine read_BDEM_Psfc_h5
 !6666666666666666666666666666
-
+  use m_vars
+  use HDF5
   IMPLICIT NONE
 
   CHARACTER(LEN=255)::filename
