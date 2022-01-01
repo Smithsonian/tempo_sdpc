@@ -86,8 +86,8 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-pull_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}/pull"
-download_dir_path="${pull_dir}/$(date -u +%Y/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
+dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+download_dir_path="${dbfile_dir}/$(date -u +%Y/%j/pull/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
 do_asdc_download $download_dir_path
 
 num_pending=$(asdc_files.py --dbfile $dbfile --num pending)

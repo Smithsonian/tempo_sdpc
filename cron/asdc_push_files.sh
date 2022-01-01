@@ -35,8 +35,8 @@ do_asdc_upload()
   if ! test -d $dir ; then
      mkdir -p $dir
   fi
-
   cd $dir
+
   file_list="files.lis"
   script="lftp.script"
 
@@ -61,12 +61,11 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-push_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}/push"
-upload_dir_path="${push_dir}/$(date -u +%Y/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
+dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+upload_dir_path="${dbfile_dir}/$(date -u +%Y/%j/push/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
 do_asdc_upload $upload_dir_path
 
 # log num new/pending:
 num=$(asdc_files.py --dbfile $dbfile --num new)
 num_after=$(asdc_files.py --dbfile $dbfile --num pending)
 echo "$dbfile_name push status: new: $num  pending: $num_after"
-
