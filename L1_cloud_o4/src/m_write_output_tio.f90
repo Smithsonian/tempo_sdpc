@@ -814,7 +814,7 @@ contains
   !----------------------------------------------------------------------------
   subroutine write_support_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
     use m_vars, only: name_option_SurfaceReflectivity,run_mode, &
-                option_clip_pcld
+                option_clip_pcld,name_option_SceneAlbedoAtTerrain
     implicit none
 
     !input variables
@@ -876,6 +876,8 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_varlist_append (varlist, errstat, &
                               "SurfaceLER466", &
                               nf90_float, &
@@ -900,6 +902,21 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+    call tiof_varlist_append (varlist, errstat, &
+                              "TerrainPressure", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+          long_name = "terrain pressure calculated for SurfaceLER466", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1.5e3_r8], &
+                              fillvalue = fill_float_nines, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+    endif
+
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_varlist_append (varlist, errstat, &
                               "SceneLER466", &
                               nf90_float, &
@@ -935,18 +952,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
-
-    call tiof_varlist_append (varlist, errstat, &
-                              "TerrainPressure", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-          long_name = "terrain pressure calculated for SurfaceLER466", &
-                              units = "hPa", &
-                              valid_range = [0.0_r8, 1.5e3_r8], &
-                              fillvalue = fill_float_nines, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
+    endif
 
     if (run_mode .EQ. 'production') then 
 
@@ -1002,6 +1008,8 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnSceneO2O2", &
                               nf90_float, &
@@ -1014,7 +1022,10 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnTerrainO2O2", &
                               nf90_float, &
@@ -1027,6 +1038,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
 !    call tiof_varlist_append (varlist, errstat, &
 !                              "ReflectanceFactor466", &
@@ -1157,6 +1169,8 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_varlist_append (varlist, errstat, &
                               "O2O2SceneTemperature", &
                               nf90_float, &
@@ -1168,7 +1182,10 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_varlist_append (varlist, errstat, &
                               "O2O2TerrainTemperature", &
                               nf90_float, &
@@ -1180,6 +1197,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+    endif
 
     call tiof_varlist_append (varlist, errstat, &
                               "RelativeAzimuthAngle", &
@@ -1234,7 +1252,7 @@ contains
                name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
                out_EffectiveCloudFractionNotClipped, &
                out_CloudPressureNotClipped,option_clip_pcld,&
-               l2_TerrainPressure, &
+               l2_TerrainPressure, name_option_SceneAlbedoAtTerrain,&
                rad_of_irr466, cal_rad_clr, cal_rad_cld
 
      use m_vars, only: scd_mdqfl, run_mode
@@ -1270,12 +1288,20 @@ contains
     call tiof_put2d_r4 (tio_l2obj, name440, [0,0], &
          [nstep, nxtrack], out_SurfaceReflectivity440, errstat)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_put2d_r4 (tio_l2obj, "SurfaceLER466", [0,0], &
          [nstep, nxtrack], out_SurfaceLER466, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "SurfaceLER440", [0,0], &
          [nstep, nxtrack], out_SurfaceLER440, errstat)
 
+    call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
+         [nstep, nxtrack], out_TerrainPressure, errstat)
+    endif
+
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_put2d_r4 (tio_l2obj, "SceneLER466", [0,0], &
          [nstep, nxtrack], out_SceneLER466, errstat)
 
@@ -1284,9 +1310,8 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "ScenePressure", [0,0], &
          [nstep, nxtrack], out_ScenePressure, errstat)
+    endif
 
-    call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
-         [nstep, nxtrack], out_TerrainPressure, errstat)
 
     if (run_mode .EQ. 'production') then
 
@@ -1305,11 +1330,17 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnSceneO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnSceneO2O2, errstat)
+    endif
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnTerrainO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnTerrainO2O2, errstat)
+    endif
 
 !    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
 !         [nstep, nxtrack], out_ReflectanceFactor, errstat)
@@ -1344,12 +1375,17 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "O2O2CloudTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2CloudTemperature, errstat)
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'no')) then
     call tiof_put2d_r4 (tio_l2obj, "O2O2SceneTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2SceneTemperature, errstat)
+    endif
 
+    if ((name_option_SceneAlbedoAtTerrain.eq.'both') .or. &
+        (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
     call tiof_put2d_r4 (tio_l2obj, "O2O2TerrainTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2TerrainTemperature, errstat)
-
+    endif
     call tiof_put2d_r4 (tio_l2obj, "RelativeAzimuthAngle", [0,0], &
          [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
     endif
