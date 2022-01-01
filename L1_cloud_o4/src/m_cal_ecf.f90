@@ -126,10 +126,14 @@ subroutine cal_ecf
     do ix=1,nx
       ! ==========
 
-      !initialize to special negative values
+      !initialize local variable
       rout_ecf =fspecial
       rout_crf440 =fspecial
       rout_crf466 =fspecial
+
+      psfc0=fspecial
+      alb0=fspecial
+      alb440=fspecial
 
       ! get local location and angles
       lat0=rad_Latitude(ix,it)
@@ -223,18 +227,13 @@ subroutine cal_ecf
          rad_of_irr440(ix,it) = fspecial
       endif
 
-      !hqw 477nm is currently not used in cloud fraction calculation
-      ! thus even if rad_of_irr477< 0., still do the rest of the calculation
+      !hqw 477nm is currently not used, comment out
+      !even if rad_of_irr477< 0., still do the rest of the calculation
       !if (rad477 .gt. 0.) then
       !   rad_of_irr477(ix,it)=rad477/irr_out_irradiance_477nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
       !else
       !   rad_of_irr477(ix,it) = fspecial
       !endif
-
-      !initialize alb0 and psfc0 to temporary value
-      psfc0=fspecial
-      alb0=fspecial
-      alb440=fspecial
 
       !----------------
       !get actual psfc0
@@ -299,9 +298,9 @@ subroutine cal_ecf
          goto 990
       endif
 
-      !---------------
-      ! get actual alb0
-      !---------------
+      !--------------------------
+      ! get actual alb0 & alb440
+      !--------------------------
       if(name_option_SurfaceReflectivity.eq.'Kleipool') then
         kleipool_ix=nint((lon0+180.0)/0.5)
         kleipool_iy=nint((lat0+90.0)/0.5)

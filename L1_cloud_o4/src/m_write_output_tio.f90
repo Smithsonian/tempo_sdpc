@@ -1013,11 +1013,47 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
+!    call tiof_varlist_append (varlist, errstat, &
+!                              "ReflectanceFactor466", &
+!                              nf90_float, &
+!                              dimids = dimids_xtrack_step,  &
+!                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
+!                              units = "no unit", &
+!                              valid_range = [0.0_r8, 1.0_r8], &
+!                              fillvalue = fill_float_nines, &
+!                              deflate_level = deflate_level, &
+!                              shuffle = shuffle, &
+!                              attlist=att_support)
+
     call tiof_varlist_append (varlist, errstat, &
-                              "ReflectanceFactor466", &
+                              "rad_of_irr466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
+                              long_name = "rad/irr at 466nm for ecf", &
+                              units = "no unit", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float_nines, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "cal_rad_clr", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "cal_rad_clr at 466nm for ecf", &
+                              units = "no unit", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float_nines, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "cal_rad_cld", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "cal_rad_cld at 466nm for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float_nines, &
@@ -1181,7 +1217,8 @@ contains
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
                name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
                out_EffectiveCloudFractionNotClipped, &
-               out_CloudPressureNotClipped,l2_TerrainPressure
+               out_CloudPressureNotClipped,l2_TerrainPressure, &
+               rad_of_irr466, cal_rad_clr, cal_rad_cld
 
      use m_vars, only: scd_mdqfl, run_mode
 
@@ -1252,8 +1289,17 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnTerrainO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnTerrainO2O2, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
-         [nstep, nxtrack], out_ReflectanceFactor, errstat)
+!    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
+!         [nstep, nxtrack], out_ReflectanceFactor, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "rad_of_irr466", [0,0], &
+         [nstep, nxtrack], rad_of_irr466, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "cal_rad_clr", [0,0], &
+         [nstep, nxtrack], cal_rad_clr, errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "cal_rad_cld", [0,0], &
+         [nstep, nxtrack], cal_rad_cld, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "surface_pressure", [0,0], &
          [nstep, nxtrack], l2_TerrainPressure, errstat)
