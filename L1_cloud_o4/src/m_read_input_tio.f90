@@ -223,7 +223,7 @@ contains
     !output variables
     integer (kind=4), intent(inout) :: errstat
     !local variables
-    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, iw, it
+    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, it
     real (kind=4), dimension(:,:,:), allocatable :: tio_irr, tio_wvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     real (kind=4) :: thisirr440, thisirr466, thisirr477
@@ -595,7 +595,7 @@ contains
 !-------------------------------------------------------------------
   subroutine read_cldo4_tio (l2_file, errstat)
      ! original code by gga
-     use m_vars, only: nasa_SlantColumnAmountO2O2, fFillValue
+     use m_vars, only: nasa_SlantColumnAmountO2O2
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle

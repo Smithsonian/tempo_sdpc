@@ -329,7 +329,6 @@ integer,dimension(12):: &
 !----------------
   character(len=255)::name_nasa_dir='./'
   character(len=255)::name_nasa_file
-!  character(len=255)::name_nasa_swath='ColumnAmountO4'
   integer(kind=4)::nasa_NumTimes
   integer(kind=4)::nasa_nXtrack
   real(kind=4),dimension(:,:),pointer::nasa_SlantColumnAmountO2O2
@@ -344,7 +343,7 @@ integer,dimension(12):: &
 !------------
 ! layer
 !46 standard layers + 2 bottom layers to extend to 1100 hPa
-  integer,parameter::nlay=48 
+!  integer,parameter::nlay=48 
 
 ! wavelength
   real::w440=440.0 ! nm for cloud fraction calculation

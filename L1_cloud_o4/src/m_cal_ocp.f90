@@ -62,11 +62,6 @@ subroutine cal_ocp
   real::tt11,tt12,tt21,tt22,tt1,tt2
   real(kind=4), dimension(:), allocatable :: tt, pp
 
-  integer(kind=4)::kleipool_ix,kleipool_iy
-
-!  integer ::isnowice
-!  integer(kind=4):: pflag00, pflag01 !no longer needed
-
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
   real::a11,a12,a21,a22
@@ -784,7 +779,6 @@ subroutine cal_ocp
       out_CloudPressureNotClipped(ix,it)=nint(cpp, kind=2)
       if((cpp.le. 0.).or.(cpp.ge.lut_psfc(npsfc))) then
         out_CloudPressure(ix,it)=int(iFillValue, kind=2)
-        out_CloudPressureNotClipped(ix,it)=int(iFillValue, kind=2)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
 

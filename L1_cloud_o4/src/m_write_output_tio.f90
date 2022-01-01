@@ -975,6 +975,18 @@ contains
                               attlist=att_support)
 
     call tiof_varlist_append (varlist, errstat, &
+                              "nonclipped_cloud_pressure", &
+                              nf90_int, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "nonclipped cloud pressure", &
+                              units = "hPa", &
+                              valid_range = [0.0_r8, 1.2e3_r8], &
+                              fillvalue = fill_int, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
                               "SlantColumnAmountO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -1208,7 +1220,8 @@ contains
   subroutine write_support_data(tio_l2obj, nstep, nxtrack, errstat)
 
      use m_vars, only: out_SlantColumnAmountO2O2, nasa_SlantColumnAmountO2O2,&
-               out_ReflectanceFactor, out_O2O2CloudTemperature, out_TerrainPressure,&
+              ! out_ReflectanceFactor, &
+               out_O2O2CloudTemperature, out_TerrainPressure,&
                out_SurfaceReflectivity440, out_SurfaceReflectivity466,&
                out_SurfaceLER440, out_SurfaceLER466, out_TerrainHeight,&
                out_SceneLer440, out_SceneLER466, out_ScenePressure,&
@@ -1217,7 +1230,8 @@ contains
                rad_SnowIceFraction, nasa_scduncertainty, nasa_scdrms,&
                name_option_SurfaceReflectivity, out_RelativeAzimuthAngle,&
                out_EffectiveCloudFractionNotClipped, &
-               out_CloudPressureNotClipped,l2_TerrainPressure, &
+               out_CloudPressureNotClipped,&
+               l2_TerrainPressure, &
                rad_of_irr466, cal_rad_clr, cal_rad_cld
 
      use m_vars, only: scd_mdqfl, run_mode
@@ -1279,6 +1293,9 @@ contains
     else
     call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
          [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
+
+    call tiof_put2d_i2 (tio_l2obj, "nonclipped_cloud_pressure", [0,0], &
+         [nstep,nxtrack], out_CloudPressureNotClipped, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "SlantColumnAmountO2O2", [0,0], &
          [nstep, nxtrack], out_SlantColumnAmountO2O2, errstat)
