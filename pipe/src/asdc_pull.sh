@@ -152,7 +152,7 @@ if test x"$num_pdr" = x0 ; then
    exit 0
 fi
 
-download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/pull/$(date -u +%Y/%j/tempo_pan_%Y%jT%H%M%SZ)"
+download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_%Y%jT%H%M%SZ)"
 
 do_asdc_download $download_dir_path
 

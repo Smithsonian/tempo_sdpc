@@ -75,7 +75,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/push/$(date -u +%Y/%j/tempo_pdr_%Y%jT%H%M%SZ)"
+upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/push/tempo_pdr_%Y%jT%H%M%SZ)"
 
 do_asdc_upload $upload_dir_path
 
