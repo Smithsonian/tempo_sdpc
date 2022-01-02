@@ -300,7 +300,7 @@ integer,dimension(12):: &
  character(len=255)::name_option_SceneAlbedoAtTerrain='both'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
-
+!hqw in production mode, m_cal_pscene force this option to 'no'
 !-----------------------------------------
 ! option 8: option_psfc_clear
 !hqw moved option_psfc_clear from m_cal_ocp here

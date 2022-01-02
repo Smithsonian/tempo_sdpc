@@ -63,7 +63,7 @@ subroutine cal_pscene
   integer::ipsfc0
 
   ! ------
-  ! refine
+  ! define
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
@@ -72,9 +72,16 @@ subroutine cal_pscene
   nx=rad_nXtrack
 
   fFillValue9 = -9999.
-  
   maxpress = 2000 !Pa for high pressure end 
 
+  !--------
+  ! production mode name_option_SceneAlbedoAtTerrain
+  !-------
+  if (run_mode.eq.'production') then
+     name_option_SceneAlbedoAtTerrain='no'
+  endif
+
+  !--------
   ! allocate dimensions for outputs
   allocate(out_SurfaceLER440(nx,nt),stat=ierr)
   allocate(out_SurfaceLER466(nx,nt),stat=ierr)
