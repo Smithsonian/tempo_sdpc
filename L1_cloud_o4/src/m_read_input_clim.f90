@@ -62,15 +62,19 @@ contains
   !if (errstat /= 0) call exit(1)
 
 !  lon_min = minval(rad_longitude, rad_longitude /= r4_missval)
+  lon_min = -180.0 !initialize
   lon_min = minval(rad_longitude, rad_longitude .gt. -180.0001)
   bounds%lon_min = lon_min
 !  lon_max = maxval(rad_longitude, rad_longitude /= r4_missval)
+  lon_max = 180.0
   lon_max = maxval(rad_longitude, rad_longitude .lt. 180.0001)
   bounds%lon_max = lon_max
 !  lat_min = minval(rad_latitude, rad_latitude /= r4_missval)
+  lat_min = -90.
   lat_min = minval(rad_latitude, rad_latitude .gt. -90.0001)
   bounds%lat_min = lat_min
 !  lat_max = maxval(rad_latitude, rad_latitude /= r4_missval)
+  lat_max = 90.
   lat_max = maxval(rad_latitude, rad_latitude .lt. 90.0001)
   bounds%lat_max = lat_max
   !hqw hour_start & hour_end = gmeta(hour+minute/60.+seconds/3600.)

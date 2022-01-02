@@ -198,9 +198,9 @@ subroutine cal_ocp
       ! T-P profile and vvcd
       !----------------------------------------------
       ! initialize local array
-      tt = fFillValue9
-      pp = fFillValue9
-      vvcd = fFillValue9
+      tt(:) = fFillValue9
+      pp(:) = fFillValue9
+      vvcd(:) = fFillValue9
 
       ! ----------------------------------------------
       ! option for TemperaturePressure/SurfacePressure
@@ -652,12 +652,13 @@ subroutine cal_ocp
         x1=lut_pcld(ipm1)
         x2=lut_pcld(ipm2)
 
-        if(option_psfc_clear.eq.0) then !original hardcoded choice
+        !hqw remove the if below, as defult option_psfc_clear=0
+        !if(option_psfc_clear.eq.0) then !original hardcoded choice
         !hqw use pclr=psfc,ipm0=ipsfc0
           y0=amfvcd_int(ipm0)
           y1=amfvcd_int(ipm1)
           y2=amfvcd_int(ipm2)
-        endif
+        !endif
         if(option_psfc_clear.eq.1) then
         !hqw use pcld=pcld,ipm0=npsfc
           y0=amfvcd_ext(ipm0)

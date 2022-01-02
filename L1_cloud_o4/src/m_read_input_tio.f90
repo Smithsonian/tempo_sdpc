@@ -299,6 +299,7 @@ contains
     !   nonzero tio_pqf will cause irr_out_irradiance set to -9999.
      
     do ix = 1, nxtrack
+      thisirr440 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
            thisirr440, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
@@ -314,6 +315,7 @@ contains
           end do 
       endif
 
+      thisirr466 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
            thisirr466, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
@@ -329,6 +331,7 @@ contains
            end do
       endif
 
+      thisirr477 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
            thisirr477, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
