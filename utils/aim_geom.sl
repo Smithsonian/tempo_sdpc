@@ -119,18 +119,18 @@ private define coordinate_transform_matrices (lon_deg)
      };
 }
 
-private define compute_boresight_unit_vector (lon_deg, pt)
+private define compute_unit_vector_toward_point (lon_deg, pt)
 {
    variable p = coordinate_transform_matrices (lon_deg);
 
-   % boresight vector in WGS84 (X,Y,Z) coordinates
-   variable bs = pt - p.sat_pos_xyz;
-   variable bs_u = bs / hypot(bs);
+   % vector in WGS84 (X,Y,Z) coordinates
+   variable v = pt - p.sat_pos_xyz;
+   variable v_u = v / hypot(v);
 
-   % boresight vector components in s/c system
-   variable bs_u_sc = p.xyz_to_sat # bs_u;
+   % vector components in s/c system
+   variable v_u_sc = p.xyz_to_sat # v_u;
 
-   return bs_u_sc;
+   return v_u_sc;
 }
 
 private variable V = struct
@@ -324,7 +324,7 @@ private define examine_geometry (geom)
           pt = sphere_xyz (bs_lat_deg, bs_lon_deg);
         else
           pt = wgs84_xyz (bs_lat_deg, bs_lon_deg);
-        bs_u = compute_boresight_unit_vector (lon_sc_deg, pt);
+        bs_u = compute_unit_vector_toward_point (lon_sc_deg, pt);
         bs_angles_deg = angles_deg_from_unit_vector (bs_u);
         vmessage ("boresight direction:");
         print_boresight_components (bs_angles_deg);
@@ -341,7 +341,7 @@ private define examine_geometry (geom)
           pt = wgs84_xyz (bs_lat_deg, bs_lon_deg);
 
         % Check internal consistency:
-        bs_u_calc = compute_boresight_unit_vector (lon_sc_deg, pt);
+        bs_u_calc = compute_unit_vector_toward_point (lon_sc_deg, pt);
 
         % For nearly collinear vectors, the cross product gives
         % a more robust measure of the angle between the vectors.
@@ -394,7 +394,7 @@ Default: WGS84 ellipsoid, geodetic latitude
    exit(0);
 }
 
-define main()
+define slsh_main()
 {
    variable s = @Maxar_Geometry;
    variable bs_angles_str = NULL;
@@ -430,5 +430,3 @@ define main()
 
    return status;
 }
-
-main();
