@@ -113,9 +113,10 @@ subroutine cal_ocp
   allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
 
+!hqw changed cloud pressure from int2 to real4
 !hqw initialize to (negative) fill value
-  out_CloudPressure=int(iFillValue, kind=2)
-  out_CloudPressureNotClipped=int(iFillValue, kind=2)
+  out_CloudPressure= fFillValue9 !int(iFillValue, kind=2)
+  out_CloudPressureNotClipped= fFillValue9 !int(iFillValue, kind=2)
 !  out_TerrainPressure=fFillValue9 
   out_SlantColumnAmountO2O2=fFillValue9
   out_O2O2CloudTemperature=fFillValue9
@@ -776,21 +777,21 @@ subroutine cal_ocp
          out_O2O2CloudTemperature(ix,it) = 273.
       endif
 
-      out_CloudPressure(ix,it)=nint(cpp, kind=2)
-      out_CloudPressureNotClipped(ix,it)=nint(cpp, kind=2)
+      out_CloudPressure(ix,it)= cpp !nint(cpp, kind=2)
+      out_CloudPressureNotClipped(ix,it)= cpp !nint(cpp, kind=2)
       if((cpp.le. 0.).or.(cpp.ge.lut_psfc(npsfc))) then
-        out_CloudPressure(ix,it)=int(iFillValue, kind=2)
+        out_CloudPressure(ix,it)= fFillValue9 !int(iFillValue, kind=2)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
 
        if (option_clip_pcld .eq. 'yes') then
           if ((cpp .gt. psfc0).and.(cpp.le.lut_psfc(npsfc))) then
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-             out_CloudPressure(ix,it) = nint(psfc0)
+             out_CloudPressure(ix,it) = psfc0 !nint(psfc0)
           endif
           if ((cpp.gt.0.).and.(cpp .lt. lut_pcld(1))) then
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),14)
-             out_CloudPressure(ix,it) = nint(lut_pcld(1))
+             out_CloudPressure(ix,it) = lut_pcld(1) !nint(lut_pcld(1))
           endif
        endif
 

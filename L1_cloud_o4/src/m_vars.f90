@@ -414,10 +414,14 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped440
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction466
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
-  
-  integer(kind=2),dimension(:,:),pointer::out_CloudPressure
-  integer(kind=2),dimension(:,:),pointer::out_CloudPressureNotClipped
+
+!hqw changed out_CloudPressure to real(kind=4)  
+!  integer(kind=2),dimension(:,:),pointer::out_CloudPressure
+!  integer(kind=2),dimension(:,:),pointer::out_CloudPressureNotClipped
 !  integer(kind=2),dimension(:,:),pointer::out_CloudPressureSTD
+  real(kind=4),dimension(:,:),pointer::out_CloudPressure
+  real(kind=4),dimension(:,:),pointer::out_CloudPressureNotClipped
+
   real(kind=4),dimension(:,:),pointer::out_SurfaceLER466
   real(kind=4),dimension(:,:),pointer::out_SurfaceLER440
   real(kind=4),dimension(:,:),pointer::out_SceneLER466

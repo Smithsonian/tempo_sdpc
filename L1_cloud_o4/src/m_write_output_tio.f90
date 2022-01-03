@@ -673,12 +673,12 @@ contains
 
     call tiof_varlist_append (varlist, errstat, &
                               "cloud_pressure", &
-                              nf90_int, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "cloud pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
-                              fillvalue = fill_int, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -784,7 +784,7 @@ contains
 
     call tiof_push_group (tio_l2obj, "product", errstat)
 
-    call tiof_put2d_i2 (tio_l2obj, "cloud_pressure", [0,0], &
+    call tiof_put2d_r4 (tio_l2obj, "cloud_pressure", [0,0], &
          [nstep, nxtrack], out_CloudPressure, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "cloud_fraction", [0,0], &
@@ -984,12 +984,12 @@ contains
     if (option_clip_pcld .eq. 'yes') then
        call tiof_varlist_append (varlist, errstat, &
                               "nonclipped_cloud_pressure", &
-                              nf90_int, &
+                              nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "nonclipped cloud pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
-                              fillvalue = fill_int, &
+                              fillvalue = fill_float_nines, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1323,7 +1323,7 @@ contains
          [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
 
     if (option_clip_pcld .eq. 'yes') then
-    call tiof_put2d_i2 (tio_l2obj, "nonclipped_cloud_pressure", [0,0], &
+    call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_pressure", [0,0], &
          [nstep,nxtrack], out_CloudPressureNotClipped, errstat)
     endif
 
