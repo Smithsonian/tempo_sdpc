@@ -796,7 +796,7 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction440", [0,0], &
          [nstep, nxtrack], out_CloudRadianceFraction440, errstat)
 
-    write(*,*)'FIXME: processing_quality_flag still in development'
+!    write(*,*)'FIXME: processing_quality_flag still in development'
     !!!!!!!!out_ProcessingQualityFlags(:,:) = 0
     call tiof_put2d_i2 (tio_l2obj, "processing_quality_flag", [0,0], &
          [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
