@@ -45,7 +45,7 @@ subroutine cal_ocp
   real::   alb440
 
   real::yy1,yy2,ww1,ww2
-  real(kind=8)::cpp, t8p
+  real(kind=4)::cpp, t8p
   real :: temp_cpp, temp_t8p, delta_temp
   integer::ipsfc0,ipm0,ipm1,ipm2
   integer(kind=4)::iflag
