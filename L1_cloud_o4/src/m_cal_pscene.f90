@@ -382,9 +382,10 @@ subroutine cal_pscene
         end do
 
         ! calculate transmittance and sbar at R=0.0(1),0.1(7), and 0.2(12)
-        rad0=real(cal_ler_r466(1), kind=4)
-        rad1=real(cal_ler_r466(7), kind=4)
-        rad2=real(cal_ler_r466(12), kind=4)
+        !hqw move hardcoded indices to variables in m_vars
+        rad0=real(cal_ler_r466(LUT_ALBID_0p0),kind=4) !real(cal_ler_r466(1), kind=4)
+        rad1=real(cal_ler_r466(LUT_ALBID_0p1),kind=4) !real(cal_ler_r466(7), kind=4)
+        rad2=real(cal_ler_r466(LUT_ALBID_0p2),kind=4) !real(cal_ler_r466(12), kind=4)
         rrr0=lut_alb(1)
         rrr1=lut_alb(7)
         rrr2=lut_alb(12)
@@ -446,9 +447,9 @@ subroutine cal_pscene
         end do
 
         ! calculate tran and sbar at R=0.0(1),0.1(7), and 0.2(12)
-        rad0=real(cal_ler_r440(1), kind=4)
-        rad1=real(cal_ler_r440(7), kind=4)
-        rad2=real(cal_ler_r440(12), kind=4)
+        rad0=real(cal_ler_r440(LUT_ALBID_0p0),kind=4) !real(cal_ler_r440(1), kind=4)
+        rad1=real(cal_ler_r440(LUT_ALBID_0p1),kind=4) !real(cal_ler_r440(7), kind=4)
+        rad2=real(cal_ler_r440(LUT_ALBID_0p2),kind=4) !real(cal_ler_r440(12), kind=4)
         rrr0=lut_alb(1)
         rrr1=lut_alb(7)
         rrr2=lut_alb(12)
@@ -860,9 +861,10 @@ subroutine cal_pscene
           end do
 
           ! calculate transmitance and sbar at R=0.0(1),0.1(7), and 0.2(12)
-          rad0=real(temp_ler_alb466(1), kind=4)
-          rad1=real(temp_ler_alb466(7), kind=4)
-          rad2=real(temp_ler_alb466(12), kind=4)
+          ! hqw move hardcoded alb indices to variables in m_vars
+          rad0=real(temp_ler_alb466(LUT_ALBID_0p0),kind=4) !real(temp_ler_alb466(1),kind=4)
+          rad1=real(temp_ler_alb466(LUT_ALBID_0p1),kind=4) !real(temp_ler_alb466(7),kind=4)
+          rad2=real(temp_ler_alb466(LUT_ALBID_0p2),kind=4) !real(temp_ler_alb466(12),kind=4)
           rrr0=lut_alb(1)
           rrr1=lut_alb(7)
           rrr2=lut_alb(12)
@@ -905,9 +907,9 @@ subroutine cal_pscene
           end do
 
           ! calculate transmittance and sbar at R=0.0(1),0.1(7), and 0.2(12)
-          rad0=real(temp_ler_alb440(1), kind=4)
-          rad1=real(temp_ler_alb440(7), kind=4)
-          rad2=real(temp_ler_alb440(12), kind=4)
+          rad0=real(temp_ler_alb440(LUT_ALBID_0p0),kind=4) !real(temp_ler_alb440(1),kind=4)
+          rad1=real(temp_ler_alb440(LUT_ALBID_0p1),kind=4) !real(temp_ler_alb440(7),kind=4)
+          rad2=real(temp_ler_alb440(LUT_ALBID_0p2),kind=4) !temp_ler_alb440(12),kind=4)
           rrr0=lut_alb(1)
           rrr1=lut_alb(7)
           rrr2=lut_alb(12)

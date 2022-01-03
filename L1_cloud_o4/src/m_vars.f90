@@ -108,12 +108,18 @@ module m_vars
   real(kind=4),dimension(:),pointer::lut_psfc
   real(kind=4),dimension(:),pointer::lut_pcld
 
-  !LUT cloud node
+  !hqw LUT cloud node
   ! ALB(cloud) = 0.8, Psfc(cloud) = 700hPa
   integer, parameter:: LUT466rad_cloud_albid = 18
   integer, parameter:: LUT466rad_cloud_psfcid = 18
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
+
+  !hqw LUT albedo node
+  ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
+  integer, parameter:: LUT_ALBID_0p0 = 1
+  integer, parameter:: LUT_ALBID_0p1 = 7
+  integer, parameter:: LUT_ALBID_0p2 = 12
 
   !old LUT dimension
   !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37

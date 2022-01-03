@@ -590,6 +590,7 @@ subroutine cal_ecf
          rout_crf440=rout_ecf*cal_rad_cld440(ix,it)/rad_of_irr440(ix,it)
       else
         rout_crf440 = fspecial
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
 
       ! assign non-clipped ecf & crf to array
