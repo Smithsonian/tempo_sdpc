@@ -1325,8 +1325,6 @@ subroutine cal_pscene
       !   1. snow/ice > min_snowice
       ! ---------------------------------------------------------
       if(name_option_SnowIce.eq.'Pscene') then
-        !if(btest(out_ProcessingQualityFlags(ix,it),4)) then
-        !hqw replce condition
          if((rad_SnowIceFraction(ix,it) .gt. min_snowice).and. &
             (rad_SnowIceFraction(ix,it) .le. 1.0)) then
 
@@ -1366,16 +1364,15 @@ subroutine cal_pscene
       ! original default choice was 'yes', now changed to 'no'
       ! so that user has the choice of if/how to clip
       if(name_option_MinECF.eq.'yes') then
-!        if(btest(out_ProcessingQualityFlags(ix,it),2)) then 
         if ((out_EffectiveCloudFraction(ix,it).gt.0.).and. &
             (out_EffectiveCloudFraction(ix,it).lt. min_ecf)) then 
-          out_CloudPressure(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-          out_CloudPressureNotClipped(ix,it)=nint(out_ScenePressure(ix,it), kind=2)
-          !clip
-          if((out_CloudPressure(ix,it).gt.0).and.(out_CloudPressure(ix,it).le.100)) &
-             out_CloudPressure(ix,it)=100
-          if((out_CloudPressure(ix,it).ge.nint(psfc0)).and.(out_CloudPressure(ix,it).lt.maxpress)) &
-             out_CloudPressure(ix,it)=nint(psfc0, kind=2)
+          out_CloudPressure(ix,it)=out_ScenePressure(ix,it)
+          out_CloudPressureNotClipped(ix,it)=out_ScenePressure(ix,it)
+          ! clip cloud_pressure
+          !if((out_CloudPressure(ix,it).gt.0).and.(out_CloudPressure(ix,it).le.100)) &
+          !   out_CloudPressure(ix,it)=100
+          if((out_CloudPressure(ix,it).ge.psfc0).and.(out_CloudPressure(ix,it).lt.maxpress)) &
+             out_CloudPressure(ix,it)=psfc0
           !signal pcld replacement by pscene
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
         endif ! min_ecf

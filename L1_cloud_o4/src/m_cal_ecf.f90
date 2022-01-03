@@ -12,7 +12,7 @@ subroutine cal_ecf
   implicit none
 
 !  real::temp_raa
-  real::rad466,rad440!, rad477
+  real::rad466,rad440
   real(kind=4)::rout_ecf,rout_crf440,rout_crf466
   integer::ialb, isza, ivza, iraa, ipsfc
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
@@ -63,8 +63,6 @@ subroutine cal_ecf
 
   allocate(rad_of_irr440(nx,nt),stat=ierr)
   allocate(rad_of_irr466(nx,nt),stat=ierr)
-  !rad_of_irr477 is not used anywhere, comment out
-  !allocate(rad_of_irr477(nx,nt),stat=ierr)
 
   allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
   allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
@@ -74,7 +72,6 @@ subroutine cal_ecf
   cal_rad_cld440=fspecial
   rad_of_irr440=fspecial
   rad_of_irr466=fspecial
-  !rad_of_irr477=fspecial
 
   out_SurfaceReflectivity466=fspecial
   out_SurfaceReflectivity440=fspecial
@@ -152,8 +149,6 @@ subroutine cal_ecf
 !      if (raa0 .gt. 180.) raa0=360.-raa0
 !      out_RelativeAzimuthAngle(ix,it)=raa0
 
-      !hqw combined geolocation and angle errors into bit 0
-
       pflag00=0
       pflag01=0
       if((rad_Latitude(ix,it) .lt. -90.) .or. (rad_Latitude(ix,it) .gt. 90.) .or. &
@@ -205,7 +200,6 @@ subroutine cal_ecf
       ! get local radiances
       rad466=rad_466nm(ix,it)
       rad440=rad_440nm(ix,it)
-      !rad477=rad_477nm(ix,it)
 
       ! ------------------------
       ! calculate cloud fraction
@@ -225,14 +219,6 @@ subroutine cal_ecf
       else
          rad_of_irr440(ix,it) = fspecial
       endif
-
-      !hqw 477nm is currently not used, comment out
-      !even if rad_of_irr477< 0., still do the rest of the calculation
-      !if (rad477 .gt. 0.) then
-      !   rad_of_irr477(ix,it)=rad477/irr_out_irradiance_477nm(ix)*(rad_EarthSunDist/irr_EarthSunDist)**2
-      !else
-      !   rad_of_irr477(ix,it) = fspecial
-      !endif
 
       !----------------
       !get actual psfc0
@@ -316,7 +302,7 @@ subroutine cal_ecf
       if((alb0 .gt.  1.0) .and. (alb0 .le. 1.2)) alb0=1.0
       out_SurfaceReflectivity466(ix,it)=alb0
  
-      ! otherwise set processing quality flag (pqf) and skip the calculation
+      ! otherwise set processing quality flag and skip the calculation
       if ((alb0 .lt. -0.2) .or. (alb0 .gt. 1.2)) then
           out_SurfaceReflectivity466(ix,it)=fspecial
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),3)
@@ -632,12 +618,14 @@ subroutine cal_ecf
       if((rout_crf466 .gt. 1.).and.(rout_crf466 .le. 1.2)) rout_crf466=1.
       if((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) then
         rout_crf466=fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),1)
       endif
 
       if((rout_crf440 .lt. 0.).and.(rout_crf440 .ge. -0.2)) rout_crf440=0.
       if((rout_crf440 .gt. 1.).and.(rout_crf440 .le. 1.2)) rout_crf440=1.
       if((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) then
         rout_crf440=fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
 
       ! assign clipped ecf & crf to array

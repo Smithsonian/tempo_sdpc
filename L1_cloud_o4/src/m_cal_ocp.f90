@@ -8,20 +8,21 @@ subroutine cal_ocp
   ! define ProcessingQualityFlags
   ! -----------------------------
   ! bit??  meaning:WhereSet
+  !------------------------------
   ! bit00  (Error) invalid lat/lon/SZA/VZA/RAA: m_cal_ecf.f90
-  ! bit01  N/A reserved
+  ! bit01  invalid 466nm cloud radiance fraction (crf): m_cal_ecf.f90
   ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
   ! bit04  (Warning) pcld replaced by pscene as snow_ice_fraction>min_snowice: m_cal_pscene.f90
   ! bit05  (Warning) SCD correction problem or max_scd_iter reached in ocp : m_cal_ocp.f90
   ! bit06  (Error) SCD < 0 or SCD quality issue, : m_cal_ocp.f90
-  ! bit07  (Warning) 440nm radiance or irradiance error: m_read_input_tio.f90
+  ! bit07  (Warning) invalid 440nm irr,rad or crf: m_read_input_tio.f90,m_cal_ecf.f90
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
   ! bit09  (ERROR) ecf out of normal range, clipped: m_cal_ecf.g90
   ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
-  !        SCD correction problem or max_scd_iter reached
+  !        SCD correction problem or max_scd_iter reached: m_cal_pscene
   ! bit11  SceneAlbedoAtTerrain.eq.'np' // 'both' skipped,
-  !        SCD correction problem or max_scd_iter reeached
+  !        SCD correction problem or max_scd_iter reeached: m_cal_pscene
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation due to
