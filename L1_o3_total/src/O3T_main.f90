@@ -117,7 +117,7 @@ PROGRAM O3T_mainNVAdj
   INTEGER (KIND=4) :: iwl_oz, iwl_refl, iplow
   INTEGER (KIND=4), DIMENSION(nwlA) :: iwlArray
   INTEGER (KIND=1) :: algflg = 0, mqaL2 = 0, cld_errflg
-  INTEGER (KIND=2) :: QAflags = 0, radBadPixflgs = 0, errflgs = 0
+  INTEGER (KIND=2) :: QAflags = 0, radBadPixflgs = 0, errflgs = 0, cld_errmask = 0
   INTEGER (KIND=4) :: year, month, day, jday
   INTEGER (KIND=2) :: nise_flag
   LOGICAL :: radLMissing = .FALSE., instIDmismatch = .FALSE., bit7Q = .FALSE.
@@ -853,10 +853,22 @@ PROGRAM O3T_mainNVAdj
         CALL O3T_getOMICldPress( iLine, pcArray, nXtrack_rad )
       endif
       PclimQ(1:nXtrack_rad) = .FALSE.
+      if (cloud_pressure_source == cldpres_o2) then
+        cld_errmask = 0
+        cld_errmask = ibset (cld_errmask, 0)  ! invalid lat/lon/sza/vza/raa
+        cld_errmask = ibset (cld_errmask, 3)  ! input surf. pres. or albedo error
+        cld_errmask = ibset (cld_errmask, 6)  ! slant column density <0 or quality issue
+        cld_errmask = ibset (cld_errmask, 8)  ! 466nm radiance or irradiance error
+        cld_errmask = ibset (cld_errmask, 9)  ! ecf out of normal range
+        cld_errmask = ibset (cld_errmask,12)  ! skipped cloud ecf calculation
+        cld_errmask = ibset (cld_errmask,13)  ! skipped cloud ocp calculation
+        cld_errmask = ibset (cld_errmask,14)  ! ocp out of normal range
+      endif
       cld_errflg = 0
       DO iX = 1, nXtrack_rad
         if (cloud_pressure_source == cldpres_o2) then
-          cld_errflg = int(IBITS( ProcessingQualityFlags(iX),5,7 ),kind(cld_errflg))
+          !cld_errflg = int(IBITS( ProcessingQualityFlags(iX),5,7 ),kind(cld_errflg))
+          cld_errflg = int(IAND(ProcessingQualityFlags(iX), cld_errmask),kind(cld_errflg))
         else if (cloud_pressure_source == cldpres_rr) then
           cld_errflg = int(IBITS( ProcessingQualityFlags(iX),0, 3 ) &
                + IBITS( ProcessingQualityFlags(iX),6, 2 ) &
@@ -954,7 +966,7 @@ PROGRAM O3T_mainNVAdj
       if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
            longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
          ilat               = (int(lat)+90)/5+1
-      else 
+      else
          ilat=36
          lon=0
       endif
