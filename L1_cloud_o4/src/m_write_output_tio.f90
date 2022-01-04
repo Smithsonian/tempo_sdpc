@@ -651,7 +651,7 @@ contains
     integer, intent(inout) :: errstat
     !local variables
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_product
+    type (tiof_attlist_type) :: att_product, pqf_attrs
     integer, dimension(2) :: dimids_xtrack_step
     integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
@@ -659,8 +659,6 @@ contains
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
     !character (len=32) :: epoch_buf
-
-    character(len=1000) :: comment1
 
     if (errstat /= 0) return
 
@@ -719,24 +717,28 @@ contains
                               shuffle = shuffle, &
                               attlist=att_product)
 
-!refer to m_cal_ocp for confirmation
-!this string is too long to fit as a comment
-    comment1="0: (ERROR) lat/lon/SZA/VZA/RAA error; "// &
-            "1: "// &
-            "2: (WARNING) pcloud replaced by pscene as 0.<ecf<min_ecf; " // &
-            "3: (ERROR) input psfc/rsfc error "// &
-            "4: (WARNING) pcloud replaced by pscene as snow_ice_fraction>min_snowice; " // &
-            "5: (WARNING) ocp SCD iteration max_iter reached; "// &
-            "6: (ERROR) SCD<0. or SCD_MainDataQualityFlag=2(bad); "// &
-            "7: (WARNING) 440nm rad or irr error; "// &
-            "8: (ERROR) 466nm rad or irr error; " // &
-            "9: (ERROR) calculated ecf beyond normal range; "// &
-            "10:(WARNING) SceneAlbedoAtTerrain.eq.'yes' skipped or SCD correction problem; " // &
-            "11:(WARNING) SceneAlbedoAtTerrain.eq.'no' skpped or SCD correction problem; " // &
-            "12:(ERROR) ecf calculation skipped during processing; "// &
-            "13:(ERROR) ocp calculation skipped during processing; "// &
-            "14:(ERROR) calculated ocp beyond normal range; "// &
-            "15:(WARNING) pscene calculation skipped during processing;"
+     call tiof_attlist_append (pqf_attrs, errstat, "coordinates", &
+                               att_text = "longitude latitude")
+     !refer to m_cal_ocp for confirmation of (16) flag meanings
+     call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
+                               att_text = "error_geoloc_or_angles "// &
+                                          "warn_466nm_crf_invalid "// &
+                                          "warn_ecf_below_min "// &
+                                          "error_input_psurf_albedo "// &
+                                          "warn_snow_ice_frac_exceeds_min "// &
+                                          "warn_ocp_scd_iteration_exceeds_max "// &
+                                          "error_scd_negative_or_bad "// &
+                                          "warn_440nm_rad_or_irr_error "// &
+                                          "error_466nm_rad_or_irr_error "// &
+                                          "error_ecf_beyond_normal_range "// &
+                                          "warn_saat_yes_or_scd_corr_problem "// &
+                                          "warn_saat_no_or_scd_corr_problem "// &
+                                          "error_ecf_calc_skipped "// &
+                                          "error_ocp_calc_skipped "// &
+                                          "error_ocp_beyond_normal_range "// &
+                                          "warn_pscene_calc_skipped")
+     call tiof_attlist_append (pqf_attrs, errstat, "flag_values", &
+                               att_i4 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
 
     call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
@@ -746,7 +748,7 @@ contains
                               comment = " ", &
                               valid_range = [0.0_r8, 32767.0_r8], &
                               fillvalue = fill_short, &
-                              attlist=att_product)
+                              attlist=pqf_attrs)
 
     call tiof_push_group (tio_l2obj, "product", errstat)
     call tiof_def_vars (tio_l2obj, varlist, errstat)
