@@ -344,8 +344,7 @@ AC_CONFIG_FILES([\
  pipe/etc/sdpc_env.sh:pipe/etc/sdpc_env.sh.in \
  cron/Makefile:cron/Makefile.in \
  cron/crontab:cron/crontab.in \
- cron/logrotate.conf:cron/logrotate.conf.in \
- utils/Makefile:utils/Makefile.in
+ cron/logrotate.conf:cron/logrotate.conf.in
 ])
 AC_OUTPUT
 
