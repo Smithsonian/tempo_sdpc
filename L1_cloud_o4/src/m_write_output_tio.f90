@@ -658,6 +658,8 @@ contains
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
+    integer, dimension(16) :: flag_masks
+    integer :: i, flag
     !character (len=32) :: epoch_buf
 
     if (errstat /= 0) return
@@ -737,8 +739,12 @@ contains
                                           "error_ocp_calc_skipped "// &
                                           "error_ocp_beyond_normal_range "// &
                                           "warn_pscene_calc_skipped")
-     call tiof_attlist_append (pqf_attrs, errstat, "flag_values", &
-                               att_i4 = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
+     do i = 1, 16
+       flag = 0
+       flag_masks(i) = ibset (flag, i-1)
+     enddo
+     call tiof_attlist_append (pqf_attrs, errstat, "flag_masks", &
+                               att_i4 = flag_masks)
 
     call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
