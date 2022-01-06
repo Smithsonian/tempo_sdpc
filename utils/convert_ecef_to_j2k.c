@@ -150,14 +150,8 @@ static int j2k_open (J2K_Type *j2k, double taix, char *iers_bulletin)
    if (0 != taix_to_jd (taix, &jd_utc))
      return -1;
 
-   err = readIERSBulletinA (iers_bulletin, jd_utc, &j2k->leap_secs, &j2k->ut1_minus_utc);
-   switch (err)
+   if ((err = readIERSBulletinA (iers_bulletin, jd_utc, &j2k->leap_secs, &j2k->ut1_minus_utc)) != 0)
      {
-      case 0:
-        /* FALLTHRU */
-      case TEMPO_BULLETIN_JDUTC_EARLY:
-        break;
-      default:
         fprintf (stderr, "*** Error: readIERSBulletinA failed (err=%d)\n", err);
         return -1;
      }
