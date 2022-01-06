@@ -28,6 +28,12 @@ tbeg=$(date +%s)
 _task=$1
 
 case $_task in
+   IERS )
+   if test x"$state_iers" = xon ; then
+      pull_iers.sh $iers_source_url
+   fi
+   ;;
+
    IMS )
    if test x"$state_ims" = xon ; then
       pull_ims.sh $ims_url $ims_dir
