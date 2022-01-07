@@ -24,6 +24,7 @@
 
 #include "row_select.h"
 #include "radiance.h"
+#include "convert_j2k_to_ecef.h"
 
 #define BASENAME_SIZE 256
 
@@ -58,6 +59,7 @@ static void usage (void)
    fprintf (stderr, "   -V | --Version N           processing version for telemetry-only radiance file\n");
    fprintf (stderr, "   -E | --epoch SEC           epoch (UTC sec since Unix epoch, e.g. a time_t value)\n");
    fprintf (stderr, "   -d | --delay SEC           delay start (to wait for all telemetry to arrive)\n");
+   fprintf (stderr, "   -i | --iers FILE           IERS bulletin A file\n");
    fprintf (stderr, "   -c | --config FILE         configuration file\n");
    fprintf (stderr, "   -v | --verbose lev         logging verbosity\n");
    exit (EXIT_SUCCESS);
@@ -639,6 +641,7 @@ int main (int argc, char **argv)
         {"end",     required_argument, 0, 'e'},
         {"epoch",   required_argument, 0, 'E'},
         {"delay",   required_argument, 0, 'd'},
+        {"iers",   required_argument, 0, 'i'},
         {"config",  required_argument, 0, 'c'},
         {"verbose", required_argument, 0, 'v'},
         {"Version",   required_argument, 0, 'V'},
@@ -650,6 +653,7 @@ int main (int argc, char **argv)
    double time_end = nan_value;
    time_t delay_sec = 0;
    char *radiance_file = NULL;
+   char *iers_bulletin = NULL;
    int processing_version = 1;
    int print_usage = 0;
    int have_epoch = 0;
@@ -672,7 +676,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hb:c:d:e:E:p:v:V:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hb:c:d:e:E:i:p:v:V:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -706,6 +710,9 @@ int main (int argc, char **argv)
            case 'd':
              if (1 != sscanf (optarg, "%ld", &delay_sec))
                goto return_status;
+             break;
+           case 'i':
+             iers_bulletin = optarg;
              break;
            case 'c':
              config_file = optarg;
@@ -768,6 +775,20 @@ int main (int argc, char **argv)
 
    if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, processing_version))
      goto return_status;
+
+   if (radiance_file)
+     {
+        if (iers_bulletin)
+          {
+             if (0 != convert_j2k_to_ecef (iers_bulletin, radiance_file))
+               goto return_status;
+          }
+        else
+          {
+             tell_vwarn (0, "IERS bulletin not provided: skipping ephemeris coordinate transformation");
+             return 0;
+          }
+     }
 
    status = 0;
 return_status:
