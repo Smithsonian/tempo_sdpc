@@ -47,6 +47,7 @@ file_list_file="$2"
 #    hk_file_list
 #    iru_file_list
 #    smc_file_list
+#    iers_bulletin
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -127,8 +128,14 @@ run_inr_prep()
    /bin/cp "$iru_file_list" iru.lis
    /bin/cp "$smc_file_list" smc.lis
 
+   if test -f "$iers_bulletin" ; then
+      iers_opt="-i $iers_bulletin"
+   else
+      iers_opt=""
+   fi
+
    srun --ntasks=1 --output=log_inr_prep.txt \
-        L1_inr_prep -v 1 $target_file
+        L1_inr_prep -v 1 $iers_opt $target_file
 }
 
 case "${granule_basename}" in

@@ -126,6 +126,7 @@ granule_dir=$(dirname "$granule_path")
 
 iru_file_list=NONE
 smc_file_list=NONE
+iers_bulletin=NONE
 
 case "${granule_basename}" in
    *_INR_* )
@@ -139,6 +140,7 @@ case "${granule_basename}" in
 
    *RAD* )
    dark_file_path=$(select_dark.py "$granule_path")
+   iers_bulletin=$(select_iers.py "$granule_path")
 
    iru_file_list="$granule_dir/.${granule_basename}_iru.lis"
    select_l0.py --table IRU_L0 --granule "$granule_path" > $iru_file_list
@@ -165,6 +167,7 @@ dark_file_path=${dark_file_path}
 hk_file_list=${hk_file_list}
 iru_file_list=${iru_file_list}
 smc_file_list=${smc_file_list}
+iers_bulletin=${iers_bulletin}
 EOF
 
 export SDPC_GRANULE_LABEL="$granule_basename"
