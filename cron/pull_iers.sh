@@ -13,7 +13,7 @@ source_url="$1"
 
 rootdir="${SDPC_ANCILLARY_ROOT}/var/iers"
 
-target_dir="$rootdir"
+target_dir="$rootdir/files"
 if ! test -d $target_dir ; then
    mkdir -p $target_dir
 fi
