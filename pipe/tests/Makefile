@@ -7,7 +7,10 @@ CACHEMON_TESTS=$(shell grep -v '\#' tests.lis)
 cachemon-tests:
 	@./run_tests.sh $(CACHEMON_TESTS)
 
-check:	cachemon-tests
+iers-lookup:
+	@./test_iers_lookup.sh $(config_dir)/cron/register_iers.py
+
+check:	cachemon-tests iers-lookup
 
 GCDA_FILES_DIR = "../src/gnuobjs"
 
