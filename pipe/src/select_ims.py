@@ -17,13 +17,12 @@ import argparse
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def get_db_path():
-    db_file_path = os.getenv ("SDPC_ANCILLARY_IMS_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ANCILLARY_IMS_DBFILE is not set')
+def default_db_path():
+    ancillary_root = os.getenv ("SDPC_ANCILLARY_ROOT")
+    if ancillary_root == None:
+        eprint ('*** Error: SDPC_ANCILLARY_ROOT is not set')
         sys.exit(1)
-
-    return db_file_path
+    return os.path.join (ancillary_root, "var/ims/ims.sqlite")
 
 def get_file_keys (filename):
     nc = NetCDFFile (filename, "r")
@@ -69,6 +68,8 @@ def select_ims_file (c, window_days, keys):
 
 def main():
     parser = argparse.ArgumentParser(description='Select an appropriate IMS snow file')
+    parser.add_argument('--dbfile', metavar='DBFILE', default=None,
+                        help="sqlite database path")
     parser.add_argument ('--window', metavar='DAYS', default=15, type=int,
                          help="Acceptable time offset in days")
     parser.add_argument ('level1_file', help="Path to Level 1 radiance file")
@@ -83,7 +84,10 @@ def main():
 
     file_keys = get_file_keys (args.level1_file)
 
-    db_path = get_db_path()
+    if args.dbfile is None:
+        db_path = default_db_path()
+    else:
+        db_path = args.dbfile
 
     # For back-compatibility sqlite has foreign keys turned off by default,
     # and foreign_keys=off is ALWAYS stored in the database, regardless of

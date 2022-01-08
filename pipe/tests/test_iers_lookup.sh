@@ -58,8 +58,7 @@ try_lookup()
    filename=$(mktemp -u -p $testdir)
    ./create_dummy_level1.py --tstart $time $filename
 
-   export SDPC_ANCILLARY_IERS_DBFILE="$dbfile"
-   got=$(../src/select_iers.py $filename)
+   got=$(../src/select_iers.py --dbfile $dbfile $filename)
 
    if test -f $filename ; then
       /bin/rm $filename
