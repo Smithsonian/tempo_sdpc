@@ -31,7 +31,8 @@ INR_REFDATA_DIR="$SDPC_INRSW_ROOT/config"
 
 # INR_IERS_DIR contains:
 #   IERS bulletin A
-INR_IERS_DIR="$SDPC_INRSW_ROOT/config"
+#INR_IERS_DIR="$SDPC_INRSW_ROOT/config"
+INR_IERS_DIR="$SDPC_ANCILLARY_ROOT/var/iers/files"
 
 LOGGING_CONF_FILE="TempoLogging.conf"
 PIPELINE_CONF_FILE="TempoPipelineInterfaceSAO.conf"
