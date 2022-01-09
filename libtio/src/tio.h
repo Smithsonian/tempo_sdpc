@@ -19,7 +19,7 @@ extern "C" {
  * In SDPCv3, num_dims=2 -> nominal_wavelength(xtrack,spectral_channel)
  */
 #ifndef TIO_NOMINAL_WAVELEN_NUM_DIMS
-# define TIO_NOMINAL_WAVELEN_NUM_DIMS 1
+# define TIO_NOMINAL_WAVELEN_NUM_DIMS 2
 #endif
 
 /* Maximum number of array dimensions */
