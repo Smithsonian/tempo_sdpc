@@ -19,7 +19,8 @@ enum
    TASK_FIX_FILE
 };
 
-#define EPOCH_DEFAULT "2000-01-01T00:00:00Z"
+/* GPS epoch: 1980-01-06T00:00:00Z */
+#define EPOCH_DEFAULT "1980-01-06T00:00:00Z"
 
 #define BUFSIZE 64
 
