@@ -51,10 +51,10 @@ perform_merge()
 
   input_files=$(ls block_*/TEMPO_O3PROF*.nc)
 
-  # The blocks all have the same filename.
-  # Use the same filename for the merged result.
+  # Use the first filename to construct the filename for the merged result.
   first_file=$(echo $input_files | cut -d' ' -f 1)
-  product_file=$(basename $first_file)
+  product_file=$(mkgranule_name -L 2 -p O3PROF -v $SDPC_PROCESSING_VERSION $first_file)
+  product_file=$(basename $product_file)
 
   num_files=$(echo $input_files | wc -w)
   quoted_input_files=$(echo $input_files | sed -e "s/[^ ]*/\'&\'/g")
