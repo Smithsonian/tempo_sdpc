@@ -53,7 +53,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
    USE OMSAO_indices_module, ONLY: max_rs_idx,  max_calfit_idx, mxs_idx, &
          maxalb, maxoth, maxgrp, shift_offset, maxcldaer, maxwfc, so2v_idx, &
          hwe_idx, asy_idx, spk_idx, & !vgr_idx, vgl_idx, hwr_idx, hwl_idx
-         instrument_idx, gome_idx, gome2_idx
+         instrument_idx, gome_idx, gome2_idx, tempo_idx
    USE OMSAO_variables_module, ONLY: &
          n_fitvar_rad, mask_fitvar_rad, rmask_fitvar_rad,fitvar_rad_str, &
          fitvar_rad_init, fitvar_rad_init_saved, fitvar_rad_saved, &
@@ -155,11 +155,11 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, *) atmwrt, scnwrt, ozwrtint, gaswrt, ozwrtvar, ozwrtcorr, &
        ozwrtcovar, ozwrtavgk, ozwrtfavgk, ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        wrtring, wrtozcrs, wrtalbspc
-  ozwrtint_fname = TRIM(ADJUSTL(outdir)) // 'inter_' // rad_identifier // '.dat'
+  ozwrtint_fname = TRIM(ADJUSTL(outdir)) // 'inter_' // TRIM(ADJUSTL(rad_identifier)) // '.dat'
   READ (fit_ctrl_unit, *) 
   READ (fit_ctrl_unit, '(A)') atmos_prof_fname
-  atmos_prof_fname = TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(atmos_prof_fname))
-
+  atmos_prof_fname = TRIM(ADJUSTL(outdir)) // TRIM(ADJUSTL(atmos_prof_fname))
+  
   !  Calibration options
   READ (fit_ctrl_unit, *) 
   READ (fit_ctrl_unit, *) radcalwrt, which_caloz
@@ -188,7 +188,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, *) do_subfit
   READ (fit_ctrl_unit, *) lcurve_gcv
   READ (fit_ctrl_unit, *) lcurve_write
-  lcurve_fname = TRIM(ADJUSTL(outdir)) // 'lcurve_' // rad_identifier // '.dat'
+  lcurve_fname = TRIM(ADJUSTL(outdir)) // 'lcurve_' // TRIM(ADJUSTL(rad_identifier)) // '.dat'
   READ (fit_ctrl_unit, *) ptr_order, ptr_w0, ptr_w1, ptr_w2
   READ (fit_ctrl_unit, *) which_atm
   READ (fit_ctrl_unit, *) which_clima
@@ -205,8 +205,8 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
     fnldir = 'fnl9.5LST'
   ENDIF
 
-  IF (which_atm > 3 .OR. which_atm < 0) THEN
-      WRITE(www_lun, *) modulename, ' No such meterology '
+  IF (which_atm > 3 .OR. which_atm < 0 .OR. (which_atm == 2 .AND. instrument_idx == tempo_idx) ) THEN
+      WRITE(www_lun, *) modulename, ' No such meteorology '
       pge_error_status = pge_errstat_error; RETURN
   ENDIF
   IF (which_clima > 13 .OR. which_clima <= 0) THEN
@@ -1100,15 +1100,16 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
 
   fitvar_rad_saved = fitvar_rad_init
   fitvar_rad_init_saved = fitvar_rad_init
+
   numwin = numwin0
   !---------------------------
   ! debuging part
   !---------------------------
   IF (nfwfc > 0 .and. do_rtm_pca) THEN
-      WRITE(*,'()') modulename//':Rethink, wcfrac is not implemented in PCA RTM !!!';stop 1
+      WRITE(*,'(A)') modulename//':Rethink, wcfrac is not implemented in PCA RTM !!!';stop 1
   ENDIF
   IF (use_prefitalb) THEN 
-      WRITE(*,'()') modulename//':use_prefitalb is not really implemented!!!';stop 1
+      WRITE(*,'(A)') modulename//':use_prefitalb is not really implemented!!!';stop 1
   ENDIF
   RETURN
 END SUBROUTINE read_ozprof_input

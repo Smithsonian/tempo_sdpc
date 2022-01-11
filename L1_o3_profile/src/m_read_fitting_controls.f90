@@ -61,7 +61,7 @@ contains
          radwavcal_freq, tol,  epsrel,  epsabs,  epsx, pm_one, phase, &
          linenum_lim,  pixnum_lim, coadd_uv2,       &
          fitvar_rad_str, winwav_min, winwav_max, &
-         have_amftable, have_undersampling, winlim, sol_identifier, &
+         have_amftable, have_undersampling, have_common, winlim, sol_identifier, &
          rad_identifier, numwin, nviswin, nuvwin,scnwrt, wcenter_uvvis, &
          calwrt,calscn, rtmdbg,& 
          band_selectors, do_bandavg, &
@@ -215,7 +215,8 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(atmdbdir), modulename, 0)
     END IF
-    IF( scnwrt ) WRITE (*, '(A)') TRIM(atmdbdir)
+    !IF( scnwrt ) WRITE (*, '(A)') TRIM(atmdbdir) !xl,12/16/2021,scnwrt not read
+    !WRITE (*, '(A)') TRIM(atmdbdir)
 
     ! refdbdir
     version = 1
@@ -371,7 +372,7 @@ contains
     retlbnd = 1000.0
     retubnd = 0.0
     nviswin = 0
-    wcenter_uvvis = 400
+    wcenter_uvvis = 400.0
     DO i = 1, numwin
       READ(fit_ctrl_unit, *) band_selectors(i), winlim(i, 1), winlim(i, 2), &
                             n_band_avg(i), n_band_samp(i)
@@ -382,9 +383,10 @@ contains
         RETURN
       ENDIF
 
+      !xl, 12/28/2021, allow out of bound for one end
       IF (numwin > 1) THEN
-        IF (winlim(i, 1) < lower_wvls(band_selectors(i)) .OR. &
-            winlim(i, 2) > upper_wvls(band_selectors(i))) THEN
+        IF (winlim(i, 2) < lower_wvls(band_selectors(i)) .OR. &
+            winlim(i, 1) > upper_wvls(band_selectors(i))) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
           WRITE(www_lun, *) ' winlim(i,:)', winlim(i,:)
           WRITE(www_lun, *) ' lower/upper wvls(i,:)',lower_wvls(band_selectors(i)), upper_wvls(band_selectors(i))
@@ -393,8 +395,8 @@ contains
         ENDIF
       ELSE
         ! Allow 2 extra nm for radiance calibration
-        IF (winlim(i, 1) < lower_wvls(band_selectors(i)) - 1.0 .OR. &
-            winlim(i, 2) > upper_wvls(band_selectors(i)) + 1.0) THEN
+        IF (winlim(i, 2) < lower_wvls(band_selectors(i)) - 1.0 .OR. &
+            winlim(i, 1) > upper_wvls(band_selectors(i)) + 1.0) THEN
           WRITE(www_lun, *) 'Specified fitting windows does not make sense!!!'
           pge_error_status = pge_errstat_error
           RETURN
@@ -560,11 +562,16 @@ contains
       IF ( idxchar == eoi3str ) EXIT solpars
 
       CALL string2index ( calfit_strings, max_calfit_idx, idxchar, sidx )
-      IF (which_slit == 4) THEN  
+      IF (which_slit == 4 .or. which_slit == 5) THEN  
          IF ((sidx == spk_idx .or. sidx == hwe_idx) .and. lotmp == uptmp ) THEN 
            WRITE(www_lun, '(a)') 'solar cali. pars of check main_control.f90'
            WRITE(www_lun, '(a)') 'k is fixed to 2 so super should be same as gauss' 
-         ELSE IF (sidx == asy_idx .or. (sidx >= vgl_idx .and. sidx <= hwr_idx)) THEN 
+           pge_error_status = pge_errstat_error; RETURN
+        ELSE IF (sidx == asy_idx .and. which_slit == 5 .and. lotmp == uptmp) THEN
+           WRITE(www_lun, '(a)') 'asy should not be fixed for asy super_gauss'
+           pge_error_status = pge_errstat_error; RETURN
+         ELSE IF ((sidx == asy_idx .and. which_slit == 4) .or. & 
+           (sidx >= vgl_idx .and. sidx <= hwr_idx)) THEN 
            vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0  
          ENDIF
       ELSE
@@ -588,6 +595,12 @@ contains
                vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0
          ENDIF
       ENDIF
+
+      IF (which_slit == 6) THEN
+        IF (sidx == hwe_idx .OR. sidx == asy_idx .OR. sidx == spk_idx) THEN
+            vartmp = 0.0 ; lotmp = 0.0 ; uptmp = 0.0
+        ENDIF
+      ENDIF     
 
       IF ( sidx > 0 ) THEN
         fitvar_sol_init(sidx) = vartmp
@@ -676,7 +689,10 @@ contains
     ! By default we set the undersampling spectrum to FALSE. Only if we select
     ! it to be included in the fitting does it become trues. This way we save
     ! computation time for cases where we don't include the undersampling.
-    have_undersampling = .FALSE.
+    have_undersampling = .FALSE. 
+ 
+    ! By default, set having common mode to FALSE
+    have_common = .FALSE.
 
     ! -------------------------------------------------------------
     ! Now keep reading spectrum blocks until EOF. This, obviously,
@@ -706,7 +722,7 @@ contains
 
       ! Convert SIS to index
       CALL string2index ( refspec_strings, max_rs_idx, tmpchar, ridx )
-
+      
       ! GOME specific: the first line in the "spectrum parameter block" is
       ! the name of the corresponding reference spectrum
       READ (UNIT=fit_ctrl_unit, FMT='(A)', IOSTAT=errstat) fname
@@ -867,6 +883,8 @@ contains
         END IF
       END DO
     END DO
+    IF (comfidx > 0 .OR. cm1fidx > 0 .OR. cm2fidx > 0 .OR. cm3fidx > 0) &
+        have_common = .TRUE.
 
     ! For shift
     ntsh = 0
@@ -879,7 +897,6 @@ contains
         ntsh = ntsh + 1
       END IF
     END DO
-
 
     !  ! --------------------------------------
     !  ! Position cursor to read AMF table file
@@ -1120,8 +1137,12 @@ contains
       orbcsol = orbc
       !i = INDEX(l2_filename, 'OMIO3PROF')
       outdir = './' !l2_filename(1:i-1)
-      rad_identifier = 'o' // orbc
-      sol_identifier = 'o' // orbcsol
+      !rad_identifier = 'o' // orbc
+      !sol_identifier = 'o' // orbcsol
+      i = INDEX(l1b_irrad_filename, '_L1_V') + 8
+      sol_identifier = l1b_irrad_filename(i:i+15)
+      i = INDEX(l1b_rad_filename, '_L1_V') + 8
+      rad_identifier = l1b_rad_filename(i:i+23)
     ELSE IF (instrument_idx == gome_idx) THEN
       i = INDEX(l1b_irrad_filename, 'lv1_') + 11
       orbc = l1b_rad_filename(i-2:i)
@@ -1153,10 +1174,10 @@ contains
       sol_identifier = rad_identifier 
     ENDIF
     sn = slit_name(which_slit)
-    slit_fname    = TRIM(ADJUSTL(outdir))// 'slit_'//sol_identifier//'.'//sn
-    swavcal_fname = TRIM(ADJUSTL(outdir))// 'swavcal_'//sol_identifier// '.'//sn
-    rslit_fname   = TRIM(ADJUSTL(outdir))// 'rslit_'// rad_identifier // '.'//sn
-    wavcal_fname  = TRIM(ADJUSTL(outdir))//'wavcal_'// rad_identifier //'.'//sn
+    slit_fname    = TRIM(ADJUSTL(outdir))// 'slit_'//TRIM(ADJUSTL(sol_identifier))//'.'//sn
+    swavcal_fname = TRIM(ADJUSTL(outdir))// 'swavcal_'//TRIM(ADJUSTL(sol_identifier))// '.'//sn
+    rslit_fname   = TRIM(ADJUSTL(outdir))// 'rslit_'// TRIM(ADJUSTL(rad_identifier)) // '.'//sn
+    wavcal_fname  = TRIM(ADJUSTL(outdir))//'wavcal_'// TRIM(ADJUSTL(rad_identifier)) //'.'//sn
 
     ! ----------------------------------------------
     ! Position cursor to read HDF output flags (CRN)
@@ -1194,7 +1215,6 @@ contains
         RETURN
       ENDIF
     END IF
-
 
     ! ------------------------------------------------
     ! Check for consistency of pixel limits to process
@@ -1321,8 +1341,11 @@ contains
     WRITE(exchar, '(I4.4)')    pixnum_lim(2)
     ENDIF
 
-    if (.false.) then  ! Don't modify the output file name, JCH
+    !IF (.false.) then  ! Don't modify the output file name, JCH
       !IF( l2_hdf_flag == 0) THEN  !! Modify output file name only when it is L2 HE5 output, Kai
+      i = INDEX(l2_filename, '.', .TRUE.)
+      IF (i > 0 ) l2_filename = l2_filename(1:i-1)
+      
       IF ( .NOT. (linenum_lim(1) == 1 .AND. linenum_lim(2) == ntimes_max)) THEN
         l2_filename = TRIM(ADJUSTL(l2_filename)) &
          // '_L' // TRIM(ADJUSTL(slinechar)) // '-' //TRIM(ADJUSTL(elinechar))
@@ -1349,13 +1372,13 @@ contains
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.he5'
       ELSE IF (l2_hdf_flag == 0) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.out'
-      ELSE IF (l2_hdf_flag == 1) THEN
+      ELSE IF (l2_hdf_flag == 1 .OR. l2_hdf_flag == 2) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.h5'
       ELSE
         write(*,*)'*** Error: unsupported value: l2_hdf_flag = ',l2_hdf_flag
         STOP 1
       ENDIF
-    endif
+    !ENDIF
 
     ! -----------------------------------------------
     ! Close fitting control file, report SUCCESS read
@@ -1392,6 +1415,7 @@ contains
     ENDIF
     ! ------------------------------------------------------------------------
     fitvar_rad_saved = fitvar_rad_init
+    
     IF ( yn_doas ) THEN
       pm_one     = -1.D0
     ELSE

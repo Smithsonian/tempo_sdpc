@@ -6,14 +6,14 @@ MODULE tmpo_adj_data
   cali=>tmpo_cali, geo1=>tmpo_geo1, geo2=>tmpo_geo2
   IMPLICIT NONE
   PUBLIC  adj_solar_data, adj_earthshine_data     
-  PRIVATE adj_rad_sig!, load_comres
+  PRIVATE adj_rad_sig, load_comres
 
 CONTAINS
 
   SUBROUTINE adj_solar_data (pge_error_status)
 
     USE OMSAO_precision_module
-    USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, hwe_idx
+    USE OMSAO_indices_module,    ONLY: wvl_idx, spc_idx, sig_idx, hwe_idx, spk_idx
     USE OMSAO_parameters_module, ONLY: normweight
     USE OMSAO_variables_module,  ONLY: curr_sol_spec, n_irrad_wvl, &
          use_meas_sig, numwin, nsol_ring, sol_spec_ring, nsolpix, &
@@ -76,7 +76,7 @@ CONTAINS
         ENDIF
       ELSE 
         solwinfit(1:numwin,:, 1) = cali%solwinfit(1:numwin, :,  currpix)
-        WRITE(www_lun,*) 'slit:', solwinfit(1:numwin, hwe_idx,1)
+        WRITE(www_lun,*) 'slit:', solwinfit(1:numwin, hwe_idx:spk_idx,1)
       END IF
     ENDIF
 
@@ -100,7 +100,7 @@ CONTAINS
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_ori, &
          GranuleYear, GranuleMonth, GranuleDay,GranuleJDay, currline, &
-         glb_fitvar, glb_exitval, glb_initval
+         glb_fitvar, glb_exitval, glb_initval, have_common
     !USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
     USE ozprof_data_module, ONLY: div_rad, div_sun, rad_posr, rad_specr, &
          nsaa_spike, saa_flag, the_cfrac, the_ctp, the_cld_flg, which_cld, &
@@ -453,7 +453,7 @@ CONTAINS
       lidx = fidx + nradpix(i)
       WRITE(www_lun, '(A,i2,f8.4, A,f8.2,A,f8.2)') & 
       'shift rad/sol:',i, curr_rad_spec(1, fidx:fidx)-curr_sol_spec(1, fidx:fidx), &
-      'sampleing rate:', curr_rad_spec(1, fidx+1:fidx+1)-curr_rad_spec(1,fidx:fidx), &
+      'sampling rate:', curr_rad_spec(1, fidx+1:fidx+1)-curr_rad_spec(1,fidx:fidx), &
       'shift rad/sol/sample rate:',(curr_rad_spec(1,2)-curr_sol_spec(1,2))/(curr_rad_spec(1,2)-curr_rad_spec(1,1))
       fidx = lidx + 1
     ENDDO
@@ -488,8 +488,8 @@ CONTAINS
              rad%wind(1:n_rad_wvl, currpix, currloop-1) /= 0)) redo_database = .TRUE.
       ENDIF
     ENDIF
-
-    redo_database = .true.
+   
+    !redo_database = .true.
     IF ( MOD (theline, radwavcal_freq) == 0 .OR. redo_database) THEN 
       ! --------------------------------------------------------------
       ! Spline data bases, compute undersampling spectrum, and prepare
@@ -501,8 +501,7 @@ CONTAINS
            WRITE(*,'(A)') 'Errors in prepare_database'
            RETURN
       ENDIF
-      WRITE(www_lun,'(A)')  'common mode load for future tempo, here' 
-      ! CALL load_comres(pge_error_status)
+      IF (have_common) CALL load_comres(pge_error_status)
       IF ( pge_error_status >= pge_errstat_error ) RETURN
     ENDIF
 
@@ -578,7 +577,7 @@ CONTAINS
         finit = finit + 1.0
       ENDIF
     ENDIF
-
+ 
     IF (finit > 0) THEN
       fitvar_rad_saved(mask_fitvar_rad(1:n_fitvar_rad)) = fitvar(1:n_fitvar_rad) / finit
       glb_initval(currpix, currloop) = 1
@@ -612,9 +611,9 @@ CONTAINS
     !REAL (KIND=dp), DIMENSION(maxwin) :: floor_noise =  &
     !     (/0.004, 0.002, 0.001, 0.001, 0.001/)
     REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
-         (/0.004, 0.004, 0.002,0.01/)
+         (/0.004, 0.004, 0.002,0.002/)
     REAL (KIND=dp), DIMENSION(0:nreg) :: reg_waves = &
-         (/260.0, 300.0, 310.0, 350.,800./)
+         (/260.0, 300.0, 310.0, 380.,800./)
 
     ! I/F
     normrad = radspec(spc_idx,:) / solspec(spc_idx,:) * (div_rad / div_sun) 
@@ -661,71 +660,74 @@ CONTAINS
     ELSE
       sig = relsig * normrad   ! absolute measurement error in I/F
     ENDIF
+    
+    !DO i = 1, np
+    !   WRITE(92, '(6D15.6)') radspec(1, i), radspec(2, i)*div_rad, solspec(2, i)*div_sun, &
+    !        radspec(3, i)/radspec(2, i), solspec(3,i)/solspec(2,i), sig(i)
+    !ENDDO
+    !STOP
 
     radspec(sig_idx, :) = sig
-
 
     RETURN
   END SUBROUTINE adj_rad_sig
 
-  !SUBROUTINE load_comres(errstat)
-  !  USE OMSAO_precision_module
-  !  USE OMSAO_parameters_module, ONLY: max_fit_pts, maxchlen
-  !  USE OMSAO_variables_module, ONLY: refdbdir, n_refwvl, database, &
-  !       nradpix, refidx, currpix
-  !  USE OMSAO_indices_module, ONLY: com1_idx, com_idx, comfidx, cm1fidx
-  !  USE OMSAO_errstat_module, ONLY: pge_errstat_error, pge_errstat_ok, www_lun
-  !
-  !  INTEGER, INTENT (OUT)      :: errstat
-  !
-  !  CHARACTER (LEN=15), PARAMETER :: modulename = 'load_omi_comres'
-  !  INTEGER, PARAMETER            :: nx = 30, lun = 12
-  !  INTEGER                       :: ix, itemp, i, fidx, lidx
-  !  CHARACTER (LEN=maxchlen)      :: comres_fname
-  !
-  !  REAL (KIND=dp), DIMENSION (:,:,:), SAVE, POINTER :: comres
-  !  INTEGER, DIMENSION(nx, 3),         SAVE :: npts
-  !  LOGICAL,                           SAVE :: first = .TRUE.
-  !
-  !  errstat = pge_errstat_ok
-  !  IF (first) THEN
-  !    allocate (comres(nx, max_fit_pts,2))
-  !    comres = 0.D0
-  !    comres_fname = ADJUSTL(TRIM(refdbdir)) // 'OMI_hresjul11-30S-30N_comres.dat'
-  !
-  !    OPEN (UNIT=lun, FILE=TRIM(ADJUSTL(comres_fname)), STATUS='UNKNOWN', IOSTAT=errstat)
-  !    IF ( errstat /= pge_errstat_ok ) THEN
-  !      WRITE(www_lun, '(2A)') modulename, ': Cannot open common-mode residual file!!!'
-  !      errstat = pge_errstat_error; RETURN
-  !    END IF
-  !
-  !    READ (lun, *)
-  !    READ (lun, *)
-  !    DO ix = 1, nx
-  !      READ (lun, *) itemp, npts(ix, 1:3)
-  !      DO i = 1, npts(ix, 1)
-  !        READ (lun, *) comres(ix, i, 1:2)
-  !      ENDDO
-  !    ENDDO
-  !    CLOSE (lun)
-  !
-  !    first = .FALSE.
-  !  ENDIF
-  !
-  !  IF (comfidx > 0) THEN
-  !    database(com_idx, 1:n_refwvl) = 0.D0
-  !    fidx = 1; lidx = fidx + nradpix(1) - 1
-  !    database(com_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
-  !  ENDIF
-  !
-  !  IF ( cm1fidx > 0 ) THEN
-  !    database(com1_idx, 1:n_refwvl) = 0.D0
-  !    fidx = nradpix(1) + 1; lidx = fidx + nradpix(2) - 1
-  !    database(com1_idx, refidx(fidx:lidx)) = comres(currpix, fidx:lidx, 2)
-  !  ENDIF
-  !
-  !  RETURN
-  !
-  !END SUBROUTINE load_comres
+  SUBROUTINE load_comres(errstat)
+    USE OMSAO_precision_module
+    USE OMSAO_variables_module,  ONLY: numwin, nradpix, refspec_orig_data, refidx, &
+         n_refwvl, n_refspec_pts, n_rad_wvl,database, refwvl, n_refwvl
+    USE OMSAO_parameters_module,  ONLY: max_ref_pts
+    USE OMSAO_indices_module,    ONLY: com1_idx, com_idx, com2_idx, com3_idx, &
+         comfidx, cm1fidx, cm2fidx, cm3fidx, spc_idx, wvl_idx
+    USE OMSAO_errstat_module,    ONLY: pge_errstat_error, pge_errstat_ok
+    USE m_ezspline_interpolation, ONLY: interpolation
 
+    IMPLICIT NONE
+
+    INTEGER, INTENT (OUT)           :: errstat
+
+    REAL(KIND=dp), DIMENSION(max_ref_pts) :: temp
+
+    CHARACTER (LEN=11), PARAMETER   :: modulename = 'load_comres'
+    INTEGER                         :: i, j, k, fidx, lidx, npts, ii
+
+    errstat = pge_errstat_ok
+
+    fidx = 1
+    DO i = 1, numwin
+       lidx = fidx + nradpix(i) - 1
+       IF (i == 1) THEN
+          k = com_idx; j = comfidx
+       ELSE IF (i == 2) THEN
+          k = com1_idx; j = cm1fidx
+       ELSE IF (i == 3) THEN
+          k = com2_idx; j = cm2fidx
+       ELSE IF (i == 4) THEN
+          k = com3_idx; j = cm3fidx
+       ENDIF
+       
+       IF (j > 0) THEN
+          
+          npts = n_refspec_pts(k)
+          IF (npts /= n_rad_wvl) THEN
+             WRITE(*, '(2A)') modulename, ': Common mode incompatible, interpolation!!!'
+             !errstat = pge_errstat_error; RETURN
+             CALL interpolation (npts, refspec_orig_data(k, 1:npts, wvl_idx),        &
+                  refspec_orig_data(k, 1:npts, spc_idx), n_refwvl, refwvl(1:n_refwvl), &
+                  temp(1:n_refwvl), errstat )
+             IF (errstat == pge_errstat_error) RETURN
+             database(k, 1:n_refwvl) = 0.d0
+             database(k, refidx(fidx:lidx)) = temp(refidx(fidx:lidx))
+          ELSE
+             WRITE(*, '(2A,I5,A)') modulename, ' channel ', i, ' comon mode applied'
+             database(k, 1:n_refwvl) = 0.d0
+             database(k, refidx(fidx:lidx)) = refspec_orig_data(k, fidx:lidx, spc_idx)
+          ENDIF
+       ENDIF
+       fidx = lidx + 1
+    ENDDO
+    
+    RETURN
+  END SUBROUTINE load_comres
+  
 END MODULE tmpo_adj_data

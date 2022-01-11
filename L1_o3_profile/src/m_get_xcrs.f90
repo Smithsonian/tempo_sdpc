@@ -293,7 +293,7 @@ CONTAINS
  
   ! load origianl spectrum
   IF (first) THEN
-    ! read cross section 
+    ! read cross section
     CALL read_txcrs (ADJUSTL(TRIM(refdbdir))//so2abs_fname,winwav_min, winwav_max,lut)  
     nline = lut%nw ; nt = lut%nt 
     refspec_norm (so2_idx) = lut%normc
@@ -1456,7 +1456,7 @@ CONTAINS
   USE OMSAO_precision_module
   USE OMSAO_variables_module, ONLY  : numwin, winlim, &
        n_refspec_pts, refspec_orig_data, refspec_norm, & 
-       fitvar_rad, rmask_fitvar_rad, solwinfit,slitfit, nslit,yn_varyslit
+       fitvar_rad, rmask_fitvar_rad, mask_fitvar_rad, solwinfit,slitfit, nslit,yn_varyslit
   USE OMSAO_indices_module,   ONLY : &
        so2_idx, so2v_idx, o2o2_idx, o2_idx, h2o_idx, o2t2_idx, h2ot2_idx, &
        hwe_idx, asy_idx, spk_idx, max_calfit_idx
@@ -1573,7 +1573,7 @@ CONTAINS
      ENDIF
      ! Obtain original SO2 cross section (quadratic or individual T, shift)
      IF (use_so2dtcrs) THEN
-        CALL read_txcrs(so2abs_fname,winwav_min, winwav_max,so2)
+        CALL read_txcrs(ADJUSTL(TRIM(refdbdir))//so2abs_fname,winwav_min, winwav_max,so2)
         refspec_norm (so2_idx) = so2%normc
         allocate (hres_so2 (so2%nt, nhresp))
         IF (do_so2shi) THEN 
@@ -1978,7 +1978,7 @@ CONTAINS
        ELSE
          IF (fgassidxs(i) > 0) THEN
            do_shi = .TRUE.
-           idum = rmask_fitvar_rad(fgassidxs(i))
+           idum = mask_fitvar_rad(fgassidxs(i))
            tmpwav = hreswav(1:nhresp) - fitvar_rad(idum)  ! wavelength shifts
            hres_gas(i, 1:nhresp) = 0.0D0
            npts = n_refspec_pts(gasidxs(i))

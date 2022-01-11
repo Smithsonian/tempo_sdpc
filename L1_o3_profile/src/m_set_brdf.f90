@@ -88,7 +88,7 @@ SUBROUTINE set_brdf (nw, wavs,nactalbspc,landfrac, errstat)
   nactalbspc = Surface%option4%fmx
   landfrac=Surface%Option4%LandFraction
   ! interpolation is done at set_cldalb_spc
-  RETURN
+  !RETURN
 
   IF (SurfOpt%Option4_DoIsotropic) THEN 
     DO i=1,Surface%Option4%fmx
@@ -101,7 +101,7 @@ SUBROUTINE set_brdf (nw, wavs,nactalbspc,landfrac, errstat)
        wavs(1:nw), Surface%Option4%WSP(1:nw,i),nw, errstat)
     !   print * , i, wavs(nw), Surface%Option4%WSP(nw,i)
     ENDDO
-    print * , 'finish chris surface spectrum loading !!!'
+    !print * , 'finish chris surface spectrum loading !!!'
   ELSE
     !PRINT *, Surface%DoLambertian, Surface%fixed_par, surface%fixed_amp
     !DO i = 1 , surface%nkern
@@ -109,13 +109,14 @@ SUBROUTINE set_brdf (nw, wavs,nactalbspc,landfrac, errstat)
     !          Surface%kern_idx(i), Surface%kern_amp(i,1:surface%npar(i)), & 
     !          Surface%npar(i),Surface%kern_par(i, 1, 1)
     !ENDDO
+  ENDIF
     nalbwf = Surface%njac
     WRITE(321,*) nw, surface%nkern
     WRITE(321,'(4A15)') surface%kern_name
     DO i = 1, nw 
       WRITE(321,'(i5, f8.3, 4e15.7)') i,  wavs(i), surface%kern_amp(i, 1:surface%nkern)
     ENDDO 
-  ENDIF
+  !ENDIF
   RETURN
 END SUBROUTINE SET_BRDF
 

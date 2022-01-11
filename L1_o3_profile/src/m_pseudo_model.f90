@@ -116,7 +116,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        simrad, simrad1, fitspec1, temporwf, simq, Qsimrad, direc !, tempo, simqcor
   REAL (KIND=dp), DIMENSION(ns,nlay,mstks) :: ozwf, tmpwf
   REAL (KIND=dp), DIMENSION(ns,nlay)       :: q_ozwf ! Q/I wf w.r.t. ozone,
-  REAL (KIND=dp), DIMENSION(ns, maxalb)    :: albothwf, wfcothwf
+  REAL (KIND=dp), DIMENSION(ns, 0:maxalb)  :: albothwf, wfcothwf
   REAL (KIND=dp), DIMENSION(ns, nalbwf, mstks) :: albwf
   REAL (KIND=dp), DIMENSION(ns, mstks)     :: o3shiwf, cfracwf, fsimrad, &
        ctpwf, codwf, saodwf, taodwf, twaewf, sprswf, so2zwf
@@ -1353,13 +1353,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
         ENDIF
      ENDDO
 
-     !WRITE(92, *) ns, nf
-     !DO i = 1, ns
-     !   WRITE(92, '(f10.4, 80d14.6)') fitwavs(i), fitspec(i), simrad(i),
-     !   walb0s(i) !, dyda(i, 1:nf)
-     !ENDDO
-     !CLOSE(92) ; stop 1
-
      ! Remove longer wavelengths wfs except for alb and cloud
      idx330 = maxval(minloc(waves(1:ns), mask=(waves(1:ns)>=330.0)))
      !IF (idx330  > 0 .AND. idx330  <= ns) dyda(idx330:ns, ozf_fidx:ozf_lidx) = 0.0D0
@@ -1375,6 +1368,12 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       IF (idx330  > 0 .AND. idx330  <= ns) dyda(idx330:ns, ozf_fidx:ozf_lidx) = 0.0D0
       !IF (idx330  > 0 .AND. idx330  <= ns) dyda(idx330:ns, :) = 0.0D0
      ENDIF
+
+     !WRITE(92, *) ns, nf
+     !DO i = 1, ns
+     !   WRITE(92, '(f10.4, 80d14.6)') fitwavs(i), fitspec(i), simrad(i), walb0s(i), dyda(i, 1:nf)
+     !ENDDO
+     !CLOSE(92) !; stop 1
 
      DO i = 1, nf  
         dyda(:, i) = dyda(:, i) / fitweights(1:ns)
@@ -1522,7 +1521,8 @@ SUBROUTINE HRES_RADCALC_ENV (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
      ELSE
       IF (do_brdf) THEN     
         IF (albord > 0) THEN 
-          print * , 'brdffitvar:', fitvar_rad(j), albord
+          print *, "Using kern_amp here and in m_lidort_env_vv2p7.f90 is wrong, but do_brdf is not working anyway!"
+          print *, "fidx0,lidx0 are for UV+vis, while kern_amp is for vis only"
           Surface%kern_amp(fidx0:lidx0, albord) = Surface%kern_amp(fidx0:lidx0,albord)*fitvar_rad(j)
         ENDIF
       ELSE IF (use_albeofs) THEN

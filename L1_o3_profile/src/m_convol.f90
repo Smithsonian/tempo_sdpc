@@ -68,7 +68,7 @@ MODULE m_convol
       ELSE IF (which_slit >= instrument_sidx) THEN 
         IF (instrument_idx == omi_idx) THEN 
           CALL omislit_multi (kppos, kpspec, kpspec_gauss, npts)
-        else if (instrument_idx == tempo_idx) then
+        ELSE IF (instrument_idx == tempo_idx) THEN
           solwinfit(1:numwin,asy_idx,1) = mean_asym
           solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
           solwinfit(1:numwin,spk_idx,1) = mean_shape
@@ -91,7 +91,7 @@ MODULE m_convol
       ELSE IF (which_slit >= instrument_sidx) THEN 
         IF (instrument_idx == omi_idx) THEN 
          CALL omislit_vary  (kppos, kpspec, kpspec_gauss, npts)
-        else if (instrument_idx == tempo_idx) then
+        ELSE IF (instrument_idx == tempo_idx) THEN
           print *, "Simple convolve should not be used with TEMPO"
           stop 1
         ENDIF
@@ -136,7 +136,7 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_multi    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-        else if (instrument_idx == tempo_idx) then
+        ELSE IF (instrument_idx == tempo_idx) THEN
           solwinfit(1:numwin,asy_idx,1) = mean_asym
           solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
           solwinfit(1:numwin,spk_idx,1) = mean_shape
@@ -160,7 +160,7 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN 
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_vary    (refwav(fidx:lidx), abspec(fidx:lidx), abspecmod(fidx:lidx), npts)
-        else if (instrument_idx == tempo_idx) then
+        ELSE IF (instrument_idx == tempo_idx) THEN
           print *, "Variable instrument slit convolution not implemented"
           stop 1
         ENDIF
@@ -288,7 +288,8 @@ MODULE m_convol
         CALL super_agauss_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
-             CALL omislit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
+          CALL omislit_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
+        ELSE IF (instrument_idx == tempo_idx) THEN
           solwinfit(1:numwin,asy_idx,1) = mean_asym
           solwinfit(1:numwin,hwe_idx,1) = mean_hw1e
           solwinfit(1:numwin,spk_idx,1) = mean_shape
@@ -311,7 +312,7 @@ MODULE m_convol
       ELSE IF (which_slit == instrument_sidx) THEN
         IF (instrument_idx == omi_idx) THEN  
           CALL omislit_vary_f2c(fwave, fspec, nf, nspec, cwave, cspec, nc)
-        else if (instrument_idx == tempo_idx) then
+        ELSE IF (instrument_idx == tempo_idx) THEN
           print *, "Variable instrument slit function not implemented"
           stop 1
         ENDIF

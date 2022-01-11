@@ -114,10 +114,10 @@ module m_set_cldalb
   ELSE IF (which_alb >= 5 .and. which_alb <=7) THEN
      which_sciagm2 = which_alb - 4 
      CALL GET_SCIAGM2_ALB(which_sciagm2, the_month, the_day, edgelons, edgelats, albarr, albwave, nalbw)
-     DO i = 1, nalbw
-        print *, albwave(i), albarr(i)
-     ENDDO
-     stop 1
+     !DO i = 1, nalbw
+     !   print *, albwave(i), albarr(i)
+     !ENDDO
+     !stop 1
   ELSE
      WRITE(*, *) 'Albedo database: not implemented!!!'
      pge_error_status = pge_errstat_error; RETURN
@@ -236,7 +236,8 @@ module m_set_cldalb
   DO i =  1, nalb
      j = albidx + i - 1
      IF  (fitvar_rad_str(j)(4:4) =='0' .AND. .NOT. is_albspcvar(i) ) THEN
-        IF (which_alb == 1 .OR. which_alb == 4) THEN
+        !IF (which_alb == 1 .OR. which_alb == 4) THEN
+         IF (which_alb /= 2 .AND. which_alb /= 3) THEN
            wavg = (albmin(i) + albmax(i))/2.0
            DO k = 1, nalbw
               IF (albwave(k) >= wavg) EXIT
@@ -431,14 +432,14 @@ module m_set_cldalb
     
       !CALL set_brdf (npoints, fitwavs(1:npoints), nactalbspc,the_landfrac, pge_error_status)
       IF (use_albspc) THEN 
-        IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) then ! from peter  
+        IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) then ! from peter
           CALL get_surface_spectrum (the_jday, the_sza_atm, the_aza_atm, the_vza_atm, edgelons, edgelats, &
             snowflg,  ntmp,tmpwav,tmpspcs(:,0:malbspc-1), nactalbspc, the_landfrac, pge_error_status)
           IF (snowflg == 1) THEN
             tmpspcs(:, 0) = tmpspcs(:, 0) * the_snowice / 100.0
           ENDIF
           IF (the_landfrac == 0.0) nactalbspc = 1
-          print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg, cfrac
+          !print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg, cfrac
           IF (use_effcrs) THEN 
             DO i = 0, nactalbspc -1 
               albspcs(fidx:lidx,i) = tmpspcs(:,i)
@@ -455,7 +456,7 @@ module m_set_cldalb
           ENDIF
         ELSE  IF (which_albspc == 2) THEN 
           CALL SET_BRDF(ntmp, tmpwav, nactalbspc, the_landfrac, pge_error_status)
-          fidx=widx_vis; lidx=npoints ; ntmp = fidx-lidx + 1
+          fidx=widx_vis; lidx=npoints ; ntmp = lidx-fidx + 1
           CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx,& 
                fitwavs(fidx:lidx), albspcs(fidx:lidx,0), ntmp, pge_error_status)
           IF (pge_error_status ==  pge_errstat_error) THEN 
@@ -464,9 +465,9 @@ module m_set_cldalb
           DO i=1,Surface%Option4%fmx
             CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
                  fitwavs(fidx:lidx), albspcs(fidx:lidx,i), ntmp, pge_error_status)
-          ENDDO 
+          ENDDO
           IF (.NOT. use_effcrs) THEN 
-            fidx=widx_rvis; lidx=ncalcp ; ntmp = fidx-lidx + 1
+            fidx=widx_rvis; lidx=ncalcp ; ntmp = lidx-fidx + 1
             CALL BSPLINE(Surface%Option4%Wvl,Surface%Option4%Mu(:),Surface%Option4%wmx,& 
                  radcwav(fidx:lidx), albspcs_hres(fidx:lidx,0), ntmp, pge_error_status)
             IF (pge_error_status ==  pge_errstat_error) THEN 
@@ -474,8 +475,13 @@ module m_set_cldalb
             ENDIF
             DO i=1,Surface%Option4%fmx
               CALL BSPLINE(Surface%Option4%Wvl, Surface%Option4%W(:,i),Surface%Option4%wmx, &
-              radcwav, albspcs_hres(fidx:lidx,i),ntmp, pge_error_status)
+              radcwav(fidx:lidx), albspcs_hres(fidx:lidx,i),ntmp, pge_error_status)
             ENDDO 
+            !WRITE(91, *) Surface%Option4%fmx, Surface%Option4%wmx, fidx, lidx
+            !DO i = fidx, lidx
+            !   write(91, '(F10.3, 17D14.5)') radcwav(i), albspcs_hres(i,0:Surface%Option4%fmx)
+            !ENDDO
+            !STOP
           ENDIF
         ENDIF
       ENDIF ! end of use_albspc

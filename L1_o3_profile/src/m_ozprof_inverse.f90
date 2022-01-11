@@ -41,7 +41,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
 
   USE OMSAO_precision_module
   USE OMSAO_parameters_module,  ONLY: maxlay 
-  USE OMSAO_indices_module,     ONLY: instrument_idx, omi_idx
+  USE OMSAO_indices_module,     ONLY: instrument_idx, omi_idx, tempo_idx
   USE ozprof_data_module,       ONLY: ffidx=>ozfit_start_index, flidx=>ozfit_end_index,     &
        ozwrtint, num_iter, avg_kernel, contri, covar, ncovar, ozdfs, ozinfo, &
        use_oe, nlay, pfidx=>ozprof_start_index, plidx=>ozprof_end_index, ring_on_line,      &
@@ -131,13 +131,16 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
      fidx = 1
      DO i = 1, numwin
         lidx = fidx + nradpix(i) - 1 
-        IF (band_selectors(i) == 2) THEN
+        IF ((band_selectors(i) == 2 .AND. instrument_idx == omi_idx) .OR. &
+            (band_selectors(i) == 1 .AND. instrument_idx == tempo_idx) ) THEN  !for TEMPO should be 1st band
            uv2fy = fidx; uv2ly = lidx; nuv2 = nradpix(i)
            use_uv2init = .TRUE.; EXIT
         ENDIF        
         fidx = lidx + 1
      ENDDO
   ENDIF
+  use_uv2init = .FALSE. !xl,1/5/2021, disable this for now
+
   uv12_retflg = 0 ! 0: uv1+uv2 1: uv1+uv2+modified a priori 2: uv2 retrieval only
 
   num_iter  = 0  
@@ -246,7 +249,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
 
      DO 
         IF (use_oe) THEN  ! use optimal estimation
-           last_iter = .TRUE.
+           last_iter = .FALSE.
            IF (.NOT. do_twostep) THEN
               IF (.NOT. do_sy_diagonal) THEN
                  CALL oe_inversion_y (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel,        &
@@ -288,7 +291,8 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
                 gspec(1:ns) = gspec(1:ns) - dyda(1:ns, i) * delta_x(i)
                ! print * , i, chaidx, delta_x(i)+xold(i)
                ENDIF
-                IF (fitvar_rad_str(mask_fitvar_rad(i))(2:4) == 'ba1' ) then
+               IF ((fitvar_rad_str(mask_fitvar_rad(i))(1:4) == '2ba1' .AND. instrument_idx == omi_idx) .OR. &
+                   (fitvar_rad_str(mask_fitvar_rad(i))(1:4) == '1ba1' .AND. instrument_idx == tempo_idx)) then
                   the_ai=the_ai*(delta_x(i)+xold(i)) ! ; print * , 'ai', the_ai, xold(i)
                ENDIF
             ENDDO
@@ -361,7 +365,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
            ENDIF
         ELSE
            WRITE(www_lun, *) modulename, ': Retrieved ozone values out of bounds!!!'
-           proceed = .FALSE.;     exval = -3; CYCLE
+           !proceed = .FALSE.;     exval = -3; CYCLE
         ENDIF        
      ELSE    
         ! Unnecessary here, it is the a priori error that matters

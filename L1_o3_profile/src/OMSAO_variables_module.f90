@@ -69,8 +69,8 @@ MODULE OMSAO_variables_module
   !* orbit number
   INTEGER (KIND=I4) :: orbnum, orbnumsol
   !* Identifier string for irradiacne and radiance input file
-  CHARACTER(LEN=6)  :: sol_identifier
-  CHARACTER(LEN=6)  :: rad_identifier
+  CHARACTER(LEN=maxchlen)  :: sol_identifier
+  CHARACTER(LEN=maxchlen)  :: rad_identifier
   
   !------------------------------------------------
   ! variables used to select fitting windows
@@ -122,8 +122,8 @@ MODULE OMSAO_variables_module
   ! * Whehter to filter spectral pixels around 280 and 285 nm
   LOGICAL  :: rm_mgline
 
-  ! * Whether to do undersampling correction
-  LOGICAL :: have_undersampling
+  ! * Whether to do undersampling correction and include common mode
+  LOGICAL :: have_undersampling, have_common
 
   ! * whether to coadd UV2 specta to the UV-1 resolution when both UV1/UV exist
   LOGICAL  :: coadd_uv2 ! for OMI

@@ -308,7 +308,7 @@ MODULE ozprof_data_module
   LOGICAL                   :: use_albspc=.false.   ! Use albedo spectra/EOFs (bands 3&4only)
   LOGICAL                   :: use_albeofs=.false.  ! Use albedo EOFs (use_albspec must be set)
   INTEGER                   :: which_albspc ! 1 peter 2 chris
-  INTEGER, PARAMETER        :: malbspc = 17  ! maximum number of albedo spectra/EOFs 5=peter, 17 = chris
+  INTEGER, PARAMETER        :: malbspc = 5  ! maximum number of albedo spectra/EOFs 5=peter, 5 = chris
   INTEGER                   :: nalbspc      ! # albedo spectra/# EOFs (does not include mean spectrum for albedo EOFs)
   INTEGER                   :: nactalbspc   ! # actually used albedo spectra/EOFs (include mean)
   INTEGER                   :: nalbspcwin   ! number of windows for usign albedo spectra

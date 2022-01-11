@@ -55,7 +55,7 @@ module tmpo_read_l1b_data
   ! Set up dates from filename
   CALL read_date_tio (l1b_rad_filename, GranuleYear, GranuleMOnth, GranuleDay, GranuleJDay, errstat)
   IF (errstat /= 0) RETURN
-
+  
   RETURN
   END SUBROUTINE
 
@@ -671,7 +671,6 @@ module tmpo_read_l1b_data
    tmpo_rad%prec (:,:,:) = 0.0
    tmpo_rad%qflg (:,:,:) = 0
    tmpo_rad%wavl (:,:,:) = 0.0
-
    rad_spec = 0.0
    rad_wavl = 0.0
    rad_prec = 0.0  
@@ -692,7 +691,9 @@ module tmpo_read_l1b_data
      lidx = fidx + nw -1
      DO iloop = 0,  nl-1
        DO i = 0 , nybin -1
-         blockline = (sline-1) + iloop*nybin + i ! this suroutine read data from 0 to nl-1
+         !xl, changed the line below, 12/3/2021
+         !blockline = (sline-1) + iloop*nybin + i ! this suroutine read data from 0 to nl-1
+         blockline = sline + iloop*nybin + i ! this suroutine read data from 0 to nl-1
           IF ( mod(nl, 50) .eq. 0) WRITE(*,*) '==>readl1b:', is, blockline
          !print * , blockline, nx, nw, nwavel_ccd, rad_swathname(is)
          call read_L1_rad_line_tio (tio_l1obj, rad_swathname(ch), &

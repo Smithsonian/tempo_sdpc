@@ -26,7 +26,7 @@ CONTAINS
          mean_hw1e, mean_asym, mean_shape, instrument_sidx
     USE OMSAO_errstat_module
     USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&
-         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl
+         ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl, do_polut_init
     USE OMSAO_tmpodata_module, only: rad_swathname,nlines_max, &
         tmpo_rad, tmpo_irrad,tmpo_refl, tmpo_ring, tmpo_cali, &
         tmpo_geo1,tmpo_geo2
@@ -101,7 +101,7 @@ CONTAINS
       endif
       write (*,*)'Read environment variable O3PROF_XTRACK_STEP=',xtrack_step
     endif
-
+    
     !  define the boundaries of along and across track domain
     ! linenum_lim and pixnum_lim is actual location in TEMPO domain
     IF (linenum_lim(2) >= ntimes)  linenum_lim(2) = ntimes
@@ -145,6 +145,7 @@ CONTAINS
     WRITE(*,'(A,2i5, A,i2)') '=>linenum lim:', linenum_lim, "nybin:", nybin
     WRITE(*,'(A,2i5,A,2I5)') '=>first/last pix :',first_pix,  last_pix, 'In',spix,epix
     WRITE(*,'(A,2i5,A,2I5)') '=>first/last line:',first_line, last_line,'In',sline, eline
+    
     !print * , pix_pos(first_pix), pix_pos(last_pix)
     !print * , line_pos(first_line), line_pos(first_line)
 
@@ -324,7 +325,7 @@ CONTAINS
     rms_avg = 0.0
     dfitcol_avg = 0.0
     drel_fitcol_avg = 0.0
-    glb_exitval = 10
+    glb_exitval = -10
     glb_fitvar = 0.0
     glb_initval = 0
 
@@ -332,7 +333,7 @@ CONTAINS
        !if (iline < 60 )  cycle
        ! Actually lines in L1B Data
       ntimes_loop = nlines_max
-      sline = offset_line + iline * nybin +1
+      sline = offset_line + iline * nybin !+1 !xl, 11/23/2021
       IF ( sline + ntimes_loop > last_line ) ntimes_loop = last_line - sline
       eline = sline + ntimes_loop * nybin -1
       CALL tmpo_read_radiance_lines (iline, first_pix, last_pix, sline, eline, pge_error_status)
@@ -357,6 +358,8 @@ CONTAINS
         !  set to false in ROUTINE getabs_crs
         ozabs_convl = .true.; so2crs_convl = .true. ; o4crs_convl = .true.
         o2crs_convl = .true.; h2ocrs_convl = .true.
+        ! used in polut correction
+        do_polut_init = .TRUE.
 
         IF (ALL(tmpo_rad%pix_errstat(currpix, 0:ntimes_loop-1) == pge_errstat_error) &
              .OR. tmpo_irrad%errstat(currpix) == pge_errstat_error) THEN
@@ -437,12 +440,12 @@ CONTAINS
     ! Final output
     !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    IF (calwrt) THEN
-       close(calunit)
-       write (*,*)'exiting before write_final: calwrt = ',calwrt
-       STOP 1
-    ENDIF
-
+    !IF (calwrt) THEN
+    !   close(calunit)
+    !   write (*,*)'exiting before write_final: calwrt = ',calwrt
+    !   STOP 1
+    !ENDIF
+ 
     CALL write_final(fitcol_avg, rms_avg, dfitcol_avg,drel_fitcol_avg, &
            npix_fitted, npix_fitting)
     !----------------------------------------------------------------

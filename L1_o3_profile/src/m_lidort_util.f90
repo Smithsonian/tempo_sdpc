@@ -2535,6 +2535,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
          allocate(taucum2_lut(nwLUT,0:npJ), wto2(nwLUT, npJ, 2))
       ENDIF 
       IF (do_plan) THEN 
+       print *, "I am here 1"
        allocate (i0V(1:nwLUT,2), trV(1:nwLUT,2), sbV(1:nwLUT,2), & 
                 i0S(1:nwLUT,2), trS(1:nwLUT,2), sbS(1:nwLUT,2))
        allocate (di0dtV(nwLUT,npJ,2), dtrdtV(nwLUT,npJ,2),dsbdtV(nwLUT,npJ,2), & 
@@ -2570,6 +2571,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
     IF (niter >= 0) THEN
      log_ret = .false. 
      IF (do_debug) WRITE (*,'(A, 3L,10f8.2)') 'call itoa_rpro',do_plan,do_cfracwf,do_albwf, vza, sza, lat, ozdu, sfcp, ctp
+     print *, "I am here 2"
      i0v = 0.0 ; trv=0.0; sbv = 0.0 ; di0dtv=0.0; dtrdtv=0.0; dsbdtv=0.0
      i0s = 0.0 ; trs=0.0; sbs = 0.0 ; di0dts=0.0; dtrdts=0.0; dsbdts=0.0
      IF (do_raywf) THEN 

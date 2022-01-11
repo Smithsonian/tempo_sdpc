@@ -31,7 +31,7 @@ MODULE OMSAO_tmpodata_module
    ! Boundary wavelengths (approximate) for UV and VIS channels
    ! ------------------------------------------------------------
    REAL (KIND=dp), DIMENSION(mswath),  PARAMETER :: &
-        lower_wvls = (/290.0, 490.0/), upper_wvls = (/540.0,740.0/) 
+        lower_wvls = (/292.0, 495.0/), upper_wvls = (/537.0,741.0/) 
    REAL (KIND=dp), PARAMETER :: lower_spec = 0.0, upper_spec = 10.0E14 
 
 

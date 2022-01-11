@@ -90,7 +90,7 @@ MODULE OMSAO_indices_module
        pabs_idx   = 32, com_idx    = 33, com1_idx   = 34, com2_idx   = 35, &
        com3_idx   = 36, polcor_idx = 37, noname_idx = 38, amf_idx    = 39
 
-  INTEGER           :: comfidx, cm1fidx, cm2fidx, cm3fidx ,&
+  INTEGER           :: comfidx, cm1fidx, cm2fidx, cm3fidx, &
                        comvidx, cm1vidx, cm2vidx, cm3vidx
 
   ! ----------------------------------------------------------
@@ -107,7 +107,7 @@ MODULE OMSAO_indices_module
        'so2   ', 'so2v  ', 'o2o2  ', 'hcho  ', 'bro   ', 'bro2  ', 'o2    ',&
        'o2t2  ', 'h2o   ', 'h2ot2 ', 'lh2o  ', 'oclo  ', 'glyox ', 'io    ',&
        'vege  ', 'chloro', 'o3_tc ', 'bro_tc', 'ring1 ', 'vraman', 'us1   ',&
-       'uv2   ', 'fsl   ', 'rsl   ', 'pseudo', 'comod ', 'comod1', 'comod2',&
+       'us2   ', 'fsl   ', 'rsl   ', 'pseudo', 'comod ', 'comod1', 'comod2',&
        'comod3', 'polcor', 'noname' /)
 
   ! ----------------------------------------------------------------------------

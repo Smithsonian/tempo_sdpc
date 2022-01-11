@@ -373,9 +373,11 @@ CONTAINS
     DO iwin = 1, nwin
       fidx = MINVAL(MINLOC(specwav, MASK=(specwav >= wlim(iwin,1)-buffer )))
       lidx = MINVAL(MAXLOC(specwav, MASK=(specwav <= wlim(iwin,2)+buffer )))
-      if (wlim(iwin, 2) > specwav(wmx)) cycle
+      !if (wlim(iwin, 2) > specwav(wmx)) cycle !xl,12/28/2021 move to end of loop
+      IF (fidx <= 0 .OR. lidx <= 0) CYCLE
       winpix(iwin, 1:2) = (/fidx, lidx/)
       nspec = nspec + lidx - fidx + 1
+      IF (wlim(iwin, 2) > specwav(wmx)) CYCLE
     ENDDO
     allocate (onespec(nspec, 2))
 
@@ -383,7 +385,7 @@ CONTAINS
     fidx = 1
     DO iwin = 1, nwin 
       ntmp = winpix(iwin, 2) - winpix(iwin,1) + 1
-      if (ntmp == 1) cycle
+      if (ntmp <= 1) cycle
       lidx = fidx + ntmp -1
       onespec(fidx:lidx, 1) = specwav(winpix(iwin,1):winpix(iwin,2))
       rcode = nf_inq_varid(ncid, 'Spectrum', vid)

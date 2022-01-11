@@ -94,7 +94,9 @@ MODULE  m_get_met_tempo
 
    call tio_f_taix_time_to_utc_caldate(the_time, year, month, day, hour)
    hour_f = real(hour, kind=r4)
-   
+
+   !xl, 1/2/2022 better to use the original pressure/T profiles,
+   ! so most of the following block commented
    ! define user vertical grids 
    np = nlecm 
    thismet%np = np
@@ -125,6 +127,7 @@ MODULE  m_get_met_tempo
        k = k + 1
        j = j + 1
      enddo
+    
      call BSPLINE(pmid(1:nl0), real(temp_z(1:nl0),kind=dp), nl0, &
                   pprof(0:np), tprof(0:np), np+1, errstat)
      deallocate (pres_z, pmid, temp_z)

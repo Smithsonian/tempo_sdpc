@@ -1309,8 +1309,8 @@ MODULE surface_module
     Surface%Option4%DoIsotropic  = SurfOpt%Option4_DoIsotropic
     Surface%Option4%WhichAlbedo  = SurfOpt%Option4_WhichAlbedo
     Surface%Option4%DoOceanGlint = SurfOpt%Option4_DoOceanGlint
-    Surface%Option4%RootBRDFDir  = SurfOpt%Option4_ClimDir
-    
+    Surface%Option4%RootBRDFDir  = TRIM(ADJUSTL(SurfOpt%RootDataDir))//SurfOpt%Option4_ClimDir
+ 
     ! Initialize Spatial FA
     CALL InitSpatialFA( Surface%Option4, Error )
     

@@ -74,7 +74,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   USE m_get_o3prof,  ONLY: get_apriori_covar
   USE m_set_tracegas,ONLY: set_tracegas
   USE m_make_atm,    ONLY: make_atm
-  USE m_set_cldalb,  ONLY: set_cldalb
+  USE m_set_cldalb,  ONLY: set_cldalb, oceanflg, snowflg
   USE m_utilities,   ONLY: day_of_year
   USE m_set_brdf,    ONLY: Surface
   USE m_lidort_util, ONLY: get_hres_radcal_waves
@@ -116,7 +116,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
        (/0.004, 0.004, 0.002, 0.002/)
   REAL (KIND=dp), DIMENSION(0:nreg) :: reg_waves = &
-       (/260.0, 300.0, 310.0, 350., 370./)
+       (/260.0, 300.0, 310.0, 380., 800./)
 
   ! ==============================
   ! Name of this module/subroutine
@@ -154,7 +154,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   ! use previous fitting results except T, albedo, cloud will be updated
   ! use previous ozone will speed the convergence (could even double)
   fitvar_rad_init = fitvar_rad_saved
-  
+
   ! ===================================================================
   !	         Set up measurement vector and measurement error
   ! ===================================================================
@@ -519,23 +519,23 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
               ELSE
                  sa(i, i) = 1.0E-4
               ENDIF
-           ELSE IF (j >= rnind(1, 4) .AND. j <= rnind(nsub, 4) ) THEN
+           ELSE IF (j >= rnind(1, 4) .AND. j <= rnind(nsub, maxoth) ) THEN
               sa(i, i) = 5.0E-5   
            ELSE IF (j >= isind(1, 1) .AND. j <= isind(nsub, 1)) THEN
-              sa(i, i) = 1.0E-1 
-           ELSE IF (j >= isind(2, 1) .AND. j <= isind(numwin, maxoth)) THEN
-              sa(i, i) = 1.0E-2 
+              sa(i, i) = 1.0E-4 
+           ELSE IF (j >= isind(2, 1) .AND. j <= isind(nsub, maxoth)) THEN
+              sa(i, i) = 1.0E-4 
            ELSE IF (j >= irind(1, 1) .AND. j <= irind(nsub, 1)) THEN
-              sa(i, i) = 1.0E-8  !10.0
-           ELSE IF (j >= irind(2, 1) .AND. j <= irind(numwin, maxoth)) THEN
-              sa(i, i) = 1.0E-10 !2.0
+              sa(i, i) = 1.0E-3  !10.0
+           ELSE IF (j >= irind(2, 1) .AND. j <= irind(nsub, maxoth)) THEN
+              sa(i, i) = 1.0E-3 !2.0
            ELSE IF (j >= dcind(1, 1) .AND. j <= dcind(nsub, 1) ) THEN
-              sa(i, i) = 0.1
-           ELSE IF (j >= dcind(1, 2) .AND. j <= dcind(nsub, maxoth)) THEN
-              sa(i, i) = 0.02
+              sa(i, i) = 0.05**2.0
+           ELSE IF (j >= dcind(2, 1) .AND. j <= dcind(nsub, maxoth)) THEN
+              sa(i, i) = 0.01**2
            ELSE IF (i == comfidx .OR. i == cm1fidx .OR. i == cm2fidx .OR. i == cm3fidx) THEN
               sa(i, i) = 1.0
-          ELSE IF (j >= cmind(1,1) .AND. J <= cmind(numwin, maxoth)) THEN  !JBAK
+          ELSE IF (j >= cmind(1,1) .AND. J <= cmind(nsub, maxoth)) THEN  !JBAK
               sa(i,i)  = 1.0
            ELSE IF (i < ozf_fidx .OR. i > ozf_lidx) THEN
               sa(i, i) = (fitvar_rad(j))**2.0 * 25.0 
@@ -636,7 +636,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
            IF (do_brdf) THEN
               sa(i,i) = 0.10
            ELSE IF (use_albeofs) THEN
-             IF (which_albspc == 1) THEN 
+             IF (which_albspc == 1 .OR. snowflg == 1 .OR. oceanflg == 1) THEN 
                IF (nactalbspc > 1 ) THEN  ! peter alb spectrum
                  sa(i,i) = 2.0**2.0
                  ! For water/snow, only 1 EOF (same as water/snow spectra),
@@ -653,7 +653,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
                 ELSE
                    fidx = 1 + albfidx + off -1
                    lidx = nactalbspc + albfidx + off -1
-                   sa(i,fidx:lidx) = Surface%Option4%FactorUncertainty(nord,1:nactalbspc) ! more constraint with 1.5 scaling
+                   sa(i,fidx:lidx) = Surface%Option4%FactorUncertainty(nord,1:nactalbspc)**2 ! more constraint with 1.5 scaling
                    !sa(i,i) = Surface%Option4%FactorUncertainty(nord,nord) ! more constraint with 1.5 scaling
                 ENDIF
              ENDIF
@@ -755,7 +755,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
      fitvar_rad_saved = fitvar_rad_init
      RETURN
   ELSE
-     IF (exval == 0 ) THEN
+     IF (exval == 0 .OR. the_cfrac > 0.4) THEN
         fitvar_rad_saved = fitvar_rad_init 
      ELSE
         fitvar_rad_saved = fitvar_rad 

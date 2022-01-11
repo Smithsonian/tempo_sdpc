@@ -29,7 +29,7 @@ contains
     USE OMSAO_variables_module, ONLY: n_fitvar_sol, fitvar_sol, &
          mask_fitvar_sol, lo_sunbnd, up_sunbnd, wincal_wav, &
          winlim, radwinfit, solwinfit, fixslitcal, fitwavs, fitweights, &
-         currspec, fitvar_sol_init, numwin, &
+         currspec, fitvar_sol_init, numwin, calscn, &
          nradpix, scnwrt, sol_wav_avg, correct_lambda
     USE OMSAO_errstat_module
 
@@ -59,7 +59,7 @@ contains
       wrt_to_file = .FALSE.
       slit_unit = 1000
 
-      IF (scnwrt) THEN
+      IF (calscn) THEN
         wrt_to_screen = .TRUE.
       ELSE
         wrt_to_screen = .FALSE.

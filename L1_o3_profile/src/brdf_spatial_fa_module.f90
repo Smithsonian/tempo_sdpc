@@ -202,7 +202,7 @@ MODULE spatial_fa_module
     ! Path to data
     usgs_infile = trim(adjustl(SpatialFA%RootDataDir)) // '/BRDF_EOF/AlbSpec/' // &
                   'usgs_snow_water.nc'
-    print * , usgs_infile
+    !print * , usgs_infile
     ! Attach file
     rcode = nf_open( trim(adjustl(usgs_infile)), nf_Share, usgs_ncid )
     CALL CheckNetCDFErrorStatus(Error,rcode,ModuleName,SubroutineName,'usgs:open')
@@ -367,9 +367,10 @@ MODULE spatial_fa_module
     ! --------------------------------------------------------------
     ! Factor analysis results
     ! --------------------------------------------------------------
-    
+ 
     ! Attach file
-    rcode = nf_open(trim(adjustl(SpatialFA%Infile)), nf_Share, SpatialFA%ncid)
+    rcode = nf_open(trim(adjustl(SpatialFA%RootDataDir))//trim(adjustl(SpatialFA%Infile)), &
+            nf_Share, SpatialFA%ncid)
     CALL CheckNetCDFErrorStatus(Error,rcode,ModuleName,SubroutineName,'fa:open')
 
     ! ---------------------------------------------------------------
@@ -424,7 +425,7 @@ MODULE spatial_fa_module
     ALLOCATE(SpatialFA%Longitude(SpatialFA%imx))
     ALLOCATE(SpatialFA%Latitude(SpatialFA%jmx))
     ALLOCATE(SpatialFA%W(SpatialFA%wmx,SpatialFA%fmx))
-    ALLOCATE(SpatialFA%WSP(SpatialFA%fmx,SpatialFA%wmx))
+    ALLOCATE(SpatialFA%WSP(SpatialFA%wmx,SpatialFA%fmx))
     ALLOCATE(SpatialFA%RSR(SpatialFA%wmx,SpatialFA%bmx))
     ALLOCATE(SpatialFA%G(SpatialFA%fmx,SpatialFA%bmx))
     ALLOCATE(SpatialFA%FAExists(SpatialFA%jmx,SpatialFA%imx))
@@ -872,8 +873,6 @@ MODULE spatial_fa_module
       IsNewTime = ABS(SpatialFA%TauTime-Geolocation%Time%Tau) .GT. TINY(0.0d0)
     ENDIF
     
-    
-
     ! If the pixel coordinates are significantly different reload pixel
     IF( MAX(max_xdiff,max_ydiff) .GT. TINY(max_xdiff) .OR. IsNewTime ) THEN
 
@@ -1271,7 +1270,7 @@ MODULE spatial_fa_module
         SpatialFA%PixelBRDF    = SpatialFA%SubPixBRDF(i,j,:,:)
       ENDIF
 
-    ENDIF
+   ENDIF
     
     DEALLOCATE(SubPixLon_NoAdjust)
 

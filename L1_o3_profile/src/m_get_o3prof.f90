@@ -423,6 +423,13 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
         ENDIF
      ENDDO
   ENDIF
+ 
+  ! jbak, to reduce the negative value retrieved at top layers
+  DO i = 1, nz
+     IF (ozprof(i) < 0.5 .AND. nstd(i)/ozprof(i) > 0.2) THEN
+        nstd(i) = ozprof(i) * 0.2
+      ENDIF
+  ENDDO   
 
   IF (use_logstate) nstd(1:nz) = nstd(1:nz)/ozprof(1:nz)
   DO i = 1, nz

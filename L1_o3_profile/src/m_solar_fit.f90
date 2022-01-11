@@ -14,13 +14,13 @@ module m_solar_fit
       mask_fitvar_sol, rmask_fitvar_sol, sol_wav_avg, &
       fitvar_sol_init, lo_sunbnd_init, up_sunbnd_init, fitvar_sol_saved, &
       which_slit, instrument_sidx, wavcal_sol, wavcal, fixslitcal, slit_fname, poly_order, &
-      correct_lambda, xbin_decerr, fitspec_rad !, calscn
+      correct_lambda, xbin_decerr, fitspec_rad, calscn
 
   USE OMSAO_errstat_module
   USE m_cal_fit_one, ONLY: calfitone , cal_fit_one
   USE m_fitting_util, ONLY: poly_fit
   IMPLICIT NONE
-  LOGICAL, PARAMETER :: calscn=.false.
+  !LOGICAL, PARAMETER :: calscn=.false.
   INTEGER, PARAMETER, PRIVATE :: slit_unit = 1000
   
   public solar_fit, solar_fit_vary
@@ -83,7 +83,7 @@ CONTAINS
      ENDIF
        fitvar_sol = fitvar_sol_init
        lo_sunbnd  = lo_sunbnd_init; up_sunbnd  = up_sunbnd_init
-
+       
        n_fitvar_sol = 0
        DO i = 1, max_calfit_idx
          IF (lo_sunbnd(i) < up_sunbnd(i) ) THEN
@@ -93,7 +93,7 @@ CONTAINS
        END DO
        first = .FALSE.
     ENDIF
-
+    
     error = .FALSE.
     allwaves = curr_sol_spec(wvl_idx, 1:n_irrad_wvl)
     fidx = 1

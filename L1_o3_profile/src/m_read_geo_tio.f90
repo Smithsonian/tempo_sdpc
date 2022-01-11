@@ -129,7 +129,7 @@ CONTAINS
     nl = eline - sline +1
     sline1 = sline
     eline1 = eline
-    if (eline == sline) eline1 = sline1 + 1
+    !if (eline == sline) eline1 = sline1 + 1 !xl, 12/3/2021
     IF (eline1 > ntimes) THEN
         eline1 = eline1-1 ; sline1=sline1-1
     ENDIF
@@ -202,10 +202,9 @@ CONTAINS
     nl = nl/nybin
     nx = nxtrack/nxbin
     nbin = nxbin*nybin
-
     geo%sza = -999
     geo%gflg (:,:) = 0
-
+    !print *, nl-1, sline1, eline1, nybin, sline, eline
     geo%step_idx(0:nl-1) = step_idx (sline1:eline1:nybin)
 
     Do iy = 0, nl-1
@@ -227,8 +226,9 @@ CONTAINS
              IF (vza .lt. 1e-5) vza = vza + 1e-5
              sazm = sum(tio_saza(xsidx:xeidx, ysidx:yeidx))/nbin
              vazm = sum(tio_vaza(xsidx:xeidx, ysidx:yeidx))/nbin
-             relaza = ABS( vazm - sazm)
-             IF ( relaza < 180) relaza = 360.0 - relaza
+             relaza = ABS( vazm - (180.0 + sazm))
+             IF ( relaza > 360) relaza = relaza - 360
+             IF ( relaza > 180) relaza = 360.0 - relaza
 
              geo%sza(ix, iy) = real(sza, kind=r4)
              geo%vza(ix, iy) = real(vza, kind=r4)

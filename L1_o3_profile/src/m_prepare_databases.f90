@@ -22,7 +22,8 @@ module m_prepare_databases
          com_idx, com1_idx, com2_idx, com3_idx, vege_idx, &
          so2_idx, so2v_idx, bro_idx, bro2_idx, &
          hcho_idx, no2_t1_idx, no2_t2_idx,  o2o2_idx, chloro_idx, &
-         o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, lh2o_idx, rsl_idx
+         o2_idx, o2t2_idx, h2o_idx, h2ot2_idx, lh2o_idx, rsl_idx, &
+         instrument_idx, tempo_idx
 
     USE OMSAO_errstat_module
     USE ozprof_data_module,     ONLY: ring_on_line, ozprof_flag, nsl, ring_convol, which_inr, &
@@ -452,7 +453,7 @@ contains
     REAL (KIND=dp), DIMENSION (:), POINTER    :: locwvl, locspec, specmod, specmod1
     REAL (KIND=dp), DIMENSION (n_rad_pts + 4) :: tmpwav, over, under, resample, & 
           resample1, subwav, tmpspec
-    INTEGER :: npts, errstat, iwin, fidx, lidx, npoints
+    INTEGER :: npts, errstat, iwin, fidx, lidx, npoints, i
 
     ! ------------------
     ! External functions
@@ -488,6 +489,7 @@ contains
       CALL convol (locwvl, locspec,  npts)
       specmod = locspec
       IF (nsl > 0 ) THEN 
+        locspec(1:npts) = refspec_orig_data(solar_idx,1:npts,spc_idx)
         IF (.NOT. yn_varyslit ) THEN
           IF (which_slit == 0) THEN
              solwinfit(1:numwin, hwe_idx,1) = &
@@ -513,7 +515,7 @@ contains
                   solwinfit(1:numwin, spk_idx,1) + 0.01
              solwinfit(1:numwin, asy_idx,1) = &
                   solwinfit(1:numwin, asy_idx,1) + 0.01
-          ELSE IF (which_slit == instrument_sidx) THEN
+          ELSE IF (which_slit == instrument_sidx .AND. instrument_idx == tempo_idx) THEN
              solwinfit(1:numwin, hwe_idx,1) = &
                   solwinfit(1:numwin, hwe_idx,1) + 0.01
              solwinfit(1:numwin, spk_idx,1) = &
@@ -539,7 +541,7 @@ contains
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) + 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
-          ELSE IF ( which_slit == instrument_sidx) THEN
+          ELSE IF ( which_slit == instrument_sidx .AND. instrument_idx == tempo_idx) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) + 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) + 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) + 0.01
@@ -573,7 +575,7 @@ contains
                   solwinfit(1:numwin, spk_idx,1) - 0.01
              solwinfit(1:numwin, asy_idx,1) = &
                   solwinfit(1:numwin, asy_idx,1) - 0.01
-          ELSE IF ( which_slit == instrument_sidx) THEN
+          ELSE IF ( which_slit == instrument_sidx .AND. instrument_idx == tempo_idx) THEN
              solwinfit(1:numwin, hwe_idx,1) = &
                   solwinfit(1:numwin, hwe_idx,1) - 0.01
              solwinfit(1:numwin, spk_idx,1) = &
@@ -599,7 +601,7 @@ contains
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) - 0.01
-          ELSE IF ( which_slit == instrument_sidx) THEN
+          ELSE IF ( which_slit == instrument_sidx .AND. instrument_idx == tempo_idx) THEN
            slitfit(1:nslit, hwe_idx, 1) = slitfit(1:nslit, hwe_idx, 1) - 0.01
            slitfit(1:nslit, spk_idx, 1) = slitfit(1:nslit, spk_idx, 1) - 0.01
            slitfit(1:nslit, asy_idx, 1) = slitfit(1:nslit, asy_idx, 1) - 0.01
@@ -609,14 +611,14 @@ contains
 
       ! Append Ring Source Spectrum
       IF (sring_fidx > 0 .OR. sring_lidx < nsol_ring) THEN
-        WRITE(www_lun,'(A)') 'undersample :Perform Append_Solring !!!'
+        WRITE(www_lun,'(A)') 'undersample: Perform Append_Solring !!!'
         CALL append_solring(nsol_ring, sring_fidx, sring_lidx, &
              sol_spec_ring(wvl_idx, 1:nsol_ring), &
              sol_spec_ring(spc_idx, 1:nsol_ring), &
              npts, locwvl(1:npts), specmod(1:npts), pge_error_status)
         IF (pge_error_status > pge_errstat_warning) RETURN
        ENDIF
-     ENDIF
+    ENDIF      
 
 
     IF (.NOT. have_undersampling) RETURN
@@ -629,11 +631,11 @@ contains
       fidx =  lidx + 1            ! fidx:lidx refers to position in curr_wvl
       lidx =  fidx + npoints - 5
 
-      IF (iwin == 2) THEN
-        database(us1_idx, fidx:lidx) = 0.0
-        database(us2_idx, fidx:lidx) = 0.0
-        CYCLE
-      ENDIF
+      !IF (iwin == 2) THEN
+      !  database(us1_idx, fidx:lidx) = 0.0
+      !  database(us2_idx, fidx:lidx) = 0.0
+      !  CYCLE
+      !ENDIF
 
       subwav(3:npoints-2) = curr_wvl(fidx:lidx)
 
@@ -753,7 +755,7 @@ contains
     n_refspec_pts (us1_idx)  = n_rad_pts
     n_refspec_pts (us2_idx)  = n_rad_pts
 
-    !WRITE(90, *) n_rad_pts, nradpix(1:numwin) + 4
+    !WRITE(91, *) n_rad_pts, nradpix(1:numwin) + 4
     !DO i = 1, n_rad_pts
     !   WRITE(91, *) curr_wvl(i), database(us1_idx, i),  database(us2_idx, i)
     !ENDDO

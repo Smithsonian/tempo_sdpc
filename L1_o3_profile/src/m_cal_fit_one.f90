@@ -54,13 +54,13 @@ CONTAINS
     ! ===============
     ! Local variables
     ! ===============
-    REAL (KIND=dp)  :: asum, ssum, rms,  niter
+    REAL (KIND=dp)  :: asum, ssum, rms
     REAL (KIND=dp), DIMENSION (n_fit_pts)                 :: fitres, fitspec, polyx
     REAL (KIND=dp), DIMENSION (n_fitvar_sol, n_fitvar_sol):: covar
     REAL (KIND=dp)  :: hw1e, e_asym, vgl, vgr, hwl, hwr, sin, shi, squ, spk
     REAL (KIND=dp), DIMENSION (n_fitvar_sol) :: fitvar, lobnd, upbnd, stderr
     REAL (KIND=dp), DIMENSION (8) :: polycoeffs
-    INTEGER         :: i, j, ref_fidx, ref_lidx, ref_all_pts, ll, lu
+    INTEGER         :: i, j, ref_fidx, ref_lidx, ref_all_pts, ll, lu, niter
 
     ! ------------------------------
     ! Name of this subroutine/module
@@ -181,10 +181,11 @@ CONTAINS
         ENDIF
           shi = fitvar_sol(shi_idx); squ = fitvar_sol(squ_idx); sin = fitvar_sol(sin_idx)
      ENDIF
+     
      IF (wrt_to_screen) THEN
         IF ( which_slit /= 2) THEN
            WRITE(*, '(5(A, 1pd14.6), 2(A, I6))') 'wav=',avgwav ,'hwle = ',  hw1e,  &
-                ' e_asym =', e_asym, ' spk = ', spk, ' rms = ', rms, ' exval = ', solfit_exval, ' niter= ', niter
+                ' e_asym =', e_asym, ' spk = ', spk, ' rms = ', rms, ' exval = ', solfit_exval
         ELSE
            WRITE(www_lun, '(5(A,1pd14.6),A,I6)') 'vgl = ',  vgl, ' vgr = ',  vgr,  &
                 ' hwl = ', hwl, ' hwr = ', hwr,' rms = ',rms,' exval = ', solfit_exval

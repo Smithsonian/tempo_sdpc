@@ -467,7 +467,7 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
      ENDIF
   ELSE
      ! Fitting Ring effect using y = -[a0 * [atan((x-a1)/a2) + 1.54223] + 1]
-     corr = atan( (fitwavs - fitvar_rad(rnind(1, 2))) / fitvar_rad(rnind(1, 3)) )
+     corr = atan( (fitwavs(1:ns) - fitvar_rad(rnind(1, 2))) / fitvar_rad(rnind(1, 3)) )
      corr = -(fitvar_rad(rnind(1, 1)) * (corr - corr(1)) + 1.0)
      !fitspec = fitspec * EXP(database(ring_idx, refidx(1:ns)) * corr)
      simrad = simrad * EXP(-database(ring_idx, refidx(1:ns)) * corr)

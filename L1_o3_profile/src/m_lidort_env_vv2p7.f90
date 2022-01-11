@@ -670,6 +670,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   e_vlidort = 0.0
   CALL cpu_time(e_loop1)  
   ! ====================== Call LIDORT and Do Post Processing =====================
+  !print *, 'nw, nw0, ncalcp: ', nw, nw0, ncalcp
   DO iw = 1, nw 
      
      IF (.NOT. do_radcals(iw) ) CYCLE   ! Radiances and weighting functions will be interpolated 
@@ -1105,7 +1106,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
 
   IF (do_brdf .and. do_albwf .and. nw > 1) THEN  
     ! convert dI/da => dI/dc
-    idx = MINVAL(MAXLOC(radcwav(1:ncalcp), MASK=(radcwav(1:ncalcp) < 400)))+1
+    idx = MINVAL(MAXLOC(radcwav(1:ncalcp), MASK=(radcwav(1:ncalcp) < wcenter_uvvis)))+1
     DO i = 1, nostk
     DO iwf = 1, nalbwf          
         albwf(idx:nw0, iwf, i) = albwf(idx:nw0, iwf, i) *surface%kern_amp(idx:nw0, iwf)
