@@ -17,7 +17,7 @@ T                        ; T: fitting the weighting function of minor trace gase
 * ATMOS, screen, intermed, gases, var., correl, covar., avgk, favgk, contri., residual, wfns, s/n,  ring,  ozcrs wrtalbspc
   F       F        F       T       T     F       T       T     F       F        F        F     F    F   F   F
 * Filename for writing atmospheric inputs
-INP/o3_wf_atm.dat
+o3_wf_atm.dat
 * do radiance calibration, type (1: climatology  2: true ozone profile from other souces)
 F   1                           ; Next line provide the filename for true ozone profile
 INP/tozprof.dat
@@ -34,13 +34,13 @@ T                        ; do_subfit (T: some paraeters will be used for each wi
 F       	 	 ; lcurve_write
 0  0.05 1.0 0.000   	 ; PTR order, w0, w1, w2
 3                         ; which_atm   0: NCEP 1 FNL 2 OMIMET 3 TMPOMET
-13                        ; which clima 1: V8+EP  2: McPeters 8 TB 10 ML***** (see end for more option) *****
-13                        ; which apriori error  1 Fortuin 2 McPeters   3. McPeters+GEOS-CHEM  4. MLS zonal mean 5. Ind. MLS precision
+2                        ; which clima 1: V8+EP  2: McPeters 8 TB 10 ML***** (see end for more option) *****
+2                        ; which apriori error  1 Fortuin 2 McPeters   3. McPeters+GEOS-CHEM  4. MLS zonal mean 5. Ind. MLS precision
 F  0.15  0.5             ; Loose a priori constraint, relative error in the stratosphere and troposphere
 T                        ; T: update ozone below clouds through smoothing F: Don't update ozone below clouds
 0                        ; which_toz Total ozone. 0: None 1: gridded TOMS/OMI) 2. Zonal mean 3. Individual (not implemented)
 T                        ; T: normalize tropospheric column ozone F. normalize whole profile
-1                        ; which albedo database (1: GOME from Kolemeijer; 2: TOMS from J.R. Herman 3: OMI from Omar, 4. Kleipool
+4                        ; which albedo database (1: GOME-Kolemeijer 2 TOMS- Herman 3 OMI-Omar 4 OMI-Kleipool 5 SCIA 6 GM2 7 GM2-PMD)
 4                        ; which_cloud (0 OMCLDO2/OMCLDRR; 2 OMCLDRR CLIMA; 3 OMCLDO2/OMCLDRR + OMCLDRR CLIMA) 5 Derived cloud from (O2-O2+RRS) : 3 default
 F  F                     ; aerosol in LIDORT, stratospheric aerosols
 * trop. aerosol (0: all 1: dust 2: sulfate, 3: BC 4: OC 5: fine SS 6:coarse SS), scale AOD, and aerosol optical thickness
@@ -53,9 +53,9 @@ F                        ; T: use effectove cross section F: do radiance calcula
 0.00                     ; small slit function
 0.6 3.0                  ; sampling rate (nm) for Q/I determination (convolve, only used if polcorr = 6), wave exteded NEW
 2                       ; # of spectral regions for specifying sampling rates
-260.  340 910. 340 380   ; boundary of spectra regions (using different sampling rate in different region)
+260.  380 910. 340 380   ; boundary of spectra regions (using different sampling rate in different region)
 0.4    0.1  0.6  0.4 0.4   ; spectral sampling rate (unit: nm) to do radiance calculation
-2                        ; Nstream
+4                        ; Nstream
 3                        ; which_polcorr, 0: vector only, 1: scalar only  2 scalar+LUP 3 scalar+pol,
 T                        ; do_rtm_pca
 F                        ; do_brdf
@@ -109,7 +109,7 @@ T                 ; T: redivide layers between Pt and Ps, F: don't change layer 
 T                 ; define 2 km at layer
 
 *othgas
-T                 ; use_so2dtcrs
+F                 ; use_so2dtcrs
 T                 ; use_o4dtcrs
 T                 ; use_o2dptcrs
 T                 ; use_h2odptcrs
@@ -123,17 +123,17 @@ ozcrs_sol_for_alb.dat
 T                      ; vary_sfcalb
 F     335.0   347.0    ; Derive albedo/cloud fraction from longer wavelength, window for for albedo, window for cloud
 F                      ; Use prefitted surface albedo
-T T 1                  ; use_albspc, use_albeofs (1 peter, 2 chris)
-4                      ; N of selected EOFs(peter:4,chris:up to16), does not include mean or N of brdf parameters
+T T 2                  ; use_albspc, use_albeofs (1 peter, 2 chris)
+4                      ; N of selected EOFs(peter:4,chris:up to 4), does not include mean or N of brdf parameters
 1                      ; N of windows for albedo spectral (if n>1, consistent with fitting window
 1                      ; N of parameters for scaling albedo/EOFs in each window
-7                      ; number of additional albedo termns, polY;7
-2ba0     0.11 -1.0 1.0  280.0 370.0             ; 0th albdeo for ch 3
-2ba1     0.00 -1 1      280.0 370.0
-3ba0     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
-3ba1     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
-3ba2     0.0  -1.0 1.0  500.0 700.0             ; 2nd albdeo for ch 3
-3ba3     0.0  -1.0 1.0  500.0 700.0             ; 2nd albdeo for ch 3
+2                      ; number of additional albedo termns, polY;7
+1ba0     0.11 -1.0 1.0  290.0 350.0             ; 0th albdeo for ch 3
+1ba1     0.00 -1 1      290.0 350.0
+2ba0     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
+2ba1     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
+2ba2     0.0  -1.0 1.0  500.0 700.0             ; 2nd albdeo for ch 3
+2ba3     0.0  -1.0 1.0  500.0 700.0             ; 2nd albdeo for ch 3
 3ba4     0.0   1.0 1.0  500.0 700.0             ; 3nd albdeo for ch 3
 3ba5     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
 3ba6     0.0  -1.0 1.0  500.0 700.0             ; 2nd albdeo for ch 3
@@ -153,8 +153,8 @@ T T 1                  ; use_albspc, use_albeofs (1 peter, 2 chris)
 # initial value, lower and upper bounds, start and end wavelengths, respectively
 *wcfrac
 0                                     ; number of cloud fraction terms
-1fc0     0.11  -1 1 260.0 310.0        ; 0th cloud fraction for ch 1
-2fc0     0.11  -1 1 310.0 330.0        ; 0th cloud fraction for ch 2
+1fc0     0.11  -1 1 260.0 350.0        ; 0th cloud fraction for ch 1
+2fc0     0.11  -1 1 500.0 740.0       ; 0th cloud fraction for ch 2
 2fc1     0.00   1 1 310.0 330.0        ; 1st cloud fraction for ch 2
 3fc0     0.11  -1 1 330.0 360.0
 3fc1     0.0   -1 1 330.0 360.0        ; 2nd cloud frac--tion for ch 2
@@ -180,7 +180,7 @@ so2z 0 0 0     1.0 0.0 30.0
 *otherp
 0      ; which_offset 0 : mean fitting biases 1: radiance response
 7
-ozs0   0 1.0E+99 1.0E+99 1 2           ; 0th shift parameter for o3
+ozs0   0 -1.0E+99 1.0E+99 1 2           ; 0th shift parameter for o3
 ozs1   0 0 0 1 1 -1.0E+99 1.0E+99   1 2           ; 1st shift parameter for o3
 ozs2   0 0 0 1 1 -1.0E+99 1.0E+99   2 2   ; 2nd shift parameter for o3
 ozs3   0 0 0 1 1 -1.0E+99 1.0E+99   2 2           ; 3rd shift parameter for o3
@@ -188,36 +188,36 @@ sld0   0 0 0 1 1 -1 -1                        ; 0th sol/rad slit diff.
 sld1   0 0 0 1 1 -1 -1                        ; 1st sol/rad slit diff.
 sld2   0 0 0 1 1 -1 -1                        ; 2nd sol/rad slit diff.
 sld3   0 0 0 1 1 -1 -1                        ; 3rd sol/rad slit diff.
-shi0   0 1.0E+99 1.0E+99 1 4           ; 0th sol/rad misregistration
+shi0   0 -1.0E+99 1.0E+99 1 4           ; 0th sol/rad misregistration
 shi1   0 0 0 1 1 -1.0E+99 1.0E+99  2 2    ; 1st sol/rad misregistration
 shi2   0 0 0 1 1 -1.0E+99 1.0E+99  2 2           ; 2nd sol/rad misregistration
 shi3   0 0 0 1 1 -1.0E+99 1.0E+99  2 2           ; 3rd sol/rad misregistration
-rin0   1.87 -1.0E+99 1.0E99 1 1          ; 0th Ring Effect   *** must be non-zero ****
+rin0   1.87 -1.0E+99 1.0E99 1 2          ; 0th Ring Effect   *** must be non-zero ****
 rin1   0 0 0 1 1  -1.0E+99 1.0E99 1 1     ; 1st Ring effect
 rin2   0 0 0 1 1 -1.0E+99 1.0E99 1 1      ; 2nd Ring effect
 rin3   0 0 0 1 1  -1.0E99 1.0E99 1 2      ; 3rd Ring effect
-dec0   0 0 0 1 1 0.01 -10.0 10.0 1 1      ; 0rd degradation *** must be non-zero ****
+dec0   0.01 -10.0 10.0 1 2      ; 0rd degradation *** must be non-zero ****
 dec1   0 0 0 1 1 -10.0 10.0 1 1                 ; 1st degradation
 dec2   0 0 0 1 1  -10.0 10.0 1 1                 ; 2nd degradation
 dec3   0 0 0 1 1 -1 1 1 1                 ; 3rd degradation
-ins0   0 0 0 1 1 1.0E-3 -1.0 1.0  1 2      ; straylight/dark current in irradiance
+ins0   0 0 0  1 2 1.0E-3 -1.0 1.0  1 2      ; straylight/dark current in irradiance
 ins1   0 0 0 1 1 1.0E-6 -1.0 1.0  1 2
 ins2   0 0 0 1 1 1.0E-7 -1.0 1.0  1 2
 ins3   0 0 0 1 1 1.0E-8 -1.0 1.0  1 2
-inr0   1.0 1.0E+99 1.0E+99  1 2        ; straylight/dark current in radiance
+inr0   0.01 -1.0E+99 1.0E+99  1 2        ; straylight/dark current in radiance
 inr1   0 0 0 1 1 1.0E-6 -1.0 1.0  1 2
 inr2   0 0 0 1 1 1.0E-6 -1.0 1.0  1 2
 inr3   0 0 0 1 1 1.0E-7 -1.0 1.0  1 2
 pw0    0 -1.0E+99 1.0E+99  1 4
-pw1    0 -1.0E+99 1.0E+99  1 4
+pw1    0 0 0 1 2 -1.0E+99 1.0E+99  1 4
 pw2    0 -1.0E+99 1.0E+99  1 4
 pw3    0  1.0E+00 1.0E+99  1 4
 pk0    0 -1.0E+99 1.0E+99  1 4
-pk1    0 -1.0E+99 1.0E+99  1 4
+pk1    0 0 0  1 2 -1.0E+99 1.0E+99  1 4
 pk2    0 -1.0E+00 1.0E+99  1 4
 pk3    0  1.0E+00 1.0E+99  1 4
 pa0    0 -1.0E+99 1.0E+99  1 4
-pa1    0 -1.0E+99 1.0E+99  1 4
+pa1    0 0 0 1 2 -1.0E+99 1.0E+99  1 4
 pa2    0 -1.0E+00 1.0E+99  1 4
 pa3    0 1.0E+00 1.0E+99  1 4
 com0   1 1.0E99  1.0E99 1 2       ; secondary bias correction

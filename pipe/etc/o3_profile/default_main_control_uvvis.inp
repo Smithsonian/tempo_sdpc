@@ -27,19 +27,19 @@ INP/SBUV2_wavelengths.dat
 # no overlapping between them different channels
 *OMI radiance bands to be used ; (band 1: UV-1; band 2: UV-2; band 3: VIS)
 T   4                  # Coadd across track, # of observations to be coadded (1-2048)
-F   4                  # Coadd along track,  # of observations to be coadded (1-~129)
-T                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
+F   2                  # Coadd along track,  # of observations to be coadded (1-~129)
+F                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
 2   F  F               # # of bands, spectral coadd? wavelength calibration before coadd?
 1  300.0 340.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
 2  540.0 650.0  2  2
-# If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
-# Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
+# Output: 0. ASCII 1. short HDF 2. long HDF 3. HDF-EOS5 4 NC4
+# # Note: 0: works for GOME-1/OMI/TEMPO, 1&2 works for GOME-2 only, 3 works for OMI/TEMPO
 *Write HDF output?
 4
 
 *General fitting parameters
- F F T F      # use backup, use solar composite, median/pc0, all orbits / first 7 orbits
- 4            # 0: Symmetric Gauss 1: Asymmetric Gauss  2. Voigt  3: Tirangle (symmetric) 4. Super gauss(sym) 5: OMI-preflight slit
+ F F F F      # use backup, use solar composite, median/pc0, all orbits / first 7 orbits
+ 5            # 0: Symmetric Gauss 1: Asymmetric Gauss  2. Voigt  3: Tirangle (symmetric) 4. Super gauss(sym) 5: OMI-preflight slit
  0.001         # Slit truncation limit
  F F F F  F   # variable slit, wavelength calibration, second iter for sol wavcal, smooth cali, slit_rad
  31 10 T      # slit fit pts, slit step points, on-line slit fit (21, 5)
@@ -69,14 +69,14 @@ sc2  -5.43E-05 -1.0E+99   1.0E+99
 sc3  3.5E-6  -1.0E+99   1.0E+99
 sin  1.00E+00  -1.0E+99   1.0E+99
 hwe  0.3 -10.0E+00  10.0E+00                   # Gaussian HW@1/e
-asy  0 0 0 -0.04 -1.0E+99 1.0E+99            # Gaussian asymmetry
+asy  -0.04 -1.0E+99 1.0E+99            # Gaussian asymmetry
 shi  -1.00E-03 -1.0E+99 1.0E+99
 squ  0 0 0 1.0E-5 -0.01  0.01
 vgl  0 0 0 0.03 0.03 0.03 0.067 -1.0E+99 1.0E+99
 vgr  0 0 0 0.03  0.03 0.03 -1.0E+99 1.0E+99
 hwl  0 0 0 0.159  -1.0E+99 1.0E+99
 hwr  0 0 0 0.204  -1.0E+99 1.0E+99
-spk  2 0 0
+spk  2.0 -1.0E+99 1.0E+99
 eoi  0 0 0  # end of input
 
 *Radiance calibration parameters
@@ -110,19 +110,19 @@ eoi   0 0 0           #  end of input
 no2_t1
 OMSAO_NO2_220K_IASB.dat
 ad1    0 0 0
-lbe    0 0 0     2.62E-04 -1.0E+99 1.0E+99
+lbe    2.62E-04 -1.0E+99 1.0E+99
 ad2    0 0 0
 no2s   0 0 0   -1.0E+99 1.0E+99
 no2_t2
 OMSAO_NO2_294K_IASB.dat
 ad1    0 0 0
-lbe    0 0 0     2.62E-04 -1.0E+99 1.0E+99
+lbe    0 0 0 2.62E-04 -1.0E+99 1.0E+99
 ad2    0 0 0
 no2s   0 0 0   -1.0E+99 1.0E+99
 so2
-OMSAO_SO2_jhalpern_295K.dat
+OMSAO_SO2_295K_SAO-IASB.dat
 ad1    0 0 0
-lbe    0 0 0  2.43E-05 -1.0E+99 1.0E+99  OMSAO_SO2_295K_SAO-IASB.dat
+lbe    0 0 0 2.43E-05 -1.0E+99 1.0E+99  OMSAO_SO2_295K_SAO-IASB.dat
 ad2    0 0 0
 so2s   0 0 0 -1.0E+99 1.0E+99  OMSAO_SO2_scia_fm_293.dat
 so2v
@@ -132,21 +132,21 @@ lbe    0 0 0 8.43E-05 -1.0E+99 1.0E+99  OMSAO_SO2_295K_SAO-IASB.dat
 ad2    0 0 0
 so2vs  0 0 0  -1.0E+99 1.0E+99  OMSAO_SO2_scia_fm_293.dat
 bro
-OMSAO_BrO_228K_o3prof_noslit.nc
+OMSAO_BrO_228K_Wilmouth.dat
 ad1    0 0 0
 lbe    5.67D-5  -1.0E+99 1.0E+99
 ad2    0 0 0
 bros   0 0 0  -1.0E+99 1.0E+99
 hcho
-OMSAO_HCHO_300K_Cantrell_MMcorrected.dat
+OMSAO_HCHO_300K_Cantrell.dat
 ad1    0 0 0
-lbe    0 0 0 5.00D-5 -1.0E+99 1.0E+99
+lbe    5.00D-5 -1.0E+99 1.0E+99
 ad2    0 0 0
 hchos  0 0 0  -1.0E+99 1.0E+99
 o2o2
 OMSAO_Thalman_O4_293K_extended654nm.dat
 ad1    0.0E+00  0.0E+00  0.0E+00
-lbe    2.5E-03  -1.0E+99    1.0E+99
+lbe    0 0 0 2.5E-03  -1.0E+99    1.0E+99
 ad2    0.0000000E+00    0.0E+00        0.0E+00
 o4s    0 0 0 0.01 -1.0E+99 1.0E+99
 h2o
@@ -173,7 +173,7 @@ ad1    0.0E+00  0.0E+00  0.0E+00
 lbe    1.0E+00 -1.0E+99    1.0E+99
 ad2    0.0000000E+00    0.0E+00        0.0E+00
 o2s    0 0 0 0.0001 -1.0E+99 1.0E+99
-2t2
+o2t2
 OMSAO_O2_0.5atm-253k_500-700nm_0.1nmFWHM_0.01nm_newpshi_i0corr.dat
 ad1    0.0E+00  0.0E+00  0.0E+00
 lbe    0 0 0    1.0E+00  1.0E+99    1.0E+99
@@ -191,13 +191,13 @@ ad1    0 0 0 -1.0E+99  1.0E+99        ; UV2
 lbe    0 0 0 -0.05 -1.0E+99 1.0E+99
 ad2    0 0 0  1.0  -1.0E+99 1.0E+99
 veges  0 0 0 -0.001 -1.0E+99 1.0E+99
-usamp1
+us1
 OMSAO_Zero_Spec.dat
 ad1   0 0 0 0.1  -1.0E+99   1.0E+99
 lbe    0 0 0
 ad2    0 0 0
 uss1   0 0 0 1.00D-3 -1.0E+99 1.0E+99
-usamp2
+us2
 OMSAO_Zero_Spec.dat
 ad1    0 0 0 0.1  -1.0E+99   1.0E+99
 lbe    0 0 0
