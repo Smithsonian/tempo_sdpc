@@ -44,7 +44,7 @@ assert_dir_absent()
 #assert_dir_absent $SDPC_RUN_DIR
 assert_dir_exists $SDPC_REFDATA_DIR
 assert_dir_exists $SDPC_RUN_DIR_MASTER
-assert_dir_exists $SDPC_RUN_DIR_INR
+assert_dir_exists $SDPC_RUN_DIR_MASTER/inr
 
 mkdirlist()
 {

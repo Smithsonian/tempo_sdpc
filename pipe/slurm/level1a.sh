@@ -112,7 +112,7 @@ prep_inr_goes_source()
    goes_srcdir="${SDPC_ANCILLARY_ROOT}/var/goes/${yday_subdir}"
 
    if test -d "$goes_srcdir" ; then
-      target_dir="$SDPC_RUN_DIR_INR/Staging"
+      target_dir="$SDPC_RUN_DIR_MASTER/inr/Staging"
       ln -nf -s $goes_srcdir/g16_cmi $target_dir/Right || error_exit "$LINENO: setting GOES-East source"
       ln -nf -s $goes_srcdir/g17_cmi $target_dir/Left || error_exit "$LINENO: setting GOES-West source"
    else

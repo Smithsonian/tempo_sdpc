@@ -1,6 +1,6 @@
 #! /bin/sh
 
-: "${SDPC_RUN_DIR_INR:?SDPC_RUN_DIR_INR not set, run this with sdpcrun.sh}"
+: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set, run this with sdpcrun.sh}"
 
 set -u
 set -e
@@ -15,12 +15,12 @@ assert_dir_exists()
    fi
 }
 
-assert_dir_exists $SDPC_RUN_DIR_INR
+inr_run_dir="$SDPC_RUN_DIR_MASTER/inr"
 
 INR_CONFIG_SRCDIR="$SDPC_ROOT/etc/inr"
 assert_dir_exists $INR_CONFIG_SRCDIR
 
-INR_CONFIG_TARGET_DIR="$SDPC_RUN_DIR_INR/config"
+INR_CONFIG_TARGET_DIR="$inr_run_dir/config"
 assert_dir_exists $INR_CONFIG_TARGET_DIR
 
 # INR_REFDATA_DIR contains:
@@ -38,10 +38,10 @@ LOGGING_CONF_FILE="TempoLogging.conf"
 PIPELINE_CONF_FILE="TempoPipelineInterfaceSAO.conf"
 
 # INR logging
-sed -e s,@INR_PROCESSING_ROOT@,$SDPC_RUN_DIR_INR,g \
+sed -e s,@INR_PROCESSING_ROOT@,$inr_run_dir,g \
        $INR_CONFIG_SRCDIR/${LOGGING_CONF_FILE}.in > $INR_CONFIG_TARGET_DIR/$LOGGING_CONF_FILE
 # INR pipeline
-sed -e s,@INR_PROCESSING_ROOT@,$SDPC_RUN_DIR_INR,g \
+sed -e s,@INR_PROCESSING_ROOT@,$inr_run_dir,g \
     -e s,@INR_IERS_DIR@,$INR_IERS_DIR,g \
     -e s,@INR_REFDATA_DIR@,$INR_REFDATA_DIR,g \
    $INR_CONFIG_SRCDIR/${PIPELINE_CONF_FILE}.in > $INR_CONFIG_TARGET_DIR/$PIPELINE_CONF_FILE

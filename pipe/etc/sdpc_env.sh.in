@@ -65,9 +65,6 @@ export SDPC_ARCHIVE_DBFILE_L1="${SDPC_ARCHIVE_DBFILE}"
 # SDPC_RUN_DIR_MASTER = root directory where pipeline processing takes place on the master node
 export SDPC_RUN_DIR_MASTER="${SDPC_PIPE_HOME}/${SDPC_PIPE_NAME}"
 
-# SDPC_RUN_DIR_INR = root directory where INR processing takes place on the master node
-export SDPC_RUN_DIR_INR="${SDPC_RUN_DIR_MASTER}/inr"
-
 # SDPC_RUN_DIR = root directory where pipeline processing takes place on compute nodes
 export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"
 

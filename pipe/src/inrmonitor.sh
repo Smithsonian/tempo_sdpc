@@ -8,12 +8,14 @@ fi
 top=$(dirname $0)/..
 . $top/etc/sdpc_env.sh
 
+inr_run_dir="$SDPC_RUN_DIR_MASTER/inr"
+
 export JAVA_HOME="$SDPC_OTS_ROOT/jdk1.8.0_91"
 export PATH="$JAVA_HOME/bin:$PATH"
 
 export TEMPO_INRSW_HOME="$SDPC_INRSW_ROOT"
-export TEMPO_INRSW_GUI_HOME="$SDPC_RUN_DIR_INR"
-export TEMPO_INRSW_CONFIG_DIR="$SDPC_RUN_DIR_INR/config"
+export TEMPO_INRSW_GUI_HOME="$inr_run_dir"
+export TEMPO_INRSW_CONFIG_DIR="$inr_run_dir/config"
 
 options="-Dprism.order=sw"
 
