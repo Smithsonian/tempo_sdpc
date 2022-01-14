@@ -35,7 +35,67 @@ typedef struct
 }
 AziElev_Type;
 
-static int compute_scan_angles (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
+/* FIXME: At the moment, the INRSW requires these files to be in the current directory.  Grrr.*/
+static int missing_limit_tables (void)
+{
+   const char *tables[] =
+     {
+        "ScanPlanning_Dimensions.txt",
+        "ScanPlanning_FGEW.txt",
+        "ScanPlanning_Latitude.txt",
+        "ScanPlanning_Longitude.txt",
+        NULL
+     };
+   const char **file;
+   int missing = 0;
+   for (file = tables; *file != NULL; file++)
+     {
+        if (0 != access (*file, F_OK | R_OK))
+          {
+             fprintf (stderr, "*** Error: file not found: %s\n", *file);
+             missing++;
+          }
+     }
+
+   return missing;
+}
+static int compute_scan_angles_using_tables (const EarthPoint *c_pt, double sat_lon, AziElev_Type *apt)
+{
+   TempoGeoErr error;
+   EarthPoint pt = *c_pt;  /* struct copy */
+   EarthPolygon polygon =
+     {
+        .thePointCount = 1,
+        .theAllocatedPoints = 1,
+        .thePoints = &pt
+     };
+   ScanCoordinates xlim = {0};
+
+   (void) sat_lon;
+
+   if (missing_limit_tables () != 0)
+     return -1;
+
+   if ((error = calculateScanStartStop (&polygon, &xlim)) != 0)
+       {
+          tell_verror (TELL_RUNTIME_ERROR, "%s: calculateScanStartStop failed (%s)",
+                       __func__, tempoGeoErrorString (error));
+          return -1;
+       }
+
+   /* want values in microradians */
+   apt->azimuth = xlim.theStartEW * DEGTOMICRORAD;
+   apt->elevation = 0;
+
+   /* The library function returns mirror tilt angle,
+    * but in this context, we want the azimuth angle
+    * in the field of regard, so multiply by 2 */
+   apt->azimuth *= 2;
+
+   return 0;
+}
+
+static int compute_scan_angles_using_unsanctioned_method (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
 {
    TempoGeoErr error;
 
@@ -57,6 +117,28 @@ static int compute_scan_angles (const EarthPoint *pt, double sat_lon, AziElev_Ty
    apt->elevation *= DEGTOMICRORAD;
 
    return 0;
+}
+static int Use_Table_Method = -1;
+static void set_scan_limit_method (void)
+{
+   if (Use_Table_Method >= 0)
+     return;
+
+   if (NULL != getenv ("SDPC_PLAN_USING_TABLES"))
+     {
+        Use_Table_Method = 1;
+        fprintf (stderr, "*** WARNING: SDPC_PLAN_USING_TABLES environment variable is set\n");
+     }
+   else Use_Table_Method = 0;
+}
+
+static int compute_scan_angles (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
+{
+   set_scan_limit_method();
+   if (Use_Table_Method)
+     return compute_scan_angles_using_tables (pt, sat_lon, apt);
+   else
+     return compute_scan_angles_using_unsanctioned_method (pt, sat_lon, apt);
 }
 
 static int radiance_scan_endpoints (const Scan_Type *st,
