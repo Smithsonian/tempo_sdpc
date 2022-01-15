@@ -22,7 +22,10 @@ fi
 
 rootdir="${SDPC_ANCILLARY_ROOT}/var/geoscf"
 subdir="$(date -u $dateargs +%Y/%j)"
+
+# forecast files
 daytag="$(date -u $dateargs +%Y%m%d)"
+source_url="$source_url/$(date -u $dateargs +Y%Y/M%m/D%d/H12)"
 
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.
