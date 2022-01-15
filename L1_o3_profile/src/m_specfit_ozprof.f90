@@ -344,7 +344,8 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
      IF (is_albspcvar(k) .AND. use_albeofs .AND. nord == 1 .and. nactalbspc == 1) THEN
         fitvar_rad_init(i) = 1.0d0
         fitvar_rad_apriori(i) = 1.0d0
-     ELSE IF (is_albspcvar(k) .AND. use_albeofs .AND. nactalbspc > 1 .and. nord > 0 .AND. which_albspc == 2) THEN 
+     ELSE IF (is_albspcvar(k) .AND. use_albeofs .AND. nactalbspc > 1 .and. nord > 0 &
+              .AND. which_albspc == 2 .AND. oceanflg /= 1 .AND. snowflg /= 1) THEN
         fitvar_rad_init(i) = Surface%Option4%FitCoeff(nord, 1)
         fitvar_rad_apriori(i) = Surface%Option4%Fitcoeff(nord,1)
      ELSE IF (is_albspcvar(k) .AND. do_brdf .and. nord > 0) THEN

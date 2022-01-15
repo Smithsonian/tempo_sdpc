@@ -109,8 +109,7 @@ module m_set_cldalb
   ELSE IF (which_alb == 4) THEN
      nalbw = 7
      albwave(1:nalbw) = (/328.0, 345.0, 354.0, 380.0, 442.0, 477.0, 499.0/)
-     CALL GET_OMLER_ALBS(the_month, the_day, edgelons, edgelats, albarr)
-     albarr(1:nalbw) = albarr
+     CALL GET_OMLER_ALBS(the_month, the_day, edgelons, edgelats, albarr(1:nalbw))
   ELSE IF (which_alb >= 5 .and. which_alb <=7) THEN
      which_sciagm2 = which_alb - 4 
      CALL GET_SCIAGM2_ALB(which_sciagm2, the_month, the_day, edgelons, edgelats, albarr, albwave, nalbw)
