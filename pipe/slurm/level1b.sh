@@ -88,7 +88,6 @@ slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1b/slurm"
 jid=$(sbatch --job-name="L1b" --parsable \
        --comment=$SDPC_GRANULE_LABEL \
        --chdir $l1_run_dir \
-       --nodes=1-1 --ntasks=8 \
        --output "$slurm_logdir/${rad_basename}.level1b_batch-%j.out" \
        level1b_batch.sh "${rad_basename}.nc" "$file_list_file")
 

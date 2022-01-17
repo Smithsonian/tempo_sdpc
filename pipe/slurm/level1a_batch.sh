@@ -1,5 +1,7 @@
 #! /bin/sh
 #SBATCH --output=/dev/null
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-core=1
 
 # 0. This script is intended to run on a compute node.
 #
@@ -117,8 +119,6 @@ run_l0_ccd()
           $granule_basename
 }
 
-. $SDPC_ROOT/bin/wavecal.sh
-
 run_inr_prep()
 {
    target_file="$1"
@@ -149,7 +149,7 @@ case "${granule_basename}" in
   irr_type=$(echo $granule_basename | cut -f2 -d_)
   output_file=$(mkgranule_name -L 1 -p $irr_type -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
-  run_wavecal $output_file "$SDPC_IRR_WAVECAL_ARRAY"
+  wavecal.sh $output_file 5
   ;;
 
   *RAD* )

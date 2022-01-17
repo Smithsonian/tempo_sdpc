@@ -136,6 +136,7 @@ case "${granule_basename}" in
 
    *IRR* )
    dark_file_path=$(select_dark.py "$granule_path")
+   ntasks=10
    ;;
 
    *RAD* )
@@ -149,10 +150,12 @@ case "${granule_basename}" in
    select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
    prep_inr_goes_source
+   ntasks=10
    ;;
 
    * )
    dark_file_path=NONE
+   ntasks=1
    ;;
 esac
 
@@ -180,6 +183,7 @@ log_message "submitting sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
 jid=$(sbatch --wait --dependency=singleton --parsable \
+       --ntasks=$ntasks \
        --job-name="L0:serial" \
        --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \

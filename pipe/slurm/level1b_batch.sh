@@ -1,5 +1,8 @@
 #! /bin/sh
 #SBATCH --output=/dev/null
+#SBATCH --nodes=1
+#SBATCH --ntasks=10
+#SBATCH --ntasks-per-core=1
 
 # 0. This script is normally run on a compute node as a batch process
 #    to prepare for L2 product generation.
@@ -170,10 +173,13 @@ tar_l1_radiance_to_dest()
       fi
    fi
 
-   wavecal_logs="$granule_dir/wavecal_logs.tar.gz"
-   if test -f $wavecal_logs ; then
-      EXTRA_FILES="$EXTRA_FILES $wavecal_logs"
-   fi
+   wavecal_files="wavecal_logs.tar.gz wavecal_joblog.out log_wavecal_merge.txt"
+   for f in $wavecal_files ; do
+       f_path="$granule_dir/$f"
+       if test -f $f_path ; then
+          EXTRA_FILES="$EXTRA_FILES $f_path"
+       fi
+   done
 
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
@@ -210,8 +216,6 @@ tar_l1_radiance_to_dest()
    fi
 }
 
-. $SDPC_ROOT/bin/wavecal.sh
-
 run_inr_post()
 {
    radiance_file=$1
@@ -221,7 +225,7 @@ run_inr_post()
     L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
-   run_wavecal $radiance_file "0-4"
+   wavecal.sh $radiance_file 5
 
    # polarization correction
    if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
