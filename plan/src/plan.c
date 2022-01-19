@@ -424,9 +424,9 @@ static int use_epoch_in_maneuver_file (const char *maneuver_file)
         goto return_status;
      }
 
-   if (0 != ioclib_kv_table_get_double (kv, "epoch", &epoch))
+   if (0 != ioclib_kv_table_get_double (kv, "tempo_epoch", &epoch))
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, maneuver_file);
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading tempo_epoch keyword from: %s", __func__, maneuver_file);
         goto return_status;
      }
 
