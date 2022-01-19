@@ -420,7 +420,7 @@ module m_set_cldalb
       ntmp = lidx-fidx+1
     ENDIF
   
-    IF (cfrac /= 1.00) THEN 
+    !IF (cfrac <= 1.00) THEN
    
       allocate(tmpwav(ntmp), tmpspcs(ntmp, 0:malbspc-1))
       IF (.NOT. use_effcrs) THEN 
@@ -485,7 +485,7 @@ module m_set_cldalb
         ENDIF
       ENDIF ! end of use_albspc
       deallocate(tmpwav, tmpspcs)
-    ENDIF ! not full cloudy scene
+    !ENDIF ! not full cloudy scene
   ENDIF
 
   RETURN
