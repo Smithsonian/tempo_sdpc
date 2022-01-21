@@ -27,6 +27,8 @@ loadMethod=Real
 imgDir=@INR_PROCESSING_ROOT@/Staging/Granules/
 # Granule output directory
 outDir=@INR_PROCESSING_ROOT@/Output/
+# Granule output directory for GUI. Hard link of granules are created in this directory if this directory is provided.
+guiOutDir=@INR_PROCESSING_ROOT@/Output/GUI
 # Nominal TEMPO longitude in degrees
 refLon=-91.0
 # The amount of time the server will wait for new granules before producing a warning, in seconds.
@@ -270,6 +272,16 @@ nsbias=0.095232069219954
 ephPosErr=1.5
 # The 3-sigma ephemeris velocity error in km/s
 ephVelErr=2.5e-5
+# The satellite steering method (INERTIAL=0, ORBIT_FRAME=1(default), TARGETED=2)
+steeringMethod=1
+# The satellite steering latitude in degree. This is only used if sterring method is TARGETED. Default to 0
+steeringLat=0
+# The satellite steering longitude in degree. This is only used if sterring method is TARGETED. Default to -104.5
+steeringLon=-104.5
+# The satellite steering roll bias in degree. This is only used if sterring method is TARGETED. Default to 0
+steeringRollBias=0
+# The satellite steering pitch bias in degree. This is only used if sterring method is TARGETED. Default to 0
+steeringPitchBias=0
 
 # Rates of change allocated to Kalman Filter states for process noise
 # States are ordered as they are documented in TEMPO-SER-4008
