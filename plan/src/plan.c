@@ -839,10 +839,10 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
         int orig_num_repeats, num_remaining, prev_num, need_partial_scan;
 
         /* Skip entries that precede the maneuver interval */
-        if (entry_end < mnv_beg)
+        if (entry_end <= mnv_beg)
           continue;
         /* When remaining plan entries follow the maneuver, we're done */
-        if (mnv_end < entry_beg)
+        if (mnv_end <= entry_beg)
           return 0;
 
         if (Plan_Verbose)
@@ -912,7 +912,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              curr->next = save_next;
              entry = curr;
           }
-        else if ((entry_beg < mnv_beg) && (mnv_beg < entry_end))  /* maneuver begins during plan entry */
+        else if ((entry_beg <= mnv_beg) && (mnv_beg < entry_end))  /* maneuver begins during plan entry */
           {
              /* pre-gap partial scan */
              if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
@@ -926,7 +926,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              /* pre-gap full scans */
              entry->num_repeats = floor((mnv_beg - entry_beg) / scan_duration_days);
           }
-        else if ((entry_beg < mnv_end) && (mnv_end < entry_end))  /* maneuver ends during plan entry */
+        else if ((entry_beg < mnv_end) && (mnv_end <= entry_end))  /* maneuver ends during plan entry */
           {
              /* post-gap partial scan */
              if (parent_entry)
