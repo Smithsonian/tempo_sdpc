@@ -75,7 +75,7 @@ if test x"$have_o3p" != x ; then
   # load o3prof config parameters
   . $SDPC_RUN_DIR_MASTER/etc/o3prof_config.sh
   # generate a product only if this scene is selected
-  have_o3p=$(o3p_select.sl --step $o3p_scan_step --offset $o3p_scan_offset $SDPC_GRANULE_LABEL)
+  have_o3p=$(o3p_select.sl --list $o3p_scan_select $SDPC_GRANULE_LABEL)
   if test x"$have_o3p" != x ; then
      log_message "O3PROF selected: $SDPC_GRANULE_LABEL"
   else

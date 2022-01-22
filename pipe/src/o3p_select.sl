@@ -7,8 +7,8 @@ private define usage ()
    variable msg =
 `Usage: o3p_select.sl [opts] <l1-radiance-path>
 Options:
-    -s|--step N      step=N means "process every Nth"
-    -o|--offset M    start sequence with scan M<N"
+    -l|--list STRING   Scans for which O3PROF should be generated.
+                       STRING = "all" | "none" | comma-separated scan_num list
 `;
    () = fprintf (stderr, msg);
    exit (0);
@@ -20,23 +20,27 @@ private define cmdopt_error (msg)
    usage ();
 }
 
+define answer (s)
+{
+   () = fprintf (stdout, s);
+   exit(0);
+}
+
 define slsh_main ()
 {
-   variable step = 1;
-   variable offset = 0;
-
+   variable scan_list;
    variable opts = cmdopt_new (&cmdopt_error);
-   opts.add ("s|step", &step; type="int");
-   opts.add ("o|offset", &offset; type="int");
+   opts.add ("l|list", &scan_list; type="string");
    variable i = opts.process (__argv,1);
    if (__argc - i < 1)
      usage();
 
-   if (step <= 0)
-     {
-        () = fprintf (stdout, "yes");
-        exit (0);
-     }
+   scan_list = strlow (scan_list);
+
+   if (scan_list == "all" || scan_list == "*")
+     answer ("yes");
+   else if (scan_list == "none" || scan_list == "")
+     answer ("");
 
    variable path = __argv[i];
    variable tok = strtok (path_basename_sans_extname(path), "_");
@@ -49,10 +53,10 @@ define slsh_main ()
         throw ApplicationError, "Parsing file name: $path"$;
      }
 
-   variable remainder = (scan_num - 1 - offset) mod step;
+   variable list = eval(scan_list);
 
-   if (remainder == 0)
-     () = fprintf (stdout, "yes");
+   if (any(list == scan_num))
+     answer ("yes");
    else
-     () = fprintf (stdout, "");
+     answer ("");
 }

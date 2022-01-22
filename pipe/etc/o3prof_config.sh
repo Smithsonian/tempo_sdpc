@@ -1,7 +1,6 @@
 #
-# scene selection (see o3p_select.sl)
-o3p_scan_offset=0
-o3p_scan_step=3
+# scene selection:  "all" | "none" | "[n1,n2,n3]"
+o3p_scan_select="[1,4,8,12]"
 
 # computer cluster load management
 o3p_num_hosts=6
