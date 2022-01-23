@@ -50,6 +50,8 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # in the processing directory path on the compute nodes.
 : "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set}"
 
+: "${SDPC_PIPE_ID:?SDPC_PIPE_ID not set}"
+
 make_iru_only_file_for_inr()
 {
    time_interval_file="$1"
@@ -181,10 +183,11 @@ export SDPC_GRANULE_LABEL="$granule_basename"
 #  * RAD time sequence is critical for INR
 log_message "submitting sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
+# Singleton dependency requires a job-name unique to this pipeline.
 slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
 jid=$(sbatch --wait --dependency=singleton --parsable \
        --ntasks=$ntasks \
-       --job-name="L0:serial" \
+       --job-name="L0:serial:${SDPC_PIPE_ID}" \
        --comment "$SDPC_GRANULE_LABEL" \
        --chdir $run_dir \
        --output "$slurm_logdir/${granule_basename}.level1a_batch-%j.out" \

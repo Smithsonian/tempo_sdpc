@@ -32,6 +32,10 @@ do_start()
 
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set}"
 
+  # SDPC_PIPE_ID is used to ensure singleton dependencies
+  # in this pipeline don't affect other pipelines.
+  export SDPC_PIPE_ID="$(openssl rand -hex 4)"
+
   export SLURM_ACCOUNT="$SDPC_PIPE_NAME"
   export SBATCH_ACCOUNT="$SLURM_ACCOUNT"
   export SALLOC_ACCOUNT="$SLURM_ACCOUNT"

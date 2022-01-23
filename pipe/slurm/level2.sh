@@ -16,6 +16,8 @@
 set -e
 set -u
 
+: "${SDPC_PIPE_ID:?SDPC_PIPE_ID not set}"
+
 if test -z "${SDPC_LEVEL2_PRODUCTS}" ; then
    echo "SDPC_LEVEL2_PRODUCTS is not set"
    exit 1
@@ -138,7 +140,8 @@ if test x"$have_o3p" != x ; then
   # merge the archived blocks into a single O3 profile data product.
   # The merge step is triggered by a slurm 'singleton' dependency on the
   # job name "$job_o3p", defined here.
-  job_o3p="O3PROF:${SDPC_GRANULE_LABEL}"
+  # Singleton dependency requires a job-name unique to this pipeline.
+  job_o3p="O3PROF:${SDPC_GRANULE_LABEL}:${SDPC_PIPE_ID}"
 
   for k in $o3p_host_list ; do
      host_spec="${k}-${o3p_num_hosts}"
