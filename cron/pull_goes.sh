@@ -36,7 +36,6 @@ if ! test -d $target_dir ; then
 fi
 
 lftp $user_at_host <<- EOF
-   set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set ssl:verify-certificate no

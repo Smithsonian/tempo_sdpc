@@ -45,7 +45,6 @@ fi
 filename_regex="GEOS-CF.v01.rpl.sat_inst_1hr_r720x361_v72.${daytag}_????z.nc4"
 
 lftp <<- EOF
-   set xfer:log-file
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set mirror:require-source true
