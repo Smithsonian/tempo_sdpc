@@ -31,9 +31,9 @@ program test_clim
   bounds % lat_min = 15.0
   bounds % lat_max = 70.0
 
-  year = 2020
-  month = 7
-  day   = 1
+  year = 2022
+  month = 1
+  day   = 25
 
   call clim_pres_init (cpt, year, month, day, bounds, errstat)
   if (errstat /= 0) call exit(1)

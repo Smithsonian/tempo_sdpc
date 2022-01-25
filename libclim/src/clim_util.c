@@ -207,7 +207,10 @@ int make_forecast_path (time_t tt, char *buf, int bufsize)
 {
    const char *fmt = FILE_PATTERN_PTR(cf_forecast);
    struct tm tm = {0};
-   int n, year, dayofyear, month;
+   struct tm tm_prev = {0};
+   time_t tt_prev;
+   int year_prev, month_prev, day_prev;
+   int n, year, month, day, dayofyear;
 
    if (fmt == NULL)
      {
@@ -223,10 +226,24 @@ int make_forecast_path (time_t tt, char *buf, int bufsize)
      }
 
    year = tm.tm_year + 1900;
-   dayofyear = tm.tm_yday + 1;
    month = tm.tm_mon + 1;
+   day = tm.tm_mday;
+   dayofyear = tm.tm_yday + 1;
 
-   if ((n = snprintf (buf, bufsize, fmt, year, dayofyear, year, month, tm.tm_mday, tm.tm_hour)) < 0)
+   tt_prev = tt - 86400;
+   if (NULL == gmtime_r (&tt_prev, &tm_prev))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: gmtime_r failed (tt_prev = %ld", __func__, tt_prev);
+        return -1;
+     }
+
+   year_prev = tm_prev.tm_year + 1900;
+   month_prev = tm_prev.tm_mon + 1;
+   day_prev = tm_prev.tm_mday;
+
+   if ((n = snprintf (buf, bufsize, fmt, year, dayofyear,
+                      year_prev, month_prev, day_prev,
+                      year, month, day, tm.tm_hour)) < 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
         return -1;
