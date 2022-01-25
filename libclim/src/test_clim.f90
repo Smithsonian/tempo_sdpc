@@ -25,7 +25,7 @@ program test_clim
   if (errstat /= 0) call exit(1)
 
   bounds % hour_beg = 18.0
-  bounds % hour_end = 18.0 + 6.0/60
+  bounds % hour_end = bounds % hour_beg + 6.0/60
   bounds % lon_min = -90.0
   bounds % lon_max = -80.0
   bounds % lat_min = 15.0

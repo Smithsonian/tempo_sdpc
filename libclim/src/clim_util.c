@@ -207,10 +207,10 @@ int make_forecast_path (time_t tt, char *buf, int bufsize)
 {
    const char *fmt = FILE_PATTERN_PTR(cf_forecast);
    struct tm tm = {0};
-   struct tm tm_prev = {0};
-   time_t tt_prev;
-   int year_prev, month_prev, day_prev;
-   int n, year, month, day, dayofyear;
+   struct tm rpl_tm = {0};
+   time_t rpl_tt;
+   int rpl_year, rpl_month, rpl_day;
+   int i, n, year, month, day, dayofyear;
 
    if (fmt == NULL)
      {
@@ -230,35 +230,56 @@ int make_forecast_path (time_t tt, char *buf, int bufsize)
    day = tm.tm_mday;
    dayofyear = tm.tm_yday + 1;
 
-   tt_prev = tt - 86400;
-   if (NULL == gmtime_r (&tt_prev, &tm_prev))
+   /* rpl_tt is the date of the "replay" upon which the forecast is based.
+    * We prefer forecasts based on the previous day's "replay", but
+    * sometimes we must settle for a two day old forecast */
+   rpl_tt = tt;
+
+   for (i = 0; i < 2; i++)
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: gmtime_r failed (tt_prev = %ld", __func__, tt_prev);
-        return -1;
+        rpl_tt -= 86400;
+        if (NULL == gmtime_r (&rpl_tt, &rpl_tm))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: gmtime_r failed (rpl_tt = %ld", __func__, rpl_tt);
+             return -1;
+          }
+
+        rpl_year = rpl_tm.tm_year + 1900;
+        rpl_month = rpl_tm.tm_mon + 1;
+        rpl_day = rpl_tm.tm_mday;
+
+        if ((n = snprintf (buf, bufsize, fmt, year, dayofyear,
+                           rpl_year, rpl_month, rpl_day,
+                           year, month, day, tm.tm_hour)) < 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
+             return -1;
+          }
+        if (n >= bufsize)
+          {
+             tell_verror (TELL_RUNTIME_ERROR,
+                          "%s: buffer size exceeded: string length = %d > %d",
+                          __func__, n, bufsize);
+             return -1;
+          }
+
+        if (0 != expand_buffer_in_place (buf, bufsize))
+          return -1;
+
+        /* If the preferred file doesn't exist, we'll look for an older forecast */
+        if (0 == access (buf, F_OK | R_OK))
+          return 0;
      }
 
-   year_prev = tm_prev.tm_year + 1900;
-   month_prev = tm_prev.tm_mon + 1;
-   day_prev = tm_prev.tm_mday;
-
-   if ((n = snprintf (buf, bufsize, fmt, year, dayofyear,
-                      year_prev, month_prev, day_prev,
-                      year, month, day, tm.tm_hour)) < 0)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
-        return -1;
-     }
-   if (n >= bufsize)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: buffer size exceeded: string length = %d > %d",
-                     __func__, n, bufsize);
-        return -1;
-     }
-
-   return expand_buffer_in_place (buf, bufsize);
+   /* As long as the path was created successfully, we return "success",
+    * even when the generated path doesn't exist. */
+   return 0;
 }
 
+/* return 1 means we have the forecast file,
+ * return 0 means we don't have the forecast file
+ * return -1 means an error occurred
+ */
 int have_forecast_files (time_t tt, int num_hours)
 {
 #define CF_BUFSIZE 1024
