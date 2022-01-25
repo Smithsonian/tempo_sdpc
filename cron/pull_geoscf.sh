@@ -31,7 +31,7 @@ subdir="$(date -u $today_opt +%Y/%j)"
 source_url="$source_url/$(date -u $yesterday_opt +Y%Y/M%m/D%d/H12)"
 rpl_day="$(date -u $yesterday_opt +%Y%m%d)"
 fcst_day="$(date -u $today_opt +%Y%m%d)"
-fcst_regex="GEOS-CF.v01.fcst.sat_inst_1hr_r720x361_v72.${rpl_day}_12z+${fcst_day}_????z.nc4"
+fcst_regex="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}_????z.nc4"
 
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.

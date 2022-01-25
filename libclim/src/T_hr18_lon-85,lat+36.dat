@@ -1,4 +1,4 @@
-HDF5 "/tempo/nas0/sdpc/ancillary/var/geoscf/2022/025/GEOS-CF.v01.fcst.sat_inst_1hr_r720x361_v72.20220124_12z_20220125_1800z_reorder.nc4" {
+HDF5 "/tempo/nas0/sdpc/ancillary/var/geoscf/2022/025/GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.20220124_12z_20220125_1800z_reorder.nc4" {
 DATASET "T" {
    DATATYPE  H5T_IEEE_F32LE
    DATASPACE  SIMPLE { ( 1, 721, 361, 72 ) / ( H5S_UNLIMITED, 721, 361, 72 ) }
