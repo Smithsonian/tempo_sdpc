@@ -25,6 +25,7 @@ else
 fi
 
 lftp $source_url <<- EOF
+   set log:file/xfer ""
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set mirror:require-source true
