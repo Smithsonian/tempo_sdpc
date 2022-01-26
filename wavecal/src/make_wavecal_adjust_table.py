@@ -75,10 +75,11 @@ class Grid_Type (object):
 def main():
 
     # UV, Vis wavelength grids:
-    num_waves = 1028  # 1026
-    delta_lam = 0.198 # 0.2
-    uv0 = 291.8       # 290.0
-    vis0 = 537.2      # 540.0
+    num_waves = 1028
+    uv_dy  = 0.19777
+    uv0    = 291.761
+    vis_dy = 0.19779
+    vis0   = 537.263
 
     # number of Chebyshev series coefficients
     num_cheb_terms = 2
@@ -91,8 +92,8 @@ def main():
     ivis0 = 242  # 259 # 245
     nvis0 = 61   # 31
 
-    uv = Grid_Type (uv0, delta_lam, num_waves)
-    vis = Grid_Type (vis0, delta_lam, num_waves)
+    uv = Grid_Type (uv0, uv_dy, num_waves)
+    vis = Grid_Type (vis0, vis_dy, num_waves)
 
     full = {
     'uv':Cheb_Params_Type(num_cheb_terms, uv.y[0], uv.y[-1], 0, num_waves-1, units='nm'),
@@ -125,7 +126,8 @@ def main():
 
     #filename = '/tmp/wavecal_adjust_20190124.nc'
     #filename = '/tmp/wavecal_adjust_20190727.nc'
-    filename = '/tmp/wavecal_adjust_20210215.nc'
+    #filename = '/tmp/wavecal_adjust_20210215.nc'
+    filename = '/tmp/wavecal_adjust_20220126.nc'
 
     create_file (filename, var_list)
 
