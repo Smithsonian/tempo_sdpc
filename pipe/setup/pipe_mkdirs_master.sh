@@ -10,6 +10,8 @@ if test -e $SDPC_RUN_DIR_MASTER ; then
    exit 1
 fi
 
+printf "Creating pipeline directory: $SDPC_RUN_DIR_MASTER\n"
+
 mkdirlist()
 {
    rootdir="$1"

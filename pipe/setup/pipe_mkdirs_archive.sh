@@ -10,6 +10,8 @@ if test -e $SDPC_ARCHIVE_DIR ; then
    exit 1
 fi
 
+printf "Creating archive directory: $SDPC_ARCHIVE_DIR\n"
+
 mkdirlist()
 {
    rootdir="$1"

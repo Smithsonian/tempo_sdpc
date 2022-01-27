@@ -7,8 +7,6 @@ set -e
 : "${SDPC_ROOT:?SDPC_ROOT not set -- source sdpc_env.sh}"
 : "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set -- source sdpc_env.sh}"
 
-printf "Creating pipeline directory: $SDPC_RUN_DIR_MASTER\n"
-
 pipe_mkdirs_master.sh
 pipe_mkdirs_archive.sh
 
