@@ -20,6 +20,7 @@ fi
 
 latest="$target_dir/bulletina.txt"
 lftp <<- EOF
+   set log:file/xfer ""
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    get $source_url -o $latest
