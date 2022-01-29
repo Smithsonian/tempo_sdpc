@@ -93,5 +93,5 @@ fetch_forecast_for_date()
 }
 
 fetch_forecast_for_date "$today_opt" "??00z"
-fetch_forecast_for_date "$tomorrow_opt" "0?00z"
+fetch_forecast_for_date "$tomorrow_opt" "??00z"
 

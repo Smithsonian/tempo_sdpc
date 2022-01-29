@@ -18,11 +18,11 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 5-59/10 *	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh GOES >> var/log/goes.log 2>&1
 
 # GEOS-CF data: daily
-15	6	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh GEOSCF >> var/log/geoscf.log 2>&1
+30	2	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh GEOSCF >> var/log/geoscf.log 2>&1
 
 # Ancillary data to ASDC:
-45	0,4	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GOES >> var/log/asdc_goes.log 2>&1
-45	2,22	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
+7	4,20	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GOES >> var/log/asdc_goes.log 2>&1
+7	23	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
 
 # cleanup
 @weekly		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && /usr/sbin/logrotate -s var/log/logstate etc/logrotate.conf
