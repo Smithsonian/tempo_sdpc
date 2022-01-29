@@ -78,7 +78,7 @@ def update_ims_entry (conn, table_name, entry):
 def process_file (conn, path):
     basename = os.path.basename (path)
 
-    # example basename: ims2021125_1km_GIS_v1.3.tif.gz
+    # example basename: ims2022027_1km_v1.3.nc.gz
     tok = basename.split('_')
     daytag = int(tok[0].strip('ims'))
 

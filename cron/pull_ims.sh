@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#! /bin/bash
 
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 
@@ -18,10 +18,6 @@ subdir="$(date -u +%Y)"
 target_dir="$rootdir/$subdir"
 if ! test -d $target_dir ; then
    mkdir -p $target_dir
-   prev_path=""
-else
-   prev_file=$(ls -t $target_dir | head -n1)
-   prev_path="$target_dir/$prev_file"
 fi
 
 lftp $source_url <<- EOF
@@ -30,17 +26,15 @@ lftp $source_url <<- EOF
    set xfer:temp-file-name *.lftp
    set mirror:require-source true
    cd $source_dir
-   mirror -c --newer-than=now-4days $subdir $target_dir
+   mirror -c --newer-than=now-3days $subdir $target_dir
    quit
 EOF
 
-newer=""
-if test x"$prev_path" != x ; then
-   newer="-newer $prev_path"
-fi
-new_list=$(find $target_dir -name "ims???????_1km_GIS_v*.tif.gz" $newer)
+new_list=$(find $target_dir -name "ims???????_1km_v*.nc.gz")
 
 if test x"$new_list" != x ; then
+   gunzip -f $new_list
+   new_list=$(echo $new_list | sed -e 's,.gz,,g')
    $SDPC_ANCILLARY_ROOT/bin/register_ims.py --dbfile $rootdir/ims.sqlite $new_list
 fi
 
