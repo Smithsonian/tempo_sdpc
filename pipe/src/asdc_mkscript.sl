@@ -457,7 +457,7 @@ private define get_hostname ()
         name = "unknown";
      }
 
-   return name[0];
+   return strtrim (name[0], "\n\t");
 }
 
 define slsh_main ()
