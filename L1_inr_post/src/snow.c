@@ -8,10 +8,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <tiffio.h>
-#include <geotiff.h>
-#include <xtiffio.h>
-
 #include <proj_api.h>
 #include <tell.h>
 #include <tio.h>
@@ -428,60 +424,69 @@ static Snow_Type *new_snow_type (void)
 
 static int read_snow_file (Snow_Type *sn, const char *file)
 {
-   TIFF *tiff = NULL;
-   unsigned int row;
-   size_t image_size, scan_line_size;
-   int pixel_size_bytes, status = -1;
+   TIO_Var_Info_Type info;
+   const char *ims_surface_values = "IMS_Surface_Values";
+   unsigned char *tmp = NULL;
+   int ncid, image_size, start[3], count[3];
+   size_t i;
+   int status = -1;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "opening %s", file);
 
-   if (NULL == (tiff = XTIFFOpen (file, "r")))
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      {
         tell_verror (TELL_IO_OPEN_ERROR, "%s: opening %s", __func__, file);
         return -1;
      }
 
-   if (!TIFFGetField (tiff, TIFFTAG_IMAGELENGTH, &sn->num_rows)
-       || !TIFFGetField (tiff, TIFFTAG_IMAGEWIDTH, &sn->num_cols))
+   if (0 != TIO_inq_var (ncid, ims_surface_values, &info))
      {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading TIFF image dimensions",
-                    __func__);
+        tell_verror (TELL_IO_READ_ERROR, "%s: accessing variable %s",
+                     __func__, ims_surface_values);
         goto close_and_return;
      }
 
-   scan_line_size = TIFFScanlineSize (tiff);
-   pixel_size_bytes = scan_line_size / sn->num_cols;
+   sn->num_rows = info.dimlens[1];
+   sn->num_cols = info.dimlens[2];
 
-   if (sn->num_cols != scan_line_size)
-     {
-        tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: type mismatch: expected 8-bit pixels", __func__);
-        goto close_and_return;
-     }
+   image_size = sn->num_rows * sn->num_cols;
 
-   image_size = sn->num_rows * sn->num_cols * pixel_size_bytes;
-
-   if (NULL == (sn->pixels = (unsigned char *) MALLOC (image_size)))
+   if ((NULL == (sn->pixels = (unsigned char *) MALLOC (image_size)))
+       || (NULL == (tmp = (unsigned char *) MALLOC (sn->num_cols))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto close_and_return;
      }
 
-   for (row = 0; row < sn->num_rows; row++)
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+
+   count[0] = 1;
+   count[1] = sn->num_rows;
+   count[2] = sn->num_cols;
+
+   if (0 != TIO_get_var_section (ncid, ims_surface_values, start, count, NC_BYTE, sn->pixels))
      {
-        void *pixel_row = sn->pixels + row * sn->num_cols;
-        if (!TIFFReadScanline (tiff, pixel_row, row, 0))
-          {
-             tell_verror (TELL_IO_READ_ERROR,
-                          "%s: reading TIFF image, scan line %d",
-                          __func__, row);
-             goto close_and_return;
-          }
+        tell_verror (TELL_IO_READ_ERROR,
+                     "%s: reading IMS_Surface_Values", __func__);
+        goto close_and_return;
+     }
+
+   /* Data array has y flipped */
+   for (i = 0; i < sn->num_rows/2; i++)
+     {
+        unsigned char *a = sn->pixels + sn->num_cols * i;
+        unsigned char *b = sn->pixels + sn->num_cols * (sn->num_rows - i - 1);
+        memcpy ((unsigned char *)tmp, (unsigned char *)b,   sn->num_cols);
+        memcpy ((unsigned char *)b,   (unsigned char *)a,   sn->num_cols);
+        memcpy ((unsigned char *)a,   (unsigned char *)tmp, sn->num_cols);
      }
 
    status = 0;
 close_and_return:
-   TIFFClose (tiff);
+   FREE(tmp);
+   TIO_close (ncid);
 
    return status;
 }
