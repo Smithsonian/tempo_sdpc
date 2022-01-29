@@ -54,27 +54,9 @@ rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")
 # construct granule label string for slurm job names
 export SDPC_GRANULE_LABEL="${rad_basename}"
 
-cache_uncompressed_snow_file()
-{
-   path=$1
-
-   file_sans_gz=$(basename $path .gz)
-
-   cache_dir="$SDPC_RUN_DIR_MASTER/cache/snow"
-   if ! test -d $cache_dir ; then
-      mkdir -p $cache_dir || error_exit "$LINENO: cannot create directory: $cache_dir"
-   fi
-
-   snow_file="$cache_dir/$file_sans_gz"
-   if ! test -f "$snow_file" ; then
-      gunzip -c $path > "$snow_file" || error_exit "$LINENO: uncompressing file into $cache_dir"
-   fi
-}
-
 # Generate file list file on master node
 irr_file=$(select_irr.py "$rad_path")
 snow_file=$(select_ims.py "$rad_path")
-cache_uncompressed_snow_file $snow_file
 granule_dir=$(dirname "$rad_path")
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
