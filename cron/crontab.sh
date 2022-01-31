@@ -29,65 +29,56 @@ _task=$1
 
 case $_task in
    IERS )
-   if test x"$state_iers" = xon ; then
-      pull_iers.sh $iers_source_url
-   fi
+   test x"$state_iers" = xon || exit 0
+   pull_iers.sh $iers_source_url
    ;;
 
    IMS )
-   if test x"$state_ims" = xon ; then
-      pull_ims.sh $ims_url $ims_dir
-   fi
+   test x"$state_ims" = xon || exit 0
+   pull_ims.sh $ims_url $ims_dir
    ;;
 
    GOES )
-   if test x"$state_goes" = xon ; then
-      pull_goes.sh $pda_service_account
-   fi
+   test x"$state_goes" = xon || exit 0
+   pull_goes.sh $pda_service_account
    ;;
 
    GEOSCF )
-   if test x"$state_geoscf" = xon ; then
-      pull_geoscf.sh $geoscf_source_url
-   fi
+   test x"$state_geoscf" = xon || exit 0
+   pull_geoscf.sh $geoscf_source_url
    ;;
 
    ASDC_GOES )
-   if test x"$state_asdc_goes" = xon ; then
-      cmig16_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig16.sqlite"
-      cmig17_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig17.sqlite"
+   test x"$state_asdc_goes" = xon || exit 0
+   cmig16_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig16.sqlite"
+   cmig17_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig17.sqlite"
 
-      asdc_pull_ack.sh $asdc_dropbox $cmig16_sqlite CMIG16 
-      asdc_pull_ack.sh $asdc_dropbox $cmig17_sqlite CMIG17 
-      asdc_push_files.sh $asdc_dropbox $cmig16_sqlite
-      asdc_push_files.sh $asdc_dropbox $cmig17_sqlite
-   fi
+   asdc_pull_ack.sh $asdc_dropbox $cmig16_sqlite CMIG16
+   asdc_pull_ack.sh $asdc_dropbox $cmig17_sqlite CMIG17
+   asdc_push_files.sh $asdc_dropbox $cmig16_sqlite
+   asdc_push_files.sh $asdc_dropbox $cmig17_sqlite
    ;;
 
    ASDC_GEOSCF )
-   if test x"$state_asdc_geoscf" = xon ; then
-      geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
+   test x"$state_asdc_geoscf" = xon || exit 0
+   geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
 
-      asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF 
-      asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
-   fi
+   asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
+   asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
    ;;
 
    CLEANUP )
-   if test -f bin/cleanup.sh ; then
-      bin/cleanup.sh
-   fi
+   test -f bin/cleanup.sh || exit 0
+   bin/cleanup.sh
    ;;
 
    * )
-   printf "** Unsupported cron task: $_task"
-   exit 1
+   printf "*** Error: unsupported cron task: $_task"
+   false
    ;;
 esac
 
 exit_status="$?"
-
 tend=$(date +%s)
 tdelta=$((tend-tbeg))
-
 printf "${tstamp}: crontab.sh $_task: exit status ${exit_status}: $tdelta seconds\n"
