@@ -524,7 +524,6 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_TPSec_Type *s;
    IOCSDPC_TPSec_Row_Type **row_list = NULL;
-   unsigned int i, nrows;
    int fd;
 
    (void) pmt; (void) client_data;
@@ -538,25 +537,33 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, &chdr)))
      goto return_error;
 
-   nrows = s->num_rows;
-
-   if (NULL == (row_list = alloc_tpsec_row_list (nrows)))
-     goto return_error;
-
-   for (i = 0; i < nrows; i++)
+   if (s->num_rows > 0)
      {
-        if (-1 == iocsdpc_tpsec_read_row (s, &row_list[i]))
+        unsigned int i, nrows = s->num_rows;
+
+        if (NULL == (row_list = alloc_tpsec_row_list (nrows)))
+          goto return_error;
+
+        for (i = 0; i < nrows; i++)
           {
-             tell_verror (TELL_IO_READ_ERROR, "%s: reading row %u of %s",
-                          __func__, i+1, file);
+             if (-1 == iocsdpc_tpsec_read_row (s, &row_list[i]))
+               {
+                  tell_verror (TELL_IO_READ_ERROR, "%s: reading row %u of %s",
+                               __func__, i+1, file);
+                  free_tpsec_row_list (row_list, nrows);
+                  goto return_error;
+               }
+          }
+
+        if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list, file))
+          {
+             free_tpsec_row_list (row_list, nrows);
              goto return_error;
           }
+
+        free_tpsec_row_list (row_list, nrows);
      }
 
-   if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list, file))
-     goto return_error;
-
-   free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
 
@@ -564,7 +571,6 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
 
 return_error:
    tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing file: %s", __func__, file);
-   free_tpsec_row_list (row_list, nrows);
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
    return -1;
