@@ -30,6 +30,7 @@ extern void row_select_free (Row_Select_Type *rst);
  * @param[in] num_files   Number of files to be examined.
  * @param[in] file_list   Pointer to array of strings containing file paths.
  * @param[in] group_path  Pointer to file group containing time series (ignored if NULL)
+ * @param[in] time_var    Name of the relevant time variable (if NULL, "time" is assumed)
  * @param[out] rstp      Pointer to a linked list of @c Row_Select_Type objects
  *                       that cover the specified time interval with the
  *                       required padding.
@@ -37,6 +38,7 @@ extern void row_select_free (Row_Select_Type *rst);
  */
 extern int row_select_scan (double time_beg, double time_end, int num_pad,
                             int num_files, char **file_list,
-                            const char *group_path, Row_Select_Type **rstp);
+                            const char *group_path, const char *time_var,
+                            Row_Select_Type **rstp);
 
 #endif

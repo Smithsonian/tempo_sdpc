@@ -353,7 +353,7 @@ static int copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
      goto return_status;
 
    if (0 != row_select_scan (time_beg, time_end, pad_enable ? iru.num_pad : 0,
-                             fa.num_files, fa.file_list, NULL, &rst))
+                             fa.num_files, fa.file_list, NULL, NULL, &rst))
      goto return_status;
 
    if (rst)
@@ -384,7 +384,7 @@ static int copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
      goto return_status;
 
    if (0 != row_select_scan (time_beg, time_end, pad_enable ? smc.num_pad : 0,
-                             fa.num_files, fa.file_list, NULL, &rst))
+                             fa.num_files, fa.file_list, NULL, NULL, &rst))
      goto return_status;
 
    if (rst)
@@ -490,7 +490,8 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
    Selection_Type eph = {0};
    File_Array_Type fa = {0};
    Row_Select_Type *rst = NULL;
-   const char *group_path = "anc_sec_102";
+   const char *group_path = "anc_gps";
+   const char *time_var = "anc_gps_time";
    int status = -1;
 
    if (0 != read_common_params (cfg, "eph_config", &eph))
@@ -500,7 +501,7 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
      goto return_status;
 
    if (0 != row_select_scan (time_beg, time_end, pad_enable ? eph.num_pad : 0,
-                             fa.num_files, fa.file_list, group_path, &rst))
+                             fa.num_files, fa.file_list, group_path, time_var, &rst))
      goto return_status;
 
    if (rst)

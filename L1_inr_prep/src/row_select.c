@@ -63,11 +63,15 @@ static Row_Select_Type *alloc_row_select (const char *file)
    return rst;
 }
 
-static int read_times (Row_Select_Type *rst, int ncid)
+static int read_times (Row_Select_Type *rst, const char *time_var, int ncid)
 {
    TIO_Var_Info_Type info;
-   const char *time_var = "time";
    size_t size_times;
+
+   if (time_var == NULL)
+     {
+        time_var = "time";
+     }
 
    if (0 != TIO_inq_var (ncid, time_var, &info))
      return -1;
@@ -246,7 +250,8 @@ static int examine_file (Row_Select_Type **rstp, int ncid, const char *file,
 
 int row_select_scan (double time_beg, double time_end, int num_pad,
                      int num_files, char **file_list,
-                     const char *group_path, Row_Select_Type **rstp)
+                     const char *group_path, const char *time_var,
+                     Row_Select_Type **rstp)
 {
    Row_Select_Type *rst_head = NULL;
    int return_status = -1;
@@ -308,7 +313,7 @@ int row_select_scan (double time_beg, double time_end, int num_pad,
         else if (status == FILE_OVERLAPS_INTERVAL)
           {
              tell_vlog (TELL_MSGTYPE_INFO, 1, "file overlaps interval: %s", file);
-             if (0 != read_times (rst, grp))
+             if (0 != read_times (rst, time_var, grp))
                goto cleanup_and_return;
              (void) TIO_close (ncid);
              ncid = 0;
