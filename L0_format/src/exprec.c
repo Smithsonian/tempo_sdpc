@@ -795,7 +795,11 @@ static int process_exprec1 (Process_Method_Type *pmt,
 
    /* Reject duplicate radiance */
    if (is_radiance && (exprec_info->curr_mirror_step == pmt->curr_mirror_step))
-     return -1;
+     {
+        tell_vinfo (1, "%s: skipping duplicate radiance frame curr_mirror_step=%d: file = %s",
+                    __func__, exprec_info->curr_mirror_step, file);
+        return -1;
+     }
 
    if (is_radiance)
      {

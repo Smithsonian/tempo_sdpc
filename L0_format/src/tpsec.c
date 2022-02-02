@@ -563,6 +563,10 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
 
         free_tpsec_row_list (row_list, nrows);
      }
+   else
+     {
+        tell_vinfo (1, "%s: num_rows=0 in section file: %s", __func__, file);
+     }
 
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
