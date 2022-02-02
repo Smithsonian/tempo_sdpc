@@ -65,6 +65,9 @@ do_asdc_upload()
   # perform the upload
   lftp -f $script
 
+  # mark the file status as "uploaded" and record the upload time
+  asdc_track_uploads.py --set uploaded $file_list
+
   # track PDR files for asdc_pull.sh
   asdc_files.py --dbfile $pdr_dbfile --add $(cat $pdr_list)
 }
@@ -80,6 +83,6 @@ upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/push/tempo_pdr_%Y%jT%
 do_asdc_upload $upload_dir_path
 
 num_new=$(asdc_track_uploads.py --num new)
-num_pending=$(asdc_track_uploads.py --num pending)
-echo "asdc_push.sh: ASDC ingest status: new: $num_new  pending: $num_pending"
+num_uploaded=$(asdc_track_uploads.py --num uploaded)
+echo "asdc_push.sh: ASDC ingest status: new: $num_new  uploaded: $num_uploaded"
 

@@ -8,7 +8,7 @@ import sqlite3
 import re
 import argparse
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "accepted":2}
+Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3}
 DryRun = False
 
 class Tokenizer:
@@ -37,11 +37,11 @@ def get_product_table_names (cur):
 
 def table_files_matching_status (cur, table_name, asdc_status, limit=0):
     if limit > 0:
-        nc_query  = "select path from {} where asdc_status == {} order by path limit {}".format(table_name, asdc_status, limit)
-        met_query = "select path from {} where asdc_status_met == {} order by path limit {}".format(table_name, asdc_status, limit)
+        nc_query  = "select path from {table_name} where asdc_status == {asdc_status} order by path limit {limit}".format(**locals())
+        met_query = "select path from {table_name} where asdc_status_met == {asdc_status} order by path limit {limit}".format(**locals())
     else:
-        nc_query  = "select path from {} where asdc_status == {} order by path".format(table_name, asdc_status)
-        met_query = "select path from {} where asdc_status_met == {} order by path".format(table_name, asdc_status)
+        nc_query  = "select path from {table_name} where asdc_status == {asdc_status} order by path".format(**locals())
+        met_query = "select path from {table_name} where asdc_status_met == {asdc_status} order by path".format(**locals())
 
     cur.execute (nc_query)
     nc_paths = [item for t in cur.fetchall() for item in t]
@@ -73,7 +73,7 @@ def table_name_for_file_raw (filename):
     tok = filename.split('_')
     return tok[1]
 
-def update_file_status (cur, filename, asdc_status, asdc_ingest_time=None):
+def update_file_status (cur, filename, asdc_status, status_time):
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
@@ -89,10 +89,19 @@ def update_file_status (cur, filename, asdc_status, asdc_ingest_time=None):
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
-    if asdc_ingest_time is None:
-        sql = "update {} set {}={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, file_basename)
+
+    if asdc_status == Asdc_Status["uploaded"]:
+        status_time_var = "asdc_upload_time"
+    elif asdc_status == Asdc_Status["problem"] or asdc_status == Asdc_Status["accepted"]:
+        status_time_var = "asdc_ingest_time"
     else:
-        sql = "update {} set {}={},asdc_ingest_time={} where filename=\"{}\"".format(table_name, status_var_name, asdc_status, asdc_ingest_time, file_basename)
+        status_time_var = None
+
+    if status_time_var is None:
+        sql = "update {table_name} set {status_var_name}={asdc_status} where filename=\"{file_basename}\"".format(**locals())
+    else:
+        sql = "update {table_name} set {status_var_name}={asdc_status},{status_time_var}={status_time} where filename=\"{file_basename}\"".format(**locals())
+
     if DryRun:
         print(sql)
     else:
@@ -183,9 +192,9 @@ def process_longpan(cur, longpan_file):
             if entry == None:
                 break
             if entry["disposition"] == "SUCCESSFUL":
-                update_file_status (cur, entry["basename"], Asdc_Status["accepted"], asdc_ingest_time=entry["time_stamp"])
+                update_file_status (cur, entry["basename"], Asdc_Status["accepted"], entry["time_stamp"])
             else:
-                update_file_status (cur, entry["basename"], Asdc_Status["problem"], asdc_ingest_time=entry["time_stamp"])
+                update_file_status (cur, entry["basename"], Asdc_Status["problem"], entry["time_stamp"])
                 num_bad += 1
 
     return num_bad
@@ -206,10 +215,11 @@ def set_file_status (status, file_list):
     with open(file_list, "r") as fp:
         files = fp.readlines()
     files = [f.strip() for f in files]
+    status_time = int(time.time())
     with connect_database() as conn:
         cur = conn.cursor()
         for f in files:
-            update_file_status (cur, f, Asdc_Status[status])
+            update_file_status (cur, f, Asdc_Status[status], status_time)
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
@@ -222,7 +232,7 @@ def main():
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
-                        help="Process LONGPAN files (changes status 'pending' to 'accepted'|'problem')")
+                        help="Process LONGPAN files (changes status 'uploaded' to 'accepted'|'problem')")
     parser.add_argument('--dryrun', action='store_true',
                         help="Show actions, but don't modify the database")
     if len(sys.argv)==1:
