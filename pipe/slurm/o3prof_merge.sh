@@ -49,7 +49,7 @@ perform_merge()
   cd $o3p_dir
   #echo "chdir $o3p_dir"
 
-  input_files=$(ls block_*/TEMPO_O3PROF*.nc)
+  input_files=$(find . -mindepth 2 -maxdepth 2 -name "TEMPO_O3PROF*.nc")
 
   # Use the first filename to construct the filename for the merged result.
   first_file=$(echo $input_files | cut -d' ' -f 1)
@@ -68,12 +68,20 @@ EOF
 
   srun --ntasks=1 --output=merge.log merge_o3p_files
 
-  # The .met files should be equivalent, so any one will do
-  first_input_file=$(echo $input_files | cut -d' ' -f1)
-  /bin/cp ${first_input_file}.met .
+  # The .met files should be equivalent, so any one will do,
+  # but the met file name _must_ match the product file name.
 
-  met_file=$(basename ${first_input_file}.met)
+  met_file=${product_file}.met
+
+  first_input_file=$(find . -mindepth 2 -maxdepth 2 -name "TEMPO_O3PROF*.nc" -print -quit)
+  /bin/cp ${first_input_file}.met $met_file
+
   fix_met_format.py $met_file
+
+  # Fixup O3PROF filename in the .met file:
+  # Change this: TEMPO_O3PROF_L2_V01_20130701T132953Z_S001G06_X1477-1512-BX4.nc
+  #     to this: TEMPO_O3PROF_L2_V01_20130701T132953Z_S001G06.nc
+  sed -i -e 's,_X[0-9].*-[0-9].*-BX[0-9].*\.nc,.nc,g' $met_file
 
   # insert fixed metadata and, make sure the merged product
   # gets added to the product registry, and the public mirror

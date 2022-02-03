@@ -102,7 +102,7 @@ tar_product_to_dest_dir()
 
 decide_cleanup_dest_dir()
 {
-   dirs="$(ls -d block_*)"
+   dirs="$(find . -maxdepth 1 -type d -name 'block_*')"
    cleanup_dest_dir="$l2_out_dir"
    for d in $dirs ; do
      status_file="$d/exit_status"
@@ -242,7 +242,7 @@ config_subdir()
 
 array_bounds=$(o3p_partition.sl -m . "$host_spec")
 
-block_dirs=$(ls -d block_*)
+block_dirs="$(find . -maxdepth 1 -type d -name 'block_*')"
 
 for subdir in $block_dirs; do
    config_subdir $subdir
