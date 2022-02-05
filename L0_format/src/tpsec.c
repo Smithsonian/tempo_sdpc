@@ -565,7 +565,8 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
      }
    else
      {
-        tell_vinfo (1, "%s: num_rows=0 in section file: %s", __func__, file);
+        /* system tests processing synthetic data look for this warning message */
+        tell_vwarn (0, "%s: num_rows=0 in section file: %s", __func__, file);
      }
 
    iocsdpc_tpsec_close (s);

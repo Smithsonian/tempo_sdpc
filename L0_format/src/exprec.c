@@ -202,6 +202,7 @@ static int define_outfile_vars (Process_Method_Type *pmt,
    unsigned int nth, value;
    int dimids_exprec[3];
    size_t chunksizes[3];
+   const char *dark_type = NULL;
 
    len = strlen(pmt->exprec_type_string)+1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "exprec_type",
@@ -210,6 +211,28 @@ static int define_outfile_vars (Process_Method_Type *pmt,
 
    if (0 != TIO_label_product (ncid, pmt->product_type, 0, pmt->processing_version))
      return -1;
+
+   /* Use a 'dark_type' attribute to provide context for dark data */
+   switch (pmt->exprec_type)
+     {
+      case IOCSDPC_EXPREC_TYPE_DARK:
+        dark_type = "RAD";
+        break;
+      case IOCSDPC_EXPREC_TYPE_IRR_DARK:
+        dark_type = "IRR";
+        break;
+      case IOCSDPC_EXPREC_TYPE_LIN_DARK:
+        dark_type = "LIN";
+        break;
+      default:
+        break;
+     }
+   if (dark_type)
+     {
+        len = strlen(dark_type)+1;
+        if (-1 == TIO_put_att (ncid, NC_GLOBAL, "dark_type", NC_CHAR, len, dark_type))
+          return -1;
+     }
 
    if (identp)
      {
@@ -418,6 +441,8 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                                    &radiance_ident.granule_flag);
         identp = &radiance_ident;
         break;
+      case IOCSDPC_EXPREC_TYPE_IRR_DARK:
+        /* FALLTHROUGH */
       case IOCSDPC_EXPREC_TYPE_DARK:
         pmt->product_type = TEMPO_PROD_TYPE_DRK;
         pmt->exprec_type_string = TEMPO_PROD_TYPESTR_DRK;
