@@ -311,6 +311,25 @@ int current_write_exprec (int ncid, const Exprec_Meta_Type *xr)
    return write_image_at_index (ncid, xr->index, exprec->img);
 }
 
+/* (optional) copy dark_type attribute */
+static int copy_dark_type (int ncid_in, int ncid_out)
+{
+   char dark_type[TIO_MAX_SHORT_NAME_LEN];
+   int have_dark_type;
+
+   tell_push_queue();
+   have_dark_type = (0 == TIO_get_att (ncid_in, NC_GLOBAL, "dark_type", NC_CHAR, dark_type));
+   tell_pop_queue(1);
+
+   if (have_dark_type)
+     {
+        if (0 != TIO_put_att (ncid_out, NC_GLOBAL, "dark_type", NC_CHAR, 1+strlen(dark_type), dark_type))
+          return -1;
+     }
+
+   return 0;
+}
+
 int current_create_file_of_type (Granule_Type *gr, const char *output_file,
                                  int num_times, int num_rows, int num_cols,
                                  int *pncid, int *pgrp)
@@ -350,6 +369,12 @@ int current_create_file_of_type (Granule_Type *gr, const char *output_file,
      goto return_status;
    if (0 != TIO_label_product (ncid, product_type, 1, process_get_version()))
      goto return_status;
+
+   if (exposure_type == EXPREC_TYPE_DARK)
+     {
+        if (0 != copy_dark_type (gr->granule_ncid(gr), ncid))
+          goto return_status;
+     }
 
    if (0 == want_average)
      {
