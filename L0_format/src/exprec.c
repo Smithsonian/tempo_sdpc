@@ -197,6 +197,7 @@ static int define_outfile_vars (Process_Method_Type *pmt,
    int dimid_time, dimid_row, dimid_col;
    int varid_image_start_time, varid_exposure_time;
    int varid_readout_time, varid_frame_transfer_time;
+   int varid_num_rows_missing, varid_num_rows_badcrc, varid_last_cbm_id;
    int varid_exprec, len;
    unsigned int nth, value;
    int dimids_exprec[3];
@@ -246,6 +247,13 @@ static int define_outfile_vars (Process_Method_Type *pmt,
    if (-1 == TIO_def_var (ncid, "readout_time", NC_DOUBLE, 1, &dimid_time, &varid_readout_time))
      return -1;
    if (-1 == TIO_def_var (ncid, "frame_transfer_time", NC_DOUBLE, 1, &dimid_time, &varid_frame_transfer_time))
+     return -1;
+
+   if (-1 == TIO_def_var (ncid, "num_rows_missing", NC_UINT, 1, &dimid_time, &varid_num_rows_missing))
+     return -1;
+   if (-1 == TIO_def_var (ncid, "num_rows_badcrc", NC_UINT, 1, &dimid_time, &varid_num_rows_badcrc))
+     return -1;
+   if (-1 == TIO_def_var (ncid, "last_cbm_id", NC_INT, 1, &dimid_time, &varid_last_cbm_id))
      return -1;
 
    nth = 0;
@@ -510,6 +518,15 @@ static int write_exprec (Process_Method_Type *pmt,
      goto return_status;
    if (-1 == TIO_put_var_section (ncid, "frame_transfer_time", start, count,
                                   NC_DOUBLE, &erec->frame_transfer_time))
+     goto return_status;
+   if (-1 == TIO_put_var_section (ncid, "num_rows_missing", start, count,
+                                  NC_UINT, &erec->num_rows_missing))
+     goto return_status;
+   if (-1 == TIO_put_var_section (ncid, "num_rows_badcrc", start, count,
+                                  NC_UINT, &erec->num_rows_badcrc))
+     goto return_status;
+   if (-1 == TIO_put_var_section (ncid, "last_cbm_id", start, count,
+                                  NC_INT, &erec->last_cbm_id))
      goto return_status;
 
    nth = 0;
