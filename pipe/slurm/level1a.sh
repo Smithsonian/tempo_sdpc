@@ -162,7 +162,7 @@ case "${granule_basename}" in
 esac
 
 hk_file_list="$granule_dir/.${granule_basename}_hk.lis"
-select_l0.py --table HK_L0 --granule "$granule_path" > $hk_file_list
+select_l0.py --wait 120 --table HK_L0 --granule "$granule_path" > $hk_file_list
 
 # Create file-list file
 file_list_file="$granule_dir/.${granule_basename}.lis"
