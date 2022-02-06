@@ -31,6 +31,7 @@
    double gyro_bias_time; \
    unsigned int gyro_dimension; \
    unsigned int bias_dimension; \
+   unsigned int num_dropped_messages; \
    void *outbuf; \
    size_t outbuf_num_bytes; \
    int num_written; \
@@ -72,6 +73,10 @@ static int close_iru_outfile (Process_Method_Type *pmt)
                                                pmt->outfile_timestamp_end))
           return -1;
 
+        if (0 != TIO_put_att (pmt->ncid, NC_GLOBAL, "num_dropped_messages",
+                              NC_UINT, 1, &pmt->num_dropped_messages))
+          return -1;
+
         /* close the file */
         if (0 != TIO_close (pmt->ncid))
           return -1;
@@ -95,6 +100,7 @@ static int close_iru_outfile (Process_Method_Type *pmt)
    pmt->ncid = INT_MAX;
    pmt->num_written = 0;
    pmt->num_files = 0;
+   pmt->num_dropped_messages = 0;
    return 0;
 }
 
@@ -419,7 +425,7 @@ static int select_iru_outfile (Process_Method_Type *pmt,
                                const IOCSDPC_IRU_Type *iru, double timestamp)
 {
    /* FIXME - support splitting iru file across multiple
-    * netcdf files? */
+    * netcdf files? Tracking num_dropped_messages would be harder. */
    if ((pmt->ncid != INT_MAX)
        && (0 < pmt->outfile_timestamp_start)
        && ((timestamp - pmt->outfile_timestamp_start)
@@ -452,6 +458,8 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    if (NULL == (iru = iocsdpc_iru_fdopen_read (file, fd, &chdr)))
      goto return_status;
+
+   pmt->num_dropped_messages += iru->num_dropped_messages;
 
    rec_array_size = iru->num_records * IOCSDPC_IRU_RECORD_SIZE;
    if (NULL == (rec_array = (IOCSDPC_IRU_Record_Type *)MALLOC (rec_array_size)))
