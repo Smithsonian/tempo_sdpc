@@ -1044,16 +1044,16 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         npsl = 2 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx]
        !np2 = np3; p2wins = p3wins; p2ind = p3ind; p2find = p3find
        np3 = 0
-       IF (np1 ==0 .or. np2 == 0) THEN 
-          PRINT * , 'check for pw or pk'
-          stop 1
-       ENDIF
+       !IF (np1 ==0 .or. np2 == 0) THEN 
+       !   PRINT * , 'check for pw or pk'
+       !   stop 1
+       !ENDIF
     ELSE IF (which_slit == 5) THEN ! asym super gaussian
         npsl = 3 ; psl_fpos(1:npsl) = [hwe_idx, spk_idx, asy_idx]
-       IF (np1 ==0 .or. np2 == 0 .or. np3 == 0) THEN 
-          PRINT * , 'check for pw or pk'
-          stop 1
-       ENDIF
+       !IF (np1 ==0 .or. np2 == 0 .or. np3 == 0) THEN 
+       !   PRINT * , 'check for pw or pk'
+       !   stop 1
+       !ENDIF
     ELSE IF (which_slit == instrument_sidx) THEN  ! omi instrument
          np1 = 0 ; np2 = 0 ; np3 = 0
      ! current OMI instrument slit function is not fitted, but Kang Sun did it

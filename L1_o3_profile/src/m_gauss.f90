@@ -161,9 +161,9 @@ contains
     INTEGER                             :: i, j, j1, j2, num_slit, mslit, &
          fidx, lidx, iwin
     REAL (KIND=dp)                      :: delwvl, hw1e, e_asym, rsw, &
-         lsw, slitsum!, maxslit
+         lsw, slitsum, upbnd!, maxslit
     REAL (KIND=dp)                      :: slitsum1,hw1e_pert,e_asym_pert,  pert
-    REAL (KIND=dp), DIMENSION (npoints) :: slit, slit1,locwvl, upbnd
+    REAL (KIND=dp), DIMENSION (npoints) :: slit, slit1,locwvl
     INTEGER,        DIMENSION (npoints) :: idx
     REAL (KIND=dp), EXTERNAL            :: signdp
 
@@ -685,8 +685,8 @@ SUBROUTINE gauss_tophat (wvlarr, specarr, specmod, npoints, hw1e)
     ! Local variables
     ! ===============
     INTEGER                             :: i, j, ii, j1, j2, num_slit, mslit, fidx, lidx, iwin
-    REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, sw, ssum1
-    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, upbnd, slit1
+    REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, sw, ssum1, upbnd
+    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, slit1
 
     ! --------------------------------------------------------
     ! Initialize output variable (default for "no convolution"
@@ -705,7 +705,7 @@ SUBROUTINE gauss_tophat (wvlarr, specarr, specmod, npoints, hw1e)
       ELSE 
         lidx = npoints
       END IF
-
+      
       ! -----------------------------------------------
       ! No Gaussian convolution if Halfwidth @ 1/e is 0
       ! -----------------------------------------------
@@ -766,6 +766,7 @@ SUBROUTINE gauss_tophat (wvlarr, specarr, specmod, npoints, hw1e)
       END DO
 
       fidx = lidx + 1
+      IF (fidx > npoints) EXIT
     END DO
 
     RETURN

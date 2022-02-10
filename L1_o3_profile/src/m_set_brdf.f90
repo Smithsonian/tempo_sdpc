@@ -12,7 +12,7 @@ module m_set_brdf
   USE Input_module, ONLY: readinputfile, InpOptType
   USE surface_module, ONLY: SurfOptType, SurfProfType, SurfaceType
   !USE surface_module, ONLY: SurfOptType, SurfProfType, SurfaceType, InitSurface,SampleSurfaceProperties, SetSurfaceLinearization
-  USE error_module, ONLY: ErrorType
+  USE error_module, ONLY: ErrorType, CheckError
   USE OMSAO_precision_module, ONLY:sp,dp
   TYPE (InpOptType)  :: InpOpt
   TYPE (SurfOptType) :: SurfOpt
@@ -87,8 +87,13 @@ SUBROUTINE set_brdf (nw, wavs,nactalbspc,landfrac, errstat)
   nalbwf = 1
   nactalbspc = Surface%option4%fmx
   landfrac=Surface%Option4%LandFraction
+  IF(CheckError(Error)) THEN
+     print *, "Error in calling Surface%SamplePixel!"
+  ELSE
+     print *, "No error in calling Surface%SamplePixel"
+  ENDIF
   ! interpolation is done at set_cldalb_spc
-  !RETURN
+  RETURN
 
   IF (SurfOpt%Option4_DoIsotropic) THEN 
     DO i=1,Surface%Option4%fmx
@@ -111,11 +116,11 @@ SUBROUTINE set_brdf (nw, wavs,nactalbspc,landfrac, errstat)
     !ENDDO
   ENDIF
     nalbwf = Surface%njac
-    WRITE(321,*) nw, surface%nkern
-    WRITE(321,'(4A15)') surface%kern_name
-    DO i = 1, nw 
-      WRITE(321,'(i5, f8.3, 4e15.7)') i,  wavs(i), surface%kern_amp(i, 1:surface%nkern)
-    ENDDO 
+    !WRITE(321,*) nw, surface%nkern
+    !WRITE(321,'(4A15)') surface%kern_name
+    !DO i = 1, nw 
+    !  WRITE(321,'(i5, f8.3, 4e15.7)') i,  wavs(i), surface%kern_amp(i, 1:surface%nkern)
+    !ENDDO 
   !ENDIF
   RETURN
 END SUBROUTINE SET_BRDF

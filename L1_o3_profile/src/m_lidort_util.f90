@@ -143,6 +143,14 @@ SUBROUTINE get_hres_radcal_waves(errstat)
   hreswav(1:nhresp) = tmp_wav(1:nhresp)
   hres_i0(1:nhresp) = tmp_i0(1:nhresp)
 
+  ! position bwt UV and VIS in hreswav
+  widx_hvis = nhresp + 1
+  IF ( nviswin > 0) THEN
+     widx_hvis = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) <  wcenter_uvvis))) +1
+  ELSE
+     widx_hvis = 0
+  ENDIF
+
   ! Establish radiance calculation grid, based on spectral sampling
   ! Sampling rate are specified in several segments (e.g., < 295 nm, 295-308 nm, > 308 nm)
   ! Make sure that radiance will be done for the first and last points.  
@@ -194,12 +202,14 @@ SUBROUTINE get_hres_radcal_waves(errstat)
   ENDDO
 
   ! position bwt UV and VIS in hreswav
-  widx_hvis = nhresp + 1
+  ! Definition of widx_hvis moved to above, as it is used before it is defined.
+  !widx_hvis = nhresp + 1
   IF ( nviswin > 0) THEN 
-     widx_hvis = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) < wcenter_uvvis))) +1 
+  !   widx_hvis = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) < wcenter_uvvis))) +1 
      widx_rvis = MINVAL(MAXLOC(radcwav(1:ncalcp), MASK=(radcwav(1:ncalcp) < wcenter_uvvis))) +1 
   ELSE
-    widx_hvis = 0 ; widx_rvis = 0
+    !widx_hvis = 0  
+    widx_rvis = 0
   ENDIF
 
   ! set PCA variables
@@ -2466,11 +2476,12 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
   LOGICAL, PARAMETER :: do_plan = .true., do_debug=.false.
   CHARACTER (LEN=255) :: msg
   !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
-  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-o3-UV/LUT-24/'
-  CHARACTER(LEN=11), DIMENSION(2)  :: LUT_type = (/"vec06stNL48", "sca02stNL24"  /)
+  !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-o3-UV/LUT-24/'
+  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/OzoneFit/tbl/vldlut/'
+  CHARACTER(LEN=12), DIMENSION(2)  :: LUT_type = (/"vec06st72nl_", "sca02st26nl_"  /)
   LOGICAL :: log_ret = .FALSE., L_stageJ, LFAIL
-  REAL (KIND=4), DIMENSION(1:8) :: vza_grid = & 
-       (/0.0, 15.0, 30.0, 43.0, 53.0, 61.0, 67.0, 72.0/)
+  REAL (KIND=4), DIMENSION(1:13) :: vza_grid = & 
+       (/0.0, 15.0, 30.0, 43.0, 53.0, 61.0, 67.0, 72.0, 76.0, 80.0, 84.0, 86.0, 88.0/)
   REAL (KIND=4), DIMENSION(1:12) :: sza_grid = & 
        (/0.0, 16.0, 31.0, 44.0, 55.0, 64.0, 71.0, 76.5, 80.5, 83.5, 86.0, 88.0/)
   INTEGER :: ib,ilat,ipt, iv_min, iv_max

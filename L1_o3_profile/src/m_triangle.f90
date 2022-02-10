@@ -108,8 +108,8 @@ contains
     ! ===============
     INTEGER :: i, j, j1, j2, num_slit, mslit, sslit, eslit, fidx, &
          lidx, iwin!, odd
-    REAL (KIND=dp)  :: delwvl, slitsum,  maxslit, fwhm!, e_asym
-    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, locsli, upbnd!, xxx
+    REAL (KIND=dp)  :: delwvl, slitsum,  maxslit, fwhm, upbnd!, e_asym
+    REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, locsli!, xxx
     INTEGER,        DIMENSION (npoints) :: idx
     REAL (KIND=dp), EXTERNAL            :: signdp
 
@@ -216,6 +216,7 @@ contains
       END DO
 
       fidx = lidx + 1
+      IF (fidx > npoints) EXIT
     END DO
 
     RETURN

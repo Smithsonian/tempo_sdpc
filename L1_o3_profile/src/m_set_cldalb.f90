@@ -419,16 +419,16 @@ module m_set_cldalb
       fidx=widx_rvis ; lidx=ncalcp
       ntmp = lidx-fidx+1
     ENDIF
-  
-    !IF (cfrac <= 1.00) THEN
-   
+ 
+    !IF (cfrac <= 1.00) THEN 
+
       allocate(tmpwav(ntmp), tmpspcs(ntmp, 0:malbspc-1))
       IF (.NOT. use_effcrs) THEN 
         tmpwav = radcwav(fidx:lidx)
       ELSE
         tmpwav = fitwavs(fidx:lidx)  
       ENDIF
-    
+
       !CALL set_brdf (npoints, fitwavs(1:npoints), nactalbspc,the_landfrac, pge_error_status)
       IF (use_albspc) THEN 
         IF (which_albspc == 1 .or. snowflg == 1 .or. oceanflg == 1) then ! from peter
@@ -438,6 +438,7 @@ module m_set_cldalb
             tmpspcs(:, 0) = tmpspcs(:, 0) * the_snowice / 100.0
           ENDIF
           IF (the_landfrac == 0.0) nactalbspc = 1
+
           !print * , 'get_surface_spectrum(nactalbspc,the_landfrac', nactalbspc,the_landfrac, snowflg, cfrac
           IF (use_effcrs) THEN 
             DO i = 0, nactalbspc -1 

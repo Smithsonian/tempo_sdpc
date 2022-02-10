@@ -72,6 +72,7 @@ module VLIDORT_eofpc_module
 !  routine is public
    INTEGER, PARAMETER :: dir =1 ! 1=upwelling 2 = downwelling
    INTEGER, DIMENSION(:), ALLOCATABLE :: Assigned_bins
+   REAL(KIND=dp), DIMENSION(GT_maxwav) :: absline, habsline
    INTEGER :: n_call_vlidort 
    public
 
@@ -1334,7 +1335,22 @@ contains
           Geophys%WavGrids%Wav(1:ndat), amf, &
           index(1:ndat), Assigned_bins(1:ndat), &
           PCA_nbins, PCA_ncnt, PCA_neofs, PCA_bins)
-   ELSE
+     
+   ELSE IF (PCA_Binning_index .eq. 6) THEN !Add new PCA binning option from Sunny
+      amf = maxval([Inputs%Geometry%GEMS_szas(1), Inputs%Geometry%GEMS_vzas(1)])
+      bintest=.false.
+      
+      !CALL GEMSTOOL_CreateBins_jbak  (ndat,&
+      !   habsline(1:ndat), absline(1:ndat),Geophys%WavGrids%Wav(1:ndat),amf, &
+      !   index(1:ndat), Results_Eofpc%Assigned_bins(1:ndat), &
+      !   PCA_nbins, PCA_ncnt, PCA_neofs, PCA_bins, pca_fail, PCA_message)
+
+      CALL GEMSTOOL_CreateBins_jbak  (ndat,&
+         habsline(1:ndat), absline(1:ndat), Geophys%WavGrids%Wav(1:ndat),amf, &
+         index(1:ndat), Assigned_bins(1:ndat), &
+         PCA_nbins, PCA_ncnt, PCA_neofs, PCA_bins, pca_fail, PCA_message)
+     
+   ELSE 
      print * , 'wrong binning index', PCA_binning_index
      stop 1
    ENDIF

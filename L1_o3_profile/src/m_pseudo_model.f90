@@ -624,7 +624,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            IF (all(walb0s (fidx:lidx) /= newalb)) THEN
               albadj(fidx:lidx) = newalb - walb0s(fidx:lidx)
            ENDIF
-            WRITE(*,*) modulename//': alb < 0', &
+            IF (scnwrt) WRITE(*,*) modulename//': alb < 0', &
             sum(albadj(fidx:lidx))/(lidx-fidx+1),sum(walb0s(fidx:lidx))/(lidx-fidx+1)
             walb0s(fidx:lidx) = newalb
          ENDIF
@@ -692,7 +692,7 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
 
   !xliu (02/01/2007): correct radiances based on ozone weighting function to deal with negative ozone values
   IF (negval) THEN
-     print * , 'pseudo_mode: negaval' 
+     IF (scnwrt) print * , 'pseudo_mode: negaval' 
      DO i = 1, nlay 
         IF (ozadj(i) > 0) THEN
            fsimrad(1:ns, 1:nostk) = fsimrad(1:ns, 1:nostk) - ozadj(i) * ozwf(1:ns, i, 1:nostk) 
@@ -729,17 +729,17 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       IF ( gasidxs(k) == o2o2_idx .AND. o4negval) THEN
          fsimrad(1:ns, 1) = fsimrad(1:ns, 1) * ( 1.d0 + database(o2o2_idx,refidx(1:ns)) * o4adj)
          tracegas(k, 4) = newo4 - o4adj; fitvar_rad(j) = tracegas(k, 4)
-         WRITE(*,*) 'pseudo_model: negative o4'
+         IF (scnwrt) WRITE(*,*) 'pseudo_model: negative o4'
       ENDIF
       IF ( gasidxs(k) == o2_idx .AND. o2negval) THEN
          fsimrad(1:ns, 1) = fsimrad(1:ns, 1) * ( 1.d0 + database(o2_idx,refidx(1:ns)) * o2adj)
          tracegas(k, 4) = newo2 - o2adj; fitvar_rad(j) = tracegas(k, 4)
-         WRITE(*,*) 'pseudo_model: negative o2'
+         IF (scnwrt) WRITE(*,*) 'pseudo_model: negative o2'
       ENDIF
       IF ( gasidxs(k) == h2o_idx .AND. h2onegval) THEN
          fsimrad(1:ns, 1) = fsimrad(1:ns, 1) * ( 1.d0 + database(h2o_idx,refidx(1:ns)) * h2oadj)
          tracegas(k, 4) = newh2o - h2oadj; fitvar_rad(j) = tracegas(k, 4)
-         WRITE(*,*) 'pseudo_model: negative h2o'
+         IF (scnwrt) WRITE(*,*) 'pseudo_model: negative h2o'
       ENDIF
     ENDIF
   ENDDO

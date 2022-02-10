@@ -11,7 +11,7 @@ MODULE m_lidort_env_vv2p7_pca
       l_fr, l_fa, l_fc, &
       which_win, RO, RI
   USE VLIDORT_eofpc_module, ONLY: vlidort_eofpc_master, & 
-      n_call_vlidort, Assigned_bins
+      n_call_vlidort, Assigned_bins, absline, habsline
   USE VLIDORT_exact_module, ONLY: vlidort_exact_master
   USE VLIDORT_PARS
   USE m_ezspline_interpolation, ONLY: bspline
@@ -859,11 +859,13 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         Geophys%totalods%omega(1:nz1,ip)= omega_total_input(1:nz1) 
         Geophys%totalods%taug(1:nz1, ip)= deltaug_vert_input(1:nz1)
         IF (hgaspos(1) > 0) Geophys%totalods%tauhg(1:nz1, ip)= absod(hgaspos(1),1:nz1) 
-        IF (hgaspos(2) > 0) Geophys%totalods%tauhg(1:nz1, ip)= Geophys%totalods%tauhg(1:nz1, ip)+ absod(hgaspos(1),1:nz1) 
+        IF (hgaspos(2) > 0) Geophys%totalods%tauhg(1:nz1, ip)= Geophys%totalods%tauhg(1:nz1, ip)+ absod(hgaspos(2),1:nz1) 
         Geophys%totalods%fr(1:nz1, ip)  = fr(1:nz1) !rayod(1:nz1)/scaod(1:nz1)
         Geophys%totalods%fa(1:nz1, ip)  = fa(1:nz1) !aerod(1:nz1)/scaod(1:nz1)
         l_geophys%l_totalods%l_taudp(1:n_totalatmos_wfs, 1:nz1, ip)   = l_deltau_vert_input(1:n_totalatmos_wfs, 1:nz1)
         l_geophys%l_totalods%l_omega(1:n_totalatmos_wfs, 1:nz1, ip)   = l_omega_total_input(1:n_totalatmos_wfs, 1:nz1)
+        absline(ip) = sum(deltau(ip+woff, 1:nz1)-delsca(ip+woff, 1:nz1))
+        habsline(ip) = sum( geophys%totalods%tauhg(1:nz1, ip))
         ENDIF  
         Geophys%WavGrids%wav(ip)  = waves(iw) !@@@ Need to change
         ip = ip + 1

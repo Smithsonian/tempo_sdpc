@@ -8,13 +8,216 @@ module GEMSTOOL_createbins_pm
    USE GEMSTOOL_pars_m, Only : GTPK, GTZERO, GT_Maxbins, GT_maxlayers, GT_maxwav
    REAL    :: the_bin_size 
   INTEGER :: the_eof_num, which_binvar
-  LOGICAL :: do_debug_bin = .false.
+  LOGICAL :: do_debug_bin = .false., bintest = .false.
 !  private  midval, GEMSTOOL_CreateBins_Rob_8bin_V3, GEMSTOOL_CreateBins_V3_HighEndOnly
 !  public   GEMSTOOL_CreateBins_V0, GEMSTOOL_CreateBins_V1, GEMSTOOL_CreateBins_V2, GEMSTOOL_CreateBins_V3,&
 ! GEMSTOOL_CreateBIns_V4, 
-  PUBLIC :: GEMSTOOL_CreateBins_V5
+  PUBLIC :: GEMSTOOL_CreateBins_V5, GEMSTOOL_CreateBins_jbak
 
 contains
+
+!------------------------------------
+! Jbak, 2020-01
+! @ input variables
+! ndat      : number of wavelengths
+! amf       : min(sza, vza)
+! hgascum(ndat)   : H2O + O2 ODS
+! gascum (ndat)   : total gas ODS (O3 + O4 in O3P retrievals)
+! wav (ndat)      : wavelengths
+! @ Output variables
+! index( ndat): wavindex as a functino  of bin
+! bin (ndat) : binindex as a function of wav
+! nbin : number of bin
+! ncnt : number of sampling w.r.t each bin
+! neof : number of EOFs w.r.t each bin
+! binlimes : boundaries of each bins
+!------------------------------------
+  
+SUBROUTINE GEMSTOOL_CreateBins_jbak (ndat, hgascum, gascum, wav, amf,& !INPUT
+             index, bin, nbin, ncnt, neof, binlims, error, errmsg) ! OUTPUT
+   USE GEMSTOOL_binset, ONLY:binset, setwin, setbin, bin_uv
+   IMPLICIT NONE
+!-----------------------------------------------
+!  INPUT
+!  ---------------------------------------------
+   INTEGER, INTENT (IN)    :: ndat
+   REAL (GTPK), INTENT(IN) :: amf
+   REAL (GTPK), DIMENSION (ndat), INTENT(IN) :: wav
+   REAL (GTPK), DIMENSION (ndat), INTENT(IN) :: hgascum,gascum
+!-----------------------------------------------
+!  OUTPUT
+!  ---------------------------------------------
+   INTEGER, INTENT (OUT)   :: nbin
+   INTEGER , INTENT(OUT), DIMENSION (ndat) :: BIN
+   INTEGER , INTENT(OUT), DIMENSION (ndat) :: INDEX
+   INTEGER , INTENT(OUT)    :: NCNT(0:GT_Maxbins), NEOF(0:GT_Maxbins)
+   REAL(GTPK), INTENT(OUT)  :: BINLIMS (0:GT_Maxbins)
+   LOGICAL,  INTENT(OUT)    :: error
+   CHARACTER (LEN=*), INTENT(INOUT)   :: errmsg
+!----------------------------------------------
+!  local variables
+!  -------------------------------------------
+   logical :: do_uv
+   INTEGER :: i,j, fidx, lidx,IBIN, W, ipca, COUNT, K,STEP_INDEX, &
+             cc, it, count1, W1, W2, off_bin,ntau
+   REAL    :: dtau, taumax, taumin, avgtau,sd,dw
+   INTEGER,DIMENSION(ndat) :: BINDEX  !(ndat)
+   REAL, DIMENSION (ndat)  :: TAU
+   ! PCA windows
+   INTEGER :: npca, PCAid
+   INTEGER, ALLOCATABLE :: pcawin(:,:), winid(:)
+   ! PCA bins
+   INTEGER :: PCA_nbin(50) ! N of bins for each pcawin
+   REAL,DIMENSION (50,0:GT_Maxbins) :: PCA_BINS ! binlimt for each pcawin
+   INTEGER,    DIMENSION (50,GT_Maxbins) :: PCA_NEOFS !Neof for each pcawin
+   TYPE (binset) :: iter
+   CHARACTER (LEN=20), PARAMETER     :: modulename='GEMSTOOL_CreateBins'
+   !----------------------
+   ! Initialize
+   !----------------------
+   error = .false.
+   !----------------------
+   ! binning setting for multiple windows and binning parameters w.r.t UV or VIS
+   !------------------------
+   IF (wav(1) < 500) THEN
+     do_uv = .true. ; tau(1:ndat) = -alog(REAL(gascum(1:ndat), KIND=4))
+   ELSE
+     do_uv = .false.; tau(1:ndat) = REAL(hgascum(1:ndat), KIND=4)
+   ENDIF
+   call setwin(do_uv, ndat, wav, npca, pcawin,winid)
+   IF (bintest) npca = 1
+   ! first loop : 1 to npca (number of pca_wav)
+   ! second loop : 1 to nbin (number of bin for each pcawav)
+   pca_nbin(:) = 0
+   DO ipca = 1, npca
+     ! set the wavelength range for each sub window
+     if (bintest) then
+       w1 = 1 ; w2 = ndat;  PCAid=0
+       PCAwin(ipca, :) = (/w1,w2/)
+     else
+       w1 = PCAwin(ipca,1)  ;w2=PCAwin(ipca,2) ; PCAid = winid(ipca)
+     endif
+     ntau = w2-w1 + 1
+     taumin = minval(tau(w1:w2))
+     taumax = maxval(tau(w1:w2))!+1E-20
+     avgtau = sum(tau(w1:w2))/ntau
+     sd     = sqrt(sum((tau(w1:w2) - avgtau)*(tau(w1:w2)-avgtau))/ntau)
+     IF (.not. bintest) THEN
+      CALL setbin (do_uv, PCAid, taumin,taumax,sd,real(amf, kind=4),iter)
+     ELSE
+      CALL bin_UV (taumin, taumax, real(the_bin_size, kind=4), the_eof_num,iter)
+     ENDIF
+     if (do_debug_bin) then
+       WRITE(*,'(A,i2,i4, "wav:",2f6.1,"tau:",4f6.2)') "loop of binning:", PCAid,&
+       ntau,wav(w1),wav(w2), taumin, taumax, avgtau, sd
+     endif
+     k = 1; nbin=0
+     PCA_bins(ipca,0) = taumin
+     DO it = 1, iter%nbin
+       DO w = 1, GT_Maxbins
+         PCA_bins(ipca,k)  = iter%dtau(it) + taumin
+         IF (PCA_bins(ipca,k) > iter%maxtau(it) ) THEN
+             PCA_bins(ipca,k) = iter%maxtau(it)
+         ENDIF
+         taumin           = PCA_bins(ipca,k)
+         PCA_NEOFS(ipca,k) = iter%neof(it)
+         cc = COUNT(mask = (tau(w1:w2) >= PCA_BINS(ipca,K-1) .and. &
+                            tau(w1:w2) < PCA_BINS(ipca,k) ))
+         ! WRITE(*,'(4i3, i5, 199f8.2)') &
+         !   ipca,it,w, k, cc, PCA_BINS(ipca,k-1), PCA_BINS(ipca,k), &
+         !   iter%dtau(it), taumin, iter%maxtau(it)
+         IF (cc <= iter%cc(it) ) THEN
+           IF (cc >= 1 ) THEN
+             IF (cc ==1) THEN
+                 !PCA_NEOFS(ipca,k) = 0
+                 !K = K + 1
+             ELSE IF (cc > 1 .and. cc <= 3) THEN
+             !    PCA_NEOFS(ipca,k) = 2
+             !    K = K + 1
+             ENDIF
+           ELSE IF  (cc == 0) THEN
+             k = k
+           ENDIF
+         ELSE
+           k = k +1
+         ENDIF
+         IF (taumin >= iter%maxtau(it)) EXIT
+         IF (taumin >= taumax) EXIT
+       ENDDO ! loop of bin for each iteration
+     ENDDO ! loop of iteration for each window
+     nbin = k -1
+     IF (nbin ==0) THEN
+        PRINT *, 'nbin ==0' , nbin, cc,wav(w1), wav(w2)
+     ENDIF
+     PCA_nbin (ipca) = nbin
+     PCA_BINS(ipca,nbin) = taumax+0.01
+     IF (nbin > GT_Maxbins) THEN
+       WRITE(errmsg,'(A20,A)') ADJUSTL(TRIM(modulename)),':Need to increase nbin to GT_Maxbins !!!'
+       error = .true. ; return
+     ENDIF
+   ENDDO ! loop of win
+   ! Binning process
+   IBIN = 0  ; NCNT = 0 ; NEOF = 0 ; BINLIMS = 0.0 ; BIN = 0 ; BINDEX = 0
+   OFF_BIN= 0
+   DO ipca = 1, npca
+     w1 = PCAwin(ipca,1) ; w2=PCAwin(ipca,2) ; nbin = PCA_nbin(ipca)
+     IF (nbin == 0) cycle
+     !WRITE(*,'(A,2f8.2, 4i5)') 'w1:w2=' , wav(w1), wav(w2),w2-w1+1,w1,w2, nbin
+     DO w = w1, w2
+       dtau = tau(w)
+       IF (dtau <= PCA_BINS(ipca,1)) THEN
+         IBIN =  OFF_BIN
+         STEP_INDEX = 1 !@bottom bin
+       ELSE IF (dtau >= PCA_BINS(ipca,nbin)) THEN
+         IBIN = NBIN + OFF_BIN
+         STEP_INDEX = NBIN !@Top bin
+       ELSE IF (dtau > PCA_BINS(ipca,1) .and. dtau < PCA_BINS(ipca,nbin)) THEN
+         STEP_INDEX = MINVAL(MAXLOC(PCA_BINS(ipca,1:nbin),MASK=(PCA_BINS(ipca,1:nbin) < dtau)))
+         STEP_INDEX = COUNT(MASK=(PCA_BINS(ipca,1:nbin) < dtau))
+         IBIN = STEP_INDEX+ OFF_BIN
+         STEP_INDEX = STEP_INDEX + 1
+       ENDIF
+       !write(*,'(i4,e15.7,i5,i3,i4,i5)')  w, dtau, ibin, step_index, off_bin,STEP_INDEX + OFF_BIN
+       IF (STEP_INDEX == 0) THEN
+         WRITE(999,*) 'step_index = 0 in GEMSTOOL_CreateBin'
+       ENDIF
+
+       NCNT(IBIN) = NCNT(IBIN)+1
+       NEOF(IBIN) = PCA_NEOFS(ipca,STEP_INDEX)
+       BINLIMS(IBIN)  = PCA_BINS(ipca,STEP_INDEX)
+       BIN(W)     = IBIN
+       BINDEX(W)  = NCNT(IBIN)
+     ENDDO
+     off_bin = off_bin + nbin
+   ENDDO
+   NBIN = OFF_BIN
+   IF (do_debug_bin) THEN
+     write(*,'(A,2f6.1,"tau:",2f8.2,"nbin:",I2,"ndat:",i3)') &
+     'finalbin:',wav(w1), wav(w2), minval(tau), maxval(tau), nbin,ndat
+     DO IBIN = 0, NBIN-1
+       PRINT * , IBIN, NCNT(IBIN),SUM(NCNT(0:IBIN)), NEOF(IBIN), BINLIMS(IBIN)
+     ENDDO
+   ENDIF
+   !  get the indices to change between bin space and wavenumber space
+   DO W = 1, NDAT
+     IF (BIN(W) .EQ. 0) THEN
+         COUNT1 = BINDEX(W)
+     ELSE
+         COUNT1 = SUM(NCNT(0:BIN(W)-1)) + BINDEX(W)
+     ENDIF
+     IF (COUNT1 == 0) THEN
+        WRITE(errmsg,'(A20,A)') ADJUSTL(TRIM(modulename)),':check bins, nbin = 0 !!!'
+        error = .true. ; return
+     ENDIF
+     INDEX(COUNT1) = W
+   ENDDO
+   IF (sum(NCNT(0:nbin-1)) /= ndat) THEN
+     WRITE(errmsg,'(A20,A)') ADJUSTL(TRIM(modulename)),':check bins, sum(ncnt) =/ ndat !!!'
+     error = .true.; return
+   ENDIF
+   RETURN
+
+END SUBROUTINE GEMSTOOL_CreateBins_jbak
 
 !------------------------------------
 ! Jbak, 2020-01

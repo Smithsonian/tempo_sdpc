@@ -439,6 +439,7 @@ contains
         specmod(i) = DOT_PRODUCT(slit(1:num_slit), specarr(idx(1:num_slit)))
       END DO
       fidx = lidx + 1
+      IF (fidx > npoints) EXIT
     END DO
 
     RETURN

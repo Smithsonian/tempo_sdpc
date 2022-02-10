@@ -421,8 +421,8 @@ CONTAINS
   ! Local variables
   ! ===============
   INTEGER                             :: i, j, ii, j1, j2, num_slit, mslit, fidx, lidx, iwin
-  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, coef, pert, ssum1
-  REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, upbnd, slit1
+  REAL (KIND=dp)                      :: delwvl, slitsum, hw1e, power, coef, pert, ssum1, upbnd
+  REAL (KIND=dp), DIMENSION (npoints) :: slit, locwvl, slit1
 
   ! --------------------------------------------------------
   ! Initialize output variable (default for "no convolution"
@@ -512,6 +512,7 @@ CONTAINS
      END DO
 
      fidx = lidx + 1
+     IF (fidx > npoints) EXIT
   END DO
 
   RETURN
