@@ -33,9 +33,9 @@ T                        ; do_subfit (T: some paraeters will be used for each wi
 1                 	 ; 1: lcurve, 2: gcv, 3: gcv with lcurve
 F       	 	 ; lcurve_write
 0  0.05 1.0 0.000   	 ; PTR order, w0, w1, w2
-3                         ; which_atm   0: NCEP 1 FNL 2 OMIMET 3 TMPOMET
-2                        ; which clima 1: V8+EP  2: McPeters 8 TB 10 ML***** (see end for more option) *****
-2                        ; which apriori error  1 Fortuin 2 McPeters   3. McPeters+GEOS-CHEM  4. MLS zonal mean 5. Ind. MLS precision
+1                         ; which_atm   0: NCEP 1 FNL 2 OMIMET 3 TMPOMET
+8                        ; which clima 1: V8+EP  2: McPeters 8 TB 10 ML***** (see end for more option) *****
+8                        ; which apriori error  1 Fortuin 2 McPeters   3. McPeters+GEOS-CHEM  4. MLS zonal mean 5. Ind. MLS precision
 F  0.15  0.5             ; Loose a priori constraint, relative error in the stratosphere and troposphere
 T                        ; T: update ozone below clouds through smoothing F: Don't update ozone below clouds
 0                        ; which_toz Total ozone. 0: None 1: gridded TOMS/OMI) 2. Zonal mean 3. Individual (not implemented)
@@ -49,12 +49,12 @@ T T 0.80 20.0            ; Consider clouds, Lambertian Clouds, Lambertian cloud 
 F                        ; Cloud/aerosols T: asymmetric factor F: phase
 63                       ; nmom: # of phase moments (start from zero, 0:nmom), overwrite VLIdort_control.inp
 F                        ; T: use effectove cross section F: do radiance calculation at high resolution
-0.05 0.01                     ; sampling rate for fine grid (must be multiples of 0.01 nm, 0.05 nm is good)
+0.05 0.02                ; sampling rate for fine grid (must be multiples of 0.01 nm, 0.05 nm is good)
 0.00                     ; small slit function
 0.6 3.0                  ; sampling rate (nm) for Q/I determination (convolve, only used if polcorr = 6), wave exteded NEW
-2                       ; # of spectral regions for specifying sampling rates
-260.  380 910. 340 380   ; boundary of spectra regions (using different sampling rate in different region)
-0.4    0.1  0.6  0.4 0.4   ; spectral sampling rate (unit: nm) to do radiance calculation
+3                       ; # of spectral regions for specifying sampling rates
+260. 305.0  380  910.   ; boundary of spectra regions (using different sampling rate in different region)
+0.3   0.1  0.2    ; spectral sampling rate (unit: nm) to do radiance calculation
 4                        ; Nstream
 3                        ; which_polcorr, 0: vector only, 1: scalar only  2 scalar+LUP 3 scalar+pol,
 T                        ; do_rtm_pca
@@ -120,10 +120,10 @@ T                 ; use_h2odptcrs
 *albedo
 347  1.132    ; center wavelength and band width (triangular FWHM) used to deterimine cloud fraction
 ozcrs_sol_for_alb.dat
-T                      ; vary_sfcalb
+F                      ; vary_sfcalb
 F     335.0   347.0    ; Derive albedo/cloud fraction from longer wavelength, window for for albedo, window for cloud
 F                      ; Use prefitted surface albedo
-T T 2                  ; use_albspc, use_albeofs (1 peter, 2 chris)
+T T 1                  ; use_albspc, use_albeofs (1 peter, 2 chris)
 4                      ; N of selected EOFs(peter:4,chris:up to 4), does not include mean or N of brdf parameters
 1                      ; N of windows for albedo spectral (if n>1, consistent with fitting window
 1                      ; N of parameters for scaling albedo/EOFs in each window
@@ -179,7 +179,7 @@ so2z 0 0 0     1.0 0.0 30.0
 ; If first channel and last channel are both < 0, then it means all channels
 *otherp
 0      ; which_offset 0 : mean fitting biases 1: radiance response
-7
+10
 ozs0   0 -1.0E+99 1.0E+99 1 2           ; 0th shift parameter for o3
 ozs1   0 0 0 1 1 -1.0E+99 1.0E+99   1 2           ; 1st shift parameter for o3
 ozs2   0 0 0 1 1 -1.0E+99 1.0E+99   2 2   ; 2nd shift parameter for o3
@@ -212,11 +212,11 @@ pw0    0 -1.0E+99 1.0E+99  1 4
 pw1    0 0 0 1 2 -1.0E+99 1.0E+99  1 4
 pw2    0 -1.0E+99 1.0E+99  1 4
 pw3    0  1.0E+00 1.0E+99  1 4
-pk0    0 -1.0E+99 1.0E+99  1 4
+pk0    0 0 0 1 1 -1.0E+99 1.0E+99  1 4
 pk1    0 0 0  1 2 -1.0E+99 1.0E+99  1 4
 pk2    0 -1.0E+00 1.0E+99  1 4
 pk3    0  1.0E+00 1.0E+99  1 4
-pa0    0 -1.0E+99 1.0E+99  1 4
+pa0    0 0 0 1 1 -1.0E+99 1.0E+99  1 4
 pa1    0 0 0 1 2 -1.0E+99 1.0E+99  1 4
 pa2    0 -1.0E+00 1.0E+99  1 4
 pa3    0 1.0E+00 1.0E+99  1 4
