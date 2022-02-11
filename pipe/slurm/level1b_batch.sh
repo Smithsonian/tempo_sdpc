@@ -512,10 +512,10 @@ fi
 
 /bin/cp $irr_file ${irr_basename}.nc
 (run_cloud_o4)
-(run_cloud_rr)
+#(run_cloud_rr)
 
-# FIXME:  delete one cloud product, and use the other for retrievals
-/bin/rm -f "${cld_rr_basename}.nc"
+# delete one cloud product, and use the other for retrievals
+#/bin/rm -f "${cld_rr_basename}.nc"
 create_file_listing  "$cld_o4_basename"
 
 catch()

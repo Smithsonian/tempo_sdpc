@@ -26,8 +26,8 @@ trace_gas/SIMPLE_NO2.MCF
 trace_gas/control.O2O2.in
 trace_gas/default.pcf.O2O2.in
 trace_gas/SIMPLE_O2O2.MCF
-cloud/default.pcf.in
-cloud/SIMPLE.MCF
+# cloud/default.pcf.in
+# cloud/SIMPLE.MCF
 cloud_o4/control.txt.in
 o3_total/default.pcf.in
 o3_total/SIMPLE.MCF
