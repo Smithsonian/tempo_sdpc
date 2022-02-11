@@ -93,7 +93,7 @@ def main():
         print ('*** {}: invalid window = {}'.format(os.path.basename(sys.argv[0]), args.window))
         sys.exit(1)
 
-    window_sec = args.window
+    window_sec = abs(args.window)
 
     if args.granule:
         keys = get_keys (args.granule)
@@ -102,6 +102,7 @@ def main():
     else:
         tbeg = args.begin
         tend = args.end
+        window_sec = 0
 
     if args.wait > 0:
         num_tries_remaining = 2
@@ -126,9 +127,12 @@ def main():
         if len(sel) > 0:
             files = [s[0] for s in sel]
             tlast = [s[1] for s in sel]
-            if tlast[-1] > tend:
+            # We searched for files spanning a broader window, and found something.
+            # But we only wait for more data only when we've failed to cover the
+            # original, unpadded range:
+            if tlast[-1] >= (tend-window_sec):
                 break
-        num_tries_remaining = num_tries_remaining - 1
+        num_tries_remaining -= 1
         if args.wait > 0:
             sig.wait (args.wait)
 
