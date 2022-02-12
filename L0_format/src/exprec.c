@@ -61,6 +61,8 @@ Exprec_Info_Type;
    char *archdir_path; \
    int ncid; \
    int processing_version; \
+   int classify_using_img_data_source; \
+   int is_test_pattern; \
    double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
@@ -345,6 +347,13 @@ static int close_outfile (Process_Method_Type *pmt)
                return -1;
              tell_vinfo (0, "archived %s/%s", pmt->archdir_path, pmt->out_basename);
 
+             if (pmt->is_test_pattern)
+               {
+                  if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
+                    return -1;
+                  goto handle_test_pattern;
+               }
+
              switch (pmt->exprec_type)
                {
                 default:
@@ -374,6 +383,7 @@ static int close_outfile (Process_Method_Type *pmt)
              tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
           }
      }
+handle_test_pattern:
    pmt->ncid = INT_MAX;
    if (pmt->enum_lookup)
      {
@@ -415,6 +425,20 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    pmt->exprec_type_string = NULL;
    scan_num_int = -1;
+
+   if (pmt->classify_using_img_data_source)
+     {
+        unsigned int img_data_source;   /* VIDEO_ADC:0  FPGA_SIM:1 */
+        if (NULL == iocsdpc_image_info_get_value (erec, "img_data_source", &img_data_source))
+          return -1;
+        if (img_data_source)
+          {
+             pmt->product_type = TEMPO_PROD_TYPE_TEST;
+             pmt->exprec_type_string = TEMPO_PROD_TYPESTR_TEST;
+             pmt->is_test_pattern = 1;
+             goto handle_test_pattern;
+          }
+     }
 
    switch (pmt->exprec_type)
      {
@@ -474,6 +498,8 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    /* if ioclib_strdup failed, it already produced a log message */
    if (pmt->exprec_type_string == NULL)
      return -1;
+
+handle_test_pattern:
 
    if (0 != verify_epoch (erec->common_header.epoch))
      return -1;
@@ -965,7 +991,8 @@ static int parse_exprec_params (config_t *cfg, Process_Method_Type *pmt)
 
    if ((CONFIG_TRUE != config_setting_lookup_string (s, "output_dir", &out_dirname))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_default", &size_default))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_max", &size_max)))
+       || (CONFIG_TRUE != config_setting_lookup_int (s, "granule_size_max", &size_max))
+       || (CONFIG_TRUE != config_setting_lookup_bool (s, "classify_using_img_data_source", &pmt->classify_using_img_data_source)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'exprec' parameters in param file: %s",
