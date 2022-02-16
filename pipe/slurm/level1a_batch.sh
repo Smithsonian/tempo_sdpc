@@ -112,7 +112,12 @@ run_l0_ccd()
       lookup_option="-i @hk.lis"
    fi
 
-   srun --ntasks=1 --output=log_l0_ccd.txt \
+: "${SDPC_L0CCD_TIME_LIMIT:=5}"
+
+   # Setting a reasonable time limit helps the slurm
+   # backfill scheduler queue this task as soon as possible.
+   srun --ntasks=1 --time=$SDPC_L0CCD_TIME_LIMIT \
+        --output=log_l0_ccd.txt \
    L0_ccd -vv --Version $SDPC_PROCESSING_VERSION $lookup_option \
           --trend trend_params.nc \
           -o $output_file $dark_option \
