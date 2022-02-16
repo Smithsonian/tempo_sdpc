@@ -33,6 +33,9 @@ def connect_database ():
 def get_product_table_names (cur):
     cur.execute ("select name from sqlite_master where type = 'table' and name not like 'sqlite_%'");
     table_names = [item for t in cur.fetchall() for item in t]
+    # Return table names in descending level order.
+    # As a side-effect, this imposes an upload sequence, with L0 and GRDDP last
+    table_names.sort(key=lambda x:x.split('_')[-1], reverse=True)
     return table_names
 
 def table_files_matching_status (cur, table_name, asdc_status, limit=0):
