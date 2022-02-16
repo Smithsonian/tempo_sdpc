@@ -25,6 +25,8 @@ Coverage_Time_Attributes = ["time_coverage_start_since_epoch", "time_coverage_en
 Radiance_File_Attributes = Coverage_Time_Attributes \
                          + ["scan_num", "scan_type", "granule_num"]
 
+Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
+
 Prefix = "register:"
 
 Have_Rad_L1_Table = False
@@ -328,17 +330,22 @@ def process_file (conn, filename, nc):
     keys["istart"]   = int(attr["time_coverage_start_since_epoch"])
     keys["versionid"] = versionid
     keys["trend_status"] = 0
-    keys["asdc_status"] = 0
+    keys["asdc_status"] = Asdc_Status["new"]
     keys["asdc_upload_time"] = 0
     keys["asdc_ingest_time"] = 0
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
     keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
+    # Initially, NO2_L2 products have asdc_status="defer".
+    # After L2_split, this changes to asdc_status="new".
+    if product_name == 'NO2_L2':
+        keys["asdc_status"] = Asdc_Status["defer"];
+
     # Look for a .met file
     if os.path.exists(final_path + ".met"):
-        keys["asdc_status_met"] = 0   # new
+        keys["asdc_status_met"] = Asdc_Status["new"]
     else:
-        keys["asdc_status_met"] = -2  # nonexistent
+        keys["asdc_status_met"] = Asdc_Status["nonexistent"]
 
     global Have_Rad_L1a_Table
     Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
@@ -383,10 +390,10 @@ def process_file_raw (conn, filename):
     keys["istart"] = istart
     keys["mtime"] = int(st.st_mtime)
     keys["size"] = st.st_size
-    keys["asdc_status"] = 0
+    keys["asdc_status"] = Asdc_Status["new"]
     keys["asdc_upload_time"] = 0
     keys["asdc_ingest_time"] = 0
-    keys["asdc_status_met"] = -2 # nonexistent
+    keys["asdc_status_met"] = Asdc_Status["nonexistent"]
 
     status = insert_raw_entry (conn, table_name, keys)
 

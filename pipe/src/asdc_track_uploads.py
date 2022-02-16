@@ -8,7 +8,7 @@ import sqlite3
 import re
 import argparse
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3}
+Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 DryRun = False
 
 class Tokenizer:

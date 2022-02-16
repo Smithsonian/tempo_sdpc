@@ -86,6 +86,11 @@ if test x"$product_name" = x"NO2_L2" ; then
    log_message "strat/trop separation: $(basename $first_granule .nc) scan"
    L2_split -v -c $SDPC_RUN_DIR_MASTER/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
+   # Change asdc_status of NO2_L2 products from 'defer' to 'new'
+   tmpfile=$(mktemp)
+   printf "%s\n" $l2_paths > $tmpfile
+   asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
+   /bin/rm -f $tmpfile
 fi
 
 # Run L2_regrid on all L2 data products
