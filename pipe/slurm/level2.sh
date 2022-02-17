@@ -162,6 +162,7 @@ if test x"$have_o3p" != x ; then
   # Any node can perform the merge using the previously constructed path,
   jid=$(sbatch --dependency=singleton --job-name="$job_o3p" --parsable \
          --comment=$SDPC_GRANULE_LABEL \
+         --partition="$o3p_partition" \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_merge-%j.out" \
          o3prof_merge.sh $granule_arch_dir_path)
   log_message "submitted sbatch $jid: o3prof_merge.sh: $SDPC_GRANULE_LABEL"
