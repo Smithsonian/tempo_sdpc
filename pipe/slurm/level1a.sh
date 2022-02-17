@@ -152,7 +152,7 @@ case "${granule_basename}" in
    select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
    prep_inr_goes_source
-   ntasks=10
+   ntasks=1
    ;;
 
    * )
