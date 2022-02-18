@@ -1,7 +1,7 @@
 #! /bin/sh
 #SBATCH --output=/dev/null
 #SBATCH --nodes=1
-#SBATCH --ntasks=6
+#SBATCH --ntasks=4
 #SBATCH --ntasks-per-core=1
 
 # 0. This script is normally run on a compute node as a batch process
@@ -227,7 +227,7 @@ run_inr_post()
 
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
-   wavecal.sh $radiance_file 3
+   wavecal.sh $radiance_file 2
 
    # polarization correction
    if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
