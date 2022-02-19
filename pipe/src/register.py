@@ -336,16 +336,17 @@ def process_file (conn, filename, nc):
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
     keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
-    # Initially, NO2_L2 products have asdc_status="defer".
-    # After L2_split, this changes to asdc_status="new".
-    if product_name == 'NO2_L2':
-        keys["asdc_status"] = Asdc_Status["defer"];
-
     # Look for a .met file
     if os.path.exists(final_path + ".met"):
         keys["asdc_status_met"] = Asdc_Status["new"]
     else:
         keys["asdc_status_met"] = Asdc_Status["nonexistent"]
+
+    # Initially, NO2_L2 products have asdc_status="defer".
+    # After L2_split, this changes to asdc_status="new".
+    if product_name == 'NO2_L2':
+        keys["asdc_status"] = Asdc_Status["defer"];
+        keys["asdc_status_met"] = Asdc_Status["defer"];
 
     global Have_Rad_L1a_Table
     Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
