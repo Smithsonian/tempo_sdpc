@@ -16,7 +16,7 @@ dbfile=$2
 prefix=$3
 
 if ! test -f $dbfile ; then
-   echo "*** Error: can't find database file: $dbfile"
+   echo "File does not exist: $dbfile"
    exit 1
 fi
 
