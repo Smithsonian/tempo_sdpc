@@ -15,6 +15,11 @@ user_at_host=$1
 dbfile=$2
 prefix=$3
 
+if ! test -f $dbfile ; then
+   echo "*** Error: can't find database file: $dbfile"
+   exit 1
+fi
+
 # lftp will need an ssh-agent with the relevant keys loaded.
 # The file should contain something like:
 # export SSH_AUTH_SOCK=/home/temposdpc/.ssh/ssh-agent

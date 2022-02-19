@@ -16,6 +16,11 @@ fi
 user_at_host=$1
 dbfile=$2
 
+# If the database file doesn't exist, there's nothing to push
+if ! test -f $dbfile ; then
+    exit 0
+fi
+
 # lftp will need an ssh-agent with the relevant keys loaded:
 # The file should contain something like:
 # export SSH_AUTH_SOCK=/home/temposdpc/.ssh/ssh-agent
