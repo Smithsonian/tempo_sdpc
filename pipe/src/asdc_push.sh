@@ -38,7 +38,9 @@ do_asdc_upload()
      mkdir -p $dir
   fi
 
+  cwd=$(pwd)
   cd $dir
+
   file_list="files.lis"
   pdr_list="pdrfiles.lis"
   script="lftp.script"
@@ -51,7 +53,11 @@ do_asdc_upload()
   # apply the upload filter
   if test -f "$exclude_list" ; then
      asdc_exclude_filter.py --filter $exclude_list $file_list
+     # If nothing remains, then clean up and return
      if ! test -s $file_list ; then
+        /bin/rm -f $file_list ${file_list}.orig
+        cd $cwd
+        rmdir $dir
         return
      fi
   fi
