@@ -76,7 +76,16 @@ def table_name_for_file_raw (filename):
     tok = filename.split('_')
     return tok[1]
 
-def update_file_status (cur, filename, asdc_status, status_time):
+def set_file_stats (cur, table_name, file_basename, st):
+    size  = st.st_size
+    mtime = int(st.st_mtime)
+    sql = "update {table_name} set mtime={mtime},size={size} where filename=\"{file_basename}\"".format (**locals())
+    if DryRun:
+        print(sql)
+    else:
+        cur.execute(sql)
+
+def update_file_status (cur, filename, asdc_status, status_time, update_stat=False):
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
@@ -92,6 +101,9 @@ def update_file_status (cur, filename, asdc_status, status_time):
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
+
+    if update_stat:
+        set_file_stats (cur, table_name, file_basename, os.stat(filename))
 
     if asdc_status == Asdc_Status["uploaded"]:
         status_time_var = "asdc_upload_time"
@@ -214,7 +226,7 @@ def process_longpan_files (longpan_file_list):
                 print('An exception occurred: {}'.format(e))
                 print ("Error processing file: {}".format(longpan_file))
 
-def set_file_status (status, file_list):
+def set_file_status (status, file_list, update_stat):
     with open(file_list, "r") as fp:
         files = fp.readlines()
     files = [f.strip() for f in files]
@@ -222,7 +234,7 @@ def set_file_status (status, file_list):
     with connect_database() as conn:
         cur = conn.cursor()
         for f in files:
-            update_file_status (cur, f, Asdc_Status[status], status_time)
+            update_file_status (cur, f, Asdc_Status[status], status_time, update_stat=update_stat)
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
@@ -236,6 +248,8 @@ def main():
                         help="Set status of specified files")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
                         help="Process LONGPAN files (changes status 'uploaded' to 'accepted'|'problem')")
+    parser.add_argument('--stat', action='store_true',
+                        help="Update file size, mtime")
     parser.add_argument('--dryrun', action='store_true',
                         help="Show actions, but don't modify the database")
     if len(sys.argv)==1:
@@ -251,7 +265,7 @@ def main():
     elif args.list:
         print_files_matching_status (Asdc_Status[args.list], limit=args.limit)
     elif args.set:
-        set_file_status (args.set[0], args.set[1])
+        set_file_status (args.set[0], args.set[1], args.stat)
     elif args.pans:
         process_longpan_files(args.pans)
 

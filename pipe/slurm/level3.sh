@@ -89,7 +89,7 @@ if test x"$product_name" = x"NO2_L2" ; then
    # Change asdc_status of NO2_L2 products from 'defer' to 'new'
    tmpfile=$(mktemp)
    printf "%s\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
+   asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
    printf "%s.met\n" $l2_paths > $tmpfile
    asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 met asdc_status defer to new"
    /bin/rm -f $tmpfile
