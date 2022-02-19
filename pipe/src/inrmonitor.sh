@@ -20,4 +20,4 @@ export TEMPO_INRSW_CONFIG_DIR="$inr_run_dir/config"
 options="-Dprism.order=sw"
 
 java $options -jar $SDPC_INRSW_ROOT/gui/GranuleViewerApp.jar \
-                   $TEMPO_INRSW_CONFIG_DIR/TempoPipelineInterfaceSAO.conf
+                   $TEMPO_INRSW_CONFIG_DIR/TempoPipelineInterfaceSAO.conf > /dev/null 2>&1
