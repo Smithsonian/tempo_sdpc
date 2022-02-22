@@ -228,7 +228,11 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
 
    return exprec;
 error_return:
-   if (allocated_exprec) granule_free_exprec (exprec);
+   if (allocated_exprec)
+     {
+        granule_free_exprec (exprec);
+        if (pexprec) *pexprec = NULL;
+     }
    return NULL;
 }
 
