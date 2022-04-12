@@ -16,7 +16,7 @@ module tio_output_module
        append_diagnostic_vars
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
        write_merged_geo, write_merged_data, copy_hdr_metadata, &
-       copy_l2_metadata, label_output_file
+       copy_l2_metadata, label_output_file, set_production_date_time
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -2853,5 +2853,39 @@ contains
     endif
 
   end subroutine label_output_file
+
+  subroutine set_production_date_time (errstat)
+    implicit none
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+    type (tiof_attlist_type) :: attlist
+    character (len=8) :: date
+    character (len=10) :: time
+    character (len=5) :: zone
+    character (len=32) :: prod_datetime
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call date_and_time(DATE=date, TIME=time, ZONE=zone)
+    prod_datetime=date(1:4)//'-'//date(5:6)//'-'//date(7:8) &
+         //'T'//time(1:2)//':'//time(3:4)//':'//time(5:10)//' UTC'//zone
+
+    call tiof_attlist_append (attlist, errstat, "production_date_time", &
+         att_text=prod_datetime)
+    call tiof_push_group (obj, "/", errstat)
+    call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_pop_group (obj, errstat)
+    call tiof_attlist_free (attlist)
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "md_write_prodid: failed", &
+           errstat)
+      return
+    endif
+
+  end subroutine set_production_date_time
 
 end module tio_output_module
