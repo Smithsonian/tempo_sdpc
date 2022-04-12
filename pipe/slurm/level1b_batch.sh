@@ -415,12 +415,13 @@ derive_cloud_o4_params()
    # remove variables:
    #        - main_data_quality_flag
    #        - surface_pressure
-   ncks -x -v main_data_quality_flag \
-        -x -v surface_pressure $product_file ${product_file}.tmp
+   VARS_TO_REMOVE="main_data_quality_flag surface_pressure"
+   for var in $VARS_TO_REMOVE ; do
+       ncks -x -v $var $product_file ${product_file}.tmp
+       /bin/mv ${product_file}.tmp $product_file
+   done
    # rename SurfacePressure -> surface_pressure
-   ncrename -v SurfacePressure,surface_pressure ${product_file}.tmp
-   /bin/mv ${product_file}.tmp $product_file
-
+   ncrename -v SurfacePressure,surface_pressure $product_file
 }
 
 run_cloud_o4()
