@@ -931,8 +931,8 @@ CONTAINS
     ! ---------------------------------------
     ! (the CCD indices are absolute positions, i.e., unlikely to be "1:n_sol_wvl")
     ! ----------------------------------------------------------------------------
-    IF ( imin2 > imin1 ) adj_wgts(1:imin2-imin1+1) = downweight
-    IF ( imax2 < imax1 ) adj_wgts(imax2-imin1+1:n_adj) = downweight
+    IF ( imin2 > imin1 ) adj_wgts(1:imin2-imin1) = downweight
+    IF ( imax2 < imax1 ) adj_wgts(imax2-imin1+2:n_adj) = downweight
 
     ! ----------------------------------------------------------------------
     ! (2) Any window excluded by the user (specified in fitting control file
