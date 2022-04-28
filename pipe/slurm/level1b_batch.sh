@@ -241,7 +241,7 @@ run_inr_post()
 
       # perform polarization correction
       srun --ntasks=1 --output=log_polcorr.txt \
-       L1_polcorr -c ${etc_dir}/l1_inr_post.cfg $radiance_file
+       L1_polcorr -c ${etc_dir}/l1_polcorr.cfg $radiance_file
 
       if test x"$SDPC_DIAGNOSTIC_INDEX" != x"OFF" ; then
          copy_level1_frame.py $SDPC_DIAGNOSTIC_INDEX \
