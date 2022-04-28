@@ -115,8 +115,8 @@ prep_inr_goes_source()
 
    if test -d "$goes_srcdir" ; then
       target_dir="$SDPC_RUN_DIR_MASTER/inr/Staging"
-      ln -nf -s $goes_srcdir/g16_cmi $target_dir/Right || error_exit "$LINENO: setting GOES-East source"
-      ln -nf -s $goes_srcdir/g17_cmi $target_dir/Left || error_exit "$LINENO: setting GOES-West source"
+      ln -nf -s $goes_srcdir/east_cmi $target_dir/Right || error_exit "$LINENO: setting GOES-East source"
+      ln -nf -s $goes_srcdir/west_cmi $target_dir/Left || error_exit "$LINENO: setting GOES-West source"
    else
       echo "WARNING: INR reference GOES imagery not found: $goes_srcdir"
    fi

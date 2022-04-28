@@ -10,8 +10,14 @@ private variable Dest_Target_Dir = ".";
 % different from those viewed from outside ASDC. To avoid
 % confusion, we use "."
 
-private variable Ancillary_Type_List = ["GEOSCF", "CMIG16", "CMIG17"];
+private variable Ancillary_Type_List = ["GEOSCF", "CMIEAST", "CMIWEST"];
 private variable Node_Name;
+
+% Values must match something in Ancillary_Type_List[]
+private variable GOES_Product_Types = Assoc_Type[];
+GOES_Product_Types["G16"] = "CMIEAST";
+GOES_Product_Types["G17"] = "CMIWEST";
+GOES_Product_Types["G18"] = "CMIWEST";
 
 define make_file_entry (path, data_type, st, file_type)
 {
@@ -127,13 +133,11 @@ define process_file_ancillary (types, path)
    else if (0 == strncmp ("OR_ABI", basename, 6))
      {
         variable tok = strtok (basename, "_");
-        if (tok[2] == "G16" || tok[2] == "G17")
+        if (assoc_key_exists (GOES_Product_Types, tok[2]))
           {
-             % Must match something in Ancillary_Type_List[]
-             product_type = "CMI" + tok[2];
+             product_type = GOES_Product_Types[tok[2]];
           }
      }
-
    if (product_type == NULL)
      {
         () = fprintf (stderr, "*** unrecognized file type: skipping file: %s\n", path);
