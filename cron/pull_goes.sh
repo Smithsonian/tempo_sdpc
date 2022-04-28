@@ -43,7 +43,7 @@ lftp $user_at_host <<- EOF
    set mirror:require-source true
    set mirror:sort-by name
    set mirror:order *.sha1 *.nc
-   mirror -c -O $incoming_dir -F /PDAFileLinks/g1?_cmi
+   mirror -c -O $incoming_dir -F /PDAFileLinks/??st_cmi
    quit
 EOF
 
@@ -74,8 +74,8 @@ move_and_register_files()
    done
 }
 
-move_and_register_files g16_cmi $rootdir/cmig16.sqlite
-move_and_register_files g17_cmi $rootdir/cmig17.sqlite
+move_and_register_files east_cmi $rootdir/cmieast.sqlite
+move_and_register_files west_cmi $rootdir/cmiwest.sqlite
 
 # The 'today' symlink always points to today's GOES data
 cd $rootdir

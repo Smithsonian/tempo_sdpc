@@ -50,13 +50,13 @@ case $_task in
 
    ASDC_GOES )
    test x"$state_asdc_goes" = xon || exit 0
-   cmig16_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig16.sqlite"
-   cmig17_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmig17.sqlite"
+   cmieast_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
+   cmiwest_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
 
-   asdc_pull_ack.sh $asdc_dropbox $cmig16_sqlite CMIG16
-   asdc_pull_ack.sh $asdc_dropbox $cmig17_sqlite CMIG17
-   asdc_push_files.sh $asdc_dropbox $cmig16_sqlite
-   asdc_push_files.sh $asdc_dropbox $cmig17_sqlite
+   asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
+   asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
+   asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
+   asdc_push_files.sh $asdc_dropbox $cmiwest_sqlite
    ;;
 
    ASDC_GEOSCF )
