@@ -23,7 +23,3 @@ config_file=""
 
 plan_options=""
 # plan_options = any additional options to be passed to 'plan'
-
-prefix=""
-# prefix = prefix for all output files (empty string means use default)
-

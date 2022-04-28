@@ -2,11 +2,19 @@
 
 PGMNAME="$(basename $0)"
 
-if ! test $# -eq 1 ; then
+error_exit()
+{
+  echo "$PGMNAME [$$]: ERROR: ${1:-'Unknown Error'}" 1>&2
+  exit 1
+}
+
+if test $# -eq 0 ; then
    echo "Usage: $PGMNAME <schedule-config> | [options]"
    echo "   Options:"
-   echo "     --sch     Print schedule configuration template"
-   echo "     --cfg     Print scan configuration template"
+   echo "     --sch         Print schedule configuration template"
+   echo "     --cfg         Print scan configuration template"
+   echo "     --notes FILE  Text file containing special instructions."
+   echo "                   (For details, see IOC/SDPC ICD TEMPO-09-0010)"
    exit 0
 fi
 
@@ -16,6 +24,7 @@ fi
 
 default_config_file="$SDPC_ROOT/share/plan.cfg"
 example_sched_file="$SDPC_ROOT/share/plan_sched.sh.example"
+notes_file=""
 
 case "$1" in
    --sch)
@@ -24,26 +33,34 @@ case "$1" in
         exit 0
      fi
      ;;
+
    --cfg)
      if test -f $default_config_file ; then
         cat $default_config_file
         exit 0
      fi
      ;;
+
+   --notes)
+     shift
+     notes_file="$1"
+     if ! test -r "$notes_file" ; then
+        error_exit "*** Error: cannot read notes file: $notes_file"
+     fi
+     shift
+     ;;
+
    *)
-     sched_file="$1"
+     # FALLTHRU
      ;;
 esac
 
-if test -r "$sched_file" ; then
-   . $sched_file
-else
-   echo "*** Error: cannot read schedule file: $sched_file"
-   exit 1
-fi
+sched_file="$1"
 
-if test x"$prefix" = x ; then
-   prefix="tempo_plan_$(date -u +%Y%m%d%H%M%SZ)"
+if test -r "$sched_file" ; then
+   . $(realpath $sched_file)
+else
+   error_exit "*** Error: cannot read schedule file: $sched_file"
 fi
 
 if test x"$config_file" = x ; then
@@ -55,15 +72,17 @@ fi
 : "${plan_num_days:?plan_num_days is not defined}"
 : "${plan_start_day:?plan_start_day is not defined}"
 
-error_exit()
-{
-  echo "$PGMNAME [$$]: ERROR: ${1:-'Unknown Error'}" 1>&2
-  exit 1
-}
 trap error_exit ERR
 
+# create temporary directory
 out_dir="$(mktemp -d)"
-target_dir="$out_dir/$prefix"
+
+# Get time_t of directory creation and convert to a UTC timestamp
+timet=$(stat -c %Z $out_dir)
+utc=$(date -u --date=@${timet} +%Y%m%dT%H%M%SZ)
+
+plan_dirname="tempo_plan_${utc}"
+target_dir="$out_dir/$plan_dirname"
 
 if ! test -d $target_dir ; then
    mkdir -p $target_dir || error_exit "mkdir failed"
@@ -71,9 +90,10 @@ fi
 
 echo "Writing temporary output to $target_dir"
 
-_tailor="${target_dir}/${prefix}_scantailor.csv"
-_master="${target_dir}/${prefix}_masterscan_tbl.csv"
-_plan="${target_dir}/${prefix}_earthscan_tbl.csv"
+_tailor="${target_dir}/${utc}_scantailor.csv"
+_master="${target_dir}/${utc}_masterscan.csv"
+_plan="${target_dir}/${utc}_earthscan.csv"
+_notes="${target_dir}/NOTES.txt"
 
 # generate master scan table, and scan plan
 plan -c $config_file -M $maneuver_file \
@@ -81,27 +101,39 @@ plan -c $config_file -M $maneuver_file \
      $plan_options -o $_plan \
      -m $_master || error_exit "failed generating scan plan"
 
-/bin/cp $config_file $target_dir/${prefix}_plan.cfg
+/bin/cp $config_file $target_dir/${utc}_plan.cfg
 /bin/cp $maneuver_file $target_dir
+if ! test x"$notes_file" = x ; then
+   /bin/cp $notes_file $_notes
+else
+   touch $_notes
+fi
 
-# generate scan tailoring file
 if test x"$tailoring_file" = x ; then
-: "${tailor_epoch:?tailor_epoch is not defined}"
-: "${tailor_start_day:?tailor_start_day is not defined}"
-: "${tailor_num_days:?tailor_num_days is not defined}"
-   plan -c $config_file --epoch $tailor_epoch \
+   echo "WARNING: Scan tailoring file not specified"
+   if test \( x"${tailor_epoch}" = x \) -o \( x"${tailor_start_day}" = x \) -o \( x"${tailor_num_days}" = x \) ; then
+      error_exit "Parameters for dummy scan tailoring file not specified"
+   else
+      plan -c $config_file --epoch $tailor_epoch \
         -d $tailor_start_day -n $tailor_num_days \
         -T $_tailor || error_exit "failed generating scan tailoring file"
+   fi
 elif test -r "$tailoring_file" ; then
   /bin/cp $tailoring_file $_tailor
 else
   error_exit "cannot read $tailoring_file"
 fi
 
-tarfile="${prefix}.tar.gz"
+# make generic local symlinks
+ln -r -s $_plan $target_dir/earthscan.csv
+ln -r -s $_master $target_dir/masterscan.csv
+ln -r -s $_tailor $target_dir/scantailor.csv
+ln -r -s $target_dir/$maneuver_file $target_dir/maneuver.csv
+
+tarfile="${plan_dirname}.tar.gz"
 
 if test -d $target_dir ; then
-  tar czf $tarfile --remove-files -C $(dirname $target_dir) ${prefix}
+  tar czf $tarfile --remove-files -C $(dirname $target_dir) ${plan_dirname}
   if test -d $out_dir ; then
     /bin/rmdir $out_dir
   fi
