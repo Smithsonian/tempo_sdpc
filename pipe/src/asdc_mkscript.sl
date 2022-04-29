@@ -312,10 +312,15 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
 
 define make_manifest_filename (type)
 {
+   % Ensure that two separate pipelines cannot generate the same PDR filename.
+   % SDPC_PIPE_ID uniquely identifies each pipeline.
+   variable pipe_id_env = getenv ("SDPC_PIPE_ID");
+   variable pipe_id = (pipe_id_env == NULL) ? "" : "_" + pipe_id_env;
+
    if (any (type == Ancillary_Type_List))
-     return strftime ("${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
+     return strftime ("${type}_%Y%m%dT%H%M%SZ${pipe_id}.PDR"$, gmtime(_time));
    else
-     return strftime ("TEMPO_${type}_%Y%m%dT%H%M%SZ.PDR"$, gmtime(_time));
+     return strftime ("TEMPO_${type}_%Y%m%dT%H%M%SZ${pipe_id}.PDR"$, gmtime(_time));
 }
 
 define upload_priority (product_type)
