@@ -379,11 +379,10 @@ def process_file_raw (conn, filename):
     final_path = os.readlink (filename)
     st = os.stat (filename)
 
-    # TEMPO_GRDDP_YYYYMMDDThhmmssZ_Cccccc.raw
-    # TEMPO_CCSDS_YYYYMMDDThhmmssZ_Cccccc.raw
+    # tempo_YYYYMMDDThhmmssZ_<suffix>.tar
     tok = basename.split('_')
-    table_name = tok[1];
-    istart = int(dp.parse(tok[2]).timestamp())
+    table_name = "RAW";
+    istart = int(dp.parse(tok[1]).timestamp())
 
     keys = {}
     keys["filename"] = basename
@@ -417,7 +416,7 @@ def register_one_file (db_path, fn):
         if fn.endswith ('.nc'):
             with NetCDFFile (fn, "r") as nc:
                 status = process_file (conn, fn, nc)
-        elif fn.endswith ('.raw'):
+        elif fn.endswith ('.tar'):
             status = process_file_raw (conn, fn)
         if status != 0:
             eprint('Error processing file: {}'.format(fn))

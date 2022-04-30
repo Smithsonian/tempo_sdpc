@@ -94,7 +94,7 @@ define process_file_raw (types, path)
 
    variable basename = path_basename (path);
    variable tok = strtok (basename, "_");
-   variable product_type = tok[1];                 % e.g. GRDDP
+   variable product_type = "RAW";
    variable data_type    = "TEMPO_NONORDERABLE";
    variable data_version = "1";
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
@@ -396,7 +396,7 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
           {
              process_file_nc (types, path);
           }
-        else if (extname == ".raw")
+        else if (extname == ".tar")
           {
              process_file_raw (types, path);
           }

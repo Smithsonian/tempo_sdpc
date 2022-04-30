@@ -34,7 +34,7 @@ def get_product_table_names (cur):
     cur.execute ("select name from sqlite_master where type = 'table' and name not like 'sqlite_%'");
     table_names = [item for t in cur.fetchall() for item in t]
     # Return table names in descending level order.
-    # As a side-effect, this imposes an upload sequence, with L0 and GRDDP last
+    # As a side-effect, this imposes an upload sequence, with L0 and RAW last
     table_names.sort(key=lambda x:x.split('_')[-1], reverse=True)
     return table_names
 
@@ -73,8 +73,7 @@ def table_name_for_file (filename):
     return '{}_{}'.format(tok[1], tok[2])
 
 def table_name_for_file_raw (filename):
-    tok = filename.split('_')
-    return tok[1]
+    return "RAW"
 
 def set_file_stats (cur, table_name, file_basename, st):
     size  = st.st_size
@@ -95,7 +94,7 @@ def update_file_status (cur, filename, asdc_status, status_time, update_stat=Fal
         status_var_name = 'asdc_status_met'
         file_basename = os.path.basename(ext_split[0])
         table_name = table_name_for_file (file_basename)
-    elif '.raw' == ext_split[1]:
+    elif '.tar' == ext_split[1]:
         status_var_name = 'asdc_status'
         table_name = table_name_for_file_raw (file_basename)
     else:
