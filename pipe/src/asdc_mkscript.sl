@@ -3,6 +3,7 @@
 require ("process");
 require ("chksum");
 require ("cmdopt");
+require ("pcre");
 
 private variable Dest_Subdir   = "ingest/tempo";
 private variable Dest_Target_Dir = ".";
@@ -13,11 +14,8 @@ private variable Dest_Target_Dir = ".";
 private variable Ancillary_Type_List = ["GEOSCF", "CMIEAST", "CMIWEST"];
 private variable Node_Name;
 
-% Values must match something in Ancillary_Type_List[]
-private variable GOES_Product_Types = Assoc_Type[];
-GOES_Product_Types["G16"] = "CMIEAST";
-GOES_Product_Types["G17"] = "CMIWEST";
-GOES_Product_Types["G18"] = "CMIWEST";
+private variable GOES_Path_Pattern = "/20\d{2}/\d{3}/(east|west)_cmi/OR_ABI-"R;
+private variable GOES_Path_Regex = pcre_compile (GOES_Path_Pattern);
 
 define make_file_entry (path, data_type, st, file_type)
 {
@@ -132,11 +130,10 @@ define process_file_ancillary (types, path)
      }
    else if (0 == strncmp ("OR_ABI", basename, 6))
      {
-        variable tok = strtok (basename, "_");
-        if (assoc_key_exists (GOES_Product_Types, tok[2]))
-          {
-             product_type = GOES_Product_Types[tok[2]];
-          }
+        % path matches /east_cmi/ tree => product_type=CMIEAST
+        % path matches /west_cmi/ tree => product_type=CMIWEST
+        variable tok = pcre_matches (GOES_Path_Regex, path);
+        product_type = "CMI" + strup(tok[1]);
      }
    if (product_type == NULL)
      {
