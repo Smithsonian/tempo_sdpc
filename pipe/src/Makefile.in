@@ -13,7 +13,7 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                o3p_partition.sl o3p_select.sl \
-               sdpcrun.sh sdpcpipe.sh make_tar_notice.sh \
+               sdpcrun.sh sdpcpipe.sh make_tar_notice.sh pipecron.sh \
                select_ims.py select_iers.py \
                select_l0.py select_irr.py select_dark.py register.py \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \

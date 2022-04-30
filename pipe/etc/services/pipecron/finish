@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="pipecron"
+INCDIR=".."
+
+. $INCDIR/finish.inc

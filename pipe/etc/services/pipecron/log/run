@@ -1,0 +1,4 @@
+#!/bin/sh
+
+SERVICE="pipecron"
+. ../../log.inc
