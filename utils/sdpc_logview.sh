@@ -18,6 +18,8 @@ exit_usage()
    echo "   Options:"
    echo "   --help     Print this listing"
    echo "   --dir      Primary node pipeline directory [default=\$SDPC_RUN_DIR_MASTER]"
+   echo "   --ioc      Show IOC interface services"
+   echo "   --sci      Show science processing services"
    echo "   --menu     Display service menu"
    exit "$1"
 }
@@ -89,6 +91,14 @@ main()
                  exit 1
               fi
 	      ;;
+           --ioc)
+             shift
+             logdirs="iocpull iocpullraw level0 register asdc"
+             ;;
+           --sci | --science)
+             shift
+             logdirs="level1a inr level1b level2 level3 trend register asdc"
+             ;;
            --menu)
               shift;
               choose_logdirs
