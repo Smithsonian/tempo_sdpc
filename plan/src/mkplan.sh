@@ -78,7 +78,7 @@ trap error_exit ERR
 out_dir="$(mktemp -d)"
 
 # Get time_t of directory creation and convert to a UTC timestamp
-timet=$(stat -c %Z $out_dir)
+timet=$(stat -c %W $out_dir)
 utc=$(date -u --date=@${timet} +%Y%m%dT%H%M%SZ)
 
 plan_dirname="tempo_plan_${utc}"
