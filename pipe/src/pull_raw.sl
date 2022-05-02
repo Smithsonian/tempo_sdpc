@@ -118,6 +118,9 @@ private define pull_file (infile, outdir_root)
         return -1;
      }
 
+   % If we got this far, it's ok to remove the original input file
+   () = remove (infile);
+
    if (Register_With_Symlink != 0)
      {
         variable symlink_dir = path_concat (Archive_Root_Dir, Registry_Subdir);
