@@ -32,9 +32,17 @@ do_start()
 
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set}"
 
-  # SDPC_PIPE_ID is used to ensure singleton dependencies
-  # in this pipeline don't affect other pipelines.
-  export SDPC_PIPE_ID="$(openssl rand -hex 2)"
+  # SDPC_PIPE_ID is used to ensure singleton dependencies in this
+  # pipeline don't affect other pipelines.
+  # As a secondary application, it is also used to ensure the uniqueness
+  # of PDR files uploaded to ASDC.
+  # Most of the time, SDPC_PIPE_ID should have a unique random value.
+  # But to support (hopefully rare) cases when a specific value is needed,
+  # we use the pre-existing value when the environment provides one.
+  if test -z "$SDPC_PIPE_ID" ; then
+     SDPC_PIPE_ID="$(openssl rand -hex 2)"
+  fi
+  export SDPC_PIPE_ID
 
   export SLURM_ACCOUNT="$SDPC_PIPE_NAME"
   export SBATCH_ACCOUNT="$SLURM_ACCOUNT"
