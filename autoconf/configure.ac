@@ -181,7 +181,7 @@ AC_ARG_WITH(ancdata,
   [jh_with_ancdata=$withval],
   [jh_with_ancdata=no])
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc/ancillary"
+   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc_archive/ancillary"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi

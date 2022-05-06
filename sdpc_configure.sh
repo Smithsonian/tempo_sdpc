@@ -4,7 +4,7 @@ compilers=gnu
 
 install_root="/tempo/nas0/sdpc_soft/install/$compilers"
 refdata_dir="/tempo/nas0/sdpc_soft/refdata"
-ancdata_dir="/tempo/nas0/sdpc/ancillary"
+ancdata_dir="/tempo/nas0/sdpc_archive/ancillary"
 
 prefix="$install_root/sdpc/v3"
 inrroot="$install_root/inr_r2.3.2"

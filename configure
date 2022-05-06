@@ -2805,7 +2805,7 @@ else
 fi
 
 if test "x$jh_with_ancdata" = "xno"; then
-   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc/ancillary"
+   ANCILLARY_DATA_DIR="/tempo/nas0/sdpc_archive/ancillary"
 else
    ANCILLARY_DATA_DIR="$jh_with_ancdata"
 fi
