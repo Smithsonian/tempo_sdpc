@@ -25,7 +25,8 @@ def get_product_table_names (cur):
     cur.execute ("select name from sqlite_master where type = 'table' and name not like 'sqlite_%'");
     table_names = [item for t in cur.fetchall() for item in t]
     if table_names is not None:
-        table_names.remove('RAW')
+        if 'RAW' in table_names:
+            table_names.remove('RAW')
         table_names.sort(key = lambda x: x.split("_")[1])
     return table_names
 
