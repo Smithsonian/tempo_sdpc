@@ -4,6 +4,7 @@ import os, sys
 import time
 import argparse
 import csv
+import re
 
 def keep_path (filter, hour, path):
     basename = os.path.basename (path)
@@ -12,7 +13,7 @@ def keep_path (filter, hour, path):
     end_exclude_hour = filter['end_exclude_hour']
     n = len(pattern)
     for i in range(n):
-        if basename.find(pattern[i]) < 0:
+        if re.search (pattern[i], basename) is None:
             continue
         try:
             beg_hour = float(begin_exclude_hour[i])
