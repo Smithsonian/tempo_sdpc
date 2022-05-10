@@ -97,6 +97,25 @@ backup_archive_dbfile()
     keep_max_files $archive_dbfile_num_backups $sqlbkp
 }
 
+replace_old_subdirs_with_tarfiles()
+{
+  mmin_arg="$1"
+  path="$2"
+
+  dirlist=$(find $path -mindepth 2 -maxdepth 2 -type d -name "???" -mmin $mmin_arg)
+  if test -z "$dirlist" ; then
+     return
+  fi
+
+  echo "$PGMNAME: tar old subdirs: $path"
+
+  for dir in $dirlist ; do
+     parent_dir="$(dirname $dir)"
+     subdir="$(basename $dir)"
+     tar czf "${dir}.tar.gz" --remove-files -C "$parent_dir" "$subdir"
+  done
+}
+
 do_hourly()
 {
   trace_message hourly
@@ -122,6 +141,12 @@ do_daily()
   for d in ${slurm_log_dirs[@]}; do
       expire_dir_files $mmin_arg "$SDPC_RUN_DIR_MASTER/log/$d/slurm" "-size 0"
   done
+
+  # pack old daily ASDC push/pull history into tar files
+  asdc_dir="$SDPC_ARCHIVE_DIR/asdc"
+  if test -d $asdc_dir ; then
+     replace_old_subdirs_with_tarfiles "+2880" $asdc_dir
+  fi
 }
 
 do_weekly()
