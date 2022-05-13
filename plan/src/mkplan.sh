@@ -102,12 +102,14 @@ plan -c $config_file -M $maneuver_file \
      -m $_master || error_exit "failed generating scan plan"
 
 /bin/cp $config_file $target_dir/${utc}_plan.cfg
-/bin/cp $maneuver_file $target_dir
 if ! test x"$notes_file" = x ; then
    /bin/cp $notes_file $_notes
 else
    touch $_notes
 fi
+
+/bin/cp $maneuver_file $target_dir
+_maneuver="$target_dir/$(basename $maneuver_file)"
 
 if test x"$tailoring_file" = x ; then
    echo "WARNING: Scan tailoring file not specified"
@@ -128,7 +130,7 @@ fi
 ln -r -s $_plan $target_dir/earthscan.csv
 ln -r -s $_master $target_dir/masterscan.csv
 ln -r -s $_tailor $target_dir/scantailor.csv
-ln -r -s $target_dir/$maneuver_file $target_dir/maneuver.csv
+ln -r -s $_maneuver $target_dir/maneuver.csv
 
 tarfile="${plan_dirname}.tar.gz"
 

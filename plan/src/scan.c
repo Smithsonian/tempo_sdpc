@@ -485,7 +485,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
    if (NULL == (s = config_lookup (cfg, name)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing twilight_scan_config in param file: %s",
+                     "%s: accessing split_scan_config in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
