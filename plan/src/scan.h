@@ -34,6 +34,12 @@ struct Scan_Type
    double (*st_min_sun_angle)(const Scan_Type *);
    /**< retrieve the minimum allowed sun angle [deg] */
 
+   int (*st_scan_beg_angle)(const Scan_Type *, double *, double *);
+   /**< retrieve the (mirror_x,mirror_y) coordinates of the scan's eastern limit [urad] */
+
+   int (*st_scan_end_angle)(const Scan_Type *, double *, double *);
+   /**< retrieve the (mirror_x,mirror_y) coordinates of the scan's western limit [urad] */
+
    int (*st_scan_beg)(const Scan_Type *, double *, double *);
    /**< retrieve the (lon,lat) coordinates of the scan's eastern limit [deg] */
 
@@ -62,6 +68,9 @@ struct Twilight_Scan_Type
    void (*tst_delete)(Twilight_Scan_Type *);
    /**< delete an object of type \c Twilight_Scan_Type */
 
+   int (*tst_twilight_scan_region_angles)(const Twilight_Scan_Type *, int, double *, double *, double *, int *);
+   /**< retrieve twilight scan region as (mirror_x,mirror_y) of one boundary [urad], and an eastward or westward extent [urad]  */
+
    int (*tst_twilight_scan_region)(const Twilight_Scan_Type *, int, double *, double *, double *, int *);
    /**< retrieve twilight scan region as (lon,lat) of one boundary [deg], and an eastward or westward extent [urad]  */
 
@@ -89,6 +98,9 @@ enum
 struct Split_Scan_Type
 {
    void (*sst_delete)(Split_Scan_Type *);
+
+   int (*sst_scan_region_angles)(const Split_Scan_Type *, double *, double *, double *, double *);
+   /* beg_x, beg_y, end_x, end_y */
 
    int (*sst_scan_region)(const Split_Scan_Type *, double *, double *, double *, double *);
    /* beg_lon, beg_lat, end_lon, end_lat */

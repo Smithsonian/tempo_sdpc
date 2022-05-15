@@ -28,6 +28,13 @@ Surface_Point_Type;
 
 typedef struct
 {
+   double mirror_x;  /* microradian, +toward East */
+   double mirror_y;  /* microradian, +toward South */
+}
+Scan_Angle_Type;
+
+typedef struct
+{
    double integration_time;
    double position_dwell;
    double scan_reset;
@@ -38,6 +45,7 @@ Step_Config_Type;
 typedef struct
 {
    Surface_Point_Type pt;
+   Scan_Angle_Type ang;
    double width;
    int num;
 }
@@ -46,6 +54,8 @@ Surface_Region_Type;
 #define SPLIT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Point_Type scan_beg; \
    Surface_Point_Type scan_end; \
+   Scan_Angle_Type scan_beg_angle; \
+   Scan_Angle_Type scan_end_angle; \
    Step_Config_Type dt; \
    int base_scan_method_index;
 
@@ -59,6 +69,8 @@ Surface_Region_Type;
    double max_sza; \
    Surface_Point_Type scan_beg; \
    Surface_Point_Type scan_end; \
+   Scan_Angle_Type scan_beg_angle; \
+   Scan_Angle_Type scan_end_angle; \
    Surface_Point_Type day_beg; \
    Surface_Point_Type day_end; \
    Step_Config_Type dt; \
@@ -117,13 +129,55 @@ static int read_surface_point (config_setting_t *s, const char *name,
    config_setting_t *sub;
 
    if (NULL == (sub = config_setting_get_member (s, name)))
-     return -1;
+     return 0;
 
    if ((CONFIG_TRUE != config_setting_lookup_float (sub, "lon", &pt->lon))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "lat", &pt->lat)))
      return -1;
 
-   return 0;
+   return 1;
+}
+
+static int read_scan_angles (config_setting_t *s, const char *name,
+                             Scan_Angle_Type *pt)
+{
+   config_setting_t *sub;
+   double nan_value = nan("");
+
+   pt->mirror_x = nan_value;
+   pt->mirror_y = nan_value;
+
+   if (NULL == (sub = config_setting_get_member (s, name)))
+     return 0;
+
+   if (CONFIG_TRUE != config_setting_lookup_float (sub, "mirror_x", &pt->mirror_x))
+     {
+        pt->mirror_x = nan_value;
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (sub, "mirror_y", &pt->mirror_y))
+     pt->mirror_y = 0.0;
+
+   /* Using the law of reflection, tilting the mirror by an angle X
+    * moves the (reflected) line of sight by an angle 2X.
+    *
+    * Obviously, the scan step size and start/end positions must be
+    * in the same coordinates and have the same units.
+    *
+    * It's convenient to have the step size in field of regard
+    * coordinates because that's directly comparable to the angular
+    * size of features on the ground.
+    *
+    * Here, therefore, we use the law of reflection to convert
+    * instrument mirror tilt angle coordinates to angular coordinates
+    * in the field of regard.
+    */
+
+   pt->mirror_x *= 2;
+   pt->mirror_y *= 2;
+
+   return 1;
 }
 
 static int bsearch_f (float t, const float *x, int n)
@@ -348,6 +402,7 @@ static int read_master_table_step_size (config_t *cfg, double *step_size)
 static int read_scan_config (config_t *cfg, Scan_Type *st)
 {
    config_setting_t *s;
+   int have_scan_beg_angle, have_scan_end_angle;
 
    if (NULL == (s = config_lookup (cfg, "scan_config")))
      {
@@ -357,7 +412,24 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
-   if (0 != read_surface_point (s, "scan_beg", &st->scan_beg))
+   if ((have_scan_beg_angle = read_scan_angles (s, "scan_beg_angle", &st->scan_beg_angle)) < 0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading scan_config.scan_beg_angle': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((have_scan_end_angle = read_scan_angles (s, "scan_end_angle", &st->scan_end_angle)) < 0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading scan_config.scan_end_angle': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((have_scan_beg_angle == 0)
+       && (1 != read_surface_point (s, "scan_beg", &st->scan_beg)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'scan_beg': %s",
@@ -373,7 +445,8 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         st->scan_end.lat = nan_value;
      }
 
-   if (0 != read_surface_point (s, "scan_end", &st->scan_end))
+   if ((have_scan_end_angle == 0)
+       && (1 != read_surface_point (s, "scan_end", &st->scan_end)))
      {
         if (st->num_scan_steps <= 0)
           {
@@ -383,7 +456,7 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
           }
      }
 
-   if (0 != read_surface_point (s, "day_beg", &st->day_beg))
+   if (1 != read_surface_point (s, "day_beg", &st->day_beg))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'day_beg': %s",
@@ -391,7 +464,7 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
-   if (0 != read_surface_point (s, "day_end", &st->day_end))
+   if (1 != read_surface_point (s, "day_end", &st->day_end))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'day_end': %s",
@@ -421,8 +494,13 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
 static int read_surface_region (config_setting_t *s, const char *name, Surface_Region_Type *reg)
 {
    config_setting_t *sub;
+   int have_angles;
 
-   if (0 != read_surface_point (s, name, &reg->pt))
+   if ((have_angles = read_scan_angles (s, name, &reg->ang)) < 0)
+     return -1;
+
+   if ((have_angles == 0)
+       && (1 != read_surface_point (s, name, &reg->pt)))
      return -1;
 
    if (NULL == (sub = config_setting_get_member (s, name)))
@@ -481,6 +559,7 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
                                    const char *name)
 {
    config_setting_t *s;
+   int have_beg_angle, have_end_angle;
 
    if (NULL == (s = config_lookup (cfg, name)))
      {
@@ -490,7 +569,24 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
         return -1;
      }
 
-   if (0 != read_surface_point (s, "scan_beg", &sst->scan_beg))
+   if ((have_beg_angle = read_scan_angles (s, "scan_beg_angle", &sst->scan_beg_angle)) < 0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading scan_config.scan_beg_angle': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((have_end_angle = read_scan_angles (s, "scan_end_angle", &sst->scan_end_angle)) < 0)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading scan_config.scan_end_angle': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((have_beg_angle == 0)
+       && (1 != read_surface_point (s, "scan_beg", &sst->scan_beg)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'split_scan_config:east': %s",
@@ -498,7 +594,8 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
         return -1;
      }
 
-   if (0 != read_surface_point (s, "scan_end", &sst->scan_end))
+   if ((have_end_angle == 0)
+       && (1 != read_surface_point (s, "scan_end", &sst->scan_end)))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'split_scan_config:west': %s",
@@ -760,23 +857,57 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
    return 0;
 }
 
+static int scan_beg_angle (const Scan_Type *st, double *mirror_x, double *mirror_y)
+{
+   const Scan_Angle_Type *sa = &st->scan_beg_angle;
+   if (isnan(sa->mirror_x) || isnan(sa->mirror_y))
+     return -1;
+   *mirror_x = sa->mirror_x;
+   *mirror_y = sa->mirror_y;
+   return 0;
+}
+
+static int scan_end_angle (const Scan_Type *st, double *mirror_x, double *mirror_y)
+{
+   const Scan_Angle_Type *sa = &st->scan_end_angle;
+   if (isnan(sa->mirror_x) || isnan(sa->mirror_y))
+     return -1;
+   *mirror_x = sa->mirror_x;
+   *mirror_y = sa->mirror_y;
+   return 0;
+}
+
 static int scan_beg_point (const Scan_Type *st, double *lon, double *lat)
 {
-   if (lon) *lon = st->scan_beg.lon;
-   if (lat) *lat = st->scan_beg.lat;
+   *lon = st->scan_beg.lon;
+   *lat = st->scan_beg.lat;
    return 0;
 }
 
 static int scan_end_point (const Scan_Type *st, double *lon, double *lat)
 {
-   if (lon) *lon = st->scan_end.lon;
-   if (lat) *lat = st->scan_end.lat;
+   *lon = st->scan_end.lon;
+   *lat = st->scan_end.lat;
    return 0;
 }
 
 static int scan_num_steps (const Scan_Type *st)
 {
    return st->num_scan_steps;
+}
+
+static int twilight_scan_region_angles (const Twilight_Scan_Type *tst, int is_east, double *mirror_x, double *mirror_y,
+                                        double *width, int *num)
+{
+   const Surface_Region_Type *reg = is_east ? &tst->east : &tst->west;
+   const Scan_Angle_Type *ang = &reg->ang;
+   if (isnan(ang->mirror_x) || isnan(ang->mirror_y))
+     return -1;
+   *mirror_x = reg->ang.mirror_x;
+   *mirror_y = reg->ang.mirror_y;
+   *width = reg->width;
+   *num = reg->num;
+   return 0;
 }
 
 static int twilight_scan_region (const Twilight_Scan_Type *tst, int is_east, double *lon, double *lat,
@@ -789,6 +920,21 @@ static int twilight_scan_region (const Twilight_Scan_Type *tst, int is_east, dou
    *width = reg->width;
    *num = reg->num;
 
+   return 0;
+}
+
+static int split_scan_region_angles (const Split_Scan_Type *sst,
+                                     double *beg_x, double *beg_y,
+                                     double *end_x, double *end_y)
+{
+   const Scan_Angle_Type *sb = &sst->scan_beg_angle;
+   const Scan_Angle_Type *se = &sst->scan_end_angle;
+   if (isnan(sb->mirror_x) || isnan(sb->mirror_y) || isnan(se->mirror_x) || isnan(se->mirror_y))
+     return -1;
+   *beg_x = sb->mirror_x;
+   *beg_y = sb->mirror_y;
+   *end_x = se->mirror_x;
+   *end_y = se->mirror_y;
    return 0;
 }
 
@@ -893,6 +1039,8 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_step_size = scan_step_size;
    st->st_integration_time = scan_integration_time;
    st->st_min_sun_angle = scan_min_sun_angle;
+   st->st_scan_beg_angle = scan_beg_angle;
+   st->st_scan_end_angle = scan_end_angle;
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;
    st->st_scan_num_steps = scan_num_steps;
@@ -927,6 +1075,7 @@ Twilight_Scan_Type *twilight_scan_open (config_t *cfg)
 
    tst->tst_delete = free_twilight_scan_type;
    tst->tst_twilight_scan_region = twilight_scan_region;
+   tst->tst_twilight_scan_region_angles = twilight_scan_region_angles;
    tst->tst_twilight_scan_duration = twilight_scan_duration;
    tst->tst_twilight_integration_time = twilight_scan_integration_time;
 
@@ -1024,6 +1173,7 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
 
    sst->sst_base_scan_method = split_scan_base_scan_method;
    sst->sst_delete = free_split_scan_type;
+   sst->sst_scan_region_angles = split_scan_region_angles;
    sst->sst_scan_region = split_scan_region;
    sst->sst_scan_integration_time = split_scan_integration_time;
 

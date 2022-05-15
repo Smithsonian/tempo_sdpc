@@ -146,17 +146,22 @@ static int radiance_scan_endpoints (const Scan_Type *st,
                                     AziElev_Type *beg,
                                     AziElev_Type *end)
 {
-   EarthPoint beg_pt={0}, end_pt={0};
-   double sat_lon;
    int num_steps;
+   double sat_lon;
 
    if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
      return -1;
 
-   if (0 != st->st_scan_beg (st, &beg_pt.theLon, &beg_pt.theLat))
-     return -1;
-   if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
-     return -1;
+   /* This returns 0 when we given the angles explicitly, otherwise, non-zero */
+   if (0 != st->st_scan_beg_angle (st, &beg->azimuth, &beg->elevation))
+     {
+        EarthPoint beg_pt={0};
+        /* Compute the angles for the given surface point */
+        if (0 != st->st_scan_beg (st, &beg_pt.theLon, &beg_pt.theLat))
+          return -1;
+        if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+          return -1;
+     }
 
    if ((num_steps = st->st_scan_num_steps (st)) > 0)
      {
@@ -164,8 +169,9 @@ static int radiance_scan_endpoints (const Scan_Type *st,
         end->elevation = beg->elevation;
         end->azimuth   = beg->azimuth + num_steps * st->st_step_size (st);
      }
-   else
+   else if (0 != st->st_scan_end_angle (st, &end->azimuth, &end->elevation))
      {
+        EarthPoint end_pt={0};
         if (0 != st->st_scan_end (st, &end_pt.theLon, &end_pt.theLat))
           return -1;
         if (0 != compute_scan_angles (&end_pt, sat_lon, end))
@@ -180,17 +186,21 @@ static int split_scan_endpoints (const Split_Scan_Type *sst,
                                  AziElev_Type *beg,
                                  AziElev_Type *end)
 {
-   EarthPoint beg_pt={0}, end_pt={0};
-   double sat_lon;
-
-   if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
-     return -1;
-   if (0 != sst->sst_scan_region (sst, &beg_pt.theLon, &beg_pt.theLat, &end_pt.theLon, &end_pt.theLat))
-     return -1;
-   if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
-     return -1;
-   if (0 != compute_scan_angles (&end_pt, sat_lon, end))
-     return -1;
+   /* This returns 0 when we given the angles explicitly, otherwise, non-zero */
+   if (0 != sst->sst_scan_region_angles (sst, &beg->azimuth, &beg->elevation, &end->azimuth, &end->elevation))
+     {
+        EarthPoint beg_pt={0}, end_pt={0};
+        double sat_lon;
+        /* Compute the angles for the given surface points */
+        if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
+          return -1;
+        if (0 != sst->sst_scan_region (sst, &beg_pt.theLon, &beg_pt.theLat, &end_pt.theLon, &end_pt.theLat))
+          return -1;
+        if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+          return -1;
+        if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+          return -1;
+     }
 
    return 0;
 }
@@ -202,20 +212,23 @@ static int twilight_scan_endpoints (const Twilight_Scan_Type *tst,
                                     AziElev_Type *beg,
                                     AziElev_Type *end)
 {
-   EarthPoint pt={0};
    AziElev_Type p;
-   double sat_lon, width;
-   double sub_width, sub_offset;
+   double width, sub_width, sub_offset;
    int i, num;
 
-   if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
-     return -1;
-
-   if (0 != tst->tst_twilight_scan_region (tst, is_east, &pt.theLon, &pt.theLat, &width, &num))
-     return -1;
-
-   if (0 != compute_scan_angles (&pt, sat_lon, &p))
-     return -1;
+   /* This returns 0 when we given the angles explicitly, otherwise, non-zero */
+   if (0 != tst->tst_twilight_scan_region_angles (tst, is_east, &p.azimuth, &p.elevation, &width, &num))
+     {
+        EarthPoint pt={0};
+        double sat_lon;
+        /* Compute the angles for the given surface points */
+        if (0 != solar_geom->sgt_geosat_longitude(solar_geom, &sat_lon))
+          return -1;
+        if (0 != tst->tst_twilight_scan_region (tst, is_east, &pt.theLon, &pt.theLat, &width, &num))
+          return -1;
+        if (0 != compute_scan_angles (&pt, sat_lon, &p))
+          return -1;
+     }
 
    beg->elevation = p.elevation;
    end->elevation = p.elevation;
