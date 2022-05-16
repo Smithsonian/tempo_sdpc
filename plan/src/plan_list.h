@@ -54,12 +54,9 @@ extern void plan_list_free (Plan_List_Type *head);
 
 /** Write plan list parameters to an ASCII file.
  * @param[in]  fp     Initialized FILE pointer for the destination file
- * @param[in]  mirror_tilt  Pointer to optional function to compute mirror
- *                          tilt angle (NULL is ok)
  * @param[in]  head  The head of a plan list.
  * @return 0 on success, -1 on error.
 */
-extern int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
-                            const Plan_List_Type *head);
+extern int plan_list_write (FILE *fp, const Plan_List_Type *head);
 
 #endif

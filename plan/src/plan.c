@@ -278,37 +278,6 @@ read_master_scan_table_params
    return 0;
 }
 
-static double mirror_tilt (double azimuth)
-{
-   /* The FOR coordinate system refers to the azimuth and elevation angular
-    * coordinates in the field of regard indicating the line of sight
-    * from which we want to collect photons entering through the slit.
-    * To command the instrument, the flight software wants the mirror tilt
-    * angle needed to access that line of sight.  Using the law of reflection,
-    * the mirror tilt angle is half the azimuthal angle coordinate in the
-    * field of regard.
-    *
-    * The azimuthal angle coordinate in the field of regard increases toward
-    * the east (+X axis in a right-handed coordinate system).  The elevation
-    * coordinate increases toward the south (+Y axis).
-    *
-    * The C&THB documentation for the SMA_MOVE command says:
-    *
-    * "Neglecting alignment tolerances, a motion of the scan mirror in
-    * the positive X-direction moves the line of sight in the Spacecraft
-    * +X direction (East) . A motion of the scan mirror in the positive
-    * Y-direction moves the line of sight in the Spacecraft +Y direction
-    * (South)."
-    *
-    * Therefore, the mirror tilt angle +X coordinate has the same sign
-    * as the +X azimuthal angle in the field of regard.
-    *
-    * Both angles are in microradians.
-    */
-
-   return 0.5 * azimuth;
-}
-
 static int print_standard_scan_table (FILE *fp, double roll_angle, double delta_x,
                                       double mirror_x0, double mirror_x1)
 {
@@ -358,11 +327,11 @@ static int generate_scan_table (config_t *cfg, FILE *fp,
                                Print_Method_Type *print_method)
 {
    double mirror_x0, mirror_x1, delta_x;
-   double step_size, roll_angle, max_roll_angle;
+   double roll_angle, max_roll_angle;
 
    timestamp_created (fp);
 
-   if (0 != read_master_scan_table_params (cfg, &step_size, &roll_angle))
+   if (0 != read_master_scan_table_params (cfg, &delta_x, &roll_angle))
      return -1;
 
    /* convert from microradians to radians */
@@ -381,7 +350,6 @@ static int generate_scan_table (config_t *cfg, FILE *fp,
 
    mirror_x0 =  SMA_MAX_CALIBRATED_MIRROR_X;
    mirror_x1 = -SMA_MAX_CALIBRATED_MIRROR_X;
-   delta_x = mirror_tilt (step_size);
 
    if (fabs(delta_x) > SMA_MAX_SCAN_TABLE_STEP)
      {
@@ -678,7 +646,7 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_path);
    (void) fprintf (fp, "#\n");
 
-   return plan_list_write (fp, mirror_tilt, plan_list);
+   return plan_list_write (fp, plan_list);
 }
 
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)

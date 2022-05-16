@@ -83,10 +83,40 @@ int plan_list_append (Plan_List_Type **phead,
    return -1;
 }
 
+static double mirror_tilt (double azimuth)
+{
+   /* The FOR coordinate system refers to the azimuth and elevation angular
+    * coordinates in the field of regard indicating the line of sight
+    * from which we want to collect photons entering through the slit.
+    * To command the instrument, the flight software wants the mirror tilt
+    * angle needed to access that line of sight.  Using the law of reflection,
+    * the mirror tilt angle is half the azimuthal angle coordinate in the
+    * field of regard.
+    *
+    * The azimuthal angle coordinate in the field of regard increases toward
+    * the east (+X axis in a right-handed coordinate system).  The elevation
+    * coordinate increases toward the south (+Y axis).
+    *
+    * The C&THB documentation for the SMA_MOVE command says:
+    *
+    * "Neglecting alignment tolerances, a motion of the scan mirror in
+    * the positive X-direction moves the line of sight in the Spacecraft
+    * +X direction (East) . A motion of the scan mirror in the positive
+    * Y-direction moves the line of sight in the Spacecraft +Y direction
+    * (South)."
+    *
+    * Therefore, the mirror tilt angle +X coordinate has the same sign
+    * as the +X azimuthal angle in the field of regard.
+    *
+    * Both angles are in microradians.
+    */
+
+   return 0.5 * azimuth;
+}
+
 #define TIME_BUFSIZE 32
 
-int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
-                     const Plan_List_Type *head)
+int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
@@ -129,10 +159,9 @@ int plan_list_write (FILE *fp, double (*mirror_tilt)(double),
              return -1;
           }
 
-        if (mirror_tilt)
-          fsw_xstart = mirror_tilt (entry->xstart);
-        else
-          fsw_xstart = entry->xstart;
+        /* The plan is generated using an azimuthal coordinate in the field of regard,
+         * but for the IOC plan, we want to write out the mirror tilt angle */
+        fsw_xstart = mirror_tilt (entry->xstart);
 
         /* Restart scan numbering each day, and whenever scan_type changes.
          * (scan_num=0 is used as a fill value, so we number scans from 1) */

@@ -488,6 +488,16 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
         return -1;
      }
 
+   /* Because scan plans are closely tied to the coordinates of points
+    * on the Earth's surface, it is convenient for the planning calculations
+    * to use the scan step as size in field of regard coordinates
+    * (e.g. as an angular step across the field of regard).
+    * By the law of reflection, the step size in the field of regard
+    * is twice the mirror tilt angle. The value in the parameter file
+    * is the mirror tilt angle, so we need to multiply that value by two:
+    */
+   st->step_size *= 2;
+
    return 0;
 }
 
