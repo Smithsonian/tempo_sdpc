@@ -717,7 +717,7 @@ static int find_safe_limit_time (Solar_Geom_Type *sgt,
    return 0;
 }
 
-int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle,
+int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle, int after_midnight,
                           double jd_utc, double *jd_utc_irr)
 {
    Sun_Angle_Bisect_Type b;
@@ -728,9 +728,18 @@ int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle,
    b.sgt = sgt;
    b.target_sun_angle = irr_sun_angle;
 
-   /* Expect the nominal sun angle to occur within 3 hours before midnight */
-   jd_utc1 = jd_utc - 3.0/24;
-   jd_utc2 = jd_utc;
+   if (0 == after_midnight)
+     {
+        /* Expect the nominal sun angle to occur within 3 hours BEFORE midnight */
+        jd_utc1 = jd_utc - 3.0/24;
+        jd_utc2 = jd_utc;
+     }
+   else
+     {
+        /* Expect the nominal sun angle to occur within 3 hours AFTER midnight */
+        jd_utc1 = jd_utc;
+        jd_utc2 = jd_utc + 3.0/24;
+     }
 
    if (0 != bisection (sun_angle_vs_time, jd_utc1, jd_utc2, &b, &jd_utc))
      {

@@ -8,14 +8,20 @@ error_exit()
   exit 1
 }
 
-if test $# -eq 0 ; then
+usage_message()
+{
    echo "Usage: $PGMNAME <schedule-config> | [options]"
    echo "   Options:"
+   echo "     --help        Print this usage message"
    echo "     --sch         Print schedule configuration template"
    echo "     --cfg         Print scan configuration template"
    echo "     --notes FILE  Text file containing special instructions."
    echo "                   (For details, see IOC/SDPC ICD TEMPO-09-0010)"
    exit 0
+}
+
+if test $# -eq 0 ; then
+   usage_message
 fi
 
 # SDPC_OTS_ROOT is used in the plan.cfg file
@@ -39,6 +45,10 @@ case "$1" in
         cat $default_config_file
         exit 0
      fi
+     ;;
+
+   --help)
+       usage_message
      ;;
 
    --notes)

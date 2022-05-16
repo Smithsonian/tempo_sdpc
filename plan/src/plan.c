@@ -116,6 +116,9 @@ static void usage (void)
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -i | --irr FILE          Generate irradiance geometry output file\n");
    fprintf (stderr, "   -I | --Irr FILE          Generate only irradiance geometry output file\n");
+   fprintf (stderr, "   -a | --angle [@]THETA    Polar angle of incident solar illumination for irradiance\n");
+   fprintf (stderr, "                            measurement [default=%g deg]\n", IRRADIANCE_SUN_ANGLE_DEG);
+   fprintf (stderr, "                            Prepend '@' to select times after local midnight\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize\n");
    fprintf (stderr, "                            the solar illumination at the start of each scan\n\n");
@@ -649,11 +652,12 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
    return plan_list_write (fp, plan_list);
 }
 
-static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const Cal_Date_Type *t0, int num_days)
+static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom,
+                                  double irr_angle, int after_midnight,
+                                  const Cal_Date_Type *t0, int num_days)
 {
    double unix_epoch_jd = get_unix_epoch_jd();
    double jd_utc0, jd_utc1, jd_utc;
-   double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
    char epoch_str[32];
    time_t epoch;
 
@@ -676,7 +680,7 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom, const C
         char buf[32];
         double jd_utc_irr, solar_theta, solar_phi, tirr_utc, tirr_tai;
 
-        if (0 != scan_irradiance_time (solar_geom, irr_angle, jd_utc, &jd_utc_irr))
+        if (0 != scan_irradiance_time (solar_geom, irr_angle, after_midnight, jd_utc, &jd_utc_irr))
           return -1;
         if (0 != solar_geom->sgt_sat_sun_position (solar_geom, jd_utc_irr, &solar_theta, &solar_phi, NULL))
           return -1;
@@ -1361,6 +1365,7 @@ int main (int argc, char **argv)
    FILE *fp_scan = stdout;
    FILE *fp_master = NULL;
    FILE *fp_irr = NULL;
+   double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
    uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
@@ -1368,6 +1373,7 @@ int main (int argc, char **argv)
    int enable_twilight_scan = 0;
    int have_date = 0;
    int irr_only = 0;
+   int after_midnight = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
    const char *epoch_string = NULL;
@@ -1392,6 +1398,7 @@ int main (int argc, char **argv)
         {"output",       required_argument, 0, 'o'},
         {"irr",          required_argument, 0, 'i'},
         {"Irr",          required_argument, 0, 'I'},
+        {"angle",        required_argument, 0, 'a'},
         {"szaout",       required_argument, 0, 'z'},
         {"tailor",       required_argument, 0, 'T'},
         {"maneuver",     required_argument, 0, 'M'},
@@ -1409,6 +1416,7 @@ int main (int argc, char **argv)
    Solar_Geom_Type *solar_geom = NULL;
    const Scan_Method_Type *sm = NULL;
    char *plan_id = NULL;
+   char *tmp_optarg;
 
    if (argc < 2)
      usage();
@@ -1428,7 +1436,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNvZ:M:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNvZ:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1438,6 +1446,19 @@ int main (int argc, char **argv)
                           "%s: getopt returned character %d??",
                           __func__, c);
              usage();
+             break;
+           case 'a':
+             if (*optarg == '@')
+               {
+                  tmp_optarg = &optarg[1];
+                  after_midnight = 1;
+               }
+             else tmp_optarg = optarg;
+             if (1 != sscanf (tmp_optarg, "%le", &irr_angle))
+               {
+                  fprintf (stderr, "*** error reading irradiance polar angle option: %s\n", optarg);
+                  usage();
+               }
              break;
            case 'c':
              /* This config file will override the default one
@@ -1619,7 +1640,7 @@ int main (int argc, char **argv)
 
    if (fp_irr)
      {
-        if (0 != write_irradiance_plan (fp_irr, solar_geom, &t0, num_plan_days))
+        if (0 != write_irradiance_plan (fp_irr, solar_geom, irr_angle, after_midnight, &t0, num_plan_days))
           goto return_status;
         if (irr_only)
           {
