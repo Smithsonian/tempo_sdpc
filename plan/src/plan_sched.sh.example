@@ -3,23 +3,33 @@
 # TEMPO plan scheduling parameters:
 #
 
-plan_type="opt1"
+plan_start_day=@SCAN_START_DAY@
 plan_num_days=14
-plan_start_day=YYYY-MM-DD
+plan_type="opt1"
+#  plan_type may be one of the following:
+#     std = Conops scanning: Repeatedly scan between the configured limits.
+#    opt1 = optimized scanning: Scan the eastern half during the morning,
+#           then scan the full region during mid-day, then scan the western
+#           half during the afternoon.
+#   split-<method>-<region> = Alternate between (a) a <method> scan
+#           (e.g. method=std|opt1), and (b) N scans of a small region,
+#           where <region> is a named parameter group in the plan.cfg
+#           file (e.g. California)
 
 maneuver_file=""
 # spacecraft maneuver file
 
 tailoring_file=""
-# tailoring_file = scan tailoring file (empty string means
-#                 generate a dummy scan tailoring file
-#                 using the following parameters)
+# tailoring_file = scan tailoring file
+#                  If no scan tailoring file is available, leave tailoring_file="",
+#                  uncomment the following 3 lines, and edit the values as needed.
+#                  This will generate a scan tailoring file with zero offsets.
+#tailor_start_day=@TAILOR_START_DAY@
 #tailor_num_days=21
-#tailor_start_day=yyyy-mm-dd
 #tailor_epoch="1980-01-06T00:00:00Z"
 
 config_file=""
-# config_file = plan config file (empty string means use default)
+# config_file = plan config file (empty string means use the default configuration)
 
 plan_options=""
-# plan_options = any additional options to be passed to 'plan'
+# plan_options = any additional command-line options to be passed to 'plan'

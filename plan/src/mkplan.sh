@@ -35,7 +35,9 @@ notes_file=""
 case "$1" in
    --sch)
      if test -f $example_sched_file ; then
-        cat $example_sched_file
+        sed -e s,"@SCAN_START_DAY@","$(date --date friday +%Y-%m-%d)", \
+            -e s,"@TAILOR_START_DAY@","$(date --date thursday +%Y-%m-%d)", \
+            $example_sched_file
         exit 0
      fi
      ;;
