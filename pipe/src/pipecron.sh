@@ -179,8 +179,27 @@ sleep_minutes()
    done
 }
 
+usage_message()
+{
+   echo "Usage: $(basename $0) [options]"
+   echo "   --help     Print this usage message"
+   echo "   --service  Run as a service"
+   echo 0
+}
+
 main()
 {
+   if test $# -ne 0 ; then
+      case "$1" in
+         --service) service=yes
+           ;;
+         --help) usage_message
+           ;;
+         *) usage_message
+           ;;
+      esac
+   fi
+
    echo "$PGMNAME: started"
 
    while true ; do
@@ -202,6 +221,10 @@ main()
 	 last_weekly=$now
       fi
 
+      if test -z "$service" ; then
+         break
+      fi
+
       sleep_minutes 5
 
    done
@@ -209,4 +232,4 @@ main()
    echo "$PGMNAME: exiting"
 }
 
-main
+main "$@"
