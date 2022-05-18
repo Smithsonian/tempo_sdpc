@@ -5,6 +5,10 @@
 
 plan_start_day=@SCAN_START_DAY@
 plan_num_days=14
+# plan begin/end dates must lie within the range:
+# begin: @MANEUVER_FILE_BEGIN@
+#   end: @MANEUVER_FILE_END@
+
 plan_type="opt1"
 #  plan_type may be one of the following:
 #     std = Conops scanning: Repeatedly scan between the configured limits.
@@ -21,7 +25,7 @@ maneuver_file=""
 
 tailoring_file=""
 # tailoring_file = scan tailoring file
-#                  If no scan tailoring file is available, leave tailoring_file="",
+#                  If no scan tailoring file is available, leave tailoring_file blank,
 #                  uncomment the following 3 lines, and edit the values as needed.
 #                  This will generate a scan tailoring file with zero offsets.
 #tailor_start_day=@TAILOR_START_DAY@

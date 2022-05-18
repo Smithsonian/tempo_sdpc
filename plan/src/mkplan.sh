@@ -10,10 +10,11 @@ error_exit()
 
 usage_message()
 {
-   echo "Usage: $PGMNAME <schedule-config> | [options]"
+   echo "Usage: $PGMNAME [options] <schedule-config>"
    echo "   Options:"
    echo "     --help        Print this usage message"
-   echo "     --sch         Print schedule configuration template"
+   echo "     --sch [args]  Print schedule configuration template."
+   echo "                   Optional arguments: <maneuver-file> [<tailoring-file>]"
    echo "     --cfg         Print scan configuration template"
    echo "     --notes FILE  Text file containing special instructions."
    echo "                   (For details, see IOC/SDPC ICD TEMPO-09-0010)"
@@ -32,35 +33,75 @@ default_config_file="$SDPC_ROOT/share/plan.cfg"
 example_sched_file="$SDPC_ROOT/share/plan_sched.sh.example"
 notes_file=""
 
+output_sched_file()
+{
+   maneuver_file="$1"
+   shift
+   if test $# -eq 1 ; then
+      tailoring_file="$1"
+   fi
+
+   if ! test -f $example_sched_file ; then
+      echo "*** Internal Error: no template: $example_sched_file"
+      exit 1
+   fi
+
+   temp_file="$(mktemp)"
+   /bin/cp $example_sched_file $temp_file
+
+   if test -f "$maneuver_file" ; then
+      tman_beg="$(grep table_begin_time $maneuver_file | cut -d, -f 1 | cut -d= -f 2)"
+      tman_end="$(grep table_end_time $maneuver_file | cut -d, -f 1 | cut -d= -f 2)"
+      sed -i -e s,"@MANEUVER_FILE_BEGIN@","$(date -u --date @$tman_beg +%Y-%m-%d)", \
+             -e s,"@MANEUVER_FILE_END@","$(date -u --date @$tman_end +%Y-%m-%d)", \
+             -e s,'maneuver_file=.*',"maneuver_file=\"$maneuver_file\"", \
+             $temp_file
+   elif ! test -z "$maneuver_file" ; then
+      echo "*** Cannot access maneuver file: $maneuver_file"
+      exit 1
+   fi
+
+   if test -f "$tailoring_file" ; then
+      sed -i -e s,"tailoring_file=.*","tailoring_file=\"$tailoring_file\"", $temp_file
+   elif ! test -z "$tailoring_file" ; then
+      echo "*** Cannot access scan tailoring file: $tailoring_file"
+      exit 1
+   fi
+
+   sed -i -e s,"@SCAN_START_DAY@","$(date --date friday +%Y-%m-%d)", \
+          -e s,"@TAILOR_START_DAY@","$(date --date thursday +%Y-%m-%d)", \
+          $temp_file
+
+   cat $temp_file
+   /bin/rm -f $temp_file
+}
+
 case "$1" in
    --sch)
-     if test -f $example_sched_file ; then
-        sed -e s,"@SCAN_START_DAY@","$(date --date friday +%Y-%m-%d)", \
-            -e s,"@TAILOR_START_DAY@","$(date --date thursday +%Y-%m-%d)", \
-            $example_sched_file
+        shift
+        output_sched_file "$@"
         exit 0
-     fi
-     ;;
+        ;;
 
    --cfg)
-     if test -f $default_config_file ; then
-        cat $default_config_file
-        exit 0
-     fi
-     ;;
+        if test -f $default_config_file ; then
+           cat $default_config_file
+           exit 0
+        fi
+        ;;
 
    --help)
-       usage_message
-     ;;
+        usage_message
+        ;;
 
    --notes)
-     shift
-     notes_file="$1"
-     if ! test -r "$notes_file" ; then
-        error_exit "*** Error: cannot read notes file: $notes_file"
-     fi
-     shift
-     ;;
+        shift
+        notes_file="$1"
+        if ! test -r "$notes_file" ; then
+           error_exit "*** Error: cannot read notes file: $notes_file"
+        fi
+        shift
+        ;;
 
    *)
      # FALLTHRU

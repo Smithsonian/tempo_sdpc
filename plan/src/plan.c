@@ -1084,17 +1084,13 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
         goto return_status;
      }
 
-   /* Expand the table boundaries to include the specified margin */
-   table_beg_timet -= maneuver_margin;
-   table_end_timet += maneuver_margin;
-
-   /* Does this maneuver table overlap the target plan interval?
-    * If not, do nothing.
+   /* The target plan interval, including the maneuver margin,
+    * must lie entirely inside the time interval covered by the maneuver table.
     */
-   if ((table_end_timet < plan_beg_timet)
-       || (plan_end_timet < table_beg_timet))
+   if ((plan_beg_timet - maneuver_margin < table_beg_timet)
+       || (plan_end_timet + maneuver_margin > table_end_timet))
      {
-        status = 0;
+        tell_verror (TELL_RUNTIME_ERROR, "%s: plan with margin extends beyond maneuver table time limits", __func__);
         goto return_status;
      }
 
