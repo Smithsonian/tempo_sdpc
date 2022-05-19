@@ -13,9 +13,9 @@ usage_message()
    echo "Usage: $PGMNAME [options] <schedule-config>"
    echo "   Options:"
    echo "     --help        Print this usage message"
+   echo "     --cfg         Print scan configuration template"
    echo "     --sch [args]  Print schedule configuration template."
    echo "                   Optional arguments: <maneuver-file> [<tailoring-file>]"
-   echo "     --cfg         Print scan configuration template"
    echo "     --notes FILE  Text file containing special instructions."
    echo "                   (For details, see IOC/SDPC ICD TEMPO-09-0010)"
    exit 0

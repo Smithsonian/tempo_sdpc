@@ -1351,10 +1351,29 @@ static int perform_sza_check (Solar_Geom_Type *solar_geom,
    return 0;
 }
 
+static int find_config_file (char **config_file)
+{
+   const char *defaults[] = {"plan.cfg", "$SDPC_ROOT/share/plan.cfg", NULL};
+   const char **p;
+   char *s;
+
+   for (p = defaults; *p != NULL; p++)
+     {
+        if (NULL == (s = expand_string (*p)))
+          return -1;
+        if (0 == access (s, F_OK | R_OK))
+          break;
+        free (s);
+     }
+
+   *config_file = s;
+   return s ? 1 : 0;
+}
+
 int main (int argc, char **argv)
 {
    const char appname[] = "plan";
-   char *config_file = "plan.cfg";
+   char *config_file = NULL;
    char *scan_outfile = NULL;
    char *irr_outfile = NULL;
    char *master_outfile = NULL;
@@ -1412,7 +1431,8 @@ int main (int argc, char **argv)
    Solar_Geom_Type *solar_geom = NULL;
    const Scan_Method_Type *sm = NULL;
    char *plan_id = NULL;
-   char *tmp_optarg;
+   char *tmp_optarg = NULL;
+   int malloced_config_file = 0;
 
    if (argc < 2)
      usage();
@@ -1421,9 +1441,12 @@ int main (int argc, char **argv)
 
    config_init (&cfg);
 
-   /* Try reading the default config file, but if it doesn't exist,
-    * keep going in case there's a config file on the command line */
-   if (0 == access (config_file, F_OK | R_OK))
+   if ((malloced_config_file = find_config_file (&config_file)) < 0)
+     goto return_status;
+
+   /* If we found a config file, read it now, otherwise, keep going
+    * in case there's a config file on the command line */
+   if (config_file)
      {
         if (-1 == read_config_file (config_file, &cfg))
           goto return_status;
@@ -1461,6 +1484,11 @@ int main (int argc, char **argv)
               * that might have been read previously.
               * Subsequent command-line args will override
               * any corresponding config file values */
+             if (malloced_config_file)
+               {
+                  free(config_file);
+                  malloced_config_file = 0;
+               }
              config_file = optarg;
              if (-1 == read_config_file (config_file, &cfg))
                goto return_status;
@@ -1595,6 +1623,10 @@ int main (int argc, char **argv)
           status = EXIT_SUCCESS;
         goto return_status;
      }
+   else if (Plan_Verbose)
+     {
+        fprintf (stdout, "Using config file: %s\n", config_file);
+     }
 
    if (fp_master)
      {
@@ -1689,6 +1721,7 @@ int main (int argc, char **argv)
    status = EXIT_SUCCESS;
 return_status:
    FREE(plan_id);
+   if (malloced_config_file) free(config_file);
    if (solar_geom) solar_geom->sgt_delete (solar_geom);
    if (scan) scan->st_delete (scan);
    if (twilight_scan) twilight_scan->tst_delete (twilight_scan);
