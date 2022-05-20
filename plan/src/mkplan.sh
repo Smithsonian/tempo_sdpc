@@ -127,21 +127,18 @@ fi
 
 trap error_exit ERR
 
-# create temporary directory
-out_dir="$(mktemp -d)"
-
 # Get current time_t and convert to a UTC timestamp
 timet=$(date +%s)
 utc=$(date -u --date=@${timet} +%Y%m%dT%H%M%SZ)
 
 plan_dirname="tempo_plan_${utc}"
-target_dir="$out_dir/$plan_dirname"
+target_dir="$plan_dirname"
 
 if ! test -d $target_dir ; then
    mkdir -p $target_dir || error_exit "mkdir failed"
 fi
 
-echo "Writing temporary output to $target_dir"
+echo "Writing output to $target_dir"
 
 _tailor="${target_dir}/${utc}_scantailor.csv"
 _master="${target_dir}/${utc}_masterscan.csv"
@@ -165,7 +162,7 @@ fi
 _maneuver="$target_dir/$(basename $maneuver_file)"
 
 if test x"$tailoring_file" = x ; then
-   echo "WARNING: Scan tailoring file not specified"
+   echo "WARNING: Creating synthetic scan tailoring file with zero offsets."
    if test \( x"${tailor_epoch}" = x \) -o \( x"${tailor_start_day}" = x \) -o \( x"${tailor_num_days}" = x \) ; then
       error_exit "Parameters for dummy scan tailoring file not specified"
    else
@@ -188,10 +185,7 @@ ln -r -s $_maneuver $target_dir/maneuver.csv
 tarfile="${plan_dirname}.tar.gz"
 
 if test -d $target_dir ; then
-  tar czf $tarfile --remove-files -C $(dirname $target_dir) ${plan_dirname}
-  if test -d $out_dir ; then
-    /bin/rmdir $out_dir
-  fi
+  tar czf $tarfile -C $(dirname $target_dir) ${plan_dirname}
 fi
 
 echo "Created $tarfile"
