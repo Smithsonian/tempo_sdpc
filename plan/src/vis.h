@@ -36,9 +36,10 @@ extern double *vis_sza (const Vis_Type *v, double jd_utc, double *psza);
 /** Write lon,lat grid coordinates to a netCDF file
  * @param[in]  v       Pointer to a \c Vis_Type object initialized by \c vis_init
  * @param[in]  ncid    netCDF file identifier
+ * @param[in]  control_points   lon,lat coordinates of scan day begin/end control points
  * @return 0 on success, -1 on error
  */
-extern int vis_write_grid (Vis_Type *v, int ncid);
+extern int vis_write_grid (Vis_Type *v, int ncid, double *control_points);
 
 /** Write a solar zenith angle map to a named variable in a netCDF file
  * @param[in]  v       Pointer to a \c Vis_Type object initialized by \c vis_init

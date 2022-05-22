@@ -1,193 +1,175 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 
-import sys, os
+import os
+# Docs suggest this might improve performance when threading doesn't matter.
+# I'm not seeing it.
+os.environ["PYPROJ_GLOBAL_CONTEXT"]="ON"
+import sys
+import argparse
 import numpy as np
-import numpy.ma as ma
-import pickle
-from multiprocessing import Pool, cpu_count
-
-from netCDF4 import Dataset as NetCDFFile
-
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-from mpl_toolkits.basemap import Basemap, cm
+import matplotlib.backends.backend_pdf
+import cartopy.crs as ccrs
+import cartopy.img_transform as ctr
+import cartopy.feature as cfeature
+from netCDF4 import Dataset as NetCDFFile
 
-# Suppress deprecation warnings
-# I realize that this is extremely heavy-handed, but nothing else worked.
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
-
-Saved_Basemap_Filename = "basemap.pickle"
-
-# Axis label numbers are still serif font.  Why?
-plt.rc('text', usetex=True)
-#plt.rc('text.latex', preamble=r'\usepackage{lmodern}\renewcommand*\familydefault{\sfdefault}\usepackage[T1]{fontenc}')
-
-class Grid_Map (object):
-    def __init__(self, lon, lat):
-        self.lon = lon
-        self.lat = lat
+#earth_mean_radius=6371008.8 # meters
 
 class Var_Map (object):
-    def __init__(self, var, jd_utc, jd_utc_str, scan_duration, num_repeats, start_pos, scan_angle):
+    def __init__(self, var, jd_utc, jd_utc_str, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat):
         self.var = var
         self.jd_utc = jd_utc
         self.jd_utc_str = jd_utc_str
         self.scan_duration = scan_duration
         self.num_repeats = num_repeats
+        self.num_repeats_cbm = num_repeats_cbm
         self.start_pos = start_pos
         self.scan_angle = scan_angle
+        self.box_lon = box_lon
+        self.box_lat = box_lat
 
-class Var_Map_Config (object):
-    def __init__(self, name, cbar_label, min, max):
-        self.name = name
-        self.cbar_label = cbar_label
-        self.min = min
-        self.max = max
+class Sza_File (object):
 
-def read_grid (nc):
-    lon = nc.variables['longitude'][:]
-    lat = nc.variables['latitude'][:]
-    return Grid_Map (lon, lat)
+    def __init__(self, filename):
+        nc = NetCDFFile(filename, 'r')
+        self.nc = nc
+        self.lon = nc.variables['longitude'][:]
+        self.lat = nc.variables['latitude'][:]
+        # Plate Carree projection
+        self.xpc = nc.variables['x'][:,:]
+        self.ypc = nc.variables['y'][:,:]
+        # day begin/end control points
+        self.day_beg_point = nc.getncattr ('day_begin_ctrl_point')
+        self.day_end_point = nc.getncattr ('day_end_ctrl_point')
 
-def read_var (nc, var_config):
-    var_ptr = nc.variables[var_config.name]
-    var = var_ptr[:]
-    jd_utc = var_ptr.getncattr('julian_date')
-    jd_utc_str = var_ptr.getncattr('julian_date_str')
-    scan_duration = var_ptr.getncattr('scan_duration')
-    num_repeats = var_ptr.getncattr('num_repeats')
-    start_pos = var_ptr.getncattr('start_pos')
-    scan_angle = var_ptr.getncattr('scan_angle_rad')
-    return Var_Map (var, jd_utc, jd_utc_str, scan_duration, num_repeats, start_pos, scan_angle)
+        # Map projections
+        central_longitude=-90.0
+        globe = None
+        self.gdt = ccrs.Geodetic ()
+        self.eqc = ccrs.PlateCarree (central_longitude=central_longitude, globe=globe)
+        self.nsp = ccrs.NearsidePerspective(central_longitude=central_longitude, central_latitude=0.0,
+                                           satellite_height=35785831,
+                                           false_easting=0, false_northing=0)
+    def __del__(self):
+        self.nc.close()
 
-# Create Basemap instance.
-# For the 'geos' projection, use m1 to define the boundaries:
-# The rsphere argument is present only to workaround what seems to be a bug
-# recently introduced into the basemap module.  How nice.
-def init_basemap ():
-    lon_0=-91.0 # 92.85
-    m1 = Basemap(projection='geos',lon_0=lon_0,resolution=None, rsphere=(6378137.00,6356752.3142))
-    px = m1.urcrnrx * 0.275
-    py = m1.urcrnry * 0.48
-    mx = m1.urcrnrx * (-0.275)
-    my = m1.urcrnry * 0.15
-    m  = Basemap(projection='geos',lon_0=lon_0,resolution='l',\
-         llcrnrx=mx,llcrnry=my,urcrnrx=px,urcrnry=py, rsphere=(6378137.00,6356752.3142))
-    return m
+    def read_var (self, name):
+        var_ptr = self.nc.variables[name]
+        fill = var_ptr.getncattr ('_FillValue')
+        var = var_ptr[:]
+        var[var == fill] = np.nan
+        jd_utc = var_ptr.getncattr('julian_date')
+        jd_utc_str = var_ptr.getncattr('julian_date_str')
+        scan_duration = var_ptr.getncattr('scan_duration')
+        num_repeats = var_ptr.getncattr('num_repeats')
+        num_repeats_cbm = var_ptr.getncattr('num_repeats_cbm')
+        start_pos = var_ptr.getncattr('start_pos')
+        scan_angle = var_ptr.getncattr('scan_angle_rad')
+        box_lon = var_ptr.getncattr('box_lon')
+        box_lat = var_ptr.getncattr('box_lat')
+        return Var_Map (var, jd_utc, jd_utc_str, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat)
 
-def config_map (m):
-    # draw coastlines, state and country boundaries, edge of map.
-    m.drawcoastlines(linewidth=0.25)
-    m.drawstates(linewidth=0.25)
-    m.drawcountries(linewidth=0.25)
-    # draw parallels.
-    parallels = np.arange(20.0,60.0,10.)
-    m.drawparallels(parallels)
-    #### for 'geos', 'ortho' projections, label parallels manually (UGLY!)
-    #x_lab = [-124, -126, -130]
-    x_lab = [-125, -129, -136, -150]
-    for i in range(len(x_lab)):
-        plt.annotate(r"\it %g N" % (parallels[i]),
-                     xy=m(x_lab[i],parallels[i]),xycoords='data',
-                     horizontalalignment='right',verticalalignment='center',
-                     fontsize=15,annotation_clip=False)
-    #######
-    #parallels = np.arange(0.0,90,10.)
-    #m.drawparallels(parallels,labels=[1,0,0,0],fontsize=10)
-    # draw meridians
-    meridians = np.arange(180.,360.,10.)
-    #m.drawmeridians(meridians) # cannot label meridians on 'ortho' projections
-    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=15, fmt=(lambda x: (r"\it %d W" % (abs(x-360)))))
+    def plot_var (self, var):
+        sza = var.var
+        xx = self.xpc
+        yy = self.ypc
+        extent = (np.min(xx), np.max(xx), np.min(yy), np.max(yy))
+        eqc = self.eqc
 
-def plot_var_map (m, xi, yi, var, var_config):
-    clevs = np.arange(var_config.min, var_config.max, 10)
-    m.contour (xi,yi,var.var, [90.0], linewidths=2)
-    # For greyscale, try cmap='bone_r'
-    # For color, try cmap = 'bwr_r', 'YlOrBr', or 'hsv'
-    cs = m.contourf(xi,yi,var.var, clevs,
-                    cmap='plasma_r', alpha=0.625, extend='both')
-    cbar = m.colorbar(cs,location='bottom',pad="10%")
-    cbar.ax.tick_params(labelsize=15)
-    cbar.set_label(var_config.cbar_label, size=15)
-    plt.title(var.jd_utc_str, loc='left', size=15)
-    plt.title(r"%d$\times$ %0.1f min" % (var.num_repeats, var.scan_duration/60.0), loc='right', size=15)
+        plot_array = sza
+        # Warp to a different projection for plotting
+        plot_proj = self.nsp
+        (plot_array, plot_extent) = ctr.warp_array (sza, plot_proj, source_proj=eqc)
 
-    # scan start line
-    (x0, y0) = m(var.start_pos[0], var.start_pos[1]) # (lon,lat) -> (x,y)
-    ones_i = np.ones(len(yi))
-    scan_reg_color='white'
-    scan_reg_linewidth=2.5
-    plt.plot (x0 * ones_i, yi, color=scan_reg_color, linewidth=scan_reg_linewidth)
-    (xc, yc) = m(-100.0, 36.0)
-    plt.plot (x0, yc, marker=8, color=scan_reg_color, markersize=15, markeredgewidth=scan_reg_linewidth, fillstyle='none')
+        num_levels=9
+        bounds = np.linspace(0, 90, num_levels+1)
+        norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
 
-    # scan end line
-    geo_altitude = 35785831.0  # meters
-    x1 = x0 + var.scan_angle * geo_altitude;
-    plt.plot (x1 * ones_i, yi, color=scan_reg_color, linewidth=scan_reg_linewidth, linestyle='--')
+        cmap_name='plasma_r' #'hot_r'
 
-def plot_var (nc_filename, var_name, outdir):
-    config = Var_Map_Config (var_name, 'SZA [deg]', 50, 140)
+        fig = plt.figure (figsize=(7,3.5), dpi=100)
+        fig.subplots_adjust (left=0.1, right=0.85, top=0.95, bottom=0.05)
+        ax = plt.axes(projection=plot_proj)
+        # set axes extent and labels in native projection
+        ax.set_extent(extent, crs=eqc)
+        ax.coastlines()
+        ax.add_feature(cfeature.BORDERS, linewidth=0.2)
+        ax.add_feature(cfeature.COASTLINE, linewidth=0.2)
+        ax.add_feature(cfeature.STATES, linewidth=0.2)
+        g = ax.gridlines(draw_labels=True)
+        g.top_labels = False
+        g.right_labels = False
+        g.xlabel_style["size"] = 6
+        g.ylabel_style["size"] = 6
 
-    nc = NetCDFFile(nc_filename, 'r')
-    grid = read_grid (nc)
-    var = read_var (nc, config)
-    nc.close()
+        transform_first=True
+        filled_c = ax.contourf(xx, yy, sza, levels=bounds,
+                   transform=eqc, transform_first=transform_first,
+                   cmap=plt.get_cmap(cmap_name))
 
-    fig = plt.figure(1)
-    fig.set_size_inches (9.0, 6.5)
-    fig.set_dpi (100)
-    fig.suptitle ('Scan endpoints', fontsize=20, x=0.515)
+        ## Create colorbar axes (temporarily) anywhere
+        cax = fig.add_axes([0,0,0.1,0.1])
+        ## Find the location of the main plot axes
+        posn = ax.get_position()
+        ## Adjust the positioning of the colorbar,
+        cax.set_position([posn.x0+posn.width+0.02, posn.y0, 0.02, posn.height])
 
-    #m = init_basemap()
-    m = pickle.load(open(Saved_Basemap_Filename,'rb'))
-    config_map (m)
-    xi, yi = m(grid.lon, grid.lat)
+        cb = plt.colorbar(filled_c, ticks=bounds, cax=cax)
+        cb.ax.tick_params(labelsize=6)
+        cb.ax.set_ylabel ('SZA [deg]', fontsize=8)
 
-    plot_var_map (m, xi, yi, var, config)
+        ax.contour(xx, yy, sza, levels=filled_c.levels,
+                   colors=['black'], linewidths=0.1,
+                   transform=eqc, transform_first=transform_first)
 
-    plt_filename = "%s/%s.pdf" % (outdir, var_name)
-    pdf = matplotlib.backends.backend_pdf.PdfPages(plt_filename)
-    pdf.savefig(fig)
+        box_lon = np.ma.masked_invalid (var.box_lon)
+        box_lat = np.ma.masked_invalid (var.box_lat)
 
-    plt.close(fig)
-    pdf.close()
+        ax.plot (box_lon, box_lat, transform=self.gdt, color='red', linewidth=1)
+        ax.plot (self.day_beg_point[0], self.day_beg_point[1], marker='.', transform=self.gdt, color='red')
+        ax.plot (self.day_end_point[0], self.day_end_point[1], marker='.', transform=self.gdt, color='red')
+
+        ax.set_title ('{}'.format(var.jd_utc_str), fontsize=8, loc='left')
+        if var.num_repeats_cbm == 0:
+            ax.set_title ('{} sec'.format(var.scan_duration), fontsize=8, loc='right')
+        else:
+            ax.set_title ('cbm:{}, {} sec'.format(var.num_repeats_cbm, var.scan_duration),
+                          fontsize=8, loc='right')
+        return fig
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser(description='Plot SZA distribution at the start of each scan')
-    parser.add_argument('--infile', help="netCDF data file name")
-    parser.add_argument('--outdir', help="output directory path")
+    parser = argparse.ArgumentParser(description='Generate SZA plots.')
+    parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
+                         help="Output plot file name")
+    parser.add_argument('--select', metavar='LIST', default=None, nargs="*", type=int,
+                        help="Selected plot numbers")
+    parser.add_argument ('szafile', help="Path to SZA file (plan output)")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
 
-    m = init_basemap()
-    pickle.dump(m,open(Saved_Basemap_Filename,'wb'),-1)
-    print('basemap saved in file: {}'.format(Saved_Basemap_Filename))
+    s = Sza_File (args.szafile)
 
-    nc_filename = args.infile
+    pdf = matplotlib.backends.backend_pdf.PdfPages(args.output)
 
-    nc = NetCDFFile(nc_filename, 'r')
-    var_names = list(nc.variables.keys())
-    sza_vars = [var_names[i] for i,item in enumerate(var_names) if "sza_" in item]
-    nc.close()
+    if args.select is not None:
+        var_name_list = ['sza_%02d' % (num) for num in args.select]
+    else:
+        var_name_list = [key for key in s.nc.variables.keys() if key.startswith("sza_")]
 
-    os.makedirs (args.outdir, exist_ok=True)
+    for var_name in var_name_list:
+        print('Plotting {}'.format(var_name))
+        var = s.read_var (var_name)
+        fig = s.plot_var(var)
+        pdf.savefig (fig)
+        plt.close(fig)
+    pdf.close()
 
-    args = [(nc_filename, var_name, args.outdir) for var_name in sza_vars]
-
-    num_proc = cpu_count()
-    with Pool(num_proc) as p:
-        p.starmap (plot_var, args)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 

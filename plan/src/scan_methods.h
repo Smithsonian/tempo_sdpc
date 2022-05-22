@@ -15,7 +15,7 @@ typedef struct
                               const Scan_Limit_Times_Type *, void *);
    /**< generate a scan plan */
 
-   int (*sm_vis)(Vis_Type *v, const Plan_List_Type *, double, int, int);
+   int (*sm_vis)(Vis_Type *v, const Plan_List_Type *, double, int, double *, int);
    /**< compute solar zenith angle maps and write them to the specified netCDF file */
 }
 Scan_Method_Type;

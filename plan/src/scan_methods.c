@@ -744,7 +744,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 }
 
 static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
-                     int num_days, int ncid)
+                     int num_days, double *control_points, int ncid)
 {
    const Plan_List_Type *entry;
    char var_name[32];
@@ -753,7 +753,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
 
 #define VAR_NAME_FMT "sza_%02d"
 
-   if (0 != vis_write_grid (v, ncid))
+   if (0 != vis_write_grid (v, ncid, control_points))
      goto return_status;
 
    k = 0;

@@ -439,13 +439,14 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
 }
 
 static int generate_scan_vis (config_t *cfg, const char *filename, int num_days,
-                              Solar_Geom_Type *solar_geom,
+                              Solar_Geom_Type *solar_geom, Scan_Type *scan,
                               const Plan_List_Type *plan_list,
-                              double step_size,
                               const Scan_Method_Type *sm)
 {
    Vis_Type *v = NULL;
    int ncid, tio_status, status = -1;
+   double step_size = scan->st_step_size(scan);
+   double control_points[4];
 
    if (filename == NULL)
      return 0;
@@ -456,7 +457,12 @@ static int generate_scan_vis (config_t *cfg, const char *filename, int num_days,
    if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
      goto return_status;
 
-   if (0 != sm->sm_vis (v, plan_list, step_size, num_days, ncid))
+   if (0 != scan->st_scan_day_beg (scan, &control_points[0], &control_points[1]))
+     goto return_status;
+   if (0 != scan->st_scan_day_end (scan, &control_points[2], &control_points[3]))
+     goto return_status;
+
+   if (0 != sm->sm_vis (v, plan_list, step_size, num_days, control_points, ncid))
      goto return_status;
 
    tio_status = TIO_close (ncid);
@@ -1714,8 +1720,8 @@ int main (int argc, char **argv)
      goto return_status;
 
    /* Optionally, generate some plots */
-   if (0 != generate_scan_vis (&cfg, oot.vis_output_file, oot.num_sza_days, solar_geom, plan_list,
-                               scan->st_step_size(scan), sm))
+   if (0 != generate_scan_vis (&cfg, oot.vis_output_file, oot.num_sza_days,
+                               solar_geom, scan, plan_list, sm))
      goto return_status;
 
    status = EXIT_SUCCESS;

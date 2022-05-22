@@ -29,6 +29,7 @@
 struct Vis_Type
 {
    Solar_Geom_Type *solar_geom;
+   double sat_lon;
 
    projPJ geos;
    projPJ longlat;
@@ -84,54 +85,6 @@ static int vis_alloc_grid (Vis_Type *v, int nx, int ny)
    return 0;
 }
 
-static int vis_init_xygrid (Vis_Type *v)
-{
-   double *v_x = v->x;
-   double *v_y = v->y;
-   double xmin, xmax, dx;
-   double ymin, ymax, dy;
-   double x0 = v->x0;
-   double y0 = v->y0;
-   double cos_a = cos(-v->azi);
-   double sin_a = sin(-v->azi);
-   int ix, nx = v->nx;
-   int iy, ny = v->ny;
-   int k, nk = nx * ny;
-
-   /* generate a uniform grid centered on (0,0) */
-
-   xmin = -0.5 * v->xsize;
-   xmax = +0.5 * v->xsize;
-   ymin = -0.5 * v->ysize;
-   ymax = +0.5 * v->ysize;
-
-   dx = (xmax - xmin) / (nx-1);
-   dy = (ymax - ymin) / (ny-1);
-
-   for (iy = 0; iy < ny; iy++)
-     {
-        for (ix = 0; ix < nx; ix++)
-          {
-             k = ix + iy * nx;
-             v_x[k] = xmin + ix * dx;
-             v_y[k] = ymin + iy * dy;
-          }
-     }
-
-   /* rotate grid, shift center to (x0,y0)
-    */
-
-   for (k = 0; k < nk; k++)
-     {
-        double x_k = x0 + v_x[k] * cos_a + v_y[k] * sin_a;
-        double y_k = y0 - v_x[k] * sin_a + v_y[k] * cos_a;
-        v_x[k] = x_k;
-        v_y[k] = y_k;
-     }
-
-   return 0;
-}
-
 static int vis_init_proj (Vis_Type *v, double sat_lon)
 {
    char ctl_geos[PROJ_ARGS_BUFSIZE];
@@ -162,20 +115,75 @@ static int vis_init_proj (Vis_Type *v, double sat_lon)
    return 0;
 }
 
-static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
+/* lon, lat are of size (2*nx + 2*ny) */
+#define MICRORADIAN (1.e-6)
+static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entry,
+                                   double step_size, int nx, int ny,
+                                   double *lon, double *lat)
 {
    projPJ tpers = NULL;
    char ctl_tpers[PROJ_ARGS_BUFSIZE];
    const char tpers_fmt[] =
      "+proj=tpers +lat_0=0 +lon_0=%f +h=%f +tilt=%0.4g +azi=%0.4g";
-   double *v_x = v->x, *v_y = v->y;
-   double *v_lon = v->lon, *v_lat = v->lat;
-   int len, status = -1;
-   long i, n;
+   double xmax = MICRORADIAN * (entry->xstart + entry->num_steps * step_size);
+   double xmin = MICRORADIAN * entry->xstart;
+   double ymax = +0.5 * v->ysize;
+   double ymin = -0.5 * v->ysize;
+   double cos_a = cos(-v->azi);
+   double sin_a = sin(-v->azi);
+   double dx, dy;
+   double *x = lon;
+   double *y = lat;
+   int status = -1;
+   int i, k, n, len;
+
+   /* Position the box relative to the FOR center.
+    * The Y limits are already centered, by construction.
+    */
+   xmin -= v->x0;
+   xmax -= v->x0;
+
+   dx = (xmax - xmin) / (nx-1);
+   dy = (ymax - ymin) / (ny-1);
+
+   k = 0;
+   for (i = 0; i < nx; i++, k++)
+     {
+        x[k] = xmin + i * dx;
+        y[k] = ymin;
+     }
+   for (i = 0; i < ny; i++, k++)
+     {
+        x[k] = xmax;
+        y[k] = ymin + i * dy;
+     }
+   for (i = nx-1; i >= 0; i--, k++)
+     {
+        x[k] = xmin + i * dx;
+        y[k] = ymax;
+     }
+   for (i = ny-1; i >= 0; i--, k++)
+     {
+        x[k] = xmin;
+        y[k] = ymin + i * dy;
+     }
+
+   /* rotate grid, shift center to (x0,y0)
+    */
+
+   n = k;
+
+   for (k = 0; k < n; k++)
+     {
+        double x_k = v->x0 + x[k] * cos_a + y[k] * sin_a;
+        double y_k = v->y0 - x[k] * sin_a + y[k] * cos_a;
+        x[k] = x_k;
+        y[k] = y_k;
+     }
 
    memset (ctl_tpers, 0, PROJ_ARGS_BUFSIZE);
    len = snprintf (ctl_tpers, PROJ_ARGS_BUFSIZE, tpers_fmt,
-                   sat_lon/DEGTORAD, GEO_ALTITUDE,
+                   v->sat_lon/DEGTORAD, GEO_ALTITUDE,
                    v->tilt/DEGTORAD,
                    v->azi/DEGTORAD);
    if (len >= PROJ_ARGS_BUFSIZE)
@@ -190,14 +198,13 @@ static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
         goto return_status;
      }
 
-   n = v->nx * v->ny;
    for (i = 0; i < n; i++)
      {
-        v_lon[i] = v_x[i] * GEO_ALTITUDE;
-        v_lat[i] = v_y[i] * GEO_ALTITUDE;
+        lon[i] = x[i] * GEO_ALTITUDE;
+        lat[i] = y[i] * GEO_ALTITUDE;
      }
 
-   if ((status = pj_transform (tpers, v->longlat, n, 1, v_lon, v_lat, NULL)) != 0)
+   if ((status = pj_transform (tpers, v->longlat, n, 1, lon, lat, NULL)) != 0)
      {
         tell_verror (TELL_APPLICATION_ERROR,
                      "%s: pj_transform failed, status = %d (%s)",
@@ -207,19 +214,61 @@ static int vis_xy_to_lonlat (Vis_Type *v, double sat_lon)
 
    for (i = 0; i < n; i++)
      {
-        if (isfinite (v_lon[i]))
-          v_lon[i] /= DEGTORAD;
-        else v_lon[i] = TIO_FILL_FLOAT;
+        if (isfinite (lon[i]))
+          lon[i] /= DEGTORAD;
+        else lon[i] = TIO_FILL_FLOAT;
 
-        if (isfinite (v_lat[i]))
-          v_lat[i] /= DEGTORAD;
-        else v_lat[i] = TIO_FILL_FLOAT;
+        if (isfinite (lat[i]))
+          lat[i] /= DEGTORAD;
+        else lat[i] = TIO_FILL_FLOAT;
      }
 
    status = 0;
 return_status:
-   pj_free (tpers);
+   pj_free(tpers);
    return status ? -1 : 0;
+}
+
+static int vis_define_mesh (Vis_Type *v)
+{
+   int i, j;
+   struct {
+      double lat_min, lat_max;
+      double lon_min, lon_max;
+   } bbox = {
+      .lat_max = 65.0,
+      .lat_min = 15.0,
+      .lon_min = -140.0,
+      .lon_max = -20.0,
+   };
+   double center_lon = -90.0;
+   double center_lat = 36.0;
+   double x0, y0, dx, dy, cos_phi1;
+
+   cos_phi1 = cos(center_lat * DEGTORAD);
+
+   /* rectangular grid for Equidistant Cylindrical projection */
+   dx = (bbox.lon_max - bbox.lon_min) * cos_phi1 / (v->num_lon-1);
+   dy = (bbox.lat_max - bbox.lat_min) / (v->num_lat - 1);
+
+   x0 = (bbox.lon_min - center_lon) * cos(bbox.lat_min * DEGTORAD);
+   y0 = bbox.lat_min;
+
+   for (j = 0; j < v->num_lat; j++)
+     {
+        for (i = 0; i < v->num_lon; i++)
+          {
+             int k = i + j * v->num_lon;
+             /* Equidistant Cylindrical projection */
+             v->x[k] = x0 + i * dx;
+             v->y[k] = y0 + j * dy;
+             /* longitude, latitude [deg] */
+             v->lat[k] = v->y[k];
+             v->lon[k] = center_lon + v->x[k] / cos_phi1;
+          }
+     }
+
+   return 0;
 }
 
 static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
@@ -306,6 +355,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 
    if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
      goto return_error;
+   v->sat_lon = sat_lon;
 
    if (0 != vis_init_proj (v, sat_lon))
      goto return_error;
@@ -313,10 +363,13 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
    if (0 != vis_alloc_grid (v, img_size, img_size))
      goto return_error;
 
-   if (0 != vis_init_xygrid (v))
-     goto return_error;
-
-   if (0 != vis_xy_to_lonlat (v, sat_lon))
+   /* Define a regular grid in the Plate Carree projection,
+    * (aka Equidistant Cylindrical projection) which is
+    * convenient for plotting (more convenient than (lon,lat)),
+    * yet simply related to (lon,lat)
+    * The output file will have both (lon,lat) and (x,y) = Plate Carree
+    */
+   if (0 != vis_define_mesh (v))
      goto return_error;
 
    return v;
@@ -409,6 +462,8 @@ double *vis_sza (const Vis_Type *v, double jd_utc, double *psza)
                   max_pos[0] = lon[i];
                   max_pos[1] = lat[i];
                }
+             /* use NOVAS value */
+             sza[i] = sza_novas;
           }
      }
 
@@ -421,7 +476,7 @@ double *vis_sza (const Vis_Type *v, double jd_utc, double *psza)
    return sza;
 }
 
-int vis_write_grid (Vis_Type *v, int ncid)
+int vis_write_grid (Vis_Type *v, int ncid, double *control_points)
 {
    const char name_lon[] = "longitude";
    const char name_lat[] = "latitude";
@@ -431,17 +486,21 @@ int vis_write_grid (Vis_Type *v, int ncid)
    int start[2], count[2];
    int i, status = -1;
 
-   if ((0 != TIO_def_dim (ncid, "x", v->num_lon, &dimid_lon))
-       ||(0 != TIO_def_dim (ncid, "y", v->num_lat, &dimid_lat)))
+   if ((0 != TIO_put_att (ncid, NC_GLOBAL, "day_begin_ctrl_point", NC_DOUBLE, 2, control_points))
+       || (0 != TIO_put_att (ncid, NC_GLOBAL, "day_end_ctrl_point", NC_DOUBLE, 2, control_points+2)))
      goto return_status;
 
-   if ((0 != TIO_def_var (ncid, "x", NC_FLOAT, 1, &dimid_lon, &varid_x))
-       || (0 != TIO_def_var (ncid, "y", NC_FLOAT, 1, &dimid_lat, &varid_y)))
+   if ((0 != TIO_def_dim (ncid, name_lon, v->num_lon, &dimid_lon))
+       ||(0 != TIO_def_dim (ncid, name_lat, v->num_lat, &dimid_lat)))
+     goto return_status;
+
+   if ((0 != TIO_def_var (ncid, name_lon, NC_FLOAT, 1, &dimid_lon, &varid_lon))
+       || (0 != TIO_def_var (ncid, name_lat, NC_FLOAT, 1, &dimid_lat, &varid_lat)))
      goto return_status;
 
    start[0] = 0;
 
-   if (0 != TIO_put_var_section (ncid, "x", start, &v->num_lon, NC_DOUBLE, v->x))
+   if (0 != TIO_put_var_section (ncid, name_lon, start, &v->num_lon, NC_DOUBLE, v->lon))
      goto return_status;
 
    start[1] = 0;
@@ -449,23 +508,23 @@ int vis_write_grid (Vis_Type *v, int ncid)
    count[1] = 1;
    for (i = 0; i < v->num_lat; i++)
      {
-        double *v_y = v->y + i * v->num_lon;
+        double *v_lat = v->lat + i * v->num_lon;
         start[0] = i;
-        if (0 != TIO_put_var_section (ncid, "y", start, count, NC_DOUBLE, v_y))
+        if (0 != TIO_put_var_section (ncid, name_lat, start, count, NC_DOUBLE, v_lat))
           goto return_status;
      }
 
    v->dimids_lon_lat[0] = dimid_lat;
    v->dimids_lon_lat[1] = dimid_lon;
-   if ((0 != TIO_def_var (ncid, name_lon, NC_FLOAT, 2, v->dimids_lon_lat, &varid_lon))
-       || (0 != TIO_def_var (ncid, name_lat, NC_FLOAT, 2, v->dimids_lon_lat, &varid_lat)))
+   if ((0 != TIO_def_var (ncid, "x", NC_FLOAT, 2, v->dimids_lon_lat, &varid_x))
+       || (0 != TIO_def_var (ncid, "y", NC_FLOAT, 2, v->dimids_lon_lat, &varid_y)))
      goto return_status;
 
-   if ((0 != TIO_put_att (ncid, varid_lon, "missing_value", NC_FLOAT, 1, &float_missing))
-       || (0 != TIO_def_var_fill (ncid, varid_lon, 0, &float_missing)))
+   if ((0 != TIO_put_att (ncid, varid_x, "missing_value", NC_FLOAT, 1, &float_missing))
+       || (0 != TIO_def_var_fill (ncid, varid_x, 0, &float_missing)))
      goto return_status;
-   if ((0 != TIO_put_att (ncid, varid_lat, "missing_value", NC_FLOAT, 1, &float_missing))
-       || (0 != TIO_def_var_fill (ncid, varid_lat, 0, &float_missing)))
+   if ((0 != TIO_put_att (ncid, varid_y, "missing_value", NC_FLOAT, 1, &float_missing))
+       || (0 != TIO_def_var_fill (ncid, varid_y, 0, &float_missing)))
      goto return_status;
 
    start[0] = 0;
@@ -473,8 +532,8 @@ int vis_write_grid (Vis_Type *v, int ncid)
    count[0] = v->num_lat;
    count[1] = v->num_lon;
 
-   if ((0 != TIO_put_var_section (ncid, name_lon, start, count, NC_DOUBLE, v->lon))
-       ||(0 != TIO_put_var_section (ncid, name_lat, start, count, NC_DOUBLE, v->lat)))
+   if ((0 != TIO_put_var_section (ncid, "x", start, count, NC_DOUBLE, v->x))
+       ||(0 != TIO_put_var_section (ncid, "y", start, count, NC_DOUBLE, v->y)))
      goto return_status;
 
    status = 0;
@@ -514,6 +573,10 @@ static int vis_azel_to_lonlat (const Vis_Type *v, double az, double el,
    return 0;
 }
 
+#define NBOX_LON 10
+#define NBOX_LAT 10
+#define NBOX (2*NBOX_LON + 2*NBOX_LAT)
+
 int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
                      const char *name, const double *value,
                      double step_size, const Plan_List_Type *entry)
@@ -522,7 +585,12 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    int varid, start[2], count[2];
    char buf[32];
    float float_missing = TIO_FILL_FLOAT;
-   double pos[2], scan_angle;
+   double pos[2], scan_angle, scan_duration;
+   double box_lon[NBOX], box_lat[NBOX];
+   int nx = NBOX_LON;
+   int ny = NBOX_LAT;
+   int n = NBOX;
+   int num_scans;
    int status = -1;
 
    if ((0 != TIO_def_var (ncid, name, NC_FLOAT, 2, v->dimids_lon_lat, &varid))
@@ -537,10 +605,14 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
 
    scan_angle = entry->num_steps * step_size * 1.e-6;  /* [rad] */
 
+   num_scans = (entry->num_repeats_cbm > 0) ? entry->num_repeats_cbm : 1;
+   scan_duration = entry->scan_duration / num_scans;
+
    if ((0 != TIO_put_att (ncid, varid, "julian_date", NC_DOUBLE, 1, &jd_utc))
        ||(0 != TIO_put_att (ncid, varid, "julian_date_str", NC_CHAR, strlen(buf)+1, buf))
-       ||(0 != TIO_put_att (ncid, varid, "scan_duration", NC_DOUBLE, 1, &entry->scan_duration))
+       ||(0 != TIO_put_att (ncid, varid, "scan_duration", NC_DOUBLE, 1, &scan_duration))
        ||(0 != TIO_put_att (ncid, varid, "num_repeats", NC_INT, 1, &entry->num_repeats))
+       ||(0 != TIO_put_att (ncid, varid, "num_repeats_cbm", NC_INT, 1, &entry->num_repeats_cbm))
        ||(0 != TIO_put_att (ncid, varid, "start_pos", NC_DOUBLE, 2, pos))
        ||(0 != TIO_put_att (ncid, varid, "scan_angle_rad", NC_DOUBLE, 1, &scan_angle)))
      goto return_status;
@@ -555,6 +627,14 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    count[1] = v->num_lon;
 
    if (0 != TIO_put_var_section (ncid, name, start, count, NC_DOUBLE, value))
+     goto return_status;
+
+   if (0 != vis_scan_box_to_lonlat (v, entry, step_size, nx, ny,
+                                    box_lon, box_lat))
+     goto return_status;
+
+   if ((0 != TIO_put_att (ncid, varid, "box_lon", NC_DOUBLE, n, box_lon))
+       || (0 != TIO_put_att (ncid, varid, "box_lat", NC_DOUBLE, n, box_lat)))
      goto return_status;
 
    status = 0;

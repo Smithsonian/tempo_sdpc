@@ -46,6 +46,12 @@ struct Scan_Type
    int (*st_scan_end)(const Scan_Type *, double *, double *);
    /**< retrieve the (lon,lat) coordinates of the scan's western limit [deg] */
 
+   int (*st_scan_day_beg)(const Scan_Type *, double *, double *);
+   /**< retrieve the (lon,lat) coordinates of the day-begin control point [deg] */
+
+   int (*st_scan_day_end)(const Scan_Type *, double *, double *);
+   /**< retrieve the (lon,lat) coordinates of the day-end control point [deg] */
+
    int (*st_print_params)(const Scan_Type *, const char *, FILE *);
    /**< print the scan parameters to an open FILE pointer */
 

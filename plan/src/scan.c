@@ -911,6 +911,20 @@ static int scan_end_point (const Scan_Type *st, double *lon, double *lat)
    return 0;
 }
 
+static int scan_day_beg_point (const Scan_Type *st, double *lon, double *lat)
+{
+   *lon = st->day_beg.lon;
+   *lat = st->day_beg.lat;
+   return 0;
+}
+
+static int scan_day_end_point (const Scan_Type *st, double *lon, double *lat)
+{
+   *lon = st->day_end.lon;
+   *lat = st->day_end.lat;
+   return 0;
+}
+
 static int scan_num_steps (const Scan_Type *st)
 {
    return st->num_scan_steps;
@@ -1063,6 +1077,8 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_scan_end_angle = scan_end_angle;
    st->st_scan_beg = scan_beg_point;
    st->st_scan_end = scan_end_point;
+   st->st_scan_day_beg = scan_day_beg_point;
+   st->st_scan_day_end = scan_day_end_point;
    st->st_scan_num_steps = scan_num_steps;
    st->st_print_params = scan_print_params;
    st->st_scan_type = query_scan_type;
