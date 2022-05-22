@@ -110,11 +110,8 @@ extern int tio_copy_granule_flag_var (int ncid_from, int ncid_to);
 
 extern int tio_define_dim_step_var (int grp, int dimid);
 
-enum TIO_Scan_Type
-{
-   TEMPO_SCAN_TYPE_STANDARD = 0,
-   TEMPO_SCAN_TYPE_NIGHTLIGHTS = 1
-};
+#define TEMPO_SCAN_TYPE_STANDARD    0x0
+#define TEMPO_SCAN_TYPE_NIGHTLIGHTS 0x1
 extern int tio_make_scan_label (uint16_t *scan_label, uint16_t scan_type, uint16_t scan_num);
 extern void tio_parse_scan_label (uint16_t scan_label, uint16_t *scan_type, uint16_t *scan_num);
 
