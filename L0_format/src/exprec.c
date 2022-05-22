@@ -63,6 +63,7 @@ Exprec_Info_Type;
    int processing_version; \
    int classify_using_img_data_source; \
    int is_test_pattern; \
+   int is_twilight_scan; \
    double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
@@ -245,9 +246,7 @@ static int define_outfile_vars (Process_Method_Type *pmt,
           return -1;
         if (0 != tio_write_granule_flag_var (ncid, identp->granule_flag))
           return -1;
-	/* (scan_type==0) means "standard radiance scan".
-	 * (scan_type!=0) means the data will probably require custom processing.
-	 * It is assumed that all exposures within a given scan_num will have the
+	/* It is assumed that all exposures within a given scan_num will have the
 	 * same value of scan_type, but this is not checked.
 	 */
 	if (0 != TIO_put_att (ncid, NC_GLOBAL, "scan_type", NC_INT, 1, &identp->scan_type))
@@ -347,32 +346,35 @@ static int close_outfile (Process_Method_Type *pmt)
                return -1;
              tell_vinfo (0, "archived %s/%s", pmt->archdir_path, pmt->out_basename);
 
-             if (pmt->is_test_pattern)
+             if ((pmt->is_test_pattern != 0)
+                 || (pmt->is_twilight_scan != 0))
                {
+                  /* These file types receive no further autonomous processing */
                   if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
                     return -1;
-                  goto handle_test_pattern;
                }
-
-             switch (pmt->exprec_type)
+             else
                {
-                default:
-                  /* Un-hide files of known type that require further processing */
-                  if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
-                    return -1;
-                  tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
-                  break;
+                  switch (pmt->exprec_type)
+                    {
+                     default:
+                       /* Un-hide files of known type that require further processing */
+                       if (0 != rename_hidden (pmt->out_dirname, pmt->out_basename))
+                         return -1;
+                       tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
+                       break;
 
-                  /* The following file types receive no further autonomous processing */
-                case IOCSDPC_EXPREC_TYPE_LIN_IRR:
-                  /* FALLTHROUGH */
-                case IOCSDPC_EXPREC_TYPE_LIN_DARK:
-                  /* FALLTHROUGH */
-                case IOCSDPC_EXPREC_TYPE_UNKNOWN:
-                  /* FALLTHROUGH */
-                  if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
-                    return -1;
-                  break;
+                       /* The following file types receive no further autonomous processing */
+                     case IOCSDPC_EXPREC_TYPE_LIN_IRR:
+                       /* FALLTHROUGH */
+                     case IOCSDPC_EXPREC_TYPE_LIN_DARK:
+                       /* FALLTHROUGH */
+                     case IOCSDPC_EXPREC_TYPE_UNKNOWN:
+                       /* FALLTHROUGH */
+                       if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
+                         return -1;
+                       break;
+                    }
                }
           }
         else
@@ -383,7 +385,7 @@ static int close_outfile (Process_Method_Type *pmt)
              tell_vinfo (0, "completed %s/%s", pmt->out_dirname, pmt->out_basename);
           }
      }
-handle_test_pattern:
+
    pmt->ncid = INT_MAX;
    if (pmt->enum_lookup)
      {
@@ -447,15 +449,16 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 	 * for the scan provided in the SDPC-generated radiance scan plan. */
 	sdpc_scan_label = erec->scan_label & 0x0000ffff;
 	tio_parse_scan_label (sdpc_scan_label, &scan_type, &scan_num);
-        if (scan_type == 0)
-          {
-             pmt->product_type = TEMPO_PROD_TYPE_RAD;
-             pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
-          }
-        else
+        if (scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS)
           {
              pmt->product_type = TEMPO_PROD_TYPE_RAD_TWI;
              pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD_TWI;
+             pmt->is_twilight_scan = 1;
+          }
+        else
+          {
+             pmt->product_type = TEMPO_PROD_TYPE_RAD;
+             pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
           }
         scan_num_int = scan_num;
 	radiance_ident.scan_num = scan_num;
