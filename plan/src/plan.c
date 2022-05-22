@@ -108,8 +108,9 @@ static void usage (void)
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
    fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
    fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
-   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME [default=std]\n");
-   fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file\n");
+   fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME[-k] [default=std]\n");
+   fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file.\n");
+   fprintf (stderr, "                                     The optional '-k' extension means use a CBM that does k scans.\n");
    fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
    fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
    fprintf (stderr, "   -M | --maneuver FILE     Read maneuver windows from FILE.\n");

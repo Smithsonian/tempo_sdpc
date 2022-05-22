@@ -243,18 +243,20 @@ return_status:
    return status ? -1 : 0;
 }
 
-static int vis_define_mesh (Vis_Type *v, const Box_Type *bbox, const Point_Type *ctr)
+static int vis_define_mesh (Vis_Type *v, const Box_Type *bbox, double center_lon)
 {
    double x0, y0, dx, dy, cos_phi1;
    int i, j;
 
-   cos_phi1 = cos(ctr->lat * DEGTORAD);
+   /* Plate Carree projection is an Equidistant Cylindrical projection
+    * with the equator as standard parallel, so cos(phi1) = 1 */
+   cos_phi1 = 1.0;
 
    /* rectangular grid for Equidistant Cylindrical projection */
    dx = (bbox->max.lon - bbox->min.lon) * cos_phi1 / (v->num_lon-1);
    dy = (bbox->max.lat - bbox->min.lat) / (v->num_lat - 1);
 
-   x0 = (bbox->min.lon - ctr->lon) * cos(bbox->min.lat * DEGTORAD);
+   x0 = (bbox->min.lon - center_lon) * cos_phi1;
    y0 = bbox->min.lat;
 
    for (j = 0; j < v->num_lat; j++)
@@ -267,14 +269,14 @@ static int vis_define_mesh (Vis_Type *v, const Box_Type *bbox, const Point_Type 
              v->y[k] = y0 + j * dy;
              /* longitude, latitude [deg] */
              v->lat[k] = v->y[k];
-             v->lon[k] = ctr->lon + v->x[k] / cos_phi1;
+             v->lon[k] = center_lon + v->x[k] / cos_phi1;
           }
      }
 
    return 0;
 }
 
-static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type *box, Point_Type *ctr)
+static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type *box, double *center_lon)
 {
    config_setting_t *s;
    config_setting_t *sub;
@@ -310,11 +312,9 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type 
         return -1;
      }
 
-   if ((NULL == (sub = config_setting_get_member (s, "proj")))
-       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "center_lon", &ctr->lon))
-       || (CONFIG_TRUE != config_setting_lookup_float (sub, "center_lat", &ctr->lat)))
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "center_lon", center_lon))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config.proj: %s",
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config.center_lon: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -332,7 +332,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 {
    Vis_Type *v = NULL;
    Box_Type box = {0};
-   Point_Type ctr = {0};
+   double center_lon;
    double sat_lon, unused_azimuth_angle_about_z_axis;
    int img_size;
 
@@ -345,7 +345,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 
    v->solar_geom = solar_geom;
 
-   if (0 != read_vis_params (v, cfg, &img_size, &box, &ctr))
+   if (0 != read_vis_params (v, cfg, &img_size, &box, &center_lon))
      goto return_error;
 
    /* tilt>0 [deg] is northward tilt of instrument boresight,
@@ -386,12 +386,11 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
      goto return_error;
 
    /* Define a regular grid in the Plate Carree projection,
-    * (aka Equidistant Cylindrical projection) which is
-    * convenient for plotting (more convenient than (lon,lat)),
+    * which is convenient for plotting (more convenient than (lon,lat)),
     * yet simply related to (lon,lat)
     * The output file will have both (lon,lat) and (x,y) = Plate Carree
     */
-   if (0 != vis_define_mesh (v, &box, &ctr))
+   if (0 != vis_define_mesh (v, &box, center_lon))
      goto return_error;
 
    return v;
@@ -595,8 +594,8 @@ static int vis_azel_to_lonlat (const Vis_Type *v, double az, double el,
    return 0;
 }
 
-#define NBOX_LON 10
-#define NBOX_LAT 10
+#define NBOX_LON 100
+#define NBOX_LAT 100
 #define NBOX (2*NBOX_LON + 2*NBOX_LAT)
 
 int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,

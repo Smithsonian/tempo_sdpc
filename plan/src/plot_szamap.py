@@ -35,7 +35,7 @@ class Var_Map (object):
 
 class Sza_File (object):
 
-    def __init__(self, filename):
+    def __init__(self, filename, central_longitude, central_latitude):
         nc = NetCDFFile(filename, 'r')
         self.nc = nc
         self.lon = nc.variables['longitude'][:]
@@ -48,11 +48,10 @@ class Sza_File (object):
         self.day_end_point = nc.getncattr ('day_end_ctrl_point')
 
         # Map projections
-        central_longitude=-90.0
         globe = None
         self.gdt = ccrs.Geodetic ()
         self.eqc = ccrs.PlateCarree (central_longitude=central_longitude, globe=globe)
-        self.nsp = ccrs.NearsidePerspective(central_longitude=central_longitude, central_latitude=0.0,
+        self.nsp = ccrs.NearsidePerspective(central_longitude=central_longitude, central_latitude=central_latitude,
                                            satellite_height=35785831,
                                            false_easting=0, false_northing=0)
     def __del__(self):
@@ -76,9 +75,11 @@ class Sza_File (object):
         return Var_Map (var, jd_utc, jd_utc_str, solar_boresight_angle, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat)
 
     def plot_var (self, var):
-        sza = var.var
-        xx = self.xpc
-        yy = self.ypc
+        sza = np.ma.masked_invalid (var.var)
+        xx = np.ma.masked_invalid (self.xpc)
+        yy = np.ma.masked_invalid (self.ypc)
+        sza.mask = np.logical_or (sza.mask, xx.mask, yy.mask)
+
         extent = (np.min(xx), np.max(xx), np.min(yy), np.max(yy))
         eqc = self.eqc
 
@@ -145,6 +146,10 @@ class Sza_File (object):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate SZA plots.')
+    parser.add_argument ('--central_longitude', metavar='LON', default=-90.0,
+                         help="Input SZA map Plate Carree projection central longitude [deg]")
+    parser.add_argument ('--central_latitude', metavar='LON', default=5.0,
+                         help="Plotted nearside projection central latitude [deg]")
     parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
                          help="Output plot file name")
     parser.add_argument('--select', metavar='LIST', default=None, nargs="*", type=int,
@@ -155,7 +160,7 @@ def main():
         sys.exit(0)
     args = parser.parse_args()
 
-    s = Sza_File (args.szafile)
+    s = Sza_File (args.szafile, args.central_longitude, args.central_latitude)
 
     print('Writing plots to: {}'.format(args.output))
     pdf = matplotlib.backends.backend_pdf.PdfPages(args.output)

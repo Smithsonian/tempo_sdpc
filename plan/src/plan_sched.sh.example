@@ -15,10 +15,11 @@ plan_type="opt1"
 #    opt1 = optimized scanning: Scan the eastern half during the morning,
 #           then scan the full region during mid-day, then scan the western
 #           half during the afternoon.
-#   split-<method>-<region> = Alternate between (a) a <method> scan
+#   split-<method>-<region>[-k] = Alternate between (a) a <method> scan
 #           (e.g. method=std|opt1), and (b) N scans of a small region,
 #           where <region> is a named parameter group in the plan.cfg
-#           file (e.g. California)
+#           file (e.g. California).  The optional '-k' extension means
+#           use a CBM that performs 'k' scans.
 
 maneuver_file=""
 # spacecraft maneuver file
