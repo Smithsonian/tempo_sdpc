@@ -20,10 +20,11 @@ from netCDF4 import Dataset as NetCDFFile
 #earth_mean_radius=6371008.8 # meters
 
 class Var_Map (object):
-    def __init__(self, var, jd_utc, jd_utc_str, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat):
+    def __init__(self, var, jd_utc, jd_utc_str, solar_boresight_angle, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat):
         self.var = var
         self.jd_utc = jd_utc
         self.jd_utc_str = jd_utc_str
+        self.solar_boresight_angle = solar_boresight_angle
         self.scan_duration = scan_duration
         self.num_repeats = num_repeats
         self.num_repeats_cbm = num_repeats_cbm
@@ -64,6 +65,7 @@ class Sza_File (object):
         var[var == fill] = np.nan
         jd_utc = var_ptr.getncattr('julian_date')
         jd_utc_str = var_ptr.getncattr('julian_date_str')
+        solar_boresight_angle = var_ptr.getncattr('solar_boresight_angle')
         scan_duration = var_ptr.getncattr('scan_duration')
         num_repeats = var_ptr.getncattr('num_repeats')
         num_repeats_cbm = var_ptr.getncattr('num_repeats_cbm')
@@ -71,7 +73,7 @@ class Sza_File (object):
         scan_angle = var_ptr.getncattr('scan_angle_rad')
         box_lon = var_ptr.getncattr('box_lon')
         box_lat = var_ptr.getncattr('box_lat')
-        return Var_Map (var, jd_utc, jd_utc_str, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat)
+        return Var_Map (var, jd_utc, jd_utc_str, solar_boresight_angle, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat)
 
     def plot_var (self, var):
         sza = var.var
@@ -133,7 +135,7 @@ class Sza_File (object):
         ax.plot (self.day_beg_point[0], self.day_beg_point[1], marker='.', transform=self.gdt, color='red')
         ax.plot (self.day_end_point[0], self.day_end_point[1], marker='.', transform=self.gdt, color='red')
 
-        ax.set_title ('{}'.format(var.jd_utc_str), fontsize=8, loc='left')
+        ax.set_title ('%s  sba:%0.1f deg' % (var.jd_utc_str, var.solar_boresight_angle), fontsize=8, loc='left')
         if var.num_repeats_cbm == 0:
             ax.set_title ('{} sec'.format(var.scan_duration), fontsize=8, loc='right')
         else:

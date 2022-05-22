@@ -585,7 +585,7 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    int varid, start[2], count[2];
    char buf[32];
    float float_missing = TIO_FILL_FLOAT;
-   double pos[2], scan_angle, scan_duration;
+   double pos[2], scan_angle, scan_duration, solar_boresight_angle;
    double box_lon[NBOX], box_lat[NBOX];
    int nx = NBOX_LON;
    int ny = NBOX_LAT;
@@ -600,6 +600,9 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    if (0 != mkjdtimestr (jd_utc, buf, sizeof(buf)))
      goto return_status;
 
+   if (0 != v->solar_geom->sgt_sat_sun_position (v->solar_geom, jd_utc, &solar_boresight_angle, NULL, NULL))
+     goto return_status;
+
    if (0 != vis_azel_to_lonlat (v, entry->xstart, entry->ystart, &pos[0], &pos[1]))
      goto return_status;
 
@@ -610,6 +613,7 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
 
    if ((0 != TIO_put_att (ncid, varid, "julian_date", NC_DOUBLE, 1, &jd_utc))
        ||(0 != TIO_put_att (ncid, varid, "julian_date_str", NC_CHAR, strlen(buf)+1, buf))
+       ||(0 != TIO_put_att (ncid, varid, "solar_boresight_angle", NC_DOUBLE, 1, &solar_boresight_angle))
        ||(0 != TIO_put_att (ncid, varid, "scan_duration", NC_DOUBLE, 1, &scan_duration))
        ||(0 != TIO_put_att (ncid, varid, "num_repeats", NC_INT, 1, &entry->num_repeats))
        ||(0 != TIO_put_att (ncid, varid, "num_repeats_cbm", NC_INT, 1, &entry->num_repeats_cbm))
