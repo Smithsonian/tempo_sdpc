@@ -20,7 +20,8 @@ struct Plan_List_Type
    double jd_utc_beg_safe;   /**< Earliest time when the aperture may safely open on this day, UTC [days] */
    double jd_utc_end_safe;   /**< Latest time when the aperture may safely open on this day, UTC [days] */
    int num_steps;            /**< number of mirror steps in the scan */
-   int num_repeats;          /**< number of scans on this day */
+   int num_repeats;          /**< number of times to repeat this scan (or cbm) */
+   int num_repeats_cbm;      /**< >0 indicates instrument should use a cbm to perform blocks of num_repeats_cbm scans */
    uint16_t scan_type;       /**< scan type value */
 };
 

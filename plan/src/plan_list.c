@@ -51,6 +51,7 @@ Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type)
    memset ((char *)ple, 0, sizeof *ple);
 
    ple->scan_type = scan_type;
+   ple->num_repeats_cbm = 0;
 
    return ple;
 }
@@ -120,7 +121,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
-     "label,time,duration,mirror_x,num_steps,integration_time,timestamp\n";
+     "label,time,duration,mirror_x,num_steps,integration_time,repeats,timestamp\n";
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
    uint16_t last_scan_type, scan_num;
@@ -143,9 +144,10 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
      {
         double tstart_utc, tstart_tai, fsw_xstart;
         char buf[TIME_BUFSIZE];
-        int new_scan_type = (last_scan_type != entry->scan_type);
         int new_day = (previous_entry_jd_utc_end < entry->tstart);
-        int i;
+        int twilight_transition = ((last_scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS)
+                                   != (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS));
+        int i, num_scans;
 
         tstart_utc = (entry->tstart - unix_epoch_jd) * SEC_PER_DAY;
         if (0 != tio_time_utc_to_taix (tstart_utc, &tstart_tai))
@@ -163,14 +165,16 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
          * but for the IOC plan, we want to write out the mirror tilt angle */
         fsw_xstart = mirror_tilt (entry->xstart);
 
-        /* Restart scan numbering each day, and whenever scan_type changes.
+        /* Restart scan numbering each day, and at twilight transitions.
          * (scan_num=0 is used as a fill value, so we number scans from 1) */
-        if (new_day || new_scan_type)
+        if (new_day || twilight_transition)
           {
              scan_num = 1;
           }
 
-        for (i = 0; i < entry->num_repeats; i++, scan_num++)
+        num_scans = (entry->num_repeats_cbm > 0) ? entry->num_repeats_cbm : 1;
+
+        for (i = 0; i < entry->num_repeats; i++, scan_num += num_scans)
           {
              uint16_t scan_label;
              double tstart_jd = (entry->tstart
@@ -182,13 +186,14 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
              if (0 != tio_make_scan_label (&scan_label, entry->scan_type, scan_num))
                return -1;
 
-             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,\"%s\"\n",
+             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,%d,\"%s\"\n",
                           scan_label,
                           tstart_tai,
                           entry->scan_duration,
                           fsw_xstart,
                           entry->num_steps,
                           entry->integration_time,
+                          entry->num_repeats_cbm,
                           buf) < 0)
                {
                   tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);

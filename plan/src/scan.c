@@ -57,7 +57,8 @@ Surface_Region_Type;
    Scan_Angle_Type scan_beg_angle; \
    Scan_Angle_Type scan_end_angle; \
    Step_Config_Type dt; \
-   int base_scan_method_index;
+   int base_scan_method_index; \
+   int num_repeats_cbm;
 
 #define TWILIGHT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Region_Type east; \
@@ -1116,12 +1117,15 @@ static void free_split_scan_type (Split_Scan_Type *sst)
 
 static int parse_scan_method_string (const char *pscan_method,
                                      char *base_scan_method, size_t size_bsm,
-                                     char *config_group_name, size_t size_cgn)
+                                     char *config_group_name, size_t size_cgn,
+                                     int *num_repeats_cbm)
 {
    const char *delim = "-";
    char *scan_method = NULL;
    char *tok = NULL;
    int status = -1;
+
+   *num_repeats_cbm = 0;
 
    if (NULL == (scan_method = strdup (pscan_method)))
      return -1;
@@ -1142,6 +1146,23 @@ static int parse_scan_method_string (const char *pscan_method,
      goto free_and_return;
    strncpy (config_group_name, tok, size_cgn);
 
+   /* optional 3rd field to specify a custom scanning CBM */
+   if (NULL != (tok = strtok (NULL, delim)))
+     {
+        if (1 != sscanf (tok, "%d", num_repeats_cbm))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: reading num_repeats_cbm field from scan method string: %s",
+                          __func__, pscan_method);
+             goto free_and_return;
+          }
+        if (*num_repeats_cbm < 0)
+          {
+             tell_verror (TELL_INVALID_PARM_ERROR, "%s: scan method string %s (num_repeats_cbm = %d)",
+                          __func__, pscan_method, *num_repeats_cbm);
+             goto free_and_return;
+          }
+     }
+
    status = 0;
 free_and_return:
    FREE(scan_method);
@@ -1153,6 +1174,11 @@ static int split_scan_base_scan_method (const Split_Scan_Type *sst)
    return sst->base_scan_method_index;
 }
 
+static int split_scan_num_repeats_cbm (const Split_Scan_Type *sst)
+{
+   return sst->num_repeats_cbm;
+}
+
 Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
 {
    Split_Scan_Type *sst = NULL;
@@ -1161,10 +1187,12 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
    char base_scan_method[MAX_SIZE_METHOD_NAME];
    char config_group_name[MAX_SIZE_CONFIG_GROUP_NAME];
    int base_scan_method_index;
+   int num_repeats_cbm;
 
    if (0 != parse_scan_method_string (scan_method,
                                       base_scan_method, MAX_SIZE_METHOD_NAME,
-                                      config_group_name, MAX_SIZE_CONFIG_GROUP_NAME))
+                                      config_group_name, MAX_SIZE_CONFIG_GROUP_NAME,
+                                      &num_repeats_cbm))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: parsing scan_method string: %s",
                      __func__, scan_method);
@@ -1189,8 +1217,10 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
      }
 
    sst->base_scan_method_index = base_scan_method_index;
+   sst->num_repeats_cbm = num_repeats_cbm;
 
    sst->sst_base_scan_method = split_scan_base_scan_method;
+   sst->sst_num_repeats_cbm = split_scan_num_repeats_cbm;
    sst->sst_delete = free_split_scan_type;
    sst->sst_scan_region_angles = split_scan_region_angles;
    sst->sst_scan_region = split_scan_region;

@@ -340,6 +340,7 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    AziElev_Type beg={0}, end={0};
    double time_remaining, tstart;
    int is_broad, num_narrow_repeats, base_scan_method;
+   int num_repeats_cbm;
    uint16_t scan_type = st->st_scan_type(st);
 
    if (sst == NULL)
@@ -347,6 +348,10 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         tell_verror (TELL_RUNTIME_ERROR, "%s: sst = NULL", __func__);
         return NULL;
      }
+
+   /* Optionally use a custom CBM to perform a block
+    * of num_repeats_cbm short scans */
+   num_repeats_cbm = sst->sst_num_repeats_cbm (sst);
 
    /* broad contains the plan for a standard east/west scan of
     * a broad region (e.g. the full FOR)
@@ -429,6 +434,17 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
              if (entry->num_repeats > num_narrow_repeats)
                {
                   entry->num_repeats = num_narrow_repeats;
+               }
+
+             /* N repeats may be implemented by K calls
+              * to a CBM that does M scans, where N = K*M.
+              * For simplicity we drop the N mod M remainder.
+              */
+             if ((num_repeats_cbm > 0) && (entry->num_repeats >= num_repeats_cbm))
+               {
+                  entry->num_repeats /= num_repeats_cbm;
+                  entry->scan_duration *= num_repeats_cbm;
+                  entry->num_repeats_cbm = num_repeats_cbm;
                }
           }
 
