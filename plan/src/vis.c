@@ -53,6 +53,20 @@ struct Vis_Type
    int dimids_lon_lat[2];
 };
 
+typedef struct Point_Type Point_Type;
+struct Point_Type
+{
+   double lon;
+   double lat;
+};
+
+typedef struct Box_Type Box_Type;
+struct Box_Type
+{
+   Point_Type min;
+   Point_Type max;
+};
+
 void vis_free (Vis_Type *v)
 {
    if (v == NULL)
@@ -229,30 +243,19 @@ return_status:
    return status ? -1 : 0;
 }
 
-static int vis_define_mesh (Vis_Type *v)
+static int vis_define_mesh (Vis_Type *v, const Box_Type *bbox, const Point_Type *ctr)
 {
-   int i, j;
-   struct {
-      double lat_min, lat_max;
-      double lon_min, lon_max;
-   } bbox = {
-      .lat_max = 65.0,
-      .lat_min = 15.0,
-      .lon_min = -140.0,
-      .lon_max = -20.0,
-   };
-   double center_lon = -90.0;
-   double center_lat = 36.0;
    double x0, y0, dx, dy, cos_phi1;
+   int i, j;
 
-   cos_phi1 = cos(center_lat * DEGTORAD);
+   cos_phi1 = cos(ctr->lat * DEGTORAD);
 
    /* rectangular grid for Equidistant Cylindrical projection */
-   dx = (bbox.lon_max - bbox.lon_min) * cos_phi1 / (v->num_lon-1);
-   dy = (bbox.lat_max - bbox.lat_min) / (v->num_lat - 1);
+   dx = (bbox->max.lon - bbox->min.lon) * cos_phi1 / (v->num_lon-1);
+   dy = (bbox->max.lat - bbox->min.lat) / (v->num_lat - 1);
 
-   x0 = (bbox.lon_min - center_lon) * cos(bbox.lat_min * DEGTORAD);
-   y0 = bbox.lat_min;
+   x0 = (bbox->min.lon - ctr->lon) * cos(bbox->min.lat * DEGTORAD);
+   y0 = bbox->min.lat;
 
    for (j = 0; j < v->num_lat; j++)
      {
@@ -264,18 +267,19 @@ static int vis_define_mesh (Vis_Type *v)
              v->y[k] = y0 + j * dy;
              /* longitude, latitude [deg] */
              v->lat[k] = v->y[k];
-             v->lon[k] = center_lon + v->x[k] / cos_phi1;
+             v->lon[k] = ctr->lon + v->x[k] / cos_phi1;
           }
      }
 
    return 0;
 }
 
-static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
+static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type *box, Point_Type *ctr)
 {
    config_setting_t *s;
-   int num_xtrack, num_mirror_steps;
-   double size_mirror_step, size_xtrack_pixel;
+   config_setting_t *sub;
+   int num_xtrack;
+   double size_xtrack_pixel;
 
    if (NULL == (s = config_lookup (cfg, "output_sza_map_config")))
      {
@@ -287,8 +291,6 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
 
    if ((CONFIG_TRUE != config_setting_lookup_int (s, "img_size", img_size))
        || (CONFIG_TRUE != config_setting_lookup_int (s, "num_xtrack", &num_xtrack))
-       || (CONFIG_TRUE != config_setting_lookup_int (s, "num_mirror_steps", &num_mirror_steps))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "size_mirror_step", &size_mirror_step))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "size_xtrack_pixel", &size_xtrack_pixel))
        )
      {
@@ -297,12 +299,30 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
         return -1;
      }
 
+   if ((NULL == (sub = config_setting_get_member (s, "bounding_box")))
+       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "lon_min", &box->min.lon))
+       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "lat_min", &box->min.lat))
+       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "lon_max", &box->max.lon))
+       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "lat_max", &box->max.lat)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config.bounding_box: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if ((NULL == (sub = config_setting_get_member (s, "proj")))
+       ||(CONFIG_TRUE != config_setting_lookup_float (sub, "center_lon", &ctr->lon))
+       || (CONFIG_TRUE != config_setting_lookup_float (sub, "center_lat", &ctr->lat)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config.proj: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
    /* convert microradians to radians */
-   size_mirror_step *= 1.e-6;
    size_xtrack_pixel *= 1.e-6;
 
    /* FOR size [radians] */
-   v->xsize = num_mirror_steps * size_mirror_step;
    v->ysize = num_xtrack * size_xtrack_pixel * cos (v->tilt);
 
    return 0;
@@ -311,6 +331,8 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size)
 Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 {
    Vis_Type *v = NULL;
+   Box_Type box = {0};
+   Point_Type ctr = {0};
    double sat_lon, unused_azimuth_angle_about_z_axis;
    int img_size;
 
@@ -323,7 +345,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
 
    v->solar_geom = solar_geom;
 
-   if (0 != read_vis_params (v, cfg, &img_size))
+   if (0 != read_vis_params (v, cfg, &img_size, &box, &ctr))
      goto return_error;
 
    /* tilt>0 [deg] is northward tilt of instrument boresight,
@@ -369,7 +391,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
     * yet simply related to (lon,lat)
     * The output file will have both (lon,lat) and (x,y) = Plate Carree
     */
-   if (0 != vis_define_mesh (v))
+   if (0 != vis_define_mesh (v, &box, &ctr))
      goto return_error;
 
    return v;

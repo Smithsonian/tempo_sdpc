@@ -157,6 +157,7 @@ def main():
 
     s = Sza_File (args.szafile)
 
+    print('Writing plots to: {}'.format(args.output))
     pdf = matplotlib.backends.backend_pdf.PdfPages(args.output)
 
     if args.select is not None:
