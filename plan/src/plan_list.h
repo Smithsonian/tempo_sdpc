@@ -16,6 +16,7 @@ struct Plan_List_Type
    double xstart;            /**< scan start mirror coordinate [microradian] */
    double ystart;
    double scan_duration;     /**< scan duration [sec] */
+   double maneuver_loss;     /**< scan time lost due to maneuver window overlap */
    double integration_time;  /**< integration time for a single exposure in a co-add [sec] */
    double jd_utc_beg_safe;   /**< Earliest time when the aperture may safely open on this day, UTC [days] */
    double jd_utc_end_safe;   /**< Latest time when the aperture may safely open on this day, UTC [days] */

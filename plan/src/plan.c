@@ -33,7 +33,6 @@ int Plan_Verbose;
 
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
-#define DEFAULT_NUM_SZA_DAYS     1
 
 #define SMA_MAX_CALIBRATED_MIRROR_X  49600.0
 #define SMA_MAX_CALIBRATED_MIRROR_Y   4400.0
@@ -81,13 +80,6 @@ typedef struct
 }
 Cal_Date_Type;
 
-typedef struct
-{
-   const char *vis_output_file;
-   int num_sza_days;
-}
-Optional_Output_Type;
-
 static double get_unix_epoch_jd (void)
 {
    return __Unix_Epoch_JD;
@@ -106,8 +98,7 @@ static void usage (void)
    fprintf (stderr, "   -e | --epoch EPOCH       Define the epoch as a UTC time: YYYY-MM-DDTHH:MM:SSZ\n");
    fprintf (stderr, "   -d | --date DATE         Plan start date:\n");
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
-   fprintf (stderr, "   -n | --ndays N[,M]       N=number of days to plan [default=14]\n");
-   fprintf (stderr, "                            M=number of days for SZA map output [default=1]\n");
+   fprintf (stderr, "   -n | --ndays N           N=number of days to plan [default=14]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME[-k] [default=std]\n");
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file.\n");
    fprintf (stderr, "                                     The optional '-k' extension means use a CBM that does k scans.\n");
@@ -122,7 +113,7 @@ static void usage (void)
    fprintf (stderr, "                            Prepend '@' to select times after local midnight\n");
    fprintf (stderr, "   -m | --master FILE       Generate master scan table\n");
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize\n");
-   fprintf (stderr, "                            the solar illumination at the start of each scan\n\n");
+   fprintf (stderr, "                            the solar illumination at the start of each scan\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity\n");
    fprintf (stderr, "  For testing:\n");
@@ -439,21 +430,24 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
    return 0;
 }
 
-static int generate_scan_vis (config_t *cfg, const char *filename, int num_days,
+static int generate_scan_vis (config_t *cfg, const char *optional_output_string,
                               Solar_Geom_Type *solar_geom, Scan_Type *scan,
                               const Plan_List_Type *plan_list,
                               const Scan_Method_Type *sm)
 {
    Vis_Type *v = NULL;
-   int ncid, tio_status, status = -1;
+   const char *filename;
+   int ncid, tio_status, num_days = INT_MAX;
    double step_size = scan->st_step_size(scan);
    double control_points[4];
+   int status = -1;
 
-   if (filename == NULL)
+   if (optional_output_string == NULL)
      return 0;
+   filename = optional_output_string;
 
    if (NULL == (v = vis_init (cfg, solar_geom)))
-     return -1;
+     goto return_status;
 
    if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
      goto return_status;
@@ -792,6 +786,8 @@ static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bou
 
    *new_entry = *entry;
 
+   new_entry->maneuver_loss = entry->scan_duration - duration_sec;
+
    /* Note that the partial scan always begins from xstart,ystart */
    new_entry->tstart = tstart;
    new_entry->scan_duration = duration_sec;
@@ -828,6 +824,16 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
           {
              fprintf (stderr, "maneuver window=(%f,%f) overlaps radiance scan plan entry=(%f,%f)\n",
                       mnv_beg, mnv_end, entry_beg, entry_end);
+          }
+
+        /* If this is a custom CBM, convert it to the equivalent number
+         * of standard scans, and then process normally: */
+        if (entry->num_repeats_cbm > 0)
+          {
+             entry->num_repeats *= entry->num_repeats_cbm;
+             entry->scan_duration /= entry->num_repeats_cbm;
+             entry->num_repeats_cbm = 0;
+             scan_duration_days = entry->scan_duration / SEC_PER_DAY;
           }
 
         if ((mnv_beg < entry_beg) && (entry_end < mnv_end))  /* plan entry entirely within a maneuver */
@@ -1402,11 +1408,7 @@ int main (int argc, char **argv)
    const char *maneuver_file = NULL;
    const char *scan_tailoring_file = NULL;
    const char *sza_check_string = NULL;
-   Optional_Output_Type oot =
-     {
-        .vis_output_file = NULL,
-        .num_sza_days = DEFAULT_NUM_SZA_DAYS,
-     };
+   const char *optional_output_string = NULL;
    static struct option long_options[] =
      {
         {"help",         no_argument,       0, 'h'},
@@ -1554,16 +1556,8 @@ int main (int argc, char **argv)
                }
              break;
            case 'n':
-             if (NULL != strchr (optarg, ','))
-               {
-                  if (2 != sscanf (optarg, "%d,%d", &num_plan_days, &oot.num_sza_days))
-                    usage ();
-               }
-             else
-               {
-                  if (1 != sscanf (optarg, "%d", &num_plan_days))
-                    usage ();
-               }
+             if (1 != sscanf (optarg, "%d", &num_plan_days))
+               usage ();
              break;
            case 'o':
              scan_outfile = optarg;
@@ -1592,7 +1586,7 @@ int main (int argc, char **argv)
              scan_tailoring_file = optarg;
              break;
            case 'z':
-             oot.vis_output_file = optarg;
+             optional_output_string = optarg;
              break;
           }
      }
@@ -1721,8 +1715,7 @@ int main (int argc, char **argv)
      goto return_status;
 
    /* Optionally, generate some plots */
-   if (0 != generate_scan_vis (&cfg, oot.vis_output_file, oot.num_sza_days,
-                               solar_geom, scan, plan_list, sm))
+   if (0 != generate_scan_vis (&cfg, optional_output_string, solar_geom, scan, plan_list, sm))
      goto return_status;
 
    status = EXIT_SUCCESS;

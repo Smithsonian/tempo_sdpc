@@ -638,6 +638,7 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
        ||(0 != TIO_put_att (ncid, varid, "scan_duration", NC_DOUBLE, 1, &scan_duration))
        ||(0 != TIO_put_att (ncid, varid, "num_repeats", NC_INT, 1, &entry->num_repeats))
        ||(0 != TIO_put_att (ncid, varid, "num_repeats_cbm", NC_INT, 1, &entry->num_repeats_cbm))
+       ||(0 != TIO_put_att (ncid, varid, "maneuver_loss", NC_DOUBLE, 1, &entry->maneuver_loss))
        ||(0 != TIO_put_att (ncid, varid, "start_pos", NC_DOUBLE, 2, pos))
        ||(0 != TIO_put_att (ncid, varid, "scan_angle_rad", NC_DOUBLE, 1, &scan_angle)))
      goto return_status;

@@ -20,18 +20,9 @@ from netCDF4 import Dataset as NetCDFFile
 #earth_mean_radius=6371008.8 # meters
 
 class Var_Map (object):
-    def __init__(self, var, jd_utc, jd_utc_str, solar_boresight_angle, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat):
+    def __init__(self, var, keys):
         self.var = var
-        self.jd_utc = jd_utc
-        self.jd_utc_str = jd_utc_str
-        self.solar_boresight_angle = solar_boresight_angle
-        self.scan_duration = scan_duration
-        self.num_repeats = num_repeats
-        self.num_repeats_cbm = num_repeats_cbm
-        self.start_pos = start_pos
-        self.scan_angle = scan_angle
-        self.box_lon = box_lon
-        self.box_lat = box_lat
+        self.keys = keys
 
 class Sza_File (object):
 
@@ -62,17 +53,15 @@ class Sza_File (object):
         fill = var_ptr.getncattr ('_FillValue')
         var = var_ptr[:]
         var[var == fill] = np.nan
-        jd_utc = var_ptr.getncattr('julian_date')
-        jd_utc_str = var_ptr.getncattr('julian_date_str')
-        solar_boresight_angle = var_ptr.getncattr('solar_boresight_angle')
-        scan_duration = var_ptr.getncattr('scan_duration')
-        num_repeats = var_ptr.getncattr('num_repeats')
-        num_repeats_cbm = var_ptr.getncattr('num_repeats_cbm')
-        start_pos = var_ptr.getncattr('start_pos')
-        scan_angle = var_ptr.getncattr('scan_angle_rad')
-        box_lon = var_ptr.getncattr('box_lon')
-        box_lat = var_ptr.getncattr('box_lat')
-        return Var_Map (var, jd_utc, jd_utc_str, solar_boresight_angle, scan_duration, num_repeats, num_repeats_cbm, start_pos, scan_angle, box_lon, box_lat)
+        keys = {}
+        keys["jd_utc_str"] = var_ptr.getncattr('julian_date_str')
+        keys["solar_boresight_angle"] = var_ptr.getncattr('solar_boresight_angle')
+        keys["scan_duration"] = var_ptr.getncattr('scan_duration')
+        keys["num_repeats_cbm"] = var_ptr.getncattr('num_repeats_cbm')
+        keys["box_lon"] = var_ptr.getncattr('box_lon')
+        keys["box_lat"] = var_ptr.getncattr('box_lat')
+        keys["maneuver_loss"] = var_ptr.getncattr('maneuver_loss')
+        return Var_Map (var, keys)
 
     def plot_var (self, var):
         sza = np.ma.masked_invalid (var.var)
@@ -129,31 +118,50 @@ class Sza_File (object):
                    colors=['black'], linewidths=0.1,
                    transform=eqc, transform_first=transform_first)
 
-        box_lon = np.ma.masked_invalid (var.box_lon)
-        box_lat = np.ma.masked_invalid (var.box_lat)
+        box_lon = np.ma.masked_invalid (var.keys["box_lon"])
+        box_lat = np.ma.masked_invalid (var.keys["box_lat"])
 
         ax.plot (box_lon, box_lat, transform=self.gdt, color='red', linewidth=1)
         ax.plot (self.day_beg_point[0], self.day_beg_point[1], marker='.', transform=self.gdt, color='red')
         ax.plot (self.day_end_point[0], self.day_end_point[1], marker='.', transform=self.gdt, color='red')
 
-        ax.set_title ('%s  sba:%0.1f deg' % (var.jd_utc_str, var.solar_boresight_angle), fontsize=8, loc='left')
-        if var.num_repeats_cbm == 0:
-            ax.set_title ('{} sec'.format(var.scan_duration), fontsize=8, loc='right')
+        if var.keys["maneuver_loss"] > 0.0:
+            maneuver_truncation = "[M: %0.1f sec]" % (var.keys["maneuver_loss"])
         else:
-            ax.set_title ('cbm:{}, {} sec'.format(var.num_repeats_cbm, var.scan_duration),
+            maneuver_truncation = ""
+
+        ax.set_title ('%s  sba:%0.1f deg %s' % (var.keys["jd_utc_str"],
+                      var.keys["solar_boresight_angle"], maneuver_truncation), fontsize=8, loc='left')
+
+        if var.keys["num_repeats_cbm"] == 0:
+            ax.set_title ('%0.1f sec' % (var.keys["scan_duration"]), fontsize=8, loc='right')
+        else:
+            ax.set_title ('cbm:%d, %0.1f sec' % (var.keys["num_repeats_cbm"], var.keys["scan_duration"]),
                           fontsize=8, loc='right')
         return fig
 
+def find_vars_for_date (nc, date):
+    var_names = [key for key in nc.variables.keys() if key.startswith("sza_")]
+    select_vars = []
+    for name in var_names:
+        var = nc.variables[name]
+        date_str = var.getncattr('julian_date_str')
+        if date_str.find(date) == 0:
+            select_vars.append(name)
+
+    return select_vars
+
 def main():
     parser = argparse.ArgumentParser(description='Generate SZA plots.')
-    parser.add_argument ('--central_longitude', metavar='LON', default=-90.0,
-                         help="Input SZA map Plate Carree projection central longitude [deg]")
-    parser.add_argument ('--central_latitude', metavar='LON', default=5.0,
-                         help="Plotted nearside projection central latitude [deg]")
+    parser.add_argument('--date', default=None, help="Select plots by date YYYY-MM-DD")
+    parser.add_argument('--select', metavar='NUM', default=None, nargs="*", type=int,
+                        help="Select plots by number")
     parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
                          help="Output plot file name")
-    parser.add_argument('--select', metavar='LIST', default=None, nargs="*", type=int,
-                        help="Selected plot numbers")
+    parser.add_argument ('--central_latitude', metavar='LON', default=5.0,
+                         help="Plotted nearside projection central latitude [deg]")
+    parser.add_argument ('--central_longitude', metavar='LON', default=-90.0,
+                         help="Input SZA map Plate Carree projection central longitude [deg]")
     parser.add_argument ('szafile', help="Path to SZA file (plan output)")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
@@ -162,20 +170,30 @@ def main():
 
     s = Sza_File (args.szafile, args.central_longitude, args.central_latitude)
 
-    print('Writing plots to: {}'.format(args.output))
-    pdf = matplotlib.backends.backend_pdf.PdfPages(args.output)
-
-    if args.select is not None:
+    if args.date is not None:
+        var_name_list = find_vars_for_date (s.nc, args.date)
+    elif args.select is not None:
         var_name_list = ['sza_%02d' % (num) for num in args.select]
     else:
         var_name_list = [key for key in s.nc.variables.keys() if key.startswith("sza_")]
 
+    num_vars = len(var_name_list)
+
+    if num_vars == 0:
+        print('No plots selected')
+        sys.exit(0)
+
+    print('Writing {} plots to: {}'.format(num_vars, args.output))
+    pdf = matplotlib.backends.backend_pdf.PdfPages(args.output)
+
+    k=1
     for var_name in var_name_list:
-        print('Plotting {}'.format(var_name))
+        print('Plotting {}  [{}/{}]'.format(var_name, k, num_vars))
         var = s.read_var (var_name)
         fig = s.plot_var(var)
         pdf.savefig (fig)
         plt.close(fig)
+        k += 1
     pdf.close()
 
 if __name__ == "__main__":
