@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /home/temposdpc/miniconda3/bin/python
 
 import os
 # Docs suggest this might improve performance when threading doesn't matter.
