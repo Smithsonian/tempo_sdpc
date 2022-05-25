@@ -121,23 +121,27 @@ class Sza_File (object):
         box_lon = np.ma.masked_invalid (var.keys["box_lon"])
         box_lat = np.ma.masked_invalid (var.keys["box_lat"])
 
-        ax.plot (box_lon, box_lat, transform=self.gdt, color='red', linewidth=1)
+        box, = ax.plot (box_lon, box_lat, transform=self.gdt, color='red', linewidth=1)
         ax.plot (self.day_beg_point[0], self.day_beg_point[1], marker='.', transform=self.gdt, color='red')
-        ax.plot (self.day_end_point[0], self.day_end_point[1], marker='.', transform=self.gdt, color='red')
+        pt, = ax.plot (self.day_end_point[0], self.day_end_point[1], marker='.', linestyle='None', transform=self.gdt, color='red')
+
+        ax.legend ([box, pt], ['Scan region', 'Control point'], loc='lower left',
+                   bbox_to_anchor=(0.79, -0.28), borderaxespad=0.0, fontsize=8)
 
         if var.keys["maneuver_loss"] > 0.0:
-            maneuver_truncation = "[M: %0.1f sec]" % (var.keys["maneuver_loss"])
+            maneuver_truncation = "M:%0.1f sec" % (var.keys["maneuver_loss"])
         else:
             maneuver_truncation = ""
 
-        ax.set_title ('%s  sba:%0.1f deg %s' % (var.keys["jd_utc_str"],
+        ax.set_title ('%s  SBA:%0.1f deg %s' % (var.keys["jd_utc_str"],
                       var.keys["solar_boresight_angle"], maneuver_truncation), fontsize=8, loc='left')
 
         if var.keys["num_repeats_cbm"] == 0:
             ax.set_title ('%0.1f sec' % (var.keys["scan_duration"]), fontsize=8, loc='right')
         else:
-            ax.set_title ('cbm:%d, %0.1f sec' % (var.keys["num_repeats_cbm"], var.keys["scan_duration"]),
+            ax.set_title ('CBM:%d, %0.1f sec' % (var.keys["num_repeats_cbm"], var.keys["scan_duration"]),
                           fontsize=8, loc='right')
+
         return fig
 
 def find_vars_for_date (nc, date):
@@ -191,7 +195,7 @@ def main():
         print('Plotting {}  [{}/{}]'.format(var_name, k, num_vars))
         var = s.read_var (var_name)
         fig = s.plot_var(var)
-        pdf.savefig (fig)
+        pdf.savefig (fig, bbox_inches='tight')
         plt.close(fig)
         k += 1
     pdf.close()
