@@ -1,14 +1,19 @@
 # -*- sh -*-
 
+export PATH := ../src/gnuobjs:$(PATH)
+
 EPOCH="1980-01-06T00:00:00Z"
 MANEUVERFILE="tempo_d15479m53112000u000_r0_maneuver.csv"
 
 PLAN_CONFIG="plan_opt1_panhandle_4.cfg"
 
+#DEBUG = gdb --args
+#DEBUG = valgrind --tool=memcheck --leak-check=yes --error-limit=no --num-callers=25 --log-file=valgrind.log
+
 check-plan-std:
 	@printf "Checking plan: scan=std..."
 	@source ../../pipe/etc/sdpc_env.sh && \
-	plan --config $(PLAN_CONFIG) \
+	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
 	     --maneuver $(MANEUVERFILE) \
 	     --date 2022-05-27 --ndays 14 \
@@ -21,7 +26,7 @@ check-plan-std:
 check-plan-opt1:
 	@printf "Checking plan: scan=opt1..."
 	@source ../../pipe/etc/sdpc_env.sh && \
-	plan --config $(PLAN_CONFIG) \
+	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
 	     --maneuver $(MANEUVERFILE) \
 	     --date 2022-05-27 --ndays 14 \
@@ -34,7 +39,7 @@ check-plan-opt1:
 check-plan-split-opt1-cbm:
 	@printf "Checking plan: scan=split-opt1 with custom CBM..."
 	@source ../../pipe/etc/sdpc_env.sh && \
-	plan --config $(PLAN_CONFIG) \
+	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
 	     --maneuver $(MANEUVERFILE) \
 	     --date 2022-05-27 --ndays 14 \

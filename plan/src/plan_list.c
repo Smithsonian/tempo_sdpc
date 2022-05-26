@@ -124,6 +124,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
    uint16_t last_scan_type, scan_num;
+   int num_scan_csm, num_days;
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
@@ -138,6 +139,8 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
    last_scan_type = head->scan_type;
 
    scan_num = 1;
+   num_scan_csm = 0;
+   num_days = 0;
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
@@ -171,6 +174,8 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
              scan_num = 1;
           }
 
+        if (new_day) num_days++;
+
         num_scans = (entry->num_repeats_cbm > 0) ? entry->num_repeats_cbm : 1;
 
         for (i = 0; i < entry->num_repeats; i++, scan_num += num_scans)
@@ -184,6 +189,8 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 
              if (0 != tio_make_scan_label (&scan_label, entry->scan_type, scan_num))
                return -1;
+
+             num_scan_csm += entry->num_repeats_cbm ? 2 : 3;
 
              if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,%d,\"%s\"\n",
                           scan_label,
@@ -206,6 +213,10 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
         previous_entry_jd_utc_end = entry->jd_utc_end_safe;
         last_scan_type = entry->scan_type;
      }
+
+   fprintf (stdout, "    %5d Plan days\n", num_days);
+   fprintf (stdout, "    %5d Scan CSM entries\n", num_scan_csm);
+   fprintf (stdout, " => %5d Total CSM entries (estimated)\n", num_scan_csm + 5 * num_days);
 
    return 0;
 }

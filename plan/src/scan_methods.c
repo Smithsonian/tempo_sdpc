@@ -315,6 +315,7 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->tstart = limit_times->jd_utc_beg;
    entry->xstart = xstart;
    entry->ystart = ystart;
+   entry->xend = xstart + num_steps * st->st_step_size (st);
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = st->st_integration_time (st);
@@ -416,6 +417,7 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
           {
              entry->xstart = broad->xstart;
              entry->ystart = broad->ystart;
+             entry->xend = entry->xstart + broad->num_steps * st->st_step_size (st);
              entry->num_steps = broad->num_steps;
              entry->scan_duration = broad->scan_duration;
              entry->integration_time = broad->integration_time;
@@ -425,6 +427,7 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
           {
              entry->xstart = split.xstart;
              entry->ystart = split.ystart;
+             entry->xend = entry->xstart + split.num_steps * st->st_step_size (st);
              entry->num_steps = split.num_steps;
              entry->scan_duration = split.scan_duration;
              entry->integration_time = sst->sst_scan_integration_time (sst);
@@ -516,6 +519,7 @@ twilight_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->tstart = limit_times->jd_utc_beg_safe;
    entry->xstart = xstart;
    entry->ystart = ystart;
+   entry->xend = entry->xstart + num_steps * st->st_step_size (st);
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = tst->tst_twilight_integration_time (tst);
@@ -555,6 +559,7 @@ twilight_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->tstart = limit_times->jd_utc_end_safe - num_repeats * time_full_scan;
    entry->xstart = xstart;
    entry->ystart = ystart;
+   entry->xend = entry->xstart + num_steps * st->st_step_size (st);
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
    entry->integration_time = tst->tst_twilight_integration_time (tst);
@@ -593,6 +598,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
    entry->tstart = x->tstart;
    entry->xstart = x->xstart;
    entry->ystart = x->ystart;
+   entry->xend = x->xstart + x->num_steps * st->st_step_size (st);
    entry->num_steps = x->num_steps;
    entry->scan_duration = x->duration * SEC_PER_DAY;
    entry->integration_time = st->st_integration_time (st);
@@ -641,9 +647,17 @@ static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const 
 
    *ystart = beg->elevation;
 
-   num_steps[0] = max_num_steps/2;
+   /* Morning and evening scans are the same length, to minimize
+    * the number of scan CBMs that might be generated to implement
+    * the scan plan. Both morning and evening scans purposely avoid
+    * the exact midpoint position. If all scans hit the midpoint,
+    * there is effectively a time coverage spike at that point.
+    * Smoother time coverage seems like a good idea, so we try
+    * to avoid such spikes.
+    */
+   num_steps[0] = max_num_steps/2 - 1;
    num_steps[1] = max_num_steps;
-   num_steps[2] = max_num_steps - num_steps[0];
+   num_steps[2] = num_steps[0];
 
    return 0;
 }
@@ -683,7 +697,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    time_midpoint = 0.5 * (limit_times->jd_utc_beg + limit_times->jd_utc_end);
 
    /* number of full scans */
-   full.num_repeats = ceil((limit_times->jd_utc_end_full
+   full.num_repeats = floor((limit_times->jd_utc_end_full
                             - (limit_times->jd_utc_beg_full - full.duration))
                            / full.duration);
 
@@ -709,7 +723,7 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    /* Fill out the afternoon with sunset scans: */
    set.tstart = full.tstart + full.num_repeats * full.duration;
-   set.num_repeats = floor((limit_times->jd_utc_end - set.tstart)
+   set.num_repeats = ceil((limit_times->jd_utc_end - set.tstart)
                          / set.duration);
    /* impose sun_angle safety constraint */
    while (set.num_repeats > 0)

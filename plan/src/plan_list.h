@@ -15,6 +15,7 @@ struct Plan_List_Type
    double tstart;            /**< scan start time, UTC [days] */
    double xstart;            /**< scan start mirror coordinate [microradian] */
    double ystart;
+   double xend;              /**< scan end mirror coordinate [microradian] */
    double scan_duration;     /**< scan duration [sec] */
    double maneuver_loss;     /**< scan time lost due to maneuver window overlap */
    double integration_time;  /**< integration time for a single exposure in a co-add [sec] */

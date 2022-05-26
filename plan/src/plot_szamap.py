@@ -152,14 +152,24 @@ def find_vars_for_date (nc, date):
         date_str = var.getncattr('julian_date_str')
         if date_str.find(date) == 0:
             select_vars.append(name)
+    return select_vars
 
+def select_maneuver_affected (nc, var_names):
+    select_vars = []
+    for name in var_names:
+        var = nc.variables[name]
+        if var.getncattr('maneuver_loss') > 0.0:
+            select_vars.append(name)
     return select_vars
 
 def main():
     parser = argparse.ArgumentParser(description='Generate SZA plots.')
-    parser.add_argument('--date', default=None, help="Select plots by date YYYY-MM-DD")
-    parser.add_argument('--select', metavar='NUM', default=None, nargs="*", type=int,
-                        help="Select plots by number")
+    parser.add_argument ('--date', metavar='YYYY-MM-DD', default=None,
+                         help="Select plots by date")
+    parser.add_argument ('--maneuver', action='store_true',
+                         help="Plot scans affected by maneuvers", )
+    parser.add_argument ('--select', metavar='N', default=None, nargs="*", type=int,
+                         help="Select plots by number")
     parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
                          help="Output plot file name")
     parser.add_argument ('--central_latitude', metavar='LON', default=5.0,
@@ -180,6 +190,9 @@ def main():
         var_name_list = ['sza_%02d' % (num) for num in args.select]
     else:
         var_name_list = [key for key in s.nc.variables.keys() if key.startswith("sza_")]
+
+    if args.maneuver:
+        var_name_list = select_maneuver_affected (s.nc, var_name_list)
 
     num_vars = len(var_name_list)
 
