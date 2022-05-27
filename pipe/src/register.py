@@ -75,6 +75,7 @@ def define_common_fields (fields):
     fields["asdc_status_met"] = "integer"
     fields["asdc_upload_time"] = "integer"
     fields["asdc_ingest_time"] = "integer"
+    fields["asdc_disposition"] = "text"
 
 def init_radiance_table (table_name):
     fields = {}
@@ -123,6 +124,7 @@ def init_raw_file_table (table_name):
     fields["asdc_status_met"] = "integer"
     fields["asdc_upload_time"] = "integer"
     fields["asdc_ingest_time"] = "integer"
+    fields["asdc_disposition"] = "text"
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
@@ -333,6 +335,7 @@ def process_file (conn, filename, nc):
     keys["asdc_status"] = Asdc_Status["new"]
     keys["asdc_upload_time"] = 0
     keys["asdc_ingest_time"] = 0
+    keys["asdc_disposition"] = ""
     keys["time_coverage_start_since_epoch"] = attr["time_coverage_start_since_epoch"]
     keys["time_coverage_end_since_epoch"] = attr["time_coverage_end_since_epoch"]
 
@@ -394,6 +397,7 @@ def process_file_raw (conn, filename):
     keys["asdc_upload_time"] = 0
     keys["asdc_ingest_time"] = 0
     keys["asdc_status_met"] = Asdc_Status["nonexistent"]
+    keys["asdc_disposition"] = ""
 
     status = insert_raw_entry (conn, table_name, keys)
 

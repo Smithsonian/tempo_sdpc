@@ -84,7 +84,7 @@ def set_file_stats (cur, table_name, file_basename, st):
     else:
         cur.execute(sql)
 
-def update_file_status (cur, filename, asdc_status, status_time, update_stat=False):
+def update_file_status (cur, filename, asdc_status, status_time, update_stat=False, disposition=None):
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
@@ -111,10 +111,15 @@ def update_file_status (cur, filename, asdc_status, status_time, update_stat=Fal
     else:
         status_time_var = None
 
-    if status_time_var is None:
-        sql = "update {table_name} set {status_var_name}={asdc_status} where filename=\"{file_basename}\"".format(**locals())
+    if disposition is not None:
+        disposition_str = ",asdc_disposition=\"{}\"".format(disposition)
     else:
-        sql = "update {table_name} set {status_var_name}={asdc_status},{status_time_var}={status_time} where filename=\"{file_basename}\"".format(**locals())
+        disposition_str = ""
+
+    if status_time_var is None:
+        sql = "update {table_name} set {status_var_name}={asdc_status}{disposition_str} where filename=\"{file_basename}\"".format(**locals())
+    else:
+        sql = "update {table_name} set {status_var_name}={asdc_status},{status_time_var}={status_time}{disposition_str} where filename=\"{file_basename}\"".format(**locals())
 
     if DryRun:
         print(sql)
@@ -206,10 +211,11 @@ def process_longpan(cur, longpan_file):
             if entry == None:
                 break
             if entry["disposition"] == "SUCCESSFUL":
-                update_file_status (cur, entry["basename"], Asdc_Status["accepted"], entry["time_stamp"])
+                asdc_status = Asdc_Status["accepted"]
             else:
-                update_file_status (cur, entry["basename"], Asdc_Status["problem"], entry["time_stamp"])
+                asdc_status = Asdc_Status["problem"]
                 num_bad += 1
+            update_file_status (cur, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
 
     return num_bad
 
@@ -235,6 +241,33 @@ def set_file_status (status, file_list, update_stat):
         for f in files:
             update_file_status (cur, f, Asdc_Status[status], status_time, update_stat=update_stat)
 
+def print_query (cur, sql):
+    cur.execute (sql)
+    while True:
+        row = cur.fetchone()
+        if row is None:
+            break
+        print(','.join(map(str,row)))
+
+def print_report (asdc_status_name, ymd):
+    asdc_status = Asdc_Status[asdc_status_name]
+    if ymd:
+        times="datetime(asdc_upload_time,\"unixepoch\"),datetime(asdc_ingest_time,\"unixepoch\")"
+    else:
+        times="asdc_upload_time,asdc_ingest_time"
+    other_columns="asdc_disposition,path"
+    print ("#{times},{other_columns}".format(**locals()))
+    with connect_database() as conn:
+        cur = conn.cursor()
+        table_names = get_product_table_names (cur)
+        for tbl in table_names:
+            if tbl == "RAD_L1a":
+                continue
+            nc_sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} order by asdc_upload_time".format (**locals())
+            print_query (cur, nc_sql)
+            met_sql = "select {times},{other_columns} from {tbl} where asdc_status_met = {asdc_status} order by asdc_upload_time".format (**locals())
+            print_query (cur, met_sql)
+
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
     parser.add_argument('--num', metavar='STATUS', default=None,
@@ -247,6 +280,10 @@ def main():
                         help="Set status of specified files")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
                         help="Process LONGPAN files (changes status 'uploaded' to 'accepted'|'problem')")
+    parser.add_argument('--report', metavar='STATUS', default=None,
+                        help="Print disposition report for files matching status")
+    parser.add_argument('--ymd', action='store_true',
+                        help="Print report times as YYYY-MM-DD HH:MM:SS")
     parser.add_argument('--stat', action='store_true',
                         help="Update file size, mtime")
     parser.add_argument('--dryrun', action='store_true',
@@ -267,6 +304,8 @@ def main():
         set_file_status (args.set[0], args.set[1], args.stat)
     elif args.pans:
         process_longpan_files(args.pans)
+    elif args.report:
+        print_report (args.report, args.ymd)
 
 if __name__ == "__main__":
     main()
