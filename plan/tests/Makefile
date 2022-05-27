@@ -11,7 +11,7 @@ PLAN_CONFIG="plan_opt1_panhandle_4.cfg"
 #DEBUG = valgrind --tool=memcheck --leak-check=yes --error-limit=no --num-callers=25 --log-file=valgrind.log
 
 check-plan-std:
-	@printf "Checking plan: scan=std..."
+	@printf "Checking plan: scan=std\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
@@ -24,7 +24,7 @@ check-plan-std:
 	@printf "OK\n"
 
 check-plan-opt1:
-	@printf "Checking plan: scan=opt1..."
+	@printf "Checking plan: scan=opt1\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
@@ -37,7 +37,7 @@ check-plan-opt1:
 	@printf "OK\n"
 
 check-plan-split-opt1-cbm:
-	@printf "Checking plan: scan=split-opt1 with custom CBM..."
+	@printf "Checking plan: scan=split-opt1 with custom CBM\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) plan --config $(PLAN_CONFIG) \
 	     --epoch $(EPOCH) \
