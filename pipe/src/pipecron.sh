@@ -156,9 +156,15 @@ do_weekly()
   expire_dir_files $mmin_arg "$SDPC_RUN_DIR_MASTER/inr/scantailoring"
 }
 
+Sleep_Pid=0
+
 handle_signal()
 {
   echo "$PGMNAME: caught signal: exiting"
+  if test $Sleep_Pid -ne 0 ; then
+     # If the sleep process still exists, kill it.
+     kill -0 $Sleep_Pid && kill -9 $Sleep_Pid
+  fi
   exit
 }
 trap handle_signal SIGINT SIGTERM
@@ -175,7 +181,8 @@ sleep_minutes()
    minutes=$(seq $num_minutes)
    for i in $minutes ; do
       sleep 60 &
-      wait
+      Sleep_Pid=$!
+      wait $Sleep_Pid
    done
 }
 
