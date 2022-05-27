@@ -43,6 +43,7 @@ choose_logdirs()
 	trend off
 	register on
 	asdc on
+	pipecron off
 	EOF
 
   num_items=$(echo $itemlist | wc -w)
