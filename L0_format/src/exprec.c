@@ -346,8 +346,7 @@ static int close_outfile (Process_Method_Type *pmt)
                return -1;
              tell_vinfo (0, "archived %s/%s", pmt->archdir_path, pmt->out_basename);
 
-             if ((pmt->is_test_pattern != 0)
-                 || (pmt->is_twilight_scan != 0))
+             if (pmt->is_test_pattern != 0)
                {
                   /* These file types receive no further autonomous processing */
                   if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))

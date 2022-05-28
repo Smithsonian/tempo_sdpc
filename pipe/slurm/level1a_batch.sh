@@ -158,14 +158,19 @@ case "${granule_basename}" in
   ;;
 
   *RAD* )
-  output_file=$(mkgranule_name -L 1 -p RAD -v $SDPC_PROCESSING_VERSION $granule_basename)
+  # Use rad_type to distinguish RAD (radiance) and RADT (twilight scan)
+  rad_type=$(echo $granule_basename | cut -f2 -d_)
+  output_file=$(mkgranule_name -L 1 -p $rad_type -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file
 
-  rad_tmpfile=$inr_input_cache/.${output_file}
-  /bin/cp $output_file $rad_tmpfile
-  /bin/mv $rad_tmpfile $inr_input_cache/$output_file
+  # RADT will not be delivered to INR input cache
+  if test x"$rad_type" = x"RAD" ; then
+     rad_tmpfile=$inr_input_cache/.${output_file}
+     /bin/cp $output_file $rad_tmpfile
+     /bin/mv $rad_tmpfile $inr_input_cache/$output_file
+  fi
   ;;
 
   * )
