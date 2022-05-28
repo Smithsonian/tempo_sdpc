@@ -208,7 +208,7 @@ static int lookup_int_time_and_dwell_time (const char *ccdtiming_path, int num_c
                                            Step_Config_Type *dt)
 {
    float *int_time = NULL;
-   size_t s_num;
+   size_t s_num, s_num_coadds;
    const char *grp_name;
    int ncid, dimid, start[2], count[2];
    int grp_long, grp_short, grp_nom, grp;
@@ -221,6 +221,14 @@ static int lookup_int_time_and_dwell_time (const char *ccdtiming_path, int num_c
 
    if (0 != TIO_open (ccdtiming_path, NC_NOWRITE, &ncid))
      return -1;
+
+   if (0 != TIO_inq_dim (ncid, "coadds", &dimid, &s_num_coadds))
+     goto return_status;
+   if (num_coadds > (int) s_num_coadds)
+     {
+        TIO_close (ncid);
+        return 1;
+     }
 
    if (0 != TIO_inq_dim (ncid, "int_lines", &dimid, &s_num))
      goto return_status;
@@ -356,13 +364,22 @@ static int read_step_config (config_t *cfg, config_setting_t *s, Step_Config_Typ
           return -1;
         status = lookup_int_time_and_dwell_time (path, num_coadds, dt);
         FREE(path);
-        return status;
+        if (status < 0 )
+          {
+             return status;
+          }
+        else if (status)
+          {
+             fprintf (stderr, "*** WARNING: %s: unable to use CCD timing table, scan timing is approximate\n", __func__);
+          }
+     }
+   else
+     {
+        fprintf (stderr, "*** WARNING: %s: config file variable '%s' is not defined (CCD timing file)\n",
+                 __func__, timing_file_var);
      }
 
-   fprintf (stderr, "*** WARNING: %s: config file variable '%s' is not defined (CCD timing file)\n",
-            __func__, timing_file_var);
-
-   /* If we don't have the lookup table, fall back to a crude approximation */
+   /* If we cannot use the lookup table, fall back to a crude approximation */
    if ((CONFIG_TRUE != config_setting_lookup_float (sub, "frame_transfer_time", &frame_transfer_time))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "readout_time", &readout_time)))
      return -1;
@@ -507,14 +524,14 @@ static int read_surface_region (config_setting_t *s, const char *name, Surface_R
    config_setting_t *sub;
    int have_angles;
 
-   if ((have_angles = read_scan_angles (s, name, &reg->ang)) < 0)
+   if (NULL == (sub = config_setting_get_member (s, name)))
+     return -1;
+
+   if ((have_angles = read_scan_angles (sub, "angles", &reg->ang)) < 0)
      return -1;
 
    if ((have_angles == 0)
-       && (1 != read_surface_point (s, name, &reg->pt)))
-     return -1;
-
-   if (NULL == (sub = config_setting_get_member (s, name)))
+       && (1 != read_surface_point (sub, "point", &reg->pt)))
      return -1;
 
    if (CONFIG_TRUE != config_setting_lookup_float (sub, "width", &reg->width))
@@ -696,13 +713,13 @@ static int find_safe_limit_time (Solar_Geom_Type *sgt,
 
    if (is_morning)
      {
-        jd_utc1 = jd_utc - 4.0/24;
+        jd_utc1 = jd_utc - 5.0/24;
         jd_utc2 = jd_utc + 1.0/24;
      }
    else
      {
         jd_utc1 = jd_utc - 1.0/24;;
-        jd_utc2 = jd_utc + 4.0/24;
+        jd_utc2 = jd_utc + 5.0/24;
      }
 
    if (0 != bisection (sun_angle_vs_time, jd_utc1, jd_utc2, &b, &jd_utc))
