@@ -1,0 +1,9 @@
+window_start_time,window_end_time,window_duration,start_time,end_time,centroid_time,maneuver_type,thruster_set,dv_t,dv_n,dv_r,num_pulses,comments
+:table_begin_time=1670889600,0,0.0,0,0,0,NULL,0,0.0,0.0,0.0,0,NULL
+:table_end_time=1672707000,0,0.0,0,0,0,NULL,0,0.0,0.0,0.0,0,NULL
+:plan_id=test-2022-12-13,0,0.0,0,0,0,NULL,0,0.0,0.0,0.0,0,NULL
+:tempo_epoch=315964800,0,0.0,0,0,0,NULL,0,0.0,0.0,0.0,0,NULL
+1670889600,1670892600,3000,1670889900,1670892300,1670891100,MAINT,20,1.2,3.4,5.6,7,Bogus example entry
+1671291480,1671294480,3000,1671291780,1671294180,1671292980,MAINT,20,1.2,3.4,5.6,7,Bogus example entry
+1671494400,1671497400,3000,1671494700,1671497100,1671495900,MAINT,20,1.2,3.4,5.6,7,Bogus example entry
+1672099200,1672102200,3000,1672099500,1672101900,1672100700,MAINT,20,1.2,3.4,5.6,7,Bogus example entry
