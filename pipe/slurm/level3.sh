@@ -94,21 +94,35 @@ no2_l2_split()
 # Import function to generate radiance reference file
 . $SDPC_ROOT/bin/make_radref.sh
 
+# Import function to generate destriping correction files
+. $SDPC_ROOT/bin/make_destripe.sh
+
 # loading $pathlist_file defines these variables:
 # product_name = e.g. HCHO_L2
 # l3_path = path to target Level 3 data product to be generated
 # l2_paths = space-delimited list of level 2 data product files
 . $pathlist_file
 
-if test x"$product_name" = x"CLDO4_L2" ; then
-   if ! test -f "$SDPC_RUN_DIR_MASTER/disable_radref" ; then
-      make_radref "$l2_paths"
-   fi
-fi
+case "$product_name" in
+  CLDO4_L2 )
+     if test -f "$SDPC_RUN_DIR_MASTER/etc/enable_radref" ; then
+        make_radref "$l2_paths"
+     fi
+     ;;
 
-if test x"$product_name" = x"NO2_L2" ; then
-   no2_l2_split "$l3_path" "$l2_paths"
-fi
+  HCHO_L2 )
+     if test -f "$SDPC_RUN_DIR_MASTER/etc/enable_destripe_HCHO" ; then
+        make_destripe "$l2_paths"
+     fi
+     ;;
+
+  NO2_L2 )
+     no2_l2_split "$l3_path" "$l2_paths"
+     ;;
+
+  * )
+     ;;
+esac
 
 # Run L2_regrid on all L2 data products
 

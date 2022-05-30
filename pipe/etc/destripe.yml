@@ -1,0 +1,3 @@
+# Switch to write correction(s) to L2 files
+yn_L2_write_destriping: T
+yn_L2_write_background: T

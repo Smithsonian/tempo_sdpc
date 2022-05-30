@@ -20,13 +20,13 @@ print_yaml_list()
 }
 
 PROGNAME="$(basename $0)"
-catch()
+mr_error_exit()
 {
   if test "$1" != "0" ; then
-    echo "*** ${PROGNAME}: Error $1 occurred on $2"
+    echo "*** ${PROGNAME}: Error: line $2: $1"
   fi
 }
-trap 'catch $? $LINENO' EXIT
+trap 'mr_error_exit $? on $LINENO' EXIT
 
 make_radref()
 {
@@ -79,7 +79,7 @@ make_radref()
        $SDPC_ROOT/etc/make_radref.yml.in > $config_file
 
    # Generate the radiance reference file
-   make_radref.py $config_file > $log_file 2>&1
+   make_radref.py $config_file > $log_file 2>&1 || mr_error_exit "make_radref.py failed (see $log_file)" $LINENO
 
    # Register the file in the relevant sqlite database.
    register_bytimetod.py --dbfile $Radref_Database_File $radref_path

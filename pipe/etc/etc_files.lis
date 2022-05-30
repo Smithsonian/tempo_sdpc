@@ -43,7 +43,9 @@ level1/irradiance.met.template
 level3/simple.met.template
 l0_format.cfg
 l0_ccd.cfg
+make_destripe.yml.in
 make_radref.yml.in
+destripe.yml
 wavecal_irr.cfg
 wavecal_rad.cfg
 l1_inr_prep.cfg

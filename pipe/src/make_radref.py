@@ -9,6 +9,8 @@ import yaml
 import sys
 # import tracemalloc
 
+Deflate_Level=1
+
 def print_error_message(message):
     import time
     print('{}: ERROR: {}'.format(time.asctime(),message))
@@ -24,10 +26,10 @@ if len(sys.argv) > 1:
     try:
         control = yaml.load(open(sys.argv[1]),Loader=yaml.BaseLoader)
     except Exception as e:
+        print_message(e)
         print_error_message('loading {}'.format(sys.argv[1]))
-        print_error_message(e)
 else:
-    print_message('Usage: >make_radref.py <make_radref.yml>')
+    print_message('Usage: make_radref.py <make_radref.yml>')
     sys.exit(1)
 
 # Check how is the memory usage
@@ -240,22 +242,22 @@ with Dataset(local_granule_id,'w',clobber=True) as dst:
     dst_nw = dst.createDimension('spectral_channel',nw)
     dst_nx = dst.createDimension('xtrack',nx)
     # Create variables
-    dst_spc = dst.createVariable('spectrum',np.float64,('xtrack','spectral_channel'),fill_value=-1.0e+30,zlib=True,complevel=4)
+    dst_spc = dst.createVariable('spectrum',np.float64,('xtrack','spectral_channel'),fill_value=-1.0e+30,zlib=True,complevel=Deflate_Level)
     dst_spc.title = 'radiance spectrum'
     dst_spc.units = spectrum_units
     dst_spc[:] = radref
 
-    dst_wav = dst.createVariable('wavelength',np.float64,('xtrack','spectral_channel'),fill_value=-1.0e+30,zlib=True,complevel=4)
+    dst_wav = dst.createVariable('wavelength',np.float64,('xtrack','spectral_channel'),fill_value=-1.0e+30,zlib=True,complevel=Deflate_Level)
     dst_wav.title = 'wavelengths'
     dst_wav.units = wavelength_units
     dst_wav[:] = wvlref
 
-    dst_qfg = dst.createVariable('quality_flag',np.short,('xtrack','spectral_channel'),fill_value=-999,zlib=True,complevel=4)
+    dst_qfg = dst.createVariable('quality_flag',np.short,('xtrack','spectral_channel'),fill_value=-999,zlib=True,complevel=Deflate_Level)
     dst_qfg.title = 'spectrum quality flag'
     dst_qfg.flag_meanings='0: good, non-zero: bad'
     dst_qfg[:] = mdqref
 
-    dst_num = dst.createVariable('number_coadd',np.int16,('xtrack'),fill_value=-999,zlib=True,complevel=4)
+    dst_num = dst.createVariable('number_coadd',np.int16,('xtrack'),fill_value=-999,zlib=True,complevel=Deflate_Level)
     dst_num.title='number of co-added spectra'
     dst_num.description='number of spectra considered in the mean to derive the radiance reference'
     dst_num[:] = numref
