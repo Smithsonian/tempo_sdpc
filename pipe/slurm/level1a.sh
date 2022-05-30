@@ -109,7 +109,7 @@ prep_inr_goes_source()
    # from running in an unusual mode (e.g. maybe we don't care about INR
    # in some context, so the lack of imagery is irrelevant).
 
-   tstart=$(radiance_attribute.py --attr time_coverage_start "$granule_path")
+   tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")
    yday_subdir="$(TZ='UTC+6' date -d $tstart +%Y/%j)"
    goes_srcdir="${SDPC_ANCILLARY_ROOT}/var/goes/${yday_subdir}"
 
