@@ -71,15 +71,11 @@ public_mirror_symlink()
    done
 }
 
-# loading $pathlist_file defines these variables:
-# product_name = e.g. HCHO_L2
-# l3_path = path to target Level 3 data product to be generated
-# l2_paths = space-delimited list of level 2 data product files
-. $pathlist_file
-
 # Run L2_split on NO2_L2 data products
-
-if test x"$product_name" = x"NO2_L2" ; then
+no2_l2_split()
+{
+   l3_path="$1"
+   l2_paths="$2"
    # put log file in the the first granule directory
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    logdir=$(dirname $first_granule)
@@ -93,6 +89,25 @@ if test x"$product_name" = x"NO2_L2" ; then
    printf "%s.met\n" $l2_paths > $tmpfile
    asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 met asdc_status defer to new"
    /bin/rm -f $tmpfile
+}
+
+# Import function to generate radiance reference file
+. $SDPC_ROOT/bin/make_radref.sh
+
+# loading $pathlist_file defines these variables:
+# product_name = e.g. HCHO_L2
+# l3_path = path to target Level 3 data product to be generated
+# l2_paths = space-delimited list of level 2 data product files
+. $pathlist_file
+
+if test x"$product_name" = x"CLDO4_L2" ; then
+   if ! test -f "$SDPC_RUN_DIR_MASTER/disable_radref" ; then
+      make_radref "$l2_paths"
+   fi
+fi
+
+if test x"$product_name" = x"NO2_L2" ; then
+   no2_l2_split "$l3_path" "$l2_paths"
 fi
 
 # Run L2_regrid on all L2 data products

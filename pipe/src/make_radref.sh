@@ -1,0 +1,86 @@
+# This file is intended to contain only function definitions,
+# so running it alone doesn't do anything.
+# The functions are intended to be called from a parent script
+# which imports these definitions.
+
+Radref_Database_File="$SDPC_ARCHIVE_DIR/L1/radref.sqlite"
+
+# Format the YAML file lists
+# The result will have a trailing newline, but
+# AFAIK, blank lines in yaml files are ok.
+print_yaml_list()
+{
+   files="$1"
+   lines=""
+   for f in $files ; do
+      line="  - $f\n"
+      lines="${lines}${line}"
+   done
+   echo "$lines"
+}
+
+PROGNAME="$(basename $0)"
+catch()
+{
+  if test "$1" != "0" ; then
+    echo "*** ${PROGNAME}: Error $1 occurred on $2"
+  fi
+}
+trap 'catch $? $LINENO' EXIT
+
+make_radref()
+{
+  l2_cloud_paths="$1"
+
+   # Get the L1 radiance path for each cloud product
+   rad_files=""
+   tbeg_lis=""
+   tend_lis=""
+   for f in $l2_cloud_paths ; do
+      b=$(basename $f)
+      # istart is the unique, primary sort key tracking radiance granules in the archive database.
+      # The istart value in the CLDO4_L2 database entry uniquely identifies the radiance file.
+      istart=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select istart from CLDO4_L2 where filename=\"$b\";")
+      rpath=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select path from RAD_L1 where istart=$istart;")
+      rad_files="$rad_files $rpath"
+      tstart=$(global_attribute.py --attr time_coverage_start_since_epoch $rpath)
+      tend=$(global_attribute.py --attr time_coverage_end_since_epoch $rpath)
+      tbeg_lis="${tbeg_lis}${tstart}\n"
+      tend_lis="${tend_lis}${tend}\n"
+   done
+
+   l2_yaml_list=$(print_yaml_list "$l2_cloud_paths")
+   rad_yaml_list=$(print_yaml_list "$rad_files")
+
+   # put radref in subdir of radiance file scan directory
+   first_radiance_path=$(echo $rad_files | cut -d' ' -f1)
+   first_radiance_filename_sans_extname=$(basename $first_radiance_path .nc)
+   first_radiance_dir=$(dirname $first_radiance_path)
+   radref_dir="$(dirname $first_radiance_dir)/radref"
+
+   if ! test -d $radref_dir ; then
+      mkdir -p $radref_dir
+   fi
+
+   # make radref filename
+   tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
+   tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
+   scan_label="$(echo $first_radiance_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
+   radref_filename="TEMPO_RADREF_L1_s${tbeg}_e${tend}_${scan_label}.nc"
+
+   radref_path="$radref_dir/$radref_filename"
+   config_file="$radref_dir/make_radref.yml"
+   log_file="$radref_dir/make_radref.log"
+
+   # edit the control file template
+   sed -e s,'@RADIANCE_FILE_PATHS@',"$rad_yaml_list", \
+       -e s,'@CLOUD_FILE_PATHS@',"$l2_yaml_list", \
+       -e s,'@RADREF_PATH@',"$radref_path", \
+       $SDPC_ROOT/etc/make_radref.yml.in > $config_file
+
+   # Generate the radiance reference file
+   make_radref.py $config_file > $log_file 2>&1
+
+   # Register the file in the relevant sqlite database.
+   register_bytimetod.py --dbfile $Radref_Database_File $radref_path
+}

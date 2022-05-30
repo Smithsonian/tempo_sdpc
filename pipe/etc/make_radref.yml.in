@@ -1,0 +1,21 @@
+# Radiance input files
+L1RAD Input:
+@RADIANCE_FILE_PATHS@
+# Cloud input files
+L2CLD Input:
+@CLOUD_FILE_PATHS@
+# Use only pixels with mincfr < cloud fraction < maxcfr
+mincfr: 0.0
+maxcfr: 1.0
+# Number of standard deviations (STD) to include a radiance in the radiance reference
+# For each pixel calculate the mean radiance. The for each cross track position
+# calculate the median absolute deviation (MAD) of the mean radiances of all pixels
+# in one cross track. STD = 1.4826 * MAD
+nsigma: 1.0
+# Number of xtrack positions to be processed in each iteration (to keep memory usage under control)
+xtstep: 150
+# RADREF file attributes
+output_file: @RADREF_PATH@
+processing_version: 1
+access_description: Radiance Reference data, not for public release
+title: TEMPO mean radiance reference
