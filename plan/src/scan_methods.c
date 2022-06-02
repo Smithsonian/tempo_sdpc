@@ -339,7 +339,7 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    Plan_List_Type *head = NULL;
    Plan_List_Type split = {0};
    AziElev_Type beg={0}, end={0};
-   double time_remaining, tstart;
+   double time_remaining, tstart, weight;
    int is_broad, num_narrow_repeats, base_scan_method;
    int num_repeats_cbm;
    uint16_t scan_type = st->st_scan_type(st);
@@ -353,6 +353,12 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    /* Optionally use a custom CBM to perform a block
     * of num_repeats_cbm short scans */
    num_repeats_cbm = sst->sst_num_repeats_cbm (sst);
+
+   /* Time spent on the narrow region, relative to the broad region.
+    * weight=N means scan narrow region for Nx broad region scan duration.
+    * weight<0 means scan narrow region as long as the SZA is amenable.
+    */
+   weight = sst->sst_weight (sst);
 
    /* broad contains the plan for a standard east/west scan of
     * a broad region (e.g. the full FOR)
@@ -397,8 +403,19 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    tstart = broad->tstart;
    time_remaining = broad->num_repeats * broad->scan_duration;
-   num_narrow_repeats = floor(broad->scan_duration / split.scan_duration);
+   if (weight > 0)
+     {
+        num_narrow_repeats = floor(weight * broad->scan_duration / split.scan_duration);
+     }
+   else
+     {
+        /* FIXME?: Use limit times for the narrow region? */
+        num_narrow_repeats = floor(time_remaining / split.scan_duration);
+     }
 
+   /* FIXME? Use limit times for narrow region? Maybe we could start there.
+    * Or maybe simpler to make this a control parameter the user can set.
+    */
    is_broad = 1;
 
    while (time_remaining > split.scan_duration)

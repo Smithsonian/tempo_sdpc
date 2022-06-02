@@ -828,10 +828,60 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
                       mnv_beg, mnv_end, entry_beg, entry_end);
           }
 
-        /* If this is a custom CBM, convert it to the equivalent number
-         * of standard scans, and then process normally: */
         if (entry->num_repeats_cbm > 0)
           {
+             Plan_List_Type *new_before = NULL;
+             Plan_List_Type *new_after = NULL;
+             int num_repeats_before, num_repeats_after;
+
+             /* Break out custom CBM scans that actually overlap the maneuver, and then
+              * process normally */
+             num_repeats_before = floor ((mnv_beg - entry_beg) / scan_duration_days);
+             num_repeats_after = floor ((entry_end - mnv_end) / scan_duration_days);
+             if (num_repeats_before > 0)
+               {
+                  if (NULL == (new_before = plan_list_entry_alloc (entry->scan_type)))
+                    return -1;
+                  *new_before = *entry;  /* struct copy */
+                  new_before->num_repeats = num_repeats_before;
+               }
+             if (num_repeats_after > 0)
+               {
+                  if (NULL == (new_after = plan_list_entry_alloc (entry->scan_type)))
+                    {
+                       plan_list_free (new_before);
+                       return -1;
+                    }
+                  *new_after = *entry;  /* struct copy */
+                  new_after->num_repeats = num_repeats_before;
+               }
+             if (new_before)
+               {
+                  /* new parent entry, outside maneuver by construction */
+                  parent_entry->next = new_before;
+                  parent_entry = new_before;
+                  new_before->next = entry;
+                  new_before->num_repeats = num_repeats_before;
+                  /* update start time, num_repeats of entry overlapping maneuver */
+                  entry->tstart += num_repeats_before * scan_duration_days;
+                  entry->num_repeats -= num_repeats_before;
+                  entry_beg = entry->tstart;
+               }
+             if (new_after)
+               {
+                  /* new following entry, outside maneuver by construction */
+                  new_after->next = entry->next;
+                  entry->next = new_after;
+                  /* update num repeats overlapping maneuver */
+                  entry->num_repeats -= num_repeats_after;
+                  entry_end = entry->tstart + entry->num_repeats * scan_duration_days;
+                  /* finalize new following entry (outside maneuver) */
+                  new_after->tstart = entry_end;
+                  new_after->num_repeats = num_repeats_after;
+               }
+
+             /* Convert overlapping custom CBM scans to the equivalent number
+              * of standard scans, and then process normally: */
              entry->num_repeats *= entry->num_repeats_cbm;
              entry->scan_duration /= entry->num_repeats_cbm;
              entry->num_repeats_cbm = 0;

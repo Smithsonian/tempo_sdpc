@@ -115,6 +115,7 @@ struct Split_Scan_Type
 
    int (*sst_base_scan_method)(const Split_Scan_Type *);
    int (*sst_num_repeats_cbm)(const Split_Scan_Type *);
+   double (*sst_weight)(const Split_Scan_Type *);
 
 #ifdef SPLIT_SCAN_TYPE_PRIVATE_DATA
    SPLIT_SCAN_TYPE_PRIVATE_DATA

@@ -57,6 +57,7 @@ Surface_Region_Type;
    Scan_Angle_Type scan_beg_angle; \
    Scan_Angle_Type scan_end_angle; \
    Step_Config_Type dt; \
+   double weight; \
    int base_scan_method_index; \
    int num_repeats_cbm;
 
@@ -630,6 +631,9 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "weight", &sst->weight))
+     sst->weight = 1.0;
 
    if (0 != read_step_config (cfg, s, &sst->dt))
      {
@@ -1212,6 +1216,11 @@ static int split_scan_num_repeats_cbm (const Split_Scan_Type *sst)
    return sst->num_repeats_cbm;
 }
 
+static double split_scan_weight (const Split_Scan_Type *sst)
+{
+   return sst->weight;
+}
+
 Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
 {
    Split_Scan_Type *sst = NULL;
@@ -1251,9 +1260,11 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
 
    sst->base_scan_method_index = base_scan_method_index;
    sst->num_repeats_cbm = num_repeats_cbm;
+   sst->weight = 1.0;
 
    sst->sst_base_scan_method = split_scan_base_scan_method;
    sst->sst_num_repeats_cbm = split_scan_num_repeats_cbm;
+   sst->sst_weight = split_scan_weight;
    sst->sst_delete = free_split_scan_type;
    sst->sst_scan_region_angles = split_scan_region_angles;
    sst->sst_scan_region = split_scan_region;
