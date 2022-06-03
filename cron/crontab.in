@@ -23,6 +23,7 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 # Ancillary data to ASDC:
 7	3,21	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GOES >> var/log/asdc_goes.log 2>&1
 7	1,23	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
+7	2	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_IMS >> var/log/asdc_ims.log 2>&1
 
 # cleanup
 @weekly		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && /usr/sbin/logrotate -s var/log/logstate etc/logrotate.conf

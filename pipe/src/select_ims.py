@@ -40,7 +40,7 @@ def time_info (t):
     return info
 
 def run_sql_select (c, field, subst):
-    cmd = "select path from 'IMS' where ({field} > :beg and {field} < :end) order by abs({field} - :tx)".format(**locals())
+    cmd = "select path from 'File_Table' where ({field} > :beg and {field} < :end) order by abs({field} - :tx)".format(**locals())
     c.execute(cmd, subst)
     rows = c.fetchall()
     rows = [r for r in rows if None not in r]

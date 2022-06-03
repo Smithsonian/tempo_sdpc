@@ -52,7 +52,6 @@ case $_task in
    test x"$state_asdc_goes" = xon || exit 0
    cmieast_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
    cmiwest_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
-
    asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
    asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
    asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
@@ -62,9 +61,15 @@ case $_task in
    ASDC_GEOSCF )
    test x"$state_asdc_geoscf" = xon || exit 0
    geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
-
    asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
    asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
+   ;;
+
+   ASDC_IMS )
+   test x"$state_asdc_ims" = xon || exit 0
+   ims_sqlite="$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
+   asdc_pull_ack.sh $asdc_dropbox $ims_sqlite IMS
+   asdc_push_files.sh $asdc_dropbox $ims_sqlite
    ;;
 
    CLEANUP )

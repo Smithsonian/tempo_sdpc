@@ -35,6 +35,6 @@ new_list=$(find $target_dir -name "ims???????_1km_v*.nc.gz")
 if test x"$new_list" != x ; then
    gunzip -f $new_list
    new_list=$(echo $new_list | sed -e 's,.gz,,g')
-   $SDPC_ANCILLARY_ROOT/bin/register_ims.py --dbfile $rootdir/ims.sqlite $new_list
+   asdc_files.py --dbfile $rootdir/ims.sqlite --add $new_list
 fi
 

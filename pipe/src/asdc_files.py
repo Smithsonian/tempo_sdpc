@@ -1,5 +1,12 @@
 #! /usr/bin/env python3
 
+# This program is intended to manage a database of files of a single type
+# that are uploaded to ASDC.  It's primary purpose is to help track the
+# ASDC upload status.  The files tracked may have custom fields that
+# may be used in queries performed by other programs. This program
+# can define the custom fields for such entries, but it doesn't
+# use them in any way.
+
 # for eprint definition
 from __future__ import print_function
 
@@ -7,6 +14,7 @@ import re
 import os, sys
 import sqlite3
 import argparse
+from netCDF4 import Dataset
 
 DryRun = False
 
@@ -22,8 +30,65 @@ class Tokenizer:
         s = line.rstrip(';\n')
         return self.regex.split(s)
 
-class Table_Type:
+class File_Type (object):
+    def __init__ (self, regex, fields_method, entry_method):
+        self.regex = re.compile(regex)
+        self.fields = fields_method
+        self.entry = entry_method
 
+# Each file type that needs custom database fields
+# should have an entry in this dict:
+Filetype_Dict = {}
+
+# Each Filetype_Dict entry should provide a regular
+# expression to classify filenames, plus two functions:
+#    *) one to define the custom fields,
+#    *) one to populate the custom fields given the path
+#       to a specific file
+
+# IMS -----------------------------------
+def ims_fields ():
+    fields = {}
+    fields["daytag"] = "integer not null"
+    fields["year"] = "integer not null"
+    fields["yday"] = "integer not null"
+    return fields
+
+def ims_entry (path):
+    basename = os.path.basename(path)
+    # example basename: ims2022027_1km_v1.3.nc.gz
+    tok = basename.split('_')
+    daytag = int(tok[0].strip('ims'))
+    fields = {}
+    fields["daytag"] = daytag
+    fields["year"] = int (daytag / 1000)
+    fields["yday"] = daytag % 1000
+    return fields
+
+Filetype_Dict["ims"] = File_Type("ims\d{7,7}_1km_v\d.\d.nc", ims_fields, ims_entry)
+
+def classify_filename (path, *args, **kwargs):
+    basename = os.path.basename(path)
+    for key, value in Filetype_Dict.items():
+        if value.regex.match(basename) is not None:
+            return key
+    return None
+
+def file_fields (path, *args, **kwargs):
+    type_string = classify_filename (path)
+    if type_string is None:
+        return {}
+    else:
+        return Filetype_Dict[type_string].fields(*args, **kwargs)
+
+def file_entry (path, *args, **kwargs):
+    type_string = classify_filename (path)
+    if type_string is None:
+        return {}
+    else:
+        return Filetype_Dict[type_string].entry(path, *args, **kwargs)
+
+class Table_Type:
     def __init__ (self, table_name, fields, quals):
         self.table_name = table_name
         self.field_defs = fields
@@ -43,50 +108,49 @@ class Table_Type:
         value_string_tuple = tuple(str(v) for v in values)
         cur.execute (cmd, value_string_tuple)
 
-def init_file_table (table_name):
+def init_file_table (table_name, fields_for_file_type):
     fields = {}
     fields["rowid"] = "integer"
     fields["asdc_status"] = "integer"
     fields["filename"] = "text"
     fields["path"] = "text"
     quals = "primary key(rowid)"
+    fields.update(fields_for_file_type)
     return Table_Type(table_name, fields, quals)
 
-def insert_file_entry (conn, table_name, entry):
-    c = conn.cursor()
-    tbl = init_file_table(table_name)
-    tbl.create(c)
-    tbl.new_entry (c, entry.keys(), entry.values())
-    conn.commit()
+def insert_file_entry (cur, tbl, entry):
+    tbl.new_entry (cur, entry.keys(), entry.values())
     return 0
 
-def file_entry_exists (conn, table_name, entry):
-    c = conn.cursor()
-    tbl = init_file_table(table_name)
-    tbl.create(c)
-    c.execute ("select path from {} where filename == \"{}\"".format (table_name, entry["filename"]));
-    path = c.fetchone()
+def file_entry_exists (cur, table_name, entry):
+    cur.execute ("select path from {} where filename == \"{}\"".format (table_name, entry["filename"]));
+    path = cur.fetchone()
     return path != None
 
-def update_file_entry (conn, table_name, entry):
-    c = conn.cursor()
+def update_file_entry (cur, table_name, entry):
     sql = "update {} set path=\"{}\" where filename=\"{}\"".format (table_name, entry["path"], entry["filename"]);
-    c.execute (sql)
-    conn.commit()
+    cur.execute (sql)
     return 0
 
 def process_file (conn, table_name, path):
     basename = os.path.basename (path)
 
-    keys = {}
-    keys["asdc_status"] = 0
-    keys["filename"] = basename
-    keys["path"] = os.path.abspath(path)
+    fields = {}
+    fields["asdc_status"] = 0
+    fields["filename"] = basename
+    fields["path"] = os.path.abspath(path)
+    fields.update (file_entry (path))
 
-    if file_entry_exists (conn, table_name, keys):
-        status = update_file_entry (conn, table_name, keys)
+    cur = conn.cursor()
+    tbl = init_file_table (table_name, file_fields (path))
+    tbl.create (cur)
+
+    if file_entry_exists (cur, table_name, fields):
+        status = update_file_entry (cur, table_name, fields)
     else:
-        status = insert_file_entry (conn, table_name, keys)
+        status = insert_file_entry (cur, tbl, fields)
+
+    conn.commit()
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(path))

@@ -11,7 +11,7 @@ private variable Dest_Target_Dir = ".";
 % different from those viewed from outside ASDC. To avoid
 % confusion, we use "."
 
-private variable Ancillary_Type_List = ["GEOSCF", "CMIEAST", "CMIWEST"];
+private variable Ancillary_Type_List = ["GEOSCF", "CMIEAST", "CMIWEST", "IMS"];
 private variable Node_Name;
 
 private variable GOES_Path_Pattern = "/20\d{2}/\d{3}/(east|west)_cmi/OR_ABI-"R;
@@ -134,6 +134,10 @@ define process_file_ancillary (types, path)
         % path matches /west_cmi/ tree => product_type=CMIWEST
         variable tok = pcre_matches (GOES_Path_Regex, path);
         product_type = "CMI" + strup(tok[1]);
+     }
+   else if (0 == strncmp ("ims", basename, 3))
+     {
+        product_type = "IMS";
      }
    if (product_type == NULL)
      {
