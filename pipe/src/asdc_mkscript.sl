@@ -38,6 +38,39 @@ define make_file_entry (path, data_type, st, file_type)
    return s;
 }
 
+define process_file_corrfile (types, path)
+{
+   variable st = stat_file (path);
+   if (st == NULL)
+     return;
+
+   variable basename = path_basename (path);
+   variable tok = strtok (basename, "_");
+   % example:  TEMPO_RADREF_L1_V01_S123456789_E123456789_S003.nc
+   % example:  TEMPO_DSTRHCHO_L2_V01_S123456789_E123456789_S003.nc
+   variable product_type = tok[1];
+   variable version_string = tok[3];
+   variable data_type = "TEMPO_NONORDERABLE";
+   variable entry = make_file_entry (path, data_type, st, "SCIENCE");
+
+   variable group = struct
+     {
+        data_version = version_string,
+        entry = entry,
+        met_entry = NULL
+     };
+
+   if (assoc_key_exists (types, product_type))
+     {
+        list_append (types[product_type], group);
+        return;
+     }
+
+   variable lst = {};
+   list_append (lst, group);
+   types[product_type] = lst;
+}
+
 define process_file_nc (types, path)
 {
    variable st = stat_file (path);
@@ -378,10 +411,17 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
              continue;
           }
         variable basename = path_basename (path);
+        % Filter correction files by their prefixes.
+        % Ancillary data files do not have a "TEMPO" prefix.
         % TEMPO data products are prefixed with "TEMPO_"
-        % TEMPO raw files are prefixed with "tempo_"
-        % Ancillary data files do not have a "tempo" prefix.
-        if (0 != strncmp ("TEMPO", strup(basename), 5))
+        % TEMPO raw tar files are prefixed with "tempo_"
+        if ((0 == strncmp ("TEMPO_RADREF", basename, 12))
+            || (0 == strncmp ("TEMPO_DSTR", basename, 14)))
+          {
+             process_file_corrfile (types, path);
+             continue;
+          }
+        else if (0 != strncmp ("TEMPO", strup(basename), 5))
           {
              process_file_ancillary (types, path);
              continue;

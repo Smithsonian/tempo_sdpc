@@ -21,7 +21,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                asdc_mkscript.sl asdc_files.py asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
                asdc_transfer.py asdc_exclude_filter.py update_trend_files.py \
                public_mirror.py update_public_mirror.sh inrmonitor.sh \
-               make_radref.sh make_radref.py register_bytimetod.py \
+               make_radref.sh make_radref.py  \
                make_destripe.sh make_destripe.py destripe.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)

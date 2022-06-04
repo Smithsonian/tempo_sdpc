@@ -3,8 +3,6 @@
 # The functions are intended to be called from a parent script
 # which imports these definitions.
 
-Radref_Database_File="$SDPC_ARCHIVE_DIR/L1/radref.sqlite"
-
 # Format the YAML file lists
 # The result will have a trailing newline, but
 # AFAIK, blank lines in yaml files are ok.
@@ -66,7 +64,8 @@ make_radref()
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_radiance_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
-   radref_filename="TEMPO_RADREF_L1_s${tbeg}_e${tend}_${scan_label}.nc"
+   version="$(echo $first_radiance_filename_sans_extname | cut -d_ -f4)"
+   radref_filename="TEMPO_RADREF_L1_${version}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    radref_path="$radref_dir/$radref_filename"
    config_file="$radref_dir/make_radref.yml"
@@ -81,6 +80,6 @@ make_radref()
    # Generate the radiance reference file
    make_radref.py $config_file > $log_file 2>&1 || mr_error_exit "make_radref.py failed (see $log_file)" $LINENO
 
-   # Register the file in the relevant sqlite database.
-   register_bytimetod.py --dbfile $Radref_Database_File $radref_path
+   # Register the file in the sqlite database.
+   ln -s $radref_path $SDPC_ARCHIVE_DIR/registry/incoming
 }

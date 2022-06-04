@@ -60,7 +60,8 @@ make_destripe()
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
-   destripe_filename="TEMPO_${product_type}_L2_s${tbeg}_e${tend}_${scan_label}.nc"
+   version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
+   destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    destripe_path="$destripe_dir/$destripe_filename"
    config_file="$destripe_dir/make_destripe.yml"
@@ -74,7 +75,6 @@ make_destripe()
    # Generate the destriping correction file
    make_destripe.py $config_file > $log_file 2>&1 || md_error_exit "make_destripe.py failed (see $log_file)" $LINENO
 
-   destripe_database_file="$SDPC_ARCHIVE_DIR/L2/destripe_${product_type}.sqlite"
-   # Register the file in the relevant sqlite database.
-   register_bytimetod.py --dbfile $destripe_database_file $destripe_path
+   # Register the file in the sqlite database.
+   ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
 }

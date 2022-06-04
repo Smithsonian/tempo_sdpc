@@ -61,25 +61,30 @@ class Table_Type:
         value_string_tuple = tuple(str(v) for v in values)
         cur.execute (cmd, value_string_tuple)
 
-def define_common_fields (fields):
-    fields["istart"] = "integer not null"
-    fields["time_coverage_start_since_epoch"] = "float not null"
-    fields["time_coverage_end_since_epoch"] = "float not null"
+def basic_fields_dict ():
+    fields = {}
     fields["filename"] = "text"
     fields["path"] = "text"
+    fields["istart"] = "integer not null"
     fields["mtime"] = "integer"
     fields["size"] = "integer"
-    fields["versionid"] = "integer"
-    fields["trend_status"] = "integer not null"
     fields["asdc_status"] = "integer"
     fields["asdc_status_met"] = "integer"
     fields["asdc_upload_time"] = "integer"
     fields["asdc_ingest_time"] = "integer"
     fields["asdc_disposition"] = "text"
+    return fields
+
+def common_fields_dict():
+    fields = basic_fields_dict()
+    fields["time_coverage_start_since_epoch"] = "float not null"
+    fields["time_coverage_end_since_epoch"] = "float not null"
+    fields["versionid"] = "integer"
+    fields["trend_status"] = "integer not null"
+    return fields
 
 def init_radiance_table (table_name):
-    fields = {}
-    define_common_fields (fields)
+    fields = common_fields_dict()
     fields["scan_type"] = "integer not null"
     fields["scan_num"] = "integer not null"
     fields["scan_id"] = "integer not null"
@@ -90,8 +95,7 @@ def init_radiance_table (table_name):
     return Table_Type(table_name, fields, quals)
 
 def init_radiance_product_table (table_name):
-    fields = {}
-    define_common_fields (fields)
+    fields = common_fields_dict()
     fields["scan_id"] = "integer not null"
     if Have_Rad_L1_Table:
         quals = "unique(istart), foreign key (istart) references RAD_L1(istart)"
@@ -100,31 +104,28 @@ def init_radiance_product_table (table_name):
     return Table_Type(table_name, fields, quals)
 
 def init_dark_product_table (table_name):
-    fields = {}
-    define_common_fields (fields)
+    fields = common_fields_dict()
     fields["mean_exposure_time_per_coadd"] = "float"
     fields["mean_fpa_temp"] = "float"
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
 def init_other_product_table (table_name):
-    fields = {}
-    define_common_fields (fields)
+    fields = common_fields_dict()
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
 def init_raw_file_table (table_name):
-    fields = {}
-    fields["filename"] = "text"
-    fields["path"] = "text"
-    fields["istart"] = "integer not null"
-    fields["mtime"] = "integer"
-    fields["size"] = "integer"
-    fields["asdc_status"] = "integer"
-    fields["asdc_status_met"] = "integer"
-    fields["asdc_upload_time"] = "integer"
-    fields["asdc_ingest_time"] = "integer"
-    fields["asdc_disposition"] = "text"
+    fields = basic_fields_dict()
+    quals = "unique(istart)"
+    return Table_Type(table_name, fields, quals)
+
+def init_corrfile_table (table_name):
+    fields = basic_fields_dict()
+    fields["tstart"] = "integer not null"
+    fields["tend"] = "integer not null"
+    fields["begin_hour_utc"] = "float"
+    fields["end_hour_utc"] = "float"
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
@@ -134,6 +135,18 @@ def insert_raw_entry (conn, table_name, entry):
     raw.create(c)
     try:
         raw.new_entry (c, entry.keys(), entry.values())
+        conn.commit()
+        return 0
+    except sqlite3.IntegrityError:
+        eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+        return -1
+
+def insert_corrfile_entry (conn, table_name, entry):
+    c = conn.cursor()
+    tbl = init_corrfile_table(table_name)
+    tbl.create(c)
+    try:
+        tbl.new_entry (c, entry.keys(), entry.values())
         conn.commit()
         return 0
     except sqlite3.IntegrityError:
@@ -408,6 +421,58 @@ def process_file_raw (conn, filename):
 
     return status
 
+def convert_hms_to_float (hms_array):
+    hour_f = []
+    for hms in hms_array:
+        fields = hms.split(':')
+        h_f = int(fields[0]) + (int(fields[1]) + int(fields[2])/60.0)/60.0
+        hour_f.append (h_f)
+    return hour_f
+
+def process_file_corr (conn, filename, nc):
+
+    basename = os.path.basename (filename)
+    final_path = os.readlink (filename)
+    st = os.stat (filename)
+
+    # Example:       TEMPO_RADREF_L1_V01_S123456789_E123456789_S001.nc
+    # Example: TEMPO_DSTRHCHO_L2_V01_S123456789_E123456789_S001.nc
+    tok = basename.split('_')
+    table_name = "_".join ([tok[1], tok[2]])
+    tstart = int(tok[4].strip('S'))
+    tend = int(tok[5].strip('E'))
+
+    keys = {}
+    keys["filename"] = basename
+    keys["path"] = final_path
+    keys["istart"] = tstart
+    keys["mtime"] = int(st.st_mtime)
+    keys["size"] = st.st_size
+    keys["asdc_status"] = Asdc_Status["new"]
+    keys["asdc_upload_time"] = 0
+    keys["asdc_ingest_time"] = 0
+    keys["asdc_status_met"] = Asdc_Status["nonexistent"]
+    keys["asdc_disposition"] = ""
+
+    begin_time = nc.getncattr('begin_time')
+    end_time = nc.getncattr('end_time')
+    begin_time = convert_hms_to_float (begin_time.split(','))
+    end_time = convert_hms_to_float (end_time.split(','))
+
+    keys["tstart"] = tstart
+    keys["tend"] = tend
+    keys["begin_hour_utc"] = min(begin_time)
+    keys["end_hour_utc"] = max(end_time)
+
+    status = insert_corrfile_entry (conn, table_name, keys)
+
+    if status < 0:
+        eprint('ERROR: processing file {}'.format(filename))
+    else:
+        logprint ('{}: {}'.format(table_name, basename), flush=True)
+
+    return status
+
 def connect_database (db_path):
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
@@ -417,7 +482,11 @@ def connect_database (db_path):
 def register_one_file (db_path, fn):
     status = -1
     with connect_database (db_path) as conn:
-        if fn.endswith ('.nc'):
+        basename = os.path.basename(fn)
+        if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
+            with NetCDFFile (fn, "r") as nc:
+                status = process_file_corr (conn, fn, nc)
+        elif fn.endswith ('.nc'):
             with NetCDFFile (fn, "r") as nc:
                 status = process_file (conn, fn, nc)
         elif fn.endswith ('.tar'):
