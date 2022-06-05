@@ -281,7 +281,7 @@
 # -------------------------
 # I0 replacement irradiance
 # -------------------------
-700400|not needed now|@refdata_dir@/trace_gas/data||||1
+700400|@radref_basename@|@radref_dirname@||||1
 #
 # -------------------------------------
 # GEOS-Chem reference sector background

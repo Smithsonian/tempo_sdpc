@@ -105,13 +105,15 @@ no2_l2_split()
 
 case "$product_name" in
   CLDO4_L2 )
-     if test -f "$SDPC_RUN_DIR_MASTER/etc/enable_radref" ; then
+     radref_enable=$(config_setting control.radref_enable)
+     if test $radref_enable -ne 0 ; then
         make_radref "$l2_paths"
      fi
      ;;
 
   HCHO_L2 )
-     if test -f "$SDPC_RUN_DIR_MASTER/etc/enable_destripe_HCHO" ; then
+     destripe_HCHO=$(config_setting control.HCHO.destripe_enable)
+     if test $destripe_HCHO -ne 0 ; then
         make_destripe "$l2_paths"
      fi
      ;;

@@ -11,6 +11,7 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
                      pipe_mkdirs_archive.sh pipe_mkdirs_master.sh \
 		     pipe_mkdirs_node.sh pipe_setup_master.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
+EXEC_FILES = config_setting
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                o3p_partition.sl o3p_select.sl \
                sdpcrun.sh sdpcpipe.sh make_tar_notice.sh pipecron.sh \
@@ -39,6 +40,7 @@ datarootdir = @datarootdir@
 MODULE_INSTALL_DIR = @MODULE_INSTALL_DIR@
 SL_FILES_INSTALL_DIR = @SL_FILES_INSTALL_DIR@
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
+EXEC_FILES_INSTALL_DIR = $(prefix)/bin
 ETC_FILES_INSTALL_DIR = $(prefix)/etc
 SHARE_FILES_INSTALL_DIR = $(prefix)/share
 HLP_FILES_INSTALL_DIR = $(SL_FILES_INSTALL_DIR)/help
@@ -85,20 +87,21 @@ DESTDIR =
 DEST_MODULE_INSTALL_DIR = $(DESTDIR)$(MODULE_INSTALL_DIR)
 DEST_SL_FILES_INSTALL_DIR = $(DESTDIR)$(SL_FILES_INSTALL_DIR)
 DEST_SCRIPT_FILES_INSTALL_DIR = $(DESTDIR)$(SCRIPT_FILES_INSTALL_DIR)
+DEST_EXEC_FILES_INSTALL_DIR = $(DESTDIR)$(EXEC_FILES_INSTALL_DIR)
 DEST_ETC_FILES_INSTALL_DIR = $(DESTDIR)$(ETC_FILES_INSTALL_DIR)
 DEST_SHARE_FILES_INSTALL_DIR = $(DESTDIR)$(SHARE_FILES_INSTALL_DIR)
 DEST_HLP_FILES_INSTALL_DIR = $(DESTDIR)$(HLP_FILES_INSTALL_DIR)
 DEST_DOC_FILES_INSTALL_DIR = $(DESTDIR)$(DOC_FILES_INSTALL_DIR)
 
 #---------------------------------------------------------------------------
-LIBS = $(SLANG_LIB) $(MODULE_LIBS) $(RPATH) $(DL_LIB) -lm
-INCS = $(SLANG_INC) $(TELL_INC)
+LIBS = $(TELL_LIB) $(LIB_LIBCONFIG) -lm
+INCS = $(TELL_INC)
 
 srcdir = $(config_dir)/pipe/src
 objdir = $(srcdir)/$(archobjs)
 bindir = $(prefix)/bin
 
-all: $(objdir) $(MODULES)
+all: $(objdir) $(MODULES) $(EXEC_FILES)
 
 #---------------------------------------------------------------------------
 # Put Rules to create the modules here
@@ -109,14 +112,10 @@ all: $(objdir) $(MODULES)
 COMPILE_CMD = $(CC) $(CCFLAGS)
 ELF_COMPILE_CMD = $(ELF_CC) -c $(ELF_CFLAGS)
 
-TIO_INC = $(config_dir)/libtio/src
-TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
+LIB_LIBCONFIG = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB) -lconfig
 
-TIO_LIBPATHS  = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
-LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
-
-IOCSDPC_INC = $(prefix)/include
-IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
+config_setting:
+	$(COMPILE_CMD) -o $(objdir)/config_setting $(INCS) config_setting.c $(LIBS)
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -128,6 +127,7 @@ install_directories:
 	$(MKINSDIR) $(DEST_MODULE_INSTALL_DIR)
 	$(MKINSDIR) $(DEST_SL_FILES_INSTALL_DIR)
 	$(MKINSDIR) $(DEST_SCRIPT_FILES_INSTALL_DIR)
+	$(MKINSDIR) $(DEST_EXEC_FILES_INSTALL_DIR)
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/cachemon
 	$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/trace_gas
 	#$(MKINSDIR) $(DEST_ETC_FILES_INSTALL_DIR)/cloud
@@ -140,10 +140,6 @@ install_directories:
 	$(MKINSDIR) $(DEST_SHARE_FILES_INSTALL_DIR)/metadata
 	#$(MKINSDIR) $(DEST_HLP_FILES_INSTALL_DIR)
 	#$(MKINSDIR) $(DEST_DOC_FILES_INSTALL_DIR)
-
-# install_execs:
-# 	mkdir -p $(bindir)
-# 	@echo installing executables in $(bindir)/
 
 install_modules:
 	@for X in $(MODULES); \
@@ -164,6 +160,16 @@ install_scripts:
 	do \
 		echo $(INSTALL) $$X $(DEST_SCRIPT_FILES_INSTALL_DIR); \
 		$(INSTALL) $$X $(DEST_SCRIPT_FILES_INSTALL_DIR); \
+		if [ "$$?" != "0" ]; then \
+		  exit 1; \
+		fi; \
+	done
+
+install_execs:
+	@for X in $(EXEC_FILES); \
+	do \
+		echo $(INSTALL) $(objdir)/$$X $(DEST_EXEC_FILES_INSTALL_DIR); \
+		$(INSTALL) $(objdir)/$$X $(DEST_EXEC_FILES_INSTALL_DIR); \
 		if [ "$$?" != "0" ]; then \
 		  exit 1; \
 		fi; \
@@ -220,7 +226,7 @@ install_docfiles:
 		fi; \
 	done
 
-install: all install_directories install_modules \
+install: all install_directories install_modules install_execs \
           install_scripts install_etcfiles install_sharefiles install_slfiles \
           install_supervision_tree # install_hlpfiles install_docfiles
 

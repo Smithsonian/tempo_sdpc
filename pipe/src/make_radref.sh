@@ -26,6 +26,27 @@ mr_error_exit()
 }
 trap 'mr_error_exit $? on $LINENO' EXIT
 
+trigger_level2()
+{
+  radref_basename="$1"
+  rad_files="$2"
+
+  level2_input_dir="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input"
+  radref_wait_dir="$level2_input_dir/radref_pending"
+  if ! test -d $radref_wait_dir ; then
+     return
+  fi
+
+  for rf in $rad_files ; do
+      basename_sans_extname=$(basename $rf .nc)
+      tar_hostfile_path="$radref_wait_dir/${basename_sans_extname}_radref.tar"
+      if test -f $tar_hostfile_path ; then
+         echo "radref_file=$radref_basename" >> $tar_hostfile_path
+         /bin/mv $tar_hostfile_path $level2_input_dir
+      fi
+  done
+}
+
 make_radref()
 {
   l2_cloud_paths="$1"
@@ -82,4 +103,7 @@ make_radref()
 
    # Register the file in the sqlite database.
    ln -s $radref_path $SDPC_ARCHIVE_DIR/registry/incoming
+
+   # Trigger any Level 2 processing that was waiting for this
+   trigger_level2 "$radref_filename" "$rad_files"
 }

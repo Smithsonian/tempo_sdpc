@@ -38,10 +38,18 @@ test -r $tar_file_notice || exit 1
 #
 etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 
+radref_file=""
 # tar_file_notice is a short script that defines the variables
 # tar_host = machine with the tar file on its local disk
 # tar_host_file_path = path to the tar file on $tar_host
+# Optionally: radref_file = path to radiance reference file
 . $tar_file_notice
+
+# Work in a unique subdirectory to avoid collisions
+# between parallel jobs
+unique_subdir_name="${SLURM_JOB_ID}_$$"
+mkdir $unique_subdir_name
+cd $unique_subdir_name
 
 # Retrieve the tar file and unpack it:
 tar_file_basename=$(basename $tar_host_file_path)
@@ -49,14 +57,15 @@ this_host=$(uname -n | cut -d. -f1)
 if test x"$tar_host" != x"$this_host" ; then
    scp -o StrictHostKeyChecking=no $tar_host:$tar_host_file_path .
    tar xf $tar_file_basename
+   tar_file_dir="$(tar tf $tar_file_basename | head -n1 | cut -d/ -f1)"
    /bin/rm $tar_file_basename
 else
    tar xf $tar_host_file_path
+   tar_file_dir="$(tar tf $tar_host_file_path | head -n1 | cut -d/ -f1)"
 fi
 
-# move into the directory from the unpacked tar file
+# Move into the directory from the unpacked tar file
 tar_unpack_dir=$(pwd)
-tar_file_dir=$(basename $tar_file_basename .tar)
 cd $tar_file_dir
 
 # 1. At this point, we're in a directory containing:
@@ -124,11 +133,11 @@ for prod in $product_list ; do
      o3tot.sh > $o3tot_log 2>&1 &
   else
      tracegas_log="$slurm_logdir/${rad_basename}.tracegas-${SLURM_JOB_ID}.out"
-     tracegas.sh $prod > $tracegas_log 2>&1 &
+     tracegas.sh $prod $radref_file > $tracegas_log 2>&1 &
   fi
 done
 
 # wait for background jobs to exit
 wait
 
-level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir > /dev/null
+level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir "$tar_unpack_dir" > /dev/null

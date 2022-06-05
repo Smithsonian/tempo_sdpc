@@ -11,13 +11,17 @@ ulimit -s unlimited
 # To use synthetic met data, set it to the relevant file path
 : "${USE_SYNTHETIC_MET_DATA:=OFF}"
 
-# 1. Processing will run in the subdirectory provided on the command line,
-#    which already contains all necessary inputs.
-# 2. Processing ultimately stores all results in a tar file in an
+# 1. Processing ultimately stores all results in a tar file in an
 #    appropriate destination directory.
-# 3. When processing ends, remove the processing directory.
+# 2. When processing ends, remove the processing directory.
 
 molecule="$1"
+shift
+if test $# -eq 1 ; then
+   radref_file="$1"
+else
+   radref_file=""
+fi
 work_dir="$molecule"
 
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
@@ -110,6 +114,19 @@ template_ctrl="${etc_dir}/trace_gas/control.${molecule}.in"
 control_file="control_${molecule}.txt"
 this_pcf_file="${pcf_file}_${molecule}"
 
+radref_basename=""
+radref_dirname=""
+case "$molecule" in
+  HCHO )
+     if ! test -z "$rad_file" ; then
+        radref_basename="$(basename $radref_file)"
+        radref_dirname="$(dirname $radref_file)"
+     fi
+    ;;
+  *)
+    ;;
+esac
+
 # Select climatology file for the month the data was acquired
 start_month_name=$(level1_info --month ${rad_basename}.nc)
 clim_file="TEMPO_GEOS-Chem_climatology_${start_month_name}_v0p0.he5"
@@ -144,6 +161,8 @@ sed \
  -e s,@met_dir2@,$met_dir2,g \
  -e s,@met_file2@,$met_file2,g \
  -e s,@product_file@,$product_file,g \
+ -e s,@radref_basename@,$radref_basename,g \
+ -e s,@radref_dirname@,$radref_dirname,g \
  -e s,@refsec_rad_file@,$refsec_rad_file,g \
  -e s,@refsec_cld_file@,$refsec_cld_file,g \
  -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \

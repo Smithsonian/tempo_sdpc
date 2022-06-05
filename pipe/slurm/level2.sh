@@ -47,14 +47,24 @@ log_message()
 
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
+# initialize before loading tar notice file
+radref_file=""
+
+products_needing_radref="$(config_setting control.products_needing_radref)"
+
 # Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
 # granule_arch_dir_path = path to L2 archive directory for this granule
+# Optionally: radref_file = basename of radiance reference file
+# Optionally: redefine SDPC_LEVEL2_PRODUCTS
 . $tar_file_notice
 
-tar_file_basename_sans_extname="$(basename $tar_host_file_path .tar)"
-: "${SDPC_GRANULE_LABEL:=$tar_file_basename_sans_extname}"
+tar_file_basename="$(basename $tar_host_file_path)"
+# Trim any basename characters following and including '.',
+# but ignoring '.' when it's the first character:
+tar_file_basename_sans_ext="${tar_file_basename%.*}"
+: "${SDPC_GRANULE_LABEL:=$tar_file_basename_sans_ext}"
 export SDPC_GRANULE_LABEL
 
 # ensure upper case product list tokens
@@ -63,15 +73,75 @@ level2_products=${level2_products^^}
 
 product_list_tokens="$(echo $level2_products | tr , ' ')"
 
-have_o3p=""
-product_list_sans_o3p=""
-for p in $product_list_tokens ; do
-   if test x"$p" = x"O3PROF" ; then
+case "$product_list_tokens" in
+   *O3PROF*)
       have_o3p="yes"
+      product_list_sans_o3p="$(echo $product_list_tokens | sed -e s/O3PROF//)"
+      ;;
+   *)
+      have_o3p=""
+      product_list_sans_o3p="$product_list_tokens"
+esac
+
+# Some products may need to wait for a radiance reference file:
+radref_enable=$(config_setting control.radref_enable)
+if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
+   if ! test -z "$radref_file" ; then
+      # radref_file is non-empty.
+      # If we've been given the full radref path, and the file is actually there,
+      # then we're good to go.  Otherwise, we've presumably been given the basename,
+      # and we need to search the archive to get the full path.  If the archive has
+      # not yet registered the file, then we may need to wait for it.
+      if ! test -f $radref_file ; then
+         while true ; do
+             radref_path=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
+             if ! test -z "$radref_path" ; then
+                sed -i -e "s,radref_file=$radref_file,radref_file=$radref_path," $tar_file_notice
+                break
+             fi
+             sleep 30
+         done
+      fi
    else
-      product_list_sans_o3p="$p $product_list_sans_o3p"
+      # We have not been given a radref file name.
+      # If we're generating products that need it, then we will
+      # delay generating them until later when the radref file
+      # is ready:
+
+      products_that_must_wait=""
+      products_that_can_proceed=""
+      for p in $product_list_sans_o3p ; do
+          case "$products_needing_radref" in
+             *$p*)
+                products_that_must_wait="$products_that_must_wait $p"
+                ;;
+             *)
+                products_that_can_proceed="$products_that_can_proceed $p"
+                ;;
+          esac
+      done
+
+      product_list_sans_o3p="$products_that_can_proceed"
+
+      if ! test -z "$products_that_must_wait" ; then
+         # We are generating products that need to wait until a radref becomes available.
+         # On $tar_host, create a new hardlink to the tar file to preserve it
+         # until later when the radref becomes available:
+         tar_host_file_path_wait="${tar_host_file_path}_radref"
+         ssh $tar_host ln $tar_host_file_path $tar_host_file_path_wait
+         # Create a new tar notice file that refers to the new hardlink we just created.
+         radref_wait_dir="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input/radref_pending"
+         mkdir -p $radref_wait_dir
+         basename_sans_extname="$(basename $tar_file_notice .tar | sed -e s/^.//)"
+         # change the notice file basename to avoid filename conflicts
+         tar_file_notice_wait="$radref_wait_dir/${basename_sans_extname}_radref.tar"
+         printf "tar_host=$tar_host\n" > $tar_file_notice_wait
+         printf "tar_host_file_path=$tar_host_file_path_wait\n" >> $tar_file_notice_wait
+         printf "granule_arch_dir_path=$granule_arch_dir_path\n" >> $tar_file_notice_wait
+         printf "export SDPC_LEVEL2_PRODUCTS=\"$products_that_must_wait\"\n" >> $tar_file_notice_wait
+      fi
    fi
-done
+fi
 
 if test x"$have_o3p" != x ; then
   # load o3prof config parameters
