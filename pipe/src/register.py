@@ -32,6 +32,7 @@ Prefix = "register:"
 Have_Rad_L1_Table = False
 Have_Rad_L1a_Table = False
 Alt_Rad_L1a_Dbfile_Path = None
+Defer_HCHO = False
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -364,6 +365,13 @@ def process_file (conn, filename, nc):
         keys["asdc_status"] = Asdc_Status["defer"];
         keys["asdc_status_met"] = Asdc_Status["defer"];
 
+    # If HCHO_L2 gets a destriping correction, it will have
+    # asdc_status="defer".  After destriping, this changes
+    # to asdc_status="new".
+    if product_name == 'HCHO_L2' and Defer_HCHO:
+        keys["asdc_status"] = Asdc_Status["defer"];
+        keys["asdc_status_met"] = Asdc_Status["defer"];
+
     global Have_Rad_L1a_Table
     Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
     global Have_Rad_L1_Table
@@ -566,6 +574,11 @@ def init_registry ():
     incoming_dir = os.path.join (arch_dir, 'registry/incoming')
     if not os.path.isdir (incoming_dir):
         os.makedirs(incoming_dir)
+
+    # Does HCHO_L2 receive a destriping/background correction?
+    global Defer_HCHO
+    setting = check_output (["config_setting", "control.HCHO.destripe_apply"])
+    Defer_HCHO = setting != 0
 
     return Registry (incoming_dir, db_file_path)
 

@@ -77,4 +77,19 @@ make_destripe()
 
    # Register the file in the sqlite database.
    ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+
+   # Apply the destriping correction
+   apply_destripe=$(config_setting control.HCHO.destripe_apply)
+   if test $apply_destripe -ne 0 ; then
+      apply_log="$destripe_dir/destripe.log"
+      destripe.py --corrfile "$destripe_path" $l2_paths > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
+      # Change asdc_status of HCHO_L2 products from 'defer' to 'new'
+      tmpfile=$(mktemp)
+      printf "%s\n" $l2_paths > $tmpfile
+      asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
+      printf "%s.met\n" $l2_paths > $tmpfile
+      asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
+      /bin/rm -f $tmpfile
+   fi
+
 }
