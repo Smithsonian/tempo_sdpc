@@ -118,7 +118,7 @@ radref_basename=""
 radref_dirname=""
 case "$molecule" in
   HCHO )
-     if ! test -z "$rad_file" ; then
+     if ! test -z "$radref_file" ; then
         radref_basename="$(basename $radref_file)"
         radref_dirname="$(dirname $radref_file)"
      fi
