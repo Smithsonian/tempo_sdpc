@@ -42,6 +42,7 @@ radref_file=""
 # tar_file_notice is a short script that defines the variables
 # tar_host = machine with the tar file on its local disk
 # tar_host_file_path = path to the tar file on $tar_host
+# rad_filename = basename of the L1 radiance file
 # Optionally: radref_file = path to radiance reference file
 . $tar_file_notice
 

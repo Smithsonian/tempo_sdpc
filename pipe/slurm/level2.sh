@@ -9,6 +9,7 @@
 #         tar_host = name of the machine where the tar file resides
 #         tar_host_file_path = path to the tar file on $tar_host
 #         granule_arch_dir_path = archive subdirectory for this granule
+#         rad_filename = basename of the L1 radiance file
 #
 # 2. Data products produced are automatically archived.
 #    On error, a tar file is stored in repro/L2
@@ -56,6 +57,7 @@ products_needing_radref="$(config_setting control.products_needing_radref)"
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
 # granule_arch_dir_path = path to L2 archive directory for this granule
+# rad_filename = basename of the L1 radiance file
 # Optionally: radref_file = basename of radiance reference file
 # Optionally: redefine SDPC_LEVEL2_PRODUCTS
 . $tar_file_notice
@@ -86,6 +88,15 @@ esac
 # Some products may need to wait for a radiance reference file:
 radref_enable=$(config_setting control.radref_enable)
 if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
+
+   radref_search=$(config_setting control.radref_search)
+   if test $radref_search -ne 0 && test -z "$radref_file" ; then
+      # We weren't given a radref filename, but we can try to search for one.
+      # If the search fails, radref_file will be the empty string, and we'll
+      # try the next alternative.
+      radref_file=$(select_radref.py $rad_filename)
+   fi
+
    if ! test -z "$radref_file" ; then
       # radref_file is non-empty.
       # If we've been given the full radref path, and the file is actually there,
@@ -138,6 +149,7 @@ if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
          printf "tar_host=$tar_host\n" > $tar_file_notice_wait
          printf "tar_host_file_path=$tar_host_file_path_wait\n" >> $tar_file_notice_wait
          printf "granule_arch_dir_path=$granule_arch_dir_path\n" >> $tar_file_notice_wait
+         printf "rad_filename=$rad_filename\n" >> $tar_file_notice_wait
          printf "export SDPC_LEVEL2_PRODUCTS=\"$products_that_must_wait\"\n" >> $tar_file_notice_wait
       fi
    fi
@@ -176,6 +188,7 @@ if test x"$have_o3p" != x ; then
      printf "tar_host=$tar_host\n" > $tar_file_notice_alias
      printf "tar_host_file_path=$tar_host_file_path_alias\n" >> $tar_file_notice_alias
      printf "granule_arch_dir_path=$granule_arch_dir_path\n" >> $tar_file_notice_alias
+     printf "rad_filename=$rad_filename\n" >> $tar_file_notice_alias
   done
 fi
 
