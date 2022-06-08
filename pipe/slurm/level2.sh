@@ -87,7 +87,7 @@ esac
 
 # Some products may need to wait for a radiance reference file:
 radref_enable=$(config_setting control.radref_enable)
-if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
+if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
 
    radref_search=$(config_setting control.radref_search)
    if test $radref_search -ne 0 && test -z "$radref_file" ; then
@@ -95,9 +95,12 @@ if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
       # If the search fails, radref_file will be the empty string, and we'll
       # try the next alternative.
       radref_file=$(select_radref.py $rad_filename)
+      if test -n "$radref_file" && test -f $radref_file ; then
+         printf "radref_file=\"$radref_file\"\n" >> $tar_file_notice
+      fi
    fi
 
-   if ! test -z "$radref_file" ; then
+   if test -n "$radref_file" ; then
       # radref_file is non-empty.
       # If we've been given the full radref path, and the file is actually there,
       # then we're good to go.  Otherwise, we've presumably been given the basename,
@@ -106,7 +109,7 @@ if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
       if ! test -f $radref_file ; then
          while true ; do
              radref_path=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
-             if ! test -z "$radref_path" ; then
+             if test -n "$radref_path" ; then
                 sed -i -e "s,radref_file=$radref_file,radref_file=$radref_path," $tar_file_notice
                 break
              fi
@@ -134,7 +137,7 @@ if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
 
       product_list_sans_o3p="$products_that_can_proceed"
 
-      if ! test -z "$products_that_must_wait" ; then
+      if test -n "$products_that_must_wait" ; then
          # We are generating products that need to wait until a radref becomes available.
          # On $tar_host, create a new hardlink to the tar file to preserve it
          # until later when the radref becomes available:
@@ -154,6 +157,27 @@ if test $radref_enable -ne 0 && test x"$products_needing_radref" != x ; then
       fi
    fi
 fi
+
+case "$product_list_sans_o3p" in
+   *)
+    # do nothing
+    ;;
+
+   *HCHO*)
+     # Support HCHO destriping correction
+     hcho_destripe_enable=$(config_setting control.HCHO.destripe_enable)
+     destripe_file=""
+     if test $hcho_destripe_enable -ne 0 ; then
+        hcho_destripe_apply=$(config_setting control.HCHO.destripe_apply)
+        hcho_destripe_search=$(config_setting control.HCHO.destripe_search)
+        if test $hcho_destripe_apply -ne 0 && test $hcho_destripe_search -ne 0 ; then
+           # may return empty string if search fails
+           destripe_file=$(select_destripe.py $rad_filename)
+        fi
+     fi
+     printf "destripe_file=\"$destripe_file\"\n" >> $tar_file_notice
+     ;;
+esac
 
 if test x"$have_o3p" != x ; then
   # load o3prof config parameters

@@ -29,11 +29,11 @@ fi
 # Delete the processing directory, and the original tar file notice:
 /bin/rm -f $tar_file_notice
 /bin/rm -f $tar_dir/archive_subdir
-/bin/rmdir $tar_dir
+/bin/rmdir --ignore-fail-on-non-empty $tar_dir
 
 if test $# -eq 3 ; then
    tar_unpack_dir="$3"
    if test -d "$tar_unpack_dir" ; then
-     /bin/rmdir "$tar_unpack_dir"
+     /bin/rmdir --ignore-fail-on-non-empty "$tar_unpack_dir"
    fi
 fi

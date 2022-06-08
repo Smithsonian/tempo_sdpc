@@ -32,7 +32,9 @@ Prefix = "register:"
 Have_Rad_L1_Table = False
 Have_Rad_L1a_Table = False
 Alt_Rad_L1a_Dbfile_Path = None
-Defer_HCHO = False
+HCHO_Needs_Destripe = False
+
+Reload_Config = False
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -359,18 +361,23 @@ def process_file (conn, filename, nc):
     else:
         keys["asdc_status_met"] = Asdc_Status["nonexistent"]
 
-    # Initially, NO2_L2 products have asdc_status="defer".
-    # After L2_split, this changes to asdc_status="new".
+    # Some products require additional processing steps before
+    # uploading to ASDC.  Such products are initially registered
+    # with status "defer", which is later updated to "new" (elsewhere)
+    # upon completion of the final processing step.
+    # currently: NO2_L2 waits for strat/trop separation
+    #            HCHO_L2 may wait for destriping/background correction
     if product_name == 'NO2_L2':
-        keys["asdc_status"] = Asdc_Status["defer"];
-        keys["asdc_status_met"] = Asdc_Status["defer"];
+        defer_asdc_upload = True
+    elif (product_name == 'HCHO_L2' and HCHO_Needs_Destripe):
+        defer_asdc_upload = (('destriping_correction' not in nc['support_data'].variables) and
+                             ('background_correction' not in nc['support_data'].variables))
+    else:
+        defer_asdc_upload = False
 
-    # If HCHO_L2 gets a destriping correction, it will have
-    # asdc_status="defer".  After destriping, this changes
-    # to asdc_status="new".
-    if product_name == 'HCHO_L2' and Defer_HCHO:
-        keys["asdc_status"] = Asdc_Status["defer"];
-        keys["asdc_status_met"] = Asdc_Status["defer"];
+    if defer_asdc_upload:
+        keys["asdc_status"] = Asdc_Status["defer"]
+        keys["asdc_status_met"] = Asdc_Status["defer"]
 
     global Have_Rad_L1a_Table
     Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
@@ -555,6 +562,17 @@ class Registry:
         self.incoming_dir = incoming_dir
         self.file_path = file_path
 
+def check_hcho_destripe_config():
+    # Does HCHO_L2 receive a destriping/background correction?
+    global HCHO_Needs_Destripe
+    setting = check_output (["config_setting", "control.HCHO.destripe_apply"])
+    HCHO_Needs_Destripe = setting != 0
+
+def load_config():
+    global Reload_Config
+    Reload_Config = False
+    check_hcho_destripe_config()
+
 def init_registry ():
     db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
     if db_file_path == None:
@@ -575,10 +593,7 @@ def init_registry ():
     if not os.path.isdir (incoming_dir):
         os.makedirs(incoming_dir)
 
-    # Does HCHO_L2 receive a destriping/background correction?
-    global Defer_HCHO
-    setting = check_output (["config_setting", "control.HCHO.destripe_apply"])
-    Defer_HCHO = setting != 0
+    load_config()
 
     return Registry (incoming_dir, db_file_path)
 
@@ -592,6 +607,7 @@ class Signal_Catcher:
     signal.signal(signal.SIGINT, self.handler)
     signal.signal(signal.SIGHUP, self.handler)
     signal.signal(signal.SIGTERM, self.handler)
+    signal.signal(signal.SIGUSR1, self.config_update)
 
   def wait(self, delay):
       self.exit.wait(delay)
@@ -603,6 +619,11 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
+  def config_update(self,signum,frame):
+      global Reload_Config
+      Reload_Config = True
+      self.signum = signum
+
 def run_as_service (reg):
 
     sig = Signal_Catcher()
@@ -610,6 +631,9 @@ def run_as_service (reg):
     logprint ("Started", flush=True)
 
     while not sig.caught():
+        if Reload_Config:
+            logprint ('Caught signal = SIGUSR1: updating configuration', flush=True)
+            load_config()
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:
             status_list = register_files (reg.file_path, filenames)
