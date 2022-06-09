@@ -72,7 +72,10 @@ production_date_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 input_granules = []
 access_description = control['access_description']
 title = control['title']
-cirrected_product = []
+corrected_product = []
+
+max_mirror_step = 0
+min_mirror_step = 0
 
 # Get number of xtrack positions to initialize masked arrays
 # Get product name
@@ -110,6 +113,11 @@ for fp in input_files:
             p = src['support_data']['gas_profile'][:]
             units = src['support_data']['fitted_slant_column'].units
             v = ma.sum(p,axis=2); del p
+
+            # find the range of mirror step indices
+            mirror_step = src.variables['mirror_step'][:]
+            max_mirror_step = max(max_mirror_step, mirror_step.max())
+            min_mirror_step = min(min_mirror_step, mirror_step.min())
 
             # Read granule attributes
             scan_num.append(src.scan_num)
@@ -214,6 +222,7 @@ try:
         dst.minimum_cloud_fraction = mincfr
         dst.maximum_cloud_fraction = maxcfr
         dst.used_quality_flags = mqfval
+        dst.num_mirror_pos = max_mirror_step - min_mirror_step + 1
         # Create dimensions
         dst_nx = dst.createDimension('xtrack',nx)
         dst_nm = dst.createDimension('mirror_step',amf.shape[0])

@@ -46,6 +46,8 @@ l0_format.cfg
 l0_ccd.cfg
 make_destripe.yml.in
 make_radref.yml.in
+select_destripe.yml
+select_radref.yml
 destripe.yml
 wavecal_irr.cfg
 wavecal_rad.cfg

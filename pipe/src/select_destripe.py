@@ -42,7 +42,7 @@ def lookup_radiance_path (c, basename):
     else:
         return result[0]
 
-def select_matching_radref (c, window_days, window_hours, minwidth, info):
+def select_matching_destripe (c, molecule, window_days, window_hours, minwidth, info):
     sec_per_day = 86400.0
     sec_per_hour = 3600.0
     tx = info["tmid"]
@@ -51,7 +51,7 @@ def select_matching_radref (c, window_days, window_hours, minwidth, info):
 
     # First, get the candidate list, with the newest listed first
     subst = {'beg':tx-tmax, 'end':tx-sec_per_day, 'minwidth':minwidth}
-    cmd = "select path,0.5*(tstart+tend) from 'RADREF_L1' where :beg <= 0.5*(tstart+tend) and 0.5*(tstart+tend) <= :end and num_mirror_pos >= :minwidth order by tstart desc;"
+    cmd = "select path,0.5*(tstart+tend) from 'DSTR{}_L2' where :beg <= 0.5*(tstart+tend) and 0.5*(tstart+tend) <= :end and num_mirror_pos >= :minwidth order by tstart desc;".format(molecule)
     c.execute(cmd, subst)
 
     # Select from the list
@@ -110,7 +110,7 @@ def config_file_defaults (filename):
 
 def main():
 
-    cfg = config_file_defaults ("etc/select_radref.yml")
+    cfg = config_file_defaults ("etc/select_destripe.yml")
     if cfg is not None:
         days  = cfg["max_days_previous"]
         hours = cfg["max_time_offset"]
@@ -120,7 +120,9 @@ def main():
         hours= 2.0
         minwidth = 600
 
-    parser = argparse.ArgumentParser(description='Select the appropriate radiance reference file')
+    parser = argparse.ArgumentParser(description='Select the appropriate destriping correction file')
+    parser.add_argument ('--molecule',default="HCHO",
+                         help="Molecule symbol")
     parser.add_argument ('--days',default=days, type=float,
                          help="Acceptable offset in days")
     parser.add_argument ('--hours', default=hours, type=float,
@@ -147,11 +149,11 @@ def main():
     with connect_database (db_path) as conn:
         c = conn.cursor()
         try:
-            radref = select_matching_radref (c, args.days, args.hours, args.minwidth, rad_info)
+            destripe = select_matching_destripe (c, args.molecule, args.days, args.hours, args.minwidth, rad_info)
         except:
-            radref = ""
+            destripe = ""
 
-    print(radref)
+    print(destripe)
 
 if __name__ == "__main__":
     main()

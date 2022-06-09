@@ -66,6 +66,9 @@ end_time = []
 access_description = control['access_description']
 title = control['title']
 
+max_mirror_step = 0
+min_mirror_step = 0
+
 # Loop over files and extract xtrack and spectral_channel dimensions
 # If xtrack and spectral_channel is not equal in all scans we need
 # to think a more elaborate way of calculating the radiance reference
@@ -105,6 +108,10 @@ for fprad,fpcld in zip(L1RAD_files,L2CLD_files):
             # Read spectrum and wavelength units
             spectrum_units = src['band_290_490_nm']['radiance'].units
             wavelength_units = src['band_290_490_nm']['nominal_wavelength'].units
+            # find the range of mirror step indices
+            mirror_step = src.variables['mirror_step'][:]
+            max_mirror_step = max(max_mirror_step, mirror_step.max())
+            min_mirror_step = min(min_mirror_step, mirror_step.min())
         with Dataset(fpcld,'r') as src:
             cloud_granules.append(src.local_granule_id)
     except Exception as e:
@@ -238,6 +245,7 @@ with Dataset(local_granule_id,'w',clobber=True) as dst:
     dst.number_standard_deviations = nsigma
     dst.minimum_cloud_fraction = mincfr
     dst.maximum_cloud_fraction = maxcfr
+    dst.num_mirror_pos = max_mirror_step - min_mirror_step + 1
     # Create dimensions
     dst_nw = dst.createDimension('spectral_channel',nw)
     dst_nx = dst.createDimension('xtrack',nx)

@@ -81,15 +81,35 @@ make_destripe()
    # Apply the destriping correction
    apply_destripe=$(config_setting control.HCHO.destripe_apply)
    if test $apply_destripe -ne 0 ; then
-      apply_log="$destripe_dir/destripe.log"
-      destripe.py --corrfile "$destripe_path" $l2_paths > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
-      # Change asdc_status of HCHO_L2 products from 'defer' to 'new'
-      tmpfile=$(mktemp)
-      printf "%s\n" $l2_paths > $tmpfile
-      asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
-      printf "%s.met\n" $l2_paths > $tmpfile
-      asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
-      /bin/rm -f $tmpfile
+      # If destripe_search==True, and the search succeeded, then
+      # the files have already been destriped, and could be marked with
+      # asdc_status=new|pending|uploaded|accepted|problem, depending on
+      # what happened afterward. Otherwise (if the search failed, or if
+      # destripe_search==False) then destriping was delayed until now,
+      # and the products will be marked with asdc_status='defer'.
+      # Now that we've generated the necessary destriping correction,
+      # destriping can proceed, but we apply the correction only to
+      # products marked 'defer'.
+      needs_destripe=""
+      for f in $l2_paths ; do
+          bn="$(basename $f)"
+          asdc_status=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select asdc_status from HCHO_L2 where filename = \"$bn\";")
+          # asdc_status=100 means "defer"
+          if test $asdc_status -eq 100 ; then
+             needs_destripe="$needs_destripe $f"
+          fi
+      done
+      if test -n "$needs_destripe" ; then
+         apply_log="$destripe_dir/destripe.log"
+         destripe.py --corrfile "$destripe_path" $needs_destripe > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
+         # Change asdc_status of HCHO_L2 products from 'defer' to 'new'
+         tmpfile=$(mktemp)
+         printf "%s\n" $needs_destripe > $tmpfile
+         asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
+         printf "%s.met\n" $needs_destripe > $tmpfile
+         asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
+         /bin/rm -f $tmpfile
+      fi
    fi
 
 }

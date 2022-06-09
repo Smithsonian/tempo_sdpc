@@ -129,6 +129,7 @@ def init_corrfile_table (table_name):
     fields["tend"] = "integer not null"
     fields["begin_hour_utc"] = "float"
     fields["end_hour_utc"] = "float"
+    fields["num_mirror_pos"] = "integer"
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
@@ -450,7 +451,7 @@ def process_file_corr (conn, filename, nc):
     final_path = os.readlink (filename)
     st = os.stat (filename)
 
-    # Example:       TEMPO_RADREF_L1_V01_S123456789_E123456789_S001.nc
+    # Example:   TEMPO_RADREF_L1_V01_S123456789_E123456789_S001.nc
     # Example: TEMPO_DSTRHCHO_L2_V01_S123456789_E123456789_S001.nc
     tok = basename.split('_')
     table_name = "_".join ([tok[1], tok[2]])
@@ -478,6 +479,7 @@ def process_file_corr (conn, filename, nc):
     keys["tend"] = tend
     keys["begin_hour_utc"] = min(begin_time)
     keys["end_hour_utc"] = max(end_time)
+    keys["num_mirror_pos"] = nc.getncattr("num_mirror_pos")
 
     status = insert_corrfile_entry (conn, table_name, keys)
 

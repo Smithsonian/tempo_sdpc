@@ -1,0 +1,9 @@
+
+# Max age [days] for an acceptable radiance reference
+max_days_previous: 2.0
+
+# Max time-of-day offset [hours] for an acceptable radiance reference
+max_time_offset: 2.0
+
+# Min scan width for an acceptable radiance reference
+min_scan_width: 600
