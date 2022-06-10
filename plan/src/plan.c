@@ -108,6 +108,8 @@ static void usage (void)
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
    fprintf (stderr, "   -i | --irr FILE          Generate irradiance geometry output file\n");
    fprintf (stderr, "   -I | --Irr FILE          Generate only irradiance geometry output file\n");
+   fprintf (stderr, "   -S | --safe[='LON LAT']  Generate table showing SZA at (LON,LAT) at min(SBA) safe limit times\n");
+   fprintf (stderr, "                                on the specified days (--date, --ndays)\n");
    fprintf (stderr, "   -a | --angle [@]THETA    Polar angle of incident solar illumination for irradiance\n");
    fprintf (stderr, "                            measurement [default=%g deg]\n", IRRADIANCE_SUN_ANGLE_DEG);
    fprintf (stderr, "                            Prepend '@' to select times after local midnight\n");
@@ -696,6 +698,69 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom,
 
         (void) fprintf (fp, "%0.3f,%0.3f,%0.3f,\"%s\"\n",
                         tirr_tai, solar_theta, solar_phi, buf);
+     }
+
+   return 0;
+}
+
+static int write_safe_limits (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
+                              double lon, double lat,
+                              const Cal_Date_Type *t0, int num_days)
+{
+   double unix_epoch_jd = get_unix_epoch_jd();
+   double jd_utc0, jd_utc1, jd_utc;
+   char epoch_str[32];
+   /* time_t epoch = tio_time_taix_epoch_timet(); */
+
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
+     return -1;
+
+   jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
+   jd_utc1 = jd_utc0 + num_days;
+
+   /* timestamp_created (stdout); */
+   if ((fprintf (stdout, "beg_SZA,beg_timet,beg_UTC,end_SZA,end_timet,end_UTC\n") < 0)
+       || (fprintf (stdout, ":\"(lon,lat)=(%0.3f, %0.3f)\",,,,,\n", lon, lat) < 0))
+
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        return -1;
+     }
+
+   for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
+     {
+        Scan_Limit_Times_Type limit_times = {0};
+        char beg_buf[32];
+        char end_buf[32];
+        double tbeg_utc, tend_utc, beg_sza, end_sza;
+        /* double tbeg_tai, tend_tai; */
+
+        if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
+          return -1;
+
+        if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, limit_times.jd_utc_beg_safe, lon, lat, &beg_sza))
+          return -1;
+        if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, limit_times.jd_utc_end_safe, lon, lat, &end_sza))
+          return -1;
+
+        if (0 != mkjdtimestr (limit_times.jd_utc_beg_safe, beg_buf, sizeof(beg_buf)))
+          return -1;
+        if (0 != mkjdtimestr (limit_times.jd_utc_end_safe, end_buf, sizeof(end_buf)))
+          return -1;
+
+        tbeg_utc = (limit_times.jd_utc_beg_safe - unix_epoch_jd) * SEC_PER_DAY;
+        tend_utc = (limit_times.jd_utc_end_safe - unix_epoch_jd) * SEC_PER_DAY;
+
+#if 0
+        if (0 != tio_time_utc_to_taix (tbeg_utc, &tbeg_tai))
+          return -1;
+        if (0 != tio_time_utc_to_taix (tend_utc, &tend_tai))
+          return -1;
+#endif
+
+        (void) fprintf (stdout, "%0.3f,%0.3f,\"%s\",%0.3f,%0.3f,\"%s\"\n",
+                        beg_sza, tbeg_utc, beg_buf,
+                        end_sza, tend_utc, end_buf);
      }
 
    return 0;
@@ -1470,6 +1535,7 @@ int main (int argc, char **argv)
         {"ndays",        required_argument, 0, 'n'},
         {"nightlights",  no_argument,       0, 'N'},
         {"scan",         required_argument, 0, 's'},
+        {"safe",         optional_argument, 0, 'S'},
         {"type",         required_argument, 0, 't'},
         {"output",       required_argument, 0, 'o'},
         {"irr",          required_argument, 0, 'i'},
@@ -1494,6 +1560,8 @@ int main (int argc, char **argv)
    char *plan_id = NULL;
    char *tmp_optarg = NULL;
    int malloced_config_file = 0;
+   int print_safe_limits = 0;
+   double safe_lon = -74.0060, safe_lat = +40.7128;  /* NYC */
 
    if (argc < 2)
      usage();
@@ -1516,7 +1584,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNvZ:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hNvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1621,6 +1689,14 @@ int main (int argc, char **argv)
              break;
            case 's':
              scan_method = optarg;
+             break;
+           case 'S':
+             if ((optarg != NULL) && (2 != sscanf (optarg, "%le %le", &safe_lon, &safe_lat)))
+               {
+                  fprintf (stderr, "*** error reading coordinates: %s\n", optarg ? optarg : "(null)");
+                  goto return_status;
+               }
+             print_safe_limits++;
              break;
            case 't':
              if (1 != sscanf (optarg, "%hd", &scan_type))
@@ -1732,6 +1808,14 @@ int main (int argc, char **argv)
 
    if (NULL == (scan = scan_open (&cfg, scan_type)))
      goto return_status;
+
+   if (print_safe_limits)
+     {
+        if (0 != write_safe_limits (scan, solar_geom, safe_lon, safe_lat, &t0, num_plan_days))
+          goto return_status;
+        status = 0;
+        goto return_status;
+     }
 
    if (NULL == (sm = find_scan_method (scan_method)))
      {
