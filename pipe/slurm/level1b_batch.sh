@@ -47,6 +47,10 @@ ulimit -s unlimited
 # To turn off post-INR radiance processing, set it to anything else.
 : "${SDPC_RADIANCE_POSTINR:=ON}"
 
+# If SDPC_RADIANCE_WAVECAL is not set, define it to be ON.
+# To turn off radiance wavelength calibration, set it to anything else.
+: "${SDPC_RADIANCE_WAVECAL:=ON}"
+
 # If SDPC_RADIANCE_POLCORR is not set, define it to be ON.
 # To turn off polarization correction, set it to anything else.
 : "${SDPC_RADIANCE_POLCORR:=ON}"
@@ -227,7 +231,9 @@ run_inr_post()
 
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
-   wavecal.sh $radiance_file 2
+   if test x"$SDPC_RADIANCE_WAVECAL" = x"ON" ; then
+      wavecal.sh $radiance_file 2
+   fi
 
    # polarization correction
    if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
