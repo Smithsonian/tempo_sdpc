@@ -4,7 +4,7 @@ require ("cmdopt");
 require ("process");
 require ("sysconf");
 require ("rand");
-%require ("pcre");
+require ("pcre");
 
 $1 = path_dirname (__FILE__);
 prepend_to_slang_load_path (path_concat ($1, "../share/slsh/local-packages"));
@@ -63,6 +63,22 @@ private define oldest_utc_timestamp_first (files)
    return files[array_sort (timestamps)];
 }
 
+define paths_matching_pattern (patc, paths)
+{
+   variable p, m = {};
+   foreach p (paths)
+     {
+        variable tok = pcre_matches (patc, p);
+        if ((tok != NULL) && (0 == strcmp (tok[0], path_basename (p))))
+          list_append (m, p);
+     }
+
+   if (0 == length(m))
+     return NULL;
+
+   return list_to_array(m);
+}
+
 private define dir_monitor (obj, order)
 {
    variable dirlist = glob (path_concat (obj.incoming_dir, obj.glob));
@@ -70,6 +86,16 @@ private define dir_monitor (obj, order)
      {
         obj.dirlist = NULL;
         return 0;
+     }
+
+   if (obj.patc != NULL)
+     {
+        dirlist = paths_matching_pattern (obj.patc, dirlist);
+        if (dirlist == NULL)
+          {
+             obj.dirlist = NULL;
+             return 0;
+          }
      }
    obj.dirlist = dirlist;
 
@@ -149,6 +175,7 @@ private define new_dirmon (incoming_dir)
      {
         incoming_dir = incoming_dir,
         glob = qualifier ("glob", "*"),
+        patc = qualifier ("pcre_pat", NULL),
         monitor = &dir_monitor,
         process = qualifier ("task", NULL),
         wait = &do_wait,
@@ -158,6 +185,11 @@ private define new_dirmon (incoming_dir)
         client_data = qualifier ("client_data", NULL),
         host_pid = host_pid
      };
+
+   if (obj.patc != NULL)
+     {
+        obj.patc = pcre_compile (obj.patc);
+     }
 
    return struct_combine (obj, __qualifiers);
 }
@@ -389,6 +421,7 @@ variable _P = struct
    order = "alpha",
    incoming_dir = NULL,
    file_glob = "*",
+   file_pcre_pat = NULL,
    wait_sec = 1.0,
    wait_arg = WNOHANG,
    use_cpu_limiter = 1,     % boolean
@@ -435,6 +468,7 @@ define slsh_main()
    set_executable (p, exec_args);
 
    variable dir = new_dirmon (p.incoming_dir; glob = p.file_glob,
+                              pcre_pat = p.file_pcre_pat,
                               task = &claim_with_rename,
                               delay = p.wait_sec, client_data = p);
 
