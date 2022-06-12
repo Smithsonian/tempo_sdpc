@@ -105,14 +105,14 @@ no2_l2_split()
 
 case "$product_name" in
   CLDO4_L2 )
-     radref_enable=$(config_setting control.radref_enable)
+     radref_enable=$(config_setting radref.enable)
      if test $radref_enable -ne 0 ; then
         make_radref "$l2_paths"
      fi
      ;;
 
   HCHO_L2 )
-     destripe_HCHO=$(config_setting control.HCHO.destripe_enable)
+     destripe_HCHO=$(config_setting destripe.HCHO.enable)
      if test $destripe_HCHO -ne 0 ; then
         make_destripe "$l2_paths"
      fi

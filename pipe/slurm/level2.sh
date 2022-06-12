@@ -51,7 +51,7 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # initialize before loading tar notice file
 radref_file=""
 
-products_needing_radref="$(config_setting control.products_needing_radref)"
+products_needing_radref="$(config_setting radref.products)"
 
 # Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
@@ -86,10 +86,10 @@ case "$product_list_tokens" in
 esac
 
 # Some products may need to wait for a radiance reference file:
-radref_enable=$(config_setting control.radref_enable)
+radref_enable=$(config_setting radref.enable)
 if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
 
-   radref_search=$(config_setting control.radref_search)
+   radref_search=$(config_setting radref.search)
    if test $radref_search -ne 0 && test -z "$radref_file" ; then
       # We weren't given a radref filename, but we can try to search for one.
       # If the search fails, radref_file will be the empty string, and we'll
@@ -165,11 +165,11 @@ case "$product_list_sans_o3p" in
 
    *HCHO*)
      # Support HCHO destriping correction
-     hcho_destripe_enable=$(config_setting control.HCHO.destripe_enable)
+     hcho_destripe_enable=$(config_setting destripe.HCHO.enable)
      destripe_file=""
      if test $hcho_destripe_enable -ne 0 ; then
-        hcho_destripe_apply=$(config_setting control.HCHO.destripe_apply)
-        hcho_destripe_search=$(config_setting control.HCHO.destripe_search)
+        hcho_destripe_apply=$(config_setting destripe.HCHO.apply)
+        hcho_destripe_search=$(config_setting destripe.HCHO.search)
         if test $hcho_destripe_apply -ne 0 && test $hcho_destripe_search -ne 0 ; then
            # may return empty string if search fails
            destripe_file=$(select_destripe.py $rad_filename)

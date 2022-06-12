@@ -79,7 +79,7 @@ make_destripe()
    ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
 
    # Apply the destriping correction
-   apply_destripe=$(config_setting control.HCHO.destripe_apply)
+   apply_destripe=$(config_setting destripe.HCHO.apply)
    if test $apply_destripe -ne 0 ; then
       # If destripe_search==True, and the search succeeded, then
       # the files have already been destriped, and could be marked with

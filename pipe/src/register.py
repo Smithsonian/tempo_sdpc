@@ -567,7 +567,7 @@ class Registry:
 def check_hcho_destripe_config():
     # Does HCHO_L2 receive a destriping/background correction?
     global HCHO_Needs_Destripe
-    setting = check_output (["config_setting", "control.HCHO.destripe_apply"])
+    setting = check_output (["config_setting", "destripe.HCHO.apply"])
     HCHO_Needs_Destripe = setting != 0
 
 def load_config():
