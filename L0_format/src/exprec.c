@@ -49,6 +49,7 @@ typedef struct
    int exprec_type;
    unsigned int curr_mirror_step;
    unsigned int num_mirror_steps;
+   unsigned int img_data_source;
    double image_end_time;
 }
 Exprec_Info_Type;
@@ -62,7 +63,7 @@ Exprec_Info_Type;
    int ncid; \
    int processing_version; \
    int classify_using_img_data_source; \
-   int is_test_pattern; \
+   unsigned int img_data_source; \
    int is_twilight_scan; \
    double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
@@ -346,7 +347,8 @@ static int close_outfile (Process_Method_Type *pmt)
                return -1;
              tell_vinfo (0, "archived %s/%s", pmt->archdir_path, pmt->out_basename);
 
-             if (pmt->is_test_pattern != 0)
+             /* img_data_source VIDEO_ADC:0  FPGA_SIM:1 */
+             if (pmt->img_data_source)
                {
                   /* These file types receive no further autonomous processing */
                   if (0 != remove_hidden (pmt->out_dirname, pmt->out_basename))
@@ -429,14 +431,10 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    if (pmt->classify_using_img_data_source)
      {
-        unsigned int img_data_source;   /* VIDEO_ADC:0  FPGA_SIM:1 */
-        if (NULL == iocsdpc_image_info_get_value (erec, "img_data_source", &img_data_source))
-          return -1;
-        if (img_data_source)
+        if (pmt->img_data_source)
           {
              pmt->product_type = TEMPO_PROD_TYPE_TEST;
              pmt->exprec_type_string = TEMPO_PROD_TYPESTR_TEST;
-             pmt->is_test_pattern = 1;
              goto handle_test_pattern;
           }
      }
@@ -458,6 +456,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           {
              pmt->product_type = TEMPO_PROD_TYPE_RAD;
              pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
+             pmt->is_twilight_scan = 0;
           }
         scan_num_int = scan_num;
 	radiance_ident.scan_num = scan_num;
@@ -821,8 +820,11 @@ static int classify_erec (IOCSDPC_Exprec_Type *erec, Exprec_Info_Type *info)
    info->exprec_type = erec->exprec_type;
    info->image_end_time = image_end_time (erec);
 
+   /* img_data_source VIDEO_ADC:0  FPGA_SIM:1 */
    if ((NULL == iocsdpc_image_info_get_value (erec, "curr_mirror_step", &info->curr_mirror_step))
-       || (NULL == iocsdpc_image_info_get_value (erec, "num_mirror_steps", &info->num_mirror_steps)))
+       || (NULL == iocsdpc_image_info_get_value (erec, "num_mirror_steps", &info->num_mirror_steps))
+       || (NULL == iocsdpc_image_info_get_value (erec, "img_data_source", &info->img_data_source))
+      )
      return -1;
 
    if (info->exprec_type == IOCSDPC_EXPREC_TYPE_RAD)
@@ -857,8 +859,8 @@ static int process_exprec1 (Process_Method_Type *pmt,
    /* Invariant:  the cache always contains only records
     * that belong together and could share the same granule.
     */
-
-   is_new_type = (exprec_info->exprec_type != pmt->exprec_type);
+   is_new_type = ((exprec_info->exprec_type != pmt->exprec_type)
+                  || (exprec_info->img_data_source != pmt->img_data_source));
    is_radiance = (exprec_info->exprec_type == IOCSDPC_EXPREC_TYPE_RAD);
    is_radiance_new_scan = (is_radiance && (exprec_info->curr_mirror_step
                                            < pmt->curr_mirror_step));
@@ -876,8 +878,11 @@ static int process_exprec1 (Process_Method_Type *pmt,
         pmt->latest_radiance_timestamp_seen = exprec_info->image_end_time;
      }
 
-   /* The cache contains records of type pmt->exprec_type.
-    * Process the cache before changing the value of pmt->exprec_type. */
+   /* The cache contains records of type pmt->exprec_type from
+    * pmt->img_data_source.
+    * Process the cache before changing the value of pmt->exprec_type.
+    * and pmt->img_data_source
+    */
    if (is_new_type || is_radiance_new_scan)
      {
         if (0 != process_cache (pmt, tpinfo, 1))
@@ -885,6 +890,7 @@ static int process_exprec1 (Process_Method_Type *pmt,
      }
 
    pmt->exprec_type = exprec_info->exprec_type;
+   pmt->img_data_source = exprec_info->img_data_source;
    if (0 != cmt->cache_erec (cmt, file, exprec_index))
      return -1;
    pmt->when_last_erec_cached = time(NULL);
