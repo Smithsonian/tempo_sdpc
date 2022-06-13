@@ -116,5 +116,4 @@ service_default_down "$list_down"
 
 if test -f $SDPC_ARCHIVE_DBFILE ; then
    echo "WARNING: file exists: $SDPC_ARCHIVE_DBFILE"
-   echo "Are you sure you know what you're doing?"
 fi

@@ -34,7 +34,7 @@ run_l0_format()
 
 main()
 {
-   if test $# -eq 0 || test $# -gt 1 ; then
+   if test $# -eq 0 || test $# -gt 1 || test x"$1" == x"--help" ; then
       exit_usage 0
    fi
 
