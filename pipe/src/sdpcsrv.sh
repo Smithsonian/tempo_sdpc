@@ -2,7 +2,7 @@
 
 exit_usage()
 {
-   echo "Usage: $(basename $0) [options] {up|down|stop|cont|usr1} SERVICE"
+   echo "Usage: $(basename $0) [options] {up|down|stop|cont} SERVICE"
    echo "   Options:"
    echo "   --help              Print this listing"
    echo "   --dir SERVICE_DIR   Pipeline service directory path"
@@ -93,10 +93,6 @@ main ()
 
       cont)
         s6-svc -c $_service_dir
-      ;;
-
-      usr1)
-        s6-svc -1 $_service_dir
       ;;
 
       *)

@@ -607,9 +607,8 @@ class Signal_Catcher:
   def __init__(self):
     self.exit = Event()
     signal.signal(signal.SIGINT, self.handler)
-    signal.signal(signal.SIGHUP, self.handler)
     signal.signal(signal.SIGTERM, self.handler)
-    signal.signal(signal.SIGUSR1, self.config_update)
+    signal.signal(signal.SIGHUP, self.config_update)
 
   def wait(self, delay):
       self.exit.wait(delay)
@@ -634,7 +633,7 @@ def run_as_service (reg):
 
     while not sig.caught():
         if Reload_Config:
-            logprint ('Caught signal = SIGUSR1: updating configuration', flush=True)
+            logprint ('Caught signal = SIGHUP: updating configuration', flush=True)
             load_config()
         filenames = collect_filenames (reg.incoming_dir)
         if len(filenames) > 0:

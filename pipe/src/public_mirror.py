@@ -23,7 +23,6 @@ class Signal_Catcher:
   def __init__(self):
     self.exit = Event()
     signal.signal(signal.SIGINT, self.handler)
-    signal.signal(signal.SIGHUP, self.handler)
     signal.signal(signal.SIGTERM, self.handler)
 
   def wait(self, delay):
