@@ -22,25 +22,26 @@ list_down=""
 service_states_for_context()
 {
    context="$1"
-   ioc_srvs="iocpull level0"
+   ioc_srvs="level0"
    lev1a_srvs="level1a inr trend"
-   always_up="level1b level2 level3 register pipecron asdc"
+   always_up="level1b level2 level3 register pipecron"
+   always_down="asdc iocpull iocpullraw"
    case "$context" in
       live)
-      list_up="$ioc_srvs iocpullraw $lev1a_srvs $always_up"
-      list_down=""
+      list_up="$ioc_srvs $lev1a_srvs $always_up"
+      list_down="$always_down"
       ;;
       cache)
-      list_up="$lev1a_srvs iocpullraw $always_up"
-      list_down="$ioc_srvs"
+      list_up="$lev1a_srvs $always_up"
+      list_down="$always_down $ioc_srvs"
       ;;
       repro0)
       list_up="$lev1a_srvs $always_up"
-      list_down="$ioc_srvs iocpullraw"
+      list_down="$always_down $ioc_srvs"
       ;;
       repro1)
       list_up="$always_up"
-      list_down="$ioc_srvs iocpullraw $lev1a_srvs"
+      list_down="$always_down $ioc_srvs $lev1a_srvs"
       ;;
       *)
       echo "*** Error: unsupported pipeline context: $context"
