@@ -86,24 +86,32 @@ do_status()
   for srv in $service_dirs ; do
 
      # Check service state
-     srv_state=$($SDPC_S6_ROOT/bin/s6-svstat -o up $srv)
-     case $srv_state in
-        true) srv_state=up ;;
-        *) srv_state=down ;;
+     srv_up=$($SDPC_S6_ROOT/bin/s6-svstat -o up $srv)
+     case $srv_up in
+        true) srv_up=up ;;
+        *) srv_up=down ;;
      esac
+     srv_paused=$($SDPC_S6_ROOT/bin/s6-svstat -o paused $srv)
+     if test x"$srv_paused" == x"true" ; then
+        srv_up="paused"
+     fi
 
      log_msg=""
      if test -d $srv/log ; then
         # Check logger state
-        log_state=$($SDPC_S6_ROOT/bin/s6-svstat -o up $srv/log)
-        case $log_state in
-           true) log_state=up ;;
-           *) log_state=down ;;
+        log_up=$($SDPC_S6_ROOT/bin/s6-svstat -o up $srv/log)
+        case $log_up in
+           true) log_up=up ;;
+           *) log_up=down ;;
         esac
-        log_msg="\t${log_state}"
+     log_paused=$($SDPC_S6_ROOT/bin/s6-svstat -o paused $srv/log)
+     if test x"$log_paused" == x"true" ; then
+        log_up="paused"
+     fi
+        log_msg="\t${log_up}"
      fi
 
-     printf "%12s \t${srv_state}${log_msg}\n" $(basename $srv)
+     printf "%12s \t${srv_up}${log_msg}\n" $(basename $srv)
   done
 }
 
