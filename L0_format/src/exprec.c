@@ -64,7 +64,6 @@ Exprec_Info_Type;
    int processing_version; \
    int classify_using_img_data_source; \
    unsigned int img_data_source; \
-   int is_twilight_scan; \
    double latest_radiance_timestamp_seen; \
    double outfile_timestamp_start; \
    double outfile_timestamp_end; \
@@ -450,13 +449,11 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           {
              pmt->product_type = TEMPO_PROD_TYPE_RAD_TWI;
              pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD_TWI;
-             pmt->is_twilight_scan = 1;
           }
         else
           {
              pmt->product_type = TEMPO_PROD_TYPE_RAD;
              pmt->exprec_type_string = TEMPO_PROD_TYPESTR_RAD;
-             pmt->is_twilight_scan = 0;
           }
         scan_num_int = scan_num;
 	radiance_ident.scan_num = scan_num;
