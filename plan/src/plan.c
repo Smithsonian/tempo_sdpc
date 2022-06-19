@@ -434,7 +434,7 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
 
 static int generate_scan_vis (config_t *cfg, const char *optional_output_string,
                               Solar_Geom_Type *solar_geom, Scan_Type *scan,
-                              const Plan_List_Type *plan_list,
+                              const Plan_List_Type *plan_list, const char *plan_id,
                               const Scan_Method_Type *sm)
 {
    Vis_Type *v = NULL;
@@ -448,7 +448,7 @@ static int generate_scan_vis (config_t *cfg, const char *optional_output_string,
      return 0;
    filename = optional_output_string;
 
-   if (NULL == (v = vis_init (cfg, solar_geom)))
+   if (NULL == (v = vis_init (cfg, solar_geom, plan_id)))
      goto return_status;
 
    if (0 != TIO_create (filename, NC_NETCDF4, &ncid))
@@ -1851,7 +1851,7 @@ int main (int argc, char **argv)
      goto return_status;
 
    /* Optionally, generate some plots */
-   if (0 != generate_scan_vis (&cfg, optional_output_string, solar_geom, scan, plan_list, sm))
+   if (0 != generate_scan_vis (&cfg, optional_output_string, solar_geom, scan, plan_list, plan_id, sm))
      goto return_status;
 
    status = EXIT_SUCCESS;

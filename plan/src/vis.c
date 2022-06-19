@@ -29,6 +29,7 @@
 struct Vis_Type
 {
    Solar_Geom_Type *solar_geom;
+   const char *plan_id;
    double sat_lon;
 
    projPJ geos;
@@ -328,7 +329,7 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type 
    return 0;
 }
 
-Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
+Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom, const char *plan_id)
 {
    Vis_Type *v = NULL;
    Box_Type box = {0};
@@ -344,6 +345,7 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom)
    memset ((char *)v, 0, sizeof (*v));
 
    v->solar_geom = solar_geom;
+   v->plan_id = plan_id;
 
    if (0 != read_vis_params (v, cfg, &img_size, &box, &center_lon))
      goto return_error;
@@ -506,6 +508,13 @@ int vis_write_grid (Vis_Type *v, int ncid, double *control_points)
    int dimid_lon, dimid_lat;
    int start[2], count[2];
    int i, status = -1;
+
+   if (v->plan_id != NULL)
+     {
+        int len = strlen(v->plan_id) + 1;
+        if (0 != TIO_put_att (ncid, NC_GLOBAL, "plan_id", NC_CHAR, len, v->plan_id))
+          goto return_status;
+     }
 
    if ((0 != TIO_put_att (ncid, NC_GLOBAL, "day_begin_ctrl_point", NC_DOUBLE, 2, control_points))
        || (0 != TIO_put_att (ncid, NC_GLOBAL, "day_end_ctrl_point", NC_DOUBLE, 2, control_points+2)))

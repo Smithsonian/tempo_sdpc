@@ -37,6 +37,7 @@ class Sza_File (object):
         # day begin/end control points
         self.day_beg_point = nc.getncattr ('day_begin_ctrl_point')
         self.day_end_point = nc.getncattr ('day_end_ctrl_point')
+        self.plan_id = nc.getncattr ('plan_id')
 
         # Map projections
         globe = None
@@ -141,6 +142,8 @@ class Sza_File (object):
         else:
             ax.set_title ('CBM:%d, %0.1f sec' % (var.keys["num_repeats_cbm"], var.keys["scan_duration"]),
                           fontsize=8, loc='right')
+
+        ax.text (0.0, -0.2, r'plan_id = {}'.format(self.plan_id), fontsize=8, transform=ax.transAxes)
 
         return fig
 

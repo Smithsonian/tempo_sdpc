@@ -17,9 +17,10 @@ extern void vis_free(Vis_Type *v);
 /** Initialize a \c Vis_Type object
  * @param[in]  cfg   pointer to an open configuration file
  * @param[in]  sgt   pointer to an initialized object of type \ref Solar_Geom_Type
+ * @param[in] plan_id  pointer to the plan_id string
  * @return on success, an initialized \c Vis_Type object
  */
-extern Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *sgt);
+extern Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *sgt, const char *plan_id);
 
 /** Compute a solar zenith angle map for the specified Julian date.
  * @param[in]  v        Pointer to a \c Vis_Type object initialized by \c vis_init

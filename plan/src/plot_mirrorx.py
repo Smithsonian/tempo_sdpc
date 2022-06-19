@@ -4,6 +4,7 @@ import sys, os
 import csv
 import numpy as np
 import datetime as dt
+import re
 
 import matplotlib
 matplotlib.use('Agg')
@@ -37,13 +38,22 @@ def read_plan (filename):
             repeat.append(int(row['repeat']))
             timestamp.append(row['timestamp'])
 
+    plan_id = None
+    with open (filename, 'r') as fp:
+        for line in fp:
+            m = re.search(r"plan_id\W=\W(\w+)", line)
+            if m is not None:
+                plan_id = m.group(1)
+                break
+
     plan = {'label':np.asarray(label),
             'time':np.asarray(time),
             'duration':np.asarray(duration),
             'mirror_x':np.asarray(mirror_x),
             'num_steps':np.asarray(num_steps),
             'repeat':np.asarray(repeat),
-            'timestamp':np.asarray(timestamp)}
+            'timestamp':np.asarray(timestamp),
+            'plan_id':plan_id}
 
     return plan
 
@@ -86,10 +96,11 @@ def plot_scan(ax, plan, step_size, i0, i1):
         ax.fill_between ([t0, t1], [ymin, ymin], y2=[ymax,ymax], hatch='////',
                          linewidth=0.2, color='r', fc='w')
 
-def new_page():
+def new_page (plan_id):
     fig, axs = plt.subplots (7,1, sharex=True)
     fig.subplots_adjust (hspace=0)
     fig.text(0.04, 0.5, r'\verb|mirror_x| [mrad]', va='center', rotation='vertical')
+    fig.text(0.125, 0.9, r'\verb|plan_id|={}'.format(plan_id), va='center')
     return fig, axs
 
 def main():
@@ -104,13 +115,14 @@ def main():
         sys.exit(0)
     args = parser.parse_args()
 
-    plan= read_plan (args.infile)
+    plan = read_plan (args.infile)
+    plan_id = plan['plan_id']
 
     diff_label = np.diff(plan['label'])
     days = np.argwhere (diff_label < 0)
 
     pdf = PdfPages (args.outfile)
-    fig, axs = new_page()
+    fig, axs = new_page(plan_id)
 
     k = 0
     i0 = 0
@@ -121,7 +133,7 @@ def main():
         k = (k+1) % 7
         if k == 0:
             pdf.savefig(fig)
-            fig, axs = new_page()
+            fig, axs = new_page(plan_id)
 
     if k != 0:
         pdf.savefig(fig)
