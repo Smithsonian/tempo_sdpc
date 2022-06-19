@@ -330,25 +330,18 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 }
 
 static Plan_List_Type *
-split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
-            const Scan_Limit_Times_Type *limit_times, void *cl)
+make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+                 const Scan_Limit_Times_Type *limit_times,
+                 Split_Scan_Type *sst, Plan_List_Type *broad)
 {
-   Split_Scan_Type *sst = (Split_Scan_Type *)cl;
-   Plan_List_Type *base = NULL;
-   Plan_List_Type *broad = NULL;
-   Plan_List_Type *head = NULL;
    Plan_List_Type split = {0};
+   Plan_List_Type *head = NULL;
    AziElev_Type beg={0}, end={0};
-   double time_remaining, tstart, weight;
-   int is_broad, num_narrow_repeats, base_scan_method;
-   int num_repeats_cbm;
+   double step_size, time_remaining, tstart, weight;
+   double ctrl_lon, ctrl_lat, sza_max;
+   double broad_xend, split_xend;
+   int num_repeats_cbm, is_broad, num_narrow_repeats, regions_overlap;
    uint16_t scan_type = st->st_scan_type(st);
-
-   if (sst == NULL)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: sst = NULL", __func__);
-        return NULL;
-     }
 
    /* Optionally use a custom CBM to perform a block
     * of num_repeats_cbm short scans */
@@ -360,28 +353,11 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
     */
    weight = sst->sst_weight (sst);
 
-   /* broad contains the plan for a standard east/west scan of
-    * a broad region (e.g. the full FOR)
-    */
+   if (0 != sst->sst_scan_control (sst, &ctrl_lon, &ctrl_lat))
+     goto return_error;
 
-   base_scan_method = sst->sst_base_scan_method (sst);
-   switch (base_scan_method)
-     {
-      case SCAN_SPLIT_STD:
-        if (NULL == (broad = std_plan (st, solar_geom, limit_times, NULL)))
-          return NULL;
-        break;
-
-      case SCAN_SPLIT_OPT1:
-        if (NULL == (base = opt1_plan (st, solar_geom, limit_times, NULL)))
-          return NULL;
-        broad = base->next;
-        break;
-
-      default:
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported base scan method index=%d", __func__, base_scan_method);
-        return NULL;
-     }
+   step_size = st->st_step_size (st);
+   sza_max = st->st_max_sza (st);
 
    /* split contains the parameters for scanning a narrow region,
     * e.g. California.
@@ -392,6 +368,10 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
      goto return_error;
    split.scan_duration = st->st_scan_duration (st, split.num_steps);
    split.scan_duration *= SEC_PER_DAY;
+
+   broad_xend = broad->xstart + broad->num_steps * step_size;
+   split_xend = split.xstart + split.num_steps * step_size;
+   regions_overlap = (split_xend < broad->xstart) && (broad_xend < split.xstart);
 
    /* Now, we construct a linked list of Plan_List_Type structures for
     * this day that alternates one scan of the broad region, with N scans
@@ -409,19 +389,17 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
      }
    else
      {
-        /* FIXME?: Use limit times for the narrow region? */
         num_narrow_repeats = floor(time_remaining / split.scan_duration);
      }
 
-   /* FIXME? Use limit times for narrow region? Maybe we could start there.
-    * Or maybe simpler to make this a control parameter the user can set.
-    */
    is_broad = 1;
 
    while (time_remaining > split.scan_duration)
      {
         Plan_List_Type *entry = NULL;
-        double time_elapsed;
+        Plan_List_Type *rem_entry = NULL;
+        double time_elapsed, sza;
+        int rem = 0;
 
         if (NULL == (entry = plan_list_entry_alloc (scan_type)))
           goto return_error;
@@ -430,21 +408,19 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
         entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
-        if ((is_broad != 0) && (time_remaining > broad->scan_duration))
+        if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, tstart + split.scan_duration,
+                                                     ctrl_lon, ctrl_lat, &sza))
           {
-             entry->xstart = broad->xstart;
-             entry->ystart = broad->ystart;
-             entry->xend = entry->xstart + broad->num_steps * st->st_step_size (st);
-             entry->num_steps = broad->num_steps;
-             entry->scan_duration = broad->scan_duration;
-             entry->integration_time = broad->integration_time;
-             entry->num_repeats = 1;
+             tell_verror (TELL_RUNTIME_ERROR, "%s: evaluating solar zenith angle", __func__);
+             goto return_error;
           }
-        else
+
+        if (((is_broad == 0) || (time_remaining < broad->scan_duration))
+            && (regions_overlap != 0) && (fabs(sza) < sza_max))
           {
              entry->xstart = split.xstart;
              entry->ystart = split.ystart;
-             entry->xend = entry->xstart + split.num_steps * st->st_step_size (st);
+             entry->xend = split_xend;
              entry->num_steps = split.num_steps;
              entry->scan_duration = split.scan_duration;
              entry->integration_time = sst->sst_scan_integration_time (sst);
@@ -458,18 +434,54 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
              /* N repeats may be implemented by K calls
               * to a CBM that does M scans, where N = K*M.
-              * For simplicity we drop the N mod M remainder.
               */
              if ((num_repeats_cbm > 0) && (entry->num_repeats >= num_repeats_cbm))
                {
+                  /* will there be a remainder? */
+                  rem = entry->num_repeats % num_repeats_cbm;
+
                   entry->num_repeats /= num_repeats_cbm;
                   entry->scan_duration *= num_repeats_cbm;
                   entry->num_repeats_cbm = num_repeats_cbm;
+
+                  if (rem)
+                    {
+                       /* deal with the remainder */
+                       time_elapsed    = entry->scan_duration * entry->num_repeats;
+                       time_remaining -= time_elapsed;
+                       tstart         += time_elapsed / SEC_PER_DAY;
+                       if (NULL == (rem_entry = plan_list_entry_alloc (scan_type)))
+                         goto return_error;
+                       *rem_entry = *entry;  /* struct copy */
+                       rem_entry->num_repeats = rem;
+                       rem_entry->scan_duration = split.scan_duration;
+                       rem_entry->num_repeats_cbm = 0;
+                       rem_entry->tstart = tstart;
+                       entry->next = rem_entry;
+                       rem_entry->next = NULL;
+                    }
                }
+          }
+        else if (time_remaining >= broad->scan_duration)
+          {
+             entry->xstart = broad->xstart;
+             entry->ystart = broad->ystart;
+             entry->xend = broad_xend;
+             entry->num_steps = broad->num_steps;
+             entry->scan_duration = broad->scan_duration;
+             entry->integration_time = broad->integration_time;
+             entry->num_repeats = 1;
+          }
+        else
+          {
+             plan_list_entry_free (entry);
+             break;
           }
 
         if (0 != plan_list_append (&head, entry))
           goto return_error;
+
+        if (rem) entry = entry->next;
 
         time_elapsed    = entry->scan_duration * entry->num_repeats;
         time_remaining -= time_elapsed;
@@ -478,33 +490,68 @@ split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         is_broad = is_broad ? 0 : 1;
      }
 
-   if (base_scan_method == SCAN_SPLIT_STD)
-     {
-        plan_list_free (broad);
-        return head;
-     }
-   else if (base_scan_method == SCAN_SPLIT_OPT1)
-     {
-        Plan_List_Type *tail;
-        /* replace the mid-day opt1 scan with the newly generated linked list */
-        for (tail = head; tail->next != NULL; tail = tail->next)
-          {
-          }
-        base->next = head;
-        tail->next = broad->next;
-        broad->next = NULL;
-        plan_list_free (broad);
-        return base;
-     }
-   else
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: this should never happen!", __func__);
-        /* FALLTHROUGH */
-     }
+   return head;
 
 return_error:
    plan_list_free (head);
+   return NULL;
+}
+
+static Plan_List_Type *
+split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
+            const Scan_Limit_Times_Type *limit_times, void *cl)
+{
+   Split_Scan_Type *sst = (Split_Scan_Type *)cl;
+   Plan_List_Type *broad = NULL;
+   Plan_List_Type *head = NULL;
+   Plan_List_Type *broad_entry = NULL;
+   int base_scan_method;
+
+   if (sst == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: sst = NULL", __func__);
+        return NULL;
+     }
+
+   /* broad should contain the plan for a standard east/west scan of
+    * a broad region (e.g. the full FOR)
+    */
+
+   base_scan_method = sst->sst_base_scan_method (sst);
+   switch (base_scan_method)
+     {
+      case SCAN_SPLIT_STD:
+        if (NULL == (broad = std_plan (st, solar_geom, limit_times, NULL)))
+          return NULL;
+        break;
+
+      case SCAN_SPLIT_OPT1:
+        if (NULL == (broad = opt1_plan (st, solar_geom, limit_times, NULL)))
+          return NULL;
+        break;
+
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported base scan method index=%d", __func__, base_scan_method);
+        return NULL;
+     }
+
+   for (broad_entry = broad; broad_entry != NULL; broad_entry = broad_entry->next)
+     {
+        Plan_List_Type *p = NULL;
+
+        if (NULL == (p = make_split_plan (st, solar_geom, limit_times, sst, broad_entry)))
+          goto return_error;
+
+        if (0 != plan_list_append (&head, p))
+          goto return_error;
+     }
+
    plan_list_free (broad);
+   return head;
+
+return_error:
+   plan_list_free (broad);
+   plan_list_free (head);
    return NULL;
 }
 

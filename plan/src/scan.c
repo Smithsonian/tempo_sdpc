@@ -54,6 +54,7 @@ Surface_Region_Type;
 #define SPLIT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Point_Type scan_beg; \
    Surface_Point_Type scan_end; \
+   Surface_Point_Type ctrl; \
    Scan_Angle_Type scan_beg_angle; \
    Scan_Angle_Type scan_end_angle; \
    Step_Config_Type dt; \
@@ -632,6 +633,14 @@ static int read_split_scan_config (config_t *cfg, Split_Scan_Type *sst,
         return -1;
      }
 
+   if (1 != read_surface_point (s, "control", &sst->ctrl))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading surface point 'split_scan_config:control': %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
    if (CONFIG_TRUE != config_setting_lookup_float (s, "weight", &sst->weight))
      sst->weight = 1.0;
 
@@ -1004,9 +1013,22 @@ static int split_scan_region (const Split_Scan_Type *sst,
    return 0;
 }
 
+static int split_scan_control (const Split_Scan_Type *sst,
+                               double *lon, double *lat)
+{
+   *lon = sst->ctrl.lon;
+   *lat = sst->ctrl.lat;
+   return 0;
+}
+
 static double scan_min_sun_angle (const Scan_Type *st)
 {
    return st->min_sun_angle;
+}
+
+static double scan_max_sza (const Scan_Type *st)
+{
+   return st->max_sza;
 }
 
 static double scan_integration_time (const Scan_Type *st)
@@ -1094,6 +1116,7 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_step_size = scan_step_size;
    st->st_integration_time = scan_integration_time;
    st->st_min_sun_angle = scan_min_sun_angle;
+   st->st_max_sza = scan_max_sza;
    st->st_scan_beg_angle = scan_beg_angle;
    st->st_scan_end_angle = scan_end_angle;
    st->st_scan_beg = scan_beg_point;
@@ -1268,6 +1291,7 @@ Split_Scan_Type *split_scan_open (config_t *cfg, const char *scan_method)
    sst->sst_delete = free_split_scan_type;
    sst->sst_scan_region_angles = split_scan_region_angles;
    sst->sst_scan_region = split_scan_region;
+   sst->sst_scan_control = split_scan_control;
    sst->sst_scan_integration_time = split_scan_integration_time;
 
    if (0 != read_split_scan_config (cfg, sst, config_group_name))

@@ -34,6 +34,9 @@ struct Scan_Type
    double (*st_min_sun_angle)(const Scan_Type *);
    /**< retrieve the minimum allowed sun angle [deg] */
 
+   double (*st_max_sza)(const Scan_Type *);
+   /**< retrieve the maximum useful sun angle [deg] */
+
    int (*st_scan_beg_angle)(const Scan_Type *, double *, double *);
    /**< retrieve the (mirror_x,mirror_y) coordinates of the scan's eastern limit [urad] */
 
@@ -110,6 +113,9 @@ struct Split_Scan_Type
 
    int (*sst_scan_region)(const Split_Scan_Type *, double *, double *, double *, double *);
    /* beg_lon, beg_lat, end_lon, end_lat */
+
+   int (*sst_scan_control)(const Split_Scan_Type *, double *, double *);
+   /* ctrl_lon, ctrl_lat */
 
    double (*sst_scan_integration_time) (const Split_Scan_Type *);
 
