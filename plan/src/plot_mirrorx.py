@@ -4,6 +4,7 @@ import sys, os
 import csv
 import numpy as np
 import datetime as dt
+from dateutil import tz, parser
 import re
 
 import matplotlib
@@ -57,22 +58,22 @@ def read_plan (filename):
 
     return plan
 
-def plot_scan(ax, plan, step_size, i0, i1):
-    xs = plan['mirror_x'][i0:i1]/1000.0
-    t0s = plan['time'][i0:i1]
-    dts = plan['duration'][i0:i1]
-    ns = plan['num_steps'][i0:i1]
-    nrs = plan['repeat'][i0:i1]
+def plot_scan(ax, plan, step_size, indices):
+    xs = plan['mirror_x'][indices]/1000.0
+    t0s = plan['time'][indices]
+    dts = plan['duration'][indices]
+    ns = plan['num_steps'][indices]
+    nrs = plan['repeat'][indices]
 
     t0s = t0s - t0s[0]
     xf = xs - step_size * ns
 
     ax.set_xlabel (r'$\delta t$ [hour]')
     ax.set_yticks ([-25, 0, 25])
-    ax.text (0.01, 0.04, plan['timestamp'][i0], fontsize='xx-small', transform=ax.transAxes)
+    ax.text (0.01, 0.04, plan['timestamp'][indices[0]], fontsize='xx-small', transform=ax.transAxes)
 
     # plot scans
-    for k in np.arange(i1-i0):
+    for k in indices - indices[0]:
         t0 = t0s[k]/3600.0
         dt = dts[k]/3600.0
         x0 = xs[k]
@@ -103,6 +104,18 @@ def new_page (plan_id):
     fig.text(0.125, 0.9, r'\verb|plan_id|={}'.format(plan_id), va='center')
     return fig, axs
 
+def find_yday (timestamps, zone_name):
+    to_zone = tz.gettz(zone_name)
+
+    doy = []
+    for ts in timestamps:
+        utc = parser.isoparse(ts)
+        t_zone = utc.astimezone (to_zone)
+        tt = t_zone.timetuple()
+        doy.append(tt.tm_yday)
+
+    return doy
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Plot scan mirror_x vs time')
@@ -118,18 +131,15 @@ def main():
     plan = read_plan (args.infile)
     plan_id = plan['plan_id']
 
-    diff_label = np.diff(plan['label'])
-    days = np.argwhere (diff_label < 0)
+    ydays = find_yday (plan['timestamp'], 'America/Chicago')
 
     pdf = PdfPages (args.outfile)
     fig, axs = new_page(plan_id)
 
     k = 0
-    i0 = 0
-    for day in days:
-        i1 = day[0]+1
-        plot_scan (axs[k], plan, args.step, i0, i1)
-        i0 = i1
+    for day in np.unique(ydays):
+        indices = np.flatnonzero (ydays == day)
+        plot_scan (axs[k], plan, args.step, indices)
         k = (k+1) % 7
         if k == 0:
             pdf.savefig(fig)

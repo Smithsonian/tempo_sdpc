@@ -170,7 +170,7 @@ def main():
     parser.add_argument ('--date', metavar='YYYY-MM-DD', default=None,
                          help="Select plots by date")
     parser.add_argument ('--maneuver', action='store_true',
-                         help="Plot scans affected by maneuvers", )
+                         help="Plot only scans affected by maneuvers", )
     parser.add_argument ('--select', metavar='N', default=None, nargs="*", type=int,
                          help="Select plots by number")
     parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
