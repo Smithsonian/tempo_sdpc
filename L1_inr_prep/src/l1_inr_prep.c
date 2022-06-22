@@ -361,6 +361,11 @@ static int copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
         if (0 != radiance_copy_iru (r, meta, rst))
           goto return_status;
      }
+   else
+     {
+        tell_vwarn (0, "%s: no IRU samples in time interval [%0.4f, %0.4f)",
+                    __func__, time_beg, time_end);
+     }
 
    status = 0;
 return_status:
@@ -391,6 +396,11 @@ static int copy_smc (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
      {
         if (0 != radiance_copy_smc (r, meta, rst))
           goto return_status;
+     }
+   else
+     {
+        tell_vwarn (0, "%s: no SMC samples in time interval [%0.4f, %0.4f)",
+                    __func__, time_beg, time_end);
      }
 
    status = 0;
@@ -508,6 +518,11 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
      {
         if (0 != radiance_copy_eph (r, meta, group_path, rst))
           goto return_status;
+     }
+   else
+     {
+        tell_vwarn (0, "%s: no GPS samples in time interval [%0.4f, %0.4f)",
+                    __func__, time_beg, time_end);
      }
 
    status = 0;
