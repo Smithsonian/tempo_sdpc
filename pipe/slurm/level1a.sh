@@ -62,6 +62,10 @@ make_iru_only_file_for_inr()
    read tbeg tend epoch tbeg_utc<"$time_interval_file"
    export IFS=$OLDIFS
 
+   # INR SW will fail if the GOES source directory paths are not found
+   tstart="$(date -u --date @$tbeg_utc +%Y-%m-%dT%H:%M:%SZ)"
+   prep_inr_goes_source $tstart
+
    # run L1_inr_prep to generate the INR input file
    export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
    etc_dir="$SDPC_RUN_DIR_MASTER/etc"
@@ -95,31 +99,43 @@ make_iru_only_file_for_inr()
    /bin/rmdir $dir
 }
 
+set_dirpath_symlink()
+{
+   from_dir="$1"
+   to_symlink="$2"
+
+   current_path=""
+   if test -h "$to_symlink" ; then
+      current_path=$(readlink -m "$to_symlink")
+   fi
+
+   # create the symlink whether or not $from_dir exists:
+   if test x"$current_path" != x"$from_dir" ; then
+      ln -nf -s "$from_dir" "$to_symlink"  || error_exit "$LINENO: setting symlink $from_dir -> $to_symlink"
+   fi
+}
+
 prep_inr_goes_source()
 {
    # During normal operations, the GOES imagery source will change only
-   # once per day, but the best way to automate this update is to set it
-   # here, using the radiance file measurement date. While we could check
-   # the existing symlinks before changing them, the code is simplest
-   # if we set the symlinks every time.  Re-setting the links for each new
-   # radiance file also ensures a quick recovery in case something happens
-   # to the links during the course of an operational day.
+   # once per day, but the best way to automate this update is to set it here.
    # If the necessary GOES imagery doesn't exist, we proceed with a warning
    # rather than a fatal error, because we don't want to prevent the system
    # from running in an unusual mode (e.g. maybe we don't care about INR
    # in some context, so the lack of imagery is irrelevant).
 
-   tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")
+   # YYYY-MM-DDTHH:mm:ssZ
+   tstart="$1"
+
    yday_subdir="$(TZ='UTC+6' date -d $tstart +%Y/%j)"
    goes_srcdir="${SDPC_ANCILLARY_ROOT}/var/goes/${yday_subdir}"
-
-   if test -d "$goes_srcdir" ; then
-      target_dir="$SDPC_RUN_DIR_MASTER/inr/Staging"
-      ln -nf -s $goes_srcdir/east_cmi $target_dir/Right || error_exit "$LINENO: setting GOES-East source"
-      ln -nf -s $goes_srcdir/west_cmi $target_dir/Left || error_exit "$LINENO: setting GOES-West source"
-   else
+   if ! test -d "$goes_srcdir" ; then
       echo "WARNING: INR reference GOES imagery not found: $goes_srcdir"
    fi
+   target_dir="$SDPC_RUN_DIR_MASTER/inr/Staging"
+
+   set_dirpath_symlink $goes_srcdir/east_cmi $target_dir/Right
+   set_dirpath_symlink $goes_srcdir/west_cmi $target_dir/Left
 }
 
 # Parse the path to the granule file:
@@ -151,7 +167,8 @@ case "${granule_basename}" in
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
    select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
-   prep_inr_goes_source
+   tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")
+   prep_inr_goes_source $tstart
    ntasks=1
    ;;
 
