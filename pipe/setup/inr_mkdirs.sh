@@ -12,7 +12,7 @@ if test -e $inr_run_dir ; then
    exit 1
 fi
 
-INR_DIRS="config logs scantailoring CloudProducts Staging/rsr"
+INR_DIRS="config logs scantailoring CloudProducts Staging"
 
 # GOES data will be delivered in these:
 #    Staging/Left

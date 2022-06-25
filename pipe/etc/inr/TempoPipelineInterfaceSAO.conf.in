@@ -76,7 +76,7 @@ refLon=-137
 # Reference image staging directory
 imgDir=@INR_PROCESSING_ROOT@/Staging/Left/
 # Directory containing Relative Spectral Responses
-rsrDir=@INR_PROCESSING_ROOT@/Staging/rsr
+rsrDir=@SDPC_REFDATA_DIR@/inr/rsr
 
 # TODO item is to remove these after SDPC integration as they are used only to support integration testing
 numCheckPoints=13
@@ -120,7 +120,7 @@ refLon=-75
 # Reference image staging directory
 imgDir=@INR_PROCESSING_ROOT@/Staging/Right/
 # Directory containing Relative Spectral Responses
-rsrDir=@INR_PROCESSING_ROOT@/Staging/rsr
+rsrDir=@SDPC_REFDATA_DIR@/inr/rsr
 
 # TODO item is to remove these after SDPC integration as they are used only to support integration testing
 numCheckPoints=26
