@@ -112,8 +112,6 @@ static void free_lps_table (Lps_Table_Type *tbl);
    float *radcal_coeffs; \
    int num_waves; \
    int num_xpos; \
-   double btdf; \
-   double diffuser_trend; \
    unsigned int straylight_shadow_method;
 #include "sensorcal.h"
 
