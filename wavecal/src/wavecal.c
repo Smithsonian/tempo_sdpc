@@ -983,22 +983,11 @@ error_return:
    return status;
 }
 
-/* FIXME - this is only temporary! */
-static int Num_Warnings = 3;
-
 static int read_irr_reference (Reference_Irr_Type *irr, TIO_Meta_Type *meta, int xtrack)
 {
    File_Type *file = &irr->file;
    double dx0;
    size_t i;
-
-   xtrack = 0;
-   if (Num_Warnings > 0)
-     {
-        fprintf (stderr, "FIXME: forcing xtrack=%d on irradiance input\n",
-                 xtrack);
-        Num_Warnings--;
-     }
 
    if (0)
      {
