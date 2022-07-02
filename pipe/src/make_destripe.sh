@@ -57,11 +57,12 @@ make_destripe()
    fi
 
    # make destripe filename
+   ymd=$(global_attribute.py --attr time_coverage_start $first_path | cut -dT -f1 | tr -d '-')
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
    version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
-   destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_S${tbeg}_E${tend}_${scan_label}.nc"
+   destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    destripe_path="$destripe_dir/$destripe_filename"
    config_file="$destripe_dir/make_destripe.yml"

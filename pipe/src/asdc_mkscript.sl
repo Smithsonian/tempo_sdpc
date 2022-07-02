@@ -46,8 +46,8 @@ define process_file_corrfile (types, path)
 
    variable basename = path_basename (path);
    variable tok = strtok (basename, "_");
-   % example:  TEMPO_RADREF_L1_V01_S123456789_E123456789_S003.nc
-   % example:  TEMPO_DSTRHCHO_L2_V01_S123456789_E123456789_S003.nc
+   % example:  TEMPO_RADREF_L1_V01_YYYYMMDD_S123456789_E123456789_S003.nc
+   % example:  TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S123456789_E123456789_S003.nc
    variable product_type = tok[1];
    variable version_string = tok[3];
    variable data_type = "TEMPO_NONORDERABLE";

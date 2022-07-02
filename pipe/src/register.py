@@ -451,12 +451,12 @@ def process_file_corr (conn, filename, nc):
     final_path = os.readlink (filename)
     st = os.stat (filename)
 
-    # Example:   TEMPO_RADREF_L1_V01_S123456789_E123456789_S001.nc
-    # Example: TEMPO_DSTRHCHO_L2_V01_S123456789_E123456789_S001.nc
+    # Example:   TEMPO_RADREF_L1_V01_YYYYMMDD_S123456789_E123456789_S001.nc
+    # Example: TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S123456789_E123456789_S001.nc
     tok = basename.split('_')
     table_name = "_".join ([tok[1], tok[2]])
-    tstart = int(tok[4].strip('S'))
-    tend = int(tok[5].strip('E'))
+    tstart = int(tok[5].strip('S'))
+    tend = int(tok[6].strip('E'))
 
     keys = {}
     keys["filename"] = basename

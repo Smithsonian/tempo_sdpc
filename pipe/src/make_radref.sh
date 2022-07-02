@@ -82,11 +82,12 @@ make_radref()
    fi
 
    # make radref filename
+   ymd=$(global_attribute.py --attr time_coverage_start $first_radiance_path | cut -dT -f1 | tr -d '-')
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_radiance_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
    version="$(echo $first_radiance_filename_sans_extname | cut -d_ -f4)"
-   radref_filename="TEMPO_RADREF_L1_${version}_S${tbeg}_E${tend}_${scan_label}.nc"
+   radref_filename="TEMPO_RADREF_L1_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    radref_path="$radref_dir/$radref_filename"
    config_file="$radref_dir/make_radref.yml"
