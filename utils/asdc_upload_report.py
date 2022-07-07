@@ -8,8 +8,12 @@ import sqlite3
 import re
 import argparse
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3}
+Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 Asdc_Status_Lookup = {value: key for key, value in Asdc_Status.items()}
+
+# python3 will provide file= redirection to stderr
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 def connect_database ():
     db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
