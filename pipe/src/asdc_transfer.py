@@ -38,30 +38,14 @@ class Signal_Catcher:
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC interface')
-    parser.add_argument('--wait', type=int, default=None,
+    parser.add_argument('--wait', type=int, default=300,
                         help="time interval [sec] between updates")
-    parser.add_argument('user_at_host', nargs='?', default=None,
+    parser.add_argument('user_at_host', default=None,
                          metavar='USER@HOST', help="ASDC dropbox account")
     args = parser.parse_args()
 
-    if args.wait:
-        wait = args.wait
-    else:
-        wait = os.getenv ("SDPC_ASDC_INTERVAL")
-        if wait == None:
-            wait = 600
-        else:
-            wait = int(wait)
-
-    wait = abs(wait)
-
-    if args.user_at_host:
-        user_at_host = args.user_at_host
-    else:
-        user_at_host = os.getenv ("SDPC_ASDC_DROPBOX")
-        if user_at_host == None:
-            eprint ("Exiting: SDPC_ASDC_DROPBOX not set")
-            sys.exit(1)
+    wait = abs(args.wait)
+    user_at_host = args.user_at_host
 
     sig = Signal_Catcher()
 

@@ -8,11 +8,13 @@ then
   exit 1
 fi
 
-# When SDPC_IOC_SOCARCHIVE_DIR is set, use that, otherwise use this default
-: "${SDPC_IOC_SOCARCHIVE_DIR:=/tempo/ioc/cacheroot/socarchive}"
+socarchive_dir=$(config_setting ioc.socarchive_dir)
 
 sdpc_dest_dir="$SDPC_ARCHIVE_DIR/raw"
+if ! test -d $sdpc_dest_dir ; then
+  mkdir -p $sdpc_dest_dir
+fi
 
-echo "iocpullraw $SDPC_IOC_SOCARCHIVE_DIR -> $sdpc_dest_dir"
+echo "iocpullraw $socarchive_dir -> $sdpc_dest_dir"
 
-exec pull_raw.sl --register $SDPC_IOC_SOCARCHIVE_DIR $sdpc_dest_dir
+exec pull_raw.sl --register $socarchive_dir $sdpc_dest_dir

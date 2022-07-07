@@ -43,17 +43,17 @@ set -e
 set -u
 ulimit -s unlimited
 
-# If SDPC_RADIANCE_POSTINR is not set, define it to be ON.
-# To turn off post-INR radiance processing, set it to anything else.
-: "${SDPC_RADIANCE_POSTINR:=ON}"
+# If SDPC_RADIANCE_POSTINR is not set, define it to be ON (non-zero).
+# To turn off post-INR radiance processing, set it to zero.
+: "${SDPC_RADIANCE_POSTINR:=1}"
 
-# If SDPC_RADIANCE_WAVECAL is not set, define it to be ON.
-# To turn off radiance wavelength calibration, set it to anything else.
-: "${SDPC_RADIANCE_WAVECAL:=ON}"
+# If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).
+# To turn off radiance wavelength calibration, set it to zero.
+: "${SDPC_RADIANCE_WAVECAL:=1}"
 
-# If SDPC_RADIANCE_POLCORR is not set, define it to be ON.
-# To turn off polarization correction, set it to anything else.
-: "${SDPC_RADIANCE_POLCORR:=ON}"
+# If SDPC_RADIANCE_POLCORR is not set, define it to be ON (non-zero).
+# To turn off polarization correction, set it to zero
+: "${SDPC_RADIANCE_POLCORR:=1}"
 
 # If SDPC_DIAGNOSTIC_INDEX is not set, define it to be OFF
 # To turn on this diagnostic feature, set it to an integer 0 <= n < num_frames_in_granule
@@ -170,7 +170,7 @@ tar_l1_radiance_to_dest()
    tarfile_rad="${rad_basename}.rad.tar"
 
    EXTRA_FILES=""
-   if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
+   if test $SDPC_RADIANCE_POLCORR -ne 0 ; then
       EXTRA_FILES="$granule_dir/log_polcorr.txt"
       if test x"$SDPC_DIAGNOSTIC_INDEX" != x"OFF" ; then
          EXTRA_FILES="$EXTRA_FILES $granule_dir/polcorr_*${rad_basename}.nc"
@@ -231,12 +231,12 @@ run_inr_post()
 
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
-   if test x"$SDPC_RADIANCE_WAVECAL" = x"ON" ; then
+   if test $SDPC_RADIANCE_WAVECAL -ne 0 ; then
       wavecal.sh $radiance_file 2
    fi
 
    # polarization correction
-   if test x"$SDPC_RADIANCE_POLCORR" = x"ON"; then
+   if test $SDPC_RADIANCE_POLCORR -ne 0 ; then
 
       # Intentionally avoid TEMPO prefix for diagnostic output files,
       # so those files won't be treated as data products.
@@ -514,7 +514,7 @@ get_tiepoint_file
 granule_subdir=$(level1_info --dir ${rad_basename}.nc)
 printf "$granule_subdir" > archive_subdir
 
-if test x"$SDPC_RADIANCE_POSTINR" = x"ON"; then
+if test $SDPC_RADIANCE_POSTINR -ne 0 ; then
    # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
    /bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
    run_inr_post ${rad_basename}.nc

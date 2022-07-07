@@ -8,15 +8,13 @@ then
   exit 1
 fi
 
-# When SDPC_IOC_LIVESTREAM_DIR is set, use that, otherwise use this default
-: "${SDPC_IOC_LIVESTREAM_DIR:=/tempo/ioc/sciroot/l0spool}"
+livestream_dir=$(config_setting ioc.livestream_dir)
 
 sdpc_dest_dir="$SDPC_RUN_DIR_MASTER/stage/level0/spool"
-
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir
 fi
 
-echo "iocpull $SDPC_IOC_LIVESTREAM_DIR -> $sdpc_dest_dir"
+echo "iocpull $livestream_dir -> $sdpc_dest_dir"
 
-exec move_file_stream.sl $SDPC_IOC_LIVESTREAM_DIR $sdpc_dest_dir
+exec move_file_stream.sl $livestream_dir $sdpc_dest_dir

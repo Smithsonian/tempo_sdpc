@@ -8,5 +8,7 @@ then
   exit 1
 fi
 
-exec $SDPC_S6_ROOT/bin/s6-envdir ./env \
- ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level2.cfg" -- "${SDPC_RUN_DIR}/L2"
+export SDPC_LEVEL2_PRODUCTS=$(config_setting level2.products)
+export SDPC_O3PROF_MODE=$(config_setting level2.o3prof_mode)
+
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level2.cfg" -- "${SDPC_RUN_DIR}/L2"

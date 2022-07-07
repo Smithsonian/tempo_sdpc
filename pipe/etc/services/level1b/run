@@ -8,5 +8,9 @@ then
   exit 1
 fi
 
-exec $SDPC_S6_ROOT/bin/s6-envdir ./env \
- ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level1b.cfg" -- "${SDPC_RUN_DIR}/L1"
+export SDPC_RADIANCE_WAVECAL=$(config_setting level1b.wavecal)
+export SDPC_RADIANCE_POLCORR=$(config_setting level1b.polcorr)
+export SDPC_RADIANCE_POSTINR=$(config_setting level1b.postinr)
+export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1b.diagnostic_index)
+
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level1b.cfg" -- "${SDPC_RUN_DIR}/L1"
