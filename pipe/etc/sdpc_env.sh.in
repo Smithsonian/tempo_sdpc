@@ -33,8 +33,7 @@ export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 #-----------------------------------------
 
 # SDPC_PIPE_HOME = default location for primary node run directories
-: "${SDPC_PIPE_HOME:=@PIPE_HOME@}"
-export SDPC_PIPE_HOME
+export SDPC_PIPE_HOME="@PIPE_HOME@"
 
 : "${SDPC_PIPE_NAME:=sdpc_test}"
 export SDPC_PIPE_NAME
@@ -43,8 +42,7 @@ export SDPC_PIPE_NAME
 export SDPC_PROCESSING_VERSION
 
 # SDPC_ARCHIVE_HOME = default location for pipeline-specific archive directories
-: "${SDPC_ARCHIVE_HOME:=@ARCHIVE_HOME@}"
-export SDPC_ARCHIVE_HOME
+export SDPC_ARCHIVE_HOME="@ARCHIVE_HOME@"
 
 # SDPC_ARCHIVE_DIR = root directory for the pipeline-specific archive
 export SDPC_ARCHIVE_DIR="${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}"
