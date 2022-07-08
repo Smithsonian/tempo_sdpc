@@ -8,5 +8,4 @@ then
   exit 1
 fi
 
-exec $SDPC_S6_ROOT/bin/s6-envdir ./env \
- ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level1a.cfg" -- "${SDPC_RUN_DIR}/L0"
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level1a.cfg" -- "${SDPC_RUN_DIR}/L0"
