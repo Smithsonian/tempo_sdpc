@@ -1,6 +1,6 @@
 sdpc_env.sh
 pipe_control.cfg
-sdpc_config.ini
+table_config.ini
 asdc_exclude.csv
 cachemon/level1a.cfg
 cachemon/level1b.cfg

@@ -237,8 +237,8 @@ GLER_Type *gler_open (int iwave, const char *config_file)
      {
         char *conf_file_paths[] =
           {
-             "$SDPC_RUN_DIR_MASTER/etc/sdpc_config.ini",  /* running pipeline context */
-             "$SDPC_ROOT/etc/sdpc_config.ini",            /* software installation context */
+             "$SDPC_RUN_DIR_MASTER/etc/table_config.ini",  /* running pipeline context */
+             "$SDPC_ROOT/etc/table_config.ini",            /* software installation context */
              NULL
           };
         char **cfp;
