@@ -13,11 +13,6 @@ _root_dir=$2
 
 _pipe_name=$(basename $_run_dir_master)
 
-if test x"$_pipe_name" != x"$_run_dir_master" ; then
-   _pipe_home=$(dirname $_run_dir_master)
-   export SDPC_PIPE_HOME=$_pipe_home
-fi
-
 export SDPC_PIPE_NAME=$_pipe_name
 . $_root_dir/etc/sdpc_env.sh
 

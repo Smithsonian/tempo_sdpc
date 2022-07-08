@@ -28,12 +28,9 @@ export SDPC_ANCILLARY_ROOT="@ANCILLARY_DATA_DIR@"
 # (e.g. reference spectra, cross-sections, climatologies, etc.)
 export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 
-#-----------------------------------------
-#  Environment-dependent pipeline defaults
-#-----------------------------------------
-
-# SDPC_PIPE_HOME = default location for primary node run directories
-export SDPC_PIPE_HOME="@PIPE_HOME@"
+#------------------------------------------
+#  Environment-dependent pipeline defaults:
+#------------------------------------------
 
 : "${SDPC_PIPE_NAME:=sdpc_test}"
 export SDPC_PIPE_NAME
@@ -41,11 +38,15 @@ export SDPC_PIPE_NAME
 : "${SDPC_PROCESSING_VERSION:=1}"
 export SDPC_PROCESSING_VERSION
 
-# SDPC_ARCHIVE_HOME = default location for pipeline-specific archive directories
-export SDPC_ARCHIVE_HOME="@ARCHIVE_HOME@"
+#----------------
+#  Archive paths:
+#----------------
+
+# archive_home = default location for pipeline-specific archive directories
+archive_home="@ARCHIVE_HOME@"
 
 # SDPC_ARCHIVE_DIR = root directory for the pipeline-specific archive
-export SDPC_ARCHIVE_DIR="${SDPC_ARCHIVE_HOME}/${USER}/${SDPC_PIPE_NAME}"
+export SDPC_ARCHIVE_DIR="${archive_home}/${USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
 export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
@@ -56,12 +57,15 @@ export SDPC_ARCHIVE_DBFILE_L0="${SDPC_ARCHIVE_DBFILE}"
 # Level 1 IRR file lookup can use a separate database
 export SDPC_ARCHIVE_DBFILE_L1="${SDPC_ARCHIVE_DBFILE}"
 
-#---------------------------------
-#  Live processing directory paths
-#---------------------------------
+#-----------------
+#  Pipeline paths:
+#-----------------
+
+# pipe_home = default location for primary node run directories
+pipe_home="@PIPE_HOME@"
 
 # SDPC_RUN_DIR_MASTER = root directory where pipeline processing takes place on the master node
-export SDPC_RUN_DIR_MASTER="${SDPC_PIPE_HOME}/${USER}/${SDPC_PIPE_NAME}"
+export SDPC_RUN_DIR_MASTER="${pipe_home}/${USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_RUN_DIR = root directory where pipeline processing takes place on compute nodes
 export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"
