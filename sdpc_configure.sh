@@ -7,7 +7,7 @@ refdata_dir="/tempo/nas0/sdpc_soft/refdata"
 ancdata_dir="/tempo/nas0/sdpc_archive/ancillary"
 
 prefix="$install_root/sdpc/v3"
-inrroot="$install_root/inr_r2.3.2"
+inrroot="$install_root/inr_r2.3.3"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 

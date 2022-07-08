@@ -611,9 +611,15 @@ num_hours_per_period=1
 samples_per_granule=4
 # Order of the Fourier model for each attitude state
 # TODO item is to adjust in orbit
-fourier_terms_roll=8
-fourier_terms_pitch=8
-fourier_terms_yaw=4
+fourier_terms_roll=0
+fourier_terms_pitch=0
+fourier_terms_yaw=0
+# The directory where the planning ephemeris files are located
+ephemerisDir=@SDPC_ANCILLARY_ROOT@/var/host/ephemeris/
+# The regular expression for filename to determine whether the file is a ephemeris file
+ephemerisRegex=^tempo_d(\d{5})m(\d{8})u(\d{3})_(p\d{5}_)*r(\d{1})_ephemeris.csv$
+# The interval between elements in ephemeris files, in seconds
+ephemerisInterval=600
 # The directory where the ScanTailoring coefficient files are being written to
 fileDir=@INR_PROCESSING_ROOT@/scantailoring/
 # The interval between calculating adjacent predicted states, in seconds
