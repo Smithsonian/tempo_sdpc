@@ -21,7 +21,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                copy_level1_frame.py global_attribute.py radiance_telem_only.py \
                asdc_mkscript.sl asdc_files.py asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
                asdc_transfer.py asdc_exclude_filter.py update_trend_files.py \
-               public_mirror.py update_public_mirror.sh inrmonitor.sh \
+               public_mirror.py update_public_mirror.sh inrmonitor.sh feed_image_data.py \
                make_radref.sh make_radref.py select_radref.py \
                make_destripe.sh make_destripe.py destripe.py select_destripe.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
