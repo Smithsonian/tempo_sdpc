@@ -25,7 +25,7 @@ fi
 # The file should contain something like:
 # export SSH_AUTH_SOCK=/home/temposdpc/.ssh/ssh-agent
 # export SSH_AGENT_PID=26882
-agent_env_file="$HOME/.ssh/ssh-agent-env"
+agent_env_file="$HOME/.ssh/sdpc-agent-env"
 if ! test -r $agent_env_file ; then
    echo "*** Error: can't find ssh-agent config file: $agent_env_file"
    exit 1
