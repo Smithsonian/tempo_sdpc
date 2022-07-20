@@ -5,8 +5,10 @@ from __future__ import print_function
 
 import os, sys
 import time
+import math
 import signal
 from threading import Event
+from subprocess import check_output
 
 import sqlite3
 from datetime import datetime
@@ -15,6 +17,11 @@ import dateutil.relativedelta
 from netCDF4 import Dataset as NetCDFFile
 import numpy as np
 import argparse
+
+Epoch = None
+Epoch_Timet = None
+Silent = False
+DryRun = False
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -101,6 +108,58 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
+def emit_single_telemetry_only (t0, t1, destdir):
+    global Epoch
+    global Epoch_Timet
+    timestamp = check_output (["ttime", "--epoch", Epoch, "--timestamp", "{}".format(t0)])
+    timestamp = timestamp.decode("ascii")
+    filename = 'TEMPO_INR_L1_V01_%s.nc' % (timestamp)
+    path = os.path.join (destdir, filename)
+    t0_struct = dateutil.parser.isoparse(timestamp)
+    t0_timet = datetime.timestamp(t0_struct)
+    if not Silent:
+        print ('{}: telemetry-only -> {}'.format (datetime.now().isoformat(), path), flush=True)
+    if not DryRun:
+        # Atomically create file at 'path':
+        temp_path = os.path.join (destdir, '.' + filename)
+        with open (temp_path, "w") as fp:
+            print ("{},{},{},{}".format(t0, t1, Epoch_Timet, t0_timet), file=fp)
+        os.rename (temp_path, path)
+
+def emit_n_telemetry_only (t_prev_iru, t_i, file_i, destdir, sig, wait_time):
+    file_duration = 300.0     # seconds
+    min_file_duration = 10.0
+
+    with NetCDFFile (file_i, 'r') as nc:
+        t_end = nc.time_coverage_end_since_epoch
+
+    basename = os.path.basename(file_i)
+    is_radiance = (basename.find('TEMPO_RAD') >= 0)
+
+    if not is_radiance:
+        t_i = t_end
+
+    if t_i - t_prev_iru < file_duration:
+        if is_radiance:
+            if t_i - t_prev_iru > min_file_duration:
+                emit_single_telemetry_only (t_prev_iru, t_i, destdir)
+                sig.wait (wait_time)
+            return t_end
+        else:
+            return t_prev_iru
+
+    total_duration = t_i - t_prev_iru
+    num_files = math.ceil(total_duration/ file_duration)
+    mean_duration = total_duration / num_files
+
+    for i in range(num_files):
+        t0 = t_prev_iru + i * mean_duration
+        t1 = t0 + mean_duration
+        emit_single_telemetry_only (t0, t1, destdir)
+        sig.wait (wait_time)
+
+    return t_end
+
 def main():
     parser = argparse.ArgumentParser(description='Deliver time-ordered Level 0 or Level 1 image data to a target directory')
     parser.add_argument('--dbfile', metavar='DBFILE',
@@ -113,6 +172,8 @@ def main():
                         help="Start time [TAI sec since TEMPO epoch]")
     parser.add_argument('--end', metavar='ENDTIME', default=None,
                         help="End time [TAI sec since TEMPO epoch]")
+    parser.add_argument('--telemonly', action='store_true',
+                        help="Trigger generation of telemetry-only radiance files")
     parser.add_argument('--silent', action='store_true',
                         help="Minimize output")
     parser.add_argument('--dryrun', action='store_true',
@@ -123,6 +184,12 @@ def main():
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
+
+    global Silent
+    Silent = args.silent
+
+    global DryRun
+    DryRun = args.dryrun
 
     dbfile = args.dbfile
 
@@ -147,23 +214,38 @@ def main():
 
     sig = Signal_Catcher()
 
+    global Epoch
+    with NetCDFFile (files[0], 'r') as nc:
+        Epoch = nc.time_reference
+    epoch_struct = dateutil.parser.isoparse(Epoch)
+    global Epoch_Timet
+    Epoch_Timet = datetime.timestamp(epoch_struct)
+
     t_prev = t[0]
+    t_prev_iru = t_prev
     for i in range(len(files)):
+        dt = t[i] - t_prev
+
         if args.wait is None:
-            dt = t[i] - t_prev
+            wait_time = dt
         else:
-            dt = args.wait
-        sig.wait(dt)
+            wait_time = args.wait
+
         if sig.caught():
             print('\nCaught signal:  Resume using --start {}'.format(int(t[i])))
             break
+
+        if args.telemonly:
+            t_prev_iru = emit_n_telemetry_only (t_prev_iru, t[i], files[i], args.destdir, sig, wait_time)
+
         t_prev = t[i]
         src = files[i]
         dst = os.path.join (args.destdir, os.path.basename(src))
-        if not args.silent:
+        if not Silent:
             print('{}: {} -> {}'.format(datetime.now().isoformat(), src, dst), flush=True)
-        if not args.dryrun:
+        if not DryRun:
             os.symlink (src, dst)
+        sig.wait (wait_time)
 
 if __name__ == "__main__":
     main()
