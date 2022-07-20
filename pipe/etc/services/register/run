@@ -8,4 +8,10 @@ then
   exit 1
 fi
 
+dbfile_level1="$(config_setting dbfile.level1)"
+if ! test -f "$dbfile_level1" ; then
+   dbfile_level1="$SDPC_ARCHIVE_DBFILE"
+fi
+export SDPC_ARCHIVE_DBFILE_L1="$dbfile_level1"
+
 exec register.py --service

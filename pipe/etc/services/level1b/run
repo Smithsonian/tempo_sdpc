@@ -13,4 +13,10 @@ export SDPC_RADIANCE_POLCORR=$(config_setting level1b.polcorr)
 export SDPC_RADIANCE_POSTINR=$(config_setting level1b.postinr)
 export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1b.diagnostic_index)
 
+dbfile_level1="$(config_setting dbfile.level1)"
+if ! test -f "$dbfile_level1" ; then
+   dbfile_level1="$SDPC_ARCHIVE_DBFILE"
+fi
+export SDPC_ARCHIVE_DBFILE_L1="$dbfile_level1"
+
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level1b.cfg" -- "${SDPC_RUN_DIR}/L1"

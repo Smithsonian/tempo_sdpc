@@ -51,12 +51,6 @@ export SDPC_ARCHIVE_DIR="${archive_home}/${USER}/${SDPC_PIPE_NAME}"
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
 export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
 
-# Level 0 IRU, SMC, HK file lookup can use a separate database
-export SDPC_ARCHIVE_DBFILE_L0="${SDPC_ARCHIVE_DBFILE}"
-
-# Level 1 IRR file lookup can use a separate database
-export SDPC_ARCHIVE_DBFILE_L1="${SDPC_ARCHIVE_DBFILE}"
-
 #-----------------
 #  Pipeline paths:
 #-----------------
