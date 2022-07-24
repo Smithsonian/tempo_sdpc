@@ -2,4 +2,18 @@ title                 : TEMPO Level 2 bromine monoxide product
 collection_shortname  : TEMPO_BRO_L2
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>HALOCARBONS AND HALOGENS>BROMINE MONOXIDE
-summary              : Abstract goes here.
+
+summary: >-
+  Bromine monoxide Level 2 files provide trace gas information at
+  TEMPO’s native spatial resolution, ~10 km^2 at the center of the
+  Field of Regard (FOR), for individual granules. Each granule covers
+  the entire North-South TEMPO FOR but only a portion of the East-West
+  FOR. The files are provided in netCDF4 format, and contain
+  information on tropospheric, stratospheric and total bromine dioxide
+  vertical columns, ancillary data used in air mass factor and
+  stratospheric/tropospheric separation calculations, and retrieval
+  quality flags. The retrieval uses a three-step approach: (1)
+  spectral fitting of slant columns, (2) air mass factor calculation
+  and derivation of vertical columns, and (3)
+  stratospheric/tropospheric separation. For further details, please
+  refer to the ATBD.

@@ -3,4 +3,18 @@ collection_shortname  : TEMPO_CLDO4_L2
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>CLOUDS>CLOUD PROPERTIES>CLOUD FRACTION,
                         EARTH SCIENCE>ATMOSPHERE>CLOUDS>CLOUD PROPERTIES>CLOUD TOP PRESSURE
-summary              : Abstract goes here.
+
+summary: >-
+  O2-O2 cloud Level 2 files provide cloud information at TEMPO’s
+  native spatial resolution, ~10 km^2 at the center of the Field of
+  Regard (FOR), for individual granules. Each granule covers the
+  entire North-South TEMPO FOR but only a portion of the East-West
+  FOR. The files are provided in netCDF4 format, and contain
+  information on effective cloud fraction (ECF), cloud optical
+  centroid pressure (OCP), scene albedo, scene pressure, ancillary
+  data used in calculation, and processing quality flags. The ECF is
+  derived from reflectance at 466 nm. The OCP is derived from O2-O2
+  slant column density. The cloud retrieval uses Look Up Tables (LUTs)
+  of reflectance and air mass factors as a function of geometry,
+  surface albedo, surface pressure and cloud pressure. Please refer to
+  the ATBD for details.

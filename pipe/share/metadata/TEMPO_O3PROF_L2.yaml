@@ -2,4 +2,23 @@ title                 : TEMPO Level 2 ozone profile product
 collection_shortname  : TEMPO_O3PROF_L2
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>OXYGEN COMPOUNDS>OZONE
-summary              : Abstract goes here.
+
+summary: >-
+  Ozone profile Level 2 files provide ozone profile information at a
+  coarser spatial resolution than the native TEMPO resolution by
+  coadding 4 across-track pixels in the North-South direction, ~40
+  km^2 at the center of the Field of Regard (FOR), for individual
+  granules. Each granule covers the entire North-South TEMPO FOR but
+  only a portion of the East-West FOR. The files are provided in
+  netCDF4 format, and contain information on ozone partial columns at
+  24 layers with the last layer 0-2 km above the surface, a priori
+  ozone profile and a prior error, total, stratospheric, and
+  tropospheric ozone columns, other retrieved auxiliary parameters,
+  random-noise and total retrieval errors for all of the retrieved
+  quantities, the retrieval averaging kernels for the ozone profile,
+  and the random-noise retrieval error covariance matrix for ozone,
+  and several retrieval quality flags. The retrieval is based on
+  spectral fitting of TEMPO radiances in both UV and visible bands
+  using the iterative optimal estimation technique with a priori and
+  measurement error constraints . For further details, please refer to
+  the ATBD.

@@ -3,4 +3,17 @@ collection_shortname  : TEMPO_HCHO_L2
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>AIR QUALITY>VOLATILE ORGANIC COMPOUNDS,
                         EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>CARBON AND HYDROCARBON COMPOUNDS>FORMALDEHYDE
-summary              : Abstract goes here.
+
+summary: >-
+  Formaldehyde Level 2 files provide trace gas information at TEMPO’s
+  native spatial resolution, ~10 km^2 at the center of the Field of
+  Regard (FOR), for individual granules. Each granule covers the
+  entire North-South TEMPO FOR but only a portion of the East-West
+  FOR. The files are provided in netCDF4 format, and contain
+  information on vertical columns, ancillary data used in air mass
+  factor calculations and reference sector or de-striping corrections,
+  and retrieval quality flags. The retrieval uses a three-step
+  approach: (1) spectral fitting of slant columns, (2) air mass factor
+  calculation and derivation of vertical columns, and (3) reference
+  sector or de-striping corrections as necessary. For further details,
+  please refer to the ATBD.

@@ -2,4 +2,17 @@ title                 : TEMPO Level 2 bromine monoxide product
 collection_shortname  : TEMPO_CHOCHO_L2
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>CARBON AND HYDROCARBON COMPOUNDS>NON-METHANE HYDROCARBONS/VOLATILE ORGANIC COMPOUNDS", "EARTH SCIENCE>ATMOSPHERE>AIR QUALITY>VOLATILE ORGANIC COMPOUNDS
-summary              : Abstract goes here.
+
+summary: >-
+  Glyoxal Level 2 files provide trace gas information at TEMPO’s
+  native spatial resolution, ~10 km^2 at the center of the Field of
+  Regard (FOR), for individual granules. Each granule covers the
+  entire North-South TEMPO FOR but only a portion of the East-West
+  FOR. The files are provided in netCDF4 format, and contain
+  information on vertical columns, ancillary data used in air mass
+  factor calculations and reference sector or de-striping corrections,
+  and retrieval quality flags. The retrieval uses a threestep
+  approach: (1) spectral fitting of slant columns, (2) air mass factor
+  calculation and derivation of vertical columns, and (3) reference
+  sector or de-striping corrections as necessary. For further details,
+  please refer to the ATBD.
