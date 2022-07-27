@@ -1,0 +1,71 @@
+TEMPO_SDPC_v4.0.0   2022 ??? ??
+===============================
+   * Make GOES spacecraft references more generic (e.g. GOES-East/West
+     instead of GOES-16/17).
+   * Support IOC update to package raw GRDDP and json data into tar files.
+   * New pipecron service to automate selected maintenance tasks.
+   * Add script to simplify pulling data from IOC cache.
+   * Add script to feed image input data for reprocessing.
+   * plan improvements:
+       - mkplan.sh script to simplify tar file creation for delivery to IOC.
+       - New visualization scripts plot_mirror_x.py, plot_szamap.py
+       - support using a custom CBM to perform blocks of N scans
+   * Archive database now tracks ASDC per-file upload disposition
+   * Support generating radiance reference file for trace gas retrievals.
+   * Support destriping correction of trace gas retrievals.
+   * Wavelength calibration reference data format now supports
+     cross-track dependence of convolved irradiance reference spectrum.
+   * Move pipeline control environment variables into etc/pipe_control.cfg
+   * Update GLER database land files to avoid problematic albedo in
+     shallow-ocean regions (pixels with land_fraction < 0.5)
+
+TEMPO_SDPC_v3.0.0   2022 Mar 01
+===============================
+   * Observation planning now incorporates spacecraft maneuvers.
+   * Support autonomous delivery of maneuver and ephemeris predictions from IOC.
+   * L0_format:
+        - support handling FPGA test pattern data
+   * L0_ccd:
+        - new psf-based stray light correction
+        - median filter FPA, FPE temperature time series before interpolating
+        - DRK_L1 file now contains mean dark, plus 'frames' group with
+          the separate dark frames.
+   * L1_polcorr: support new polarization correction lookup tables
+   * L1_o3_profile: numerous algorithm updates
+   * L1_trace_gas:
+        - incorporate improvements from GEMS and MEaSUREs experience.
+        - support using slit function from irradiance file.
+        - support O2-O2 slant column-only product
+        - many updates to control files, PCF files, reference data
+   * L1_cloud_o4: new O2-O2 cloud product (CLDO4) to replace Raman cloud product (CLDRR)
+   * wavecal: support cross-track parallelization to speed IRR wavelength
+              calibration with slit function convolution.
+   * Support 2D nominal_wavelength array in L1 radiance file
+   * Replace NISE product with IMS snow cover product
+        - add snow_ice_fraction product variable
+        - drop NISE snow/ice cover bits from ground_pixel_quality_flag
+   * Support generating new trace gas products: BRO, CHOCHO, H2O
+   * New trend service to support trending of science data (DRK, IRR, RAD)
+   * Support using GPS ephemeris from Level 0 data stream
+   * Restructure post-INR pipeline to create a separate level1b processing stage
+   * Add 'asdc' service to automate ASDC product upload.
+   * Support uploading ancillary data to ASDC.
+   * Improve support for multiple pipeline instances (put etc directory
+     in $SDPC_RUN_DIR_MASTER).
+   * Improve organization of cron system for downloading ancillary data
+   * Support using GEOS-CF composition forecasts and GEOS-CF hourly
+     climatology.  (Drop support for NAM grid meteorological forecasts).
+   * New libgler library to support GLER lookup tables (geometry-dependent
+     Lambertian-equivalent reflectance).
+   * New iocpullraw service to pull raw GRDDP telemetry from IOC.
+   * Support running O3PROF tasks in a separate cluster partition.
+   * Simplify pipeline processing scripts.
+   * Support gyro_quality_flag in IRU file.
+   * Facilitate reprocessing beginning either from Level 0 or from Level 1.
+   * Support converting GPS ephemeris coordinates from J2000 to ECEF
+     (Host will deliver J2000 coordinates, but the INR SW requires ECEF).
+
+TEMPO_SDPC_v2.0.0   2020 Nov 10
+===============================
+   Initial planned release, to be used for the first planned SDPC
+   system tests, and requirement verification.
