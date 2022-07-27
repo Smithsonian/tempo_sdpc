@@ -552,9 +552,10 @@ def register_files (db_path, filenames):
     return status_list
 
 def collect_filenames (dir):
+    entries = (os.path.join (dir, f) for f in os.listdir(dir))
+    entries = sorted(entries, key=os.path.getmtime)
     filenames = []
-    for f in os.listdir(dir):
-        path = os.path.join(dir, f)
+    for path in entries:
         if os.path.isfile(path):
             filenames.append (path)
     return filenames
