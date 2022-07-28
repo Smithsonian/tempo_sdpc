@@ -140,8 +140,9 @@ SUBROUTINE radiance_wavecal ( &
   ! Perform Shift&Squueze
   ! ---------------------
   adj_wvls(1:n_rad_wvl) = ( &
-      adj_wvls(1:n_rad_wvl) - fitvar_cal(shi_idx) + sol_wav_avg * fitvar_cal(squ_idx)) / &
-      (1.0_r8 + fitvar_cal(squ_idx))
+    adj_wvls(1:n_rad_wvl) - fitvar_cal_saved(shi_idx) &
+    + sol_wav_avg * fitvar_cal_saved(squ_idx)) / &
+    (1.0_r8 + fitvar_cal_saved(squ_idx))
 
   RETURN
 
