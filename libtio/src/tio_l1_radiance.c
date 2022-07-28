@@ -24,6 +24,8 @@
 
 #define COMMENT_WGS84 \
  "Earth-centered WGS84 Cartesian coordinates (z=North Pole, y=equator, x=prime meridian)"
+#define COMMENT_SAT_VELOCITY \
+ "Velocity component in instantaneous non-rotating Earth-centered WGS84 Cartesian coordinates (z=North Pole, y=equator, x=prime meridian)"
 #define COORDINATE_AT_EXPOSURE_START "coordinate at exposure start"
 
 #ifdef ENABLE_IMAGE_COMPRESSION
@@ -1297,21 +1299,21 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
           {
              {"units", "km/s"},
              {"long_name", "Satellite X velocity"},
-             {"comment", COMMENT_WGS84},
+             {"comment", COMMENT_SAT_VELOCITY},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type satvel_vy_attrs[] =
           {
              {"units", "km/s"},
              {"long_name", "Satellite Y velocity"},
-             {"comment", COMMENT_WGS84},
+             {"comment", COMMENT_SAT_VELOCITY},
              _pTEXT_ATTRS_END
           };
         static _pText_Attr_Type satvel_vz_attrs[] =
           {
              {"units", "km/s"},
              {"long_name", "Satellite Z velocity"},
-             {"comment", COMMENT_WGS84},
+             {"comment", COMMENT_SAT_VELOCITY},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->time_ephemeris.id;
