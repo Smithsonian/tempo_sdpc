@@ -469,6 +469,7 @@ type gmeta
   real(kind=4) :: geospatial_lat_min, geospatial_lat_max
   character(len=13)::leadscientist='TEMPO'
   character(len=23)::Swathname = 'Cloud Product'
+  character(len=32) :: apriori_source
   integer :: granule_year, granule_month,granule_day
   integer:: granule_hour_start,granule_minute_start,granule_seconds_start
   integer:: granule_hour_end, granule_minute_end,granule_seconds_end

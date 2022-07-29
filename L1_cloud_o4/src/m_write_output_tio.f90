@@ -35,7 +35,8 @@ contains
   !> @author John Houck  Oct 2021
   !-----------------------------------------------------------------------
   subroutine update_output_file_tio (outfile, nstep, nxtrack, errstat)
-
+    use m_vars,  only: gmetadata
+    use netcdf, only: nf90_global, nf90_put_att
     implicit none
 
     !input variables
@@ -61,6 +62,9 @@ contains
     endif
 
     call tiof_history_append_cmdline (tio_l2obj)
+
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+                         'apriori_source', gmetadata % apriori_source)
 
     call tiof_inq_dimid (tio_l2obj, 'xtrack', dimid_xtrack, errstat)
     call tiof_inq_dimid (tio_l2obj, 'mirror_step', dimid_step, errstat)
@@ -509,7 +513,7 @@ contains
          rad_SolarAzimuthAngle, &
          rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, &
-         rad_RelativeAzimuthAngle 
+         rad_RelativeAzimuthAngle
 
     implicit none
 
@@ -852,7 +856,6 @@ contains
     call tiof_attlist_append (att_support, errstat, "coordinates", &
                               att_text = "longitude latitude")
 
-
      name466 = 'GLER466'
      name440 = 'GLER440'
      if (name_option_SurfaceReflectivity .eq. 'Kleipool') then
@@ -962,7 +965,7 @@ contains
                               attlist=att_support)
     endif
 
-    if (run_mode .EQ. 'production') then 
+    if (run_mode .EQ. 'production') then
 
     call tiof_varlist_append (varlist, errstat, &
                               "SurfacePressure", &
@@ -976,7 +979,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    else 
+    else
     call tiof_varlist_append (varlist, errstat, &
                               "nonclipped_cloud_fraction", &
                               nf90_float, &
@@ -1108,7 +1111,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
-   
+
     call tiof_varlist_append (varlist, errstat, &
                               "fitted_slant_column_uncertainty", &
                               nf90_float, &
@@ -1120,7 +1123,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
-    
+
     call tiof_varlist_append (varlist, errstat, &
                               "fit_rms_residual", &
                               nf90_float, &
@@ -1132,7 +1135,7 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
-    
+
     call tiof_varlist_append (varlist, errstat, &
                               "surface_pressure", &
                               nf90_float, &
@@ -1320,7 +1323,6 @@ contains
          [nstep, nxtrack], out_ScenePressure, errstat)
     endif
 
-
     if (run_mode .EQ. 'production') then
 
     call tiof_put2d_r4 (tio_l2obj, "SurfacePressure", [0,0], &
@@ -1400,7 +1402,6 @@ contains
 
     call tiof_put2d_i2 (tio_l2obj,"SCD_MainDataQualityFlags", [0,0], &
          [nstep, nxtrack], scd_mdqfl, errstat)
-
 
     call tiof_pop_group(tio_l2obj, errstat)
 

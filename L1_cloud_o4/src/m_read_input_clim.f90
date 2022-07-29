@@ -13,8 +13,8 @@ contains
    subroutine prepare_geoscf(cpt,temp_cst,u2m_cst,v2m_cst,&
               lon_min,lon_max,lat_min,lat_max, errstat)
 
-     ! gmetadata,
-   use m_vars, only: geos_np, nlayers,&
+
+   use m_vars, only: geos_np, nlayers, gmetadata, &
               rad_latitude, rad_longitude, rad_time
 
   implicit none
@@ -30,6 +30,7 @@ contains
   integer :: thisyear, thismonth, thisday
 
   integer :: nz
+  logical :: have_forecast
 
   real (kind=8) :: t_beg, t_end, hour_beg, hour_end
 
@@ -96,9 +97,16 @@ contains
 
   call clim_pres_init(cpt,thisyear,thismonth,thisday,bounds,errstat)
 
+  call clim_query_apriori_source (cpt, have_forecast, errstat)
   call clim_query_nz (nz, errstat)
   if (errstat /= 0) return
   if (nz .NE. geos_np) call exit(1)
+
+  if (have_forecast) then
+    gmetadata % apriori_source = 'GEOSCF:forecast'
+  else
+    gmetadata % apriori_source = 'GEOSCF:climatology'
+  endif
 
   call clim_val_init (temp_cst, cpt, 'T', errstat)
   if (errstat /= 0) call exit(1)
