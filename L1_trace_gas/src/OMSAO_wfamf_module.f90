@@ -167,6 +167,7 @@ CONTAINS
     type (amf_correction_type) :: amf_corr
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
+    character (len=32) :: apriori_source
 
     ! bitwise like amf calculation flags
     integer (kind=i2), dimension (1:nx,0:nt-1), target :: amfdiag
@@ -196,6 +197,7 @@ CONTAINS
        stratospheric_amf = r8_missval
        tropospheric_amf = r8_missval
     ENDIF
+    apriori_source = ''
 
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
@@ -281,7 +283,7 @@ CONTAINS
        call tell_log (1, 'amf_calculation: read gas profile')
        CALL get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
             idx_ozo_pro, phis, psurf, tsurf, wind_speed, &
-            lat, lon, time, nt, nx, errstat, amfdiag)
+            lat, lon, time, nt, nx, apriori_source, errstat, amfdiag)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, 'reading gas profile', errstat)
           return
@@ -292,7 +294,7 @@ CONTAINS
        ! ---------------------------------
        IF (do_write) then
           call tell_log (1, 'amf_calculation: write gas profile to L2 file')
-          call write_gas_profile (profiles, nx, nt, CmETA, errstat)
+          call write_gas_profile (profiles, nx, nt, CmETA, apriori_source, errstat)
           if (errstat /= 0) return
        endif
 
@@ -938,7 +940,7 @@ CONTAINS
   subroutine get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
                         idx_ozo_pro, phis, psurf, tsurf, &
                         wind_speed, lat, lon, time, nt, nx, &
-                        errstat, amfdiag)
+                        apriori_source, errstat, amfdiag)
     use clim_module
     use omsao_indices_module, only: sao_molecule_names
     use ctrlvars, only: yn_gems
@@ -953,6 +955,7 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
+    character (len=*), intent(inout) :: apriori_source
     integer (kind=i4), intent (inout) :: errstat
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
@@ -965,7 +968,7 @@ CONTAINS
     real (kind=r4) :: hour_f, lon_f, lat_f, o3_col, u2m(1), v2m(1), phi(1)
     character (len=6) :: clim_db_molecule_name
     real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
-    logical :: water_vapor
+    logical :: water_vapor, have_forecast
     real (kind=r4), parameter :: molar_mass_water = 18.02 ! kg/mol
     real (kind=r4), parameter :: molar_mass_dry_air = 28.97 ! kg/mol
 
@@ -1013,6 +1016,14 @@ CONTAINS
     if (errstat /= 0) return
     nlayers = nz
     allocate (pres(nz+1), vmr(nlayers), partial_column(nlayers), temp(nlayers))
+
+    call clim_query_apriori_source (cpt, have_forecast, errstat)
+    if (errstat /= 0) return
+    if (have_forecast) then
+      apriori_source = 'GEOSCF:forecast'
+    else
+      apriori_source = 'GEOSCF:climatology'
+    endif
 
     clim_db_molecule_name = sao_molecule_names(pge_idx)
 

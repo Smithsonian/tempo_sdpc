@@ -1369,20 +1369,28 @@ contains
   !! @param[in] nxtrack  Number of cross-track pixels
   !! @param[in] ntimes  Number of scans
   !! @param[in] nlevels  Number of altitudes in vertical profile climatology
+  !! @param[in] apriori_source  String describing the source of the gas profile
   !! @param[inout] errstat  Error status variable
   subroutine write_gas_profile (gas_profile, &
-                                nxtrack, ntimes, nlevels, errstat)
+                                nxtrack, ntimes, nlevels, &
+                                apriori_source, errstat)
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes, nlevels
     real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: gas_profile
+    character (len=*), intent(in) :: apriori_source
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
+    type (tiof_attlist_type) :: attlist
 
     if (errstat /= 0) return
 
     obj => primary_output_file
+
+    call tiof_attlist_append (attlist, errstat, "apriori_source", att_text = apriori_source)
+    call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_attlist_free (attlist)
 
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_put3d_r4 (obj, tg_var_amf_gas_profile, [0,0,0], &
