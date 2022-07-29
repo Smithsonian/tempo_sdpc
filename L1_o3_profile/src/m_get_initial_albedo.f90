@@ -1021,7 +1021,7 @@ MODULE m_get_initial_albedo
   REAL (KIND=4), DIMENSION(nlat)  :: lats
   REAL (KIND=4), DIMENSION(nlon)  :: lons
   REAL (KIND=4), DIMENSION(nwvl)  :: wvls           
-  CHARACTER (LEN=130)             :: alb_fname
+  CHARACTER (LEN=max_pathlen)             :: alb_fname
   INTEGER (KIND=C_LONG), DIMENSION(2)  :: monin
   INTEGER                         :: i, j, latin, lonin,  npix, nact, nm
   REAL (KIND=dp), DIMENSION(2)    :: monfrac
