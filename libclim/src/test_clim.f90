@@ -12,6 +12,7 @@ program test_clim
   real (kind=4), dimension(:), allocatable :: vmr_z, partial_column_z, temp_z
   real (kind=4), dimension(1) :: u2m, v2m
   character (len=*), parameter :: species = 'NO2'
+  logical :: have_forecast
 
   errstat = 0
 
@@ -36,6 +37,9 @@ program test_clim
   day   = 25
 
   call clim_pres_init (cpt, year, month, day, bounds, errstat)
+  if (errstat /= 0) call exit(1)
+
+  call clim_query_apriori_source (cpt, have_forecast, errstat)
   if (errstat /= 0) call exit(1)
 
   allocate (pres_z(nz+1), ap(nz+1), bp(nz+1))

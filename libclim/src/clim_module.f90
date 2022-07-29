@@ -24,6 +24,7 @@ module clim_module
 
   public clim_read_config
   public clim_query_nz
+  public clim_query_apriori_source
   public clim_pres, clim_pres_init, clim_pres_eta
   public clim_val_interp, clim_val_init
   public clim_cloud, clim_cloud_init
@@ -587,6 +588,25 @@ contains
     if (errstat /= 0) return
 
     nz = Num_Layers
+
+  end subroutine
+
+  subroutine clim_query_apriori_source (cpt, apriori_is_forecast, errstat)
+    implicit none
+    type (clim_pres_type), intent(in) :: cpt
+    logical, intent(inout) :: apriori_is_forecast
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    if (allocated (cpt % p_surf)) then
+      apriori_is_forecast = Have_Forecast
+    else
+      apriori_is_forecast = .false.
+      call tell_error (tell_runtime_error, &
+                       'clim_query_apriori_source: clim_pres_type instance not initialized', &
+                       errstat)
+    endif
 
   end subroutine
 
