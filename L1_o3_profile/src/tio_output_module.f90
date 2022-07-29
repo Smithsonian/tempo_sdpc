@@ -16,7 +16,8 @@ module tio_output_module
        append_diagnostic_vars
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
        write_merged_geo, write_merged_data, copy_hdr_metadata, &
-       copy_l2_metadata, label_output_file, set_production_date_time
+       copy_l2_metadata, label_output_file, set_production_date_time, &
+       write_apriori_attr
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -2811,7 +2812,8 @@ contains
                      'geospatial_lat_max     ', &
                      'input_files            ', &
                      'local_granule_id       ', &
-                     'version_id             '/)
+                     'version_id             ', &
+                     'apriori_source         '/)
 
     if (errstat /= 0) return
 
@@ -2854,6 +2856,29 @@ contains
 
   end subroutine label_output_file
 
+  subroutine write_apriori_attr (errstat)
+    use OMSAO_variables_module, only: apriori_source
+    implicit none
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+    type (tiof_attlist_type) :: attlist
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+    call tiof_attlist_append (attlist, errstat, "apriori_source", &
+                              att_text=apriori_source)
+    call tiof_def_atts (obj, attlist, nf90_global, errstat)
+    call tiof_attlist_free (attlist)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, &
+                       "write_apriori_attr: failed", errstat)
+      return
+    endif
+
+  end subroutine write_apriori_attr
+
   subroutine set_production_date_time (errstat)
     implicit none
     integer, intent(inout) :: errstat
@@ -2881,8 +2906,8 @@ contains
     call tiof_attlist_free (attlist)
 
     if (errstat /= 0) then
-      call tell_error (tell_io_write_error, "md_write_prodid: failed", &
-           errstat)
+      call tell_error (tell_io_write_error, &
+                       "set_production_date_time: failed", errstat)
       return
     endif
 

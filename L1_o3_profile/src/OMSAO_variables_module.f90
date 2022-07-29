@@ -301,6 +301,8 @@ MODULE OMSAO_variables_module
   CHARACTER (LEN=6),  DIMENSION (n_max_fitpars)  :: fitvar_rad_str
   CHARACTER (LEN=15), DIMENSION (n_max_fitpars)  :: fitvar_rad_unit
 
+  character (len=32) :: apriori_source
+
   ! * spectrum input variables in ozone fitting process 
   REAL (KIND=dp),    DIMENSION (max_fit_pts)    :: & 
       fitspec_rad, &! I/F after removing non-ozone and albedo components

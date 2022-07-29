@@ -17,6 +17,7 @@ MODULE  m_get_met_tempo
   use tell_module
   USE met_module, only : synth_met_type, open_synth_met_data, read_synth_met_data
   USE m_ezspline_interpolation, ONLY: bspline
+  use OMSAO_variables_module, only: apriori_source
   use clim_module
   IMPLICIT NONE
   !===========================
@@ -48,6 +49,7 @@ MODULE  m_get_met_tempo
   real (kind=sp) :: hour_f
   logical, SAVE :: have_synthetic_met_data
   logical, SAVE :: first = .true.
+  logical :: have_forecast
   
   ! Initialize dataset
   IF (first) THEN 
@@ -81,6 +83,13 @@ MODULE  m_get_met_tempo
       if (errstat /= 0) THEN
         call tell_error (tell_runtime_error, "get_met_tempo: errors in clim_pres_init", errstat)
         return
+      endif
+
+      call clim_query_apriori_source (cpt, have_forecast, errstat)
+      if (have_forecast) then
+        apriori_source = 'GEOSCF:forecast'
+      else
+        apriori_source = 'GEOSCF:climatology'
       endif
 
       call clim_val_init (cst, cpt, 'T'//c_null_char, errstat)
