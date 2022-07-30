@@ -37,7 +37,7 @@ run_dir=$(pwd)
 parent_dir=$(dirname $run_dir)
 cd $work_dir
 
-l2_out_dir="$SDPC_RUN_DIR/L2/out"
+l2_out_dir="$SDPC_NODE_DIR/L2/out"
 l2_repro_dir="$SDPC_PIPE_DIR/repro/L2"
 etc_dir="$SDPC_PIPE_DIR/etc"
 

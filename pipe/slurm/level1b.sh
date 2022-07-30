@@ -43,10 +43,10 @@ log_message()
 test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
-# SDPC_RUN_DIR need not exist on this machine at this point.
+# SDPC_NODE_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used
 # in the processing directory path on the compute nodes.
-: "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set}"
+: "${SDPC_NODE_DIR:?SDPC_NODE_DIR not set}"
 
 # Parse the path to the post-INR radiance file
 rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")

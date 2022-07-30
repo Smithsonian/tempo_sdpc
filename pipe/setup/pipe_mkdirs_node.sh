@@ -36,7 +36,7 @@ assert_dir_absent()
    fi
 }
 
-#assert_dir_absent $SDPC_RUN_DIR
+#assert_dir_absent $SDPC_NODE_DIR
 assert_dir_exists $SDPC_REFDATA_DIR
 assert_dir_exists $SDPC_PIPE_DIR
 assert_dir_exists $SDPC_PIPE_DIR/inr
@@ -63,4 +63,4 @@ link_existing_dir()
 
 PIPE_NODE_DIRS="L0 L1 L2"
 
-mkdirlist $SDPC_RUN_DIR "$PIPE_NODE_DIRS"
+mkdirlist $SDPC_NODE_DIR "$PIPE_NODE_DIRS"

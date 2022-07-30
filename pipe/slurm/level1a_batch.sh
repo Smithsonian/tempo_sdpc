@@ -13,7 +13,7 @@
 #               dark_file_path
 #
 #    The following environment variables are assumed to be set:
-#          * SDPC_ROOT, SDPC_RUN_DIR, SDPC_ARCHIVE_DIR
+#          * SDPC_ROOT, SDPC_NODE_DIR, SDPC_ARCHIVE_DIR
 #
 # 2. Successful excecution yields the following cases:
 #    DRK:  run L0_ccd, archive the result
@@ -33,7 +33,7 @@ ulimit -s unlimited
 
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
-test -d $SDPC_RUN_DIR || exit 1
+test -d $SDPC_NODE_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
@@ -58,7 +58,7 @@ file_list_file="$2"
 etc_dir="$SDPC_PIPE_DIR/etc"
 
 l0_repro_dir="$SDPC_PIPE_DIR/repro/L0"
-l0_out_dir="$SDPC_RUN_DIR/L0/out"
+l0_out_dir="$SDPC_NODE_DIR/L0/out"
 
 inr_input_cache="$SDPC_PIPE_DIR/inr/Staging/Granules"
 

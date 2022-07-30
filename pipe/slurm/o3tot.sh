@@ -15,7 +15,7 @@ ulimit -s unlimited
 
 work_dir="O3TOT"
 
-l2_out_dir="$SDPC_RUN_DIR/L2/out"
+l2_out_dir="$SDPC_NODE_DIR/L2/out"
 l2_repro_dir="$SDPC_PIPE_DIR/repro/L2"
 
 run_dir=$(pwd)

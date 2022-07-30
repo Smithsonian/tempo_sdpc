@@ -11,4 +11,4 @@ fi
 export SDPC_LEVEL2_PRODUCTS=$(config_setting level2.products)
 export SDPC_O3PROF_MODE=$(config_setting level2.o3prof_mode)
 
-exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2.cfg" -- "${SDPC_RUN_DIR}/L2"
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2.cfg" -- "${SDPC_NODE_DIR}/L2"

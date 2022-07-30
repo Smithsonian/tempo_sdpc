@@ -19,4 +19,4 @@ if ! test -f "$dbfile_level1" ; then
 fi
 export SDPC_ARCHIVE_DBFILE_L1="$dbfile_level1"
 
-exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level1b.cfg" -- "${SDPC_RUN_DIR}/L1"
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level1b.cfg" -- "${SDPC_NODE_DIR}/L1"

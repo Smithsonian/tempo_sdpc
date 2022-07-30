@@ -45,10 +45,10 @@ log_message()
 test -r $granule_path || error_exit "$LINENO: cannot access granule: $granule_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
-# SDPC_RUN_DIR need not exist on this machine at this point.
+# SDPC_NODE_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used
 # in the processing directory path on the compute nodes.
-: "${SDPC_RUN_DIR:?SDPC_RUN_DIR not set}"
+: "${SDPC_NODE_DIR:?SDPC_NODE_DIR not set}"
 
 : "${SDPC_PIPE_ID:?SDPC_PIPE_ID not set}"
 
@@ -67,7 +67,7 @@ make_iru_only_file_for_inr()
    prep_inr_goes_source $tstart
 
    # run L1_inr_prep to generate the INR input file
-   export SDPC_RUN_DIR="$SDPC_PIPE_DIR"
+   export SDPC_NODE_DIR="$SDPC_PIPE_DIR"
    etc_dir="$SDPC_PIPE_DIR/etc"
 
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"

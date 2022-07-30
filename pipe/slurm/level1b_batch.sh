@@ -65,7 +65,7 @@ ulimit -s unlimited
 
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
-test -d $SDPC_RUN_DIR || exit 1
+test -d $SDPC_NODE_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
@@ -86,10 +86,10 @@ file_list_file="$2"
 #
 etc_dir="$SDPC_PIPE_DIR/etc"
 
-l1_out_dir="$SDPC_RUN_DIR/L1/out"
+l1_out_dir="$SDPC_NODE_DIR/L1/out"
 l1_repro_dir="$SDPC_PIPE_DIR/repro/L1"
 l2_incoming="$SDPC_PIPE_DIR/stage/granules/level2_input"
-l2_out_dir="$SDPC_RUN_DIR/L2/out"
+l2_out_dir="$SDPC_NODE_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
 rad_file_basename=$(basename "$rad_file" .nc)

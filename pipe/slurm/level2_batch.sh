@@ -21,7 +21,7 @@ trap 'catch $? $LINENO' EXIT
 
 # check that paths are valid
 test -d $SDPC_ROOT || exit 1
-test -d $SDPC_RUN_DIR || exit 1
+test -d $SDPC_NODE_DIR || exit 1
 test -d $SDPC_ARCHIVE_DIR || exit 1
 
 if test $# -ne 2 ; then
@@ -79,7 +79,7 @@ cd $tar_file_dir
 #          * the files named in pge_input_basenames.lis
 #
 #    The following environment variables are assumed to be set:
-#          * SDPC_ROOT, SDPC_RUN_DIR, SDPC_ARCHIVE_DIR
+#          * SDPC_ROOT, SDPC_NODE_DIR, SDPC_ARCHIVE_DIR
 #
 # 2. When execution is completed, one or more tar files will
 #    have been moved to the appropriate destination directories,
