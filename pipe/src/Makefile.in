@@ -8,8 +8,8 @@ include ../../Makefile.defines
 MODULES =# daemon-module.so
 SL_FILES = pipeutil.sl
 SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
-                     pipe_mkdirs_archive.sh pipe_mkdirs_master.sh \
-		     pipe_mkdirs_node.sh pipe_setup_master.sh \
+                     pipe_mkdirs_archive.sh pipe_mkdirs.sh \
+		     pipe_mkdirs_node.sh pipe_setup.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
 EXEC_FILES = config_setting
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \

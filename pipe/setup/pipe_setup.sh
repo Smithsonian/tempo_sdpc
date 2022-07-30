@@ -104,7 +104,7 @@ do
 done
 
 pipe_mkdirs_archive.sh
-pipe_mkdirs_master.sh
+pipe_mkdirs.sh
 
 inr_mkdirs.sh
 inr_config.sh
