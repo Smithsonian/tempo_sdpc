@@ -105,8 +105,7 @@ etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 product_dir=.
 spectra_dir=.
 cloud_dir=.
-refsec_dir="$SDPC_RUN_DIR/refdata/trace_gas/refsec"
-refdata_dir="$SDPC_RUN_DIR/refdata"
+refsec_dir="$SDPC_REFDATA_DIR/trace_gas/refsec"
 
 pcf_file="$product_dir/trace_gas.pcf"
 
@@ -152,7 +151,7 @@ fi
 # Edit the PCF file template:
 sed \
  -e s,@control_file@,$control_file,g \
- -e s,@refdata_dir@,$refdata_dir,g \
+ -e s,@refdata_dir@,$SDPC_REFDATA_DIR,g \
  -e s,@refsec_dir@,$refsec_dir,g \
  -e s,@spectra_dir@,$spectra_dir,g \
  -e s,@cloud_dir@,$cloud_dir,g \

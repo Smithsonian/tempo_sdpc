@@ -289,7 +289,7 @@ run_cloud_rr()
 
   product_dir=.
   spectra_dir=".."
-  refdata_dir="$SDPC_RUN_DIR/refdata/cloud"
+  refdata_dir="$SDPC_REFDATA_DIR/cloud"
 
   radiance_file="${rad_basename}.nc"
   irradiance_file="${irr_basename}.nc"
@@ -335,8 +335,7 @@ derive_o2o2_slant_column()
 
   product_dir="."
   spectra_dir=".."
-  refsec_dir="$SDPC_RUN_DIR/refdata/trace_gas/refsec"
-  refdata_dir="$SDPC_RUN_DIR/refdata"
+  refsec_dir="$SDPC_REFDATA_DIR/trace_gas/refsec"
 
   # FIXME! reference sector files are in $refsec_dir
   refsec_rad_file="OML1BRUG-o08544.nc"
@@ -369,7 +368,7 @@ derive_o2o2_slant_column()
   # Edit the PCF file template:
   sed \
    -e s,@control_file@,$control_file,g \
-   -e s,@refdata_dir@,$refdata_dir,g \
+   -e s,@refdata_dir@,"$SDPC_REFDATA_DIR",g \
    -e s,@refsec_dir@,$refsec_dir,g \
    -e s,@spectra_dir@,$spectra_dir,g \
    -e s,@product_dir@,$product_dir,g \
@@ -403,7 +402,7 @@ derive_cloud_o4_params()
    radiance_file="${rad_basename}.nc"
    irradiance_file="${irr_basename}.nc"
 
-   refdata_dir="$SDPC_RUN_DIR/refdata/cloud_o4"
+   refdata_dir="$SDPC_REFDATA_DIR/cloud_o4"
    template_ctrl="${etc_dir}/cloud_o4/control.txt.in"
    ctrl_file="cloud_o4_control.txt"
 

@@ -89,7 +89,7 @@ etc_dir="$SDPC_RUN_DIR_MASTER/etc"
 product_dir=.
 spectra_dir=.
 cloud_dir=.
-refdata_dir="$SDPC_RUN_DIR/refdata/o3_total"
+refdata_dir="$SDPC_REFDATA_DIR/o3_total"
 
 pcf_file="$product_dir/o3_total.pcf"
 

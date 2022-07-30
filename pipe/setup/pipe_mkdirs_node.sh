@@ -64,5 +64,3 @@ link_existing_dir()
 PIPE_NODE_DIRS="L0 L1 L2"
 
 mkdirlist $SDPC_RUN_DIR "$PIPE_NODE_DIRS"
-
-link_existing_dir $SDPC_REFDATA_DIR $SDPC_RUN_DIR/refdata
