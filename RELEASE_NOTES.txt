@@ -18,6 +18,9 @@ TEMPO_SDPC_v4.0.0   2022 ??? ??
    * Move pipeline control environment variables into etc/pipe_control.cfg
    * Update GLER database land files to avoid problematic albedo in
      shallow-ocean regions (pixels with land_fraction < 0.5)
+   * Change environment variable names:
+       SDPC_RUN_DIR_MASTER -> SDPC_PIPE_DIR
+              SDPC_RUN_DIR -> SDPC_NODE_DIR
 
 TEMPO_SDPC_v3.0.0   2022 Mar 01
 ===============================
