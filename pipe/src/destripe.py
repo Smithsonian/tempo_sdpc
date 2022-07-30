@@ -100,11 +100,11 @@ def apply_corrections (control, corrfile, input_files):
             print_message('saving correction(s) to file {}'.format(fp),error=True)
 
 def main():
-    run_dir_master = os.getenv ("SDPC_PIPE_DIR")
-    if run_dir_master is None:
+    pipe_dir = os.getenv ("SDPC_PIPE_DIR")
+    if pipe_dir is None:
         default_config = None
     else:
-        default_config = os.path.join (run_dir_master, "etc/destripe.yml")
+        default_config = os.path.join (pipe_dir, "etc/destripe.yml")
 
     parser = argparse.ArgumentParser(description='Destripe L2 products')
     parser.add_argument('--corrfile', default=None,

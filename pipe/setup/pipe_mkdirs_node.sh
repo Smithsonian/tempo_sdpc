@@ -8,10 +8,10 @@ if test $# -ne 2 ; then
    exit 0
 fi
 
-_run_dir_master=$1
+_pipe_dir=$1
 _root_dir=$2
 
-_pipe_name=$(basename $_run_dir_master)
+_pipe_name=$(basename $_pipe_dir)
 
 export SDPC_PIPE_NAME=$_pipe_name
 . $_root_dir/etc/sdpc_env.sh
