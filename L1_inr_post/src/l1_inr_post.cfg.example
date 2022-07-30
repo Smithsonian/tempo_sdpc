@@ -2,11 +2,11 @@ polcorr_tables: {
 
   # instrument linear polarization sensitivity:
   #
-  lps_lut = "$SDPC_RUN_DIR/refdata/polarization/lps_table.nc";
+  lps_lut = "$SDPC_REFDATA_DIR/polarization/lps_table.nc";
 
   # QU dependence on selected parameters:
   #
-  qu_lut = "$SDPC_RUN_DIR/refdata/polarization/Polarization_LUT_qu_SIqu_clima_reordered.nc";
+  qu_lut = "$SDPC_REFDATA_DIR/polarization/Polarization_LUT_qu_SIqu_clima_reordered.nc";
 
   # LUT SI "swav" wavelength grid index limits for retrievals
   waves_uv  = [ 1, 13];
@@ -54,54 +54,54 @@ parallax_correction: {
 elevation: {
   tile_layout = "grid",
   tiles_mean = [
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n090w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n120w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/10n150w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n060w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n090w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n120w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/30n150w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n030w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n060w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n090w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n120w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n150w_20101117_gmted_mea300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/mea/50n180w_20101117_gmted_mea300.tif"
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/10n090w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/10n120w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/10n150w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/30n060w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/30n090w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/30n120w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/30n150w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n030w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n060w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n090w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n120w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n150w_20101117_gmted_mea300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/mea/50n180w_20101117_gmted_mea300.tif"
           ];
   tiles_stddev = [
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n090w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n120w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/10n150w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n060w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n090w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n120w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/30n150w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n030w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n060w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n090w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n120w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n150w_20101117_gmted_std300.tif",
-           "$SDPC_RUN_DIR/refdata/elevation/gmted2010/std/50n180w_20101117_gmted_std300.tif"
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/10n090w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/10n120w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/10n150w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/30n060w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/30n090w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/30n120w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/30n150w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n030w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n060w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n090w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n120w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n150w_20101117_gmted_std300.tif",
+           "$SDPC_REFDATA_DIR/elevation/gmted2010/std/50n180w_20101117_gmted_std300.tif"
           ];
 };
 
 land_cover: {
   tile_layout = "latitude_bands",
   tiles_type1 = [
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_1.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_1.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_1.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_1.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_1.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_1.tif"
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_1.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_1.tif"
           ];
   tiles_typeQC = [
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
-           "$SDPC_RUN_DIR/refdata/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif"
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v2_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v3_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v4_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v5_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v6_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif",
+           "$SDPC_REFDATA_DIR/land_cover/modis/modis_v7_mosaic.Land_Cover_Type_QC.Num_QC_Words_01.tif"
           ];
 };
 
