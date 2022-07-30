@@ -3,9 +3,9 @@
 set -u
 set -e
 
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set}"
+: "${SDPC_PIPE_DIR:?SDPC_PIPE_DIR not set}"
 
-_source_root_dir="${SDPC_RUN_DIR_MASTER}/public_mirror"
+_source_root_dir="${SDPC_PIPE_DIR}/public_mirror"
 
 # Silently do nothing if the top-level source directory doesn't exist
 if ! test -d $_source_root_dir ; then

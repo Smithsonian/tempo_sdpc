@@ -16,7 +16,7 @@ INR_MOCK_FEED_CFG=$(realpath $1)
 # needs a logging config file:
 INR_CONFIG_SRCDIR="$SDPC_ROOT/etc/inr"
 MOCK_LOGGING_CONF_FILE="TempoMockLogging.conf"
-sed -e s,@INR_PROCESSING_ROOT@,$SDPC_RUN_DIR_MASTER/inr,g \
+sed -e s,@INR_PROCESSING_ROOT@,$SDPC_PIPE_DIR/inr,g \
        $INR_CONFIG_SRCDIR/${MOCK_LOGGING_CONF_FILE}.in > $MOCK_LOGGING_CONF_FILE
 
 _pgm="${SDPC_INRSW_ROOT}/bin/TempoMockPipeline"

@@ -55,12 +55,12 @@ file_list_file="$2"
 # Setup paths to scripts, config files
 # current directory, output directories
 #
-etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+etc_dir="$SDPC_PIPE_DIR/etc"
 
-l0_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L0"
+l0_repro_dir="$SDPC_PIPE_DIR/repro/L0"
 l0_out_dir="$SDPC_RUN_DIR/L0/out"
 
-inr_input_cache="$SDPC_RUN_DIR_MASTER/inr/Staging/Granules"
+inr_input_cache="$SDPC_PIPE_DIR/inr/Staging/Granules"
 
 # Make a working directory with a local copy of the granule file.
 work_dir=$(basename $granule_basename .nc)

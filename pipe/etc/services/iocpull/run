@@ -10,7 +10,7 @@ fi
 
 livestream_dir=$(config_setting ioc.livestream_dir)
 
-sdpc_dest_dir="$SDPC_RUN_DIR_MASTER/stage/level0/spool"
+sdpc_dest_dir="$SDPC_PIPE_DIR/stage/level0/spool"
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir
 fi

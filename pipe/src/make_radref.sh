@@ -31,7 +31,7 @@ trigger_level2()
   radref_basename="$1"
   rad_files="$2"
 
-  level2_input_dir="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input"
+  level2_input_dir="$SDPC_PIPE_DIR/stage/granules/level2_input"
   radref_wait_dir="$level2_input_dir/radref_pending"
   if ! test -d $radref_wait_dir ; then
      return

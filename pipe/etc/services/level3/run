@@ -8,4 +8,4 @@ then
   exit 1
 fi
 
-exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_RUN_DIR_MASTER}/etc/cachemon/level3.cfg"
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level3.cfg"

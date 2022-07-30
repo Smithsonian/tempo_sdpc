@@ -19,7 +19,7 @@ public_mirror_symlink()
 {
    src=$1
 
-   mirror_dir="$SDPC_RUN_DIR_MASTER/public_mirror"
+   mirror_dir="$SDPC_PIPE_DIR/public_mirror"
 
    # Do nothing when the mirror directory is absent
    if ! test -d $mirror_dir ; then

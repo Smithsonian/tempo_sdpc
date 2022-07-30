@@ -243,7 +243,7 @@ def make_l3_path (l2_path):
     return l3_path
 
 def write_pathlist (file_basename, pathlist):
-    pipe_dir = os.getenv ("SDPC_RUN_DIR_MASTER")
+    pipe_dir = os.getenv ("SDPC_PIPE_DIR")
     target_dir = os.path.join (pipe_dir, "stage/scans")
     os.makedirs (target_dir, exist_ok=True)
     # Ensure that the output file appears atomicly

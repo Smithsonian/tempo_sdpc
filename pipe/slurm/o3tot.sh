@@ -16,7 +16,7 @@ ulimit -s unlimited
 work_dir="O3TOT"
 
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
-l2_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L2"
+l2_repro_dir="$SDPC_PIPE_DIR/repro/L2"
 
 run_dir=$(pwd)
 parent_dir=$(dirname $run_dir)
@@ -84,7 +84,7 @@ trap finish EXIT ERR
 
 out_basename=$(printf "$lev2_base_fmt" O3TOT)
 
-etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+etc_dir="$SDPC_PIPE_DIR/etc"
 
 product_dir=.
 spectra_dir=.

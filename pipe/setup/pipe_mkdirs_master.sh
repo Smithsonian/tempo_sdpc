@@ -3,14 +3,14 @@
 set -u
 set -e
 
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set, run this with sdpcrun.sh}"
+: "${SDPC_PIPE_DIR:?SDPC_PIPE_DIR not set, run this with sdpcrun.sh}"
 
-if test -e $SDPC_RUN_DIR_MASTER ; then
-   echo "File exists: $SDPC_RUN_DIR_MASTER"
+if test -e $SDPC_PIPE_DIR ; then
+   echo "File exists: $SDPC_PIPE_DIR"
    exit 1
 fi
 
-printf "Creating pipeline directory: $SDPC_RUN_DIR_MASTER\n"
+printf "Creating pipeline directory: $SDPC_PIPE_DIR\n"
 
 mkdirlist()
 {
@@ -33,4 +33,4 @@ PIPE_DIRS="stage/level0/ccd \
            repro/L0 repro/L1 repro/L2 \
 	   log"
 
-mkdirlist $SDPC_RUN_DIR_MASTER "$PIPE_DIRS"
+mkdirlist $SDPC_PIPE_DIR "$PIPE_DIRS"

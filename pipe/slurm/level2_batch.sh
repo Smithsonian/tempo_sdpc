@@ -36,7 +36,7 @@ test -r $tar_file_notice || exit 1
 
 # Setup paths to scripts, config files
 #
-etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+etc_dir="$SDPC_PIPE_DIR/etc"
 
 radref_file=""
 destripe_file=""
@@ -124,7 +124,7 @@ for prod in $product_list ; do
 done
 remove_redundant_files
 
-slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
+slurm_logdir="$SDPC_PIPE_DIR/log/level2/slurm"
 
 # Run a background process for each product.
 # Each product script runs the product code via srun so that slurm

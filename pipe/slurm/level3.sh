@@ -3,7 +3,7 @@
 # 0. This script is run by cachemon, upon completion of all level 2
 #    data products of a particular type from a single scan.
 #    The script is triggered by the appearance of a file in
-#      $SDPC_RUN_DIR_MASTER/stage/scans
+#      $SDPC_PIPE_DIR/stage/scans
 #    The argument passed to the script is the path to this file.
 
 #set -e
@@ -45,7 +45,7 @@ public_mirror_symlink()
 {
    src_paths=$1
 
-   mirror_dir="$SDPC_RUN_DIR_MASTER/public_mirror"
+   mirror_dir="$SDPC_PIPE_DIR/public_mirror"
 
    # Do nothing when the mirror directory is absent
    if ! test -d $mirror_dir ; then
@@ -80,7 +80,7 @@ no2_l2_split()
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    logdir=$(dirname $first_granule)
    log_message "strat/trop separation: $(basename $first_granule .nc) scan"
-   L2_split -v -c $SDPC_RUN_DIR_MASTER/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
+   L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
    # Change asdc_status of NO2_L2 products from 'defer' to 'new'
    tmpfile=$(mktemp)
@@ -140,9 +140,9 @@ for f in $l2_paths ; do
 done
 
 if test x"$product_name" = x"O3PROF_L2" ; then
-   l2_regrid_cfg="${SDPC_RUN_DIR_MASTER}/etc/l3_o3p.cfg"
+   l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
 else
-   l2_regrid_cfg="${SDPC_RUN_DIR_MASTER}/etc/l3.cfg"
+   l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"
 fi
 
 log_message "generating L3 product: $l3_basename"

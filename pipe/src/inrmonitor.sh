@@ -8,7 +8,7 @@ fi
 top=$(dirname $0)/..
 . $top/etc/sdpc_env.sh
 
-inr_run_dir="$SDPC_RUN_DIR_MASTER/inr"
+inr_run_dir="$SDPC_PIPE_DIR/inr"
 
 export JAVA_HOME="$SDPC_OTS_ROOT/jdk1.8.0_91"
 export PATH="$JAVA_HOME/bin:$PATH"

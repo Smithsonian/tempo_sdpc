@@ -100,7 +100,7 @@ def apply_corrections (control, corrfile, input_files):
             print_message('saving correction(s) to file {}'.format(fp),error=True)
 
 def main():
-    run_dir_master = os.getenv ("SDPC_RUN_DIR_MASTER")
+    run_dir_master = os.getenv ("SDPC_PIPE_DIR")
     if run_dir_master is None:
         default_config = None
     else:

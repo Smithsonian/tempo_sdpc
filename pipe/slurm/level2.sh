@@ -144,7 +144,7 @@ if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
          tar_host_file_path_wait="${tar_host_file_path}_radref"
          ssh $tar_host ln $tar_host_file_path $tar_host_file_path_wait
          # Create a new tar notice file that refers to the new hardlink we just created.
-         radref_wait_dir="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input/radref_pending"
+         radref_wait_dir="$SDPC_PIPE_DIR/stage/granules/level2_input/radref_pending"
          mkdir -p $radref_wait_dir
          basename_sans_extname="$(basename $tar_file_notice .tar | sed -e s/^.//)"
          # change the notice file basename to avoid filename conflicts
@@ -181,7 +181,7 @@ esac
 
 if test x"$have_o3p" != x ; then
   # load o3prof config parameters
-  . $SDPC_RUN_DIR_MASTER/etc/o3prof_config.sh
+  . $SDPC_PIPE_DIR/etc/o3prof_config.sh
   # generate a product only if this scene is selected
   have_o3p=$(o3p_select.sl --list $o3p_scan_select $SDPC_GRANULE_LABEL)
   if test x"$have_o3p" != x ; then
@@ -221,7 +221,7 @@ fi
 # first, to give them a better chance of running "soon" (e.g. when all
 # cluster nodes are busy).
 
-slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level2/slurm"
+slurm_logdir="$SDPC_PIPE_DIR/log/level2/slurm"
 
 if test x"$product_list_sans_o3p" != x ; then
   num_products=$(echo "$product_list_sans_o3p" | wc -w)

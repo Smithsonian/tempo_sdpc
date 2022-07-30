@@ -67,8 +67,8 @@ make_iru_only_file_for_inr()
    prep_inr_goes_source $tstart
 
    # run L1_inr_prep to generate the INR input file
-   export SDPC_RUN_DIR="$SDPC_RUN_DIR_MASTER"
-   etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+   export SDPC_RUN_DIR="$SDPC_PIPE_DIR"
+   etc_dir="$SDPC_PIPE_DIR/etc"
 
    echo "run L1_inr_prep: (tbeg,tend)=($tbeg,$tend): $time_interval_file"
 
@@ -132,7 +132,7 @@ prep_inr_goes_source()
    if ! test -d "$goes_srcdir" ; then
       echo "WARNING: INR reference GOES imagery not found: $goes_srcdir"
    fi
-   target_dir="$SDPC_RUN_DIR_MASTER/inr/Staging"
+   target_dir="$SDPC_PIPE_DIR/inr/Staging"
 
    set_dirpath_symlink $goes_srcdir/east_cmi $target_dir/Right
    set_dirpath_symlink $goes_srcdir/west_cmi $target_dir/Left
@@ -201,7 +201,7 @@ export SDPC_GRANULE_LABEL="$granule_basename"
 log_message "submitting sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
 # Singleton dependency requires a job-name unique to this pipeline.
-slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1a/slurm"
+slurm_logdir="$SDPC_PIPE_DIR/log/level1a/slurm"
 jid=$(sbatch --wait --dependency=singleton --parsable \
        --ntasks=$ntasks \
        --job-name="L0:serial:${SDPC_PIPE_ID}" \

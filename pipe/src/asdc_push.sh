@@ -45,7 +45,7 @@ do_asdc_upload()
   pdr_list="pdrfiles.lis"
   script="lftp.script"
 
-  exclude_list="$SDPC_RUN_DIR_MASTER/etc/asdc_exclude.csv"
+  exclude_list="$SDPC_PIPE_DIR/etc/asdc_exclude.csv"
 
   # make list of new data product files
   asdc_track_uploads.py --limit $SDPC_ASDC_LIMIT --list new > $file_list

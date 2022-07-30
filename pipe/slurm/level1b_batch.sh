@@ -84,11 +84,11 @@ file_list_file="$2"
 # Setup paths to scripts, config files
 # current directory, output directories
 #
-etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+etc_dir="$SDPC_PIPE_DIR/etc"
 
 l1_out_dir="$SDPC_RUN_DIR/L1/out"
-l1_repro_dir="$SDPC_RUN_DIR_MASTER/repro/L1"
-l2_incoming="$SDPC_RUN_DIR_MASTER/stage/granules/level2_input"
+l1_repro_dir="$SDPC_PIPE_DIR/repro/L1"
+l2_incoming="$SDPC_PIPE_DIR/stage/granules/level2_input"
 l2_out_dir="$SDPC_RUN_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
@@ -201,7 +201,7 @@ tar_l1_radiance_to_dest()
    # Now that the final L1b radiance file has been archived, we can
    # delete the L1a radiance file that was provided as input to INR,
    # along with any earlier telemetry-only radiance files.
-   inr_input_cache="$SDPC_RUN_DIR_MASTER/inr/Staging/Granules"
+   inr_input_cache="$SDPC_PIPE_DIR/inr/Staging/Granules"
    level1a_granule_path="${inr_input_cache}/${rad_basename}.nc"
    if test -f "$level1a_granule_path" ; then
       radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
@@ -209,7 +209,7 @@ tar_l1_radiance_to_dest()
    fi
 
    # Move INR performance reports to the archive:
-   inr_report="$SDPC_RUN_DIR_MASTER/inr/Output/${rad_basename}.PerformanceReport.nc"
+   inr_report="$SDPC_PIPE_DIR/inr/Output/${rad_basename}.PerformanceReport.nc"
    if test -f "$inr_report" ; then
       scan_dir=$(dirname $SDPC_ARCHIVE_DIR/L1/$granule_subdir)
       inr_dir=$(dirname $scan_dir)/inr

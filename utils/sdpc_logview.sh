@@ -17,7 +17,7 @@ exit_usage()
    echo "Usage: $(basename $0) [options] [service [service] ...]"
    echo "   Options:"
    echo "   --help     Print this listing"
-   echo "   --dir      Primary node pipeline directory [default=\$SDPC_RUN_DIR_MASTER]"
+   echo "   --dir      Primary node pipeline directory [default=\$SDPC_PIPE_DIR]"
    echo "   --ioc      Show IOC interface services"
    echo "   --sci      Show science processing services"
    echo "   --menu     Display service menu"
@@ -70,8 +70,8 @@ main()
 {
   default_logdirs
 
-  if ! test -z "$SDPC_RUN_DIR_MASTER" ; then
-     root="$SDPC_RUN_DIR_MASTER"
+  if ! test -z "$SDPC_PIPE_DIR" ; then
+     root="$SDPC_PIPE_DIR"
   fi
 
   # Process optional args

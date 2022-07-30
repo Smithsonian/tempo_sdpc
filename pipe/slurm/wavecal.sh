@@ -20,7 +20,7 @@ wrap_wavecal()
 
    result_file="${result_dir}/${bn}_wavecal_${band_name}_${block_spec}.nc"
 
-   etc_dir="$SDPC_RUN_DIR_MASTER/etc"
+   etc_dir="$SDPC_PIPE_DIR/etc"
 
    case "$bn" in
     *RAD* )

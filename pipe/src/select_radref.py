@@ -89,9 +89,9 @@ def config_file_defaults (filename):
         eprint ("*** Error: SDPC_ROOT is not set")
         sys.exit(1)
 
-    pipe_root = os.getenv ("SDPC_RUN_DIR_MASTER")
+    pipe_root = os.getenv ("SDPC_PIPE_DIR")
     if pipe_root == None:
-        eprint ("*** Error: SDPC_RUN_DIR_MASTER is not set")
+        eprint ("*** Error: SDPC_PIPE_DIR is not set")
         sys.exit(1)
 
     search_dirs = [pipe_root, install_root]

@@ -5,7 +5,7 @@ set -e
 
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set -- source sdpc_env.sh}"
 : "${SDPC_ROOT:?SDPC_ROOT not set -- source sdpc_env.sh}"
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set -- source sdpc_env.sh}"
+: "${SDPC_PIPE_DIR:?SDPC_PIPE_DIR not set -- source sdpc_env.sh}"
 
 if test $# -ne 1 ; then
    echo "Usage:  $0  <slurm-partition-name>"
@@ -19,5 +19,5 @@ _node_list=$(sinfo -p "$part_name" -h -N -o %n)
 
 for node in $_node_list; do
   printf "Creating pipeline node directory: $node:$SDPC_RUN_DIR\n"
-  ssh $node $SDPC_ROOT/bin/pipe_mkdirs_node.sh $SDPC_RUN_DIR_MASTER $SDPC_ROOT
+  ssh $node $SDPC_ROOT/bin/pipe_mkdirs_node.sh $SDPC_PIPE_DIR $SDPC_ROOT
 done

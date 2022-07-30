@@ -4,7 +4,7 @@ set -u
 set -e
 
 if test $# -ne 2 ; then
-   echo "Usage:  $0  SDPC_RUN_DIR_MASTER SDPC_ROOT"
+   echo "Usage:  $0  SDPC_PIPE_DIR SDPC_ROOT"
    exit 0
 fi
 
@@ -38,8 +38,8 @@ assert_dir_absent()
 
 #assert_dir_absent $SDPC_RUN_DIR
 assert_dir_exists $SDPC_REFDATA_DIR
-assert_dir_exists $SDPC_RUN_DIR_MASTER
-assert_dir_exists $SDPC_RUN_DIR_MASTER/inr
+assert_dir_exists $SDPC_PIPE_DIR
+assert_dir_exists $SDPC_PIPE_DIR/inr
 
 mkdirlist()
 {

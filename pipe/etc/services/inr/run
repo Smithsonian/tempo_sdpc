@@ -8,7 +8,7 @@ then
   exit 1
 fi
 
-cd $SDPC_RUN_DIR_MASTER/inr
+cd $SDPC_PIPE_DIR/inr
 
 pgm="PipelineInterface"
 exec ${SDPC_INRSW_ROOT}/bin/$pgm config/TempoPipelineInterfaceSAO.conf

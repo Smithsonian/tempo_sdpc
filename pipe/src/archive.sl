@@ -127,7 +127,7 @@ define fix_met_file_format (path)
 define make_public_mirror_symlink (oldpath)
 {
    % If the mirror directory does not exist, do nothing.
-   variable mirror_dir = "$SDPC_RUN_DIR_MASTER/public_mirror"$;
+   variable mirror_dir = "$SDPC_PIPE_DIR/public_mirror"$;
    if (NULL == stat_file (mirror_dir))
      return;
 

@@ -131,7 +131,7 @@ do_daily()
   backup_archive_dbfile "$SDPC_ARCHIVE_DIR/backup"
 
   # delete INR GUI directory files
-  gui_dir="$SDPC_RUN_DIR_MASTER/stage/granules/inr_output/GUI"
+  gui_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/GUI"
   if test -d $gui_dir ; then
      expire_dir_files $mmin_arg $gui_dir
   fi
@@ -139,7 +139,7 @@ do_daily()
   # delete EMPTY slurm batch log files
   slurm_log_dirs=("level1a" "level1b" "level2")
   for d in ${slurm_log_dirs[@]}; do
-      expire_dir_files $mmin_arg "$SDPC_RUN_DIR_MASTER/log/$d/slurm" "-size 0"
+      expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/log/$d/slurm" "-size 0"
   done
 
   # pack old daily ASDC push/pull history into tar files
@@ -153,7 +153,7 @@ do_weekly()
 {
   trace_message weekly
   mmin_arg="+10080"
-  expire_dir_files $mmin_arg "$SDPC_RUN_DIR_MASTER/inr/scantailoring"
+  expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/inr/scantailoring"
 }
 
 Sleep_Pid=0

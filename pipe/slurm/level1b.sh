@@ -66,7 +66,7 @@ snow_file=${snow_file}
 EOF
 
 # Run the post-INR pipeline to prepare for L2 product generation:
-slurm_logdir="$SDPC_RUN_DIR_MASTER/log/level1b/slurm"
+slurm_logdir="$SDPC_PIPE_DIR/log/level1b/slurm"
 jid=$(sbatch --job-name="L1b" --parsable \
        --comment=$SDPC_GRANULE_LABEL \
        --chdir $l1_run_dir \

@@ -1,6 +1,6 @@
 #! /bin/sh
 
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set, run this with sdpcrun.sh}"
+: "${SDPC_PIPE_DIR:?SDPC_PIPE_DIR not set, run this with sdpcrun.sh}"
 
 set -u
 set -e
@@ -15,7 +15,7 @@ assert_dir_exists()
    fi
 }
 
-inr_run_dir="$SDPC_RUN_DIR_MASTER/inr"
+inr_run_dir="$SDPC_PIPE_DIR/inr"
 
 INR_CONFIG_SRCDIR="$SDPC_ROOT/etc/inr"
 assert_dir_exists $INR_CONFIG_SRCDIR

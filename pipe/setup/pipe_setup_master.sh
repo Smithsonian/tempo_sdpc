@@ -5,7 +5,7 @@ set -e
 
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set -- source sdpc_env.sh}"
 : "${SDPC_ROOT:?SDPC_ROOT not set -- source sdpc_env.sh}"
-: "${SDPC_RUN_DIR_MASTER:?SDPC_RUN_DIR_MASTER not set -- source sdpc_env.sh}"
+: "${SDPC_PIPE_DIR:?SDPC_PIPE_DIR not set -- source sdpc_env.sh}"
 
 exit_usage()
 {
@@ -57,7 +57,7 @@ service_default_up()
       return
    fi
    for srv in $list ; do
-       /bin/rm -f $SDPC_RUN_DIR_MASTER/services/$srv/down
+       /bin/rm -f $SDPC_PIPE_DIR/services/$srv/down
    done
    echo "Services up: $list"
 }
@@ -69,7 +69,7 @@ service_default_down()
       return
    fi
    for srv in $list ; do
-       touch $SDPC_RUN_DIR_MASTER/services/$srv/down
+       touch $SDPC_PIPE_DIR/services/$srv/down
    done
    echo "Services down: $list"
 }
@@ -109,8 +109,8 @@ pipe_mkdirs_master.sh
 inr_mkdirs.sh
 inr_config.sh
 
-/bin/cp -r $SDPC_ROOT/etc $SDPC_RUN_DIR_MASTER
-/bin/mv $SDPC_RUN_DIR_MASTER/etc/services $SDPC_RUN_DIR_MASTER
+/bin/cp -r $SDPC_ROOT/etc $SDPC_PIPE_DIR
+/bin/mv $SDPC_PIPE_DIR/etc/services $SDPC_PIPE_DIR
 
 service_default_up "$list_up"
 service_default_down "$list_down"

@@ -115,7 +115,7 @@ int main(int argc, char **argv)
      {
         char *config_default_paths[] =
           {
-             "$SDPC_RUN_DIR_MASTER/etc/" DEFAULT_CONFIG_FILENAME,
+             "$SDPC_PIPE_DIR/etc/" DEFAULT_CONFIG_FILENAME,
              "$SDPC_ROOT/etc/" DEFAULT_CONFIG_FILENAME,
              NULL
           };

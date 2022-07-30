@@ -18,7 +18,7 @@ run_l0_format()
 {
    cachedir_list="$1"
 
-   logdir="$SDPC_RUN_DIR_MASTER/log/level0"
+   logdir="$SDPC_PIPE_DIR/log/level0"
    if ! test -d $logdir ; then
       echo "*** Error: cannot access log directory: $logdir"
       return
@@ -29,7 +29,7 @@ run_l0_format()
              --cache @${cachedir_list} \
              --Version "$SDPC_PROCESSING_VERSION" \
              --logdir "$logdir" \
-             "$SDPC_RUN_DIR_MASTER/etc/l0_format.cfg" > "$logdir/l0_format.$$.log" 2>&1
+             "$SDPC_PIPE_DIR/etc/l0_format.cfg" > "$logdir/l0_format.$$.log" 2>&1
 }
 
 main()

@@ -10,7 +10,7 @@ fi
 
 exec L0_format --register \
                --Version "$SDPC_PROCESSING_VERSION" \
-               --logdir "${SDPC_RUN_DIR_MASTER}/log/level0" \
-               --mirror "${SDPC_RUN_DIR_MASTER}/public_mirror" \
+               --logdir "${SDPC_PIPE_DIR}/log/level0" \
+               --mirror "${SDPC_PIPE_DIR}/public_mirror" \
                --archive "$SDPC_ARCHIVE_DIR" \
-               "${SDPC_RUN_DIR_MASTER}/etc/l0_format.cfg"
+               "${SDPC_PIPE_DIR}/etc/l0_format.cfg"

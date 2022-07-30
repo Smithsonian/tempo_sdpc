@@ -58,8 +58,8 @@ export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products
 # pipe_home = default location for primary node run directories
 pipe_home="@PIPE_HOME@"
 
-# SDPC_RUN_DIR_MASTER = root directory where pipeline processing takes place on the master node
-export SDPC_RUN_DIR_MASTER="${pipe_home}/${USER}/${SDPC_PIPE_NAME}"
+# SDPC_PIPE_DIR = root directory where pipeline processing takes place on the master node
+export SDPC_PIPE_DIR="${pipe_home}/${USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_RUN_DIR = root directory where pipeline processing takes place on compute nodes
 export SDPC_RUN_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"

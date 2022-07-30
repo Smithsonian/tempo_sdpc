@@ -121,10 +121,10 @@ main ()
      exit_usage 0
    fi
 
-   if test -z "$SDPC_RUN_DIR_MASTER" ; then
+   if test -z "$SDPC_PIPE_DIR" ; then
       _scan_dir=""
    else
-      _scan_dir="$SDPC_RUN_DIR_MASTER/services"
+      _scan_dir="$SDPC_PIPE_DIR/services"
    fi
 
    # Process optional args
@@ -154,7 +154,7 @@ main ()
    done
 
   if test x"$_scan_dir" = x ; then
-    echo "SDPC_RUN_DIR_MASTER env var is undefined. Consider using the --dir option."
+    echo "SDPC_PIPE_DIR env var is undefined. Consider using the --dir option."
     exit 1
   fi
 
