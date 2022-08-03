@@ -943,7 +943,7 @@ Name_Type;
 static int write_vertical_column_attributes (int grp, double fill_value, const char *units,
                                              const Name_Type *vcol)
 {
-   const char coordinate_string[] = "longitude latitude";
+   const char coordinate_string[] = "time longitude latitude";
 
    if (0 != TIO_def_var_fill (grp, vcol->varid, 0, &fill_value))
      return -1;
