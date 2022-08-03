@@ -327,7 +327,7 @@ contains
     integer, intent(inout) :: errstat
     !local variables
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_geo, att_latbnd, att_lonbnd
+    type (tiof_attlist_type) :: att_geo, att_latbnd, att_lonbnd, att_time
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
     integer, parameter :: deflate_level = 1
@@ -353,24 +353,29 @@ contains
     call tiof_mktimestamp_str (0.0_r8, epoch_buf, errstat)
 
     ! Geolocation Fields with optional attribute lists
+    call tiof_attlist_append (att_time, errstat, "calendar", &
+                              att_text = "gregorian")
     call tiof_attlist_append (att_geo, errstat, "coordinates", &
-                              att_text = "longitude latitude")
+                              att_text = "time longitude latitude")
     call tiof_varlist_append (varlist, errstat, &
                               "time", &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
+                              standard_name = "time", &
                               long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
                               valid_range = [0.0_r8, 1.0e30_r8], &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              fillvalue = fill_double)
+                              fillvalue = fill_double, &
+                              attlist=att_time)
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = "latitude_bounds")
     call tiof_varlist_append (varlist, errstat, &
                               "latitude", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "latitude", &
                               long_name = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
@@ -384,6 +389,7 @@ contains
                               "longitude", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "longitude", &
                               long_name= "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
@@ -397,7 +403,7 @@ contains
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner latitude", &
                               comment = "latitude at pixel corners (SW,SE,NE,NW)", &
-                              units = "degrees_north", &
+                              !units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -406,7 +412,7 @@ contains
                               "longitude_bounds", &
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
-                              long_name = "pixel corner longitude", &
+                              !long_name = "pixel corner longitude", &
                               comment = "longitude at pixel corners (SW,SE,NE,NW)", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
@@ -488,6 +494,7 @@ contains
     call tiof_attlist_free (att_geo)
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
+    call tiof_attlist_free (att_time)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_geo_struct: failed", &
@@ -673,7 +680,7 @@ contains
 
     ! Product Fields with optional attributes
     call tiof_attlist_append (att_product, errstat, "coordinates", &
-                              att_text = "longitude latitude")
+                              att_text = "time longitude latitude")
 
     call tiof_varlist_append (varlist, errstat, &
                               "cloud_pressure", &
@@ -724,7 +731,7 @@ contains
                               attlist=att_product)
 
      call tiof_attlist_append (pqf_attrs, errstat, "coordinates", &
-                               att_text = "longitude latitude")
+                               att_text = "time longitude latitude")
      !refer to m_cal_ocp for confirmation of (16) flag meanings
      call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
                                att_text = "error_geoloc_or_angles "// &
@@ -854,7 +861,7 @@ contains
 
     ! Product Fields with optional attributes
     call tiof_attlist_append (att_support, errstat, "coordinates", &
-                              att_text = "longitude latitude")
+                              att_text = "time longitude latitude")
 
      name466 = 'GLER466'
      name440 = 'GLER440'
