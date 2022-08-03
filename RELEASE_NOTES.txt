@@ -21,6 +21,7 @@ TEMPO_SDPC_v4.0.0   2022 ??? ??
    * Change environment variable names:
        SDPC_RUN_DIR_MASTER -> SDPC_PIPE_DIR
               SDPC_RUN_DIR -> SDPC_NODE_DIR
+   * Implement ASDC recommendations to improve CF metadata compliance
 
 TEMPO_SDPC_v3.0.0   2022 Mar 01
 ===============================
