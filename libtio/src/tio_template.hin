@@ -239,6 +239,8 @@ extern int TIO_attach_granule_ident (int ncid, TIO_Scan_Ident_Type *lst);
  */
 extern int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst);
 
+extern int tio_scan_start_time (TIO_Scan_Ident_Type *lst, double *tstart);
+
 /** Create UTC timestamp string based on the TEMPO epoch
  * @param sec_since_epoch    TAI number of elapsed seconds since the epoch.
  * @param delim              If 0, format time as HHMMSS, otherwise, as HH:MM:SS

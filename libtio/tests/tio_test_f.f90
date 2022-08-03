@@ -246,6 +246,7 @@ program tio_test
                             contiguous=.false., chunksizes=[1,dim1_size], &
                             comment = "This is fv", &
                             long_name = "ffffvvvv", &
+                            standard_name = "standard fv", &
                             units = "fv-units", valid_range = [-10.0_8, 10.0_8], &
                             attlist = fv_attlist)
   call tiof_varlist_append (varlist, errstat, "iv_i2", nf90_short, &

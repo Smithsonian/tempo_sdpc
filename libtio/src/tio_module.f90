@@ -96,6 +96,7 @@ module tio_module
     character (len=tiof_max_att_len) :: comment  !< attribute: comment
     character (len=tiof_max_att_len) :: units    !< attribute: units
     character (len=tiof_max_att_len) :: long_name    !< attribute: long_name
+    character (len=tiof_max_att_len) :: standard_name    !< attribute: standard_name
     real (kind=r8) :: valid_min, valid_max  !< attribute: valid_min, valid_max
     integer :: deflate_level = 0   !< attribute: compression deflate level
     logical :: shuffle = .false.   !< attribute: compress with shuffle?
@@ -105,6 +106,7 @@ module tio_module
     real (kind=r8) :: fillvalue     !< attribute: fill value
     logical, private :: &
       have_long_name=.false., &
+      have_standard_name=.false., &
       have_comment=.false., &
       have_units=.false., &
       have_valid_min=.false., &
@@ -1277,6 +1279,7 @@ contains
   !!                       the provided chunk sizes.
   !! @param[in] comment  (optional) Comment text.
   !! @param[in] long_name  (optional) Long name text.
+  !! @param[in] standard_name  (optional) Standard name text.
   !! @param[in] units  (optional) Physical units of the variable.
   !! @param[in] valid_range (optional) minimum and maximum valid values
   !! @param[in] valid_min (optional) minimum valid value
@@ -1288,7 +1291,7 @@ contains
   !! @see tiof_def_vars, tiof_varlist_free, tiof_varlist_lookup
   subroutine tiof_varlist_append (list, errstat, var_name, xtype, dimids, &
                                   shuffle, deflate_level, contiguous, chunksizes, &
-                                  comment, long_name, units, &
+                                  comment, long_name, standard_name, units, &
                                   valid_range, valid_min, valid_max, &
                                   no_fill, fillvalue, &
                                   attlist)
@@ -1301,7 +1304,8 @@ contains
     integer, optional, intent(in) :: deflate_level
     logical, optional, intent(in) :: contiguous, shuffle
     integer, optional, dimension(:), intent(in) :: chunksizes
-    character (len=*), optional, intent(in) :: comment, long_name, units
+    character (len=*), optional, intent(in) :: comment, long_name, &
+      standard_name, units
     real (kind=r8), optional, dimension(2), intent(in) :: valid_range
     real (kind=r8), optional, intent(in) :: valid_min, valid_max
     integer, optional, intent(in) :: no_fill
@@ -1359,6 +1363,11 @@ contains
     if (present(long_name)) then
       item % have_long_name = .true.
       item % long_name = adjustl(long_name)
+    endif
+
+    if (present(standard_name)) then
+      item % have_standard_name = .true.
+      item % standard_name = adjustl(standard_name)
     endif
 
     if (present(units)) then
@@ -1578,6 +1587,15 @@ contains
                          trim(nf90_strerror(status))//") ", &
                          errstat)
         return
+      endif
+
+      if (item % have_standard_name) then
+        status = nf90_put_att (obj % groupid, item % varid, "standard_name", item % standard_name)
+        if (status /= nf90_noerr) then
+          errstat = tell_io_error
+          call tell_set_error (errstat)
+          return
+        endif
       endif
 
       if (item % have_long_name) then

@@ -65,7 +65,9 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type time_attrs[] =
           {
+             {"standard_name", "time"},
              {"long_name", "exposure start time"},
+             {"calendar", "gregorian"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;

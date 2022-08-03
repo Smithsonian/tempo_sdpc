@@ -828,6 +828,30 @@ int TIO_write_timestamp (int ncid, int varid, const char *attr_name,
    return 0;
 }
 
+int tio_scan_start_time (TIO_Scan_Ident_Type *lst, double *tstart)
+{
+   _pTIO_Granule_Ident_Type *beg=NULL, *gid;
+   double t_beg;
+
+   if (lst == NULL)
+     return -1;
+
+   beg = lst->granule_ident;
+   t_beg = beg->tstart;
+
+   for (gid = lst->granule_ident; gid != NULL; gid = gid->next)
+     {
+        if (gid->tstart < t_beg)
+          {
+             t_beg = gid->tstart;
+          }
+     }
+
+   *tstart = t_beg;
+
+   return 0;
+}
+
 int TIO_write_scan_ident (int ncid, TIO_Scan_Ident_Type *lst)
 {
    _pTIO_Granule_Ident_Type *beg=NULL, *end=NULL, *gid;

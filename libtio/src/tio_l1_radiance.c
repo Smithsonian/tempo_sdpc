@@ -131,7 +131,9 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
      {
         static _pText_Attr_Type time_attrs[] =
           {
+             {"standard_name", "time"},
              {"long_name", "exposure start time"},
+             {"calendar", "gregorian"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -415,7 +417,7 @@ static int emit_var_ground_pixel_quality_flag (int grp, const int *dims, int num
    static _pText_Attr_Type gpqf_attrs[] =
      {
         {"long_name", "ground pixel quality flag"},
-        {"coordinates", "longitude latitude"},
+        {"coordinates", "time longitude latitude"},
         _pTEXT_ATTRS_END
      };
    int status, varid, num_values, len;
@@ -689,7 +691,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type radiance_attrs[] =
           {
              {"units", _pTIO_RADIANCE_UNITS},
-             {"coordinates", "longitude latitude spectral_channel"},
+             {"coordinates", "time longitude latitude spectral_channel"},
              {"ancillary_variables", "radiance_error radiance_status_flag"},
              _pTEXT_ATTRS_END
           };
@@ -728,7 +730,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type radiance_error_attrs[] =
           {
              {"units", _pTIO_RADIANCE_UNITS},
-             {"coordinates", "longitude latitude spectral_channel"},
+             {"coordinates", "time longitude latitude spectral_channel"},
              {"long_name", "radiance error"},
              _pTEXT_ATTRS_END
           };
@@ -802,6 +804,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type lon_text_attrs[] =
           {
              {"units", "degrees_east"},
+             {"standard_name", "longitude"},
              {"long_name", TEMPO_VAR_LONGITUDE},
              {"comment", "longitude at pixel center"},
              {"bounds", TEMPO_VAR_LONGITUDE_BOUNDS},
@@ -820,6 +823,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type lat_text_attrs[] =
           {
              {"units", "degrees_north"},
+             {"standard_name", "latitude"},
              {"long_name", TEMPO_VAR_LATITUDE},
              {"comment", "latitude at pixel center"},
              {"bounds", TEMPO_VAR_LATITUDE_BOUNDS},
@@ -841,7 +845,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              {"long_name", TEMPO_VAR_ELL_ALTITUDE},
              {"comment", "ellipsoid altitude at pixel center"},
              {"bounds", TEMPO_VAR_ELL_ALTITUDE_BOUNDS},
-             {"coordinates", "longitude latitude"},
+             {"coordinates", "time longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -859,7 +863,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
              {"units", "m"},
              {"long_name", "area-weighted mean terrain height"},
              {"comment", "Area-weighted mean terrain height inside each pixel"},
-             {"coordinates", "longitude latitude"},
+             {"coordinates", "time longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -874,7 +878,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type lon_bnds_attrs[] =
           {
-             {"units", "degrees_east"},
+             /* {"units", "degrees_east"}, */
              {"long_name", "longitude bounds (NE,NW,SW,SE)"},
              {"comment", "Longitude at pixel corners"},
              _pTEXT_ATTRS_END
@@ -892,7 +896,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
      {
         static _pText_Attr_Type lat_bnds_attrs[] =
           {
-             {"units", "degrees_north"},
+             /* {"units", "degrees_north"}, */
              {"long_name", "latitude bounds (NE,NW,SW,SE)"},
              {"comment", "Latitude at pixel corners"},
              _pTEXT_ATTRS_END
@@ -951,7 +955,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type inrqf_attrs[] =
           {
              {"comment", "INR quality flag"},
-             {"coordinates", "longitude latitude"},
+             {"coordinates", "time longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
@@ -994,7 +998,7 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
         static _pText_Attr_Type cloud_top_height_attrs[] =
           {
              {"units", "m"},
-             {"coordinates", "longitude latitude"},
+             {"coordinates", "time longitude latitude"},
              _pTEXT_ATTRS_END
           };
         dims[0] = dim_table->step.id;
