@@ -44,7 +44,8 @@ contains
 
     ! data field variables with optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(o3t_var_longitude) &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
                               //' '//trim(o3t_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_column_amount_o3, &
@@ -88,7 +89,8 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "quality flags", &
-                              valid_range = [0.0_8, 65534.0_8])
+                              valid_range = [0.0_8, 65534.0_8], &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_o3_below_cloud, &
@@ -97,7 +99,8 @@ contains
                               comment = "ozone below fractional cloud", &
                               units = "DU", &
                               valid_range = [0.0_8, 100.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_so2_index, &
@@ -159,7 +162,8 @@ contains
 
     ! data field variables with optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(o3t_var_longitude) &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
                               //' '//trim(o3t_var_latitude))
 
     call tiof_varlist_append (varlist, errstat, &
@@ -167,7 +171,8 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "ground pixel quality flag", &
-                              valid_range = [0.0_8, 65534.0_8])
+                              valid_range = [0.0_8, 65534.0_8], &
+                              attlist=att_coord)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_lut_wavelength, &
@@ -203,7 +208,8 @@ contains
                               nf90_ubyte, &
                               dimids = dimids_xtrack_step, &
                               comment = "algorithm flags", &
-                              valid_range = [0.0_8, 13.0_8])
+                              valid_range = [0.0_8, 13.0_8], &
+                              attlist=att_coord)
 
     chunksizes(1) = dimsizes_layer_xtrack_step(1)            ! layer dimension
     chunksizes(2) = min(dimsizes_layer_xtrack_step(2), 128)  ! xtrack dimension
@@ -225,7 +231,8 @@ contains
                               nf90_ushort, &
                               dimids = dimids_xtrack_step, &
                               comment = "radiance bad pixel flag accepted", &
-                              valid_range = [0.0_8, 65534.0_8])
+                              valid_range = [0.0_8, 65534.0_8], &
+                              attlist=att_coord)
 
     chunksizes(1) = dimsizes_layer_xtrack_step(1)            ! layer dimension
     chunksizes(2) = min(dimsizes_layer_xtrack_step(2), 128)  ! xtrack dimension
@@ -393,7 +400,8 @@ contains
                               dimids = dimids_wavel_xtrack_step(1:2), &
                               comment = "calibration adjustment", &
                               valid_range = [-10.0_8, 10.0_8], &
-                              fillvalue = fill_float)
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
 
     call tiof_def_vars (obj, varlist, errstat)
 
@@ -409,9 +417,10 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_latbnd, att_lonbnd, att_coord
+    type (tiof_attlist_type) :: att_latbnd, att_lonbnd, att_coord, att_time
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
+    character (len=32) :: epoch_buf
 
     if (errstat < 0) return
 
@@ -427,15 +436,22 @@ contains
     ! Construct a list of variables with their associated dimension ids
     ! and attributes:
 
+    epoch_buf(:)=''
+    call tiof_mktimestamp_str (0.0_8, epoch_buf, errstat)
+
     ! data field variables with optional attribute lists:
+    call tiof_attlist_append (att_time, errstat, "calendar", &
+                              att_text="gregorian")
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
+                              standard_name = "time", &
                               comment = "exposure start time", &
-                              units = "s", &
+                              units = "seconds since "//trim(epoch_buf), &
                               valid_range = [-5.0e9_8, 1.e10_8], &
-                              fillvalue = fill_double)
+                              fillvalue = fill_double, &
+                              attlist=att_time)
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = o3t_var_latitude_bounds)
@@ -443,6 +459,7 @@ contains
                               o3t_var_latitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "latitude", &
                               comment = "latitude at pixel center", &
                               units = "degrees_north", &
                               valid_range = [-90.0_8, 90.0_8], &
@@ -455,6 +472,7 @@ contains
                               o3t_var_longitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "longitude", &
                               comment = "longitude at pixel center", &
                               units = "degrees_east", &
                               valid_range = [-180.0_8, 180.0_8], &
@@ -466,7 +484,7 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               comment = "latitude at pixel corners (sw,se,ne,nw)", &
-                              units = "degrees_north", &
+                              !units = "degrees_north", &
                               valid_range = [-90.0_8, 90.0_8], &
                               fillvalue = fill_float)
 
@@ -475,12 +493,13 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               comment = "longitude at pixel corners (sw,se,ne,nw)", &
-                              units = "degrees_east", &
+                              !units = "degrees_east", &
                               valid_range = [-180.0_8, 180.0_8], &
                               fillvalue = fill_float)
 
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(o3t_var_longitude) &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
                               //' '//trim(o3t_var_latitude))
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_sz_angle, &
@@ -552,6 +571,7 @@ contains
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_time)
 
   end subroutine
 
