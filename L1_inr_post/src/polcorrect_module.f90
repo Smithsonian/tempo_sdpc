@@ -1080,7 +1080,7 @@ contains
     endif
 
     call tiof_attlist_append (attlist, errstat, "coordinates", &
-                              att_text = "longitude latitude")
+                              att_text = "time longitude latitude")
     call tiof_attlist_append (attlist, errstat, "units", &
                               att_text = "radians")
 

@@ -192,7 +192,7 @@ static int def_elevation_vars (Geoloc_Type *geoloc)
         {"units", "m"},
         {"long_name", TEMPO_VAR_TERR_HEIGHT},
         {"comment", "Area-weighted mean terrain height within pixel boundary"},
-        {"coordinates", "longitude latitude"},
+        {"coordinates", "time longitude latitude"},
         {NULL, NULL}
      };
    TIO_Attr_Text_Type dev_text_attrs[] =
@@ -200,7 +200,7 @@ static int def_elevation_vars (Geoloc_Type *geoloc)
         {"units", "m"},
         {"long_name", TEMPO_VAR_TERR_HEIGHT_STDDEV},
         {"comment", "Area-weighted terrain height standard deviation within pixel boundary"},
-        {"coordinates", "longitude latitude"},
+        {"coordinates", "time longitude latitude"},
         {NULL, NULL}
      };
    short fill_value = TIO_FILL_SHORT;
@@ -301,7 +301,7 @@ static int def_snow_ice_fraction_var (Geoloc_Type *geoloc)
      {
         {"long_name", TEMPO_VAR_SNOWICE_FRACTION},
         {"comment", "Fraction of pixel area covered by snow and/or ice"},
-        {"coordinates", "longitude latitude"},
+        {"coordinates", "time longitude latitude"},
         {NULL, NULL}
      };
    float fill_value = TIO_FILL_FLOAT;
@@ -848,7 +848,7 @@ static int write_shift (const Granule_Type *gt, const char *band_name,
    const char *varname = "parallax_shift";
    static TIO_Attr_Text_Type attrs[] =
      {
-        {"coordinates", "longitude latitude"},
+        {"coordinates", "time longitude latitude"},
         {NULL,NULL}
      };
    int grp, varid, start[2], count[2];
