@@ -650,6 +650,48 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
    return 0;
 }
 
+static int write_time_var (int ncid, TIO_Scan_Ident_Type *lst)
+{
+   struct attr_type
+     {
+        const char *name;
+        const char *value;
+     }
+   atts[] = {
+      {"standard_name", "time"},
+      {"long_name", "exposure start time"},
+      {"calendar", "gregorian"},
+      {NULL, NULL}
+   };
+   struct attr_type *p = NULL;
+   int dimid, varid, start=0, count=1;
+   double tstart;
+
+   if (0 != tio_scan_start_time (lst, &tstart))
+     return -1;
+
+   if (0 != TIO_def_dim (ncid, TEMPO_VAR_TIME, 1, &dimid))
+     return -1;
+
+   if (0 != TIO_def_var (ncid, TEMPO_VAR_TIME, NC_DOUBLE, 1, &dimid, &varid))
+     return -1;
+
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_TIME, &start, &count, TIO_DOUBLE, &tstart))
+     return -1;
+
+   if (0 != tio_write_timestamp_unit_string (ncid, TEMPO_VAR_TIME))
+     return -1;
+
+   for (p = atts; (p != NULL) && (p->name != NULL); p++)
+     {
+        int len = strlen (p->value);
+        if (0 != TIO_put_att (ncid, varid, p->name, NC_CHAR, len, p->value))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int make_l3_product (const Product_Type *prod,
                             const Pixel_Grid_Param_Type *dest,
                             const Pixel_Regrid_Type *r,
@@ -689,6 +731,8 @@ static int make_l3_product (const Product_Type *prod,
    if (0 != tio_use_file_epoch (ncid_infile))
      goto return_status;
    if (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
+     goto return_status;
+   if (0 != write_time_var (ncid, lst))
      goto return_status;
 
    for (i = 0; i < prod->num_var_names; i++)
@@ -731,12 +775,15 @@ static TIO_Scan_Ident_Type *
 read_scan_ident (char **input_files, int num_input_files, const char *name, int *reject)
 {
    TIO_Scan_Ident_Type *lst = NULL;
+   size_t name_len;
    int i;
 
    *reject = 0;
 
    if (NULL == (lst = TIO_new_scan_ident ()))
      return NULL;
+
+   name_len = strlen(name);
 
    for (i = 0; i < num_input_files; i++)
      {
@@ -748,9 +795,10 @@ read_scan_ident (char **input_files, int num_input_files, const char *name, int 
              /* If we have a product_type name,
               * then every granule should match it */
              char buf[TIO_MAX_NAME_LEN];
+             memset (buf, 0, sizeof buf);
              if (-1 == TIO_get_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, buf))
                goto free_and_return;
-             if (0 != strcasecmp (buf, name))
+             if (0 != strncasecmp (buf, name, name_len))
                {
                   tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: product_type mismatch: expected %s got %s",
                              __func__, name, buf);

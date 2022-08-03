@@ -856,6 +856,7 @@ int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
 {
    static TIO_Attr_Text_Type lon_attrs[] =
      {
+        {"standard_name", "longitude"},
         {"long_name", "longitude"},
         {"comment", "longitude at grid box center"},
         {"units", "degrees_east"},
@@ -863,6 +864,7 @@ int Var_write_lonlat_grid (int ncid, const char *lonlat_grp,
      };
    static TIO_Attr_Text_Type lat_attrs[] =
      {
+        {"standard_name", "latitude"},
         {"long_name", "latitude"},
         {"comment", "latitude at grid box center"},
         {"units", "degrees_north"},
