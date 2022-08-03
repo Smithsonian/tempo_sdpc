@@ -217,10 +217,12 @@ contains
 
     ! coordinates for 2D variables
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_amf_diag, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_amf_diag, errstat, "flag_meanings", &
                               att_text = "geometric_AMF glint snow_correction "// &
@@ -388,7 +390,8 @@ contains
                               errstat)
 
     call tiof_attlist_append (att_convergence_flag, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_meanings", &
                               att_text = "failed maxiter_exceeded suspect good")
@@ -603,6 +606,7 @@ contains
     type (tiof_varlist_type), target :: varlist, varlist_supp
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     type (tiof_attlist_type) :: att_main_dqf, att_convergence_flag
+    type (tiof_attlist_type) :: att_time
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_corner_xtrack_step
 
@@ -624,11 +628,13 @@ contains
 
     ! optional attribute lists:
     call tiof_attlist_append (att_coord, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
 
     call tiof_attlist_append (att_main_dqf, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_main_dqf, errstat, "flag_meanings", &
                               att_text = "normal suspicious bad")
@@ -636,7 +642,8 @@ contains
                               att_i4 = [0,1,2])
 
     call tiof_attlist_append (att_convergence_flag, errstat, "coordinates", &
-                              att_text = trim(tg_var_longitude) &
+                              att_text = trim(tg_var_time) &
+                              //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_convergence_flag, errstat, "flag_meanings", &
                               att_text = "failed maxiter_exceeded suspect good")
@@ -721,13 +728,17 @@ contains
     epoch_buf(:)=''
     call tiof_mktimestamp_str (0.0_r8, epoch_buf, errstat)
 
+    call tiof_attlist_append (att_time, errstat, "calendar", &
+                              att_text = "gregorian")
     call tiof_varlist_append (varlist_geo, errstat, &
                               tg_var_time, &
                               nf90_double, &
                               dimids = [dimids_xtrack_step(2)],  &
+                              standard_name = "time", &
                               long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
-                              fillvalue = fill_double)
+                              fillvalue = fill_double, &
+                              attlist=att_time)
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
                               att_text = tg_var_latitude_bounds)
@@ -735,6 +746,7 @@ contains
                               tg_var_latitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "latitude", &
                               long_name = "pixel center latitude", &
                               comment = "latitude at pixel center", &
                               units = "degrees_north", &
@@ -747,7 +759,7 @@ contains
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner latitude", &
                               comment = "latitude at pixel corners (SW,SE,NE,NW)", &
-                              units = "degrees_north", &
+                              !units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
 
@@ -757,6 +769,7 @@ contains
                               tg_var_longitude, &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                              standard_name = "longitude", &
                               long_name = "pixel center longitude", &
                               comment = "longitude at pixel center", &
                               units = "degrees_east", &
@@ -769,7 +782,7 @@ contains
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner longitude", &
                               comment = "longitude at pixel corners (SW,SE,NE,NW)", &
-                              units = "degrees_east", &
+                              !units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
 
@@ -911,6 +924,7 @@ contains
     call tiof_attlist_free (att_latbnd)
     call tiof_attlist_free (att_lonbnd)
     call tiof_attlist_free (att_main_dqf)
+    call tiof_attlist_free (att_time)
 
   end subroutine append_column_vars
 
