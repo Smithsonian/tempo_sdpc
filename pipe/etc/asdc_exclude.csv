@@ -1,11 +1,16 @@
 #
 # Text following a '#' character is ignored.
 # Strings in the pattern column are used to filter the list of data
-# products to be autonomously uploaded to ASDC.  When a data product
-# filename matches one of these patterns, that file is excluded from
+# products to be autonomously uploaded to ASDC. Each pattern string
+# must be a valid regular expression. For regular expression syntax,
+# refer to the python 're' module documentation. When a data product
+# filename matches a pattern, that file is excluded from
 # uploads to ASDC. When a time interval (local time) is specified, the
-# filter applies only during the specified time interval.  When no time
-# interval is specified, the filter applies at all times.
+# exclusion applies only during the specified time interval.  When no
+# time interval is specified, the exclusion applies at all times.
+#
+# For example, use this pattern to exclude all L0 data products:
+#  "TEMPO_\w+_L0_V\d{2}_\d{8}T\d{6}Z(_S\d{3}G\d{2})??.nc"
 #--------------------------------------------------------------------
 pattern,begin_exclude_hour,end_exclude_hour
 "tempo_\d*T\d*Z_soc",6,18
