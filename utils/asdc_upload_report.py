@@ -77,9 +77,8 @@ def print_table_summaries (table_list, tbeg, tend):
         for table in table_list:
             status_count = table_status_summary (cur, table, tbeg, tend)
             summary = table_accepted_summary (cur, table, tbeg, tend)
-            if summary["count"] == 0:
-                summary = {'upload_time':-1, 'ingest_time':-1, 'size':-1, 'count':0, 'total_size':-1}
-            print ("%10s  %10.1f  %10.1f %9.1f %9.1f   %7d  %7d  %7d" % (table,
+            if summary["count"] > 0:
+                print ("%10s  %10.1f  %10.1f %9.1f %9.1f   %7d  %7d  %7d" % (table,
                    summary["upload_time"]/60.0, summary["ingest_time"]/60.0, summary["size"]/1.e6,
                    summary["total_size"]/1.e9, summary["count"],
                    status_count["uploaded"], status_count["problem"]))
