@@ -36,11 +36,14 @@ do_start()
   # pipeline don't affect other pipelines.
   # As a secondary application, it is also used to ensure the uniqueness
   # of PDR files uploaded to ASDC.
-  # Most of the time, SDPC_PIPE_ID should have a unique random value.
-  # But to support (hopefully rare) cases when a specific value is needed,
-  # we use the pre-existing value when the environment provides one.
+
+  pipeid_file="$SDPC_PIPE_DIR/sdpc_pipe_id"
+  if test -r "$pipeid_file" ; then
+     SDPC_PIPE_ID="$(cat $pipeid_file)"
+  fi
   if test -z "$SDPC_PIPE_ID" ; then
      SDPC_PIPE_ID="$(openssl rand -hex 2)"
+     echo "$SDPC_PIPE_ID" > "$pipeid_file"
   fi
   export SDPC_PIPE_ID
 
