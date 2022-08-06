@@ -17,6 +17,7 @@ static void usage (void)
    fprintf (stderr, "Usage: config_setting [options] <param-path>\n");
    fprintf (stderr, "  Optional:\n");
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
+   fprintf (stderr, "   -v | --verbose         Print config files queried\n");
    fprintf (stderr, "   -h | --help            Print this usage message\n");
    exit (EXIT_SUCCESS);
 }
@@ -57,12 +58,14 @@ int main(int argc, char **argv)
    int param_type;
    int status = EXIT_FAILURE;
    int malloced_config_file = 0;
+   int verbose = 0;
    config_t cfg;
    config_setting_t *setting = NULL;
    static struct option long_options[] =
      {
         {"config",  required_argument, 0, 'c'},
 	{"help",    no_argument,       0, 'h'},
+	{"verbose", no_argument,       0, 'v'},
         {0,0,0,0}
      };
 
@@ -76,7 +79,7 @@ int main(int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hc:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hc:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -92,6 +95,9 @@ int main(int argc, char **argv)
              break;
            case 'h':
 	     usage();
+             break;
+           case 'v':
+             verbose++;
              break;
           }
      }
@@ -113,18 +119,22 @@ int main(int argc, char **argv)
 
    if (0 != access (config_file, F_OK | R_OK))
      {
-        char *config_default_paths[] =
+        const char *config_default_paths[] =
           {
              "$SDPC_PIPE_DIR/etc/" DEFAULT_CONFIG_FILENAME,
              "$SDPC_ROOT/etc/" DEFAULT_CONFIG_FILENAME,
              NULL
           };
-        const char *p;
+        const char **p;
         config_file = NULL;
-        for (p = *config_default_paths; p != NULL; p++)
+        for (p = config_default_paths; p != NULL; p++)
           {
-             if (NULL == (config_file = expand_string (p, 1)))
+             if (NULL == (config_file = expand_string (*p, (verbose == 0))))
                goto return_status;
+             if (verbose)
+               {
+                  fprintf (stderr, "Looking for config_file=%s\n", config_file);
+               }
              if (0 == access (config_file, F_OK | R_OK))
                {
                   malloced_config_file = 1;
@@ -133,6 +143,12 @@ int main(int argc, char **argv)
              free (config_file);
              config_file = NULL;
           }
+     }
+
+   if (config_file == NULL)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "cannot find config file: " DEFAULT_CONFIG_FILENAME);
+        goto return_status;
      }
 
    if(! config_read_file(&cfg, config_file))

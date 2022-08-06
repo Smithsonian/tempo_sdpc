@@ -47,6 +47,9 @@ do_start()
   fi
   export SDPC_PIPE_ID
 
+  processing_version=$(config_setting product.processing_version)
+  export SDPC_PROCESSING_VERSION="$processing_version"
+
   export SLURM_ACCOUNT="$SDPC_PIPE_NAME"
   export SBATCH_ACCOUNT="$SLURM_ACCOUNT"
   export SALLOC_ACCOUNT="$SLURM_ACCOUNT"

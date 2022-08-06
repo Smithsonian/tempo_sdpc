@@ -35,9 +35,6 @@ export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 : "${SDPC_PIPE_NAME:=sdpc_test}"
 export SDPC_PIPE_NAME
 
-: "${SDPC_PROCESSING_VERSION:=1}"
-export SDPC_PROCESSING_VERSION
-
 #----------------
 #  Archive paths:
 #----------------
