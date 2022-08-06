@@ -659,7 +659,7 @@ static int write_time_var (int ncid, TIO_Scan_Ident_Type *lst)
      }
    atts[] = {
       {"standard_name", "time"},
-      {"long_name", "exposure start time"},
+      {"long_name", "scan start time"},
       {"calendar", "gregorian"},
       {NULL, NULL}
    };
