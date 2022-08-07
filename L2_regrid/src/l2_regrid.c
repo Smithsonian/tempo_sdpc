@@ -667,6 +667,9 @@ static int write_time_var (int ncid, TIO_Scan_Ident_Type *lst)
    int dimid, varid, start=0, count=1;
    double tstart;
 
+   if (lst == NULL)
+     return 0;
+
    if (0 != tio_scan_start_time (lst, &tstart))
      return -1;
 
