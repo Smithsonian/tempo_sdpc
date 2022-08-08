@@ -8,6 +8,8 @@ then
   exit 1
 fi
 
+export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1a.diagnostic_index)
+
 dbfile_level0="$(config_setting dbfile.level0)"
 if ! test -f "$dbfile_level0" ; then
    dbfile_level0="$SDPC_ARCHIVE_DBFILE"
