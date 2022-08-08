@@ -74,6 +74,10 @@ service_default_down()
    echo "Services down: $list"
 }
 
+if test $# -eq 0 ; then
+   exit_usage 0
+fi
+
 # Process optional args
 while [ "$#" != "0" ]
 do
