@@ -47,6 +47,7 @@ static const char *Public_Mirror_Root_Dir = NULL;
 static int Processing_Version = 1;
 
 static Process_Method_Type *Exprec_Process_Method;
+static Process_Method_Type *Iru_Process_Method;
 
 static int caught_signal (void);
 static void log_caught_signal (void);
@@ -69,6 +70,7 @@ typedef struct
    double latest_iru_timestamp_seen;
    double latest_radiance_timestamp_seen;
    double latest_iru_only_interval_end_time;
+   int need_first_iru_timestamp;
    char *dir;
 }
 IRU_Interval_Type;
@@ -402,6 +404,11 @@ static int read_iru_params (config_t *cfg, Control_Type *ctrl)
         return -1;
      }
 
+   if (ctrl->iru_interval.max_iru_knowledge_gap_duration >= 0)
+     ctrl->iru_interval.need_first_iru_timestamp = 1;
+   else
+     ctrl->iru_interval.need_first_iru_timestamp = 0;
+
    return 0;
 }
 
@@ -606,18 +613,14 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
      return -1;
    iru_interval->latest_iru_timestamp_seen = t_iru;
 
+   /* iru_interval->latest_iru_only_interval_end_time is initialized
+    * when the first IRU file is opened. Therefore, when we get to this
+    * point, we're guaranteed that its value is >= 0, so we have t_only >= 0.
+    * If no radiance data has been seen yet, then we might have t_rad <=0.
+    * Avoid gaps by padding the IRU coverage in every granule.
+    */
    t_only = iru_interval->latest_iru_only_interval_end_time;
    t_rad = iru_interval->latest_radiance_timestamp_seen;
-
-   /* Initialization: If we've never sent any IRU data to the INR subsystem,
-    * we'll assume the current IRU knowledge gap starts with the latest
-    * IRU timestamp.  Avoid gaps by padding the IRU coverage in every granule.
-    */
-   if (t_only <= 0.0 && t_rad <= 0.0)
-     {
-        iru_interval->latest_iru_only_interval_end_time = t_iru;
-        return 0;
-     }
 
    /* What's the latest IRU timestamp headed for the INR subsystem? */
    t_last = (t_rad > t_only) ? t_rad : t_only;
@@ -633,7 +636,33 @@ static int iru_post_process_callback (Process_Method_Type *pmt, void *client_dat
    return 0;
 }
 
-static int classify_file (const char *file, const Control_Type *ctrl, int *filetype, int *skip)
+static int get_first_iru_sample_time (const char *file, int fd, IOCSDPC_Common_Header_Type *chdr,
+                                      double *sample_time)
+{
+   IOCSDPC_IRU_Type *iru = NULL;
+   IOCSDPC_IRU_Record_Type rec = {0};
+
+   *sample_time = -1.0;
+
+   if (NULL == (iru = iocsdpc_iru_fdopen_read (file, fd, chdr)))
+     return -1;
+
+   for (;;)
+     {
+        unsigned int num_read;
+        if ((0 != iocsdpc_iru_read (iru, &rec, 1, &num_read))
+            || (num_read != 1))
+          return -1;
+        if (rec.sample_time > 0.0)
+          break;
+     }
+
+   *sample_time = rec.sample_time;
+
+   return 0;
+}
+
+static int classify_file (const char *file, Control_Type *ctrl, int *filetype, int *skip)
 {
    IOCSDPC_Common_Header_Type chdr = {0};
    char *ext;
@@ -669,6 +698,27 @@ static int classify_file (const char *file, const Control_Type *ctrl, int *filet
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+
+   /* To handle a corner case when generating telemetry-only radiance
+    * files, initialize iru_interval.latest_iru_only_interval_end_time
+    * to the first IRU sample time >= 0.
+    */
+   if ((chdr.filetype == IOCSDPC_FILETYPE_IRU)
+       && (ctrl->iru_interval.need_first_iru_timestamp != 0))
+     {
+        double sample_time;
+        if ((0 != get_first_iru_sample_time (file, fd, &chdr, &sample_time))
+            || (sample_time < 0.0))
+          {
+             (void) ioclib_fd_close (fd);
+             return -1;
+          }
+        /* At this point, we know that we've never sent any IRU data to the
+         * INR subsystem, so the current IRU knowledge gap starts here. */
+        ctrl->iru_interval.latest_iru_only_interval_end_time = sample_time;
+        ctrl->iru_interval.need_first_iru_timestamp = 0;
+     }
+
    (void) ioclib_fd_close (fd);
 
    *filetype = chdr.filetype;
@@ -772,6 +822,41 @@ static int flush_caches (const Process_Method_Table_Type *tbl,
    return num_failed;
 }
 
+static int flush_iru_coverage_for_inr (IRU_Interval_Type *iru_interval)
+{
+   Process_Method_Type *pmt = Iru_Process_Method;
+   double dt_max = iru_interval->max_iru_knowledge_gap_duration;
+   double t_iru, t_last, t_only, t_rad;
+
+   /* dt_max < 0 means "don't generate telemetry-only granules" */
+   if (dt_max < 0.0)
+     return 0;
+
+   if (0 != pmt->pmt_query_latest_timestamp (pmt, 0, &t_iru))
+     return -1;
+   iru_interval->latest_iru_timestamp_seen = t_iru;
+
+   /* If we haven't seen any IRU data, there's nothing to flush */
+   if (t_iru < 0.0)
+     return 0;
+
+   /* We've seen IRU data, so we have t_only >= 0.0 */
+   t_only = iru_interval->latest_iru_only_interval_end_time;
+   t_rad = iru_interval->latest_radiance_timestamp_seen;
+
+   /* What's the latest IRU timestamp headed for the INR subsystem? */
+   t_last = (t_rad > t_only) ? t_rad : t_only;
+
+   /* Flush whatever we have */
+   if (t_iru > t_last)
+     {
+        if (0 != ensure_iru_coverage_for_inr (iru_interval, t_last, t_iru))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ctrl)
 {
    Process_Method_Type *pmt = Exprec_Process_Method;
@@ -828,6 +913,8 @@ static int init_methods_table (Process_Method_Table_Type *tbl,
 
         if (tbl->filetype == IOCSDPC_FILETYPE_EXPREC)
           Exprec_Process_Method = tbl->method;
+        else if (tbl->filetype == IOCSDPC_FILETYPE_IRU)
+          Iru_Process_Method = tbl->method;
      }
 
    return 0;
@@ -974,6 +1061,8 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
    tell_vinfo (0, "flush caches on exit");
    if (0 != flush_caches (tbl, tpinfo))
      goto return_status;
+   if (0 != flush_iru_coverage_for_inr (&ctrl->iru_interval))
+     goto return_status;
    (void) flush_processed_file_log (ctrl->log_incoming);
 
    status = 0;
@@ -1091,6 +1180,8 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
 
    tell_vinfo (0, "flush caches on exit");
    if (0 != flush_caches (tbl, tpinfo))
+     return -1;
+   if (0 != flush_iru_coverage_for_inr (&ctrl->iru_interval))
      return -1;
    (void) flush_processed_file_log (ctrl->log_incoming);
    return 0;
