@@ -175,9 +175,9 @@ def main():
                          help="Select plots by number")
     parser.add_argument ('--output', metavar='FILE', default="sza.pdf",
                          help="Output plot file name")
-    parser.add_argument ('--central_latitude', metavar='LON', default=5.0,
+    parser.add_argument ('--central-latitude', metavar='LON', default=5.0,
                          help="Plotted nearside projection central latitude [deg]")
-    parser.add_argument ('--central_longitude', metavar='LON', default=-90.0,
+    parser.add_argument ('--central-longitude', metavar='LON', default=-90.0,
                          help="Input SZA map Plate Carree projection central longitude [deg]")
     parser.add_argument ('szafile', help="Path to SZA file (plan output)")
     if len(sys.argv)==1:
