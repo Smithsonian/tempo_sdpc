@@ -230,6 +230,44 @@ static int radiance_write_times (Radiance_Type *r,
    return 0;
 }
 
+static int apply_scale_factor (double factor, int type, void *bytes, size_t num_elem)
+{
+   float *fval = NULL;
+   double *dval = NULL;
+   size_t i;
+
+   switch (type)
+     {
+      case NC_FLOAT:
+        fval = (float *)bytes;
+        for (i = 0; i < num_elem; i++)
+          {
+             if ((0 == isnan(fval[i])) && (fval[i] != NC_FILL_FLOAT))
+               {
+                  fval[i] *= factor;
+               }
+          }
+        break;
+
+      case NC_DOUBLE:
+        dval = (double *)bytes;
+        for (i = 0; i < num_elem; i++)
+          {
+             if ((0 == isnan(dval[i])) && (dval[i] != NC_FILL_DOUBLE))
+               {
+                  dval[i] *= factor;
+               }
+          }
+        break;
+
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported type = %d", __func__, type);
+        return -1;
+     }
+
+   return 0;
+}
+
 typedef struct
 {
    void *bytes;
@@ -239,6 +277,7 @@ Buffer_Type;
 
 static int copy_file_var (const Row_Select_Type *rst, Buffer_Type *buf,
                           const char *from_var, int from_ncid, int copy_all,
+                          const double *factor,
                           const char *to_var, int to_grp, int to_start)
 {
    TIO_Var_Info_Type info;
@@ -317,6 +356,12 @@ static int copy_file_var (const Row_Select_Type *rst, Buffer_Type *buf,
                                  info.type, buf->bytes))
      return -1;
 
+   if (factor != NULL)
+     {
+        if (0 != apply_scale_factor (*factor, info.type, buf->bytes, num_elem))
+          return -1;
+     }
+
    start[0] = to_start;
 
    if (0 != TIO_put_var_section (to_grp, to_var, start, count,
@@ -331,16 +376,17 @@ typedef struct
    const char *from;
    const char *to;
    int (*annotate)(int);
+   const double *factor;
 }
 Var_Name_Type;
-#define VAR_TABLE_END {NULL,NULL,NULL}
+#define VAR_TABLE_END {NULL,NULL,NULL,NULL}
 
 static Var_Name_Type SMC_Vars[] =
 {
-   {TEMPO_VAR_SMADIT_SCANX, TEMPO_VAR_SMADIT_SCANX, NULL},
-   {TEMPO_VAR_SMADIT_SCANY, TEMPO_VAR_SMADIT_SCANY, NULL},
-   {TEMPO_VAR_SMADIT_RAWX, TEMPO_VAR_SMADIT_RAWX, NULL},
-   {TEMPO_VAR_SMADIT_RAWY, TEMPO_VAR_SMADIT_RAWY, NULL},
+   {TEMPO_VAR_SMADIT_SCANX, TEMPO_VAR_SMADIT_SCANX, NULL, NULL},
+   {TEMPO_VAR_SMADIT_SCANY, TEMPO_VAR_SMADIT_SCANY, NULL, NULL},
+   {TEMPO_VAR_SMADIT_RAWX, TEMPO_VAR_SMADIT_RAWX, NULL, NULL},
+   {TEMPO_VAR_SMADIT_RAWY, TEMPO_VAR_SMADIT_RAWY, NULL, NULL},
    VAR_TABLE_END
 };
 
@@ -348,26 +394,33 @@ static int annotate_gyro_dqf (int grp);
 
 static Var_Name_Type IRU_Vars[] =
 {
-   {TEMPO_VAR_GYRO_OUTPUT, TEMPO_VAR_GYRO_OUTPUT, NULL},
-   {TEMPO_VAR_GYRO_DQF, TEMPO_VAR_GYRO_DQF, annotate_gyro_dqf},
+   {TEMPO_VAR_GYRO_OUTPUT, TEMPO_VAR_GYRO_OUTPUT, NULL, NULL},
+   {TEMPO_VAR_GYRO_DQF, TEMPO_VAR_GYRO_DQF, annotate_gyro_dqf, NULL},
    VAR_TABLE_END
 };
 
+static double _pGyro_Bias_Convert_Microradian_to_Radian = 1.e-6;
+/* _pGyro_Bias_Convert_Microradian_to_Radian is the conversion factor:
+ *    (microrad/sec)*(1.e-6 rad/microrad) -> (radian/sec)
+ * Incoming IOC data stream provides gyro_bias values in microrad/sec.
+ * Downstream, the INR software expects radian/sec.
+ */
+
 static Var_Name_Type IRU_Bias_Vars[] =
 {
-   {TEMPO_VAR_TIME_GYRO_BIAS, TEMPO_VAR_TIME_GYRO_BIAS, NULL},
-   {"bias", TEMPO_VAR_GYRO_BIAS, NULL},
+   {TEMPO_VAR_TIME_GYRO_BIAS, TEMPO_VAR_TIME_GYRO_BIAS, NULL, NULL},
+   {"bias", TEMPO_VAR_GYRO_BIAS, NULL, &_pGyro_Bias_Convert_Microradian_to_Radian},
    VAR_TABLE_END
 };
 
 static Var_Name_Type EPH_Vars[] =
 {
-   {"anc_satx", TEMPO_VAR_SAT_X, NULL},
-   {"anc_saty", TEMPO_VAR_SAT_Y, NULL},
-   {"anc_satz", TEMPO_VAR_SAT_Z, NULL},
-   {"anc_satvx", TEMPO_VAR_SAT_VX, NULL},
-   {"anc_satvy", TEMPO_VAR_SAT_VY, NULL},
-   {"anc_satvz", TEMPO_VAR_SAT_VZ, NULL},
+   {"anc_satx", TEMPO_VAR_SAT_X, NULL, NULL},
+   {"anc_saty", TEMPO_VAR_SAT_Y, NULL, NULL},
+   {"anc_satz", TEMPO_VAR_SAT_Z, NULL, NULL},
+   {"anc_satvx", TEMPO_VAR_SAT_VX, NULL, NULL},
+   {"anc_satvy", TEMPO_VAR_SAT_VY, NULL, NULL},
+   {"anc_satvz", TEMPO_VAR_SAT_VZ, NULL, NULL},
    VAR_TABLE_END
 };
 
@@ -438,7 +491,7 @@ static int radiance_copy_vars (const Row_Select_Type *rst_head, TIO_Meta_Type *m
 
         if (0 != meta_record_basename (meta, rst->file))
           goto free_and_return;
-        rows_copied = copy_file_var (rst, &buf, v->from, from_grp, copy_all,
+        rows_copied = copy_file_var (rst, &buf, v->from, from_grp, copy_all, v->factor,
                                      v->to, to_grp, to_start);
         (void) TIO_close (from_ncid);
         from_ncid = 0;
