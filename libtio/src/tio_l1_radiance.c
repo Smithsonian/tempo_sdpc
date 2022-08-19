@@ -1548,7 +1548,7 @@ static int define_gyroscope_group (int parent_grp, const char *grp_name,
      {
         static _pText_Attr_Type bias_attrs[] =
           {
-             {"units", "microradian/s"},
+             {"units", "radian/s"},
              {"comment", "Gyro bias estimate resolved along spacecraft body axes"},
              _pTEXT_ATTRS_END
           };
