@@ -92,11 +92,10 @@ static int check_env (Control_Type *ctrl)
    const char *env = "SDPC_DIAGNOSTIC_INDEX";
    char *val;
 
+   ctrl->diagnostic_index = -1;
+
    if (NULL == (val = getenv (env)))
-     {
-        ctrl->diagnostic_index = -1;
-        return 0;
-     }
+     return 0;
 
    /* setting it to "OFF" means "not set" */
    if (0 == strcasecmp (val, "OFF"))
