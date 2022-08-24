@@ -40,12 +40,32 @@ def get_product_table_names (cur):
         table_names.append('RAW')
     return table_names
 
-def table_accepted_summary (cur, table_name, tbeg, tend):
-    accepted = Asdc_Status["accepted"]
-    sql = "select avg(asdc_upload_time-mtime),avg(asdc_ingest_time-mtime),avg(size),count(*),sum(size) from {table_name} where mtime > {tbeg} and mtime < {tend} and asdc_status == {accepted}".format(**locals())
+def table_stats (cur, table_name, tbeg, tend):
+    stats = {}
+    # mean age at upload for files uploaded from this table in the specified time range
+    sql = "select avg(asdc_upload_time-mtime) from {table_name} where asdc_upload_time > {tbeg} and asdc_upload_time < {tend}".format(**locals())
     cur.execute (sql)
-    results = [item for t in cur.fetchall() for item in t]
-    return {'upload_time':results[0], 'ingest_time':results[1], 'size':results[2], 'count':results[3], 'total_size':results[4]}
+    mean_upload_time = cur.fetchone()[0]
+    if mean_upload_time is None:
+        mean_upload_time = 0.0
+    stats["mean_upload_time_min"] = mean_upload_time / 60.0
+
+    # mean age at ingest for files ingested from this table in the specified time range
+    sql = "select avg(asdc_ingest_time-mtime) from {table_name} where asdc_ingest_time > {tbeg} and asdc_ingest_time < {tend}".format(**locals())
+    cur.execute (sql)
+    mean_ingest_time = cur.fetchone()[0]
+    if mean_ingest_time is None:
+        mean_ingest_time = 0.0
+    stats["mean_ingest_time_min"] = mean_ingest_time / 60.0
+
+    # mean, and total size of files added to this table within in the specified time range
+    sql = "select avg(size),sum(size) from {table_name} where mtime > {tbeg} and mtime < {tend}".format(**locals())
+    cur.execute (sql)
+    results = [item if item is not None else 0.0 for t in cur.fetchall() for item in t]
+    stats["mean_size_MB"] = results[0] / 1.e6
+    stats["total_size_GB"] = results[1] / 1.e9
+
+    return stats
 
 def table_status_summary (cur, table_name, tbeg, tend):
     sql = "select asdc_status,count(*) from {table_name} where mtime > {tbeg} and mtime < {tend} group by asdc_status".format(**locals())
@@ -71,17 +91,20 @@ def print_table_summaries (table_list, tbeg, tend):
         cur = conn.cursor()
         if table_list is None:
             table_list = get_product_table_names (cur)
-        print ("#  Product        mean        mean       mean    total     files   ingest   ingest")
-        print ("#    table  age_upload  age_ingest       size     size  accepted  pending  problem")
-        print ("#                [min]       [min]       [MB]     [GB]                            ")
+        print ("#       Product        mean        mean       mean    total     files   ingest   ingest")
+        print ("#         table  age_upload  age_ingest       size     size  accepted  pending  problem")
+        print ("#                     [min]       [min]       [MB]     [GB]                            ")
         for table in table_list:
             status_count = table_status_summary (cur, table, tbeg, tend)
-            summary = table_accepted_summary (cur, table, tbeg, tend)
-            if summary["count"] > 0:
-                print ("%10s  %10.1f  %10.1f %9.1f %9.1f   %7d  %7d  %7d" % (table,
-                   summary["upload_time"]/60.0, summary["ingest_time"]/60.0, summary["size"]/1.e6,
-                   summary["total_size"]/1.e9, summary["count"],
-                   status_count["uploaded"], status_count["problem"]))
+            stats = table_stats (cur, table, tbeg, tend)
+            print ("%15s  %10.1f  %10.1f %9.1f %9.1f   %7d  %7d  %7d" % (table,
+                   stats["mean_upload_time_min"],
+                   stats["mean_ingest_time_min"],
+                   stats["mean_size_MB"],
+                   stats["total_size_GB"],
+                   status_count["accepted"],
+                   status_count["uploaded"],
+                   status_count["problem"]))
 
 def tlimits_from_tbounds (tbounds):
     if tbounds is not None:
