@@ -553,12 +553,11 @@ def register_files (db_path, filenames):
 
 def collect_filenames (dir):
     entries = (os.path.join (dir, f) for f in os.listdir(dir))
-    entries = sorted(entries, key=os.path.getmtime)
     filenames = []
     for path in entries:
         if os.path.isfile(path):
             filenames.append (path)
-    return filenames
+    return sorted(filenames, key=os.path.getmtime)
 
 class Registry:
     def __init__ (self, incoming_dir, file_path):
