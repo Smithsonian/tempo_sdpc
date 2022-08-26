@@ -68,6 +68,13 @@ def table_stats (cur, table_name, tbeg, tend):
     return stats
 
 def table_status_summary (cur, table_name, tbeg, tend):
+    sql = "select count(*) from {table_name} where mtime > {tbeg} and mtime < {tend}".format(**locals())
+    cur.execute (sql)
+    result = cur.fetchone()
+    if result is None:
+        num_files = 0
+    else:
+        num_files = result[0]
     sql = "select asdc_status,count(*) from {table_name} where mtime > {tbeg} and mtime < {tend} group by asdc_status".format(**locals())
     cur.execute (sql)
     results = cur.fetchall()
@@ -79,7 +86,7 @@ def table_status_summary (cur, table_name, tbeg, tend):
         else:
             eprint('*** Error: invalid asdc_status value: {}'.format(r[0]))
             sys.exit(1)
-    return status_count
+    return status_count, num_files
 
 def print_table_summaries (table_list, tbeg, tend):
     print ("#")
@@ -91,36 +98,28 @@ def print_table_summaries (table_list, tbeg, tend):
         cur = conn.cursor()
         if table_list is None:
             table_list = get_product_table_names (cur)
-        print ("#       Product        mean        mean       mean    total     files   ingest   ingest")
-        print ("#         table  age_upload  age_ingest       size     size  accepted  pending  problem")
-        print ("#                     [min]       [min]       [MB]     [GB]                            ")
+        print ("#       Product        mean        mean       mean    total    files     files   ingest   ingest")
+        print ("#         table  age_upload  age_ingest       size     size    total  accepted  pending  problem")
+        print ("#                     [min]       [min]       [MB]     [GB]                                     ")
         for table in table_list:
-            status_count = table_status_summary (cur, table, tbeg, tend)
+            status_count, num_files = table_status_summary (cur, table, tbeg, tend)
             stats = table_stats (cur, table, tbeg, tend)
-            print ("%15s  %10.1f  %10.1f %9.1f %9.1f   %7d  %7d  %7d" % (table,
+            print ("%15s  %10.1f  %10.1f %9.1f %9.1f  %7d   %7d  %7d  %7d" % (table,
                    stats["mean_upload_time_min"],
                    stats["mean_ingest_time_min"],
                    stats["mean_size_MB"],
                    stats["total_size_GB"],
+                   num_files,
                    status_count["accepted"],
                    status_count["uploaded"],
                    status_count["problem"]))
 
-def tlimits_from_tbounds (tbounds):
-    if tbounds is not None:
-        tbeg_obj = dateutil.parser.isoparse(tbounds[0])
-        tend_obj = dateutil.parser.isoparse(tbounds[1])
-        tbeg = int(tbeg_obj.timestamp())
-        tend = int(tend_obj.timestamp())
-    else:
-        tbeg = 0
-        tend = int(time.time())
-    return tbeg, tend
-
 def main():
     parser = argparse.ArgumentParser(description='Summarize ASDC uploads')
-    parser.add_argument('--interval', metavar=('BEGIN','END',), default=None, nargs=2,
-                        help="Time interval selection")
+    parser.add_argument('--start', default=None,
+                        help="Start time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
+    parser.add_argument('--end', default=None,
+                        help="End time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
     parser.add_argument('--tables', metavar='TABLE', default=None, nargs="*",
                         help="Table name selection")
     # if len(sys.argv)==1:
@@ -128,7 +127,15 @@ def main():
     #     sys.exit(0)
     args = parser.parse_args()
 
-    tbeg, tend = tlimits_from_tbounds (args.interval)
+    if args.start is None:
+        tbeg = 0
+    else:
+        tbeg = int(dateutil.parser.isoparse(args.start).timestamp())
+
+    if args.end is None:
+        tend = int(time.time())
+    else:
+        tend = int(dateutil.parser.isoparse(args.end).timestamp())
 
     print_table_summaries (args.tables, tbeg, tend)
 

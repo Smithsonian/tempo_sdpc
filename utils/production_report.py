@@ -82,27 +82,26 @@ def print_latencies (tbeg, tend):
             stats = level2_stats (cur, table, tbeg, tend)
             print ("%15s  %10.1f" % (table, stats["mean_elapsed_sec"]/60.0))
 
-def tlimits_from_tbounds (tbounds):
-    if tbounds is not None:
-        tbeg_obj = dateutil.parser.isoparse(tbounds[0])
-        tend_obj = dateutil.parser.isoparse(tbounds[1])
-        tbeg = int(tbeg_obj.timestamp())
-        tend = int(tend_obj.timestamp())
-    else:
-        tbeg = 0
-        tend = int(time.time())
-    return tbeg, tend
-
 def main():
     parser = argparse.ArgumentParser(description='Summarize production latencies')
-    parser.add_argument('--interval', metavar=('BEGIN','END',), default=None, nargs=2,
-                        help="Time interval selection")
+    parser.add_argument('--start', default=None,
+                        help="Start time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
+    parser.add_argument('--end', default=None,
+                        help="End time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
     # if len(sys.argv)==1:
     #     parser.print_usage(sys.stderr)
     #     sys.exit(0)
     args = parser.parse_args()
 
-    tbeg, tend = tlimits_from_tbounds (args.interval)
+    if args.start is None:
+        tbeg = 0
+    else:
+        tbeg = int(dateutil.parser.isoparse(args.start).timestamp())
+
+    if args.end is None:
+        tend = int(time.time())
+    else:
+        tend = int(dateutil.parser.isoparse(args.end).timestamp())
 
     print_latencies (tbeg, tend)
 
