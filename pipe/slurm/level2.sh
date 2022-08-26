@@ -108,7 +108,7 @@ if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
       # not yet registered the file, then we may need to wait for it.
       if ! test -f $radref_file ; then
          while true ; do
-             radref_path=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
+             radref_path=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
              if test -n "$radref_path" ; then
                 sed -i -e "s,radref_file=$radref_file,radref_file=$radref_path," $tar_file_notice
                 break

@@ -49,19 +49,18 @@ trigger_level2()
 
 make_radref()
 {
-  l2_cloud_paths="$1"
+   l2_cloud_paths="$1"
 
    # Get the L1 radiance path for each cloud product
-   rad_files=""
+   first_cloud_path=$(echo $l2_cloud_paths | cut -d' ' -f1)
+   scan_num=$(global_attribute.py --attr scan_num $first_cloud_path)
+   sql="select RAD_L1.path from RAD_L1 inner join CLDO4_L2 on RAD_L1.istart = CLDO4_L2.istart and RAD_L1.scan_num = $scan_num"
+   rad_files=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "$sql")
+
+   # Get the start/end time for each granule
    tbeg_lis=""
    tend_lis=""
-   for f in $l2_cloud_paths ; do
-      b=$(basename $f)
-      # istart is the unique, primary sort key tracking radiance granules in the archive database.
-      # The istart value in the CLDO4_L2 database entry uniquely identifies the radiance file.
-      istart=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select istart from CLDO4_L2 where filename=\"$b\";")
-      rpath=$(sqlite3 $SDPC_ARCHIVE_DBFILE "select path from RAD_L1 where istart=$istart;")
-      rad_files="$rad_files $rpath"
+   for rpath in $rad_files ; do
       tstart=$(global_attribute.py --attr time_coverage_start_since_epoch $rpath)
       tend=$(global_attribute.py --attr time_coverage_end_since_epoch $rpath)
       tbeg_lis="${tbeg_lis}${tstart}\n"

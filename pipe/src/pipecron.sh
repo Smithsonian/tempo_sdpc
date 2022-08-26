@@ -92,7 +92,7 @@ backup_archive_dbfile()
 
     sqlbkp="${archive_bkp_dir}/$(basename $SDPC_ARCHIVE_DBFILE)"
     suffix="$(date -u +%Y%m%dT%H%M%SZ)"
-    sqlite3 $SDPC_ARCHIVE_DBFILE ".backup ${sqlbkp}.${suffix}"
+    sqlite3 -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE ".backup ${sqlbkp}.${suffix}"
 
     keep_max_files $archive_dbfile_num_backups $sqlbkp
 }
