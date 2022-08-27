@@ -87,6 +87,7 @@ do_status()
   fi
 
   if test "X$service_dirs" != "X" ; then
+     printf "\n SDPC_PIPE_NAME: $SDPC_PIPE_NAME\n\n"
      printf "%12s \tSTATE\tLOG\n" SERVICE
   fi
   for srv in $service_dirs ; do
