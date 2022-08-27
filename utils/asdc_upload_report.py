@@ -90,6 +90,7 @@ def table_status_summary (cur, table_name, tbeg, tend):
 
 def print_table_summaries (table_list, tbeg, tend):
     print ("#")
+    print (f"#   SDPC_PIPE_NAME: {os.environ['SDPC_PIPE_NAME']}")
     if tbeg > 0:
         print("# Start time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tbeg))))
     print("#   End time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tend))))
