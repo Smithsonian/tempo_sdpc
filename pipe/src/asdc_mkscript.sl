@@ -49,7 +49,7 @@ define process_file_corrfile (types, path)
    % example:  TEMPO_RADREF_L1_V01_YYYYMMDD_S123456789_E123456789_S003.nc
    % example:  TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S123456789_E123456789_S003.nc
    variable product_type = tok[1];
-   variable version_string = tok[3];
+   variable version_string = strtrim_beg (tok[3], "V0");  % e.g. 1
    variable data_type = "TEMPO_NONORDERABLE";
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
 
@@ -416,7 +416,7 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
         % TEMPO data products are prefixed with "TEMPO_"
         % TEMPO raw tar files are prefixed with "tempo_"
         if ((0 == strncmp ("TEMPO_RADREF", basename, 12))
-            || (0 == strncmp ("TEMPO_DSTR", basename, 14)))
+            || (0 == strncmp ("TEMPO_DSTR", basename, 10)))
           {
              process_file_corrfile (types, path);
              continue;
