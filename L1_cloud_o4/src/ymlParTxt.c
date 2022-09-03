@@ -99,19 +99,19 @@ int ymlParTxt(int LDx, int toe, char* raw, int* nrp, yTB** ptr)
 
 /*------------------------------------------------------------------------------*/
 
-int ShowToken(int LDx,yaml_token_type_t ytp,char* ynm) { Show_TorE(LDx,ytp,ynm); }
-int ShowEvent(int LDx,yaml_event_type_t ytp,char* ynm) { Show_TorE(LDx,ytp,ynm); }
+int ShowToken(int LDx,yaml_token_type_t ytp,char* ynm) { return Show_TorE(LDx,ytp,ynm); }
+int ShowEvent(int LDx,yaml_event_type_t ytp,char* ynm) { return Show_TorE(LDx,ytp,ynm); }
 
 int Show_TorE(int LDx,yaml_event_type_t ytp,char* ynm)
 {
-    Info(LDx, "OK %02d = %s", ytp, ynm);
+    return Info(LDx, "OK %02d = %s", ytp, ynm);
 }
 
 /*------------------------------------------------------------------------------*/
 
 int ShowFlags(int LDx, int lvl, int blk, int nxK, int nxV, int nxA)
 {
-    Info(LDx, "OK    lvl=%d   blk=%d   nxK=%d   nxV=%d   nxA=%d",
+    return Info(LDx, "OK    lvl=%d   blk=%d   nxK=%d   nxV=%d   nxA=%d",
                      lvl,     blk,     nxK,     nxV,     nxA    );
 }
 
@@ -119,11 +119,13 @@ int ShowFlags(int LDx, int lvl, int blk, int nxK, int nxV, int nxA)
 
 int ResetPars(int LDx, int* lvl, int* blk, int* nxV, int* nxK, int* nxA)
 {
+   (void) LDx;
     *lvl = -1;						/* YAML level number	*/
     *blk = -1;						/* YAML block number	*/
     *nxK =  0;						/* set when key is next	*/
     *nxV =  0;						/* set when val is next	*/
     *nxA =  0;						/* set when val array	*/
+   return 0;
 }
 
 /*------------------------------------------------------------------------------*/
@@ -182,16 +184,16 @@ int ParUseTok(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             break;
        case YAML_STREAM_START_TOKEN:			/* ignoring this token	*/
             ShowToken(LDx, token.type, "YAML_STREAM_START_TOKEN");
-            Info(LDy, "OK    encoding  = %d", token.data.stream_start.encoding);
-            Info(LDy, "OK    index     = %d", token.start_mark.index);
-            Info(LDy, "OK    line      = %d", token.start_mark.line);
-            Info(LDy, "OK    column    = %d", token.start_mark.column);
+            Info(LDy, "OK    encoding  = %u", token.data.stream_start.encoding);
+            Info(LDy, "OK    index     = %ld", token.start_mark.index);
+            Info(LDy, "OK    line      = %ld", token.start_mark.line);
+            Info(LDy, "OK    column    = %ld", token.start_mark.column);
             break;
        case YAML_DOCUMENT_START_TOKEN:
             ShowToken(LDx, token.type, "YAML_DOCUMENT_START_TOKEN");
-            Info(LDy, "OK    index     = %d", token.start_mark.index);
-            Info(LDy, "OK    line      = %d", token.start_mark.line);
-            Info(LDy, "OK    column    = %d", token.start_mark.column);
+            Info(LDy, "OK    index     = %ld", token.start_mark.index);
+            Info(LDy, "OK    line      = %ld", token.start_mark.line);
+            Info(LDy, "OK    column    = %ld", token.start_mark.column);
             ResetPars(LDx, &lvl, &blk, &nxK, &nxV, &nxA);	/* reset flags	*/
             break;
        case YAML_BLOCK_MAPPING_START_TOKEN:		/* ignoring this token	*/
@@ -253,7 +255,7 @@ int ParUseTok(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
        case YAML_SCALAR_TOKEN:
             ShowToken(LDx, token.type, "YAML_SCALAR_TOKEN");
             Info(LDy, "OK    value     = %s", token.data.scalar.value);
-            Info(LDy, "OK    length    = %d", token.data.scalar.length);
+            Info(LDy, "OK    length    = %ld", token.data.scalar.length);
             Info(LDy, "OK    style     = %d", token.data.scalar.style);
             itm = token.data.scalar.value;			/* item to save	*/
             if ( nxK )
@@ -291,15 +293,15 @@ int ParUseTok(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             break;
        case YAML_DOCUMENT_END_TOKEN:			/* ignoring this token	*/
             ShowToken(LDx, token.type, "YAML_DOCUMENT_END_TOKEN");
-            Info(LDy, "OK    index     = %d", token.end_mark.index);
-            Info(LDy, "OK    line      = %d", token.end_mark.line);
-            Info(LDy, "OK    column    = %d", token.end_mark.column);
+            Info(LDy, "OK    index     = %ld", token.end_mark.index);
+            Info(LDy, "OK    line      = %ld", token.end_mark.line);
+            Info(LDy, "OK    column    = %ld", token.end_mark.column);
             break;
        case YAML_STREAM_END_TOKEN:			/* ignoring this token	*/
             ShowToken(LDx, token.type, "YAML_STREAM_END_TOKEN");
-            Info(LDy, "OK    index     = %d", token.end_mark.index);
-            Info(LDy, "OK    line      = %d", token.end_mark.line);
-            Info(LDy, "OK    column    = %d", token.end_mark.column);
+            Info(LDy, "OK    index     = %ld", token.end_mark.index);
+            Info(LDy, "OK    line      = %ld", token.end_mark.line);
+            Info(LDy, "OK    column    = %ld", token.end_mark.column);
             break;
        default:
             Error("YAML TOKEN not recognized; this should never happen.");
@@ -370,16 +372,16 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
        case YAML_STREAM_START_EVENT:			/* ignoring this token	*/
             ShowEvent(LDx, event.type, "YAML_STREAM_START_EVENT");
             Info(LDy, "OK    encoding  = %d", event.data.stream_start.encoding);
-            Info(LDy, "OK    index     = %d", event.start_mark.index);
-            Info(LDy, "OK    line      = %d", event.start_mark.line);
-            Info(LDy, "OK    column    = %d", event.start_mark.column);
+            Info(LDy, "OK    index     = %ld", event.start_mark.index);
+            Info(LDy, "OK    line      = %ld", event.start_mark.line);
+            Info(LDy, "OK    column    = %ld", event.start_mark.column);
             break;
        case YAML_DOCUMENT_START_EVENT:
             ShowEvent(LDx, event.type, "YAML_DOCUMENT_START_EVENT");
             Info(LDy, "OK    implicit  = %d", event.data.document_start.implicit);
-            Info(LDy, "OK    index     = %d", event.start_mark.index);
-            Info(LDy, "OK    line      = %d", event.start_mark.line);
-            Info(LDy, "OK    column    = %d", event.start_mark.column);
+            Info(LDy, "OK    index     = %ld", event.start_mark.index);
+            Info(LDy, "OK    line      = %ld", event.start_mark.line);
+            Info(LDy, "OK    column    = %ld", event.start_mark.column);
             ResetPars(LDx, &lvl, &blk, &nxK, &nxV, &nxA);	/* reset flags	*/
             break;
        case YAML_MAPPING_START_EVENT:
@@ -387,9 +389,9 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             Info(LDy, "OK    anchor    = %s", event.data.mapping_start.anchor);
             Info(LDy, "OK    implicit  = %d", event.data.mapping_start.implicit);
             Info(LDy, "OK    style     = %d", event.data.mapping_start.style);
-            Info(LDy, "OK    index     = %d", event.end_mark.index);
-            Info(LDy, "OK    line      = %d", event.end_mark.line);
-            Info(LDy, "OK    column    = %d", event.end_mark.column);
+            Info(LDy, "OK    index     = %ld", event.end_mark.index);
+            Info(LDy, "OK    line      = %ld", event.end_mark.line);
+            Info(LDy, "OK    column    = %ld", event.end_mark.column);
             itm = event.data.mapping_start.anchor;		/* item to save	*/
             if ( nxV )			/* value expected; got new key instead	*/
             {				/* save off previous (old) key (no val)	*/
@@ -408,9 +410,9 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             Info(LDy, "OK    anchor    = %s", event.data.sequence_start.anchor);
             Info(LDy, "OK    implicit  = %d", event.data.sequence_start.implicit);
             Info(LDy, "OK    style     = %d", event.data.sequence_start.style);
-            Info(LDy, "OK    index     = %d", event.start_mark.index);
-            Info(LDy, "OK    line      = %d", event.start_mark.line);
-            Info(LDy, "OK    column    = %d", event.start_mark.column);
+            Info(LDy, "OK    index     = %ld", event.start_mark.index);
+            Info(LDy, "OK    line      = %ld", event.start_mark.line);
+            Info(LDy, "OK    column    = %ld", event.start_mark.column);
             nxK = 0; nxV = 1; nxA = 1;				/* val arr start*/
             break;
        case YAML_ALIAS_EVENT:
@@ -436,8 +438,8 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             ShowEvent(LDx, event.type, "YAML_SCALAR_EVENT");
             Info(LDy, "OK    anchor    = %s", event.data.scalar.anchor);
             Info(LDy, "OK    value     = %s", event.data.scalar.value);
-            Info(LDy, "OK    length    = %d", event.data.scalar.length);
-            Info(LDy, "OK    style     = %d", event.data.scalar.style);
+            Info(LDy, "OK    length    = %ld", event.data.scalar.length);
+            Info(LDy, "OK    style     = %u", event.data.scalar.style);
             itm = event.data.alias.anchor;			/* item to save	*/
             if ( ! itm ) { itm = event.data.scalar.value; }	/* item to save	*/
             if ( nxK )
@@ -457,16 +459,16 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
             break;
        case YAML_SEQUENCE_END_EVENT:
             ShowEvent(LDx, event.type, "YAML_SEQUENCE_END_EVENT");
-            Info(LDy, "OK    index     = %d", event.end_mark.index);
-            Info(LDy, "OK    line      = %d", event.end_mark.line);
-            Info(LDy, "OK    column    = %d", event.end_mark.column);
+            Info(LDy, "OK    index     = %ld", event.end_mark.index);
+            Info(LDy, "OK    line      = %ld", event.end_mark.line);
+            Info(LDy, "OK    column    = %ld", event.end_mark.column);
             nxK = 1; nxV = 0; nxA = 0;				/* val arr end	*/
             break;
        case YAML_MAPPING_END_EVENT:
             ShowEvent(LDx, event.type, "YAML_MAPPING_END_EVENT");
-            Info(LDy, "OK    index     = %d", event.end_mark.index);
-            Info(LDy, "OK    line      = %d", event.end_mark.line);
-            Info(LDy, "OK    column    = %d", event.end_mark.column);
+            Info(LDy, "OK    index     = %ld", event.end_mark.index);
+            Info(LDy, "OK    line      = %ld", event.end_mark.line);
+            Info(LDy, "OK    column    = %ld", event.end_mark.column);
             if ( lvl >= 0 )
             {
                ymlStkPsh(LDx, '\0', lvl, stk, max);		/* remove old	*/
@@ -477,15 +479,15 @@ int ParUseEvt(int LDx, int LDy, int nry, yTB tbl[], yaml_parser_t parser)
        case YAML_DOCUMENT_END_EVENT:			/* ignoring this token	*/
             ShowEvent(LDx, event.type, "YAML_DOCUMENT_END_EVENT");
             Info(LDy, "OK    implicit  = %d", event.data.document_end.implicit);
-            Info(LDy, "OK    index     = %d", event.end_mark.index);
-            Info(LDy, "OK    line      = %d", event.end_mark.line);
-            Info(LDy, "OK    column    = %d", event.end_mark.column);
+            Info(LDy, "OK    index     = %ld", event.end_mark.index);
+            Info(LDy, "OK    line      = %ld", event.end_mark.line);
+            Info(LDy, "OK    column    = %ld", event.end_mark.column);
             break;
        case YAML_STREAM_END_EVENT:			/* ignoring this token	*/
             ShowEvent(LDx, event.type, "YAML_STREAM_END_EVENT");
-            Info(LDy, "OK    index     = %d", event.end_mark.index);
-            Info(LDy, "OK    line      = %d", event.end_mark.line);
-            Info(LDy, "OK    column    = %d", event.end_mark.column);
+            Info(LDy, "OK    index     = %ld", event.end_mark.index);
+            Info(LDy, "OK    line      = %ld", event.end_mark.line);
+            Info(LDy, "OK    column    = %ld", event.end_mark.column);
             break;
        default:
             Error("YAML EVENT not recognized; this should never happen.");

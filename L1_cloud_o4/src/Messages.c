@@ -18,14 +18,16 @@ char ewibuf[];				/* see include file			*/
 
 /*------------------------------------------------------------------------------*/
 
-int SetMaximumLevelOfDetail(int val) { max = val; }
-int GetMaximumLevelOfDetail(int *Lx) { *Lx = max; }
+int SetMaximumLevelOfDetail(int val) { max = val; return 0;}
+int GetMaximumLevelOfDetail(int *Lx) { *Lx = max; return 0;}
 
 /*------------------------------------------------------------------------------*/
 
-int MsgErr(       char *f, int n, char *m) { MsgCmn("ERROR", 0, f, n, m); }
-int MsgWrn(int v, char *f, int n, char *m) { MsgCmn( "WARN", v, f, n, m); }
-int MsgInf(int v, char *f, int n, char *m) { MsgCmn(     "", v, f, n, m); }
+static int MsgCmn(char *t, int v, char *f, int n, char *m);
+
+int MsgErr(       char *f, int n, char *m) { MsgCmn("ERROR", 0, f, n, m); return 0;}
+int MsgWrn(int v, char *f, int n, char *m) { MsgCmn( "WARN", v, f, n, m); return 0;}
+int MsgInf(int v, char *f, int n, char *m) { MsgCmn(     "", v, f, n, m); return 0;}
 
 /*------------------------------------------------------------------------------*\
 * t = message type			(string "ERROR", "WARN", "")
@@ -35,7 +37,10 @@ int MsgInf(int v, char *f, int n, char *m) { MsgCmn(     "", v, f, n, m); }
 * m = message text			(string)
 \*------------------------------------------------------------------------------*/
 
-int MsgCmn(char *t, int v, char *f, int n, char *m)
+extern int ConvertNLto0x0a(char *str);
+extern int RemoveNLfromEnd(char *str);
+
+static int MsgCmn(char *t, int v, char *f, int n, char *m)
 {
     if ( v <= max )
     {
@@ -51,6 +56,7 @@ int MsgCmn(char *t, int v, char *f, int n, char *m)
           fprintf(OUT, "%7s %s\n", t, m);			/*  no  name	*/
        }
     }
+   return 0;
 }
 
 /*------------------------------------------------------------------------------*/
@@ -66,6 +72,7 @@ int ConvertNLto0x0a(char *str)				/* convert \n to 0x0a	*/
         }
         p++;
     }
+   return 0;
 }
 
 /*------------------------------------------------------------------------------*/
@@ -78,6 +85,7 @@ int RemoveNLfromEnd(char *str)				/* remove \n from end	*/
     {
        *BufPtr = '\0';					/* replace \n with \0	*/
     }
+   return 0;
 }
 
 /*------------------------------------------------------------------------------*/

@@ -25,7 +25,7 @@ int ymlDmpTbl(int LDx, int nry, yTB tbl[])
 			"val",
                   };
 
-    size_t nrc = sizeof(clb)/sizeof(clb[0]);		/* number of columns	*/
+    int nrc = sizeof(clb)/sizeof(clb[0]);		/* number of columns	*/
 
     /*--------------------------------------------------------------------------*/
 

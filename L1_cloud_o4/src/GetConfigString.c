@@ -14,6 +14,8 @@ FCALLSCFUN3 ( INT, GetConfigString, GETCONFIGSTRING, getconfigstring,
 
 /*------------------------------------------------------------------------------*/
 
+extern int LoadControlFile(void);
+
 int GetConfigString(char* flg, char* key, char* val)
 {
     int LDa = L8;				/* level of detail		*/

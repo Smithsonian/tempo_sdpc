@@ -19,7 +19,7 @@ int GetConfigRealArr (char* flg, char* key, float* vls, const int cnt)
 {
 
     char val_str[CFG_VAL_LEN];
-    int  err, i;
+    int  err=0, i;
 
     for ( i = 0 ; i < cnt; ++i )
     {

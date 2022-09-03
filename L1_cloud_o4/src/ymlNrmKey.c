@@ -19,6 +19,8 @@ int ymlNrmKey(int LDx, char a[], char b[])
     int max = YML_KEY_LEN - 1;			/* one less due to terminator	*/
     int rtc = 0;				/* return code			*/
 
+   (void) LDx;
+
     if ( len > max )
     {
        Error("key length %d exceeds %d chars; truncating to %d.", len, max, max);

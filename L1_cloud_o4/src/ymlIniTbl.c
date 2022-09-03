@@ -28,9 +28,9 @@ int ymlIniTbl(int LDx, int* nrp, yTB** ptr)
     size_t esz = (size_t)( sizeof(yTB) );	/* number of bytes in tbl[0]	*/
     size_t fsz = (size_t)nry * esz;		/* number of bytes in tbl[nry]	*/
 
-    Info(LDx, "OK each element in tbl[] is %d bytes", esz);
+    Info(LDx, "OK each element in tbl[] is %ld bytes", esz);
 
-    snprintf(msg, msz, "allocating %d bytes of memory for tbl[%d]", fsz, nry);
+    snprintf(msg, msz, "allocating %ld bytes of memory for tbl[%d]", fsz, nry);
 
     *ptr = (yTB*)malloc(fsz);
 

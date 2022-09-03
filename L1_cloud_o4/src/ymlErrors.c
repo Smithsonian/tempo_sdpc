@@ -13,6 +13,8 @@
 
 int ymlErrors(int LDx, yaml_parser_t parser)
 {
+   (void) LDx;
+
     switch ( parser.error )
     {
       case YAML_MEMORY_ERROR: Error("not enough memory for parsing");
@@ -21,13 +23,13 @@ int ymlErrors(int LDx, yaml_parser_t parser)
       case YAML_READER_ERROR:
            if (parser.problem_value != -1)
            {
-              Error("reader error: %s: #%X at %d",
+              Error("reader error: %s: #%X at %ld",
                      parser.problem, parser.problem_value,
                      parser.problem_offset);
            }
            else
            {
-              Error("reader error: %s at %d",
+              Error("reader error: %s at %ld",
                      parser.problem, parser.problem_offset);
            }
            break;
@@ -35,16 +37,16 @@ int ymlErrors(int LDx, yaml_parser_t parser)
       case YAML_SCANNER_ERROR:
            if (parser.context)
            {
-              Error("scanner error: %s at line %d, column %d",
+              Error("scanner error: %s at line %ld, column %ld",
                      parser.context, parser.context_mark.line+1,
                      parser.context_mark.column+1);
-              Error("               %s at line %d, column %d",
+              Error("               %s at line %ld, column %ld",
                      parser.problem, parser.problem_mark.line+1,
                      parser.problem_mark.column+1);
            }
            else
            {
-              Error("scanner error: %s at line %d, column %d",
+              Error("scanner error: %s at line %ld, column %ld",
                      parser.problem, parser.problem_mark.line+1,
                      parser.problem_mark.column+1);
            }
@@ -53,16 +55,16 @@ int ymlErrors(int LDx, yaml_parser_t parser)
       case YAML_PARSER_ERROR:
            if (parser.context)
            {
-              Error("parser error: %s at line %d, column %d",
+              Error("parser error: %s at line %ld, column %ld",
                      parser.context, parser.context_mark.line+1,
                      parser.context_mark.column+1);
-              Error("              %s at line %d, column %d",
+              Error("              %s at line %ld, column %ld",
                      parser.problem, parser.problem_mark.line+1,
                      parser.problem_mark.column+1);
            }
            else
            {
-              Error("parser error: %s at line %d, column %d",
+              Error("parser error: %s at line %ld, column %ld",
                      parser.problem, parser.problem_mark.line+1,
                      parser.problem_mark.column+1);
            }

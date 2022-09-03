@@ -31,7 +31,7 @@ int  nry = 0;				/* number of elements in cfg[]		*/
 
 /*------------------------------------------------------------------------------*/
 
-int LoadControlFile()
+int LoadControlFile(void)
 {
     int LDa = L7;				/* level of detail		*/
 

@@ -44,13 +44,15 @@ int ymlEstNrE(int LDx, char* raw, int* nrp)
     char* x = raw;			/* start of text that will be parsed	*/
     int   n = 0;			/* running count of desired characters	*/
 
+   (void) LDx;
+
     while ( *x )			/* loop until NULL terminator reached	*/
     {
-       if ( *x == ':' |
-            *x == '[' |
-            *x == ']' |
-            *x == ',' |
-            *x == '-' ) { n++; }	/* found one char, increment count	*/
+       if ( (*x == ':') |
+            (*x == '[') |
+            (*x == ']') |
+            (*x == ',') |
+            (*x == '-') ) { n++; }	/* found one char, increment count	*/
        x++;				/* move on to the next character	*/
     }
 

@@ -59,7 +59,7 @@ int ymlAddKey(int LDx, int nry, yTB tbl[], int lvl, char* stk[], int max)
         {
            int dif = end - stp;			/* amount of overflow		*/
 
-           Error("buf[YML_KEY_LEN] overflow: %d > %d by %d", end, stp, dif);
+           Error("buf[YML_KEY_LEN] overflow: %ld > %ld by %d", end, stp, dif);
            Info(L0, "<%s>", itm);
 
            rtc = 2;

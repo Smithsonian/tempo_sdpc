@@ -17,7 +17,9 @@ int ymlChkTxt(int LDx, char str[])
     int ix1 = 1;				/* counter of lines in file	*/
     int ix2 = 0;				/* counter of columns per line	*/
 
-    size_t cnt = strlen(str);			/* count of chars in string	*/
+    int cnt = strlen(str);			/* count of chars in string	*/
+
+   (void) LDx;
 
     int ix3; for (ix3 = 0; ix3 < cnt; ix3++)	/* examine every char in string	*/
     {

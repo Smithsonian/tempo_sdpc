@@ -31,7 +31,7 @@ int ymlAddVal(int LDx, int nry, yTB tbl[], int lvl, int blk, char* val)
 
     if ( len > stp )
     {
-       Error("yTB[].val[YML_VAL_LEN] overflow: %d > %d", len, stp);
+       Error("yTB[].val[YML_VAL_LEN] overflow: %ld > %ld", len, stp);
        rtc = 8;
        /* not fatal; value will be truncated if too long			*/
     }

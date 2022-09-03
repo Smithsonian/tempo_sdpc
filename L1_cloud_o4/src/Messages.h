@@ -22,10 +22,14 @@
 \*------------------------------------------------------------------------------*/
 
 enum LevelOfDetail { L0=0, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, L11, L12 };
-  
+
 #define EWI_LEN 500
 
 extern char ewibuf[EWI_LEN];
+
+extern int MsgErr(       char *f, int n, char *m);
+extern int MsgWrn(int v, char *f, int n, char *m);
+extern int MsgInf(int v, char *f, int n, char *m);
 
 #define error(...) \
 	snprintf(ewibuf, sizeof(ewibuf)-1, __VA_ARGS__); \

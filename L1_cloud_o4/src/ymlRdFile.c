@@ -57,7 +57,7 @@ int ymlRdFile(int LDx, char* fnm, char** mem)
 
     /*--------------------------------------------------------------------------*/
 
-    snprintf(msg, mss, "allocating %d bytes of memory for file", fsz);
+    snprintf(msg, mss, "allocating %ld bytes of memory for file", fsz);
 
     *mem = malloc(fsz); if ( *mem == NULL ) { Err(-2);} Err(0);
 
@@ -90,15 +90,18 @@ int ymlRdFile(int LDx, char* fnm, char** mem)
 
     if ( len != stt.st_size )
     {
-       Error("%s is %d bytes != %d bytes read", fn3, stt.st_size, len);
+       Error("%s is %ld bytes != %ld bytes read", fn3, stt.st_size, len);
        return(-4);
     }
 
+#if 0
+    /* len is unsigned, so this is always false. */
     if ( len  < 0 ) { Error("reading <%s>", fn3); return(-5); }
+#endif
 
     if ( len == 0 ) { Error("<%s> is empty", fn3); return(-6); }
 
-    Info(LDx, "OK read %d bytes from <%s>", len, fn3);
+    Info(LDx, "OK read %ld bytes from <%s>", len, fn3);
 
     (*mem)[stt.st_size] = '\0';			/* terminate			*/
 
