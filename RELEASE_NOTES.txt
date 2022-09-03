@@ -1,4 +1,4 @@
-TEMPO_SDPC_v4.0.0   2022 ??? ??
+TEMPO_SDPC_v?.?.?   2022 ??? ??
 ===============================
    * Make GOES spacecraft references more generic (e.g. GOES-East/West
      instead of GOES-16/17).
@@ -22,6 +22,8 @@ TEMPO_SDPC_v4.0.0   2022 ??? ??
        SDPC_RUN_DIR_MASTER -> SDPC_PIPE_DIR
               SDPC_RUN_DIR -> SDPC_NODE_DIR
    * Implement ASDC recommendations to improve CF metadata compliance
+   * Update L1_cloud_o4 to get number of GEOSCF layers by reading the data files
+   * Now recommend using sdpcrun.sh to configure shell environment
 
 TEMPO_SDPC_v3.0.0   2022 Mar 01
 ===============================
