@@ -2,7 +2,7 @@
 
 exit_usage()
 {
-   echo "Usage: $(basename $0) [options] SHELL"
+   echo "Usage: $(basename $0) [options] command"
    echo "   Options:"
    echo "   -i SDPC_PIPE_NAME   Set pipeline name"
    echo "   --help              Print this listing"
@@ -44,8 +44,7 @@ main ()
 
    other_args="$@"
    if test -z "$other_args" ; then
-      echo "ERROR: missing required argument"
-      exit_usage 1
+      exit_usage 0
    fi
 
    env_script="$top/etc/sdpc_env.sh"
