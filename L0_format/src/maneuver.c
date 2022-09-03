@@ -37,6 +37,57 @@ static void delete_maneuver (Process_Method_Type *pmt)
    FREE(pmt);
 }
 
+static int symlink_latest (const char *dir)
+{
+   IOCLib_Listdir_Type *ld = NULL;
+   const char *latest = "latest";
+   const char *newest_file;
+#define BUFSIZE 128
+   char buf[BUFSIZE];
+   ssize_t buflen;
+   int status = -1;
+
+   /* Get a list of files sorted in ascending order */
+   if (NULL == (ld = ioclib_listdir (dir, IOCLIB_LISTDIR_SORT)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: ioclib_listdir failed: %s",
+                     __func__, dir);
+        return -1;
+     }
+   if (ld->num_files == 0)
+     {
+        ioclib_listdir_free (ld);
+        return 0;
+     }
+
+   /* We assume the files have a consistent naming scheme so that,
+    * when sorted in ascending order, the newest file appears last.
+    */
+   newest_file = ld->files[ld->num_files-1];
+
+   /* Read the 'latest' symlink */
+   buflen = readlinkat (ld->dirfd, latest, buf, BUFSIZE);
+
+   /* The 'latest' symlink should exist and should point to the newest file.
+    * If we don't have that symlink, then try to create it.
+    */
+   if ((buflen < 0) || (buflen == BUFSIZE)
+       || (0 != strcmp (buf, newest_file)))
+     {
+        if (symlinkat (newest_file, ld->dirfd, latest) < 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: error creating symlink %s in %s: (%s)",
+                          __func__, latest, dir, strerror(errno));
+             goto return_error;
+          }
+     }
+
+   status = 0;
+return_error:
+   ioclib_listdir_free (ld);
+   return status;
+}
+
 static int process_maneuver (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                              const char *file, void *client_data)
 {
@@ -46,9 +97,10 @@ static int process_maneuver (Process_Method_Type *pmt, const TPInfo_Type *tpinfo
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: failed copying %s to %s", __func__,
                      file, pmt->out_dirname);
-          return -1;
+        return -1;
      }
-   return 0;
+
+   return symlink_latest (pmt->out_dirname);
 }
 
 static int parse_maneuver_params (config_t *cfg, Process_Method_Type *pmt)
