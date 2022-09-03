@@ -42,7 +42,8 @@ main ()
      esac
    done
 
-   if test -z "$@" ; then
+   other_args="$@"
+   if test -z "$other_args" ; then
       echo "ERROR: missing required argument"
       exit_usage 1
    fi
