@@ -410,7 +410,7 @@ contains
     write(*,*) 'read_rad_tio:nxtrack,ntimes=',nxtrack,ntimes
 
     !allocate m_vars arrays
-    call allocate_rad_vars (ntimes, nxtrack, nwavel, errstat)
+    call allocate_rad_vars (ntimes, nxtrack, errstat)
     if (errstat /= 0) return
 
     !allocate local arrays
@@ -828,12 +828,11 @@ contains
   !
   !> @param[in]  ntimes     along-track dimesnion size
   !> @param[in]  nxtrack    cross-track dimension size
-  !> @param[in]  nwavel     wavelength dimension size
   !> @param      errstat    error handling integer, non-zero = problem
   !
   !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
-  subroutine allocate_rad_vars (ntimes, nxtrack, nwavel, errstat)
+  subroutine allocate_rad_vars (ntimes, nxtrack, errstat)
 
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
@@ -847,7 +846,7 @@ contains
     implicit none
 
     !input variables
-    integer (kind=4), intent(in) :: ntimes, nxtrack, nwavel
+    integer (kind=4), intent(in) :: ntimes, nxtrack
     !output variables
     integer (kind=4), intent(inout) :: errstat
     real(kind=4) :: fspecial
