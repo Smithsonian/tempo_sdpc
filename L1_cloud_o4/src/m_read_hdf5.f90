@@ -26,9 +26,9 @@ subroutine read_GEOS5_VCD(pp,tt)
 
   implicit none
 
-  real(kind=4),dimension(geos_np)::tt
-  real(kind=4),dimension(geos_np+1)::pp !include Psfc
-  real(kind=4),dimension(geos_np+1)::tmp_vcd
+  real(kind=4),dimension(:)::tt  ! tt(geos_np)
+  real(kind=4),dimension(:)::pp  ! pp(geos_np+1) include Psfc
+  real(kind=4),dimension(size(pp))::tmp_vcd
   real::sum_vcd
   real::xx1,xx2,yy1,yy2,xxx,yyy
   integer(kind=4)::iflag,ipcld

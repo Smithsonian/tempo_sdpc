@@ -13,7 +13,6 @@ contains
    subroutine prepare_geoscf(cpt,temp_cst,u2m_cst,v2m_cst,&
               lon_min,lon_max,lat_min,lat_max, errstat)
 
-
    use m_vars, only: geos_np, nlayers, gmetadata, &
               rad_latitude, rad_longitude, rad_time
 
@@ -37,7 +36,6 @@ contains
   if (errstat /= 0) return
 
 !  write(*,*) 'Preapre to read GEOS-CF for orbit'
-  nlayers = geos_np
 
   t_beg = minval(rad_time, rad_time /= r8_missval)
   t_end = maxval(rad_time, rad_time /= r8_missval)
@@ -100,7 +98,11 @@ contains
   call clim_query_apriori_source (cpt, have_forecast, errstat)
   call clim_query_nz (nz, errstat)
   if (errstat /= 0) return
-  if (nz .NE. geos_np) call exit(1)
+
+  ! initialize the globals, geos_np and nlayers
+  ! to the number of layers in the GEOSCF file.
+  geos_np = nz
+  nlayers = nz
 
   if (have_forecast) then
     gmetadata % apriori_source = 'GEOSCF:forecast'
@@ -139,7 +141,7 @@ contains
    real(kind=8) :: hour
    real(kind=4) :: thislon, thislat, thishour
    real(kind=4) :: lon_min,lon_max,lat_min,lat_max
-   real(kind=4) :: pp(geos_np+1), tt(geos_np)
+   real(kind=4), dimension(:), allocatable :: pp(:), tt(:)
 
    real (kind=4) :: psurf, ptrop
    real (kind=4), dimension(1) :: u2m, v2m
@@ -153,12 +155,18 @@ contains
   ! initialize
   nx = rad_nXtrack
   nt = rad_NumTimes
-  nz = geos_np
-  write(*,*)'read_geoscf:nXtrack,nTimes,nz=',nx,nt,nz
+
+  lon_min=0.0
+  lon_max=0.0
+  lat_min=0.0
+  lat_max=0.0
 
   call prepare_geoscf(cpt,temp_cst,u2m_cst,v2m_cst,&
                    lon_min,lon_max,lat_min,lat_max, errstat)
   if (errstat /= 0) return
+
+  nz = geos_np
+  write(*,*)'read_geoscf:nXtrack,nTimes,nz=',nx,nt,nz
 
   !allocate geos_temperature and geos_pressure
   allocate(geos_Temperature(nx,nt,nz), stat=errstat)
@@ -169,6 +177,7 @@ contains
 
   !allocate temporary variables
   allocate(temp_z(nz), pres_z(nz+1), stat=errstat)
+  allocate (tt(nz), pp(nz+1), stat=errstat)
 
   ! loop through pixels
    do it = 1, nt
@@ -235,6 +244,7 @@ contains
   enddo ! it
 
   deallocate(pres_z, temp_z)
+  deallocate(pp, tt)
 
   end subroutine read_geoscf
 

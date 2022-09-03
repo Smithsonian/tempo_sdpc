@@ -119,8 +119,8 @@ contains
    use m_vars, only: geos_np, a203, b203, a233, b233, &
                       a253, b253, a293, b293
 
-   real(kind=4), dimension(geos_np+1), intent(in) :: pp
-   real(kind=4), dimension(geos_np), intent(in) :: tt
+   real(kind=4), dimension(:), intent(in) :: pp ! pp(geos_np+1)
+   real(kind=4), dimension(:), intent(in) :: tt ! tt(geos_np)
    real, intent(in) :: cpp ! pressure to output t8p
    real, intent(in) :: scdm ! 273K reference scd
    real, intent(out) ::scdadj, t8p ! adjusted SCD, T at cpp

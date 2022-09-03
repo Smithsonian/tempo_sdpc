@@ -233,8 +233,9 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Pressure
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
   real::gmi_psfc
-  
-  integer,parameter::geos_np=72
+
+  ! geos_np = the number of layers is initialized when reading the GEOS-CF forecast
+  integer ::geos_np=0
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure
 
