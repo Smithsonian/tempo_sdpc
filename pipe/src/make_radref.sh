@@ -3,6 +3,9 @@
 # The functions are intended to be called from a parent script
 # which imports these definitions.
 
+: "${SDPC_ARCHIVE_DBFILE:?SDPC_ARCHIVE_DBFILE not set}"
+: "${SDPC_ARCHIVE_DBFILE_L1:?SDPC_ARCHIVE_DBFILE_L1 not set}"
+
 # Format the YAML file lists
 # The result will have a trailing newline, but
 # AFAIK, blank lines in yaml files are ok.
@@ -51,11 +54,18 @@ make_radref()
 {
    l2_cloud_paths="$1"
 
-   # Get the L1 radiance path for each cloud product
+   # Get the L1 radiance path for each cloud product.
+   # If we were certain RAD_L1 and CLDO4_L2 were in the same sqlite dbfile, we could
+   # use an SQL inner join to get the matching list of radiance files in one SQL query.
+   # Unfortunately, during reprocessing, RAD_L1 and CLDO4_L2 may be in different dbfiles,
+   # so two queries are needed, one to get scan_id from the CLDO4_L2 entry, and one to
+   # get all the RAD_L1 files for that scan_id.  The input CLDO4_L2 path list should be
+   # time-ordered, so as long as the RAD_L1 paths are time-ordered, the two lists should
+   # match up.
    first_cloud_path=$(echo $l2_cloud_paths | cut -d' ' -f1)
-   scan_num=$(global_attribute.py --attr scan_num $first_cloud_path)
-   sql="select RAD_L1.path from RAD_L1 inner join CLDO4_L2 on RAD_L1.istart = CLDO4_L2.istart and RAD_L1.scan_num = $scan_num"
-   rad_files=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "$sql")
+   first_cloud_basename="$(basename $first_cloud_path)"
+   scan_id=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE "select scan_id from CLDO4_L2 where filename = \"$first_cloud_basename\"")
+   rad_files=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE_L1 "select path from RAD_L1 where scan_id = $scan_id order by istart")
 
    # Get the start/end time for each granule
    tbeg_lis=""
@@ -70,11 +80,14 @@ make_radref()
    l2_yaml_list=$(print_yaml_list "$l2_cloud_paths")
    rad_yaml_list=$(print_yaml_list "$rad_files")
 
-   # put radref in subdir of radiance file scan directory
    first_radiance_path=$(echo $rad_files | cut -d' ' -f1)
    first_radiance_filename_sans_extname=$(basename $first_radiance_path .nc)
-   first_radiance_dir=$(dirname $first_radiance_path)
-   radref_dir="$(dirname $first_radiance_dir)/radref"
+
+   # When reprocessing, the radiance file may have come from $SDPC_ARCHIVE_DBFILE_L1,
+   # which does not point to $SDPC_ARCHIVE_DIR.  To be sure that we put the radref into
+   # $SDPC_ARCHIVE_DIR, we construct such a directory path explicitly:
+   archive_subdir_for_granule=$(level1_info --dir $first_radiance_path)
+   radref_dir="$SDPC_ARCHIVE_DIR/L1/$(dirname $archive_subdir_for_granule)/radref"
 
    if ! test -d $radref_dir ; then
       mkdir -p $radref_dir

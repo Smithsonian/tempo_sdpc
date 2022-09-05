@@ -225,6 +225,8 @@ def remove_dot_prefix (name):
         return name
 
 def get_scan_id (path):
+    # scan_id is intended to uniquely identify each scan during the mission,
+    # by combining the satellite-local day number and scan_num.
     scan_id = check_output (["level1_info", "-s", path])
     return int(scan_id)
 
@@ -256,7 +258,7 @@ def write_pathlist (file_basename, pathlist):
     os.rename (hidden_path, target_path)
 
 def collect_granule_paths (cur, product_name, scan_id):
-    cur.execute ("select path from {} where scan_id == {} order by path".format(product_name, scan_id));
+    cur.execute ("select path from {} where scan_id == {} order by istart".format(product_name, scan_id));
     paths = [item for t in cur.fetchall() for item in t]
     return paths
 
@@ -491,6 +493,12 @@ def process_file_corr (conn, filename, nc):
     return status
 
 def connect_database (db_path):
+    # For back-compatibility sqlite has foreign keys turned off by default,
+    # and foreign_keys=off is ALWAYS stored in the database, regardless of
+    # the runtime setting when the database was created.  For this reason,
+    # we apparently need to turn it on explicitly, each time the database
+    # connection is established.
+
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
@@ -526,17 +534,10 @@ def move_failing (fn):
 
 def register_files (db_path, filenames):
 
-    # For back-compatibility sqlite has foreign keys turned off by default,
-    # and foreign_keys=off is ALWAYS stored in the database, regardless of
-    # the runtime setting when the database was created.  For this reason,
-    # we apparently need to turn it on explicitly, each time the database
-    # connection is established.
-
-    # Operate only on symbolic links!
-
     status_list = []
 
     for fn in filenames:
+        # Operate only on symbolic links!
         if os.path.islink(fn):
             try:
                 status = register_one_file (db_path, fn)

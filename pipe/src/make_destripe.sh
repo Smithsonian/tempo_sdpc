@@ -92,9 +92,13 @@ make_destripe()
       # destriping can proceed, but we apply the correction only to
       # products marked 'defer'.
 
-      scan_num="$(global_attribute.py --attr scan_num $first_path)"
-      sql="select HCHO_L2.path from RAD_L1 inner join HCHO_L2 on RAD_L1.istart = HCHO_L2.istart and RAD_L1.scan_num = $scan_num and HCHO_L2.asdc_status = 100 order by HCHO_L2.istart"
-      needs_destripe=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "$sql")
+      # In the product database, scan_id combines the day number and scan number.
+      # It uniquely identifies a single scan during the mission,
+      # as long as a scan number is not re-used in a single day.
+      first_basename="$(basename $first_path)"
+      this_scan_id="scan_id in (select scan_id from HCHO_L2 where filename = \"$first_basename\")"
+      sql="select path from HCHO_L2 where asdc_status = 100 and $this_scan_id order by istart"
+      needs_destripe=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE "$sql")
 
       if test -n "$needs_destripe" ; then
          apply_log="$destripe_dir/destripe.log"
