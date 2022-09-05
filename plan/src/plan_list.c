@@ -167,9 +167,15 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
          * but for the IOC plan, we want to write out the mirror tilt angle */
         fsw_xstart = mirror_tilt (entry->xstart);
 
-        /* Restart scan numbering each day, and at twilight transitions.
-         * (scan_num=0 is used as a fill value, so we number scans from 1) */
-        if (new_day || twilight_transition)
+        /* Restart scan numbering each day, (scan_num=0 is used as a fill value,
+         * so we number scans from 1).
+         * IMPORTANT: Every scan must have a unique value of scan_num within each day.
+         * This ensures that, by combining scan_num with the satellite-local day number
+         * counter, we can construct an integer scan_id label that uniquely identifies
+         * each scan throughout the entire mission.
+         * DO NOT change this unless you fully understand the consequences.
+         */
+        if (new_day)
           {
              scan_num = 1;
           }
