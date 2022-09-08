@@ -185,24 +185,6 @@ static void cache_delete (Exprec_Cache_Method_Type *cmt)
    FREE(cmt);
 }
 
-static int dir_empty (DIR *d)
-{
-   struct dirent *ent;
-   int ret = 1;
-
-   while ((ent = readdir(d)))
-     {
-        if ((0 != strcmp(ent->d_name, "."))
-            && (0 != strcmp(ent->d_name, "..")))
-          {
-             ret = 0;
-             break;
-          }
-   }
-
-   return ret;
-}
-
 static int valid_cache_directory_path (const char *path)
 {
    struct stat st;
@@ -214,16 +196,15 @@ static int valid_cache_directory_path (const char *path)
    /* an empty, accessible directory is ok */
    if (S_ISDIR(st.st_mode))
      {
-        DIR *d;
-        int is_empty;
-        if (NULL == (d = opendir (path)))
+        size_t num_files = 0;
+        char **files = NULL;
+        if (NULL == (files = ioclib_dir_list (path, &num_files, IOCLIB_LISTDIR_SORT)))
           {
-             tell_verror (TELL_RUNTIME_ERROR, "%s: opendir failed: %s", __func__, path);
+             tell_verror (TELL_RUNTIME_ERROR, "%s: ioclib_dir_list failed: %s", __func__, path);
              return 0;  /* inaccessible is not ok */
           }
-        is_empty = dir_empty (d);
-        (void) closedir(d);
-        if (is_empty) return 1;
+        ioclib_string_array_free (files, num_files);
+        if (num_files == 0) return 1;
         tell_verror (TELL_RUNTIME_ERROR, "%s: cache directory is not empty: %s", __func__, path);
      }
 
