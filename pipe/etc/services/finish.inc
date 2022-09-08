@@ -17,10 +17,18 @@ then
   exit 125
 fi
 
-if [ X$exitval != X256 ]
-then
-   exit 0
-fi
+timestamp=$(date --iso-8601=seconds)
 
-s6-permafailon 300 5 sigabrt,sigsegv,sigbus \
-echo "`date --iso-8601=seconds` $SERVICE killed by signal $sigval" 1>&2
+case "$exitval" in
+   0 )
+      exit 0
+      ;;
+   256 )
+      msg="$timestamp $SERVICE: killed by signal $sigval"
+      ;;
+    * )
+      msg="$timestamp $SERVICE: exited with status $exitval"
+      ;;
+esac
+
+s6-permafailon 300 5 1,sigabrt,sigsegv,sigbus echo "$msg" 1>&2
