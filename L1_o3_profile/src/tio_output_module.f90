@@ -56,8 +56,8 @@ contains
          last_line, ngas, nlayer, nfitvar, nwindow, num_param, num_wav_max
     integer (kind=4), dimension(:), intent(in) :: step_indices
     integer (kind=4), intent(inout) :: errstat
-    integer (kind=4) :: num_steps, num_xtrack, nlayerp1, num_elms, &
-       num_aeros_wavl, num_corners, bin_ms, n
+    integer (kind=4) :: num_steps, num_xtrack, num_elms, &
+       num_aeros_wavl, num_corners, num_layer_bounds, bin_ms, n
     integer (kind=4), dimension(:), allocatable :: step_indices_bin
 
     integer (kind=4), external :: r8fill
@@ -81,7 +81,7 @@ contains
     num_xtrack = last_pix - first_pix  + 1
     num_aeros_wavl = nwindow + 2
     num_elms = (nlayer * (nlayer - 1))/2
-    nlayerp1 = nlayer + 1
+    num_layer_bounds = 2
 
     ! get binned mirror step and xtrack indices
     allocate (step_indices_bin(num_steps), stat=errstat)
@@ -124,7 +124,7 @@ contains
     call tiof_dimlist_append(dimlist, o3p_dim_step, num_steps, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_corner, num_corners, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_layer, nlayer, errstat)
-    call tiof_dimlist_append(dimlist, o3p_dim_layerp1, nlayerp1, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_level, num_layer_bounds, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_fitvar, nfitvar, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_param, num_param, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_windows, nwindow, errstat)
@@ -154,7 +154,7 @@ contains
 
     !write coordinate variables
     call write_coordinate_vars(obj, dimlist, first_pix, last_pix, num_steps, &
-         num_xtrack, num_corners, nlayer, nlayerp1, nfitvar, num_param, &
+         num_xtrack, num_corners, nlayer, nfitvar, num_param, &
          nwindow, step_indices_bin, num_elms, num_wav_max, ngas, &
          num_aeros_wavl, errstat)
 
@@ -261,7 +261,7 @@ contains
   !! @param[in] num_aeros_wavl number of aerosol wavelengths (opt)
   !! @param[inout] errstat     error status variable
   subroutine write_coordinate_vars(obj, dimlist, first_pix, last_pix, &
-       num_steps, num_xtrack, num_corners, num_layer, num_layerp1, &
+       num_steps, num_xtrack, num_corners, num_layer, &
        num_fitvar, num_param,  num_windows, step_indices_bin, num_elms, &
        num_wav_max, ngas,  num_aeros_wavl, errstat)
 
@@ -269,7 +269,7 @@ contains
     type (tiof_file_type), intent(inout) :: obj
     type (tiof_dimlist_type), intent(in) :: dimlist
     integer (kind=4), intent(in) :: num_steps, num_xtrack, num_corners, &
-         num_layer, num_layerp1, num_fitvar, num_param, num_windows, &
+         num_layer, num_fitvar, num_param, num_windows, &
          num_elms, num_wav_max, ngas, num_aeros_wavl, first_pix, last_pix
     integer (kind=4), dimension(num_steps), intent(in) :: step_indices_bin
     integer (kind=4), intent(inout) :: errstat
@@ -278,7 +278,6 @@ contains
     integer (kind=4), dimension(num_xtrack) :: xtrack_indices
     integer (kind=4), dimension(num_corners) :: corner_indices
     integer (kind=4), dimension(num_layer) :: layer_indices
-    integer (kind=4), dimension(num_layerp1) :: layerp1_indices
     integer (kind=4), dimension(num_fitvar) :: fitvar_indices
     integer (kind=4), dimension(num_param) :: param_indices
     integer (kind=4), dimension(num_windows) :: window_indices
@@ -331,7 +330,7 @@ contains
 
     ! Retrieve dimension info for baseline coordinates
     call tiof_dimlist_lookup(dimlist, [o3p_dim_xtrack, o3p_dim_step, &
-         o3p_dim_corner, o3p_dim_layer, o3p_dim_layerp1, o3p_dim_fitvar, &
+         o3p_dim_corner, o3p_dim_layer, o3p_dim_level, o3p_dim_fitvar, &
          o3p_dim_param, o3p_dim_windows], dimids(1:8), errstat)
     ! Make the baseline variable list
     call tiof_varlist_append(varlist, errstat, o3p_dim_xtrack, nf90_int, &
@@ -345,7 +344,7 @@ contains
                                 dimids=[dimids(3)])
       call tiof_varlist_append (varlist, errstat, o3p_dim_layer, nf90_int, &
                                 dimids=[dimids(4)])
-      call tiof_varlist_append (varlist, errstat, o3p_dim_layerp1, nf90_int, &
+      call tiof_varlist_append (varlist, errstat, o3p_dim_level, nf90_int, &
                                 dimids=[dimids(5)])
       call tiof_varlist_append (varlist, errstat, o3p_dim_fitvar, nf90_int, &
                                 dimids=[dimids(6)])
@@ -408,10 +407,6 @@ contains
       layer_indices = [(i, i=0,num_layer-1)]
       call tiof_put1d_i4 (obj, o3p_dim_layer, [0], [num_layer], &
                           layer_indices, errstat)
-
-      layerp1_indices = [(i, i=0,num_layerp1-1)]
-      call tiof_put1d_i4 (obj, o3p_dim_layerp1, [0], [num_layerp1], &
-                          layerp1_indices, errstat)
 
       fitvar_indices = [(i, i=0,num_fitvar-1)]
       call tiof_put1d_i4 (obj, o3p_dim_fitvar, [0], [num_fitvar], &
@@ -640,7 +635,7 @@ contains
     integer, intent(inout) :: errstat
     !local
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    type (tiof_attlist_type) :: att_coord, att_coord_layer
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step
@@ -677,6 +672,13 @@ contains
                               att_text = trim(o3p_var_time) &
                               //' '//trim(o3p_var_longitude) &
                               //' '//trim(o3p_var_latitude))
+    call tiof_attlist_append (att_coord_layer, errstat, "coordinates", &
+                              att_text = trim(o3p_var_time) &
+                              //' '//trim(o3p_var_longitude) &
+                              //' '//trim(o3p_var_latitude) &
+                              //' '//trim(o3p_var_profile_pres) &
+                              //' '//trim(o3p_var_profile_alt))
+
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_retrieve_prof, &
                               nf90_float, &
@@ -687,7 +689,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_retrieve_prof_prec, &
                               nf90_float, &
@@ -698,7 +700,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_retrieve_prof_err, &
                               nf90_float, &
@@ -709,7 +711,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_total_o3, &
                               nf90_float, &
@@ -926,6 +928,7 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_coord_layer)
 
   end subroutine append_product_vars
 
@@ -947,14 +950,15 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    type (tiof_attlist_type) :: att_coord, att_coord_layer
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step, &
-         dimids_layerp1_xtrack_step, dimids_elms_xtrack_step, &
+         dimids_elms_xtrack_step, &
          dimids_wavmax_xtrack_step, dimids_aeros_xtrack_step, &
          dimids_window_xtrack_step
     integer, dimension(4) :: dimids_layer_layer_xtrack_step, &
+         dimids_level_layer_xtrack_step, &
          dimids_wavmax_fitvar_xtrack_step, dimids_fitvar_fitvar_xtrack_step
     integer, parameter :: deflate_level = 5
     logical, parameter :: shuffle = .true.
@@ -970,12 +974,12 @@ contains
                               dimids_layer_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [o3p_dim_layer, o3p_dim_layer, o3p_dim_xtrack, o3p_dim_step], &
-                              dimids_layer_layer_xtrack_step, &
+                              [o3p_dim_level, o3p_dim_layer, o3p_dim_xtrack, o3p_dim_step], &
+                              dimids_level_layer_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
-                              [o3p_dim_layerp1, o3p_dim_xtrack, o3p_dim_step], &
-                              dimids_layerp1_xtrack_step, &
+                              [o3p_dim_layer, o3p_dim_layer, o3p_dim_xtrack, o3p_dim_step], &
+                              dimids_layer_layer_xtrack_step, &
                               errstat)
     call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_param, o3p_dim_xtrack, o3p_dim_step], &
@@ -1025,6 +1029,12 @@ contains
                               att_text = trim(o3p_var_time) &
                               //' '//trim(o3p_var_longitude) &
                               //' '//trim(o3p_var_latitude))
+    call tiof_attlist_append (att_coord_layer, errstat, "coordinates", &
+                              att_text = trim(o3p_var_time) &
+                              //' '//trim(o3p_var_longitude) &
+                              //' '//trim(o3p_var_latitude) &
+                              //' '//trim(o3p_var_profile_pres) &
+                              //' '//trim(o3p_var_profile_alt))
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_geoflg, &
                               nf90_int, &
@@ -1094,7 +1104,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_apriori_prof_err, &
                               nf90_float, &
@@ -1105,40 +1115,62 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_alt, &
                               nf90_float, &
-                              dimids = dimids_layerp1_xtrack_step, &
+                              dimids = dimids_layer_xtrack_step, &
                               comment = "altitude of each retrieval layer", &
                               valid_range = [0.0_8, 100.0_8], &
                               units = "km", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
+    call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_profile_alt_bnds, &
+                              nf90_float, &
+                              dimids = dimids_level_layer_xtrack_step, &
+                              comment = "altitude of each retrieval layer boundary", &
+                              valid_range = [0.0_8, 100.0_8], &
+                              !units = "km", &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_temp, &
                               nf90_float, &
-                              dimids = dimids_layerp1_xtrack_step, &
+                              dimids = dimids_layer_xtrack_step, &
                               comment = "temperature of each retrieval layer", &
                               valid_range = [150.0_8, 350.0_8], &
                               units = "Kelvin", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_pres, &
                               nf90_float, &
-                              dimids = dimids_layerp1_xtrack_step, &
+                              dimids = dimids_layer_xtrack_step, &
                               comment = "pressure of each retrieval layer", &
                               valid_range = [0.0_8, 1100.0_8], &
                               units = "hPa", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
+    call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_profile_pres_bnds, &
+                              nf90_float, &
+                              dimids = dimids_level_layer_xtrack_step, &
+                              comment = "pressure of each retrieval layer boundary", &
+                              valid_range = [0.0_8, 1100.0_8], &
+                              !units = "hPa", &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord_layer)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_tropo_index, &
                               nf90_short, &
@@ -1261,11 +1293,11 @@ contains
                               dimids = dimids_layer_layer_xtrack_step, &
                               comment = "ozone profile averaging kernels", &
                               valid_range = [-32766.0_8, 32767.0_8], &
-                              units = "DU", &
+                              !units = "DU", &
                               fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord)
+                              attlist=att_coord_layer)
 
     endif
 
@@ -1291,7 +1323,7 @@ contains
                               dimids = dimids_elms_xtrack_step, &
                               comment = "O3 noise correlation matrix", &
                               valid_range = [-10000.0_8, 10000.0_8], &
-                              units = "DU", &
+                              !units = "DU", &
                               fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -1356,7 +1388,7 @@ contains
                               o3p_var_aeros_scatter_thick, &
                               nf90_float, &
                               dimids = dimids_aeros_xtrack_step, &
-                              comment = "aerosol scatteringoptical thickness", &
+                              comment = "aerosol scattering optical thickness", &
                               valid_range = [0.0_8, 20.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
@@ -1367,6 +1399,7 @@ contains
     call tiof_def_vars (obj, varlist, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_coord_layer)
 
   end subroutine append_support_vars
 
@@ -1753,13 +1786,15 @@ contains
     !real (kind=8), dimension (max_fit_pts)      :: tempring
     real (kind=8)                               :: ncorrl_foo
     real (kind=8) , dimension(n_rad_wvl) :: lfitres_rad
+    real (kind=4), dimension(:), allocatable :: tmp_coord_var
+    real (kind=4), dimension(:,:), allocatable :: tmp_coord_var_bnds
     integer (KIND= 2), dimension(nlayer,nlayer)  :: OzAvgK_I16
     integer (kind=2), dimension (:), allocatable :: ncorrl_1d
     character (len = 4), dimension(nfitvar)  :: varnames_nNum
     character (len = 20), dimension(nfitvar) :: units
     real (kind=8)  :: avgres
     integer (kind=4) :: i, j, fidx, lidx, ii, irow, jcol, nn
-    integer (kind=4) :: num_elms, num_aeros_wavl, nlayerp1
+    integer (kind=4) :: num_elms, num_aeros_wavl
     logical, save :: first = .true.
 
     type (tiof_file_type), pointer :: obj
@@ -1768,9 +1803,10 @@ contains
 
     obj => primary_output_file
 
-    nlayerp1 = nlayer + 1
     num_elms = (nlayer * (nlayer - 1))/2
     num_aeros_wavl = nwindow + 2
+
+    allocate (tmp_coord_var(nlayer), tmp_coord_var_bnds(2,nlayer))
 
     ! allocate ncorrl_1d if we need it
     if (ozwrtcovar) then
@@ -1891,12 +1927,32 @@ contains
     call tiof_push_group (obj, o3p_grp_support_data, errstat)
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
          [real(the_ai, kind=4)], errstat)
+
+    tmp_coord_var(1:nlayer) = real(sqrt(atmosprof(1,0:nlayer-1) &
+                                        * atmosprof(1,1:nlayer)), kind=4)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
-         [1,1, nlayerp1], real(atmosprof(1,0:nlayer), kind=4), errstat)
+         [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
+
+    tmp_coord_var(1:nlayer) = real(0.5*(atmosprof(2,0:nlayer-1) &
+                                        + atmosprof(2,1:nlayer)), kind=4)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
-         [1,1, nlayerp1], real(atmosprof(2,0:nlayer), kind=4), errstat)
+         [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
+
+    tmp_coord_var(1:nlayer) = real(0.5*(atmosprof(3,0:nlayer-1) &
+                                        + atmosprof(3,1:nlayer)), kind=4)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
-         [1,1, nlayerp1], real(atmosprof(3,0:nlayer), kind=4), errstat)
+         [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
+
+    tmp_coord_var_bnds(1,1:nlayer) = real(atmosprof(1,0:nlayer-1),kind=4)
+    tmp_coord_var_bnds(2,1:nlayer) = real(atmosprof(1,1:nlayer  ),kind=4)
+    call tiof_put2d_r4 (obj, o3p_var_profile_pres_bnds, [iline,ipix,0,0], &
+         [1,1,nlayer,2], tmp_coord_var_bnds(1:2,1:nlayer), errstat)
+
+    tmp_coord_var_bnds(1,1:nlayer) = real(atmosprof(2,0:nlayer-1),kind=4)
+    tmp_coord_var_bnds(2,1:nlayer) = real(atmosprof(2,1:nlayer  ),kind=4)
+    call tiof_put2d_r4 (obj, o3p_var_profile_alt_bnds, [iline,ipix,0,0], &
+         [1,1,nlayer,2], tmp_coord_var_bnds(1:2,1:nlayer), errstat)
+
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof, [iline, ipix, 0], &
          [1,1,nlayer], real(ozprof_ap(1:nlayer), kind=4), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &
@@ -2151,9 +2207,10 @@ contains
     integer, intent(inout) ::errstat
 
     integer (kind=4) :: i, j
-    integer (kind=4) :: num_elms, num_aeros_wavl, num_param, nlayerp1, &
+    integer (kind=4) :: num_elms, num_aeros_wavl, num_param, &
          num_wav_max
-    real (KIND=4), dimension(0:nlayer)      :: tmp1D_layer
+    real (KIND=4), dimension(nlayer)      :: tmp1D_layer
+    real (KIND=4), dimension(2,nlayer) :: tmp1D_layer_bnds
     real (KIND=4), dimension(nfitvar) :: tmp1D_fitvar
     real (KIND=4), dimension(num_wav_max)   :: tmp1D_fitpts
     real (KIND=4), dimension(nwindow)        :: tmp1D_numwin
@@ -2172,24 +2229,24 @@ contains
 
     obj => primary_output_file
 
-    nlayerp1 = nlayer + 1
     num_elms = (nlayer * (nlayer - 1))/2
     num_aeros_wavl = nwindow + 2
 
-    tmp1D_layer(0:nlayer)          = real(fill_double, kind=4)
-    tmp1D_numwin(1:nwindow)       = real(fill_double, kind=4)
-    tmp1D_num(1:nwindow)          = int(fill_int16, kind=4)
-    tmp1D_fitvar(1:nfitvar) = real(fill_double, kind=4)
-    tmp1D_fitpts(1:num_wav_max)  = real(fill_double, kind=4)
+    tmp1D_layer_bnds(1:2,1:nlayer)  = real(fill_double, kind=4)
+    tmp1D_layer(1:nlayer)       = real(fill_double, kind=4)
+    tmp1D_numwin(1:nwindow)     = real(fill_double, kind=4)
+    tmp1D_num(1:nwindow)        = int(fill_int16, kind=4)
+    tmp1D_fitvar(1:nfitvar)     = real(fill_double, kind=4)
+    tmp1D_fitpts(1:num_wav_max) = real(fill_double, kind=4)
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof, [iline, ipix, 0], &
-         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
+         [1,1,nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_prec, [iline, ipix, 0], &
-         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
+         [1,1,nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_retrieve_prof_err, [iline, ipix, 0], &
-         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
+         [1,1,nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3, [iline, ipix], &
          [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_total_o3_prec, [iline, ipix], &
@@ -2245,29 +2302,33 @@ contains
     ! Support data group
     call tiof_push_group (obj, o3p_grp_support_data, errstat)
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
-         [tmp1D_layer(0)], errstat)
+         [tmp1D_layer(1)], errstat)
+    call tiof_put2d_r4 (obj, o3p_var_profile_pres_bnds, [iline, ipix, 0,0], &
+         [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
+    call tiof_put2d_r4 (obj, o3p_var_profile_alt_bnds, [iline, ipix, 0], &
+         [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
-         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
+         [1,1, nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
-         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
+         [1,1, nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
-         [1,1, nlayerp1], tmp1D_layer(0:nlayer), errstat)
+         [1,1, nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof, [iline, ipix, 0], &
-         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
+         [1,1,nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_o3_apriori_prof_err, [iline, ipix, 0], &
-         [1,1,nlayer], tmp1D_layer(0:nlayer-1), errstat)
+         [1,1,nlayer], tmp1D_layer(1:nlayer), errstat)
     call tiof_put1d_i4(obj, o3p_var_tropo_index, [iline, ipix], &
          [1,1], [int(fill_int16)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_frac, [iline, ipix], &
-         [1,1], [tmp1D_layer(0)], errstat)
+         [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_eff_cld_pres, [iline, ipix], &
-         [1,1], [tmp1D_layer(0)], errstat)
+         [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_i4 (obj, o3p_var_cld_flag, [iline, ipix], &
          [1,1], [INT(fill_int16)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_glint_prob, [iline, ipix], &
-         [1,1], [tmp1D_layer(0)], errstat)
+         [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_r4 (obj, o3p_var_surf_albedo, [iline, ipix], &
-         [1,1], [tmp1D_layer(0)], errstat)
+         [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put1d_i4 (obj, o3p_var_fit_wavel, &
          [iline, ipix], [1,1], [int(fill_int16)], errstat)
     call tiof_put1d_i4 (obj, o3p_var_window_wavel, &
@@ -2312,7 +2373,7 @@ contains
       !
       ! FIXME - ozone info content should have its own switch eventually
       call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
-         [1,1], [tmp1D_layer(0)], errstat)
+         [1,1], [tmp1D_layer(1)], errstat)
     endif
     !contribution matrix
     if (ozwrtcontri) then
@@ -2325,7 +2386,7 @@ contains
     if (.not. do_lambcld) then
       call tiof_put1d_r4 (obj, o3p_var_cld_opt_depth, &
          [iline, ipix], [1,1], &
-         [tmp1D_layer(0)], errstat)
+         [tmp1D_layer(1)], errstat)
     endif
     !aerosols
     if (aerosol) then
@@ -2504,7 +2565,8 @@ contains
          o3tot_prec, o3tot_err, o3strat, o3strat_prec, o3strat_err, &
          o3trop, o3trop_prec, o3trop_err, gas, gas_prec, gas_err, &
          nongas, nongas_prec, nongas_err, aeros_idx, ozprof_pres, &
-         ozprof_alt, ozprof_temp, o3apriori, o3apriori_err, tropo_idx, &
+         ozprof_alt, ozprof_temp, ozprof_pres_bnds, ozprof_alt_bnds, &
+         o3apriori, o3apriori_err, tropo_idx, &
          cld_frac, cld_pres, cld_flag, glintprob, eff_alb, n_fit_wvl, &
          n_window_wvl, gas_apriori, gas_apriori_err, nongas_apriori, &
          nongas_apriori_err, gas_names, nongas_names, nongas_units, &
@@ -2524,7 +2586,7 @@ contains
          ngas, nnongas, nlayer, nfitvars, &
          nfitwins, nmax_wavs, nnoise_elems, naeros_wavs
     integer, intent(inout) ::errstat
-    integer :: nlayerp1, nstep, nxtrack
+    integer :: nstep, nxtrack
 
     type (tiof_file_type), pointer :: obj
 
@@ -2534,7 +2596,6 @@ contains
 
     nstep=max_step-min_step+1
     nxtrack=max_xtrack-min_xtrack+1
-    nlayerp1 = nlayer + 1
 
     ! Product group
     call tiof_push_group (obj, o3p_grp_product, errstat)
@@ -2607,11 +2668,17 @@ contains
     call tiof_put2d_r4 (obj, o3p_var_aeros_index, [min_step, min_xtrack], &
          [nstep, nxtrack], aeros_idx(1:nxtrack,1:nstep), errstat)
     call tiof_put3d_r4 (obj, o3p_var_profile_pres, [min_step, min_xtrack, 0], &
-         [nstep, nxtrack, nlayerp1], ozprof_pres(1:nlayerp1,1:nxtrack,1:nstep), errstat)
+         [nstep, nxtrack, nlayer], ozprof_pres(1:nlayer,1:nxtrack,1:nstep), errstat)
     call tiof_put3d_r4 (obj, o3p_var_profile_alt, [min_step, min_xtrack, 0], &
-         [nstep, nxtrack, nlayerp1], ozprof_alt(1:nlayerp1,1:nxtrack,1:nstep), errstat)
+         [nstep, nxtrack, nlayer], ozprof_alt(1:nlayer,1:nxtrack,1:nstep), errstat)
     call tiof_put3d_r4 (obj, o3p_var_profile_temp, [min_step, min_xtrack, 0], &
-         [nstep, nxtrack, nlayerp1], ozprof_temp(1:nlayerp1,1:nxtrack,1:nstep), errstat)
+         [nstep, nxtrack, nlayer], ozprof_temp(1:nlayer,1:nxtrack,1:nstep), errstat)
+
+    call tiof_put4d_r4 (obj, o3p_var_profile_pres_bnds, [min_step, min_xtrack,0,0], &
+         [nstep, nxtrack, nlayer,2], ozprof_pres_bnds(1:2,1:nlayer,1:nxtrack,1:nstep), errstat)
+    call tiof_put4d_r4 (obj, o3p_var_profile_alt_bnds, [min_step, min_xtrack,0,0], &
+         [nstep, nxtrack, nlayer,2], ozprof_alt_bnds(1:2,1:nlayer,1:nxtrack,1:nstep), errstat)
+
     call tiof_put3d_r4 (obj, o3p_var_o3_apriori_prof, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, nlayer], &
                         o3apriori(1:nlayer,1:nxtrack,1:nstep), errstat)

@@ -29,7 +29,6 @@ contains
   !> @param[out] nfitwins     fitting_windows dimension size
   !> @param[out] ngas         gases dimension size (zero if unused)
   !> @param[out] nlayer       layer dimension size
-  !> @param[out] nlayerp1     layer_plus1 dimension size
   !> @param[out] nmax_wavs    max_wavelengths dimension size (zero if unused)
   !> @param[out] nnoise_elems noise_elements dimension size (zero if unused)
   !> @param[out] nnongas      non_gas_variables dimension size
@@ -39,7 +38,7 @@ contains
   !> @author E. O'Sullivan October 2016
   !--------------------------------------------------------------------------
   subroutine read_o3p_dims(l2file, tio_l2obj, nstep, nxtrack, ncorner, &
-       nfitvars, nfitwins, ngas, nlayer, nlayerp1, nmax_wavs, nnoise_elems, &
+       nfitvars, nfitwins, ngas, nlayer, nmax_wavs, nnoise_elems, &
        nnongas, naeros_wavs, errstat)
 
     implicit none
@@ -49,7 +48,7 @@ contains
 
     !output variables
     integer (kind=4), intent (out) :: nstep, nxtrack, ncorner, &
-         nfitvars, nfitwins, ngas, nlayer, nlayerp1, nmax_wavs, nnoise_elems, &
+         nfitvars, nfitwins, ngas, nlayer, nmax_wavs, nnoise_elems, &
          nnongas, naeros_wavs
     integer (kind=4), intent (inout) :: errstat
 
@@ -68,7 +67,6 @@ contains
     call tiof_inq_dimlen (tio_l2obj, o3p_dim_fitvar, nfitvars, errstat)
     call tiof_inq_dimlen (tio_l2obj, o3p_dim_windows, nfitwins, errstat)
     call tiof_inq_dimlen (tio_l2obj, o3p_dim_layer, nlayer, errstat)
-    call tiof_inq_dimlen (tio_l2obj, o3p_dim_layerp1, nlayerp1, errstat)
     call tiof_inq_dimlen (tio_l2obj, o3p_dim_param, nnongas, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
@@ -348,7 +346,6 @@ contains
   !> @param[in]  nstep         mirror step dimension size
   !> @param[in]  nxtrack       cross-track dimension size
   !> @param[in]  nlayer        layer dimension size
-  !> @param[in]  nlayerp1      layer+1 dimension size
   !> @param[in]  nwindow       fit windows dimension size
   !> @param[in]  ngas          gas dimension size
   !> @param[in]  nnongas       nongas dimension size
@@ -364,7 +361,7 @@ contains
   !
   !> @author E. O'Sullivan October 2016
   !--------------------------------------------------------------------------
-  subroutine read_o3p_support (tio_l2obj, nstep, nxtrack, nlayer, nlayerp1, &
+  subroutine read_o3p_support (tio_l2obj, nstep, nxtrack, nlayer, &
        nwindow, ngas, nnongas, nfitvars, nnoise_elms, nmax_wavs, naeros_wavs, &
        min_xtrack, max_xtrack, min_step, max_step, errstat)
 
@@ -372,7 +369,8 @@ contains
          ozwrtcontri, ozwrtvar, gaswrt, aerosol, do_lambcld
     use m_o3p_params, only: geoflg, aeros_idx, tropo_idx, cld_frac, cld_pres, &
          cld_flag, glintprob, eff_alb, o3apriori, o3apriori_err, &
-         ozprof_pres, ozprof_alt, ozprof_temp, ozinfo, cld_opt_depth, &
+         ozprof_pres, ozprof_alt, ozprof_temp, ozprof_pres_bnds, ozprof_alt_bnds, &
+         ozinfo, cld_opt_depth, &
          gas_apriori, gas_apriori_err, nongas_apriori, nongas_apriori_err, &
          correl_mtrx, contrib_mtrx, aeros_opt_thick, aeros_scatter_thick, &
          avg_kernel, noise_mtrx, n_fit_wvl, n_window_wvl, gas_names, &
@@ -382,7 +380,7 @@ contains
 
     !input variables
     integer (kind=4), intent(in) :: nstep, nxtrack, ngas, nnongas, &
-         nlayer, nlayerp1, nwindow, nfitvars, nnoise_elms, nmax_wavs, &
+         nlayer, nwindow, nfitvars, nnoise_elms, nmax_wavs, &
          naeros_wavs, min_xtrack, max_xtrack, min_step, max_step
 
     !output variables
@@ -400,14 +398,22 @@ contains
          [nstep, nxtrack], &
          aeros_idx(min_xtrack:max_xtrack, min_step:max_step), errstat)
     call tiof_get3d_r4 (tio_l2obj, o3p_var_profile_pres, [0, 0, 0], &
-         [nstep, nxtrack, nlayerp1], &
+         [nstep, nxtrack, nlayer], &
          ozprof_pres(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
     call tiof_get3d_r4 (tio_l2obj, o3p_var_profile_alt, [0, 0, 0], &
-         [nstep, nxtrack, nlayerp1], &
+         [nstep, nxtrack, nlayer], &
          ozprof_alt(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
     call tiof_get3d_r4 (tio_l2obj, o3p_var_profile_temp, [0, 0, 0], &
-         [nstep, nxtrack, nlayerp1], &
+         [nstep, nxtrack, nlayer], &
          ozprof_temp(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+
+    call tiof_get4d_r4 (tio_l2obj, o3p_var_profile_pres_bnds, [0,0,0,0], &
+         [nstep, nxtrack, nlayer, 2], &
+         ozprof_pres_bnds(1:2,1:nlayer,min_xtrack:max_xtrack,min_step:max_step), errstat)
+    call tiof_get4d_r4 (tio_l2obj, o3p_var_profile_alt_bnds, [0,0,0,0], &
+         [nstep, nxtrack, nlayer, 2], &
+         ozprof_alt_bnds(1:2,1:nlayer,min_xtrack:max_xtrack,min_step:max_step), errstat)
+
     call tiof_get3d_r4 (tio_l2obj, o3p_var_o3_apriori_prof, [0, 0, 0], &
          [nstep, nxtrack, nlayer], &
          o3apriori(:, min_xtrack:max_xtrack, min_step:max_step), errstat)

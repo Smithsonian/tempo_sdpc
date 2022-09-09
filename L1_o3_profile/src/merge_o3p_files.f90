@@ -73,7 +73,7 @@ program merge_o3p_files
     ! From first file determine which dimensions/variables are used
     call read_o3p_dims(input_files(n), tio_l2in, nstep(n), nxtrack(n), &
          ncorner(n), nfitvars(n), nfitwins(n), ngas(n), nlayer(n), &
-         nlayerp1(n), nmax_wavs(n), nnoise_elems(n), nnongas(n), &
+         nmax_wavs(n), nnoise_elems(n), nnongas(n), &
          naeros_wavs(n), errstat)
 
     if (nmax_wavs(n) > max_nmax_wavs) max_nmax_wavs = nmax_wavs(n)
@@ -158,7 +158,6 @@ program merge_o3p_files
       if (nfitwins(n) /= nfitwins(1)) errstat = -3
       if (ngas(n) /= ngas(1)) errstat = -4
       if (nlayer(n) /= nlayer(1)) errstat = -5
-      if (nlayerp1(n) /= nlayerp1(1)) errstat = -6
       if (nnoise_elems(n) /= nnoise_elems(1)) errstat = -8
       if (nnongas(n) /= nnongas(1)) errstat = -9
       if (naeros_wavs(n) /= naeros_wavs(1)) errstat = -10
@@ -220,7 +219,7 @@ program merge_o3p_files
   ! allocate output data arrays and insert fill values
   call o3p_param_alloc (one, maxval(nstep), one, maxval(nxtrack), &
        ncorner(1), nfitvars(1), nfitwins(1), ngas(1), nnongas(1), nlayer(1), &
-       nlayerp1(1), max_nmax_wavs, nnoise_elems(1), naeros_wavs(1), &
+       max_nmax_wavs, nnoise_elems(1), naeros_wavs(1), &
        errstat)
   !  call o3p_param_fill (errstat)
   if (errstat /= 0) stop 1
@@ -258,7 +257,7 @@ program merge_o3p_files
          ngas(n), nnongas(n), one, nxtrack(n), one, nstep(n), errstat)
 
     call read_o3p_support(tio_l2in, nstep(n), nxtrack(n), nlayer(n), &
-         nlayerp1(n), nfitwins(n), ngas(n), nnongas(n), nfitvars(n), &
+         nfitwins(n), ngas(n), nnongas(n), nfitvars(n), &
          nnoise_elems(n), nmax_wavs(n), naeros_wavs(n), &
          one, nxtrack(n), one, nstep(n), errstat)
 

@@ -40,9 +40,11 @@ module m_o3p_params
   real (kind=4), dimension(:,:,:), allocatable :: ozprof, ozprof_prec, &
        ozprof_err
   real (kind=4), dimension(:,:,:), allocatable :: o3apriori, o3apriori_err
-  ! (nlayerp1, nxtrack, nstep)
+  ! (nlayer, nxtrack, nstep)
   real (kind=4), dimension(:,:,:), allocatable :: ozprof_pres, ozprof_alt, &
        ozprof_temp
+  ! (2, nlayer, nxtrack, nstep)
+  real (kind=4), dimension(:,:,:,:), allocatable :: ozprof_pres_bnds, ozprof_alt_bnds
   ! (ngas, nxtrack, nstep)
   real (kind=4), dimension(:,:,:), allocatable :: gas, gas_prec, gas_err
   real (kind=4), dimension(:,:,:), allocatable :: gas_apriori, &
@@ -87,7 +89,6 @@ contains
   !! @param[out] ngas         gases dimension size (zero if unused)
   !! @param[out] nnongas      non_gas_variables dimension size
   !! @param[out] nlayer       layer dimension size
-  !! @param[out] nlayerp1     layer_plus1 dimension size
   !! @param[out] nmax_wavs    max_wavelengths dimension size (zero if unused)
   !! @param[out] nnoise_elems noise_elements dimension size (zero if unused)
   !! @param[out] naeros_wavs  aerosol_wavelengths dim. size (zero if unused)
@@ -96,7 +97,7 @@ contains
   !> @author E. O'Sullivan October 2016
   !--------------------------------------------------------------------------
   subroutine o3p_param_alloc (min_step, max_step, min_xtrack, max_xtrack, ncorner, nfitvars, &
-       nwindow, ngas, nnongas, nlayer, nlayerp1, nmax_wavs, nnoise_elems, &
+       nwindow, ngas, nnongas, nlayer, nmax_wavs, nnoise_elems, &
        naeros_wavs, errstat)
 
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
@@ -109,7 +110,7 @@ contains
     ! input variables
     integer (kind=4), intent(in) :: min_step, max_step, min_xtrack, &
          max_xtrack, ncorner, nfitvars, nwindow, ngas, nnongas, nlayer, &
-         nlayerp1, nmax_wavs, nnoise_elems, naeros_wavs
+         nmax_wavs, nnoise_elems, naeros_wavs
     ! output variables
     integer (kind=4), intent(inout) :: errstat
 
@@ -153,9 +154,11 @@ contains
          ozprof_err(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
          o3apriori(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
          o3apriori_err(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
-         ozprof_pres(nlayerp1, min_xtrack:max_xtrack, min_step:max_step), &
-         ozprof_alt(nlayerp1, min_xtrack:max_xtrack, min_step:max_step), &
-         ozprof_temp(nlayerp1, min_xtrack:max_xtrack, min_step:max_step), &
+         ozprof_pres(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
+         ozprof_alt(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
+         ozprof_temp(nlayer, min_xtrack:max_xtrack, min_step:max_step), &
+         ozprof_pres_bnds(2,nlayer, min_xtrack:max_xtrack, min_step:max_step), &
+         ozprof_alt_bnds(2,nlayer, min_xtrack:max_xtrack, min_step:max_step), &
          n_window_wvl(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
          rms(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
          avg_resid(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
@@ -295,6 +298,8 @@ contains
     if(allocated(ozprof_pres)) deallocate(ozprof_pres , stat=errstat)
     if(allocated(ozprof_alt)) deallocate(ozprof_alt , stat=errstat)
     if(allocated(ozprof_temp)) deallocate(ozprof_temp , stat=errstat)
+    if(allocated(ozprof_pres_bnds)) deallocate(ozprof_pres_bnds , stat=errstat)
+    if(allocated(ozprof_alt_bnds)) deallocate(ozprof_alt_bnds , stat=errstat)
     if(allocated(n_window_wvl)) deallocate(n_window_wvl , stat=errstat)
     if(allocated(rms)) deallocate(rms , stat=errstat)
     if(allocated(avg_resid)) deallocate(avg_resid , stat=errstat)
@@ -398,6 +403,8 @@ contains
     ozprof_pres = fill_float
     ozprof_alt = fill_float
     ozprof_temp = fill_float
+    ozprof_pres_bnds = fill_float
+    ozprof_alt_bnds = fill_float
     o3tot = fill_float
     o3tot_prec = fill_float
     o3tot_err = fill_float
@@ -493,7 +500,7 @@ contains
 
     allocate(nstep(ninput), nxtrack(ninput), ncorner(ninput), &
        nfitvars(ninput), nfitwins(ninput), ngas(ninput), &
-       nnongas(ninput), nlayer(ninput), nlayerp1(ninput), &
+       nnongas(ninput), nlayer(ninput), &
        nmax_wavs(ninput), nnoise_elems(ninput), naeros_wavs(ninput), &
        stat=errstat)
 
@@ -531,7 +538,6 @@ contains
     if (allocated(ngas)) deallocate (ngas, stat=errstat)
     if (allocated(nnongas)) deallocate (nnongas, stat=errstat)
     if (allocated(nlayer)) deallocate (nlayer, stat=errstat)
-    if (allocated(nlayerp1)) deallocate (nlayerp1, stat=errstat)
     if (allocated(nmax_wavs)) deallocate (nmax_wavs, stat=errstat)
     if (allocated(nnoise_elems)) deallocate (nnoise_elems, stat=errstat)
     if (allocated(naeros_wavs)) deallocate (naeros_wavs, stat=errstat)
