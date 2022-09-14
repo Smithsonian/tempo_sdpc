@@ -3,4 +3,15 @@ collection_shortname  : TEMPO_NO2_L3
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>AIR QUALITY>NITROGEN OXIDES,
                         EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>NITROGEN COMPOUNDS>NITROGEN DIOXIDE
-summary              : Abstract goes here.
+
+summary: >-
+  Nitrogen dioxide Level 3 files provide trace gas information on a
+  regular grid covering the TEMPO field of regard for nominal TEMPO
+  observations. Level 3 files are derived by combining information
+  from all Level 2 files constituting a TEMPO East-West scan cycle.
+  The files are provided in netCDF4 format, and contain information on
+  tropospheric, stratospheric and total nitrogen dioxide vertical
+  columns, ancillary data used in air mass factor and
+  stratospheric/tropospheric separation calculations, and retrieval
+  quality flags. The re-gridding algorithm uses an area-weighted
+  approach.

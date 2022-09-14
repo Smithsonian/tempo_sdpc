@@ -11,10 +11,9 @@ summary: >-
   entire North-South TEMPO FOR but only a portion of the East-West
   FOR. The files are provided in netCDF4 format, and contain
   information on effective cloud fraction (ECF), cloud optical
-  centroid pressure (OCP), scene albedo, scene pressure, ancillary
-  data used in calculation, and processing quality flags. The ECF is
-  derived from reflectance at 466 nm. The OCP is derived from O2-O2
-  slant column density. The cloud retrieval uses Look Up Tables (LUTs)
-  of reflectance and air mass factors as a function of geometry,
-  surface albedo, surface pressure and cloud pressure. Please refer to
-  the ATBD for details.
+  centroid pressure, cloud radiance fraction, scene albedo, scene
+  pressure, ancillary data used in calculation, and processing quality
+  flags. The cloud retrieval uses Look Up Tables (LUTs) of reflectance
+  and air mass factors as a function of geometry, surface albedo,
+  surface pressure and cloud pressure. Please refer to the ATBD for
+  details.

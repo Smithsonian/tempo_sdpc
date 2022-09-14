@@ -2,4 +2,16 @@ title                 : TEMPO Level 3 ozone profile product
 collection_shortname  : TEMPO_O3PROF_L3
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>ATMOSPHERIC CHEMISTRY>OXYGEN COMPOUNDS>OZONE
-summary              : Abstract goes here.
+
+summary: >-
+  Ozone profile Level 3 files provide ozone profile information on a
+  regular grid covering the TEMPO field of regard for nominal TEMPO
+  observations. Level 3 files are derived by combining information
+  from all Level 2 files constituting a TEMPO East-West scan cycle.
+  The files are provided in netCDF4 format, and contain information on
+  ozone partial columns at 24 layers with the last layer 0-2 km above
+  the surface, total, stratospheric, and tropospheric ozone columns,
+  and their random-noise and total retrieval errors, a priori ozone
+  profile and a prior error, effective cloud fraction and effective
+  cloud top pressure. The re-gridding algorithm uses an area-weighted
+  approach.

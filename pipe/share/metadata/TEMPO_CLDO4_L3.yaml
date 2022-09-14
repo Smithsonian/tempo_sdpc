@@ -3,4 +3,13 @@ collection_shortname  : TEMPO_CLDO4_L3
 collection_version    : 1
 keywords              : EARTH SCIENCE>ATMOSPHERE>CLOUDS>CLOUD PROPERTIES>CLOUD FRACTION,
                         EARTH SCIENCE>ATMOSPHERE>CLOUDS>CLOUD PROPERTIES>CLOUD TOP PRESSURE
-summary              : Abstract goes here.
+
+summary: >-
+  O2-O2 cloud Level 3 files provide cloud information on a regular
+  grid covering the TEMPO field of regard for nominal TEMPO
+  observations. Level 3 files are derived by combining information
+  from all Level 2 files constituting a TEMPO East-West scan cycle.
+  The files are provided in netCDF4 format, and contain information on
+  effective cloud fraction, cloud optical centroid pressure, cloud
+  radiance fraction, and ancillary data used in the calculation. The
+  re-gridding algorithm uses an area-weighted approach.
