@@ -123,7 +123,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
      "label,time,duration,mirror_x,num_steps,integration_time,repeat,timestamp\n";
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
-   uint16_t last_scan_type, scan_num;
+   uint16_t scan_num;
    int num_scan_csm, num_days;
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
@@ -136,7 +136,6 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 
    previous_entry_tstop_tai = 0.0;
    previous_entry_jd_utc_end = 0.0;
-   last_scan_type = head->scan_type;
 
    scan_num = 1;
    num_scan_csm = 0;
@@ -147,8 +146,6 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
         double tstart_utc, tstart_tai, fsw_xstart;
         char buf[TIME_BUFSIZE];
         int new_day = (previous_entry_jd_utc_end < entry->tstart);
-        int twilight_transition = ((last_scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS)
-                                   != (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS));
         int i, num_scans;
 
         tstart_utc = (entry->tstart - unix_epoch_jd) * SEC_PER_DAY;
@@ -217,7 +214,6 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 
         previous_entry_tstop_tai = tstart_tai;
         previous_entry_jd_utc_end = entry->jd_utc_end_safe;
-        last_scan_type = entry->scan_type;
      }
 
    fprintf (stdout, "    %5d Plan days\n", num_days);
