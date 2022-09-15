@@ -978,12 +978,12 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
        || (-1 == TIO_def_var_fill (qa_grp, num_varid, 0, &fill_num)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, num_dims, dims, &min_varid))
-       || (0 != TIO_put_text_attrs (qa_grp, min_varid, min_attrs))
-       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid)))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid))
+       || (0 != TIO_put_text_attrs (qa_grp, min_varid, min_attrs)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, num_dims, dims, &max_varid))
-       || (0 != TIO_put_text_attrs (qa_grp, max_varid, max_attrs))
-       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid)))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid))
+       || (0 != TIO_put_text_attrs (qa_grp, max_varid, max_attrs)) )
      return -1;
 
    /* We need a fill value; try get one from the input file */
