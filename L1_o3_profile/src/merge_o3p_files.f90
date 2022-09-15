@@ -8,7 +8,7 @@ program merge_o3p_files
   use m_o3p_params
   use tio_output_module, only: l2_tio_create, l2_tio_close, write_merged_geo, &
        write_merged_data, copy_hdr_metadata, copy_l2_metadata, label_output_file, &
-       set_production_date_time
+       set_production_date_time, set_local_granule_id
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        ozwrtvar, gaswrt, aerosol, do_lambcld
@@ -290,6 +290,7 @@ program merge_o3p_files
   if (write_global_attr) then
     call copy_hdr_metadata(input_files(1), errstat)
     call copy_l2_metadata (input_files(1), errstat)
+    call set_local_granule_id (outfile, errstat)
     call label_output_file(tempo_prod_type_o3p, processing_version, errstat)
     call set_production_date_time (errstat)
   endif

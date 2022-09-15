@@ -17,7 +17,7 @@ module tio_output_module
   public l2_tio_create, l2_tio_close, l2_tio_write_geo, l2_tio_write_data, &
        write_merged_geo, write_merged_data, copy_hdr_metadata, &
        copy_l2_metadata, label_output_file, set_production_date_time, &
-       write_apriori_attr
+       write_apriori_attr, set_local_granule_id
 
   type (tiof_file_type), private, target :: primary_output_file
 
@@ -27,6 +27,8 @@ module tio_output_module
   real (kind=8), private, parameter :: fill_uint1 = 255
   real (kind=8), private, parameter :: fill_int16 = -32767
   real (kind=8), private, parameter :: fill_uint16 = 65535
+
+  real (kind=8), private, parameter :: pack_factor = 1.0d4
 
   logical, private :: have_diagnostic_group = .false.
 
@@ -932,6 +934,43 @@ contains
 
   end subroutine append_product_vars
 
+  subroutine add_attributes_for_packed_data (obj, varlist, varname, &
+                                             scale_factor, offset, errstat)
+    implicit none
+    type (tiof_file_type), intent(in) :: obj
+    type (tiof_varlist_type), intent(in) :: varlist
+    character (len=*), intent(in) :: varname
+    real (kind=8), intent(in) :: scale_factor, offset
+    integer, intent(inout) :: errstat
+
+    type (tiof_var_type), pointer :: var_fixup => null()
+    integer status
+
+    if (errstat /= 0) return
+
+    call tiof_varlist_lookup (varlist, varname, var_fixup, errstat)
+
+    ! CF conventions allow standard attributes for packed data:
+    ! scale_factor, add_offset.
+    ! After the packed values are read in, they are to unpacked using
+    ! this expression:
+    !    unpacked_value = scale_factor * packed_value + add_offset
+    status = nf90_put_att (obj % groupid, var_fixup % varid, "scale_factor", scale_factor)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_error, "defining attribute scale_factor: (" &
+                       //trim(nf90_strerror(status))//")", errstat)
+      return
+    endif
+
+    status = nf90_put_att (obj % groupid, var_fixup % varid, "add_offset", 0.0)
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_error, "defining attribute scale_factor: ("// &
+                       trim(nf90_strerror(status))//")", errstat)
+      return
+    endif
+
+  end subroutine add_attributes_for_packed_data
+
   !> Define support variables in L2 output file
   !! @param[in]    obj        pointer to output file
   !! @param[in]    dimlist    dimension list
@@ -951,6 +990,7 @@ contains
 
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_coord, att_coord_layer
+    type (tiof_attlist_type) :: att_coord_layer_pres_bnds, att_coord_layer_alt_bnds
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step, &
@@ -1035,6 +1075,25 @@ contains
                               //' '//trim(o3p_var_latitude) &
                               //' '//trim(o3p_var_profile_pres) &
                               //' '//trim(o3p_var_profile_alt))
+
+    call tiof_attlist_append (att_coord_layer_pres_bnds, errstat, "bounds", &
+                              att_text = trim(o3p_var_profile_pres_bnds))
+    call tiof_attlist_append (att_coord_layer_pres_bnds, errstat, "coordinates", &
+                              att_text = trim(o3p_var_time) &
+                              //' '//trim(o3p_var_longitude) &
+                              //' '//trim(o3p_var_latitude) &
+                              //' '//trim(o3p_var_profile_pres) &
+                              //' '//trim(o3p_var_profile_alt))
+
+    call tiof_attlist_append (att_coord_layer_alt_bnds, errstat, "bounds", &
+                              att_text = trim(o3p_var_profile_alt_bnds))
+    call tiof_attlist_append (att_coord_layer_alt_bnds, errstat, "coordinates", &
+                              att_text = trim(o3p_var_time) &
+                              //' '//trim(o3p_var_longitude) &
+                              //' '//trim(o3p_var_latitude) &
+                              //' '//trim(o3p_var_profile_pres) &
+                              //' '//trim(o3p_var_profile_alt))
+
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_geoflg, &
                               nf90_int, &
@@ -1126,7 +1185,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord_layer)
+                              attlist=att_coord_layer_alt_bnds)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_alt_bnds, &
                               nf90_float, &
@@ -1159,7 +1218,7 @@ contains
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
-                              attlist=att_coord_layer)
+                              attlist=att_coord_layer_pres_bnds)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_profile_pres_bnds, &
                               nf90_float, &
@@ -1298,7 +1357,6 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord_layer)
-
     endif
 
     ! Ozone correlation matrix
@@ -1397,9 +1455,19 @@ contains
     endif
 
     call tiof_def_vars (obj, varlist, errstat)
+
+    ! Customizing attributes via the attlist option of tiof_varlist_append
+    ! becomes inconvenient, so we add additional variable attributes as follows:
+    call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_avg_kernel, &
+                                         1.0/pack_factor, 0.0d0, errstat)
+    call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_noise_matrix, &
+                                         1.0/pack_factor, 0.0d0, errstat)
+
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
     call tiof_attlist_free (att_coord_layer)
+    call tiof_attlist_free (att_coord_layer_pres_bnds)
+    call tiof_attlist_free (att_coord_layer_alt_bnds)
 
   end subroutine append_support_vars
 
@@ -2016,7 +2084,7 @@ contains
     if (ozwrtavgk) then
       i = ozfit_idxs; j = ozfit_idxe
       ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
-      OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*1.0d4, KIND= 2)
+      OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*pack_factor, KIND= 2)
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
            [1,1,nlayer,nlayer], transpose(OzAvgK_I16(1:nlayer,1:nlayer)), errstat)
     endif
@@ -2050,7 +2118,7 @@ contains
           ii = ii + 1
           ncorrl_foo    = ncovar(irow,jcol) &
                / sqrt( ncovar(irow,irow)*ncovar(jcol,jcol))
-          ncorrl_1d(ii) = nint( ncorrl_foo*1.0d04 , kind=2)
+          ncorrl_1d(ii) = nint( ncorrl_foo*pack_factor , kind=2)
         enddo
       enddo
       if( ii /= num_elms) then
@@ -2880,6 +2948,33 @@ contains
                        errstat)
     endif
   end subroutine copy_hdr_metadata
+
+  subroutine set_local_granule_id (outfile, errstat)
+    implicit none
+    character (len=*), intent(in) :: outfile
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+
+    integer :: k, status
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    k = index (outfile, '/', back=.true.)
+    ! index returns k=0 if '/' not found, therefore,
+    ! whether it's found or not, we always want k+1.
+    k = k + 1
+
+    status = nf90_put_att (obj % fileid, nf90_global, "local_granule_id", outfile(k:))
+    if (status /= nf90_noerr) then
+      call tell_error (tell_io_error, "defining attribute local_granule_id = "// &
+                       trim(outfile(k:))//":  ("//trim(nf90_strerror(status))//")", &
+                       errstat)
+      return
+    endif
+
+  end subroutine set_local_granule_id
 
   subroutine copy_l2_metadata (l2file_in, errstat)
     implicit none
