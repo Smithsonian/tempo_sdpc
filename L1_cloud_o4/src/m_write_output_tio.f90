@@ -686,7 +686,7 @@ contains
                               "cloud_pressure", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "cloud pressure", &
+                              long_name = "optical centroid pressure for cloud", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
                               fillvalue = fill_float_nines, &
@@ -1017,7 +1017,7 @@ contains
                               "SlantColumnAmountO2O2", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "O2-O2 SCD used for cloud pressure", &
+                              long_name = "O2-O2 SCD used for cloud optical centroid pressure calculation", &
                               comment = "O2-O2 slant column at EffectiveTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
@@ -1110,7 +1110,7 @@ contains
                               "fitted_slant_column", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                          long_name = "fitted O2-O2 SCD at reference temperature" , &
+                          long_name = "O2-O2 slant column at 273K" , &
                               comment = "fitted O2-O2 slant column at 273K", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
@@ -1169,7 +1169,7 @@ contains
                               "snow_ice_fraction", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                  long_name = "Fraction of pixel area covered by snow and/or ice", &
+                  long_name = "fraction of pixel area covered by snow and/or ice", &
                               units = "unitless", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1179,6 +1179,7 @@ contains
                               "O2O2CloudTemperature", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
+                   long_name = "effective temperature used to derive SlantColumnAmountO2O2", &
                               comment = "effective T for SlantColumnAmountO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
