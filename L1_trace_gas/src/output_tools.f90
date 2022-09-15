@@ -252,7 +252,7 @@ contains
                               nf90_float, &
                               dimids = dimids_levels_xtrack_step,  &
                               long_name = "vertical profile of "//trim(target_molecule % name)//" partial column", &
-                              units = "molec/cm^2", &
+                              units = "molecules/cm^2", &
                               valid_min = 0.0_r8, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -276,6 +276,7 @@ contains
                               valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
+    if (.false.) then
     call tiof_varlist_append (varlist, errstat, &
                               var_amf_error, &
                               nf90_float, &
@@ -284,6 +285,7 @@ contains
                               valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
+    endif
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_diagnostic_flag, &
                               nf90_short, &
@@ -316,7 +318,7 @@ contains
                               long_name = "cloud pressure", &
                               comment = "cloud pressure for AMF computation", &
                               units = "hPa", &
-                              valid_min = 0.0_r8, &
+                              valid_range = [0.0_r8, 1200.0_r8], &
                               fillvalue = fill_float, &
                               attlist = att_coord)
     IF (yn_stratrop) THEN
@@ -655,13 +657,13 @@ contains
       ! in post-processing. For this reason, selected NO2 file variable names have
       ! the word "total".
       var_amf       = trim(tg_var_amf)//"_total"
-      var_amf_error = trim(tg_var_amf)//"_total_uncertainty"
+      !var_amf_error = trim(tg_var_amf)//"_total_uncertainty"
       var_vertical_column       = trim(tg_var_vertical_column)//"_total"
       var_vertical_column_error = trim(tg_var_vertical_column)//"_total_uncertainty"
     else
       ! For all other molecules, the vertical column goes to the "product" group.
       var_amf       =      tg_var_amf
-      var_amf_error = trim(tg_var_amf)//"_uncertainty"
+      !var_amf_error = trim(tg_var_amf)//"_uncertainty"
       var_vertical_column       =      tg_var_vertical_column
       var_vertical_column_error = trim(tg_var_vertical_column)//"_uncertainty"
     endif
@@ -673,7 +675,7 @@ contains
                                 nf90_double, &
                                 dimids = dimids_xtrack_step,  &
                                 long_name = trim(target_molecule % name)//" vertical column", &
-                                units = "molec/cm^2", &
+                                units = "molecules/cm^2", &
                                 comment = trim(target_molecule % name)// &
                                 " vertical column determined from fitted slant column"// &
                                 " and total AMF calculated from surface to top of atmosphere", &
@@ -684,7 +686,7 @@ contains
                                 nf90_double, &
                                 dimids = dimids_xtrack_step,  &
                                 long_name = trim(target_molecule % name)//" vertical column uncertainty", &
-                                units = "molec/cm^2", &
+                                units = "molecules/cm^2", &
                                 fillvalue = fill_double, &
                                 attlist=att_coord)
     endif
@@ -837,9 +839,9 @@ contains
     call tiof_varlist_free (varlist_geo)
 
     if (target_molecule % pge_idx == pge_o2o2_idx) then
-      slant_column_units = "molec^2/cm^5"
+      slant_column_units = "molecules^2/cm^5"
     else
-      slant_column_units = "molec/cm^2"
+      slant_column_units = "molecules/cm^2"
     endif
 
     call tiof_varlist_append (varlist_supp, errstat, &
@@ -863,7 +865,7 @@ contains
                                 tg_var_snowice_fraction, &
                                 nf90_float, &
                                 dimids = dimids_xtrack_step,  &
-                                long_name = "Fraction of pixel area covered by snow and/or ice", &
+                                long_name = "fraction of pixel area covered by snow and/or ice", &
                                 valid_range = [0.0_r8, 1.0_r8], &
                                 fillvalue = fill_float, &
                                 attlist=att_coord)
@@ -889,7 +891,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               long_name = "surface pressure", &
                               units = "hPa", &
-                              valid_range = [0.0_r8, 1030.0_r8], &
+                              valid_range = [0.0_r8, 1200.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
     IF (yn_stratrop) THEN
@@ -899,7 +901,7 @@ contains
                                 dimids = dimids_xtrack_step,  &
                                 long_name = "tropopause pressure", &
                                 units = "hPa", &
-                                valid_range = [0.0_r8, 1030.0_r8], &
+                                valid_range = [0.0_r8, 1200.0_r8], &
                                 fillvalue = fill_float, &
                                 attlist=att_coord)
     END IF
@@ -911,7 +913,7 @@ contains
                                 long_name = "reference sector correction", &
                                 comment = "reference sector correction based on differences"//&
                                 " between model and retrieval over reference sector", &
-                                units = "molec/cm^2", &
+                                units = "molecules/cm^2", &
                                 fillvalue = fill_double, &
                                 attlist=att_coord)
     endif
