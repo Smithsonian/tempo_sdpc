@@ -257,15 +257,16 @@ CONTAINS
                                  / (1.0 * nbin), kind=2)
              geo%lon(ix, iy) = sum(tio_lon(xsidx:xeidx, ysidx:yeidx))/nbin
              geo%lat(ix, iy) = sum(tio_lat(xsidx:xeidx, ysidx:yeidx))/nbin
-             geo%clon(1,ix, iy) = tio_clon(1,xeidx, yeidx)
-             geo%clon(2,ix, iy) = tio_clon(2,xsidx, yeidx)
-             geo%clon(3,ix, iy) = tio_clon(3,xeidx, ysidx)
-             geo%clon(4,ix, iy) = tio_clon(4,xsidx, ysidx)
+             ! ix increases southward, iy increases westward
+             geo%clon(1,ix, iy) = tio_clon(1,xsidx, ysidx) ! NE
+             geo%clon(2,ix, iy) = tio_clon(2,xsidx, yeidx) ! NW
+             geo%clon(3,ix, iy) = tio_clon(3,xeidx, yeidx) ! SW
+             geo%clon(4,ix, iy) = tio_clon(4,xeidx, ysidx) ! SE
 
-             geo%clat(1,ix, iy) = tio_clat(1,xeidx, yeidx)
+             geo%clat(1,ix, iy) = tio_clat(1,xsidx, ysidx)
              geo%clat(2,ix, iy) = tio_clat(2,xsidx, yeidx)
-             geo%clat(3,ix, iy) = tio_clat(3,xeidx, ysidx)
-             geo%clat(4,ix, iy) = tio_clat(4,xsidx, ysidx)
+             geo%clat(3,ix, iy) = tio_clat(3,xeidx, yeidx)
+             geo%clat(4,ix, iy) = tio_clat(4,xeidx, ysidx)
 
              ! file stores pixel corners in order: (NE,NW,SW,SE)
              call edge_midpoint (geo%clon(1:2,ix,iy), geo%clat(1:2, ix,iy), &
