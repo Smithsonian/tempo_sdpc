@@ -465,6 +465,7 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
    double xsize, ysize, dx, dy;
    int have_dest_polygons;
    int k, num_src_dest_overlap = 0;
+   int num_negative_overlap_areas = 0;
    /* Support for diagnostic polygon output */
    Diagnostic_Output_Type v_src = {0};
    Diagnostic_Output_Type v_overlap = {0};
@@ -590,8 +591,17 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                        if (-1 == push_overlap (o, overlap_area, src_index))
                          return -1;
                     }
+                  else if (overlap_area < 0.0)
+                    {
+                       num_negative_overlap_areas++;
+                    }
                }
           }
+     }
+
+   if (num_negative_overlap_areas > 0)
+     {
+        tell_vwarn (0, "found %d negative pixel overlap areas", num_negative_overlap_areas);
      }
 
    Polygon_close_clip (cl);
