@@ -754,6 +754,42 @@ int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r)
    return map;
 }
 
+double *Pixel_regrid_area_weight_sum (const Pixel_Regrid_Type *r,
+                                      double scale, double fill_value)
+{
+   double *a_sum = NULL;
+   double a_sum_i;
+   int i, j;
+
+   if (r->overlap == NULL)
+     return NULL;
+
+   if (scale <= 0.0) scale = 1.0;
+
+   if (NULL == (a_sum = (double *)MALLOC (r->num_dest_pixels * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   for (i = 0; i < r->num_dest_pixels; i++)
+     {
+        if (r->overlap[i])
+          {
+             Pixel_Overlap_Type *o = r->overlap[i];
+             a_sum_i = 0.0;
+             for (j = 0; j < o->num_overlaps; j++)
+               {
+                  a_sum_i += o->area[j];
+               }
+             a_sum[i] = a_sum_i * scale;
+          }
+        else a_sum[i] = fill_value;
+     }
+
+   return a_sum;
+}
+
 int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
                   double fill_value, const double *src, double *dest,
                   Pixel_Regrid_Stats_Type *rs)

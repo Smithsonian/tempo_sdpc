@@ -695,6 +695,54 @@ static int write_time_var (int ncid, TIO_Scan_Ident_Type *lst)
    return 0;
 }
 
+static int write_area_weight_sums (int ncid, const char *lonlat_grp,
+                                   const Pixel_Regrid_Type *r)
+{
+   static TIO_Attr_Text_Type attrs[] =
+     {
+        {"long_name", "sum of area weights"},
+        {"comment", "sum of Level 2 pixel overlap areas"},
+        {"units", "km^2"},
+        {"coordinates", "time longitude latitude"},
+        {NULL, NULL}
+     };
+   const char *varname = "weight";
+   double *a_sum = NULL;
+   float fill_value = NC_FILL_FLOAT;
+   size_t lon_dimlen, lat_dimlen;
+   int dimids[2], start[2], count[2];
+   int grp, varid, status;
+
+   if (lonlat_grp)
+     {
+        if (-1 == TIO_def_grp (ncid, lonlat_grp, &grp))
+          return -1;
+     }
+
+   if ((0 != TIO_inq_dim (grp, TEMPO_VAR_LATITUDE, &dimids[0], &lat_dimlen))
+       ||(0 != TIO_inq_dim (grp, TEMPO_VAR_LONGITUDE, &dimids[1], &lon_dimlen)))
+     return -1;
+
+   if ((0 != TIO_def_var (grp, varname, NC_FLOAT, 2, dimids, &varid))
+       || (0 != TIO_def_var_fill (grp, varid, 0, &fill_value))
+       || (0 != TIO_put_text_attrs (grp, varid, attrs)))
+     return -1;
+
+   /* scale factor multiplication to change units from m^2 to km^2 */
+   if (NULL == (a_sum = Pixel_regrid_area_weight_sum (r, 1.e-6, fill_value)))
+     return -1;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = lat_dimlen;
+   count[1] = lon_dimlen;
+
+   status = TIO_put_var_section (grp, varname, start, count, TIO_DOUBLE, a_sum);
+   FREE(a_sum);
+
+   return status ? -1 : 0;
+}
+
 static int make_l3_product (const Product_Type *prod,
                             const Pixel_Grid_Param_Type *dest,
                             const Pixel_Regrid_Type *r,
@@ -716,6 +764,12 @@ static int make_l3_product (const Product_Type *prod,
 
    if (-1 == Var_write_lonlat_grid (ncid, prod->out_lonlat_grp, dest))
      goto return_status;
+
+   if (0 != write_area_weight_sums (ncid, prod->out_lonlat_grp, r))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: write_area_weight_sums failed", __func__);
+        goto return_status;
+     }
 
    if ((lst != NULL)
        && (-1 == TIO_write_scan_ident (ncid, lst)))

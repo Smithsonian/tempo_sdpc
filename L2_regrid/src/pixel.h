@@ -231,7 +231,7 @@ Pixel_find_overlaps (Pixel_Regrid_Type *r,
  *                    corresponding variable value should not
  *                    be used.
  * @param[in]  fill_value  Value used to initialize each pixel
- *                    in the detination array.
+ *                    in the destination array.
  * @param[in]  src    Array of variable values with one element
  *                    per pixel in the input spatial grid.
  * @param[out] dest   Array of regridded variable values, with
@@ -282,7 +282,7 @@ Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel);
  *                    be used.
  * @param[in]  value_type  Data type of the input bitfield
  * @param[in]  fill_value  Value used to initialize each pixel
- *                    in the detination array.
+ *                    in the destination array.
  * @param[in]  src    Array of bitfield values with one element
  *                    per pixel in the input spatial grid.
  * @param[out] dest   Array of regridded bitfield values, with
@@ -304,6 +304,21 @@ Pixel_regrid_from_mesh (const Pixel_Regrid_Type *r, const int *mesh_mask,
                         double *values);
 
 extern int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r);
+
+/** Compute sum of Level 2 pixel areas contributing to each Level 3 pixel.
+ *
+ * @param[in]  r      Pixel_Regrid_Type structure allocated
+ *                    by \ref Pixel_open_regrid, and with (private)
+ *                    pixel overlap structure initialized by
+ *                    \ref Pixel_find_overlaps.
+ * @param[in]  scale  Multiplicative scale factor to convert area units
+ *                    from m^2 to something else
+ *                    (e.g. 1.e-6 km^2/m^2 yields km^2)
+ * @param[in]  fill_value  Value used to initialize destination L3 pixels
+ *                    with no contribution from any L2 pixel
+ * @return allocated array on success, NULL on failure.
+ */
+extern double *Pixel_regrid_area_weight_sum (const Pixel_Regrid_Type *r, double scale, double fill_value);
 
 /* Debugging tools */
 
