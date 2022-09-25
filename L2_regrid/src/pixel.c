@@ -555,7 +555,7 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                {
                   Polygon_Type *p = NULL;
                   int dest_poly_index = i + j * dest->nx;
-                  double overlap_area;
+                  double overlap_area, xp0, yp0;
 
                   if (have_dest_polygons)
                     {
@@ -570,6 +570,15 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                   if (NULL == (p = Polygon_clip (cl, src_poly_area, dest_poly)))
                     return -1;
                   overlap_area = Polygon_area (p);
+                  if (overlap_area < 0.0)
+                    {
+                       num_negative_overlap_areas++;
+                       if (0 == Polygon_vertex (p, 0, &xp0, &yp0))
+                         {
+                            tell_vwarn (1, "(x,y)=(%0.1f, %0.1f) overlap_area=%10.3e km^2 ",
+                                        xp0, yp0, overlap_area/1.e6);
+                         }
+                    }
                   if ((Write_Diagnostic_Polygons != 0) && (overlap_area > 0.0))
                     {
                        diagnostic_poly_write (&v_overlap, p, dest_poly_index);
@@ -590,10 +599,6 @@ int Pixel_find_overlaps (Pixel_Regrid_Type *r,
                                     src_area->src_index[k]);
                        if (-1 == push_overlap (o, overlap_area, src_index))
                          return -1;
-                    }
-                  else if (overlap_area < 0.0)
-                    {
-                       num_negative_overlap_areas++;
                     }
                }
           }

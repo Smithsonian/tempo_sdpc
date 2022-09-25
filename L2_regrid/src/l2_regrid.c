@@ -961,6 +961,7 @@ int main (int argc, char **argv)
 
    (void) tio_set_cmdline (argc, argv);
    (void) tell_set_log_level (TELL_MSGTYPE_INFO, log_level);
+   (void) tell_set_log_level (TELL_MSGTYPE_WARN, log_level);
 
    if (-1 == parse_param_file (param_file, &dest, &product_list))
      goto return_status;

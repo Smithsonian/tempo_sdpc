@@ -252,18 +252,18 @@ static void start_diagnostic_output (const char *file)
    FILE *fp;
    char buf[BUFSIZE];
    const char *base;
-   double lon, lat;
-   int n;
+   double x, y;
+   int n, type;
 
    /* Do nothing when not in diagnostic mode */
    if (_pDiagnostic_Output == 0) return;
 
    /* Look in the current directory for a .p file matching this granule's basename */
-   if (NULL == (base = strrchr (file, '/')))
+   if (NULL != (base = strrchr (file, '/')))
      {
-        base = file;
+        base++;
      }
-   else base++;
+   else base = file;
 
    n = snprintf (buf, BUFSIZE, "%s.p", base);
    if ((n < 0) || (n >= BUFSIZE))
@@ -275,21 +275,27 @@ static void start_diagnostic_output (const char *file)
     * We may not want diagnostic output for this granule.*/
    if (NULL == (fp = fopen (buf, "r")))
      return;
-   /* Read (lon,lat) in degrees */
-   n = fscanf (fp, "%lf %lf", &lon, &lat);
+   /* Read: type,x,y
+    * if type=0, then x,y=Albers (x,y) in meters
+    * if type=1, then x,y=(longitude,latitude) in degrees
+    */
+   n = fscanf (fp, "%d %lf %lf", &type, &x, &y);
    fclose (fp);
-   if (n != 2)
+   if (n != 3)
      {
         fprintf (stderr, "%s: error reading diagnostic point from file: %s\n", __func__, buf);
         return;
      }
 
-   /* After the call (lon,lat) is really Albers (x,y) in [meters] */
-   if (0 != longlat_to_albers (&lon, &lat, 1))
-     return;
+   if (type)
+     {
+        /* After the call (x,y) is really Albers (x,y) in meters */
+        if (0 != longlat_to_albers (&x, &y, 1))
+          return;
+     }
 
    __Pixel_diagnostic_output (1);
-   __Pixel_diagnostic_window (lon, lat, 50.0e3, 50.0e3);
+   __Pixel_diagnostic_window (x, y, 50.0e3, 50.0e3);
 }
 
 static void stop_diagnostic_output (void)
