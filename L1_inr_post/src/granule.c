@@ -1103,7 +1103,7 @@ static int polygon_sort_ccw (double *x, double *y, int n)
         Angle_Sort.y[i] = y[i];
      }
 
-   qsort (Angle_Sort.index, sizeof(int), (size_t)n, compare_angle_indices);
+   qsort (Angle_Sort.index, (size_t)n, sizeof(int), compare_angle_indices);
 
    for (i = 0; i < n; i++)
      {
