@@ -10,10 +10,9 @@ summary: >-
   Regard (FOR), for individual granules. Each granule covers the
   entire North-South TEMPO FOR but only a portion of the East-West
   FOR. The files are provided in netCDF4 format, and contain
-  information on effective cloud fraction (ECF), cloud optical
-  centroid pressure, cloud radiance fraction, scene albedo, scene
-  pressure, ancillary data used in calculation, and processing quality
-  flags. The cloud retrieval uses Look Up Tables (LUTs) of reflectance
-  and air mass factors as a function of geometry, surface albedo,
-  surface pressure and cloud pressure. Please refer to the ATBD for
-  details.
+  information on cloud optical centroid pressure, effective cloud
+  fraction, cloud radiance fraction, scene albedo, scene pressure,
+  ancillary data used in calculation, and processing quality flags.
+  The cloud retrieval uses look-up tables of reflectance and air mass
+  factors as a function of geometry, surface albedo, surface pressure
+  and cloud pressure. Please refer to the ATBD for details.
