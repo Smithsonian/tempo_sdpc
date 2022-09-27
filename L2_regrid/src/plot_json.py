@@ -1,13 +1,16 @@
-#! /usr/bin/env python
+#! /home/temposdpc/miniconda3/bin/python
 
 import sys
 import os
 
-from mpl_toolkits.basemap import Basemap
+import matplotlib
+matplotlib.use('Agg')
 
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 import matplotlib.pyplot as plt
+
+import cartopy.crs as ccrs
 
 import numpy as np
 import json
@@ -38,14 +41,10 @@ if args.lonlat:
     # plot lon-lat coordinates in degrees
     ax.set_xlabel ('longitude [deg]')
     ax.set_ylabel ('latitude [deg]')
+    geo = ccrs.Geodetic()
+    albers = ccrs.AlbersEqualArea (central_longitude=-96.0, central_latitude=37.5,
+                                   standard_parallels=(29.5,45.5))
 
-    meters_per_mile = 5280.0 * 12.0 / 2.54 / 100.0
-    width_miles = 100.0
-    height_miles = 100.0
-    m = Basemap(width=width_miles*meters_per_mile,
-        height=height_miles*meters_per_mile,
-        resolution='h',projection='aea',
-        lat_1=29.5, lat_2=45.5, lat_0=37.5, lon_0=-96.0)
 else:
     # plot Albers coordinates in km
     ax.set_xlabel ('x [km]')
@@ -57,16 +56,18 @@ for g in geom[:]:
 
     if args.lonlat:
         # plot lon-lat coordinates in degrees
-        lon,lat = m(coords[:,0], coords[:,1], inverse=True)
-        p_coords = zip(lon,lat)
+        x = np.array(coords[:,0])
+        y = np.array(coords[:,1])
+        points = geo.transform_points (albers, x, y)
+        p_coords = points[:,0:2]
     else:
         # plot Albers coordinates in km
         p_coords = np.array(coords) / 1.e3  # [km]
 
-    poly = Polygon(p_coords, True, edgecolor='k')
+    poly = Polygon(p_coords, True)
     patches.append (poly)
 
-p = PatchCollection (patches, alpha=0.4, linewidth=0.125)
+p = PatchCollection (patches, edgecolor='k', alpha=0.4, linewidth=0.125)
 p.set_array (np.array(idlist))
 
 ax.add_collection(p)
