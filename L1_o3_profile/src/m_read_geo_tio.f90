@@ -1,6 +1,7 @@
 !> Subroutines to read in geographic data from L1 radiance netCDF file
 module m_read_geo_tio
 
+  use, intrinsic :: iso_c_binding, only : c_int
   USE netcdf
   USE tio_module
   USE tell_module
@@ -20,6 +21,16 @@ module m_read_geo_tio
 
   PUBLIC read_geo_tio
   PRIVATE convert_gpqualflag_info, scattering_angle_deg, edge_midpoint
+
+  interface
+    integer (c_int) function c_polygon_sort_ccw (x, y, n) &
+      bind (c, name='polygon_sort_ccw')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      type (c_ptr), value :: x, y
+      integer (c_int), value :: n
+    end function
+  end interface
 
 CONTAINS
 
@@ -60,6 +71,40 @@ CONTAINS
     elat_f = real(elat * rad2deg, kind=4)
 
   end subroutine edge_midpoint
+
+  subroutine polygon_sort_ccw (x, y, errstat)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_loc
+    implicit none
+    real (kind=4), dimension(:), intent(inout) :: x, y
+    integer, intent(inout) :: errstat
+
+    real (kind=8), dimension(4), target :: xx, yy
+    integer (c_int) :: status
+
+    if (errstat /= 0) return
+
+    if (size(x) /= 4 .or. size(y) /= 4) then
+      call tell_error (tell_runtime_error, &
+                       "polygon_sort_ccw: unsupported polygon shape", &
+                       errstat)
+      return
+    endif
+    xx(:) = real (x(:), kind=8)
+    yy(:) = real (y(:), kind=8)
+
+    status = c_polygon_sort_ccw (c_loc(xx), c_loc(yy), 4)
+
+    if (status /= 0) then
+      call tell_error (tell_runtime_error, &
+                       "polygon_sort_ccw: c_polygon_sort_ccw failed", &
+                       errstat)
+      return
+    endif
+
+    x(:) = real(xx(:), kind=4)
+    y(:) = real(yy(:), kind=4)
+
+  end subroutine polygon_sort_ccw
 
   !> Read geolocation data from L1 radiance netCDF file
   !-----------------------------------------------------------------------
@@ -257,6 +302,15 @@ CONTAINS
                                  / (1.0 * nbin), kind=2)
              geo%lon(ix, iy) = sum(tio_lon(xsidx:xeidx, ysidx:yeidx))/nbin
              geo%lat(ix, iy) = sum(tio_lat(xsidx:xeidx, ysidx:yeidx))/nbin
+
+             ! Selecting the corners of the final binned pixel is sometimes problematic.
+             ! For high altitude points at high latitude, the parallax correction applied
+             ! to the (lon,lat) corners from INR can shift the corners enough that the
+             ! naively-chosen corners are incorrect (the grid has holes) and the corner
+             ! points are not in CCW order.  Sorting can fix the ordering, but the final
+             ! grid may still have holes.  This method isn't perfect, but I don't have a
+             ! better way. FIXME?
+
              ! ix increases southward, iy increases westward
              geo%clon(1,ix, iy) = tio_clon(1,xsidx, ysidx) ! NE
              geo%clon(2,ix, iy) = tio_clon(2,xsidx, yeidx) ! NW
@@ -267,6 +321,10 @@ CONTAINS
              geo%clat(2,ix, iy) = tio_clat(2,xsidx, yeidx)
              geo%clat(3,ix, iy) = tio_clat(3,xeidx, yeidx)
              geo%clat(4,ix, iy) = tio_clat(4,xeidx, ysidx)
+
+             ! The selected corners *must* be in CCW order!
+             call polygon_sort_ccw (geo%clon(1:4,ix,iy), geo%clat(1:4,ix,iy), errstat)
+             if (errstat /= 0) return
 
              ! file stores pixel corners in order: (NE,NW,SW,SE)
              call edge_midpoint (geo%clon(1:2,ix,iy), geo%clat(1:2, ix,iy), &

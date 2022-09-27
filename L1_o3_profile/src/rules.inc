@@ -912,3 +912,5 @@ $(ODIR)/OMI_SMF_setmsg.o:	$(SDIR)/OMI_SMF_setmsg.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/OMI_SMF_setmsg.c -o $(ODIR)/OMI_SMF_setmsg.o
 $(ODIR)/unpack.o:	$(SDIR)/unpack.c
 	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/unpack.c -o $(ODIR)/unpack.o
+$(ODIR)/polygon_sort_ccw.o:	$(SDIR)/polygon_sort_ccw.c
+	$(CC) -c $(CCFLAGS) $(CINCFLGS) $(SDIR)/polygon_sort_ccw.c -o $(ODIR)/polygon_sort_ccw.o
