@@ -104,14 +104,15 @@ extern int TIO_l1_ref_irradiance_template (int ncid, size_t num_steps, int num_s
 #define TEMPO_GRANULE_FLAG_IS_FIRST           0x1
 #define TEMPO_GRANULE_FLAG_IS_LAST            0x2
 #define TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY  0x4
+#define TEMPO_GRANULE_FLAG_SCAN_SEQ_START     0x8
 extern int tio_define_granule_flag_var (int ncid);
 extern int tio_write_granule_flag_var (int ncid, int granule_flag);
 extern int tio_copy_granule_flag_var (int ncid_from, int ncid_to);
 
 extern int tio_define_dim_step_var (int grp, int dimid);
 
-#define TEMPO_SCAN_TYPE_STANDARD    0x0
-#define TEMPO_SCAN_TYPE_NIGHTLIGHTS 0x1
+#define TEMPO_SCAN_TYPE_NIGHTLIGHTS    0x1
+#define TEMPO_SCAN_TYPE_SCAN_SEQ_START 0x2
 extern int tio_make_scan_label (uint16_t *scan_label, uint16_t scan_type, uint16_t scan_num);
 extern void tio_parse_scan_label (uint16_t scan_label, uint16_t *scan_type, uint16_t *scan_num);
 

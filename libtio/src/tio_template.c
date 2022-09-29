@@ -154,13 +154,14 @@ int tio_define_granule_flag_var (int ncid)
      {
         {"long_name", "granule processing label"},
         {"flag_meanings",
-             "is_first_granule_of_scan is_last_granule_of_scan is_telemetry_only"},
+             "is_first_granule_of_scan is_last_granule_of_scan is_telemetry_only scan_seq_start"},
         _pTEXT_ATTRS_END
      };
    int flag_masks[] = {
       TEMPO_GRANULE_FLAG_IS_FIRST,
       TEMPO_GRANULE_FLAG_IS_LAST,
-      TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY
+      TEMPO_GRANULE_FLAG_IS_TELEMETRY_ONLY,
+      TEMPO_GRANULE_FLAG_SCAN_SEQ_START
    };
    int num_masks = sizeof(flag_masks)/sizeof(*flag_masks);
    int varid, status;
