@@ -124,7 +124,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
    uint16_t scan_num;
-   int num_scan_csm, num_days;
+   int num_scan_csm, num_days, scan_num_to_inr;
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
@@ -140,11 +140,13 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
    scan_num = 1;
    num_scan_csm = 0;
    num_days = 0;
+   scan_num_to_inr = 0;
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
         double tstart_utc, tstart_tai, fsw_xstart;
         char buf[TIME_BUFSIZE];
+        int is_twilight = (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS);
         int new_day = (previous_entry_jd_utc_end < entry->tstart);
         int i, num_scans;
 
@@ -174,23 +176,32 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
          */
         if (new_day)
           {
-             scan_num = 1;
+             scan_num = 1;       /* <- WARNING: Don't change the scan numbering! */
+             scan_num_to_inr = 0;
+             num_days++;
           }
-
-        if (new_day) num_days++;
 
         num_scans = (entry->num_repeats_cbm > 0) ? entry->num_repeats_cbm : 1;
 
         for (i = 0; i < entry->num_repeats; i++, scan_num += num_scans)
           {
-             uint16_t scan_label;
+             uint16_t scan_label, scan_type;
              double tstart_jd = (entry->tstart
                                  + i * entry->scan_duration/SEC_PER_DAY);
 
              if (0 != mkjdtimestr (tstart_jd, buf, sizeof(buf)))
                return -1;
 
-             if (0 != tio_make_scan_label (&scan_label, entry->scan_type, scan_num))
+             /* mark only the first scan of each new sequence destined for INR */
+             if (is_twilight == 0) scan_num_to_inr++;
+             if (((scan_num_to_inr == 1) || (entry->post_maneuver != 0))
+                 && (i == 0))
+               {
+                  scan_type = entry->scan_type | TEMPO_SCAN_TYPE_SCAN_SEQ_START;
+               }
+             else scan_type = entry->scan_type;
+
+             if (0 != tio_make_scan_label (&scan_label, scan_type, scan_num))
                return -1;
 
              num_scan_csm += entry->num_repeats_cbm ? 2 : 3;

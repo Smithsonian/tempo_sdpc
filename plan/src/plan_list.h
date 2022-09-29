@@ -24,6 +24,7 @@ struct Plan_List_Type
    int num_steps;            /**< number of mirror steps in the scan */
    int num_repeats;          /**< number of times to repeat this scan (or cbm) */
    int num_repeats_cbm;      /**< >0 indicates instrument should use a cbm to perform blocks of num_repeats_cbm scans */
+   int post_maneuver;        /**< labels the first post-maneuver scan sequence */
    uint16_t scan_type;       /**< scan type value */
 };
 

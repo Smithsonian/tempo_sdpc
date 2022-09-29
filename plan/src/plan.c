@@ -102,7 +102,7 @@ static void usage (void)
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME[-k] [default=std]\n");
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file.\n");
    fprintf (stderr, "                                     The optional '-k' extension means use a CBM that does k scans.\n");
-   fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=%d (TEMPO_SCAN_TYPE_STANDARD)]\n", TEMPO_SCAN_TYPE_STANDARD);
+   fprintf (stderr, "   -t | --type SCAN_TYPE    Scan type [default=0]\n");
    fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
    fprintf (stderr, "   -M | --maneuver FILE     Read maneuver windows from FILE.\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
@@ -885,7 +885,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
           continue;
         /* When remaining plan entries follow the maneuver, we're done */
         if (mnv_end <= entry_beg)
-          return 0;
+          break;
 
         if (Plan_Verbose)
           {
@@ -962,7 +962,6 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
           {
              Plan_List_Type *curr = entry;
              Plan_List_Type *save_next = entry->next;
-             Plan_List_Type *post_gap;
 
              /* Original plan entry may be split into 4 entries:
               *  1. pre-gap full scans
@@ -998,6 +997,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              num_remaining = floor((entry_end - mnv_end) / scan_duration_days);
              if (num_remaining)
                {
+                  Plan_List_Type *post_gap;
                   if (NULL == (post_gap = plan_list_entry_alloc (entry->scan_type)))
                     return -1;
 
@@ -1060,6 +1060,16 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
           {
              tell_verror (TELL_INTERNAL_ERROR, "%s: inserting maneuver (this should never happen)", __func__);
              return -1;
+          }
+     }
+
+   /* Label the first post-maneuver scan sequence. */
+   for (entry = plan_list; entry != NULL; entry = entry->next)
+     {
+        if (entry->tstart >= mnv_end)
+          {
+             entry->post_maneuver = 1;
+             break;
           }
      }
 
@@ -1512,7 +1522,7 @@ int main (int argc, char **argv)
    FILE *fp_irr = NULL;
    double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
-   uint16_t scan_type = TEMPO_SCAN_TYPE_STANDARD;
+   uint16_t scan_type = 0;
    int num_plan_days = DEFAULT_NUM_PLAN_DAYS;
    int status = EXIT_FAILURE;
    int enable_twilight_scan = 0;
@@ -1704,7 +1714,7 @@ int main (int argc, char **argv)
                   fprintf (stderr, "*** error reading scan_type: %s\n", optarg);
                   goto return_status;
                }
-             if (scan_type == TEMPO_SCAN_TYPE_NIGHTLIGHTS)
+             if (scan_type & (TEMPO_SCAN_TYPE_NIGHTLIGHTS | TEMPO_SCAN_TYPE_SCAN_SEQ_START))
                {
                   fprintf (stderr, "*** error: scan_type=%d is not user-selectable\n", scan_type);
                   goto return_status;
