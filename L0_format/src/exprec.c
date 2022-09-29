@@ -395,7 +395,7 @@ static int close_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
-static void set_radiance_granule_flag (int curr_granule, int num_granules,
+static void set_radiance_granule_flag (int curr_granule, int num_granules, uint16_t scan_type,
                                        int *pgranule_flag)
 {
    int granule_flag = 0;
@@ -406,6 +406,10 @@ static void set_radiance_granule_flag (int curr_granule, int num_granules,
    if (curr_granule == num_granules-1)
      {
         granule_flag |= TEMPO_GRANULE_FLAG_IS_LAST;
+     }
+   if (scan_type & TEMPO_SCAN_TYPE_SCAN_SEQ_START)
+     {
+        granule_flag |= TEMPO_GRANULE_FLAG_SCAN_SEQ_START;
      }
    *pgranule_flag = granule_flag;
 }
@@ -459,7 +463,7 @@ static int new_outfile (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 	radiance_ident.scan_num = scan_num;
 	radiance_ident.scan_type = scan_type;
         radiance_ident.granule_num = curr_granule + 1;
-        set_radiance_granule_flag (curr_granule, num_granules,
+        set_radiance_granule_flag (curr_granule, num_granules, scan_type,
                                    &radiance_ident.granule_flag);
         identp = &radiance_ident;
         break;
