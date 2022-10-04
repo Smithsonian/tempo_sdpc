@@ -663,6 +663,7 @@ int main (int argc, char **argv)
    int use_s_blocking = 0, this_s_block, num_s_blocks;
    int use_x_blocking = 0, this_x_block, num_x_blocks;
    int is_irradiance = 0;
+   int ignore_geoloc = 0;
    int verbose = 0;
    int ncid_result = 0;
    int debug = 0;
@@ -679,6 +680,7 @@ int main (int argc, char **argv)
         {"debug",   no_argument, 0, 'd'},
         {"verbose", no_argument, 0, 'v'},
         {"adjust",  no_argument, 0, 'a'},
+        {"ignore",  no_argument, 0, 'i'},
         {"config",  required_argument, 0, 'c'},
         {"wavepar", required_argument, 0, 'w'},
         {"xtrack",  required_argument, 0, 'x'},
@@ -714,7 +716,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ahdS:X:m:c:g:x:w:v", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ahidS:X:m:c:g:x:w:v", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -742,6 +744,9 @@ int main (int argc, char **argv)
              break;
            case 'd':
              debug++;
+             break;
+           case 'i':
+             ignore_geoloc++;
              break;
            case 'h':
              usage();
@@ -891,7 +896,7 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 == is_irradiance)
+   if ((0 == is_irradiance) && (0 == ignore_geoloc))
      {
         if (NULL == (geoloc = read_geolocation_vars (grp, spectrum_info.dimlens)))
           goto return_status;
