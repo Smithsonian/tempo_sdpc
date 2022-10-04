@@ -811,38 +811,26 @@ static Wavecal_Type *alloc_wavecal (int num_data_waves, int num_model_waves,
    return wct;
 }
 
-static int string_is_list_member (const char *name, char **list)
-{
-   char **memb;
-   if (list == NULL)
-     return 0;
-   for (memb = list; (memb != NULL) && (*memb != NULL); memb++)
-     {
-        if (0 == strcmp (name, *memb))
-          return 1;
-     }
-   return 0;
-}
-
-static int config_model_components (Wavecal_Type *wct, config_setting_t *s,
-                                    char **excluded_setting_names)
+static int config_model_components (Wavecal_Type *wct, config_setting_t *s)
 {
    Term_Type *term;
+   config_setting_t *s_terms;
    config_setting_t *ss;
    unsigned int i, num;
 
-   num = config_setting_length (s);
+   if (NULL == (s_terms = config_setting_lookup (s, "model_components")))
+     return 0;
+
+   num = config_setting_length (s_terms);
 
    for (i = 0; i < num; i++)
      {
         const char *name;
-        if (NULL == (ss = config_setting_get_elem (s, i)))
+        if (NULL == (ss = config_setting_get_elem (s_terms, i)))
           return -1;
 
         name = config_setting_name (ss);
         if (name[0] == '*') continue;
-        if (string_is_list_member (name, excluded_setting_names))
-          continue;
 
         if (NULL == (term = term_open (ss)))
           return -1;
@@ -1335,9 +1323,6 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
    if (is_irradiance)
      {
         s_slit = config_setting_get_member (s_irr, slit_function_setting);  /* NULL is ok */
-
-        /* FIXME: For irradiance, use the default feature window and
-         * operate on the entire spectrum */
      }
    else
      {
@@ -1349,12 +1334,10 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
              goto error_return;
           }
         s_slit = config_setting_get_member (s_rad, slit_function_setting);  /* NULL is ok */
-
-        /* For radiance, use the feature window if specified.
-         * Otherwise, default to the operating on the entire spectrum */
-        if (read_feature_window (s_band, &fwin) < 0)
-          goto error_return;
      }
+
+   if (read_feature_window (s_band, &fwin) < 0)
+     goto error_return;
 
    if (((fwin.num_pix <= 0) || (fwin.num_pix > max_num_data_waves))
        || ((fwin.start_pix < 0) || (fwin.start_pix >= max_num_data_waves)))
@@ -1432,15 +1415,11 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
           }
      }
 
-   if (s_rad)
-     {
-        char *excluded_names[] = {slit_function_setting, NULL};
-        if (0 != config_model_components (wct, s_rad, excluded_names))
-          goto error_return;
+   if (0 != config_model_components (wct, is_irradiance ? s_irr : s_rad))
+     goto error_return;
 
-        if (0 != alloc_term_storage (wct->terms, num_model_waves))
-          goto error_return;
-     }
+   if (0 != alloc_term_storage (wct->terms, num_model_waves))
+     goto error_return;
 
    if (0 != config_fit_window (s_irr, &wct->window))
      goto error_return;
