@@ -24,6 +24,8 @@ TEMPO_SDPC_v?.?.?   2022 ??? ??
    * Implement ASDC recommendations to improve CF metadata compliance
    * Update L1_cloud_o4 to get number of GEOSCF layers by reading the data files
    * Now recommend using sdpcrun.sh to configure shell environment
+   * Added support for autonomous warm restart of INR server.
+   * Wavelength calibration supports including model components in irradiance fit.
 
 TEMPO_SDPC_v3.0.0   2022 Mar 01
 ===============================
