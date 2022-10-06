@@ -32,7 +32,7 @@ export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 #  Environment-dependent pipeline defaults:
 #------------------------------------------
 
-: "${SDPC_PIPE_NAME:=sdpc_test}"
+: "${SDPC_PIPE_NAME:=default}"
 export SDPC_PIPE_NAME
 
 #----------------
