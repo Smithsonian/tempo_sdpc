@@ -9,6 +9,7 @@
 #include <float.h>
 #include <math.h>
 #include <wordexp.h>
+#include <proj_api.h>
 
 #include <tempo_geo.h>
 #include <tell.h>
@@ -25,11 +26,14 @@
 
 #define BITMASK_GPQF_BITS_USED   0xffffffff
 
+#define PROJ_ARGS_BUFSIZE       80
+#define GEO_ALTITUDE  35785831.0   /* meters */
+
+#define ATTR_STRING_TERRAIN_REFERENCED "terrain_referenced_coordinates"
+
 /* To compute the parallax shift distance and write it to the output file: */
 /* #define OUTPUT_PARALLAX_SHIFT 1 */
 #undef OUTPUT_PARALLAX_SHIFT
-
-#define ALWAYS_SORT_POLYGONS 1
 
 typedef struct
 {
@@ -95,6 +99,10 @@ Geoid_Data_Type;
 static __inline__ int invalid_lonlat (double lon, double lat)
 {
    return ((fabs(lon) > 360.0) || (fabs(lat) > 90.0));
+}
+static __inline__ int invalid_point (double x, double y)
+{
+   return ((0 == isfinite(x)) || (0 == isfinite(y)));
 }
 
 static void free_geoloc_fields (Geoloc_Type *geoloc)
@@ -874,9 +882,9 @@ static int write_shift (const Granule_Type *gt, const char *band_name,
 #endif
 
 static int write_band_geolocation (const Granule_Type *gt, const char *band_name,
-                                   const Geoloc_Type *geoloc)
+                                   const Geoloc_Type *geoloc, int terrain_referenced)
 {
-   const char *attname = "terrain_referenced_coordinates";
+   const char *attname = ATTR_STRING_TERRAIN_REFERENCED;
    const char *yes = "yes";
    int grp, start[3], count[3];
 
@@ -903,8 +911,11 @@ static int write_band_geolocation (const Granule_Type *gt, const char *band_name
      return -1;
 #endif
 
-   if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_CHAR, 1+strlen(yes), yes))
-     return -1;
+   if (terrain_referenced)
+     {
+        if (0 != TIO_put_att (grp, NC_GLOBAL, attname, NC_CHAR, 1+strlen(yes), yes))
+          return -1;
+     }
 
    return 0;
 }
@@ -950,104 +961,6 @@ static __inline__ double compute_shift (double lat0, double lon0, double lat1, d
    return delta * 6371.0088;
 }
 
-#ifndef ALWAYS_SORT_POLYGONS
-static int isconvex_polygon (const double *x, const double *y, int n)
-{
-   double wsign=0;
-   int xsign=0, xsignfirst=0, xflips=0;
-   int ysign=0, ysignfirst=0, yflips=0;
-   int i, prev, curr, next;
-
-   if (n < 3)
-     return 0;
-
-   curr = n-2;
-   next = n-1;
-
-   for (i = 0; i < n; i++)
-     {
-        double w, ax, ay, bx, by;
-
-        prev = curr;
-        curr = next;
-        next = i;
-
-        /* previous edge vector ("before") */
-        bx = x[curr] - x[prev];
-        by = y[curr] - y[prev];
-
-        /* next edge vector ("after") */
-        ax = x[next] - x[curr];
-        ay = y[next] - y[curr];
-
-        /* calculate sign flips using next edge vector ("after"),
-         * recording the first sign */
-        if (ax > 0)
-          {
-             if (xsign == 0)
-               xsignfirst = +1;
-             else if (xsign < 0)
-               xflips++;
-             xsign = +1;
-          }
-        else if (ax < 0)
-          {
-             if (xsign == 0)
-               xsignfirst = -1;
-             else if (xsign > 0)
-               xflips++;
-             xsign = -1;
-          }
-
-        if (xflips > 2)
-          return 0;
-
-        if (ay > 0)
-          {
-             if (ysign == 0)
-               ysignfirst = +1;
-             else if (ysign < 0)
-               yflips++;
-             ysign = +1;
-          }
-        else if (ay < 0)
-          {
-             if (ysign == 0)
-               ysignfirst = -1;
-             else if (ysign > 0)
-               yflips++;
-             ysign = -1;
-          }
-
-        if (yflips > 2)
-          return 0;
-
-        /* Find out the orientation of this pair of edges,
-         * and ensure it does not differ from previous pairs. */
-        w = bx * ay - ax * by;
-        if ((wsign == 0) && (w != 0))
-          wsign = w;
-        else if ((wsign > 0) && (w < 0))
-          return 0;
-        else if ((wsign < 0) && (w > 0))
-          return 0;
-     }
-
-   /* final/wraparound sign flips */
-   if ((xsign != 0) && (xsignfirst != 0) && (xsign != xsignfirst))
-     xflips++;
-   if ((ysign != 0) && (ysignfirst != 0) && (ysign != ysignfirst))
-     yflips++;
-
-   /* convex polygons have two sign flips along each axis */
-   if ((xflips != 2) || (yflips != 2))
-     return 0;
-
-   /* This is a convex polygon */
-   return 1;
-}
-#endif
-
 /* This code will only ever process polygons with 4 vertices,
  * so use static temporary arrays for the sort. */
 static struct
@@ -1070,7 +983,7 @@ static int compare_angle_indices (const void *va, const void *vb)
    return 0;
 }
 
-static int polygon_sort_ccw (double *x, double *y, int n)
+static int polygon_sort_ccw (double *x, double *y, int n, int **pindices)
 {
    double xc, yc;
    int i;
@@ -1105,12 +1018,81 @@ static int polygon_sort_ccw (double *x, double *y, int n)
 
    qsort (Angle_Sort.index, (size_t)n, sizeof(int), compare_angle_indices);
 
+   if (pindices)
+     {
+        *pindices = Angle_Sort.index;
+     }
+
    for (i = 0; i < n; i++)
      {
         int k = Angle_Sort.index[i];
         x[i] = Angle_Sort.x[k];
         y[i] = Angle_Sort.y[k];
         /* fprintf (stderr, "%f %f %f\n", x[i], y[i], Angle_Sort.angles[k] * 180.0/M_PI); */
+     }
+
+   return 0;
+}
+
+/* Choose the cyclic permutation of the 4 (x,y) points that maximizes
+ * the sum of edge-vector dot-products.  The goal is to make the sequence
+ * of points in the final polygon match the sequence of point in the original
+ * polygon.  In the limit that the vertices are only slightly perturbed, this
+ * should work robustly, but in the general case, this problem may be ill-posed.
+ * But let's try, because inconsistent vertex ordering definitely causes problems
+ * later on when trying bin up these pixels.
+ */
+static int select_permutation (double *x, double *y,
+                               const double *x0, const double *y0, int n)
+{
+   double max_sum, sum_p, xs[4], ys[4];
+   int i, in, k, kn, p, pmax;
+   /* The input points are in CCW order, and all cyclic permutations
+    * preserve this order so, by construction, the output is
+    * guaranteed to be in CCW order */
+
+   if (n != 4)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: expected polygon with 4 vertices!! num_vertices=%d", __func__, n);
+        return -1;
+     }
+
+   pmax = 0;
+   max_sum = 0.0;
+
+   for (p = 0; p < 4; p++)
+     {
+        sum_p = 0.0;
+        k = p;
+        for (i = 0; i < 4; i++)
+          {
+             in = (i+1) % 4;
+             kn = (k+1) % 4;
+             sum_p += ((x0[in] - x0[i]) * (x[kn] - x[k])
+                       + (y0[in] - y0[i]) * (y[kn] - y[k]));
+             k = kn;
+          }
+
+        if (sum_p > max_sum)
+          {
+             pmax = p;
+             max_sum = sum_p;
+          }
+     }
+
+   /* Permutation that maximizes the sum of edge-vector dot-products */
+   k = pmax;
+
+   for (i = 0; i < 4; i++)
+     {
+        xs[i] = x[k];
+        ys[i] = y[k];
+        k = (k+1) % 4;
+     }
+   for (i = 0; i < 4; i++)
+     {
+        x[i] = xs[i];
+        y[i] = ys[i];
      }
 
    return 0;
@@ -1163,8 +1145,15 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
                                                   Geoloc_Type *geoloc)
 {
    unsigned int s, num_xtrack_corners;
+   double *lon_step_cnr0 = NULL;
+   double *lat_step_cnr0 = NULL;
+   int status = -1;
 
    num_xtrack_corners = geoloc->num_xtrack * geoloc->num_corner;
+
+   if ((NULL == (lon_step_cnr0 = (double *) MALLOC (num_xtrack_corners * sizeof(double))))
+       || (NULL == (lat_step_cnr0 = (double *) MALLOC (num_xtrack_corners * sizeof(double)))))
+     goto return_status;
 
    for (s = 0; s < geoloc->num_mirror_step; s++)
      {
@@ -1174,7 +1163,13 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
         double *lon_step_cnr = geoloc->lon_cnr + s * num_xtrack_corners;
         double *lat_step_cnr = geoloc->lat_cnr + s * num_xtrack_corners;
         double *shift_km_step = NULL;
-        unsigned int y, c;
+        double *lat_cnr = NULL;
+        double *lon_cnr = NULL;
+        unsigned int y, c, num_valid_points;
+
+        /* keep a copy of the uncorrected corners */
+        memcpy ((char *)lon_step_cnr0, (char *)lon_step_cnr, num_xtrack_corners * sizeof(double));
+        memcpy ((char *)lat_step_cnr0, (char *)lat_step_cnr, num_xtrack_corners * sizeof(double));
 
         sat.theX = satloc->X[s];
         sat.theY = satloc->Y[s];
@@ -1193,14 +1188,20 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
           return -1;
 
         /* After parallax adjustment, some pixel polygons may be non-convex.
-         * When necessary, re-order the vertices to obtain a convex polygon.
+         * Sort the vertices to obtain a convex polygon, and if necessary/possible,
+         * permute the vertices to restore the original vertex sequence.  The
+         * intent is to keep the relative location of pixel 0 consistent across all
+         * pixels.  This simplifies the process of determining the corners of binned
+         * pixels later on.
          */
         for (y = 0; y < geoloc->num_xtrack; y++)
           {
-             double *lat_cnr = lat_step_cnr + y * geoloc->num_corner;
-             double *lon_cnr = lon_step_cnr + y * geoloc->num_corner;
-             unsigned int num_valid_points = 0;
+             double *lat_cnr0 = lat_step_cnr0 + y * geoloc->num_corner;
+             double *lon_cnr0 = lon_step_cnr0 + y * geoloc->num_corner;
+             lat_cnr = lat_step_cnr + y * geoloc->num_corner;
+             lon_cnr = lon_step_cnr + y * geoloc->num_corner;
 
+             num_valid_points = 0;
              for (c = 0; c < geoloc->num_corner; c++)
                {
                   if (invalid_lonlat (lon_cnr[c], lat_cnr[c]))
@@ -1210,24 +1211,18 @@ static int correct_band_geolocation_for_parallax (const Geoid_Data_Type *gdt,
 
              if (num_valid_points == geoloc->num_corner)
                {
-#ifdef ALWAYS_SORT_POLYGONS
-                  /* Just always sort CCW.  It's slower, but catches the corner case
-                   * when the points end up in CW order.
-                   */
-                  (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
-#else
-                  if (0 == isconvex_polygon (lon_cnr, lat_cnr, geoloc->num_corner))
-                    {
-                       tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: non-convex polygon: mirror_step=%d xtrack=%d",
-                             __func__, s, y);
-                       (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner);
-                    }
-#endif
+                  (void) polygon_sort_ccw (lon_cnr, lat_cnr, geoloc->num_corner, NULL);
+                  (void) select_permutation (lon_cnr, lat_cnr, lon_cnr0, lat_cnr0, geoloc->num_corner);
                }
           }
      }
 
-   return 0;
+   status = 0;
+return_status:
+   FREE(lon_step_cnr0);
+   FREE(lat_step_cnr0);
+
+   return status;
 }
 
 static char *expand_path (const char *path)
@@ -1256,7 +1251,7 @@ return_status:
 
 static int have_terrain_referenced_coordinates (const Granule_Type *gt, const char *band_name)
 {
-   const char *attname = "terrain_referenced_coordinates";
+   const char *attname = ATTR_STRING_TERRAIN_REFERENCED;
    int idp, grp;
 
    if (0 != TIO_inq_grp (gt->ncid, band_name, &grp))
@@ -1277,11 +1272,11 @@ static int have_terrain_referenced_coordinates (const Granule_Type *gt, const ch
  * projection from the satellite viewpoint onto the ellipsoid.  The INR software refers
  * to this as a "parallax" correction. The function parallaxAdj is provided to correct for it.
  */
-static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *meta, config_t *cfg)
+static int correct_geolocation_for_parallax (Granule_Type *gt, const char **band_names,
+                                             TIO_Meta_Type *meta, config_t *cfg)
 {
    config_setting_t *s;
    Geoid_Data_Type gdt = {0};
-   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
    const char *geoid_dem_setting;
    char *geoid_dem_path = NULL;
    char *geoid_dem_basename;
@@ -1318,7 +1313,7 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
           {
              if (0 != correct_band_geolocation_for_parallax (&gdt, &gt->sat, &gt->geoloc[i]))
                goto free_and_return;
-             if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i]))
+             if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i], 1))
                goto free_and_return;
           }
      }
@@ -1334,6 +1329,186 @@ static int correct_geolocation_for_parallax (Granule_Type *gt, TIO_Meta_Type *me
 free_and_return:
    free_geoid_data (&gdt);
    FREE(geoid_dem_path);
+   return status;
+}
+
+typedef struct
+{
+   projPJ geos;
+   projPJ longlat;
+}
+Proj_Type;
+
+static void free_proj (Proj_Type *p)
+{
+   if (NULL == p)
+     return;
+   pj_free (p->geos);
+   pj_free (p->longlat);
+}
+
+static int init_proj (Proj_Type *p, double sat_lon)
+{
+   char ctl_geos[PROJ_ARGS_BUFSIZE];
+   const char geos_fmt[] = "+proj=geos +lon_0=%0.3g +h=%0.1f";
+   const char ctl_longlat[] = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+   int len;
+
+   if (NULL == (p->longlat = pj_init_plus (ctl_longlat)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(longlat) failed", __func__);
+        return -1;
+     }
+
+   memset (ctl_geos, 0, PROJ_ARGS_BUFSIZE);
+   len = snprintf (ctl_geos, PROJ_ARGS_BUFSIZE, geos_fmt, sat_lon, GEO_ALTITUDE);
+   if (len >= PROJ_ARGS_BUFSIZE)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
+        return -1;
+     }
+
+   if (NULL == (p->geos = pj_init_plus (ctl_geos)))
+     {
+        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(geos) failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int impose_band_pixel_corner_sequence (Proj_Type *proj, Geoloc_Type *geoloc)
+{
+   unsigned int s, c, i, j, k, num_xtrack_corners, num_valid_points;
+   double lon_cpy[4], lat_cpy[4];
+   double *xx = NULL;
+   double *yy = NULL;
+   double degtorad = M_PI/180.0;
+   int num_points_processed = 0;
+   int status = -1;
+
+   num_xtrack_corners = geoloc->num_xtrack * geoloc->num_corner;
+
+   if ((NULL == (xx = (double *) MALLOC (num_xtrack_corners * sizeof(double))))
+       || (NULL == (yy = (double *) MALLOC (num_xtrack_corners * sizeof(double)))))
+     goto return_status;
+
+   for (s = 0; s < geoloc->num_mirror_step; s++)
+     {
+        double *lon_step_cnr = geoloc->lon_cnr + s * num_xtrack_corners;
+        double *lat_step_cnr = geoloc->lat_cnr + s * num_xtrack_corners;
+
+        /* make a working copy of the corner coordinates */
+        memcpy ((char *)xx, (char *)lon_step_cnr, num_xtrack_corners*sizeof(double));
+        memcpy ((char *)yy, (char *)lat_step_cnr, num_xtrack_corners*sizeof(double));
+
+        /* Sort the pixel corners in a geostationary projection where
+         * the grid is nearly Cartesian with very little curvature.
+         * An exact Cartesian grid would be best, but this code would then
+         * depend on the exact boresight aim point, and I don't think achieving
+         * a perfect projection is that critical here. Even if we the projection
+         * were perfect, there would still be some randomness in pixel orientations
+         * because the spacecraft attitude and stepping are imperfect.
+         * These small differences should not be enough to rotate or distort
+         * any of the pixels enough to matter.
+         */
+        for (i = 0; i < num_xtrack_corners; i++)
+          {
+             xx[i] *= degtorad;
+             yy[i] *= degtorad;
+          }
+        if ((status = pj_transform (proj->longlat, proj->geos, num_xtrack_corners, 1, xx, yy, NULL)) != 0)
+          {
+             tell_verror (TELL_APPLICATION_ERROR,
+                          "%s: pj_transform failed, status = %d (%s)",
+                          __func__, status, pj_strerrno(status));
+             status = -1;
+             goto return_status;
+          }
+
+        for (k = 0; k < geoloc->num_xtrack; k++)
+          {
+             double *lon_cnr = lon_step_cnr + k * geoloc->num_corner;
+             double *lat_cnr = lat_step_cnr + k * geoloc->num_corner;
+             double *x = xx + k * geoloc->num_corner;
+             double *y = yy + k * geoloc->num_corner;
+
+             num_valid_points = 0;
+             for (c = 0; c < geoloc->num_corner; c++)
+               {
+                  if ((0 != invalid_lonlat (lon_cnr[c], lat_cnr[c]))
+                      || (0 != invalid_point (x[c], y[c])))
+                    break;
+                  num_valid_points++;
+               }
+
+             /* Impose a uniform CCW ordering by sorting the geostationary
+              * projection of each pixel's corners, then use those sort indices
+              * to re-order the lon,lat corner coordinates.
+              */
+             if (num_valid_points == geoloc->num_corner)
+               {
+                  int *indices;
+                  (void) polygon_sort_ccw (x, y, geoloc->num_corner, &indices);
+                  for (j = 0; j < geoloc->num_corner; j++)
+                    {
+                       int p = indices[j];
+                       lon_cpy[j] = lon_cnr[p];
+                       lat_cpy[j] = lat_cnr[p];
+                    }
+                  for (j = 0; j < geoloc->num_corner; j++)
+                    {
+                       lon_cnr[j] = lon_cpy[j];
+                       lat_cnr[j] = lat_cpy[j];
+                    }
+                  num_points_processed++;
+               }
+          }
+     }
+
+   status = 0;
+return_status:
+   if (num_points_processed == 0)
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: no valid pixel corner points?", __func__);
+     }
+   FREE(xx);
+   FREE(yy);
+   return status;
+}
+
+static int impose_pixel_corner_sequence (Granule_Type *gt, const char **band_names)
+{
+   Proj_Type proj = {0};
+   const ECEF_Position_Type *sat = &gt->sat;
+   double sat_lon, X_sum, Y_sum;
+   unsigned int i;
+   int status = -1;
+
+   /* Satellite longitude is required to define the geostationary projection */
+   X_sum = 0.0;
+   Y_sum = 0.0;
+   for (i = 0; i < sat->num; i++)
+     {
+        X_sum += sat->X[i];
+        Y_sum += sat->Y[i];
+     }
+   sat_lon = atan2 (Y_sum/sat->num, X_sum/sat->num) * 180.0/M_PI;
+
+   if (0 != init_proj (&proj, sat_lon))
+     goto free_and_return;
+
+   for (i = 0; i < NUM_BANDS; i++)
+     {
+        if (0 != impose_band_pixel_corner_sequence (&proj, &gt->geoloc[i]))
+          goto free_and_return;
+        if (0 != write_band_geolocation (gt, band_names[i], &gt->geoloc[i], 0))
+          goto free_and_return;
+     }
+
+   status = 0;
+free_and_return:
+   free_proj (&proj);
    return status;
 }
 
@@ -1389,9 +1564,8 @@ return_error:
    return -1;
 }
 
-static int read_geolocation (Granule_Type *gt)
+static int read_geolocation (Granule_Type *gt, const char **band_names)
 {
-   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
    int i, num_loc_tot = 0;
 
    for (i = 0; i < NUM_BANDS; i++)
@@ -1462,6 +1636,7 @@ Granule_Type *granule_open (const char *file, int correct_parallax,
                             TIO_Meta_Type *meta, config_t *cfg)
 {
    Granule_Type *gt = NULL;
+   const char *band_names[] = {TEMPO_BAND_NAME_UV, TEMPO_BAND_NAME_VIS};
 
    if (NULL == (gt = new_granule_type ()))
      return NULL;
@@ -1484,7 +1659,7 @@ Granule_Type *granule_open (const char *file, int correct_parallax,
         return NULL;
      }
 
-   if (0 != read_geolocation (gt))
+   if (0 != read_geolocation (gt, band_names))
      {
         gt->gt_close (gt);
         return NULL;
@@ -1496,13 +1671,22 @@ Granule_Type *granule_open (const char *file, int correct_parallax,
         return NULL;
      }
 
+   /* Ideally, INR should deliver pixel corners with the correct
+    * sort order and a uniform sequence, but we sort them anyway.
+    */
+   if (0 != impose_pixel_corner_sequence (gt, band_names))
+     {
+        gt->gt_close (gt);
+        return NULL;
+     }
+
    /* If we correct lon-lat coordinates for local height above/below
     * the WGS84 ellipsoid, we must do that before doing any other
     * calculations that use the lon-lat coordinates.
     */
    if (correct_parallax)
      {
-        if (0 != correct_geolocation_for_parallax (gt, meta, cfg))
+        if (0 != correct_geolocation_for_parallax (gt, band_names, meta, cfg))
           {
              gt->gt_close (gt);
              return NULL;
