@@ -4,12 +4,12 @@ collection_version    : 1
 keywords              : EARTH SCIENCE>SPECTRAL/ENGINEERING>VISIBLE WAVELENGTHS>SENSOR COUNTS
 
 summary: >-
-  Level 1 dark files provide dark currents measured twice daily,
-  corresponding to solar irradiance measurements and radiance
-  measurements, respectively. Each file includes the daily measured
-  dark currents for all the North-South cross-track pixels. The files
-  are provided in netCDF4 format, and contain information on dark
-  current rates of all frames and their average for the UV and visible
-  bands, pixel quality flags and other ancillary information. The
-  product is produced using the image processing of L0-1b processor.
-  Please refer to the ATBD for details.
+  Level 1 dark files provide the processed dark currents,
+  corresponding to either solar irradiance measurements or radiance
+  measurements. Each file includes the measured dark currents for all
+  the North-South cross-track pixels. The files are provided in
+  netCDF4 format, and contain information on dark current rates of all
+  frames and their average for the UV and visible bands, pixel quality
+  flags and other ancillary information. The product is produced using
+  the image processing of L0-1b processor. Please refer to the ATBD
+  for details.
