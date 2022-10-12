@@ -69,15 +69,23 @@ static int symlink_latest (const char *dir)
    buflen = readlinkat (ld->dirfd, latest, buf, BUFSIZE);
 
    /* The 'latest' symlink should exist and should point to the newest file.
-    * If we don't have that symlink, then try to create it.
+    * If we don't have that symlink, then try to create it atomically.
+    * First, create the symlink under a temporary name, then rename it.
     */
    if ((buflen < 0) || (buflen == BUFSIZE)
        || (0 != strcmp (buf, newest_file)))
      {
-        if (symlinkat (newest_file, ld->dirfd, latest) < 0)
+        const char *tmp = "new_latest";
+        if (symlinkat (newest_file, ld->dirfd, tmp) < 0)
           {
              tell_verror (TELL_RUNTIME_ERROR, "%s: error creating symlink %s in %s: (%s)",
-                          __func__, latest, dir, strerror(errno));
+                          __func__, tmp, dir, strerror(errno));
+             goto return_error;
+          }
+        if (renameat (ld->dirfd, tmp, ld->dirfd, latest) < 0)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: error renaming symlink %s in %s: (%s)",
+                          __func__, tmp, dir, strerror(errno));
              goto return_error;
           }
      }
