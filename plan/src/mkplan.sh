@@ -54,7 +54,7 @@ output_sched_file()
       tman_end="$(grep table_end_time $maneuver_file | cut -d, -f 1 | cut -d= -f 2)"
       sed -i -e s,"@MANEUVER_FILE_BEGIN@","$(date -u --date @$tman_beg +%Y-%m-%d)", \
              -e s,"@MANEUVER_FILE_END@","$(date -u --date @$tman_end +%Y-%m-%d)", \
-             -e s,'maneuver_file=.*',"maneuver_file=\"$maneuver_file\"", \
+             -e s,'maneuver_file=.*',"maneuver_file=\"$(realpath $maneuver_file)\"", \
              $temp_file
    elif ! test -z "$maneuver_file" ; then
       echo "*** Cannot access maneuver file: $maneuver_file"
