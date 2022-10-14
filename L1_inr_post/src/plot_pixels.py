@@ -74,33 +74,36 @@ def main():
                         help="plot width [pixels]")
     parser.add_argument('--group', default=None,
                         help="group containing pixel corners")
-    parser.add_argument('filename')
+    parser.add_argument('--outfile', default=None,
+                        help="output plot file")
+    parser.add_argument('filename', nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     lon0 = args.center[0]
     lat0 = args.center[1]
 
-    filename = args.filename
-    basename = os.path.basename(filename)
-
-    pixels = File_Geom (filename, args.group)
-    patches, idlist = pixels.get_patches (lon0, lat0, args.size)
+    if args.outfile is None:
+        figfile = "pixels." + args.format
+    else:
+        figfile = args.outfile
 
     fig, ax = plt.subplots()
     ax.ticklabel_format (style='sci', scilimits=(-3,4), useMathText=True)
-    ax.set_title(basename)  # <-- error message 'Unable to parse the pattern' is a known python bug
 
     ax.set_xlabel ('longitude [deg]')
     ax.set_ylabel ('latitude [deg]')
 
-    p = PatchCollection (patches, edgecolor='k', alpha=0.4, linewidth=0.125)
-    p.set_array (np.array(idlist))
+    for fn in args.filename:
+        pixels = File_Geom (fn, args.group)
+        patches, idlist = pixels.get_patches (lon0, lat0, args.size)
+        p = PatchCollection (patches, edgecolor='k', alpha=0.4, linewidth=0.125)
+        p.set_array (np.array(idlist))
+        ax.add_collection(p)
 
-    ax.add_collection(p)
     ax.autoscale_view()
 
-    #plt.show()
-    fig.savefig (basename + "." + args.format, bbox_inches='tight')
+    print("Saving file: {}".format(figfile))
+    fig.savefig (figfile, bbox_inches='tight')
 
 if __name__ == "__main__":
     main()
