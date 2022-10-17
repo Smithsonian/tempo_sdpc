@@ -408,7 +408,7 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
         entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 
-        if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, tstart + split.scan_duration,
+        if (0 != solar_geom->sgt_solar_zenith_angle (solar_geom, tstart + split.scan_duration/SEC_PER_DAY,
                                                      ctrl_lon, ctrl_lat, &sza))
           {
              tell_verror (TELL_RUNTIME_ERROR, "%s: evaluating solar zenith angle", __func__);
@@ -416,7 +416,8 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
           }
 
         if (((is_broad == 0) || (time_remaining < broad->scan_duration))
-            && (regions_overlap != 0) && (fabs(sza) < sza_max))
+            && (regions_overlap != 0)
+            && ((0.0 < sza) && (sza < sza_max)))
           {
              entry->xstart = split.xstart;
              entry->ystart = split.ystart;
