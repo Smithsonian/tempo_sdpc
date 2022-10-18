@@ -462,6 +462,7 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
                        rem_entry->next = NULL;
                     }
                }
+             is_broad = 1;
           }
         else if (time_remaining >= broad->scan_duration)
           {
@@ -472,6 +473,7 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
              entry->scan_duration = broad->scan_duration;
              entry->integration_time = broad->integration_time;
              entry->num_repeats = 1;
+             is_broad = 0;
           }
         else
           {
@@ -487,8 +489,6 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         time_elapsed    = entry->scan_duration * entry->num_repeats;
         time_remaining -= time_elapsed;
         tstart         += time_elapsed / SEC_PER_DAY;
-
-        is_broad = is_broad ? 0 : 1;
      }
 
    return head;
