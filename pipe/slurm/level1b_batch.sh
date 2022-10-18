@@ -203,10 +203,20 @@ tar_l1_radiance_to_dest()
    # along with any earlier telemetry-only radiance files.
    inr_input_cache="$SDPC_PIPE_DIR/inr/Staging/Granules"
    level1a_granule_path="${inr_input_cache}/${rad_basename}.nc"
-   if test -f "$level1a_granule_path" ; then
-      radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
-      /bin/rm -f "$level1a_granule_path"
-   fi
+   #*******************************************************************
+   # As of INRSW R2.3.5, the INR SW supports a warm restart to occur
+   # at the start of each day, and following any spacecraft maneuvers
+   # that interrupt radiance scanning.
+   # This feature requires that the INR SW assume responsibility for
+   # deleting files from the INR input cache.  Henceforth, the SDPC pipeline
+   # must not delete radiance granules from the INR input cache.
+   # The telemetry-only granules are probably obsolete now as well,
+   # but we'll leave support for that in place just in case.
+   #*******************************************************************
+   #if test -f "$level1a_granule_path" ; then
+   #   radiance_telem_only.py --delete --before "$level1a_granule_path" "$inr_input_cache"
+   #   /bin/rm -f "$level1a_granule_path"
+   #fi
 
    # Move INR performance reports to the archive:
    inr_report="$SDPC_PIPE_DIR/inr/Output/${rad_basename}.PerformanceReport.nc"
