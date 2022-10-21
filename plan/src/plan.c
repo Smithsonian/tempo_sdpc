@@ -34,16 +34,6 @@ int Plan_Verbose;
 #define DEFAULT_SCAN_METHOD_NAME "std"
 #define DEFAULT_NUM_PLAN_DAYS    14
 
-#define SMA_MAX_CALIBRATED_MIRROR_X  49600.0
-#define SMA_MAX_CALIBRATED_MIRROR_Y   4400.0
-/* The maximum range over which the scan mirror should be commanded is:
- *    |X| <= SMA_MAX_CALIBRATED_MIRROR_X,
- *    |Y| <= SMA_MAX_CALIBRATED_MIRROR_Y.
- * These coordinates refer to the scan mirror tilt angle in microradians.
- * (From TEMPO ConOps, Ball doc 2418231, Rev E, section 12.3.2, page 75,
- *  10/12/2017)
- */
-
 #define SMA_MAX_SCAN_TABLE_STEP   100.0
 /* The maximum mirror step size within a scan table [microradians]
  * (From TEMPO ConOps, Ball doc 2418231, Rev E, section 12.3.2, page 75,
@@ -447,6 +437,7 @@ static int generate_scan_vis (config_t *cfg, const char *optional_output_string,
    if (optional_output_string == NULL)
      return 0;
    filename = optional_output_string;
+   fprintf (stderr, "Generating SZA images: %s\n", filename);
 
    if (NULL == (v = vis_init (cfg, solar_geom, plan_id)))
      goto return_status;

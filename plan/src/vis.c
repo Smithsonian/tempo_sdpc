@@ -11,12 +11,12 @@
 #include <limits.h>
 
 #include <libconfig.h>
-#include <proj_api.h>
 
 #include <tell.h>
 #include <tio.h>
 
 #include "scan.h"
+#include "scan_methods.h"
 #include "solar.h"
 #include "plan_list.h"
 #include "vis.h"
@@ -26,14 +26,13 @@
 
 #define GEO_ALTITUDE  35785831.0   /* meters */
 
+#define MICRORADIAN (1.e-6)
+
 struct Vis_Type
 {
    Solar_Geom_Type *solar_geom;
    const char *plan_id;
    double sat_lon;
-
-   projPJ geos;
-   projPJ longlat;
 
    double tilt;
    double azi;
@@ -72,8 +71,6 @@ void vis_free (Vis_Type *v)
 {
    if (v == NULL)
      return;
-   pj_free (v->geos);
-   pj_free (v->longlat);
    FREE(v->x);
    FREE(v);
 }
@@ -100,63 +97,31 @@ static int vis_alloc_grid (Vis_Type *v, int nx, int ny)
    return 0;
 }
 
-static int vis_init_proj (Vis_Type *v, double sat_lon)
-{
-   char ctl_geos[PROJ_ARGS_BUFSIZE];
-   const char geos_fmt[] = "+proj=geos +lon_0=%0.3g +h=%0.1f";
-   const char ctl_longlat[] = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-   int len;
-
-   if (NULL == (v->longlat = pj_init_plus (ctl_longlat)))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(longlat) failed", __func__);
-        return -1;
-     }
-
-   memset (ctl_geos, 0, PROJ_ARGS_BUFSIZE);
-   len = snprintf (ctl_geos, PROJ_ARGS_BUFSIZE, geos_fmt, sat_lon/DEGTORAD, GEO_ALTITUDE);
-   if (len >= PROJ_ARGS_BUFSIZE)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
-        return -1;
-     }
-
-   if (NULL == (v->geos = pj_init_plus (ctl_geos)))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(geos) failed", __func__);
-        return -1;
-     }
-
-   return 0;
-}
+/* Map mirror angles (x,y) to (lon,lat) */
 
 /* lon, lat are of size (2*nx + 2*ny) */
-#define MICRORADIAN (1.e-6)
 static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entry,
                                    double step_size, int nx, int ny,
                                    double *lon, double *lat)
 {
-   projPJ tpers = NULL;
-   char ctl_tpers[PROJ_ARGS_BUFSIZE];
-   const char tpers_fmt[] =
-     "+proj=tpers +lat_0=0 +lon_0=%f +h=%f +tilt=%0.4g +azi=%0.4g";
-   double xmax = MICRORADIAN * (entry->xstart + entry->num_steps * step_size);
-   double xmin = MICRORADIAN * entry->xstart;
-   double ymax = +0.5 * v->ysize;
-   double ymin = -0.5 * v->ysize;
-   double cos_a = cos(-v->azi);
-   double sin_a = sin(-v->azi);
+   double xmax = entry->xstart + entry->num_steps * step_size;
+   double xmin = entry->xstart;
+   double ymax = +0.5 * v->ysize / MICRORADIAN;
+   double ymin = -0.5 * v->ysize / MICRORADIAN;
    double dx, dy;
-   double *x = lon;
-   double *y = lat;
+   double *x = NULL;
+   double *y = NULL;
    int status = -1;
-   int i, k, n, len;
+   int i, k, len;
 
-   /* Position the box relative to the FOR center.
-    * The Y limits are already centered, by construction.
-    */
-   xmin -= v->x0;
-   xmax -= v->x0;
+   len = 2*nx + 2*ny;
+
+   if (NULL == (x = (double *)MALLOC (2 * len * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   y = x + len;
 
    dx = (xmax - xmin) / (nx-1);
    dy = (ymax - ymin) / (ny-1);
@@ -183,65 +148,19 @@ static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entr
         y[k] = ymin + i * dy;
      }
 
-   /* rotate grid, shift center to (x0,y0)
-    */
-
-   n = k;
-
-   for (k = 0; k < n; k++)
-     {
-        double x_k = v->x0 + x[k] * cos_a + y[k] * sin_a;
-        double y_k = v->y0 - x[k] * sin_a + y[k] * cos_a;
-        x[k] = x_k;
-        y[k] = y_k;
-     }
-
-   memset (ctl_tpers, 0, PROJ_ARGS_BUFSIZE);
-   len = snprintf (ctl_tpers, PROJ_ARGS_BUFSIZE, tpers_fmt,
-                   v->sat_lon/DEGTORAD, GEO_ALTITUDE,
-                   v->tilt/DEGTORAD,
-                   v->azi/DEGTORAD);
-   if (len >= PROJ_ARGS_BUFSIZE)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: proj4 arg buffer too small", __func__);
-        goto return_status;
-     }
-
-   if (NULL == (tpers = pj_init_plus (ctl_tpers)))
-     {
-        tell_verror (TELL_APPLICATION_ERROR, "%s: pj_init_plus(tpers) failed", __func__);
-        goto return_status;
-     }
-
-   for (i = 0; i < n; i++)
-     {
-        lon[i] = x[i] * GEO_ALTITUDE;
-        lat[i] = y[i] * GEO_ALTITUDE;
-     }
-
-   if ((status = pj_transform (tpers, v->longlat, n, 1, lon, lat, NULL)) != 0)
-     {
-        tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: pj_transform failed, status = %d (%s)",
-                     __func__, status, pj_strerrno(status));
-        goto return_status;
-     }
-
-   for (i = 0; i < n; i++)
-     {
-        if (isfinite (lon[i]))
-          lon[i] /= DEGTORAD;
-        else lon[i] = TIO_FILL_FLOAT;
-
-        if (isfinite (lat[i]))
-          lat[i] /= DEGTORAD;
-        else lat[i] = TIO_FILL_FLOAT;
-     }
+   if (0 != scan_xy_to_lonlat (x, y, len, lon, lat, v->sat_lon))
+     goto return_status;
 
    status = 0;
 return_status:
-   pj_free(tpers);
-   return status ? -1 : 0;
+   FREE(x);
+   return status;
+}
+
+static int vis_azel_to_lonlat (const Vis_Type *v, double az_urad, double el_urad,
+                               double *plon, double *plat)
+{
+   return scan_xy_to_lonlat (&az_urad, &el_urad, 1, plon, plat, v->sat_lon);
 }
 
 static int vis_define_mesh (Vis_Type *v, const Box_Type *bbox, double center_lon)
@@ -313,6 +232,9 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type 
         return -1;
      }
 
+   scan_set_lonlat_bounding_box (box->min.lon, box->max.lon,
+                                 box->min.lat, box->max.lat);
+
    if (CONFIG_TRUE != config_setting_lookup_float (s, "center_lon", center_lon))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading output_sza_map_config.center_lon: %s",
@@ -380,9 +302,6 @@ Vis_Type *vis_init (config_t *cfg, Solar_Geom_Type *solar_geom, const char *plan
    if (0 != solar_geom->sgt_geosat_longitude (solar_geom, &sat_lon))
      goto return_error;
    v->sat_lon = sat_lon;
-
-   if (0 != vis_init_proj (v, sat_lon))
-     goto return_error;
 
    if (0 != vis_alloc_grid (v, img_size, img_size))
      goto return_error;
@@ -571,38 +490,6 @@ return_status:
    return status;
 }
 
-static int vis_azel_to_lonlat (const Vis_Type *v, double az, double el,
-                               double *plon, double *plat)
-{
-   double lon, lat;
-   long n;
-   int status;
-
-   /* microradian -> radian */
-   az *= 1.e-6;
-   el *= 1.e-6;
-
-   /* radian -> meters */
-   lon = az * GEO_ALTITUDE;
-   lat = el * GEO_ALTITUDE;
-   n = 1;
-
-   /* transform in-place to get lon,lat in radians */
-   if ((status = pj_transform (v->geos, v->longlat, n, 1, &lon, &lat, NULL)) != 0)
-     {
-        tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: pj_transform failed, status = %d (%s)",
-                     __func__, status, pj_strerrno(status));
-        return -1;
-     }
-
-   /* lon,lat [deg] */
-   *plon = lon / DEGTORAD;
-   *plat = lat / DEGTORAD;
-
-   return 0;
-}
-
 #define NBOX_LON 100
 #define NBOX_LAT 100
 #define NBOX (2*NBOX_LON + 2*NBOX_LAT)
@@ -617,10 +504,11 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
    float float_missing = TIO_FILL_FLOAT;
    double pos[2], scan_angle, scan_duration, solar_boresight_angle;
    double box_lon[NBOX], box_lat[NBOX];
+   double box_lon_filtered[NBOX], box_lat_filtered[NBOX];
    int nx = NBOX_LON;
    int ny = NBOX_LAT;
    int n = NBOX;
-   int num_scans;
+   int num_scans, i, k;
    int status = -1;
 
    if ((0 != TIO_def_var (ncid, name, NC_FLOAT, 2, v->dimids_lon_lat, &varid))
@@ -668,8 +556,27 @@ int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
                                     box_lon, box_lat))
      goto return_status;
 
-   if ((0 != TIO_put_att (ncid, varid, "box_lon", NC_DOUBLE, n, box_lon))
-       || (0 != TIO_put_att (ncid, varid, "box_lat", NC_DOUBLE, n, box_lat)))
+   /* Filter NaNs from box boundary. */
+   k = 0;
+   for (i = 0; i < n; i++)
+     {
+        if ((0 == isnan(box_lon[i])) && (0 == isnan(box_lat[i])))
+          {
+             box_lon_filtered[k] = box_lon[i];
+             box_lat_filtered[k] = box_lat[i];
+             k++;
+          }
+     }
+   if (k < n-1)
+     {
+        /* close polygon */
+        box_lon_filtered[k] = box_lon_filtered[0];
+        box_lat_filtered[k] = box_lat_filtered[0];
+        k++;
+     }
+
+   if ((0 != TIO_put_att (ncid, varid, "box_lon", NC_DOUBLE, k, box_lon_filtered))
+       || (0 != TIO_put_att (ncid, varid, "box_lat", NC_DOUBLE, k, box_lat_filtered)))
      goto return_status;
 
    status = 0;

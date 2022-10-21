@@ -14,7 +14,6 @@ NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
 TELL_LIBPATHS = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
-PROJ_LIBPATHS = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 SLNOVAS_LIBPATHS = -Wl,-rpath=$(SLNOVAS_LIB) -L$(SLNOVAS_LIB)
 
 IOCSDPC_INC = $(prefix)/include
@@ -23,8 +22,8 @@ IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -
 INR_LIBPATHS = -Wl,-rpath=$(INR_LIB):$(INROTS_LIB) -L$(INR_LIB) -L$(INROTS_LIB) \
                -lTempoGeospatial -lephcom -llapacke -llapack -lblas $(INROTS_EXTRA_LIBS)
 
-EXTRA_INCS = -I$(PROJ_INC) -I$(SLNOVAS_INC)
-EXTRA_LIBS = $(PROJ_LIBPATHS) -lproj $(SLNOVAS_LIBPATHS) -llibnovas
+EXTRA_INCS = -I$(SLNOVAS_INC)
+EXTRA_LIBS = $(SLNOVAS_LIBPATHS) -llibnovas
 
 INC_DIRS = $(TELL_INC) $(TIO_INC) $(NETCDF_INC) $(LIBCONFIG_INC) \
            $(IOCSDPC_INC) $(INR_INC) $(SLNOVAS_INC) \

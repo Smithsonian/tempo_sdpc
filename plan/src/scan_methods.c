@@ -20,6 +20,7 @@
 #include "scan.h"
 #include "plan_list.h"
 #include "scan_methods.h"
+#include "bisect.h"
 #include "vis.h"
 
 #define DEGTORAD       (M_PI/180.0)
@@ -35,110 +36,235 @@ typedef struct
 }
 AziElev_Type;
 
-/* FIXME: At the moment, the INRSW requires these files to be in the current directory.  Grrr.*/
-static int missing_limit_tables (void)
+typedef struct
 {
-   const char *tables[] =
-     {
-        "ScanPlanning_Dimensions.txt",
-        "ScanPlanning_FGEW.txt",
-        "ScanPlanning_Latitude.txt",
-        "ScanPlanning_Longitude.txt",
-        NULL
-     };
-   const char **file;
-   int missing = 0;
-   for (file = tables; *file != NULL; file++)
-     {
-        if (0 != access (*file, F_OK | R_OK))
-          {
-             fprintf (stderr, "*** Error: file not found: %s\n", *file);
-             missing++;
-          }
-     }
-
-   return missing;
+   double ewbias_rad;      /**< East-West bias [rad] */
+   double nsbias_rad;      /**< North-South bias [rad] */
+   double clockbias_rad;   /**< clock angle [rad] */
+   double theta0_rad;      /**< mirror incidence angle [rad] */
 }
-static int compute_scan_angles_using_tables (const EarthPoint *c_pt, double sat_lon, AziElev_Type *apt)
+Geometry_Param_Type;
+
+static int geometry_params (double sat_lon_deg, Geometry_Param_Type *p)
 {
-   TempoGeoErr error;
+   double ratio = 6.610702780451408;  /* (GEO orbit radius)/(Earth equatorial radius) */
+   double dlon = (-57.32 - 0.6288 * sat_lon_deg) * DEGTORAD;
+
+   /* From TEMPO-SER-4008_TEMPO_Instrument_Geometric_Model_for_INR.pdf
+    * theta0 = mirror incidence angle
+    *        = 13.0 deg  (nominal)
+    * Define:  nsbias = 5.53 rad   (nominal)
+    *          ewbias = \pi + 2*theta0 + C
+    *                 = 3.595378259108319  (nominal, for C=0)
+    *
+    *   lon_target = -57.32 + 0.3712 * lon_sat [deg]
+    *   C = clock angle
+    *     = arctan (Re * sin(lon_target - lon_sat) / (a0 - Re*cos(lon_target - lon_sat)))
+    *   lon_sat = nominal satellite longitude [deg]
+    *   Re = equatorial radius of Earth
+    *   a0 = nominal satellite semi-major axis
+    *
+    * Simplifying, we get:
+    *    C = arctan (sin(dlon) / (ratio - cos(dlon)))
+    * where
+    *    dlon = (lon_target - lon_sat)
+    *         = (-57.32 - 0.6288 * lon_sat)
+    *    ratio = a0/Re = (42163.968 / 6378.1370) = 6.610702780451408
+    */
+
+   /* FIXME: move hard-coded parameter values into the config file.
+    *
+    * These values below are derived from the nominal equations,
+    * but for operations we may have different (off-nominal) values.
+    * The operational values can be derived from the following
+    * INRSW config file parameters:
+    * [satellite]
+    *     ewbias
+    *     nsbias
+    *     telescopeOffset
+    * There's also a clock angle parameter in the INRSW config file,
+    * but I don't know the param name.
+    */
+
+   p->theta0_rad = 13.0 * DEGTORAD;
+   p->nsbias_rad = 5.53 * DEGTORAD;
+   p->clockbias_rad = atan2 (sin(dlon), ratio - cos(dlon));
+   p->ewbias_rad = M_PI + 2*p->theta0_rad + p->clockbias_rad;
+
+   return 0;
+}
+
+static int compute_scan_angles (const EarthPoint *c_pt, double sat_lon, AziElev_Type *apt)
+{
    EarthPoint pt = *c_pt;  /* struct copy */
+   EarthPoint *fg_pts = NULL;
    EarthPolygon polygon =
      {
         .thePointCount = 1,
         .theAllocatedPoints = 1,
         .thePoints = &pt
      };
-   ScanCoordinates xlim = {0};
+   EarthPolygon fg_polygon = {0};
+   Geometry_Param_Type g = {0};
 
-   (void) sat_lon;
+   /* need sat_lon in degrees */
+   sat_lon /= DEGTORAD;
 
-   if (missing_limit_tables () != 0)
-     return -1;
+   geometry_params (sat_lon, &g);
 
-   if ((error = calculateScanStartStop (&polygon, &xlim)) != 0)
-       {
-          tell_verror (TELL_RUNTIME_ERROR, "%s: calculateScanStartStop failed (%s)",
-                       __func__, tempoGeoErrorString (error));
-          return -1;
-       }
+   /* WARNING: This subroutine call modifies polygon.thePoints values!! */
+   calculateScanFG (&polygon, sat_lon,
+                    g.ewbias_rad, g.nsbias_rad, g.clockbias_rad, g.theta0_rad,
+                    &fg_polygon);
 
-   /* want values in microradians */
-   apt->azimuth = xlim.theStartEW * DEGTOMICRORAD;
-   apt->elevation = 0;
+   /* fg_polygon values are in degrees,
+    * we want values in microradians */
+   fg_pts = fg_polygon.thePoints;
+#define SCANFG_HAS_COORDINATES_SWAPPED 1
+#ifndef SCANFG_HAS_COORDINATES_SWAPPED
+   apt->azimuth = fg_pts->theLon * DEGTOMICRORAD;
+   apt->elevation = fg_pts->theLat * DEGTOMICRORAD;
+#else
+   apt->azimuth = fg_pts->theLat * DEGTOMICRORAD;
+   apt->elevation = fg_pts->theLon * DEGTOMICRORAD;
+#endif
 
-   /* The library function returns mirror tilt angle,
-    * but in this context, we want the azimuth angle
-    * in the field of regard, so multiply by 2 */
-   apt->azimuth *= 2;
+   free (fg_polygon.thePoints);
 
    return 0;
 }
 
-static int compute_scan_angles_using_unsanctioned_method (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
+typedef struct
 {
-   TempoGeoErr error;
+   double sat_lon;
+   EarthPoint pt;
+   AziElev_Type apt;
+   double azimuth;
+   double elevation;
+}
+LonLat_Search_Type;
 
-   /* need sat_lon in radians */
-   sat_lon /= DEGTORAD;
+static int delta_elevation (double lat, double *d_elev, void *pv)
+{
+   LonLat_Search_Type *st = (LonLat_Search_Type *)pv;
 
-   if ((error = computeScanAngles (pt, sat_lon, SCAN_AZ_FIRST,
-                                   TEMPO_FIRST_CORRECTION,
-                                   &apt->azimuth, &apt->elevation)) != 0)
+   st->pt.theLat = lat;
+
+   if (0 != compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
+     return -1;
+
+   *d_elev = st->apt.elevation - st->elevation;
+
+   return 0;
+}
+
+static int delta_azimuth (double lon, double *d_azi, void *pv)
+{
+   LonLat_Search_Type *st = (LonLat_Search_Type *)pv;
+
+   st->pt.theLon = lon;
+
+   if (0 != compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
+     return -1;
+
+   *d_azi = st->apt.azimuth - st->azimuth;
+
+   return 0;
+}
+
+typedef struct
+{
+   double lon_min, lon_max;
+   double lat_min, lat_max;
+}
+LonLat_Bounding_Box_Type;
+
+static LonLat_Bounding_Box_Type LonLat_Bounding_Box = {0};
+static LonLat_Bounding_Box_Type *_pLonLat_Bounding_Box = NULL;
+
+void scan_set_lonlat_bounding_box (double lon_min, double lon_max,
+                                   double lat_min, double lat_max)
+{
+   LonLat_Bounding_Box_Type *b = &LonLat_Bounding_Box;
+   b->lon_min = lon_min;
+   b->lon_max = lon_max;
+   b->lat_min = lat_min;
+   b->lat_max = lat_max;
+   _pLonLat_Bounding_Box = b;
+}
+
+static int lonlat_for_xy (double x, double y, double sat_lon,
+                          double *plon, double *plat)
+{
+   LonLat_Bounding_Box_Type *b = _pLonLat_Bounding_Box;
+   LonLat_Search_Type st = {0};
+   AziElev_Type apt = {0};
+   double nan_value = nan("");
+   double lon, lat, delta;
+   double tol_urad = 0.5;
+   int max_loops = 10;
+   int num, status = -1;
+
+   if (b == NULL)
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: computeScanAngles failed (%s)",
-                     __func__, tempoGeoErrorString (error));
+        tell_verror (TELL_INTERNAL_ERROR, "%s: Internal error: bounding box not set\n", __func__);
         return -1;
      }
 
-   /* want values in microradians */
+   *plon = nan_value;
+   *plat = nan_value;
 
-   apt->azimuth *= DEGTOMICRORAD;
-   apt->elevation *= DEGTOMICRORAD;
+   st.sat_lon = sat_lon;
+   st.azimuth = x;
+   st.elevation = y;
 
-   return 0;
-}
-static int Use_Table_Method = -1;
-static void set_scan_limit_method (void)
-{
-   if (Use_Table_Method >= 0)
-     return;
+   /* initial guess for longitude */
+   st.pt.theLon = sat_lon /DEGTORAD;
 
-   if (NULL != getenv ("SDPC_PLAN_USING_TABLES"))
+   for (num = 0; num < max_loops; num++)
      {
-        Use_Table_Method = 1;
-        fprintf (stderr, "*** WARNING: SDPC_PLAN_USING_TABLES environment variable is set\n");
+        /* find the latitude closest to the input elevation, y */
+        if (0 != bisection (delta_elevation, b->lat_min, b->lat_max, &st, &lat))
+          goto return_status;
+        st.pt.theLat = lat;
+
+        /* find the longitude closest to the input azimuth, x*/
+        if (0 != bisection (delta_azimuth, b->lon_min, b->lon_max, &st, &lon))
+          goto return_status;
+        st.pt.theLon = lon;
+
+        /* check the angles for the new (lon,lat) point */
+        if (0 != compute_scan_angles (&st.pt, sat_lon, &apt))
+          goto return_status;
+        delta = hypot (x - apt.azimuth, y - apt.elevation);
+
+        /* converged? */
+        if (delta < tol_urad)
+          break;
      }
-   else Use_Table_Method = 0;
+
+   if ((b->lon_min < lon) && (lon < b->lon_max)
+       && (b->lat_min < lat) && (lat < b->lat_max))
+     {
+        *plon = lon;
+        *plat = lat;
+     }
+
+   status = (delta < tol_urad) && (num < max_loops);
+return_status:
+   return status;
 }
 
-static int compute_scan_angles (const EarthPoint *pt, double sat_lon, AziElev_Type *apt)
+int scan_xy_to_lonlat (const double *x_urad, const double *y_urad, int n,
+                        double *lon_deg, double *lat_deg, double sat_lon_rad)
 {
-   set_scan_limit_method();
-   if (Use_Table_Method)
-     return compute_scan_angles_using_tables (pt, sat_lon, apt);
-   else
-     return compute_scan_angles_using_unsanctioned_method (pt, sat_lon, apt);
+   int i;
+   for (i = 0; i < n; i++)
+     {
+        (void) lonlat_for_xy (x_urad[i], y_urad[i], sat_lon_rad,
+                              &lon_deg[i], &lat_deg[i]);
+     }
+   return 0;
 }
 
 static int radiance_scan_endpoints (const Scan_Type *st,
