@@ -201,7 +201,7 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type 
    config_setting_t *s;
    config_setting_t *sub;
    int num_xtrack;
-   double size_xtrack_pixel;
+   double size_xtrack_pixel, yoffset;
 
    if (NULL == (s = config_lookup (cfg, "output_sza_map_config")))
      {
@@ -232,8 +232,11 @@ static int read_vis_params (Vis_Type *v, config_t *cfg, int *img_size, Box_Type 
         return -1;
      }
 
+   if (CONFIG_TRUE != config_setting_lookup_float (sub, "yoffset", &yoffset))
+     yoffset = 0.0;
+
    scan_set_lonlat_bounding_box (box->min.lon, box->max.lon,
-                                 box->min.lat, box->max.lat);
+                                 box->min.lat, box->max.lat, yoffset);
 
    if (CONFIG_TRUE != config_setting_lookup_float (s, "center_lon", center_lon))
      {

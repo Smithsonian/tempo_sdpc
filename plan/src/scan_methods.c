@@ -176,6 +176,7 @@ typedef struct
 {
    double lon_min, lon_max;
    double lat_min, lat_max;
+   double yoffset;
 }
 LonLat_Bounding_Box_Type;
 
@@ -183,13 +184,14 @@ static LonLat_Bounding_Box_Type LonLat_Bounding_Box = {0};
 static LonLat_Bounding_Box_Type *_pLonLat_Bounding_Box = NULL;
 
 void scan_set_lonlat_bounding_box (double lon_min, double lon_max,
-                                   double lat_min, double lat_max)
+                                   double lat_min, double lat_max, double yoffset)
 {
    LonLat_Bounding_Box_Type *b = &LonLat_Bounding_Box;
    b->lon_min = lon_min;
    b->lon_max = lon_max;
    b->lat_min = lat_min;
    b->lat_max = lat_max;
+   b->yoffset = yoffset;
    _pLonLat_Bounding_Box = b;
 }
 
@@ -216,29 +218,33 @@ static int lonlat_for_xy (double x, double y, double sat_lon,
 
    st.sat_lon = sat_lon;
    st.azimuth = x;
-   st.elevation = y;
+   st.elevation = y - b->yoffset;
+   /* To facilitate observation planning, we want the yoffset to be consistent with
+    * the coordinate system used in commanding the instrument. Therefore,
+    * we subtract the offset because, in mirror coordinates, +Y is actually southward.
+    */
 
-   /* initial guess for longitude */
+   /* Initial guess for longitude */
    st.pt.theLon = sat_lon /DEGTORAD;
 
    for (num = 0; num < max_loops; num++)
      {
-        /* find the latitude closest to the input elevation, y */
+        /* At this longitude, find the latitude closest to the input elevation, y */
         if (0 != bisection (delta_elevation, b->lat_min, b->lat_max, &st, &lat))
           goto return_status;
         st.pt.theLat = lat;
 
-        /* find the longitude closest to the input azimuth, x*/
+        /* At this latitude, find the longitude closest to the input azimuth, x */
         if (0 != bisection (delta_azimuth, b->lon_min, b->lon_max, &st, &lon))
           goto return_status;
         st.pt.theLon = lon;
 
-        /* check the angles for the new (lon,lat) point */
+        /* Check the angles for the new (lon,lat) point */
         if (0 != compute_scan_angles (&st.pt, sat_lon, &apt))
           goto return_status;
         delta = hypot (x - apt.azimuth, y - apt.elevation);
 
-        /* converged? */
+        /* Converged? */
         if (delta < tol_urad)
           break;
      }

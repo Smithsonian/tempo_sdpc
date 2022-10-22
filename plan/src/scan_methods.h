@@ -43,5 +43,5 @@ extern const Scan_Method_Type *find_scan_method (const char *name);
 extern int scan_xy_to_lonlat (const double *x_urad, const double *y_urad, int n,
                               double *lon_deg, double *lat_deg, double sat_lon);
 extern void scan_set_lonlat_bounding_box (double lon_min, double lon_max,
-                                          double lat_min, double lat_max);
+                                          double lat_min, double lat_max, double yoffset);
 #endif
