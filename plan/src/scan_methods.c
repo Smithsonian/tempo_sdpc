@@ -962,7 +962,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
    double *sza = NULL, jd_utc;
    int i, k, status = -1;
 
-#define VAR_NAME_FMT "sza_%02d"
+#define VAR_NAME_FMT "sza_%03d"
 
    if (0 != vis_write_grid (v, ncid, control_points))
      goto return_status;
@@ -977,6 +977,7 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
                goto return_status;
              snprintf (var_name, sizeof(var_name), VAR_NAME_FMT, k);
              k++;
+             (void) fputs (".", stderr);
              if (0 != vis_write_value (v, ncid, jd_utc, var_name, sza, step_size, entry))
                goto return_status;
           }
@@ -991,6 +992,8 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
                break;
           }
      }
+   (void) fputs ("\n", stderr);
+
 
 #if 0
    if (entry)

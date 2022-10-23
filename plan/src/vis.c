@@ -493,8 +493,8 @@ return_status:
    return status;
 }
 
-#define NBOX_LON 100
-#define NBOX_LAT 100
+#define NBOX_LON 50
+#define NBOX_LAT 50
 #define NBOX (2*NBOX_LON + 2*NBOX_LAT)
 
 int vis_write_value (const Vis_Type *v, int ncid, double jd_utc,
