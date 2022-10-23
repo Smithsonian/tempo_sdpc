@@ -99,6 +99,75 @@ static int vis_alloc_grid (Vis_Type *v, int nx, int ny)
 
 /* Map mirror angles (x,y) to (lon,lat) */
 
+typedef struct
+{
+   double xmin, xmax, ymin, ymax;
+   double *lon;
+   double *lat;
+   int nx, ny;
+   int initialized;
+}
+Scan_Box_Cache_Type;
+
+static Scan_Box_Cache_Type Scan_Box_Cache = {0};
+
+static void cache_free (void)
+{
+   FREE(Scan_Box_Cache.lon);
+   Scan_Box_Cache.lon = NULL;
+}
+
+static int cache_matches (Scan_Box_Cache_Type *c,
+                          double xmin, double xmax, double ymin, double ymax,
+                          int nx, int ny)
+{
+   return ((c->xmin == xmin) && (c->xmax == xmax)
+           && (c->ymin == ymin) && (c->ymax == ymax)
+           && (c->nx == nx) && (c->ny == ny));
+}
+
+static int cache_save (Scan_Box_Cache_Type *c,
+                       double xmin, double xmax, double ymin, double ymax,
+                       int nx, int ny, double *lon, double *lat)
+{
+   int len;
+
+   if (c->initialized == 0)
+     {
+        atexit (cache_free);
+        c->initialized = 1;
+     }
+
+   c->xmin = xmin;
+   c->xmax = xmax;
+   c->ymin = ymin;
+   c->ymax = ymax;
+   c->nx = nx;
+   c->ny = ny;
+
+   len = 2*nx + 2*ny;
+
+   FREE(c->lon);
+   if (NULL == (c->lon = (double *)MALLOC (2 * len * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   c->lat = c->lon + len;
+   memcpy ((char *)c->lon, (char *)lon, len * sizeof(double));
+   memcpy ((char *)c->lat, (char *)lat, len * sizeof(double));
+
+   return 0;
+}
+
+static int cache_copy (Scan_Box_Cache_Type *c, double *lon, double *lat)
+{
+   int len = 2*c->nx + 2*c->ny;
+   memcpy ((char *)lon, (char *)c->lon, len * sizeof(double));
+   memcpy ((char *)lat, (char *)c->lat, len * sizeof(double));
+   return 0;
+}
+
 /* lon, lat are of size (2*nx + 2*ny) */
 static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entry,
                                    double step_size, int nx, int ny,
@@ -113,6 +182,11 @@ static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entr
    double *y = NULL;
    int status = -1;
    int i, k, len;
+
+   if (cache_matches (&Scan_Box_Cache, xmin, xmax, ymin, ymax, nx, ny))
+     {
+        return cache_copy (&Scan_Box_Cache, lon, lat);
+     }
 
    len = 2*nx + 2*ny;
 
@@ -149,6 +223,9 @@ static int vis_scan_box_to_lonlat (const Vis_Type *v, const Plan_List_Type *entr
      }
 
    if (0 != scan_xy_to_lonlat (x, y, len, lon, lat, v->sat_lon))
+     goto return_status;
+
+   if (0 != cache_save (&Scan_Box_Cache, xmin, xmax, ymin, ymax, nx, ny, lon, lat))
      goto return_status;
 
    status = 0;
