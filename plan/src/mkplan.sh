@@ -35,7 +35,11 @@ notes_file=""
 
 output_sched_file()
 {
-   maneuver_file="$1"
+   if test $# -ge 1 ; then
+      maneuver_file="$1"
+   else
+      maneuver_file="$SDPC_ANCILLARY_ROOT/var/host/maneuver/latest"
+   fi
    shift
    if test $# -eq 1 ; then
       tailoring_file="$1"
