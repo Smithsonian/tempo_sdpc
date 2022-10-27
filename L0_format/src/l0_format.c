@@ -91,6 +91,7 @@ typedef struct
    char *tpinfo_file;
    double monitor_wait_secs;
    double start_time;
+   double stop_time;
    double cache_flush_idle_wait_secs;
    double cache_flush_exprec_wait_secs;
    int exit_on_emptydir;
@@ -98,6 +99,8 @@ typedef struct
    Processed_File_Log_Type *log_incoming;
 }
 Control_Type;
+
+static double Last_Packet_Time;
 
 static void usage (void)
 {
@@ -347,6 +350,9 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
                      __func__, config_error_file (cfg));
         return -1;
      }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "stop_time", &ctrl->stop_time))
+     ctrl->stop_time = 0;
 
    if ((NULL == (ctrl->incoming_dir = expand_string (incoming_dir)))
        || (NULL == (ctrl->tpinfo_file = expand_string (tpinfo_file))))
@@ -698,6 +704,7 @@ static int classify_file (const char *file, Control_Type *ctrl, int *filetype, i
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+   Last_Packet_Time = chdr.last_packet_time;
 
    /* To handle a corner case when generating telemetry-only radiance
     * files, initialize iru_interval.latest_iru_only_interval_end_time
@@ -1115,6 +1122,13 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
 
              (void) process_file (tbl, tpinfo, ctrl, path);
 
+             if ((ctrl->stop_time > 0) && (Last_Packet_Time > ctrl->stop_time))
+               {
+                  tell_vinfo (0, "stopping:  last packet time=%f  exceeds specified stop_time=%f",
+                              Last_Packet_Time, ctrl->stop_time);
+                  goto last_packet_time_exceeds_stop_time;
+               }
+
              ioclib_free (path);
              path = NULL;
           }
@@ -1126,6 +1140,7 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
         num_files = 0;
      }
 
+last_packet_time_exceeds_stop_time:
    status = 0;
 return_status:
    ioclib_glob_free (gt);
