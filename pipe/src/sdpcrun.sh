@@ -54,6 +54,12 @@ main ()
    fi
    . $env_script
 
+   archiver_script="$SDPC_PIPE_DIR/etc/archiver.sh"
+   if test -f $archiver_script ; then
+      echo "Getting archive paths from: $archiver_script"
+      . $archiver_script
+   fi
+
    export LD_LIBRARY_PATH="$top/lib"
    exec "$@"
 }

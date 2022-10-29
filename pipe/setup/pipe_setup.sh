@@ -11,8 +11,9 @@ exit_usage()
 {
    echo "Usage: $(basename $0) [options]"
    echo "   Options:"
-   echo "   --help     Print this listing"
-   echo "   --config   Pipeline context: live | cache | repro0 | repro1"
+   echo "   --help          Print this listing"
+   echo "   --config        Pipeline context: live | cache | repro0 | repro1"
+   echo "   --archive NAME   Archiving will be handled by pipeline NAME"
    exit "$1"
 }
 
@@ -74,9 +75,42 @@ service_default_down()
    echo "Services down: $list"
 }
 
+make_archive()
+{
+   pipe_mkdirs_archive.sh
+   if test -f $SDPC_ARCHIVE_DBFILE ; then
+      echo "WARNING: file exists: $SDPC_ARCHIVE_DBFILE"
+   fi
+}
+
+setup_archiver()
+{
+   archiver_name="$1"
+
+   echo "Using external archiver: $archiver_name"
+   echo "Updating service defaults:"
+   service_default_down "level3 trend register pipecron"
+
+   # We can create the archiver script to setup future shells, but
+   # environment variables in the current shell must be set manually:
+   _archive_dir="$(echo $SDPC_ARCHIVE_DIR | sed -e s,/$SDPC_PIPE_NAME,/$archiver_name,)"
+   _dbfile="$(echo $SDPC_ARCHIVE_DBFILE | sed -e s,/$SDPC_PIPE_NAME,/$archiver_name,)"
+   archiver_script="$SDPC_PIPE_DIR/etc/archiver.sh"
+   echo "export SDPC_ARCHIVE_DIR=$_archive_dir" > $archiver_script
+   echo "export SDPC_ARCHIVE_DBFILE=$_dbfile" >> $archiver_script
+   echo "Saved archive paths in: $archiver_script"
+
+   printf "\n***IMPORTANT: Please set these environment variables now:\n\n"
+   cat $archiver_script
+}
+
 if test $# -eq 0 ; then
    exit_usage 0
 fi
+
+context=""
+archiver_name=""
+create_archive=yes
 
 # Process optional args
 while [ "$#" != "0" ]
@@ -93,7 +127,18 @@ do
               echo "*** Error: missing config argument"
               exit 1
            fi
+           context="$1"
            service_states_for_context "$1"
+           shift
+           ;;
+         --archive)
+           shift
+           if test $# = 0 ; then
+              echo "*** Error: missing config argument"
+              exit 1
+           fi
+           archiver_name="$1"
+           create_archive=no
            shift
            ;;
          --*)
@@ -107,7 +152,6 @@ do
    esac
 done
 
-pipe_mkdirs_archive.sh
 pipe_mkdirs.sh
 
 inr_mkdirs.sh
@@ -116,9 +160,12 @@ inr_config.sh
 /bin/cp -r $SDPC_ROOT/etc $SDPC_PIPE_DIR
 /bin/mv $SDPC_PIPE_DIR/etc/services $SDPC_PIPE_DIR
 
+echo "Configuring services for $context context:"
 service_default_up "$list_up"
 service_default_down "$list_down"
 
-if test -f $SDPC_ARCHIVE_DBFILE ; then
-   echo "WARNING: file exists: $SDPC_ARCHIVE_DBFILE"
+if test x"$create_archive" = xyes ; then
+   make_archive
+elif test -n "$archiver_name" ; then
+   setup_archiver "$archiver_name"
 fi
