@@ -16,6 +16,11 @@ wait_week=604800
 
 PGMNAME="$(basename $0)"
 
+svc_up()
+{
+   $SDPC_S6_ROOT/bin/s6-svstat -o up $SDPC_PIPE_DIR/services/$1
+}
+
 trace_message()
 {
    args="$@"
@@ -127,25 +132,37 @@ do_daily()
 
   mmin_arg="+1440"
 
-  # backup archive sqlite database file
-  backup_archive_dbfile "$SDPC_ARCHIVE_DIR/backup"
+  isup=$(svc_up register)
+  if test x"$isup" = xtrue ; then
+     # backup archive sqlite database file
+     backup_archive_dbfile "$SDPC_ARCHIVE_DIR/backup"
+  fi
 
   # delete INR GUI directory files
-  gui_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/GUI"
-  if test -d $gui_dir ; then
-     expire_dir_files $mmin_arg $gui_dir
+  isup=$(svc_up inr)
+  if test x"$isup" = xtrue ; then
+     gui_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/GUI"
+     if test -d $gui_dir ; then
+        expire_dir_files $mmin_arg $gui_dir
+     fi
   fi
 
   # delete EMPTY slurm batch log files
-  slurm_log_dirs=("level1a" "level1b" "level2")
-  for d in ${slurm_log_dirs[@]}; do
-      expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/log/$d/slurm" "-size 0"
+  slurm_log_services=("level1a" "level1b" "level2")
+  for d in ${slurm_log_services[@]}; do
+      isup=$(svc_up $d)
+      if test x"$isup" = xtrue ; then
+         expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/log/$d/slurm" "-size 0"
+      fi
   done
 
   # pack old daily ASDC push/pull history into tar files
-  asdc_dir="$SDPC_ARCHIVE_DIR/asdc"
-  if test -d $asdc_dir ; then
-     replace_old_subdirs_with_tarfiles "+2880" $asdc_dir
+  isup=$(svc_up asdc)
+  if test x"$isup" = xtrue ; then
+     asdc_dir="$SDPC_ARCHIVE_DIR/asdc"
+     if test -d $asdc_dir ; then
+        replace_old_subdirs_with_tarfiles "+2880" $asdc_dir
+     fi
   fi
 }
 
@@ -153,7 +170,10 @@ do_weekly()
 {
   trace_message weekly
   mmin_arg="+10080"
-  expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/inr/scantailoring"
+  isup=$(svc_up inr)
+  if test x"$isup" = xtrue ; then
+     expire_dir_files $mmin_arg "$SDPC_PIPE_DIR/inr/scantailoring"
+  fi
 }
 
 Sleep_Pid=0

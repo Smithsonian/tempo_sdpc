@@ -89,7 +89,7 @@ setup_archiver()
 
    echo "Using external archiver: $archiver_name"
    echo "Updating service defaults:"
-   service_default_down "level3 trend register pipecron"
+   service_default_down "level3 trend register"
 
    # We can create the archiver script to setup future shells, but
    # environment variables in the current shell must be set manually:
