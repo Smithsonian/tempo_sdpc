@@ -1,10 +1,10 @@
-x = .39930E+00 .21009E+00
- indices =   2   2
-          val = .60939E+00
-expected f(x) = .60939E+00
-x = .16751E+00 .56725E+00 .58171E+00 .68632E+00 .47658E+00 .28996E+00
-          val = .27693E+01
-expected f(x) = .27693E+01
+x = .21132E+00 .75734E-01
+ indices =   1   1
+          val = .28706E+00
+expected f(x) = .28706E+00
+x = .21132E+00 .75734E-01 .80785E+00 .84679E+00 .52485E+00 .41467E+00
+          val = .28812E+01
+expected f(x) = .28812E+01
  Starting         1000  trials
-RMS error =  0.761E-07
-F mean = .29992E+01
+RMS error =  0.757E-07
+F mean = .29766E+01

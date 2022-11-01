@@ -1,17 +1,18 @@
 program ndinterp_test
   use ndinterp_module
   implicit none
+  integer :: prng_size, prng_state(1)
   integer, allocatable, dimension(:) :: seed
   integer :: errstat, n, i, pid
 
-  call random_seed (size = n)
+  call my_random_seed (size = n)
   allocate (seed(n))
   ! For a regression test, we want repeatability
   pid = 31415 ! getpid()
   do i = 1, n
     seed(i) = pid
   enddo
-  call random_seed (put = seed)
+  call my_random_seed (put = seed)
 
   errstat = 0
 
@@ -23,6 +24,48 @@ program ndinterp_test
   if (errstat /= 0) stop 2
 
 contains
+
+  function prng(x)
+    integer, parameter :: ia=843314861,ib=453816693,m=1073741824
+    real (kind=4), parameter :: xmx=2147483648.0
+    real (kind=4), intent(in) :: x
+    integer :: iiseed
+    real (kind=4) :: prng
+    iiseed = int(x * xmx)   ! 0 <= x < 1
+    iiseed = ib + ia*iiseed
+    if (iiseed.lt.0) iiseed = (iiseed+m) + m
+    prng = iiseed/xmx  ! 0 <= prng < 1
+  end function prng
+
+  subroutine my_random_seed (size, put)
+    integer, intent(out), optional :: size
+    integer, intent(in), dimension(1), optional :: put
+    if (present(put)) then
+      prng_state(1) = put(1)
+    else
+      prng_state(1) = 0
+    endif
+    if (present(size)) then
+      prng_size = 1
+    endif
+  end subroutine my_random_seed
+
+  subroutine my_random_number (x)
+    real (kind=8), dimension (:), intent(inout) :: x
+    real (kind=4) :: r
+    integer i, n
+    logical, save :: first=.true.
+    n = size(x)
+    if (first) then
+      x(1:n) = prng_state(1)
+      first = .false.
+    endif
+    r = real(x(1), kind=4)
+    do i=1,n
+      r = prng (r)
+      x(i) = real(r, kind=8)
+    enddo
+  end subroutine my_random_number
 
   function ftest(x)
     implicit none
@@ -66,7 +109,7 @@ contains
       enddo
     enddo
 
-    call random_number (x)
+    call my_random_number (x)
     call ndi_table_interp (dims, tbl, x, val, errstat, output_indices=indices)
     if (errstat /= 0) stop 2
 
@@ -125,7 +168,7 @@ contains
       enddo
     enddo
 
-    call random_number (x)
+    call my_random_number (x)
     call ndi_table_interp (dims, tbl, x, val, errstat)
     if (errstat /= 0) stop 2
 
@@ -141,7 +184,7 @@ contains
 
     !call cpu_time(start)
     do i = 1,num_trials
-      call random_number (x)
+      call my_random_number (x)
       call ndi_table_interp (dims, tbl, x, val, errstat)
       if (errstat /= 0) stop 3
       fv = ftest(x)
