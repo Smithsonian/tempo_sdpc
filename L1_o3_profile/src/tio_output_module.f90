@@ -2373,7 +2373,7 @@ contains
          [tmp1D_layer(1)], errstat)
     call tiof_put2d_r4 (obj, o3p_var_profile_pres_bnds, [iline, ipix, 0,0], &
          [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
-    call tiof_put2d_r4 (obj, o3p_var_profile_alt_bnds, [iline, ipix, 0], &
+    call tiof_put2d_r4 (obj, o3p_var_profile_alt_bnds, [iline, ipix, 0,0], &
          [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
          [1,1, nlayer], tmp1D_layer(1:nlayer), errstat)
