@@ -89,6 +89,7 @@ upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/push/tempo_pdr_%Y%jT%
 do_asdc_upload $upload_dir_path
 
 num_new=$(asdc_track_uploads.py --num new)
+num_pending=$(asdc_track_uploads.py --num pending)
 num_uploaded=$(asdc_track_uploads.py --num uploaded)
-echo "asdc_push.sh: ASDC ingest status: new: $num_new  uploaded: $num_uploaded"
+echo "asdc_push.sh: ASDC ingest status: new: $num_new  pending: $num_pending uploaded: $num_uploaded"
 
