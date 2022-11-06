@@ -1938,6 +1938,8 @@ int main (int argc, char **argv)
    else
      status = process_live_stream (tbl, tp, &ctrl);
 
+   tell_vinfo (0, "last packet time = %f", Last_Packet_Time);
+
    delete_methods_table (tbl);
 
    status = (status == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
