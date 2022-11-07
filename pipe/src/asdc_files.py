@@ -94,10 +94,16 @@ class Table_Type:
         self.field_defs = fields
         field_list = ','.join('{} {}'.format (k,fields[k]) for k in fields.keys())
         self.create_cmd = "CREATE TABLE IF NOT EXISTS {table_name} ({field_list}, {quals});".format (**locals())
+        self.create_trigger_cmd = \
+        'create trigger if not exists update_status_time update of asdc_status on {table_name} '\
+        'begin' \
+        '  update {table_name} set asdc_status_time=current_timestamp where filename = old.filename; ' \
+        'end;'.format (**locals())
 
     def create(self, cur):
         """Create an empty table"""
         cur.execute (self.create_cmd)
+        cur.execute (self.create_trigger_cmd)
 
     def new_entry(self, cur, names, values):
         """Insert a table entry"""
@@ -111,6 +117,8 @@ class Table_Type:
 def init_file_table (table_name, fields_for_file_type):
     fields = {}
     fields["rowid"] = "integer"
+    fields["timestamp"] = "datetime default current_timestamp"
+    fields["asdc_status_time"] = "datetime"
     fields["asdc_status"] = "integer"
     fields["filename"] = "text"
     fields["path"] = "text"
