@@ -52,6 +52,10 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 
 : "${SDPC_PIPE_ID:?SDPC_PIPE_ID not set}"
 
+# Potential wait times for corresponding Level 0 IRU, SMC, HK
+wait_iru_sec="$(config_setting level1a.wait_iru_sec)"
+wait_hk_sec="$(config_setting level1a.wait_hk_sec)"
+
 make_iru_only_file_for_inr()
 {
    time_interval_file="$1"
@@ -80,7 +84,7 @@ make_iru_only_file_for_inr()
    dir=$(mktemp -d -p $this_dir)
    cd $dir
 
-   select_l0.py --wait 120 --table IRU_L0 --begin $tbeg --end $tend > iru.lis
+   select_l0.py --wait $wait_iru_sec --table IRU_L0 --begin $tbeg --end $tend > iru.lis
    select_l0.py --table SMC_L0 --begin $tbeg --end $tend > smc.lis
    select_l0.py --table HK_L0  --begin $tbeg --end $tend > hk.lis
 
@@ -162,7 +166,7 @@ case "${granule_basename}" in
    iers_bulletin=$(select_iers.py "$granule_path")
 
    iru_file_list="$granule_dir/.${granule_basename}_iru.lis"
-   select_l0.py --table IRU_L0 --granule "$granule_path" > $iru_file_list
+   select_l0.py --wait $wait_iru_sec --table IRU_L0 --granule "$granule_path" > $iru_file_list
 
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
    select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
@@ -179,7 +183,7 @@ case "${granule_basename}" in
 esac
 
 hk_file_list="$granule_dir/.${granule_basename}_hk.lis"
-select_l0.py --wait 120 --table HK_L0 --granule "$granule_path" > $hk_file_list
+select_l0.py --wait $wait_hk_sec --table HK_L0 --granule "$granule_path" > $hk_file_list
 
 # Create file-list file
 file_list_file="$granule_dir/.${granule_basename}.lis"
