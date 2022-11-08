@@ -328,7 +328,7 @@ class Db_File_Type:
                     print ("Error processing file: {}".format(longpan_file))
 
 def main():
-    status_dict = {"unknown": -3, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "accepted":2}
+    status_dict = {"unknown": -3, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3}
 
     parser = argparse.ArgumentParser(description='Track ASDC upload status of ancillary data files using {}'.format(status_dict.keys()))
     parser.add_argument('--dbfile', metavar='DBFILE', default=None,

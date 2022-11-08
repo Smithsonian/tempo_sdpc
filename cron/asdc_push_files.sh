@@ -56,6 +56,9 @@ do_asdc_upload()
 
   # perform the upload
   lftp -f $script
+
+  # mark the files as "uploaded"
+  asdc_files.py --dbfile $dbfile --set uploaded $file_list
 }
 
 dbfile_name=$(basename $dbfile)
@@ -70,7 +73,8 @@ dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
 upload_dir_path="${dbfile_dir}/$(date -u +%Y/%j/push/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
 do_asdc_upload $upload_dir_path
 
-# log num new/pending:
+# log num new/pending/uploaded:
 num=$(asdc_files.py --dbfile $dbfile --num new)
-num_after=$(asdc_files.py --dbfile $dbfile --num pending)
-echo "$dbfile_name push status: new: $num  pending: $num_after"
+num_pending=$(asdc_files.py --dbfile $dbfile --num pending)
+num_uploaded=$(asdc_files.py --dbfile $dbfile --num uploaded)
+echo "$dbfile_name push status: new:$num  pending:$num_pending  uploaded:$num_uploaded"

@@ -85,9 +85,9 @@ do_asdc_download()
 
 dbfile_name=$(basename $dbfile)
 
-num=$(asdc_files.py --dbfile $dbfile --num pending)
+num=$(asdc_files.py --dbfile $dbfile --num uploaded)
 if test x"$num" = x0 ; then
-   echo "$dbfile_name pull status: pending:$num"
+   echo "$dbfile_name pull status: uploaded:$num"
    exit 0
 fi
 
@@ -95,7 +95,7 @@ dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
 download_dir_path="${dbfile_dir}/$(date -u +%Y/%j/pull/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
 do_asdc_download $download_dir_path
 
-num_pending=$(asdc_files.py --dbfile $dbfile --num pending)
+num_uploaded=$(asdc_files.py --dbfile $dbfile --num uploaded)
 num_accepted=$(asdc_files.py --dbfile $dbfile --num accepted)
 num_problem=$(asdc_files.py --dbfile $dbfile --num problem)
-echo "$dbfile_name pull status: pending:$num_pending  accepted:$num_accepted  problem:$num_problem"
+echo "$dbfile_name pull status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
