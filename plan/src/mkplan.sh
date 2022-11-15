@@ -43,6 +43,11 @@ output_sched_file()
    shift
    if test $# -eq 1 ; then
       tailoring_file="$1"
+   else
+      tailoring_dir="$SDPC_PIPE_DIR/inr/scantailoring"
+      if test -d $tailoring_dir ; then
+         tailoring_file="$(find $tailoring_dir -mindepth 1 -maxdepth 1 -type f | tail -n 1)"
+      fi
    fi
 
    if ! test -f $example_sched_file ; then
@@ -66,7 +71,7 @@ output_sched_file()
    fi
 
    if test -f "$tailoring_file" ; then
-      sed -i -e s,"tailoring_file=.*","tailoring_file=\"$tailoring_file\"", $temp_file
+      sed -i -e s,"tailoring_file=.*","tailoring_file=\"$(realpath $tailoring_file)\"", $temp_file
    elif ! test -z "$tailoring_file" ; then
       echo "*** Cannot access scan tailoring file: $tailoring_file"
       exit 1
