@@ -5,6 +5,7 @@ exit_usage()
    echo "Usage: $(basename $0) [options] command"
    echo "   Options:"
    echo "   -i SDPC_PIPE_NAME   Set pipeline name"
+   echo "   -u SDPC_USER        Set pipeline owner (only for directory paths)"
    echo "   --help              Print this listing"
    exit "$1"
 }
@@ -23,6 +24,15 @@ main ()
             exit_usage 1
          fi
          export SDPC_PIPE_NAME="$1"
+         shift
+         ;;
+       -u)
+         shift
+         if test -z "$1" ; then
+            exit_usage 1
+         fi
+         # don't export this
+         SDPC_USER="$1"
          shift
          ;;
        --*)

@@ -35,6 +35,9 @@ export SDPC_REFDATA_DIR="@REFDATA_DIR@"
 : "${SDPC_PIPE_NAME:=default}"
 export SDPC_PIPE_NAME
 
+# don't export this
+: "${SDPC_USER:=$USER}"
+
 #----------------
 #  Archive paths:
 #----------------
@@ -43,10 +46,10 @@ export SDPC_PIPE_NAME
 archive_home="@ARCHIVE_HOME@"
 
 # SDPC_ARCHIVE_DIR = root directory for the pipeline-specific archive
-export SDPC_ARCHIVE_DIR="${archive_home}/${USER}/${SDPC_PIPE_NAME}"
+export SDPC_ARCHIVE_DIR="${archive_home}/${SDPC_USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
-export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
+export SDPC_ARCHIVE_DBFILE="/scratch/${SDPC_USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
 
 #-----------------
 #  Pipeline paths:
@@ -56,10 +59,10 @@ export SDPC_ARCHIVE_DBFILE="/scratch/${USER}/${SDPC_PIPE_NAME}/archived_products
 pipe_home="@PIPE_HOME@"
 
 # SDPC_PIPE_DIR = root directory where pipeline processing takes place on the master node
-export SDPC_PIPE_DIR="${pipe_home}/${USER}/${SDPC_PIPE_NAME}"
+export SDPC_PIPE_DIR="${pipe_home}/${SDPC_USER}/${SDPC_PIPE_NAME}"
 
 # SDPC_NODE_DIR = root directory where pipeline processing takes place on compute nodes
-export SDPC_NODE_DIR="/scratch/${USER}/${SDPC_PIPE_NAME}"
+export SDPC_NODE_DIR="/scratch/${SDPC_USER}/${SDPC_PIPE_NAME}"
 
 #---------------------------
 #  Command search path, etc.
