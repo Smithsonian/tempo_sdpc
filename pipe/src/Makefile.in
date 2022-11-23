@@ -15,6 +15,7 @@ EXEC_FILES = config_setting
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                o3p_partition.sl o3p_select.sl sdpcsrv.sh \
                sdpcrun.sh sdpcpipe.sh make_tar_notice.sh pipecron.sh \
+               status_pipe.sh status_ancillary.sh \
                select_ims.py select_iers.py pull_ioc_cache.sh \
                select_l0.py select_irr.py select_dark.py register.py \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
