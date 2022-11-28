@@ -8,7 +8,7 @@ asdc_status_table()
 {
    sqlite_file="$1"
 
-   sql_newest="select timet,(now-timet)/86400.0 from (select max(strftime('%s',timestamp)) as timet,strftime('%s',current_timestamp) as now from File_Table)"
+   sql_newest="select timet,(now-timet)/3600.0 from (select max(strftime('%s',timestamp)) as timet,strftime('%s',current_timestamp) as now from File_Table)"
 
    if test $verbose -ne 0 ; then
       filter=""
@@ -32,8 +32,8 @@ group by date(timestamp),asdc_status"
    printf "\n dbfile: $sqlite_file\n"
    if test -n "$newest_timet_duration" ; then
       newest_timet=$(echo $newest_timet_duration | cut -d, -f1)
-      duration_days=$(echo $newest_timet_duration | cut -d, -f2)
-      printf " newest: %0.3f days old (%s)\n" "$duration_days" "$(date -u --date @$newest_timet +%Y-%m-%dT%H:%M:%SZ)"
+      duration_hours=$(echo $newest_timet_duration | cut -d, -f2)
+      printf " newest: %0.2f hours old (%s)\n" "$duration_hours" "$(date -u --date @$newest_timet +%Y-%m-%dT%H:%M:%SZ)"
       printf "uploads:"
       if test -z "$result" ; then
         printf " OK"
