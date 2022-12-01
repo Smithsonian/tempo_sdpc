@@ -10,6 +10,8 @@ typedef struct
    const char *instr_status_file;
    const char *instr_glob;
    const char *trend_file;
+   const char *pge_version_string;
+   char *metadata_template_dir;
    int limit_num_granules;
    int diagnostic_index;
 }

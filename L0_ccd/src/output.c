@@ -19,7 +19,6 @@
 
 #define OUTPUT_PRIVATE_DATA \
    char *file; \
-   char *metadata_template_dir; \
    int exposure_type; \
    int have_dims; \
    int num_recs; \
@@ -199,7 +198,6 @@ static void out_free (Output_Type *out)
 {
    if (out == NULL)
      return;
-   FREE(out->metadata_template_dir);
    FREE(out->file);
    FREE(out);
 }
@@ -426,83 +424,6 @@ static int write_rad_rec (Output_Type *out,
    return write_rec_bands (out, index, rec,
                            TEMPO_VAR_RADIANCE,
                            TEMPO_VAR_RADIANCE_ERROR);
-}
-
-static int out_std_metadata (Output_Type *out, TIO_Meta_Type *meta, int ncid_from)
-{
-#define SHORTNAME_BUFSIZE 32
-   char shortname[SHORTNAME_BUFSIZE];
-   const char *prod_name = NULL;
-   const char *template_basename = NULL;
-   char *template_path = NULL;
-   int n, status = -1;
-
-   switch (out->exposure_type)
-     {
-      case EXPREC_TYPE_IRR_WRK:
-        prod_name = TEMPO_PROD_TYPE_IRR;
-        template_basename = "irradiance.met.template";
-        break;
-
-      case EXPREC_TYPE_IRR_REF:
-        prod_name = TEMPO_PROD_TYPE_IRR_REF;
-        template_basename = "irradiance.met.template";
-        break;
-
-      case EXPREC_TYPE_RAD:
-        prod_name = TEMPO_PROD_TYPE_RAD;
-        template_basename = "radiance.met.template";
-        break;
-
-      default:
-        tell_vwarn (0, "%s: no metadata template expansion support for exposure records of type %d",
-                    __func__, out->exposure_type);
-        break;
-     }
-
-   n = snprintf (shortname, SHORTNAME_BUFSIZE, "TEMPO_%s_L1", prod_name);
-   if (n < 0 || n >= SHORTNAME_BUFSIZE)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: error generating shortname for %s", __func__, prod_name);
-        goto return_status;
-     }
-
-   /* FIXME: set version numbers */
-   if (0 != tio_meta_set_standard (meta, out->file, shortname, process_get_version(), "0.1.0"))
-     goto return_status;
-
-   if (0 != tio_meta_set_datetime_range (meta, ncid_from))
-     goto return_status;
-
-   if (0 != tio_meta_write_ncattr (meta, out->ncid))
-     goto return_status;
-
-   if ((out->exposure_type == EXPREC_TYPE_RAD)
-       || (out->exposure_type == EXPREC_TYPE_IRR_WRK)
-       || (out->exposure_type == EXPREC_TYPE_IRR_REF))
-     {
-        /* For radiance files, input_pointer gets expanded only in the
-         * last processing step of Level 0-1, e.g. post-INR
-         * For irradiance files, input_pointer gets expanded after
-         * wavelength calibration.
-         */
-        tio_meta_set_noexpand (meta, "input_files", 1);
-     }
-
-   if ((out->metadata_template_dir != NULL)
-       && (template_basename != NULL))
-     {
-        if (NULL == (template_path = path_concat (out->metadata_template_dir, template_basename)))
-          goto return_status;
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "Expanding metadata template: %s", template_path);
-        if (0 != tio_meta_expand_file (meta, template_path, out->file))
-          goto return_status;
-     }
-
-   status = 0;
-return_status:
-   FREE(template_path);
-   return status;
 }
 
 static int insert_comment (int grp, const char *varname, const char *comment)
@@ -733,34 +654,6 @@ static int out_finalize (Output_Type *out)
    return 0;
 }
 
-static int read_params (Output_Type *out, config_t *cfg)
-{
-   config_setting_t *setting;
-   const char *template_dir;
-
-   if (NULL == (setting = config_lookup (cfg, "metadata")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing group 'template' in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   out->metadata_template_dir = NULL;
-
-   if (CONFIG_TRUE != config_setting_lookup_string (setting, "metadata_template_dir", &template_dir))
-     {
-        tell_vlog (TELL_MSGTYPE_WARN, 0,
-                   "metadata template path not found: skipping template expansion");
-        return 0;
-     }
-
-   if (NULL == (out->metadata_template_dir = expand_string (template_dir)))
-     return -1;
-
-   return 0;
-}
-
 Output_Type *output_alloc (config_t *cfg, int exposure_type)
 {
    Output_Type *out = NULL;
@@ -785,14 +678,7 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
    out->tstart = nan_value;
    out->tend = nan_value;
    out->out_root_ncid = out_root_ncid;
-   out->out_std_metadata = out_std_metadata;
    out->out_finalize = out_finalize;
-
-   if (0 != read_params (out, cfg))
-     {
-        out_free (out);
-        return NULL;
-     }
 
    switch (exposure_type)
      {

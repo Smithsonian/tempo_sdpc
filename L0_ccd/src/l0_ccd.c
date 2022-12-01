@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include "control.h"
+#include "util.h"
 #include "process.h"
 
 static void usage (void)
@@ -40,6 +41,7 @@ static int read_config_file (const char *config_file,
                              config_t *cfg, Control_Type *ctrl)
 {
    config_setting_t *setting;
+   const char *template_dir;
 
    if (0 == config_read_file (cfg, config_file))
      {
@@ -58,8 +60,27 @@ static int read_config_file (const char *config_file,
         return -1;
      }
 
-   if (CONFIG_TRUE != config_setting_lookup_string
-       (setting, "hk_glob_pattern", &ctrl->instr_glob))
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "pge_version_string", &ctrl->pge_version_string))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading pge_version_string in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   ctrl->metadata_template_dir = NULL;
+
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "metadata_template_dir", &template_dir))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 0,
+                   "metadata template path not found: skipping template expansion");
+     }
+   else if (NULL == (ctrl->metadata_template_dir = expand_string (template_dir)))
+     {
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (setting, "hk_glob_pattern", &ctrl->instr_glob))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading hk_glob_pattern in param file: %s",
@@ -234,6 +255,7 @@ int main (int argc, char **argv)
    status = EXIT_SUCCESS;
 return_status:
    config_destroy (&cfg);
+   FREE(ctrl.metadata_template_dir);
 
    tell_vlog (TELL_MSGTYPE_INFO, 0, "status=%d, finished %s",
               status, ctrl.input_file);

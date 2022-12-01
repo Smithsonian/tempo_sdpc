@@ -204,6 +204,88 @@ static int write_diagnostic_image (const Image_Type *img, const char *varname)
 
 /*}}}*/
 
+static int write_std_metadata (int ncid, int exposure_type, const Control_Type *ctrl,
+                               TIO_Meta_Type *meta, int ncid_from)
+{
+#define SHORTNAME_BUFSIZE 32
+   char shortname[SHORTNAME_BUFSIZE];
+   const char *prod_name = NULL;
+   const char *template_basename = NULL;
+   char *template_path = NULL;
+   int n, status = -1;
+
+   switch (exposure_type)
+     {
+      case EXPREC_TYPE_DARK:
+        prod_name = TEMPO_PROD_TYPE_DRK;
+        template_basename = "dark.met.template";
+        break;
+
+      case EXPREC_TYPE_IRR_WRK:
+        prod_name = TEMPO_PROD_TYPE_IRR;
+        template_basename = "irradiance.met.template";
+        break;
+
+      case EXPREC_TYPE_IRR_REF:
+        prod_name = TEMPO_PROD_TYPE_IRR_REF;
+        template_basename = "irradiance.met.template";
+        break;
+
+      case EXPREC_TYPE_RAD:
+        prod_name = TEMPO_PROD_TYPE_RAD;
+        template_basename = "radiance.met.template";
+        break;
+
+      default:
+        tell_vwarn (0, "%s: no metadata template expansion support for exposure records of type %d",
+                    __func__, exposure_type);
+        break;
+     }
+
+   n = snprintf (shortname, SHORTNAME_BUFSIZE, "TEMPO_%s_L1", prod_name);
+   if (n < 0 || n >= SHORTNAME_BUFSIZE)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error generating shortname for %s", __func__, prod_name);
+        goto return_status;
+     }
+
+   if (0 != tio_meta_set_standard (meta, ctrl->output_file, shortname, process_get_version(), ctrl->pge_version_string))
+     goto return_status;
+
+   if (0 != tio_meta_set_datetime_range (meta, ncid_from))
+     goto return_status;
+
+   if (0 != tio_meta_write_ncattr (meta, ncid))
+     goto return_status;
+
+   if ((exposure_type == EXPREC_TYPE_RAD)
+       || (exposure_type == EXPREC_TYPE_IRR_WRK)
+       || (exposure_type == EXPREC_TYPE_IRR_REF))
+     {
+        /* For radiance files, input_pointer gets expanded only in the
+         * last processing step of Level 0-1, e.g. post-INR
+         * For irradiance files, input_pointer gets expanded after
+         * wavelength calibration.
+         */
+        tio_meta_set_noexpand (meta, "input_files", 1);
+     }
+
+   if ((ctrl->metadata_template_dir != NULL)
+       && (template_basename != NULL))
+     {
+        if (NULL == (template_path = path_concat (ctrl->metadata_template_dir, template_basename)))
+          goto return_status;
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "Expanding metadata template: %s", template_path);
+        if (0 != tio_meta_expand_file (meta, template_path, ctrl->output_file))
+          goto return_status;
+     }
+
+   status = 0;
+return_status:
+   FREE(template_path);
+   return status;
+}
+
 static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 {
    config_setting_t *s, *sub;
@@ -455,7 +537,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    Badpix_Map_Type *bpixmap = NULL;
    Badpix_Map_Occur_Type *bpix_occur = NULL;
    Badpix_Bitmap_Type bpix_occur_mask;
-   int ixr, num_exprecs, exposure_type, is_dark, grp;
+   int ixr, num_exprecs, exposure_type, is_dark, grp, ncid_from;
    int num_parallel_active_full, num_serial_active_full, ncid = 0;
    int bpix_occur_threshold;
    int status = -1;
@@ -570,7 +652,9 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
           }
      }
 
-   if (0 != tio_meta_write_ncattr (meta, ncid))
+   ncid_from = gr->granule_ncid (gr);
+
+   if (0 != write_std_metadata (ncid, exposure_type, ctrl, meta, ncid_from))
      goto return_status;
 
    /* Generate average only for "true" dark measurements,
@@ -1261,7 +1345,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
           goto return_status;
      }
 
-   if (0 != out->out_std_metadata (out, meta, ncid_from))
+   if (0 != write_std_metadata (ncid_to, exposure_type, ctrl, meta, ncid_from))
      goto return_status;
 
    if (0 != out->out_finalize (out))
