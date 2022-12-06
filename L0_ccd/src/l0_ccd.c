@@ -14,6 +14,7 @@
 #include "control.h"
 #include "util.h"
 #include "process.h"
+#include "version.h"
 
 static void usage (void)
 {
@@ -56,14 +57,6 @@ static int read_config_file (const char *config_file,
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing group 'template' in param file: %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (CONFIG_TRUE != config_setting_lookup_string (setting, "pge_version_string", &ctrl->pge_version_string))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading pge_version_string in param file: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -158,6 +151,7 @@ int main (int argc, char **argv)
      };
 
    ctrl.limit_num_granules = INT_MAX;
+   ctrl.pge_version_string = L0CCD_VERSION_STRING;
 
    if (argc < 2)
      usage();
