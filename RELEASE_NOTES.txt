@@ -1,4 +1,4 @@
-TEMPO_SDPC_v?.?.?   2022 ??? ??
+TEMPO_SDPC_v4.0.0   2023 ??? ??
 ===============================
    * Make GOES spacecraft references more generic (e.g. GOES-East/West
      instead of GOES-16/17).
@@ -26,6 +26,7 @@ TEMPO_SDPC_v?.?.?   2022 ??? ??
    * Now recommend using sdpcrun.sh to configure shell environment
    * Added support for autonomous warm restart of INR server.
    * Wavelength calibration supports including model components in irradiance fit.
+   * Add scripts to facilitate status monitoring
 
 TEMPO_SDPC_v3.0.0   2022 Mar 01
 ===============================
