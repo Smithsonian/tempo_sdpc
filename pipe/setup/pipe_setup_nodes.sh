@@ -14,8 +14,8 @@ fi
 
 part_name=$1
 
-# list of compute nodes in this partition
-_node_list=$(sinfo -p "$part_name" -h -N -o %n)
+# list of responding compute nodes in this partition
+_node_list=$(sinfo -p "$part_name" -r -h -N -o %n)
 
 for node in $_node_list; do
   printf "Creating pipeline node directory: $node:$SDPC_NODE_DIR\n"
