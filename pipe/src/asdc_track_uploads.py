@@ -263,10 +263,8 @@ def print_report (asdc_status_name, ymd):
         for tbl in table_names:
             if tbl == "RAD_L1a":
                 continue
-            nc_sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} order by asdc_upload_time".format (**locals())
-            print_query (cur, nc_sql)
-            met_sql = "select {times},{other_columns} from {tbl} where asdc_status_met = {asdc_status} order by asdc_upload_time".format (**locals())
-            print_query (cur, met_sql)
+            sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} or asdc_status_met = {asdc_status} order by asdc_upload_time".format (**locals())
+            print_query (cur, sql)
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
