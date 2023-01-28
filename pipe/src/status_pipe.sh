@@ -3,6 +3,11 @@
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set}"
 
+if ! test -d "$SDPC_PIPE_DIR" ; then
+   printf "*** nonexistent pipeline directory: SDPC_PIPE_DIR=$SDPC_PIPE_DIR\n"
+   exit 1
+fi
+
 when="yesterday"
 date_fmt="+%Y-%m-%dT%H:%M:%S"
 
