@@ -346,6 +346,13 @@ east_dit_sense=1
 
 ## Gyroscope configuration
 [Gyroscope]
+# The number of gyro axes. Default to 4
+numGyroAxes = 4
+# Set the value to 1 if the axis is enabled, 0 if the axis is disabled. Default to true(1).
+axisEnabledFlag_0 = 1
+axisEnabledFlag_1 = 1
+axisEnabledFlag_2 = 1
+axisEnabledFlag_3 = 1
 
 # Analog-to-Digital representation of LSB in radians
 lsb = 0.029802e-6
