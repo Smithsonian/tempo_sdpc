@@ -52,7 +52,7 @@ static void usage (void)
    fprintf (stderr, "   -x | --xtrack N            Cross-track pixel index, 0 is northernmost\n");
    fprintf (stderr, "   -w | --wavepar FILE        Output file for wavelength parameters\n");
    fprintf (stderr, "   -c | --config FILE         Path to configuration file\n");
-   fprintf (stderr, "   -v | --verbose             Turn on verbose output\n");
+   fprintf (stderr, "   -v | --verbose             Turn on verbose output (-vv is more verbose)\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -772,7 +772,8 @@ int main (int argc, char **argv)
                usage();
              if (this_s_block < 0 || num_s_blocks <= this_s_block)
                {
-                  fprintf (stderr, "*** wavecal_driver: invalid step blocking specification\n");
+                  fprintf (stderr, "*** wavecal_driver: invalid step blocking specification: this_s_block=%d, num_s_blocks=%d\n",
+                           this_s_block, num_s_blocks);
                   goto return_status;
                }
              use_s_blocking++;
@@ -780,9 +781,10 @@ int main (int argc, char **argv)
            case 'X':
              if (2 != sscanf (optarg, "%d:%d", &this_x_block, &num_x_blocks))
                usage();
-             if (this_s_block < 0 || num_x_blocks <= this_x_block)
+             if (this_x_block < 0 || num_x_blocks <= this_x_block)
                {
-                  fprintf (stderr, "*** wavecal_driver: invalid xtrack blocking specification\n");
+                  fprintf (stderr, "*** wavecal_driver: invalid xtrack blocking specification: this_x_block=%d, num_x_blocks=%d\n",
+                          this_x_block, num_x_blocks);
                   goto return_status;
                }
              use_x_blocking++;
@@ -1065,6 +1067,7 @@ int main (int argc, char **argv)
 
    for (step = beg_step; step < end_step; step++)
      {
+        tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: step: %d", __func__, step);
         for (xtrack = beg_xtrack; xtrack < end_xtrack; xtrack++)
           {
              Wavecal_Result_Type *wrt;
@@ -1084,6 +1087,8 @@ int main (int argc, char **argv)
                   fit_status_code = wavecal_fit (wct, xtrack, y0, spec.spec, spec.spec_err,
                                                  spec.pixel_quality_flag, &wavecal_config,
                                                  wave_params, &wavecal_result);
+                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: xtrack=%d -> fit_status_code: %d",
+                             __func__, xtrack, fit_status_code);
                   if (fit_status_code == WAVECAL_FIT_ERROR)
                     goto return_status;
 
@@ -1091,6 +1096,7 @@ int main (int argc, char **argv)
                }
              else
                {
+                  tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: : xtrack=%d -> default", __func__, xtrack);
                   /* Uncalibrated radiance spectra get the default wavelength grid */
                   if (0 != wavecal_get_initial_params (wct, y0, wave_params))
                     goto return_status;
@@ -1137,6 +1143,7 @@ int main (int argc, char **argv)
      goto return_status;
 
    status = EXIT_SUCCESS;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "%s: success", __func__);
 return_status:
    FREE(y0);
    FREE(wave_params);
