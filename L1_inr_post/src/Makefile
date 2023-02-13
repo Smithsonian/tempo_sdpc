@@ -18,8 +18,8 @@ NDINTERP_LIB = $(config_dir)/libndinterp/src/$(archobjs)
 
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
-TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
-REGRID_LIBPATHS  = -Wl,-rpath=$(REGRID_LIB) -L$(REGRID_LIB)
+TIO_LIBPATHS     = -L$(TIO_LIB)
+REGRID_LIBPATHS  = -L$(REGRID_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 TIFF_LIBPATHS = -Wl,-rpath=$(TIFF_LIB) -L$(TIFF_LIB)

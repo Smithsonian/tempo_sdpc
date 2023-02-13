@@ -20,7 +20,7 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
+LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIO_LIB) $(RPATH)
 
 LOCAL_OBJS = -L$(CLIMSRC_OBJS) -L$(METSRC_OBJS) -L$(MDSRC_OBJS) -L$(TIOSRC_OBJS)
 
@@ -30,11 +30,13 @@ TIOSRC_OBJS = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
 TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
+NDINTERP_LIB = -L$(config_dir)/libndinterp/src/$(archobjs) -lndinterp_f
+
 GLER_LIB     = $(prefix)/lib
 GLER_SRC     = $(config_dir)/libgler/src
 GLERSRC_OBJS = $(GLER_SRC)/$(archobjs)
 GLERINCS     = -I$(GLERSRC_OBJS)
-GLERLIBS     = -L$(GLERSRC_OBJS) -L$(GLER_LIB) -lgler_f
+GLERLIBS     = -L$(GLERSRC_OBJS) -L$(GLER_LIB) -lgler_f $(NDINTERP_LIB)
 
 CLIM_LIB     = $(prefix)/lib
 CLIM_SRC     = $(config_dir)/libclim/src

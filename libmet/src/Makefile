@@ -10,12 +10,12 @@ elfdir  = $(srcdir)/$(archobjs)
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
-TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
+TIO_LIBPATHS     = -L$(config_dir)/libtio/src/$(archobjs)
 TIO_INC          = $(config_dir)/libtio/src
 PROJ_LIBPATHS    = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 ECCODES_LIBPATH  = -Wl,-rpath=$(ECCODES_LIB) -L$(ECCODES_LIB)
 
-MET_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
+MET_LIBPATHS    = -L$(elfdir)
 
 INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC) -I$(ECCODES_INC) -I$(PROJ_INC)
 LIBS = $(NETCDF_LIBPATHS) -lnetcdf \

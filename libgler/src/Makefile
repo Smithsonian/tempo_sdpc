@@ -10,18 +10,18 @@ elfdir  = $(srcdir)/$(archobjs)
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
-TIO_LIBPATHS     = -Wl,-rpath=$(config_dir)/libtio/src/$(archobjs) -L$(config_dir)/libtio/src/$(archobjs)
+TIO_LIBPATHS     = -L$(config_dir)/libtio/src/$(archobjs)
 TIO_INC          = $(config_dir)/libtio/src
-NDINTERP_LIBPATHS = -Wl,-rpath=$(config_dir)/libndinterp/src/$(archobjs) -L$(config_dir)/libndinterp/src/$(archobjs)
+NDINTERP_LIBPATHS = -L$(config_dir)/libndinterp/src/$(archobjs)
 NDINTERP_INC     = $(config_dir)/libndinterp/src
 
 IOCSDPC_INC = $(prefix)/include
 IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -lcsv
 
-GLER_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
+GLER_LIBPATHS    = -L$(elfdir)
 
 INCS = -I$(TELL_INC) -I$(NETCDF_INC) -I$(TIO_INC)
-LIBS = -Wl,-rpath=$(elfdir) -L$(elfdir) \
+LIBS = -L$(elfdir) \
         $(NETCDF_LIBPATHS) -lnetcdf \
 	$(TELL_LIBPATHS) -ltell \
 	$(TIO_LIBPATHS) -ltio $(RPATH) \

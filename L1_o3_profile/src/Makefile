@@ -51,7 +51,7 @@ MDLIBS      = -L$(MDSRC_OBJS) -L$(MD_LIB) -lmd_f
 
 PSPLINELIBS  = -lpspline -lezcdf
 
-TIOLIBS      = -Wl,-rpath=$(TIO_SRC_OBJDIR) -L$(TIO_SRC_OBJDIR) \
+TIOLIBS      = -L$(TIO_SRC_OBJDIR) \
                -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB) -ltio -ltio_f \
                -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB) -ltell -ltell_f \
 

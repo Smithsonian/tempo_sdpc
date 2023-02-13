@@ -12,7 +12,7 @@ TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 
 REGRID_INC = $(config_dir)/L2_regrid/src
 REGRID_LIB = $(config_dir)/L2_regrid/src/$(archobjs)
-REGRID_LIBPATHS  = -Wl,-rpath=$(REGRID_LIB) -L$(REGRID_LIB)
+REGRID_LIBPATHS  = -L$(REGRID_LIB)
 
 # CLIM_INC = $(config_dir)/libclim/src
 # CLIM_LIB = $(config_dir)/libclim/src/$(archobjs)
@@ -20,7 +20,7 @@ REGRID_LIBPATHS  = -Wl,-rpath=$(REGRID_LIB) -L$(REGRID_LIB)
 
 TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
-TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
+TIO_LIBPATHS     = -L$(TIO_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 PROJ_LIBPATHS    = -Wl,-rpath=$(PROJ_LIB) -L$(PROJ_LIB)
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)

@@ -1,6 +1,7 @@
 # -*- sh -*-
 
 export PATH := ../src/gnuobjs:$(PATH)
+export LD_LIBRARY_PATH := ../../libtio/src/gnuobjs:$(LD_LIBRARY_PATH)
 
 PLAN_EXEC = ../src/gnuobjs/plan
 

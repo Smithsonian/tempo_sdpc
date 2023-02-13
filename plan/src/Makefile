@@ -11,7 +11,7 @@ TIO_INC = $(config_dir)/libtio/src
 TIO_LIB = $(config_dir)/libtio/src/$(archobjs)
 
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
-TIO_LIBPATHS     = -Wl,-rpath=$(TIO_LIB) -L$(TIO_LIB)
+TIO_LIBPATHS     = -L$(TIO_LIB)
 TELL_LIBPATHS = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 SLNOVAS_LIBPATHS = -Wl,-rpath=$(SLNOVAS_LIB) -L$(SLNOVAS_LIB)

@@ -37,7 +37,7 @@ check:	$(EXECUTABLES)
 	@./test_poly && echo "tested poly...ok"
 	@./test_pixel && echo "tested pixel...ok"
 	@./test_cfg.sh $(archobjs) && echo "test param...ok"
-	@./test_run.sh $(elfdir)/L2_regrid && echo "tested L2_regrid...ok"
+	@export LD_LIBRARY_PATH=$(elfdir):$(TIOSRC_OBJS) ; ./test_run.sh $(elfdir)/L2_regrid && echo "tested L2_regrid...ok"
 
 check-area:   test_area
 	./test_area

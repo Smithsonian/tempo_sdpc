@@ -25,7 +25,7 @@ MV = /bin/mv
 RM = /bin/rm
 CP = /bin/cp
 
-LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIOSRC_OBJS):$(TIO_LIB) $(RPATH)
+LDPATH  = -Wl,-rpath=$(TELL_LIB):$(TIO_LIB) $(RPATH)
 
 LOCAL_OBJDIRS = -L$(TIOSRC_OBJS) -L$(MDSRC_OBJS)
 

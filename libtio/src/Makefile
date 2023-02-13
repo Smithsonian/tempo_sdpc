@@ -12,7 +12,7 @@ TELL_LIBPATHS    = -Wl,-rpath=$(TELL_LIB) -L$(TELL_LIB)
 NETCDF_LIBPATHS  = -Wl,-rpath=$(NETCDF_LIB) -L$(NETCDF_LIB)
 INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 
-TIO_LIBPATHS    = -Wl,-rpath=$(elfdir) -L$(elfdir)
+TIO_LIBPATHS    = -L$(elfdir)
 
 INCS = -I$(config_dir)/include -I$(TELL_INC) -I$(NETCDF_INC)
 LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
