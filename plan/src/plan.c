@@ -1359,12 +1359,11 @@ return_status:
 }
 
 static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
-                              const char *maneuver_file,
-                              const Cal_Date_Type *t0, int num_plan_days,
-                              char **plan_id)
+                              const char *maneuver_file, char **plan_id)
 {
    Maneuver_Table_Type mt = MANEUVER_TABLE_DEFAULT_INIT;
    Maneuver_Window_Type *win;
+   Plan_List_Type *entry = NULL;
    double jd_utc0, jd_utc1, plan_beg_timet, plan_end_timet;
    double unix_epoch_jd = get_unix_epoch_jd();
    int maneuver_margin;
@@ -1390,9 +1389,20 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
      }
 
    /* Set target plan time interval */
-
+#if 0
    jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
    jd_utc1 = jd_utc0 + num_plan_days;
+#else
+   jd_utc0 = plan_list->tstart;
+   for (entry = plan_list; entry != NULL; entry = entry->next)
+     {
+        if (entry->next == NULL)
+          {
+             jd_utc1 = entry->tstart + entry->num_repeats * entry->scan_duration / SEC_PER_DAY;
+             break;
+          }
+     }
+#endif
 
    plan_beg_timet = (jd_utc0 - unix_epoch_jd) * SEC_PER_DAY;
    plan_end_timet = (jd_utc1 - unix_epoch_jd) * SEC_PER_DAY;
@@ -1842,7 +1852,7 @@ int main (int argc, char **argv)
    if (NULL == plan_list)
      goto return_status;
 
-   if (0 != include_maneuvers (plan_list, &cfg, maneuver_file, &t0, num_plan_days, &plan_id))
+   if (0 != include_maneuvers (plan_list, &cfg, maneuver_file, &plan_id))
      goto return_status;
 
    if (0 != verify_safety_constraints (solar_geom, scan, plan_list))
