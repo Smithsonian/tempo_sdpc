@@ -28,7 +28,7 @@ LIBS = $(NETCDF_LIBPATHS) -lnetcdf \
 MODS_F = -I$(NETCDF_INC) -I$(TELL_INC) -I$(TIO_INC)/$(archobjs)
 LIBS_F = $(NETCDF_LIBPATHS) -lnetcdff \
          $(TELL_LIBPATHS) -ltell_f \
-	 $(TIO_LIBPATHS) -ltio_f \
+	 $(TIO_LIBPATHS) -ltio_f -ltio \
 	 $(ECCODES_LIBPATH) -leccodes_f90
 
 ELF_MAJOR_VERSION = 0#
