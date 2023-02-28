@@ -9,8 +9,9 @@ from threading import Event
 Prefix = "mirror:"
 
 # python3 will provide file= redirection to stderr
+# noninteractive stderr is line-buffered so use explicit flush.
 def eprint(*args, **kwargs):
-    print(Prefix, *args, file=sys.stderr, **kwargs)
+    print(Prefix, *args, file=sys.stderr, flush=True, **kwargs)
 
 def logprint(*args, **kwargs):
     print(Prefix, *args, file=sys.stdout, **kwargs)
