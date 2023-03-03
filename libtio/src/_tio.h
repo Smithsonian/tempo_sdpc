@@ -115,6 +115,7 @@ extern int _pTIOMake_Name_UInt_Arrays (_pName_UInt_Pair_Type *array,
                                        unsigned int **pvalues);
 extern int _pEmit_Var_Pixel_Quality_Flag (int grp,
                                           _pDim_Table_Type *dim_table);
+extern int _pTIO_emit_xtrack_indices (int grp, int varid, size_t len);
 
 #define MAX_ISOTIME_LEN 32
 /*      MAX_ISOTIME_LEN must hold:  yyyy-mm-ddThh:mm:ss.sssZ

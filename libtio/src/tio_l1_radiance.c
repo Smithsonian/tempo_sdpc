@@ -615,6 +615,37 @@ int tio_def_var_radiance_status_flag (int grp)
    return emit_radiance_status_flag (grp);
 }
 
+int _pTIO_emit_xtrack_indices (int grp, int varid, size_t len)
+{
+   int *indices = NULL;
+   size_t i, start, count;
+   int status;
+
+   if (NULL == (indices = (int *) TIO_MALLOC (len * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   for (i = 0; i < len; i++)
+     {
+        indices[i] = i;
+     }
+
+   start = 0;
+   count = len;
+
+   if (NC_NOERR != (status = nc_put_vara_int (grp, varid, &start, &count, indices)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing variable 'xtrack' (%s)",
+                     __func__, nc_strerror(status));
+        TIO_FREE(indices);
+        return -1;
+     }
+
+   TIO_FREE(indices);
+   return 0;
+}
+
 static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                                   _pDim_Table_Type *dim_table, int *grp_id)
 {
@@ -678,13 +709,15 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    /* group-local coordinate variables */
    dims[0] = dim_table->xtrack.id;
-   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, &varid);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR, "%s: defining coordinate variable %s (%s)",
                      __func__, TEMPO_DIM_XTRACK, nc_strerror(status));
         return -1;
      }
+   if (0 != _pTIO_emit_xtrack_indices (grp, varid, dim_table->xtrack.len))
+     return -1;
 
    /* radiance */
      {

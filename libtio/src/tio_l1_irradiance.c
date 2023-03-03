@@ -191,7 +191,7 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
 
    /* group-local coordinate variables */
    dims[0] = dim_table->xtrack.id;
-   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, NULL);
+   status = nc_def_var (grp, TEMPO_DIM_XTRACK, NC_INT, 1, dims, &varid);
    if (NC_NOERR != status)
      {
         Tell_verror (TELL_IO_WRITE_ERROR,
@@ -199,6 +199,8 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
                      __func__, TEMPO_DIM_XTRACK, nc_strerror(status));
         return -1;
      }
+   if (0 != _pTIO_emit_xtrack_indices (grp, varid, dim_table->xtrack.len))
+     return -1;
 
    /* irradiance */
      {
