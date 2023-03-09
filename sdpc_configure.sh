@@ -2,8 +2,7 @@
 
 compilers=gnu
 
-build_arch="${compilers}"
-#build_arch="${compilers}-rh8"
+build_arch="${compilers}-rh8"
 
 soft_home="/tempo/nas0/sdpc_soft"
 archive_home="/tempo/nas0/sdpc_archive"
