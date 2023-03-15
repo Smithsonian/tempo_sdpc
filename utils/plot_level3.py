@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import sys
 import glob
@@ -10,9 +10,18 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from mpl_toolkits.basemap import Basemap, cm
 from netCDF4 import Dataset as NetCDFFile
 import numpy as np
+
+#+++ begin lines to stop shapely deprecation warnings
+import shapely
+import warnings
+from shapely.errors import ShapelyDeprecationWarning
+warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+#--- end lines to stop shapely deprecation warnings
+
+import cartopy.crs as ccrs
+import cartopy.feature
 
 class Var_Map (object):
     def __init__(self, lon, lat, var, units):
@@ -52,18 +61,6 @@ def read_var (filename, var_config, layer):
         var_config.max = var.max()
     return Var_Map (lon, lat, var, units)
 
-def config_map (m):
-    # draw coastlines, state and country boundaries, edge of map.
-    m.drawcoastlines()
-    m.drawstates()
-    m.drawcountries()
-    # draw parallels.
-    parallels = np.arange(0.,90,10.)
-    m.drawparallels(parallels,labels=[1,0,0,0],fontsize=8)
-    # draw meridians
-    meridians = np.arange(180.,360.,10.)
-    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=8)
-
 def main():
     parser = argparse.ArgumentParser(description='plot science data')
     parser.add_argument('--outfile', help="path to output file")
@@ -86,31 +83,34 @@ def main():
 
     filename = args.filename[0]
 
-    # create Basemap instance.
-    # m = Basemap(projection='stere',lon_0=-95.0,lat_0=48.0,lat_ts=42.0,resolution='l',
-    #             width=7500000,height=7500000)
-    # m = Basemap(projection='ortho',lon_0=-95,lat_0=42,resolution='l')
-    # m = Basemap(projection='aea',lon_0=-90.0,lat_0=42.0,lat_ts=42.0,resolution='l',
-    #             llcrnrlon=-125,llcrnrlat=8,urcrnrlon=-30,urcrnrlat=60)
-
-    m = Basemap(projection='mill',lon_0=-90.0,lat_0=40.0,resolution='l',
-    llcrnrlon=-155,llcrnrlat=15,urcrnrlon=-30,urcrnrlat=65)
-
-    config_map (m)
-
     var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
+
+    fig = plt.figure()
+    ax = plt.subplot (1,1,1, projection=ccrs.Miller())
+    ax.set_extent ([-155, -30, 15, 55], ccrs.PlateCarree())
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5)
+    gl.top_labels=False
+    gl.right_labels=False
+    gl.xlabel_style = {'size':6}
+    gl.ylabel_style = {'size':6}
+    ax.add_feature (cartopy.feature.COASTLINE, linewidth=0.5)
+    ax.add_feature (cartopy.feature.BORDERS, linewidth=0.5)
+    ax.add_feature (cartopy.feature.STATES, linewidth=0.5)
 
     cmap = plt.get_cmap('jet')
 
     vm = read_var (filename, var_config, args.layer)
     lons, lats = np.meshgrid (vm.lon, vm.lat)
-    xi, yi = m(lons, lats)
-    cs = m.pcolormesh (xi, yi, vm.var, cmap=cmap, rasterized=True,
-                       vmin=var_config.min, vmax=var_config.max)
+    cs = ax.pcolormesh (lons, lats, vm.var, cmap=cmap, rasterized=True,
+                        vmin=var_config.min, vmax=var_config.max)
 
-    cbar = m.colorbar(cs,location='right',pad="4%")
-    cbar.set_label(vm.units)
-    plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.8)
+    sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.0e')
+    cbar.set_label(vm.units, size=6)
+    cbar.ax.tick_params(labelsize=6)
+
+    plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.73)
     plt.title ("{}".format(os.path.basename(filename)), fontsize='x-small')
 
     #plt.show()

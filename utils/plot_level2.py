@@ -10,9 +10,18 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from mpl_toolkits.basemap import Basemap, cm
 from netCDF4 import Dataset as NetCDFFile
 import numpy as np
+
+#+++ begin lines to stop shapely deprecation warnings
+import shapely
+import warnings
+from shapely.errors import ShapelyDeprecationWarning
+warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+#--- end lines to stop shapely deprecation warnings
+
+import cartopy.crs as ccrs
+import cartopy.feature
 
 class Var_Map (object):
     def __init__(self, lon_bnds, lat_bnds, var, units):
@@ -67,28 +76,15 @@ def select_scan_step (packed_corners, ix):
 
 # It would be nice if pcolormesh could mask points with invalid coordinates.
 # Apparently, that's not supported.
-def plot_var_map (m, vm, var_config, cmap):
+def plot_var_map (ax, vm, var_config, cmap):
     for ix in range(vm.lon_bnds.shape[0]):
         lons = select_scan_step (vm.lon_bnds, ix)
         lats = select_scan_step (vm.lat_bnds, ix)
-        xi, yi = m(lons, lats)
         var = np.transpose(vm.var[[ix],:])
         # If not rasterized, the output plot would be enormous.
-        cs = m.pcolormesh(xi, yi, var, cmap=cmap, rasterized=True,
-                          vmin=var_config.min, vmax=var_config.max)
+        cs = ax.pcolormesh(lons, lats, var, cmap=cmap, rasterized=True,
+                           vmin=var_config.min, vmax=var_config.max)
     return cs
-
-def config_map (m):
-    # draw coastlines, state and country boundaries, edge of map.
-    m.drawcoastlines()
-    m.drawstates()
-    m.drawcountries()
-    # draw parallels.
-    parallels = np.arange(0.,90,10.)
-    m.drawparallels(parallels,labels=[1,0,0,0],fontsize=8)
-    # draw meridians
-    meridians = np.arange(180.,360.,10.)
-    m.drawmeridians(meridians,labels=[0,0,0,1],fontsize=8)
 
 def main():
     parser = argparse.ArgumentParser(description='plot science data')
@@ -110,36 +106,40 @@ def main():
     else:
         extra_label = args.label
 
-    # create Basemap instance.
-    # m = Basemap(projection='stere',lon_0=-95.0,lat_0=48.0,lat_ts=42.0,resolution='l',
-    #             width=7500000,height=7500000)
-    # m = Basemap(projection='ortho',lon_0=-95,lat_0=42,resolution='l')
-    # m = Basemap(projection='aea',lon_0=-90.0,lat_0=42.0,lat_ts=42.0,resolution='l',
-    #             llcrnrlon=-125,llcrnrlat=8,urcrnrlon=-30,urcrnrlat=60)
-
-    m = Basemap(projection='mill',lon_0=-90.0,lat_0=40.0,resolution='l',
-    llcrnrlon=-155,llcrnrlat=15,urcrnrlon=-30,urcrnrlat=65)
-
-    config_map (m)
-
     filenames = args.filenames
     filenames.sort()
 
     var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
+
+    fig = plt.figure()
+    ax = plt.subplot (1,1,1, projection=ccrs.Miller())
+    ax.set_extent ([-155, -30, 15, 55], ccrs.PlateCarree())
+    gl = ax.gridlines(draw_labels=True, linewidth=0.5)
+    gl.top_labels=False
+    gl.right_labels=False
+    gl.xlabel_style = {'size':6}
+    gl.ylabel_style = {'size':6}
+    ax.add_feature (cartopy.feature.COASTLINE, linewidth=0.5)
+    ax.add_feature (cartopy.feature.BORDERS, linewidth=0.5)
+    ax.add_feature (cartopy.feature.STATES, linewidth=0.5)
 
     cmap = plt.get_cmap('jet')
 
     for f in filenames:
         print('reading {}'.format(f))
         vm = read_var (f, var_config, args.layer)
-        cs = plot_var_map (m, vm, var_config, cmap)
+        cs = plot_var_map (ax, vm, var_config, cmap)
 
-    cbar = m.colorbar(cs,location='right',pad="5%")
-    cbar.set_label(vm.units)
+    sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.0e')
+    cbar.set_label(vm.units, size=6)
+    cbar.ax.tick_params(labelsize=6)
+
     plt.title ("{}, ...\n{}".format(os.path.basename(filenames[0]),
                                     os.path.basename(filenames[-1])),
                                     fontsize='x-small')
-    plt.suptitle("{}{}".format(var_config.name, extra_label), y=0.85)
+    plt.suptitle("{}{}".format(var_config.name, extra_label), y=0.75)
 
     #plt.show()
     plt.savefig(args.outfile, dpi=300, bbox_inches="tight")
