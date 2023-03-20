@@ -149,8 +149,8 @@ def plot_eoffsets (pdf, filenames, in_tmin, in_tmax):
     tmin, tmax = filter_time_range (in_tmin, in_tmax, trend)
     t = trend.time - tmin
     fig = plt.figure()
-    gs = fig.add_gridspec(1, hspace=0)
-    ax = gs.subplots ()
+    gs = fig.add_gridspec(1,1, hspace=0)
+    ax = fig.add_subplot(gs[0])
     ax.set_xlim (0.0, tmax-tmin)
     autoscale_ylim (ax, t, trend.var)
     ax.plot(t, trend.var)
@@ -166,8 +166,8 @@ def plot_gain (pdf, filenames, in_tmin, in_tmax):
     tmin, tmax = filter_time_range (in_tmin, in_tmax, trend)
     t = trend.time - tmin
     fig = plt.figure()
-    gs = fig.add_gridspec(1, hspace=0)
-    ax = gs.subplots ()
+    gs = fig.add_gridspec(1,1, hspace=0)
+    ax = fig.add_subplot (gs[0])
     ax.set_xlim (0.0, tmax-tmin)
     autoscale_ylim (ax, t, trend.var)
     ax.plot(t, trend.var)
@@ -242,13 +242,14 @@ def plot_sdc (pdf, filenames, in_tmin, in_tmax):
     tmin, tmax = filter_time_range (in_tmin, in_tmax, trend)
     t = trend.time - tmin
     fig = plt.figure()
-    gs = fig.add_gridspec(4, hspace=0)
-    axs = gs.subplots()
-    axs[0].set_title ("storage region dark current [electrons/s]")
-    axs[-1].set_xlabel ("time [s]")
+    gs = fig.add_gridspec(4,1, hspace=0)
+    ax0 = fig.add_subplot(gs[0,0])
+    ax0.set_title ("storage region dark current [electrons/s]")
+    axe = fig.add_subplot(gs[-1,0])
+    axe.set_xlabel ("time [s]")
     quad_labels = ['A', 'B', 'C', 'D']
     for i in range(4):
-        ax = axs[i]
+        ax = fig.add_subplot (gs[i,0])
         ax.set_xlim (0.0, tmax-tmin)
         autoscale_ylim (ax, t, trend.var[:,i])
         #ax.plot(t, trend.var[:,i], linestyle="None", marker=',', alpha=0.2
@@ -266,7 +267,7 @@ def plot_dark (pdf, filenames, in_tmin, in_tmax):
     tmin, tmax = filter_time_range (in_tmin, in_tmax, mean)
     t = mean.time - tmin
     fig = plt.figure()
-    gs = fig.add_gridspec(2, hspace=0)
+    gs = fig.add_gridspec(2,1, hspace=0)
     ax1 = fig.add_subplot (gs[0])
     ax2 = fig.add_subplot (gs[1], sharex=ax1)
     plt.setp(ax1.get_xticklabels(), visible=False)
@@ -310,10 +311,9 @@ def plot_pqf_bits (pdf, trend, in_tmin, in_tmax):
                   "straylight corr. error", "nonlinear range error", "hot pixel", "cold pixel", "unused1", "unused2"]
 
     fig = plt.figure()
-    gs = fig.add_gridspec(num_bits_used, hspace=0)
-    axs = gs.subplots ()
+    gs = fig.add_gridspec(num_bits_used,1, hspace=0)
     for i in range(num_bits_used):
-        ax = axs[i]
+        ax = fig.add_subplot (gs[i,0])
         bit = bits_used[i]
         ax.set_xlim (0.0, tmax-tmin)
         autoscale_ylim (ax, t, trend.var[:,bit])
@@ -322,8 +322,10 @@ def plot_pqf_bits (pdf, trend, in_tmin, in_tmax):
         if i < num_bits_used-1:
             plt.setp(ax.get_xticklabels(), visible=False)
 
-    axs[0].set_title (r"\verb|%s|"%(os.path.basename(trend.varpath)))
-    axs[-1].set_xlabel ("time [sec]")
+    ax0 = fig.add_subplot(gs[0,0])
+    ax0.set_title (r"\verb|%s|"%(os.path.basename(trend.varpath)))
+    axe = fig.add_subplot(gs[-1,0])
+    axe.set_xlabel ("time [sec]")
     pdf.savefig(fig)
     plt.close(fig)
 
@@ -333,7 +335,7 @@ def plot_wavecal_band (pdf, params, xtrack, in_tmin, in_tmax):
         return
     t = params.time - tmin
     fig = plt.figure()
-    gs = fig.add_gridspec(2, hspace=0)
+    gs = fig.add_gridspec(2,1, hspace=0)
     ax1 = fig.add_subplot (gs[0])
     ax2 = fig.add_subplot (gs[1], sharex=ax1)
     plt.setp(ax1.get_xticklabels(), visible=False)
