@@ -39,7 +39,7 @@ CONTAINS
     ! Local variable
     ! --------------
     character (len=15) :: swathname
-    character (len=3) :: prod_str
+    character (len=16) :: prod_str
     integer (kind=4) :: ncerr
     integer (kind=4), parameter :: nxtrack = 2048, nwl = 1024
     logical :: preflight
@@ -74,7 +74,7 @@ CONTAINS
     else if (ncerr == nf90_noerr) then
       ncerr = nf90_get_att (tio_l1obj%fileid, nf90_global, "product_type", &
            prod_str)
-      if (ncerr .eq. nf90_noerr .and. prod_str .eq. "IRR") then
+      if (ncerr .eq. nf90_noerr .and. prod_str(1:3) .eq. "IRR") then
         preflight = .false.
       else
         call tell_error (tell_io_open_error, &
@@ -117,7 +117,7 @@ CONTAINS
            tmp_wl, errstat)
       if (errstat /= 0) then
         call tell_error (tell_io_read_error, &
-             "tempo_slitfunc_read: failed to read pre-flight file", &
+             "tempo_slitfunc_read: failed to read irradiance file", &
              errstat)
         return
       endif
