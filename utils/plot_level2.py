@@ -92,7 +92,7 @@ def main():
     parser.add_argument('--varpath', help="path to variable in file")
     parser.add_argument('--varmin', help="min plot value", type=float)
     parser.add_argument('--varmax', help="max plot value", type=float)
-    parser.add_argument('--layer', help="", default=None)
+    parser.add_argument('--layer', help="", default=None, type=int)
     parser.add_argument('--label', help="", default=None)
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     if len(sys.argv)==1:
