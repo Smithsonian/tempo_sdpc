@@ -160,10 +160,10 @@ fix-hdf-tabs:
 # ---------------------------------------
 PGSHOME = $(OMIUTIL)/TOOLKIT
 
-MESSAGE_FILES = PGS_9 PGS_3 PGS_13 PGS_1900 PGS_52500
+MESSAGE_FILES = PGS_9 PGS_3 PGS_13 PGS_1900 PGS_52510
 
-PGEPGSSRC = OMSAO_52500.t OMI_1900.t
-PGEPGSCMP = $(msgdir)/PGS_OMSAO_52500 $(msgdir)/PGS_OMI_1900
+PGEPGSSRC = OMSAO_52510.t OMI_1900.t
+PGEPGSCMP = $(msgdir)/PGS_OMSAO_52510 $(msgdir)/PGS_OMI_1900
 TKPGSCMP = PGS_9 PGS_3 PGS_13
 
 messages: $(PGEPGSCMP) tkmessages
@@ -184,10 +184,10 @@ $(msgdir)/PGS_OMI_1900:
 	export PGSMSG="$(msgdir)" ; \
 	$(PGSBIN)/smfcompile -r -f77 -f OMI_1900.t ; \
 	$(PGSBIN)/smfcompile -r      -f OMI_1900.t
-$(msgdir)/PGS_OMSAO_52500:
+$(msgdir)/PGS_OMSAO_52510:
 	export PGSMSG="$(msgdir)" ; \
-	$(PGSBIN)/smfcompile -r -f77 -f OMSAO_52500.t ; \
-	$(PGSBIN)/smfcompile -r      -f OMSAO_52500.t
+	$(PGSBIN)/smfcompile -r -f77 -f OMSAO_52510.t ; \
+	$(PGSBIN)/smfcompile -r      -f OMSAO_52510.t
 
 #
 # Name tables

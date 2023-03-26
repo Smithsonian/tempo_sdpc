@@ -136,22 +136,31 @@ OMI_SMF_setmsg( PGSt_SMF_code  mnemonicstring,
 
   /* Get message from seed file based on error mnemonic */
   ret = PGS_SMF_GetMsgByCode( mnemonicstring, message );
-  if( ret != PGS_S_SUCCESS ) 
-     exit(1);
+  if( ret != PGS_S_SUCCESS )
+     {
+        fprintf (stderr, "*** Warning: PGS_SMF_GetMsgByCode returned %d\n", ret);
+        exit(1);
+     }
 
   /* Concatenate timestamp, and user massage with buffer message */
   sprintf( buf, "%s %s. %s", asctime(local), message, infostring );
-  
+
   /* Write message to LogStatus */
   ret = PGS_SMF_SetDynamicMsg( mnemonicstring, buf, functionstring );
-  if( ret != PGS_S_SUCCESS ) 
-     exit(1);
+  if( ret != PGS_S_SUCCESS )
+     {
+        fprintf (stderr, "*** Warning: PGS_SMF_SetDynamicMsg returned %d\n", ret);
+        exit(1);
+     }
 
   /* Test for fatal error */
   if( PGS_SMF_TestFatalLevel( mnemonicstring ) == PGS_TRUE )
-     exit(1);  
-  else 
-     return 0;
+     {
+        fprintf (stderr, "*** Warning: PGS_SMF_TestFatalLevel returned %d\n", ret);
+        exit(1);
+     }
+
+   return 0;
 }
 
 /* FORTRAN bindings */

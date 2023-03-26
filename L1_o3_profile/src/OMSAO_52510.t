@@ -9,7 +9,7 @@
 #
 %INSTR = OMI
 %LABEL = OMSAO
-%SEED  = 52500
+%SEED  = 52510
 
 OMSAO_W_GETLUN    WARNING...failed to read LUN from PCF
 OMSAO_E_GETLUN    ERROR...failed to read LUN from PCF. PGE aborting with exit code 1
