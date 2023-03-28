@@ -1,4 +1,4 @@
-TEMPO_SDPC_v4.0.0   2023 ??? ??
+TEMPO_SDPC_v4.0.0   2023 Mar 28
 ===============================
    * Make GOES spacecraft references more generic (e.g. GOES-East/West
      instead of GOES-16/17).
