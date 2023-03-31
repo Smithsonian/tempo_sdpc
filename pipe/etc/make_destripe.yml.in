@@ -23,7 +23,6 @@ mqfval: [0]
 # Correction file attributes
 processing_version: 1
 output_filename: @DESTRIPE_FILE_PATH@
-access_description: Destriping and background corrections; not for public release
 title: TEMPO destriping and background corrections for HCHO
 # Switch to save diagnostic info to files
 yn_diagnostic: F

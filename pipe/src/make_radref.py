@@ -63,7 +63,6 @@ begin_date = []
 begin_time = []
 end_date = []
 end_time = []
-access_description = control['access_description']
 title = control['title']
 
 max_mirror_step = 0
@@ -240,7 +239,6 @@ with Dataset(local_granule_id,'w',clobber=True) as dst:
     dst.begin_time = begin_time
     dst.end_date = end_date
     dst.end_time = end_time
-    dst.access_description = access_description
     dst.title = title
     dst.number_standard_deviations = nsigma
     dst.minimum_cloud_fraction = mincfr

@@ -70,7 +70,6 @@ end_date = []
 end_time = []
 production_date_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 input_granules = []
-access_description = control['access_description']
 title = control['title']
 corrected_product = []
 
@@ -215,7 +214,6 @@ try:
         dst.local_granule_id = local_granule_id
         dst.input_granules = input_granules
         #dst.shortname = shortname
-        dst.access_description = access_description
         dst.title = title
         dst.corrected_product = corrected_product
         dst.number_standard_deviations = nsigma
