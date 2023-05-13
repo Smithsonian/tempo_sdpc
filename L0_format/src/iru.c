@@ -461,6 +461,12 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 
    pmt->num_dropped_messages += iru->num_dropped_messages;
 
+   if (iru->num_records == 0)
+     {
+        tell_vwarn (0, "%s: num_records=0 in iru file: %s", __func__, file);
+        goto after_iru_record_output;
+     }
+
    rec_array_size = iru->num_records * IOCSDPC_IRU_RECORD_SIZE;
    if (NULL == (rec_array = (IOCSDPC_IRU_Record_Type *)MALLOC (rec_array_size)))
      {
@@ -486,6 +492,12 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (0 != record_source_file_contribution (pmt->ncid, file, iru->num_records))
      goto return_status;
 
+   if (0 != tio_sync (pmt->ncid))
+     goto return_status;
+
+   /* skip to here when IRU file is empty */
+after_iru_record_output:
+
    iocsdpc_iru_close (iru);
    ioclib_fd_close (fd);
    FREE(rec_array);
@@ -496,7 +508,7 @@ static int process_iru (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           goto return_status;
      }
 
-   return tio_sync (pmt->ncid);
+   return 0;
 
 return_status:
    tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing IRU file: %s", __func__, file);
