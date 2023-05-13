@@ -380,6 +380,14 @@ static int process_smc (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    if (NULL == (smc = iocsdpc_smc_fdopen_read (file, fd, &chdr)))
      goto return_status;
 
+   if (smc->num_records == 0)
+     {
+        tell_vwarn (0, "%s: num_records=0 in smc file: %s", __func__, file);
+        iocsdpc_smc_close (smc);
+        ioclib_fd_close (fd);
+        return 0;
+     }
+
    rec_array_size = smc->num_records * IOCSDPC_SMC_RECORD_SIZE;
    if (NULL == (rec_array = (IOCSDPC_SMC_Record_Type *)MALLOC (rec_array_size)))
      {
