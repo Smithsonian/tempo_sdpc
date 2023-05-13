@@ -8,12 +8,18 @@ if test -z "$SDPC_PIPE_DIR" ; then
    exit 1
 fi
 
+service_dir="$SDPC_PIPE_DIR/log/$SERVICE"
+
+# Create the directory here with umask permissions.
+# When s6-log creates the directory, its unreadable to other users.
+mkdir -p $service_dir
+
 case "$SERVICE" in
   level1a | level1b | level2 )
-     mkdir -p $SDPC_PIPE_DIR/log/$SERVICE/slurm
+     mkdir $service_dir/slurm
      ;;
   *)
      ;;
 esac
 
-exec s6-log -p -b s15000000 t $SDPC_PIPE_DIR/log/$SERVICE
+exec s6-log -p -b s15000000 t $service_dir
