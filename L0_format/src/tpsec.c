@@ -572,7 +572,11 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
 
-   return tio_sync (pmt->ncid);
+   if (s->num_rows > 0)
+     {
+        return tio_sync (pmt->ncid);
+     }
+   else return 0;
 
 return_error:
    tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: processing file: %s", __func__, file);
