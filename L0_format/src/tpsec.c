@@ -482,22 +482,12 @@ static int process_tpsec_row_list
     const TPInfo_Type *tpinfo, IOCSDPC_TPSec_Row_Type **row_list, const char *file)
 {
    int grp;
-   double timestamp;
 
-   /* If s->num_rows == 0 then row_list will be NULL or invalid,
-    * but we still need to select which group this TP section belongs to,
-    * and we might even need to create the relevant group.
-    */
-   timestamp = s->num_rows ? row_list[0]->timestamp : pmt->outfile_timestamp_start;
-
-   if (-1 == select_dest_group (pmt, s, tpinfo, timestamp, &grp))
+   if (-1 == select_dest_group (pmt, s, tpinfo, row_list[0]->timestamp, &grp))
      return -1;
 
-   if (s->num_rows)
-     {
-        if (-1 == write_tpsec_row_list (pmt, s, tpinfo, grp, row_list))
-          return -1;
-     }
+   if (-1 == write_tpsec_row_list (pmt, s, tpinfo, grp, row_list))
+     return -1;
 
    if (0 != record_source_file_contribution (grp, file, s->num_rows))
      return -1;
@@ -534,7 +524,6 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_TPSec_Type *s;
    IOCSDPC_TPSec_Row_Type **row_list = NULL;
-   unsigned int i;
    int fd;
 
    (void) pmt; (void) client_data;
@@ -545,31 +534,40 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
         return -1;
      }
 
-   /* Following code should handle s->num_rows=0 */
    if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, &chdr)))
      goto return_error;
 
-   if (NULL == (row_list = alloc_tpsec_row_list (s->num_rows)))
-     goto return_error;
-
-   for (i = 0; i < s->num_rows; i++)
+   if (s->num_rows > 0)
      {
-        if (-1 == iocsdpc_tpsec_read_row (s, &row_list[i]))
+        unsigned int i, nrows = s->num_rows;
+
+        if (NULL == (row_list = alloc_tpsec_row_list (nrows)))
+          goto return_error;
+
+        for (i = 0; i < nrows; i++)
           {
-             tell_verror (TELL_IO_READ_ERROR, "%s: reading row %u of %s",
-                          __func__, i+1, file);
-             free_tpsec_row_list (row_list, s->num_rows);
+             if (-1 == iocsdpc_tpsec_read_row (s, &row_list[i]))
+               {
+                  tell_verror (TELL_IO_READ_ERROR, "%s: reading row %u of %s",
+                               __func__, i+1, file);
+                  free_tpsec_row_list (row_list, nrows);
+                  goto return_error;
+               }
+          }
+
+        if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list, file))
+          {
+             free_tpsec_row_list (row_list, nrows);
              goto return_error;
           }
-     }
 
-   if (-1 == process_tpsec_row_list (pmt, s, tpinfo, row_list, file))
+        free_tpsec_row_list (row_list, nrows);
+     }
+   else
      {
-        free_tpsec_row_list (row_list, s->num_rows);
-        goto return_error;
+        /* system tests processing synthetic data look for this warning message */
+        tell_vwarn (0, "%s: num_rows=0 in section file: %s", __func__, file);
      }
-
-   free_tpsec_row_list (row_list, s->num_rows);
 
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
