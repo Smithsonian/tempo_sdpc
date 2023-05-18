@@ -11,7 +11,7 @@ SETUP_SCRIPT_FILES = inr_mkdirs.sh inr_config.sh \
                      pipe_mkdirs_archive.sh pipe_mkdirs.sh \
 		     pipe_mkdirs_node.sh pipe_setup.sh \
 		     pipe_setup_nodes.sh mock_feed.sh
-EXEC_FILES = config_setting
+EXEC_FILES = config_setting filter_s6_log
 SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                o3p_partition.sl o3p_select.sl sdpcsrv.sh \
                sdpcrun.sh sdpcpipe.sh make_tar_notice.sh pipecron.sh \
@@ -117,6 +117,17 @@ LIB_LIBCONFIG = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB) -lconfig
 
 config_setting:
 	$(COMPILE_CMD) -o $(objdir)/config_setting $(INCS) config_setting.c $(LIBS)
+
+SKARNET_ROOT = $(OTS_ROOT)/../skarnet
+SKARNET_INCS = -I$(SKARNET_ROOT)/include
+SKARNET_LIBS = -Wl,-rpath=$(SKARNET_ROOT)/lib -L$(SKARNET_ROOT)/lib -lskarnet
+
+FILTER_INCS = $(TELL_INC) -I$(OTS_ROOT)/include $(SKARNET_INCS)
+FILTER_LIBS = -Wl,-rpath=$(OTS_ROOT)/lib -L$(OTS_ROOT)/lib -lioclib -lcsv $(TELL_LIB) \
+              $(SKARNET_LIBS)
+
+filter_s6_log:
+	$(COMPILE_CMD) -o $(objdir)/filter_s6_log $(FILTER_INCS) filter_s6_log.c $(FILTER_LIBS)
 
 $(objdir):
 	-mkdir -p $(objdir)
