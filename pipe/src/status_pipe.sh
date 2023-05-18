@@ -8,6 +8,7 @@ if ! test -d "$SDPC_PIPE_DIR" ; then
    exit 1
 fi
 
+pipe_owner="temposdpc"
 when="yesterday"
 date_fmt="+%Y-%m-%dT%H:%M:%S"
 
@@ -39,24 +40,17 @@ separator()
 
 service_check()
 {
-  date_compare_file="$(mktemp)"
-  touch $date_compare_file -d "$utc_beg"
-
   echo "Errors/warnings in service log files updated since $utc_beg:"
-  files=$(find $SDPC_PIPE_DIR/log -mindepth 2 -maxdepth 2 -newer $date_compare_file -type f -size +0c)
-  for f in $files ; do
-      strings=$(grep -i -E "error|warn" $f | s6-tai64nlocal)
+  logdirs=$(find $SDPC_PIPE_DIR/log -mindepth 1 -maxdepth 1 -type d)
+  for d in $logdirs ; do
+      strings=$(filter_s6_log --beg $timet_beg -i --regex "error|warn" $d | s6-tai64nlocal)
       if test -n "$strings" ; then
-         printf "*** CHECK THESE MESSAGES ***\n"
-	 printf "$f:\n$strings\n"
+         printf "*** CHECK THESE SERVICE LOG MESSAGES ***\n"
+	 printf "$d:\n$strings\n"
       else
-         printf "\tNONE:\t$f\n"
+         printf "\tNONE:\t$d\n"
       fi
   done
-
-  if test -f $date_compare_file ; then
-     /bin/rm -f $date_compare_file
-  fi
 
   printf "\nRepro directory contents:\n"
   dirs=$(find $SDPC_PIPE_DIR/repro -mindepth 1 -type d)
@@ -74,8 +68,21 @@ service_check()
 cluster_check()
 {
   printf "Slurm job summary:\n"
-  num_completed=$(sacct -n -A $SDPC_PIPE_NAME -S $loc_beg -E $loc_end --state CD | wc -l)
+  num_completed=$(sacct -u $pipe_owner -n -A $SDPC_PIPE_NAME -S $loc_beg -E $loc_end --state CD | wc -l)
   printf "\t$num_completed:\tjobs completed\n"
+
+  sacct_fmt="Start,Elapsed,NodeList,TotalCPU,AllocCPUS,State,ExitCode,JobID,AveVMSize,JobName%16,Comment%45"
+  check_states="BF,CA,DL,F,NF,OOM,PR,RQ,RS,RV,S,TO"
+  sacct_args="-u $pipe_owner -A $SDPC_PIPE_NAME -S $loc_beg -E $loc_end --format $sacct_fmt --state=$check_states"
+  issues=$(sacct -n $sacct_args)
+
+  if test -n "$issues" ; then
+     num_issues=$(echo "$issues" | wc -l)
+  else
+     num_issues=0
+  fi
+  printf "\t$num_issues:\tjobs with unexpected states\n"
+
   nonempty_batch_logs=$(find $SDPC_PIPE_DIR/log -type f -path "*/slurm/*" -size +0c)
   if test -n "$nonempty_batch_logs" ; then
      printf "*** CHECK THESE LOGS ***\n"
@@ -84,18 +91,11 @@ cluster_check()
      printf "\tOK:\tbatch logs\n"
   fi
 
-  sacct_fmt="Start,Elapsed,NodeList,TotalCPU,AllocCPUS,State,ExitCode,JobID,AveVMSize,JobName%16,Comment%45"
-  check_states="BF,CA,DL,F,NF,OOM,PR,RQ,RS,RV,S,TO"
-  sacct_args="-A $SDPC_PIPE_NAME -S $loc_beg -E $loc_end --format $sacct_fmt --state=$check_states"
-
-  issues=$(sacct -n $sacct_args)
   if test -n "$issues" ; then
      printf "unexpected job states: "
      printf "*** CHECK THESE JOBS ***\n"
      issues_with_header=$(sacct $sacct_args)
      echo "$issues_with_header"
-  else
-     printf "\tNONE:\tUnexpected job states\n"
   fi
 }
 
@@ -117,6 +117,7 @@ exit_usage()
   printf "Usage: %s [options]\n" $(basename $0)
   printf "Options:\n"
   printf "   --help          Print this usage message\n"
+  printf "   --user USER     Target pipeline owner (default=temposdpc)\n"
   printf "   --start WHEN    Start time to be interpreted by 'date'\n"
   exit $status
 }
@@ -132,6 +133,11 @@ main()
            --help)
              exit_usage 0
              ;;
+           --user)
+              shift;
+              pipe_owner="$1"
+              shift;
+              ;;
            --start)
               shift;
               when="$1"
