@@ -82,9 +82,9 @@ fetch_forecast_for_date()
   # reorder file variable dimensions
   find $incoming_dir -name $fcst_regex | parallel --will-cite --max-procs 12 reorder_dims {}
 
-  # Move files to their final location, and
+  # Move reordered files to their final location, and
   # register them in the asdc upload database
-  files=$(find $incoming_dir -name "*.nc4")
+  files=$(find $incoming_dir -name "*_reorder.nc4")
   for f in $files ; do
      final_path="$target_dir/$(basename $f)"
      /bin/mv $f $final_path
