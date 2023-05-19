@@ -80,11 +80,11 @@ main ()
 
   case "$_action" in
       up)
-        s6-svc -u $_service_dir
+        s6-svc -u -wu $_service_dir
       ;;
 
       down)
-        s6-svc -d $_service_dir
+        s6-svc -d -wD $_service_dir
       ;;
 
       stop)
