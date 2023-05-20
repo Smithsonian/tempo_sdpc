@@ -10,6 +10,7 @@ fi
 
 pipe_owner="temposdpc"
 when="yesterday"
+when_end="now"
 date_fmt="+%Y-%m-%dT%H:%M:%S"
 
 timet_beg=""
@@ -24,7 +25,7 @@ make_times()
   when="$1"
 
   timet_beg=$(date --date "$when" +%s)
-  timet_end=$(date +%s)
+  timet_end=$(date --date "$when_end" +%s)
 
   utc_beg=$(date -u --date @$timet_beg "${date_fmt}Z")
   utc_end=$(date -u --date @$timet_end "${date_fmt}Z")
@@ -43,7 +44,7 @@ service_check()
   echo "Errors/warnings in service log files updated since $utc_beg:"
   logdirs=$(find $SDPC_PIPE_DIR/log -mindepth 1 -maxdepth 1 -type d)
   for d in $logdirs ; do
-      strings=$(filter_s6_log --beg $timet_beg -i --regex "error|warn" $d | s6-tai64nlocal)
+      strings=$(filter_s6_log --beg $timet_beg --end $timet_end -i --regex "error|warn" $d | s6-tai64nlocal)
       if test -n "$strings" ; then
          printf "*** CHECK THESE SERVICE LOG MESSAGES ***\n"
 	 printf "$d:\n$strings\n"
@@ -119,6 +120,7 @@ exit_usage()
   printf "   --help          Print this usage message\n"
   printf "   --user USER     Target pipeline owner (default=temposdpc)\n"
   printf "   --start WHEN    Start time to be interpreted by 'date'\n"
+  printf "   --end WHEN      End time to be interpreted by 'date'\n"
   exit $status
 }
 
@@ -141,6 +143,11 @@ main()
            --start)
               shift;
               when="$1"
+              shift;
+              ;;
+           --end)
+              shift;
+              when_end="$1"
               shift;
               ;;
            *)
