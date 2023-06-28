@@ -532,7 +532,8 @@ return_status:
    return status;
 }
 
-static int process_inputs (config_t *cfg, const char *radiance_file,
+static int process_inputs (config_t *cfg, char *iers_bulletin,
+                           const char *radiance_file,
                            double time_beg, double time_end,
                            int processing_version)
 {
@@ -614,13 +615,26 @@ static int process_inputs (config_t *cfg, const char *radiance_file,
      {
         if (0 != tio_meta_write_ncattr (meta, r->ncid))
           goto return_status;
+        /* close before further processing */
+        radiance_close (r);
+        r = NULL;
+     }
+
+   if (iers_bulletin)
+     {
+        if (0 != convert_j2k_to_ecef (iers_bulletin, logmsg_filename))
+          goto return_status;
+     }
+   else
+     {
+        tell_vwarn (0, "IERS bulletin not provided: skipping ephemeris coordinate transformation");
      }
 
    status = 0;
 return_status:
    tell_vlog (TELL_MSGTYPE_INFO, 0, "exit status=%d, file=%s",
               status, logmsg_filename ? logmsg_filename : "(null)");
-   radiance_close (r);
+   if (status) radiance_close (r);
    free_rename_path_type (&rpt);
    tio_meta_close (meta);
 
@@ -789,22 +803,8 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   if (0 != process_inputs (&cfg, radiance_file, time_beg, time_end, processing_version))
+   if (0 != process_inputs (&cfg, iers_bulletin, radiance_file, time_beg, time_end, processing_version))
      goto return_status;
-
-   if (radiance_file)
-     {
-        if (iers_bulletin)
-          {
-             if (0 != convert_j2k_to_ecef (iers_bulletin, radiance_file))
-               goto return_status;
-          }
-        else
-          {
-             tell_vwarn (0, "IERS bulletin not provided: skipping ephemeris coordinate transformation");
-             return 0;
-          }
-     }
 
    status = 0;
 return_status:
