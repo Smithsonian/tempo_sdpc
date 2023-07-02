@@ -371,7 +371,7 @@ static int create_result_file (const char *path, const char *group_name,
                                int beg_xtrack, int end_xtrack, size_t xtrack_dimlen,
                                size_t num_spectral_channels,
                                int start_pix, int num_pix, int num_coefs,
-                               int fitting_sf_params)
+                               int fitting_sf_params, int adjust_nominal_wavelength)
 {
    int ncid, varid, start, count;
    int dimids_wavecal_params[3], dimids_sf_params[3];
@@ -410,7 +410,8 @@ static int create_result_file (const char *path, const char *group_name,
      goto close_and_return;
    if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
        ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
-       ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
+       ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix))
+       ||(0 != TIO_put_att (ncid, varid, "adjust_nominal_wavelength", TIO_INT, 1, &adjust_nominal_wavelength)))
      goto close_and_return;
 
    if (0 != TIO_def_var (ncid, "bestnorm", TIO_DOUBLE, 2, dimids_wavecal_params, &varid))
@@ -688,7 +689,7 @@ int main (int argc, char **argv)
    int debug = 0;
    int apply_shift_adjust = 0;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
-   int num_wave_params, fitting_sf_params, start_pix, num_pix;
+   int num_wave_params, fitting_sf_params, start_pix, num_pix, adjust_nominal_wavelength;
    int num_final_coeff, final_start_pix, final_num_pix;
    int fit_status_code, residual, progress, num_expected_results;
    struct timeval tv0 = {0};
@@ -1016,7 +1017,7 @@ int main (int argc, char **argv)
         goto return_status;
      }
 
-   (void) wavecal_query_feature_window (wct, &start_pix, &num_pix);
+   (void) wavecal_query_feature_window (wct, &start_pix, &num_pix, &adjust_nominal_wavelength);
 
    /* Decide how many Chebyshev series coefficients (per-spectrum) will be
     * written to the output file, and allocate a working array to hold the
@@ -1071,7 +1072,7 @@ int main (int argc, char **argv)
                                      beg_xtrack, end_xtrack, xtrack_dimlen,
                                      channel_dimlen,
                                      final_start_pix, final_num_pix, num_final_coeff,
-                                     fitting_sf_params);
+                                     fitting_sf_params, adjust_nominal_wavelength);
    if (ncid_result <= 0)
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: problem creating result file: %s",

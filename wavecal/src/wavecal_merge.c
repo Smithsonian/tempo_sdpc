@@ -78,6 +78,7 @@ static int perform_merge (int ncid_target, const char *file)
    int step_dimid, xtrack_dimid, channel_dimid, dest_varid;
    int have_sf, start0, count0, xtrack0;
    int start[3], count[3];
+   int have_adjust_att, adjust_att;
    size_t step_dimlen, xtrack_dimlen, channel_dimlen;
    size_t params_dimlen_src, len_params, len_slab;
    size_t channel_dimlen_src;
@@ -183,6 +184,12 @@ static int perform_merge (int ncid_target, const char *file)
        || (0 != TIO_get_att (ncid_src, varid, "num_spectral_channels", NC_INT, &num_pix)))
      goto close_and_return;
 
+   /* For back-compatibility, this attribute is optional */
+   adjust_att = 0;
+   have_adjust_att = 0;
+   if (NC_NOERR == nc_get_att_int (ncid_src, varid, "adjust_nominal_wavelength", &adjust_att))
+     have_adjust_att = 1;
+
    if (have_sf)
      {
         start[0] = 0;
@@ -220,6 +227,11 @@ static int perform_merge (int ncid_target, const char *file)
             || (0 != TIO_put_att (grp_target, dest_varid, "start_spectral_channel", NC_INT, 1, &start_pix))
             || (0 != TIO_put_att (grp_target, dest_varid, "num_spectral_channels", NC_INT, 1, &num_pix)))
           goto close_and_return;
+        if (have_adjust_att)
+          {
+             if ((0 != TIO_put_att (grp_target, dest_varid, "adjust_nominal_wavelength", NC_INT, 1, &adjust_att)))
+               goto close_and_return;
+          }
      }
 
    if ((have_sf != 0)

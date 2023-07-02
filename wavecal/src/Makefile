@@ -37,7 +37,7 @@ COMPILE_CMD = $(CC) $(CCFLAGS)
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/wavecal_driver $(objdir)/wavecal_merge
+all:	 $(objdir) $(objdir)/wavecal_driver $(objdir)/wavecal_merge $(objdir)/wavecal_dump
 
 TEST_EXECS = test_asg test_convolve test_table # test_interp
 
@@ -64,6 +64,7 @@ install-executables:
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/wavecal_driver $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/wavecal_merge $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/wavecal_dump $(bindir)/
 
 install:	install-executables
 
@@ -97,6 +98,13 @@ $(objdir)/wavecal_merge:	$(objdir)/wavecal_merge.o
 
 $(objdir)/wavecal_merge.o:	$(srcdir)/wavecal_merge.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_merge.c
+
+$(objdir)/wavecal_dump:	$(objdir)/wavecal_dump.o
+	$(COMPILE_CMD) -o $(objdir)/wavecal_dump $(objdir)/wavecal_dump.o \
+	    $(INCS) $(EXTRA_INCS) $(LIBS) $(EXTRA_LIBS) -lm
+
+$(objdir)/wavecal_dump.o:	$(srcdir)/wavecal_dump.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/wavecal_dump.c
 
 WAVECAL_DRIVER_SRCFILES = wavecal_driver.c wavecal_adj.c util.c wavecal.c interp.c shapefun.c \
      lsq.c interp_cheb.c interp_poly.c interp_cspline.c \

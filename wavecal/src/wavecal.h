@@ -99,9 +99,13 @@ extern int wavecal_fitting_sf_params (const Wavecal_Type *wct);
  * @param  wct        Pointer to \a Wavecal_Type object initialized by \a wavecal_open
  * @param  start_pix  Address to hold the window offset (NULL is ok)
  * @param  num_pix    Address to hold the window width (NULL is ok)
+ * @param  adjust_nominal_wavelength   Non-zero means fit parameters define a wavelength
+ *                                     dependent adjustment of the nominal wavelength grid.
+ *                                     Zero means fit parameters define a new wavelength grid.
  * @return 0 on success, -1 on error
  */
-extern int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix);
+extern int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix,
+                                         int *adjust_nominal_wavelength);
 
 /** Query the initial wavelength scale parameters
  * @param  wct[in]    Pointer to \a Wavecal_Type object initialized by \a wavecal_open

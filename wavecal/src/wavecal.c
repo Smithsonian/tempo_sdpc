@@ -75,6 +75,10 @@ typedef struct
    size_t num_wave; /**< total number of wavelength points in measured spectrum */
    double *wave0;   /**< initial guess at wavelength grid for measured spectrum */
 
+   Cspline_Type *waves_nominal_cspline;   /**< nominal wavelength grid */
+   double *waves_nominal_scratch;         /**< scratch space for computing grids */
+   int adjust_nominal_wavelength;              /**< zero means NO, non-zero means YES */
+
    Shapefun_Type *wavegrid_shapefun;    /**< shape function for computing the wavelength grid */
    double *pindex;          /**< pixel index array for measured spectrum */
    double *wave_params;     /**< wavelength grid parameters */
@@ -638,6 +642,8 @@ static void free_window (Window_Type *win)
    if (win == NULL)
      return;
    FREE(win->wave0);
+   cspline_free (win->waves_nominal_cspline);
+   FREE(win->waves_nominal_scratch);
    FREE(win->pindex);
    FREE(win->model);
    FREE(win->spec_scaled);
@@ -654,6 +660,7 @@ static int alloc_window (Window_Type *win, int num_data_waves, int num_model_wav
    win->num_wave = (size_t) num_data_waves;
 
    if ((NULL == (win->wave0 = alloc_doubles (num_data_waves)))
+       || (NULL == (win->waves_nominal_scratch = alloc_doubles (num_data_waves)))
        || (NULL == (win->pindex = alloc_doubles (num_data_waves)))
        || (NULL == (win->model = alloc_doubles (num_data_waves)))
        || (NULL == (win->spec_scaled = alloc_doubles (num_data_waves)))
@@ -879,6 +886,8 @@ static int config_fit_window (config_setting_t *s, Window_Type *win)
         tell_config_error (s, __func__);
         return -1;
      }
+
+   (void) config_setting_lookup_bool (s, "adjust_nominal_wavelength", &win->adjust_nominal_wavelength);
 
    if (NULL == (win->wavegrid_shapefun = shapefun_create (method_name)))
      return -1;
@@ -1171,8 +1180,20 @@ static int init_window_shapefun (Wavecal_Type *wct, const double *wave)
    shapefun->xmin = shapefun_init.x[0];
    shapefun->xmax = shapefun_init.x[win->num_wave-1];
 
-   return shapefun->st_init_params (shapefun, &shapefun_init,
-                                    win->num_wave_params, win->wave_params);
+   if (win->adjust_nominal_wavelength)
+     {
+        /* FIXME - may want to support user-specified initial parameters.
+         * But the model is usually a polynomial, so starting with all coefficients zero
+         * should usually be the same as starting with the nominal wavelength grid.
+         */
+        memset ((char *)win->wave_params, 0, win->num_wave_params * sizeof(double));
+        return 0;
+     }
+   else
+     {
+        return shapefun->st_init_params (shapefun, &shapefun_init,
+                                         win->num_wave_params, win->wave_params);
+     }
 }
 
 static int collect_params (Wavecal_Type *wct, size_t *pnum, double **pparams)
@@ -1282,7 +1303,8 @@ int wavecal_fitting_sf_params (const Wavecal_Type *wct)
    return (wct->sf_ctrl.mode == SF_MODE_FIT);
 }
 
-int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix)
+int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *num_pix,
+                                  int *adjust_nominal_wavelength)
 {
    const Window_Type *win = NULL;
    if (wct == NULL)
@@ -1290,6 +1312,7 @@ int wavecal_query_feature_window (const Wavecal_Type *wct, int *start_pix, int *
    win = &wct->window;
    if (start_pix) *start_pix = win->start_pix;
    if (num_pix) *num_pix = win->num_wave;
+   if (adjust_nominal_wavelength) *adjust_nominal_wavelength = win->adjust_nominal_wavelength;
    return 0;
 }
 
@@ -1702,10 +1725,30 @@ static int monotonic_increasing (const double *x, size_t n)
    return 1;
 }
 
+static int compute_wavelengths (const Window_Type *win, const double *par, size_t num_wave, double *pindex, double *waves)
+{
+   Shapefun_Type *wl = win->wavegrid_shapefun;
+
+   if (wl->st_eval (wl, par, num_wave, pindex, waves) < 0)
+     return -1;
+
+   if (win->adjust_nominal_wavelength)
+     {
+        size_t i;
+        if (cspline_eval (win->waves_nominal_cspline, num_wave, pindex, win->waves_nominal_scratch))
+          return -1;
+        for (i = 0; i < num_wave; i++)
+          {
+             waves[i] += win->waves_nominal_scratch[i];
+          }
+     }
+
+   return 0;
+}
+
 static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    Term_Type *term;
    const double *par;
@@ -1715,7 +1758,7 @@ static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params,
    par = params;
 
    /* compute wavelength as a function of pixel index */
-   if (wl->st_eval (wl, par, win->num_wave, win->pindex, win->wave0) < 0)
+   if (compute_wavelengths (win, par, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
    par += win->num_wave_params;
 
@@ -1842,7 +1885,6 @@ static int get_sf_params (int wave_index, int num_pars, double *pars, double *no
 static int convolve_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    SF_Convolution_Type *sfct = win->sfct;
    Term_Type *term;
@@ -1859,7 +1901,7 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
 
    /* compute wavelength as a function of pixel index
     * (wavelength grid parameters are at the front of the full param array) */
-   if (wl->st_eval (wl, params, win->num_wave, win->pindex, win->wave0) < 0)
+   if (compute_wavelengths (win, params, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
 
    /* validate grid */
@@ -2063,13 +2105,12 @@ static int mpfit_objective_function
 static int compute_rad_mean_ratio (Wavecal_Type *wct)
 {
    Window_Type *win = &wct->window;
-   Shapefun_Type *wl = win->wavegrid_shapefun;
    Reference_Irr_Type *irr = &wct->irr;
    double sum_irr, sum_rad;
    size_t i;
 
    /* compute wavelength as a function of pixel index */
-   if (wl->st_eval (wl, win->wave_params, win->num_wave, win->pindex, win->wave0) < 0)
+   if (compute_wavelengths (win, win->wave_params, win->num_wave, win->pindex, win->wave0) < 0)
      return -1;
 
    /* evaluate the reference irradiance on the target wavelength grid */
@@ -2177,7 +2218,6 @@ int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
    if (attr_narrow.num_series_coeff > 0)
      {
         const Window_Type *win = &wct->window;
-        const Shapefun_Type *wl = win->wavegrid_shapefun;
         const double *tbl_narrow_band_nwave_params;
         double mid_pix, mid_wl_fit, mid_wl_tbl;
 
@@ -2186,8 +2226,8 @@ int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
         if (NULL == (tbl_narrow_band_nwave_params = wadj_narrow_band_coeff (wadj, xtrack)))
           return -1;
 
-        if ((wl->st_eval (wl, narrow_band_wave_params, 1, &mid_pix, &mid_wl_fit) < 0)
-            ||(wl->st_eval (wl, tbl_narrow_band_nwave_params, 1, &mid_pix, &mid_wl_tbl) < 0))
+        if ((compute_wavelengths (win, narrow_band_wave_params, 1, &mid_pix, &mid_wl_fit) < 0)
+            ||(compute_wavelengths (win, tbl_narrow_band_nwave_params, 1, &mid_pix, &mid_wl_tbl) < 0))
           return -1;
 
         narrow_band_mid_wl_shift = mid_wl_fit - mid_wl_tbl;
@@ -2270,6 +2310,13 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
 
    if (0 != init_window_shapefun (wct, wave))
      return WAVECAL_FIT_ERROR;
+
+   if (win->adjust_nominal_wavelength)
+     {
+        cspline_free (win->waves_nominal_cspline); /* FIXME - preallocate this */
+        if (NULL == (win->waves_nominal_cspline = cspline_interpol (win->num_wave, win->pindex, wave, NULL)))
+          return WAVECAL_FIT_ERROR;
+     }
 
    /* If the fit fails, the initial wavelength parameter guess
     * will serve as the result */
