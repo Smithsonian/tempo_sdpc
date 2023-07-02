@@ -1571,6 +1571,109 @@ static int combine_terms (Wavecal_Type *wct, double *i0, size_t num_waves, doubl
    return 0;
 }
 
+static int diagnostic_file_group_id_for_term (int grp, int term_type, const char *term_name)
+{
+   int len, grp_term;
+   const char *type_name;
+#define TERM_PATH_BUFSIZE 1024
+   char path[TERM_PATH_BUFSIZE];
+
+   switch (term_type)
+     {
+      case TERM_TYPE_AD1: type_name = "ad1"; break;
+      case TERM_TYPE_AD2: type_name = "ad2"; break;
+      case TERM_TYPE_LBE: type_name = "lbe"; break;
+      case TERM_TYPE_SC:  type_name = "sc"; break;
+      case TERM_TYPE_BL:  type_name = "bl"; break;
+      default:
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: unknown term type id: %d",
+                     __func__, term_type);
+        return -1;
+        break;
+     }
+
+   len = snprintf (path, TERM_PATH_BUFSIZE, "terms/%s/%s", type_name, term_name);
+   if (len < 0 || len >= TERM_PATH_BUFSIZE)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: group path name exceeds buffer size (%d): term_name=%s",
+                     __func__, TERM_PATH_BUFSIZE, term_name);
+        return -1;
+     }
+
+   if (0 != TIO_def_grp (grp, path, &grp_term))
+     return -1;
+
+   return grp_term;
+}
+
+int wavecal_def_term_vars (const Wavecal_Type *wct, int grp,
+                           int dimid_step, int dimid_xtrack)
+{
+   Term_Type *t;
+   int dimids[3], dimid_params, dimid_waves;
+
+   dimids[0] = dimid_step;
+   dimids[1] = dimid_xtrack;
+
+   for (t = wct->terms; t != NULL; t = t->next)
+     {
+        int grp_term, num_params, num_waves, varid;
+
+        if ((grp_term = diagnostic_file_group_id_for_term (grp, t->term_type, t->term_name)) < 0)
+          return -1;
+
+        num_params = t->num_params;
+        if (0 != TIO_def_dim (grp_term, "params", num_params, &dimid_params))
+          return -1;
+
+        num_waves = t->num_values;
+        if (0 != TIO_def_dim (grp_term, "waves", num_waves, &dimid_waves))
+          return -1;
+
+        dimids[2] = dimid_params;
+        if (0 != TIO_def_var (grp_term, "params", TIO_DOUBLE, 3, dimids, &varid))
+          return -1;
+
+        dimids[2] = dimid_waves;
+        if (0 != TIO_def_var (grp_term, "value", TIO_DOUBLE, 3, dimids, &varid))
+          return -1;
+     }
+
+   return 0;
+}
+
+int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
+                             int beg_step, int step, int beg_xtrack, int xtrack)
+{
+   Term_Type *t;
+   int start[3], count[3];
+
+   start[0] = step - beg_step;
+   start[1] = xtrack - beg_xtrack;
+   start[2] = 0;
+
+   count[0] = 1;
+   count[1] = 1;
+
+   for (t = wct->terms; t != NULL; t = t->next)
+     {
+        int grp_term;
+
+        if ((grp_term = diagnostic_file_group_id_for_term (grp, t->term_type, t->term_name)) < 0)
+          return -1;
+
+        count[2] = t->num_params;
+        if (0 != TIO_put_var_section (grp_term, "params", start, count, TIO_DOUBLE, t->params))
+          return -1;
+
+        count[2] = t->num_values;
+        if (0 != TIO_put_var_section (grp_term, "value", start, count, TIO_DOUBLE, t->value))
+          return -1;
+     }
+
+   return 0;
+}
+
 static int monotonic_increasing (const double *x, size_t n)
 {
    size_t i;

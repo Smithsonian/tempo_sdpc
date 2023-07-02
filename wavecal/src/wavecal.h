@@ -167,4 +167,10 @@ extern int wavecal_query_term (const Wavecal_Type *wct, int nth,
 extern int wavecal_adjust (const Wavecal_Type *wct, const Wadj_Type *wadj, int xtrack,
                            const double *narrow_band_wave_params, double *final_wave_params);
 
+extern int wavecal_def_term_vars (const Wavecal_Type *wct, int grp,
+                                  int dimid_step, int dimid_xtrack);
+
+extern int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
+                                    int beg_step, int step, int beg_xtrack, int xtrack);
+
 #endif
