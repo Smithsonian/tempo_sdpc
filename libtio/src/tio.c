@@ -1054,7 +1054,8 @@ static int get_wavelength_wavecal (int grp, const int *start, const int *count,
 }
 
 static int get_wavelength_nominal_1d (int grp, const int *start, const int *count,
-                                      int type, void *data, const char *name, void *client_data)
+                                      int type, void *data, const char *name,
+                                      int adjust_nominal, void *client_data)
 {
    float *nominal_waves = NULL;
    int step, num_waves, num_step, num_xtrack, varid, status;
@@ -1099,15 +1100,35 @@ static int get_wavelength_nominal_1d (int grp, const int *start, const int *coun
              if (type == NC_FLOAT)
                {
                   float *y_flt = (float *)data + wavelen_offset;
-                  memcpy ((char *)y_flt, (char *)nominal_waves,
-                          num_waves * sizeof(float));
+                  if (adjust_nominal)
+                    {
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_flt[i] += nominal_waves[i];
+                         }
+                    }
+                  else
+                    {
+                       memcpy ((char *)y_flt, (char *)nominal_waves,
+                               num_waves * sizeof(float));
+                    }
                }
              else
                {
                   double *y_dbl = (double *)data + wavelen_offset;
-                  for (i = 0; i < num_waves; i++)
+                  if (adjust_nominal)
                     {
-                       y_dbl[i] = (double) nominal_waves[i];
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_dbl[i] += (double) nominal_waves[i];
+                         }
+                    }
+                  else
+                    {
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_dbl[i] = (double) nominal_waves[i];
+                         }
                     }
                }
              wavelen_offset += num_waves;
@@ -1120,7 +1141,8 @@ static int get_wavelength_nominal_1d (int grp, const int *start, const int *coun
 }
 
 static int get_wavelength_nominal_2d (int grp, const int *start, const int *count,
-                                      int type, void *data, const char *name, void *client_data)
+                                      int type, void *data, const char *name,
+                                      int adjust_nominal, void *client_data)
 {
    float *nominal_waves = NULL;
    int step, num_waves, num_step, num_xtrack, varid, status;
@@ -1169,14 +1191,34 @@ static int get_wavelength_nominal_2d (int grp, const int *start, const int *coun
                {
                   float *y_flt = (float *)data + wavelen_offset;
                   float *nw_x = nominal_waves + nw_offset;
-                  memcpy ((char *)y_flt, (char *)nw_x, num_waves * sizeof(float));
+                  if (adjust_nominal)
+                    {
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_flt[i] += nw_x[i];
+                         }
+                    }
+                  else
+                    {
+                       memcpy ((char *)y_flt, (char *)nw_x, num_waves * sizeof(float));
+                    }
                }
              else
                {
                   double *y_dbl = (double *)data + wavelen_offset;
-                  for (i = 0; i < num_waves; i++)
+                  if (adjust_nominal)
                     {
-                       y_dbl[i] = (double) nominal_waves[nw_offset + i];
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_dbl[i] += (double) nominal_waves[nw_offset + i];
+                         }
+                    }
+                  else
+                    {
+                       for (i = 0; i < num_waves; i++)
+                         {
+                            y_dbl[i] = (double) nominal_waves[nw_offset + i];
+                         }
                     }
                }
              wavelen_offset += num_waves;
@@ -1189,9 +1231,11 @@ static int get_wavelength_nominal_2d (int grp, const int *start, const int *coun
    return 0;
 }
 
-static int have_wavecal_param_3d (int grp)
+static int have_wavecal_param_3d (int grp, int *adjust_nominal)
 {
-   int varid, ndims, dimids[3], dimid_par;
+   int varid, ndims, dimids[3], dimid_par, adjust_att;
+
+   *adjust_nominal = 0;
 
    if (NC_NOERR != nc_inq_varid (grp, TEMPO_VAR_WAVECAL_PARAM, &varid))
      return 0;
@@ -1204,7 +1248,16 @@ static int have_wavecal_param_3d (int grp)
        || (NC_NOERR != nc_inq_dimid (grp, TEMPO_DIM_WAVECAL_PARAM, &dimid_par)))
      return 0;
 
-   return (dimids[2] == dimid_par);
+   if (dimids[2] != dimid_par)
+     return 0;
+
+   /* For back-compatibility, this attribute is optional */
+   if (NC_NOERR == nc_get_att_int (grp, varid, "adjust_nominal_wavelength", &adjust_att))
+     {
+        *adjust_nominal = adjust_att;
+     }
+
+   return 1;
 }
 
 static int have_nominal_wavelength (int grp)
@@ -1244,25 +1297,50 @@ static int have_nominal_wavelength (int grp)
 static int get_wavelength (int grp, const int *start, const int *count,
                            int type, void *data, const char *name, void *client_data)
 {
+   int adjust_nominal_wavelength, have_wavecal, have_nominal;
+   int status;
+
    /* When asked to read 'wavelength':
     * First, look for 3D TEMPO_VAR_WAVECAL_PARAM,
-    * if that's not present, look for TEMPO_VAR_NOMINAL_WAVELEN.
+    * if that's not present, look for TEMPO_VAR_WAVELEN_NOMINAL.
     * If that's not present, return >0, which means look for 'wavelength'
+    * And just to complicate things further, the wavelength calibration parameters
+    * can define an adjustment to the nominal wavelength grid, so we have to
+    * handle that case too.
     */
 
-   if (have_wavecal_param_3d (grp))
+   have_wavecal = have_wavecal_param_3d (grp, &adjust_nominal_wavelength);
+   have_nominal = have_nominal_wavelength (grp);
+
+   if (have_wavecal)
      {
-        return get_wavelength_wavecal (grp, start, count, type, data, name, client_data);
+        if (0 != (status = get_wavelength_wavecal (grp, start, count, type, data, name, client_data)))
+          return status;
+
+        /* If the wavelength calibration fully defines the wavelength grid then we're done */
+        if (adjust_nominal_wavelength == 0)
+          return status;
+
+        /* If the wavelength calibration adjusts missing nominal wavelengths, then that's a problem */
+        if (have_nominal == 0)
+          {
+             tell_verror (TELL_IO_READ_ERROR, "%s: variable not found: %s", __func__, TEMPO_VAR_WAVELEN_NOMINAL);
+             return -1;
+          }
+        /* FALLTHRU when wavelength calibration adjusts the existing nominal grid */
      }
-   else if (have_nominal_wavelength (grp))
+
+   if (have_nominal)
      {
         if (1 == TIO_NOMINAL_WAVELEN_NUM_DIMS)
           {
-             return get_wavelength_nominal_1d (grp, start, count, type, data, name, client_data);
+             return get_wavelength_nominal_1d (grp, start, count, type, data, name,
+                                               adjust_nominal_wavelength, client_data);
           }
         else
           {
-             return get_wavelength_nominal_2d (grp, start, count, type, data, name, client_data);
+             return get_wavelength_nominal_2d (grp, start, count, type, data, name,
+                                               adjust_nominal_wavelength, client_data);
           }
      }
 
