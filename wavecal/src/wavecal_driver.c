@@ -569,7 +569,7 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
                                 const Wavecal_Result_Type *wavecal_result)
 {
    const char *dimname_wavelen = DIMNAME_WAVELEN;
-   int varid, dimid_wavelen, dimid_xtrack, dimid_step;
+   int varid, dimid_wavelen, dimid_xtrack, dimid_step, dimid_wavecal_param;
    int dimids[3];
    size_t num_waves = wavecal_result->num_fit;
 
@@ -577,7 +577,8 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
      return 0;
 
    if ((0 != TIO_inq_dimid (grp, TEMPO_DIM_XTRACK, &dimid_xtrack))
-       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dimid_step)))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dimid_step))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_WAVECAL_PARAM, &dimid_wavecal_param)))
      return -1;
 
    if (0 != TIO_def_dim (grp, dimname_wavelen, num_waves, &dimid_wavelen))
@@ -585,8 +586,22 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
 
    dimids[0] = dimid_step;
    dimids[1] = dimid_xtrack;
-   dimids[2] = dimid_wavelen;
 
+   dimids[2] = dimid_wavecal_param;
+   if (0 != TIO_def_var (grp, "wavecal_params_error", TIO_DOUBLE, 3, dimids, &varid))
+     return -1;
+
+   if (wavecal_result->sf_params)
+     {
+        int dimid_sf_params;
+        if (0 != TIO_def_dim (grp, "sf_pars", 3, &dimid_sf_params))
+          return -1;
+        dimids[2] = dimid_sf_params;
+        if (0 != TIO_def_var (grp, "sf_params_error", TIO_DOUBLE, 3, dimids, &varid))
+          return -1;
+     }
+
+   dimids[2] = dimid_wavelen;
    if ((0 != TIO_def_var (grp, dimname_wavelen, TIO_DOUBLE, 3, dimids, &varid))
        || (0 != TIO_def_var (grp, "model", TIO_DOUBLE, 3, dimids, &varid))
        || (0 != TIO_def_var (grp, "spec_scaled", TIO_DOUBLE, 3, dimids, &varid))
@@ -624,8 +639,21 @@ static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, i
 
    count[0] = 1;
    count[1] = 1;
-   count[2] = wavecal_result->num_fit;
 
+   count[2] = wavecal_result->num_wave_params;
+   if (0 != TIO_put_var_section (grp, "wavecal_params_error", start, count, TIO_DOUBLE,
+                                 wavecal_result->wave_params_error))
+     return -1;
+
+   if (wavecal_result->sf_params)
+     {
+        count[2] = wavecal_result->num_sf_params;
+        if (0 != TIO_put_var_section (grp, "sf_params_error", start, count, TIO_DOUBLE,
+                                      wavecal_result->sf_params_error))
+          return -1;
+     }
+
+   count[2] = wavecal_result->num_fit;
    if ((0 != TIO_put_var_section (grp, DIMNAME_WAVELEN, start, count, TIO_DOUBLE,
                                   wavecal_result->wave))
        || (0 != TIO_put_var_section (grp, "model", start, count, TIO_DOUBLE,

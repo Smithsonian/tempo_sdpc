@@ -31,6 +31,7 @@ typedef struct
     * Storage for this array is managed internally and
     * must not be freed by the calling program.
     */
+   const double *wave_params_error;
    size_t num_wave_params;
    /**< number of wavelength grid parameters */
 
@@ -39,6 +40,7 @@ typedef struct
     * Storage for this array is managed internally and
     * must not be freed by the calling program.
     */
+   const double *sf_params_error;
    size_t num_sf_params;
    /**< number of slit function parameters */
 

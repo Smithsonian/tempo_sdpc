@@ -62,6 +62,7 @@ typedef struct
    double *model_convolved;
    double *derivs_convolved[SFT_MAX_NUM_PARAMS];
    double *params;   /* storage for fitted slit function parameter result */
+   double *params_error;  /* storage for parameter uncertainty estimate */
    int num_params;
    int num_alloc;    /* allocated size of model_padded/model_convolved arrays */
    int num_waves;    /* number of wavelengths in the unpadded model */
@@ -75,9 +76,11 @@ typedef struct
    size_t num_wave; /**< total number of wavelength points in measured spectrum */
    double *wave0;   /**< initial guess at wavelength grid for measured spectrum */
 
+   double *xerror;  /**< storage to hold parameter uncertainty diagnostic */
+
    Cspline_Type *waves_nominal_cspline;   /**< nominal wavelength grid */
    double *waves_nominal_scratch;         /**< scratch space for computing grids */
-   int adjust_nominal_wavelength;              /**< zero means NO, non-zero means YES */
+   int adjust_nominal_wavelength;         /**< zero means NO, non-zero means YES */
 
    Shapefun_Type *wavegrid_shapefun;    /**< shape function for computing the wavelength grid */
    double *pindex;          /**< pixel index array for measured spectrum */
@@ -583,6 +586,7 @@ static void free_sf_convolution_type (SF_Convolution_Type *sfct)
    FREE(sfct->model_padded);
    FREE(sfct->model_convolved);
    FREE(sfct->params);
+   FREE(sfct->params_error);
    if (sfct->derivs_convolved)
      {
         for (i = 0; i < sfct->num_params; i++)
@@ -613,7 +617,8 @@ static SF_Convolution_Type *alloc_sf_convolution_type (int num_waves, int num_pa
 
    if ((NULL == (sfct->model_padded = (double *)MALLOC (len * sizeof(double))))
        || (NULL == (sfct->model_convolved = (double *)MALLOC (len * sizeof(double))))
-       || (NULL == (sfct->params = (double *)MALLOC (num_params * sizeof(double)))))
+       || (NULL == (sfct->params = (double *)MALLOC (num_params * sizeof(double))))
+       || (NULL == (sfct->params_error = (double *)MALLOC (num_params * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         free_sf_convolution_type (sfct);
@@ -642,6 +647,7 @@ static void free_window (Window_Type *win)
    if (win == NULL)
      return;
    FREE(win->wave0);
+   FREE(win->xerror);
    cspline_free (win->waves_nominal_cspline);
    FREE(win->waves_nominal_scratch);
    FREE(win->pindex);
@@ -667,6 +673,8 @@ static int alloc_window (Window_Type *win, int num_data_waves, int num_model_wav
        || (NULL == (win->weight = alloc_doubles (num_data_waves)))
        || (NULL == (win->residuals = alloc_doubles (num_data_waves))))
      return -1;
+
+   win->xerror = NULL;        /* set this later */
 
    if (num_pad)
      {
@@ -1671,6 +1679,8 @@ int wavecal_def_term_vars (const Wavecal_Type *wct, int grp,
         dimids[2] = dimid_params;
         if (0 != TIO_def_var (grp_term, "params", TIO_DOUBLE, 3, dimids, &varid))
           return -1;
+        if (0 != TIO_def_var (grp_term, "params_error", TIO_DOUBLE, 3, dimids, &varid))
+          return -1;
 
         dimids[2] = dimid_waves;
         if (0 != TIO_def_var (grp_term, "value", TIO_DOUBLE, 3, dimids, &varid))
@@ -1683,7 +1693,9 @@ int wavecal_def_term_vars (const Wavecal_Type *wct, int grp,
 int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
                              int beg_step, int step, int beg_xtrack, int xtrack)
 {
+   const Window_Type *win = &wct->window;
    Term_Type *t;
+   double *xerror = NULL;
    int start[3], count[3];
 
    start[0] = step - beg_step;
@@ -1692,6 +1704,12 @@ int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
 
    count[0] = 1;
    count[1] = 1;
+
+   /* offset past wavelength grid parameters */
+   if (win->xerror)
+     {
+        xerror = win->xerror + win->num_wave_params;
+     }
 
    for (t = wct->terms; t != NULL; t = t->next)
      {
@@ -1703,6 +1721,13 @@ int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
         count[2] = t->num_params;
         if (0 != TIO_put_var_section (grp_term, "params", start, count, TIO_DOUBLE, t->eval_params))
           return -1;
+
+        if (xerror)
+          {
+             if (0 != TIO_put_var_section (grp_term, "params_error", start, count, TIO_DOUBLE, xerror))
+               return -1;
+             xerror += t->num_params;
+          }
 
         count[2] = t->num_values;
         if (0 != TIO_put_var_section (grp_term, "value", start, count, TIO_DOUBLE, t->value))
@@ -2377,6 +2402,10 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    num_params = num;
    num_residuals = win->num_wave;
 
+   if (NULL == (win->xerror = alloc_doubles (num_params)))
+     goto return_error;
+   memset ((char *)win->xerror, 0, num_params * sizeof(double));
+
    fit_config.xtol = fit_ctrl->xtol;
    fit_config.ftol = fit_ctrl->ftol;
    fit_config.maxiter = fit_ctrl->maxiter;
@@ -2384,6 +2413,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
                         fit_ctrl->maxfev : fit_ctrl->maxiter * num_params);
 
    fit_result.resid = win->residuals; /* FIXME: make this a debug option? */
+   fit_result.xerror = win->xerror;
 
    if (0) write_params (stderr, params, num_params);
 
@@ -2401,13 +2431,17 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         memcpy ((char *)win->wave_params, (char *)params,
                 win->num_wave_params * sizeof(double));
         result->wave_params = win->wave_params;
+        result->wave_params_error = win->xerror;
         result->num_wave_params = win->num_wave_params;
         if (wct->sf_ctrl.mode == SF_MODE_FIT)
           {
              SF_Convolution_Type *sfct = win->sfct;
              double *sf_params = params + (num_params - sfct->num_params);
+             double *sf_params_error = win->xerror + (num_params - sfct->num_params);
              memcpy ((char *)sfct->params, (char *)sf_params, sfct->num_params * sizeof(double));
+             memcpy ((char *)sfct->params_error, (char *)sf_params_error, sfct->num_params * sizeof(double));
              result->sf_params = sfct->params;
+             result->sf_params_error = sfct->params_error;
              result->num_sf_params = sfct->num_params;
           }
         else
