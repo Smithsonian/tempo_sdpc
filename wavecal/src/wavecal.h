@@ -50,6 +50,7 @@ typedef struct
    int num_fit;        /**< number of pixels fitted */
    int start_pix;      /**< index of first pixel in the fit window */
    int nfev;           /**< number of objective function evaluations */
+   int niter;          /**< number of iterations */
    int opt_status;     /**< optimizer status code */
 }
 Wavecal_Result_Type;

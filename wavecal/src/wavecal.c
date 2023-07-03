@@ -120,7 +120,8 @@ struct Term_Type
    Refspec_Type refspec;              /**< reference spectrum, if any */
    Shapefun_Type *shapefun;           /**< shape function, or NULL */
    Shapefun_Init_Type shapefun_init;  /**< shape function initialization data */
-   double *params;                    /**< fit parameters for this term, if any */
+   double *params;                    /**< initial fit parameters for this term, if any */
+   double *eval_params;               /**< params from last evaluation */
    size_t num_params;                 /**< number of fit parameters for this term */
    double *value;                     /**< term value vs wavelength */
    size_t num_values;                 /**< number of wavelengths in value array */
@@ -213,6 +214,7 @@ static void free_term1 (Term_Type *tt)
      return;
    FREE(tt->term_name);
    FREE(tt->params);
+   FREE(tt->eval_params);
    FREE(tt->value);
    free_file_type(&tt->refspec.file);
    free_interp_type (tt->refspec.interp);
@@ -1046,8 +1048,16 @@ static int init_shapefun (Term_Type *term)
           return -1;
         if (0 != st->st_init_params (st, st_init, term->num_params, term->params))
           return -1;
+        if (NULL == (term->eval_params = alloc_doubles (term->num_params)))
+          return -1;
+        /* we haven't evaluated the function yet, so init this array to zero */
+        memset ((char *)term->eval_params, 0, term->num_params * sizeof(double));
      }
-   else term->params = NULL;
+   else
+     {
+        term->params = NULL;
+        term->eval_params = NULL;
+     }
 
    return 0;
 }
@@ -1473,6 +1483,11 @@ static int evaluate_term (Term_Type *term, size_t num_wave, double *waves,
           {
              for (i = 0; i < num_wave; i++) v[i] *= scale_factor;
           }
+        if (term->num_params > 0)
+          {
+             /* save parameters where term was last evaluated */
+             memcpy ((char *)term->eval_params, (char *)params, term->num_params * sizeof(double));
+          }
      }
 
    if (ref->interp)
@@ -1663,7 +1678,7 @@ int wavecal_write_term_vars (const Wavecal_Type *wct, int grp,
           return -1;
 
         count[2] = t->num_params;
-        if (0 != TIO_put_var_section (grp_term, "params", start, count, TIO_DOUBLE, t->params))
+        if (0 != TIO_put_var_section (grp_term, "params", start, count, TIO_DOUBLE, t->eval_params))
           return -1;
 
         count[2] = t->num_values;
@@ -2362,6 +2377,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
         result->num_fit = win->num_wave;
         result->start_pix = win->start_pix;
         result->nfev = fit_result.nfev;
+        result->niter = fit_result.niter;
         result->opt_status = mp_status;
         if (0) write_params (stderr, params, num_params);
         if (0) write_statistic (stderr, win->residuals, num_residuals);

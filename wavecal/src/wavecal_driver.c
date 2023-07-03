@@ -590,7 +590,11 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
        || (0 != TIO_def_var (grp, "model", TIO_DOUBLE, 3, dimids, &varid))
        || (0 != TIO_def_var (grp, "spec_scaled", TIO_DOUBLE, 3, dimids, &varid))
        || (0 != TIO_def_var (grp, "weight", TIO_DOUBLE, 3, dimids, &varid))
-       || (0 != TIO_def_var (grp, "residuals", TIO_DOUBLE, 3, dimids, &varid)))
+       || (0 != TIO_def_var (grp, "residuals", TIO_DOUBLE, 3, dimids, &varid))
+       || (0 != TIO_def_var (grp, "nfev", TIO_INT, 2, dimids, &varid))
+       || (0 != TIO_def_var (grp, "niter", TIO_INT, 2, dimids, &varid))
+       || (0 != TIO_def_var (grp, "opt_status", TIO_INT, 2, dimids, &varid))
+      )
      {
         return -1;
      }
@@ -630,7 +634,14 @@ static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, i
        || (0 != TIO_put_var_section (grp, "weight", start, count, TIO_DOUBLE,
                                      wavecal_result->weight))
        || (0 != TIO_put_var_section (grp, "residuals", start, count, TIO_DOUBLE,
-                                     wavecal_result->residuals)))
+                                     wavecal_result->residuals))
+       || (0 != TIO_put_var_section (grp, "nfev", start, count, TIO_INT,
+                                     &wavecal_result->nfev))
+       || (0 != TIO_put_var_section (grp, "niter", start, count, TIO_INT,
+                                     &wavecal_result->niter))
+       || (0 != TIO_put_var_section (grp, "opt_status", start, count, TIO_INT,
+                                     &wavecal_result->opt_status))
+      )
      {
         return -1;
      }
