@@ -410,9 +410,15 @@ static int create_result_file (const char *path, const char *group_name,
      goto close_and_return;
    if ((0 != TIO_put_att (ncid, varid, "num_coefficients", TIO_INT, 1, &num_coefs))
        ||(0 != TIO_put_att (ncid, varid, "start_spectral_channel", TIO_INT, 1, &start_pix))
-       ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix))
-       ||(0 != TIO_put_att (ncid, varid, "adjust_nominal_wavelength", TIO_INT, 1, &adjust_nominal_wavelength)))
+       ||(0 != TIO_put_att (ncid, varid, "num_spectral_channels", TIO_INT, 1, &num_pix)))
      goto close_and_return;
+
+   if (adjust_nominal_wavelength != 0)
+     {
+        /* For back-compatibility, write this attribute only when it's non-zero. */
+        if (0 != TIO_put_att (ncid, varid, "adjust_nominal_wavelength", TIO_INT, 1, &adjust_nominal_wavelength))
+          goto close_and_return;
+     }
 
    if (0 != TIO_def_var (ncid, "bestnorm", TIO_DOUBLE, 2, dimids_wavecal_params, &varid))
      goto close_and_return;
