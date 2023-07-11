@@ -24,6 +24,7 @@ typedef struct
    double *amf_trop;     /**< Tropospheric air mass factor [num_steps, num_xtrack] */
    double *amf_strat;    /**< Stratospheric air mass factor [num_steps, num_xtrack] */
    double *vert_strat;   /**< Stratospheric vertical column */
+   double *slant_uncert; /**< Slant column uncertainty [num_steps, num_xtrack] */
    int *data_quality_flag;  /**< Data quality flag [num_steps, num_xtrack] */
    int num_steps;        /**< number of mirror steps = dimension of the slowest varying index */
    int num_xtrack;       /**< number of cross-track pixels = dimension of the fastest varying index */
@@ -77,10 +78,13 @@ scan_init_regrid (const Scan_Type *st, const Pixel_Grid_Param_Type *mesh);
  *                         values matching the scan grid dimensions
  * @param[in] vstrat       Pointer to an array of stratospheric vertical column
  *                         values matching the scan grid dimensions
+ * @param[in] vuncert      Pointer to an array of tropospheric vertical column
+ *                         uncertanties values matching the scan grid dimensions
  * @return 0 on success, -1 on error
  */
 extern int scan_write_split (const Scan_Type *st, double fill_value,
-                             const double *vtrop, const double *vstrat);
+                             const double *vtrop, const double *vstrat,
+                             const double *vuncert);
 
 /** Allocate storage for required input scan-gridded product variables.
  * @param[in] num_steps   Number of mirror steps in the full scan

@@ -19,6 +19,7 @@ typedef struct
 {
    double *vert_trop;
    double *vert_strat;
+   double *vert_uncert;
    int num_steps;
    int num_xtrack;
 }
@@ -129,6 +130,7 @@ static void free_split_type (Split_Type *split)
      return;
    FREE(split->vert_strat);
    FREE(split->vert_trop);
+   FREE(split->vert_uncert);
    FREE(split);
 }
 
@@ -148,6 +150,7 @@ static Split_Type *alloc_split_type (int num_steps, int num_xtrack)
 
    num_scan_pixels = num_steps * num_xtrack;
    if ((NULL == (split->vert_trop = (double *) MALLOC (num_scan_pixels * sizeof(double))))
+       || (NULL == (split->vert_uncert = (double *) MALLOC (num_scan_pixels * sizeof(double))))
        || (NULL == (split->vert_strat = (double *) MALLOC (num_scan_pixels * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -166,6 +169,7 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
    Split_Type *split = NULL;
    double *vert_strat = NULL;
    double *vert_trop = NULL;
+   double *vert_uncert = NULL;
    int *mesh_mask = NULL;   /* FIXME? */
    double nan_value = nan("");
    double fill_value = nan_value;
@@ -176,6 +180,7 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
 
    vert_strat = split->vert_strat;
    vert_trop = split->vert_trop;
+   vert_uncert = split->vert_uncert;
 
    /* Map vert_strat column values from mesh back to Level 2 product scan grid */
    if (0 != Pixel_regrid_from_mesh (r_mesh, mesh_mask, fill_value, mesh_vert_strat, vert_strat))
@@ -190,18 +195,23 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
 
    num_scan_pixels = sv->num_steps * sv->num_xtrack;
 
-   /* Compute the tropospheric vertical column on the native scan pixel grid */
+   /* Compute the tropospheric vertical column and uncertainty on the native scan pixel grid */
    for (i = 0; i < num_scan_pixels; i++)
      {
         if (sv->amf_trop[i] != 0)
           {
              vert_trop[i] = (sv->slant_column[i] -
                           vert_strat[i] * sv->amf_strat[i]) / sv->amf_trop[i];
+             vert_uncert[i] = sv->slant_uncert[i] / sv->amf_trop[i];
           }
-        else vert_trop[i] = nan_value;
+        else
+          {
+            vert_trop[i] = nan_value;
+            vert_uncert[i] = nan_value;
+          }
      }
 
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "computed vertical trop column in granule pixels");
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "computed vertical trop column/uncert in granule pixels");
 
    /* Mask strat/trop variables using original data quality flag */
    for (i = 0; i < num_scan_pixels; i++)
@@ -210,6 +220,7 @@ static Split_Type *perform_split (const Scan_Vars_Type *sv,
           {
              vert_strat[i] = nan_value;
              vert_trop[i] = nan_value;
+             vert_uncert[i] = nan_value;
           }
      }
 
@@ -230,10 +241,11 @@ static int write_split (const Scan_Type *st, const Split_Type *split)
      {
         replace_fill (split->vert_strat, num_scan_pixels, fill_value, fill_value_output);
         replace_fill (split->vert_trop, num_scan_pixels, fill_value, fill_value_output);
+        replace_fill (split->vert_uncert, num_scan_pixels, fill_value, fill_value_output);
      }
 
    /* Write strat/trop vertical columns on Level 2 product scan grid */
-   if (0 != scan_write_split (st, fill_value_output, split->vert_trop, split->vert_strat))
+   if (0 != scan_write_split (st, fill_value_output, split->vert_trop, split->vert_strat, split->vert_uncert))
      {
         tell_verror (TELL_RUNTIME_ERROR,
                      "%s: writing strat/trop vertical column values",

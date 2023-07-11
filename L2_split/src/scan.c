@@ -31,6 +31,7 @@ struct Granule_Type
    double *amf_trop;
    double *amf_strat;
    double *vert_strat;
+   double *slant_uncert;
    double tstart;
    double tend;
    int *data_quality_flag;
@@ -69,6 +70,7 @@ static void granule_free (Granule_Type *gr)
    FREE(gr->amf_trop);
    FREE(gr->amf_strat);
    FREE(gr->vert_strat);
+   FREE(gr->slant_uncert);
    FREE(gr->data_quality_flag);
    FREE(gr);
 }
@@ -118,10 +120,11 @@ static int granule_alloc_data_arrays (Granule_Type *gr)
 
    if ((NULL == (gr->lon_bounds = (double *) MALLOC (len_bounds)))
        || (NULL == (gr->lat_bounds = (double *) MALLOC (len_bounds)))
-       || (NULL == (gr->slant_column = (double *) MALLOC (len_doubles))
+       || (NULL == (gr->slant_column = (double *) MALLOC (len_doubles)))
        || (NULL == (gr->amf_trop = (double *) MALLOC (len_doubles)))
        || (NULL == (gr->amf_strat = (double *) MALLOC (len_doubles)))
        || (NULL == (gr->vert_strat = (double *) MALLOC (len_doubles)))
+       || (NULL == (gr->slant_uncert = (double *) MALLOC (len_doubles))
        || (NULL == (gr->data_quality_flag = (int *) MALLOC (num_pixels * sizeof(int)))))
       )
      {
@@ -371,6 +374,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
    double trop_thresh = params->trop_thresh;
    double *tropopause_pressure = NULL;
    double *gas_profile = NULL;
+   double *slant_column_uncertainty = NULL;
    int status = -1;
 
    if (0 != TIO_inq_dim (ncid, "swt_level", &dimid_levels, &dimlen_levels))
@@ -382,6 +386,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
    num_pixels = gr->num_steps * gr->num_xtrack;
 
    if  ((NULL == (tropopause_pressure = (double *)MALLOC (num_pixels * sizeof(double))))
+        || (NULL == (slant_column_uncertainty = (double *)MALLOC (num_pixels * sizeof(double))))
         || (NULL == (gas_profile = (double *)MALLOC (num_pixels * dimlen_levels * sizeof(double)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -393,6 +398,9 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
    count[2] = 0;
 
    if (0 != read_dbl_and_replace_fill (grp, "tropopause_pressure", count, tropopause_pressure))
+     goto free_and_return;
+
+   if (0 != read_dbl_and_replace_fill (grp, "fitted_slant_column_uncertainty", count, slant_column_uncertainty))
      goto free_and_return;
 
    start[0] = 0;
@@ -415,6 +423,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
         int k, ktrop;
 
         gr->vert_strat[i] = nan_value;
+        gr->slant_uncert[i] = nan_value;
 
         if ((gr->data_quality_flag[i] != 0)
             || isnan(gr->amf_strat[i])
@@ -423,6 +432,8 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
           {
              continue;
           }
+
+        gr->slant_uncert[i] = slant_column_uncertainty[i];
 
         if ((ktrop = find_tropopause (i, tropopause_pressure[i], pt)) < 0)
           goto free_and_return;
@@ -445,6 +456,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
 free_and_return:
    free_pressure_params (pt);
    FREE(tropopause_pressure);
+   FREE(slant_column_uncertainty);
    FREE(gas_profile);
 
    return status;
@@ -838,6 +850,7 @@ void scan_vars_free (Scan_Vars_Type *sv)
    FREE(sv->amf_trop);
    FREE(sv->amf_strat);
    FREE(sv->vert_strat);
+   FREE(sv->slant_uncert);
    FREE(sv->data_quality_flag);
    FREE(sv);
 }
@@ -858,6 +871,7 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
        || (NULL == (sv->amf_strat = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->amf_trop = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->vert_strat = (double *)MALLOC (num_pixels * sizeof(double))))
+       || (NULL == (sv->slant_uncert = (double *)MALLOC (num_pixels * sizeof(double))))
        || (NULL == (sv->data_quality_flag = (int *)MALLOC (num_pixels * sizeof(int))))
       )
      {
@@ -869,6 +883,7 @@ Scan_Vars_Type *scan_vars_alloc (int num_steps, int num_xtrack)
    memset ((char *)sv->amf_strat, 0, num_pixels * sizeof(double));
    memset ((char *)sv->amf_trop, 0, num_pixels * sizeof(double));
    memset ((char *)sv->vert_strat, 0, num_pixels * sizeof(double));
+   memset ((char *)sv->slant_uncert, 0, num_pixels * sizeof(double));
    memset ((char *)sv->data_quality_flag, 0, num_pixels * sizeof(int));
 
    sv->num_steps = num_steps;
@@ -917,6 +932,7 @@ int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv)
         copy_dbl_field (sv->amf_trop, sv->num_xtrack, gr->amf_trop, gr);
         copy_dbl_field (sv->amf_strat, sv->num_xtrack, gr->amf_strat, gr);
         copy_dbl_field (sv->vert_strat, sv->num_xtrack, gr->vert_strat, gr);
+        copy_dbl_field (sv->slant_uncert, sv->num_xtrack, gr->slant_uncert, gr);
         copy_int_field (sv->data_quality_flag, sv->num_xtrack, gr->data_quality_flag, gr);
      }
 
@@ -957,7 +973,8 @@ static int write_vertical_column_attributes (int grp, double fill_value, const c
 }
 
 static int write_granule_vars (const Granule_Type *gr, double fill_value,
-                               const double *vtrop_gr, const double *vstrat_gr)
+                               const double *vtrop_gr, const double *vstrat_gr,
+                               const double *vuncert_gr)
 {
    TIO_Var_Info_Type vi;
    Name_Type vtrop =
@@ -970,6 +987,12 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
      {
         .name = "vertical_column_stratosphere",
         .long_name = "stratosphere nitrogen dioxide vertical column",
+        .varid = 0
+     };
+   Name_Type vuncert =
+     {
+        .name = "vertical_column_troposphere_uncertainty",
+        .long_name = "troposphere nitrogen dioxide vertical column uncertainty",
         .varid = 0
      };
    char units_slant_col[256] = {0};
@@ -1012,6 +1035,14 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
           goto close_and_return;
      }
 
+   if (0 != tio_inq_varid (grp_product, vuncert.name, &vuncert.varid))
+     {
+        if (0 != TIO_def_var (grp_product, vuncert.name, TIO_DOUBLE, vi.ndims, vi.dimids, &vuncert.varid))
+          goto close_and_return;
+        if (0 != write_vertical_column_attributes (grp_product, fill_value, units_slant_col, &vuncert))
+          goto close_and_return;
+     }
+
    num_steps = vi.dimlens[0];
    num_xtrack = vi.dimlens[1];
 
@@ -1019,6 +1050,7 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
      {
         const double *vtrop_i = vtrop_gr + gr->steps[i] * num_xtrack;
         const double *vstrat_i = vstrat_gr + gr->steps[i] * num_xtrack;
+        const double *vuncert_i = vuncert_gr + gr->steps[i] * num_xtrack;
 
         start[0] = i;
         start[1] = 0;
@@ -1026,7 +1058,8 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
         count[1] = num_xtrack;
 
         if ((0 != TIO_put_var_section (grp_product, vtrop.name, start, count, TIO_DOUBLE, vtrop_i))
-            || (0 != TIO_put_var_section (grp_product, vstrat.name, start, count, TIO_DOUBLE, vstrat_i)))
+            || (0 != TIO_put_var_section (grp_product, vstrat.name, start, count, TIO_DOUBLE, vstrat_i))
+            || (0 != TIO_put_var_section (grp_product, vuncert.name, start, count, TIO_DOUBLE, vuncert_i)))
           {
              goto close_and_return;
           }
@@ -1045,14 +1078,15 @@ close_and_return:
 }
 
 int scan_write_split (const Scan_Type *st, double fill_value,
-                      const double *vtrop, const double *vstrat)
+                      const double *vtrop, const double *vstrat,
+                      const double *vuncert)
 {
    int i;
 
    for (i = 0; i < st->num_granules; i++)
      {
         Granule_Type *gr = st->granules[i];
-        if (0 != write_granule_vars (gr, fill_value, vtrop, vstrat))
+        if (0 != write_granule_vars (gr, fill_value, vtrop, vstrat, vuncert))
           {
              tell_verror (TELL_RUNTIME_ERROR,
                           "%s: writing strat/trop values for granule %s",
