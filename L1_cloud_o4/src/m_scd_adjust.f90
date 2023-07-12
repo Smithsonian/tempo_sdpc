@@ -15,7 +15,7 @@ contains
    real(kind=4), dimension(gmi_np+1), intent(in) :: pp
    real(kind=4), dimension(gmi_np), intent(in) :: tt
    real(kind=4), intent(in) :: cpp ! pressure to output t8p
-   real, intent(in) :: scdm ! 273K reference scd
+   real, intent(in) :: scdm ! reference scd
    real, intent(out) ::scdadj, t8p ! adjusted SCD, T at cpp
 
    !local variables
@@ -72,7 +72,7 @@ contains
    if (t8p .lt. 193.) t8p = 193.
    if (t8p .gt. 303.) t8p = 303.
 
-   ! original L2 SCD are for 273K
+   ! original L2 SCD are for TrefO4
    ! T correction within [203, 293]K, clip on both ends
    ! scdm and scdadj need to be normalized by 1.e43 to use the a & b coeffs
    if (t8p .le. 203.) then
@@ -108,7 +108,7 @@ contains
    !ensure scdadj is positive
    if (scdadj .lt. 0.) then
       scdadj = scdm
-      t8p =  273.
+      t8p = TrefO4 
    endif
 
    end subroutine scd_adjust_gmi
@@ -122,7 +122,7 @@ contains
    real(kind=4), dimension(:), intent(in) :: pp ! pp(geos_np+1)
    real(kind=4), dimension(:), intent(in) :: tt ! tt(geos_np)
    real, intent(in) :: cpp ! pressure to output t8p
-   real, intent(in) :: scdm ! 273K reference scd
+   real, intent(in) :: scdm ! reference scd
    real, intent(out) ::scdadj, t8p ! adjusted SCD, T at cpp
 
    !local variables
@@ -177,7 +177,7 @@ contains
    if (t8p .lt. 193.) t8p = 193.
    if (t8p .gt. 303.) t8p = 303.
 
-   ! original L2 SCD are for 273K
+   ! original L2 SCD are for TrefO4
    ! T correction within [203, 293]K, clip on both ends
    ! scdm and scdadj need to be normalized by 1.e43 to use the a & b coeffs
    if (t8p .le. 203.) then
@@ -213,7 +213,7 @@ contains
    !ensure scdadj is positive
    if (scdadj .lt. 0.) then
       scdadj = scdm !scdm>0. otherwise should have returned
-      t8p =  273.
+      t8p = TrefO4
    endif
 
    end subroutine scd_adjust_geos

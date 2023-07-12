@@ -138,10 +138,17 @@ module m_vars
 ! hqw O4 SCD temperature correction coefficients
 ! y(T2) = a * y(T1) + b; T1 = 273K, T2=203, 233, 253, 293K
 !------------------------
-   real, parameter:: a203=0.8423, b203=-2.0170e-2
-   real, parameter:: a233=0.9318, b233=-1.3336e-2
-   real, parameter:: a253=0.9680, b253=-5.8256e-3
-   real, parameter:: a293=1.0270, b293=-2.4064e-3
+!   real, parameter:: a203=0.8423, b203=-2.0170e-2
+!   real, parameter:: a233=0.9318, b233=-1.3336e-2
+!   real, parameter:: a253=0.9680, b253=-5.8256e-3
+!   real, parameter:: a293=1.0270, b293=-2.4064e-3
+! coefs updates to account for changes associated with RJH HITRAN2020 H2O
+!  the coefs are derived using Thalman O4 and OMC4 20050701,20060101,20060715
+   real, parameter:: TrefO4 = 273. 
+   real, parameter:: a203 = 0.90, b203 = -0.03
+   real, parameter:: a233 = 0.96, b233 = -0.02
+   real, parameter:: a253 = 0.97, b253 = 0.00
+   real, parameter:: a293 = 1.01, b293 = 0.00
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20
    ! if dT < dt_threshold, then stop iteration

@@ -324,8 +324,8 @@ subroutine cal_pscene
          !hqw local variable initialization for pixel
          scdm = fFillValue9
          scdadj = fFillValue9
-         t8p = 273.
-         temp_t8p = 273.
+         t8p = TrefO4
+         temp_t8p = TrefO4
          delta_temp = fFillValue9
          temp_cpp = fFillValue9
          cpp = fFillValue9
@@ -597,8 +597,8 @@ subroutine cal_pscene
         !hqw initialize local vairable before scd T-correction iteration
         scdm = scdmorg
         scdadj = scdmorg
-        t8p = 273.
-        temp_t8p = 273.
+        t8p = TrefO4
+        temp_t8p = TrefO4
 
         iternum = 0
 
@@ -823,8 +823,8 @@ subroutine cal_pscene
          scdadj = fFillValue9
          temp_cpp = fFillValue9
          delta_temp = fFillValue9
-         t8p = 273.
-         temp_t8p = 273.
+         t8p = TrefO4
+         temp_t8p = TrefO4
 
         !--------------------------------------
         ! calculate LER at each pressure level
@@ -995,7 +995,7 @@ subroutine cal_pscene
         !hqw re-init local vairables
         scdm = scdmorg
         scdadj = scdm
-        t8p = 273.
+        t8p = TrefO4
         temp_t8p = t8p
 
         cpp = -9999.

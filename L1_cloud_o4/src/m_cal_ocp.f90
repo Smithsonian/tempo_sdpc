@@ -542,10 +542,10 @@ subroutine cal_ocp
       ! Temperature correction will be applied through iteration
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
 
-      !hqw initial iteration use 273K reference
+      !hqw initial iteration use TrefO4 reference
       iternum = 0
-      t8p = 273. ! initial reference temperature for SCD retrieval
-      temp_t8p = 273.
+      t8p = TrefO4 ! initial reference temperature for SCD retrieval
+      temp_t8p = TrefO4
       scdm = scdmorg
       scdadj = scdmorg
 
@@ -720,7 +720,7 @@ subroutine cal_ocp
         else if (name_option_TemperaturePressure .eq. 'GEOS5') then
       ! scdmorg<0. should already been skipped
       ! returned scdadj always > 0., because if negative
-      ! scdadj = scdmorg and temp_t8p=273K
+      ! scdadj = scdmorg and temp_t8p=TrefO4
           call scd_adjust_geos(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
         else
           temp_t8p = real(t8p, kind=4)
@@ -743,9 +743,9 @@ subroutine cal_ocp
       !technically, temp_t8p can be -999. when scdmorg<0.
       !but it won't happen as they should have been skipped
       !if negative scdadj occurs within scd_adjust_geos,
-      ! scdadj=scdmorg and temp_t8p=273. 
+      ! scdadj=scdmorg and temp_t8p=TrefO4
       delta_temp = real(abs(t8p - temp_t8p), kind=4)
-      if ((delta_temp .lt. dt_threshold).or.(temp_t8p .eq. 273.)) then
+      if ((delta_temp .lt. dt_threshold).or.(temp_t8p .eq. TrefO4)) then
          goto 990 ! exit iteration
       endif
 
@@ -775,7 +775,7 @@ subroutine cal_ocp
          out_O2O2CloudTemperature(ix,it) = real(t8p, kind=4) ! temp_t8p
       else !hqw skipped pixels will satisfy this condition
          out_SlantColumnAmountO2O2(ix,it) = nasa_SlantColumnAmountO2O2(ix,it)
-         out_O2O2CloudTemperature(ix,it) = 273.
+         out_O2O2CloudTemperature(ix,it) = TrefO4
       endif
 
       out_CloudPressure(ix,it)= cpp !nint(cpp, kind=2)
