@@ -253,7 +253,7 @@
 700110|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700111|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700112|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700113|OMSAO_H2O_293K_1013hPa_HITRAN2020.dat|@refdata_dir@/trace_gas/data||||1
+700113|OMSAO_H2O_HITRAN2020_283K_0.90atm_RJH_HIT20update.dat|@refdata_dir@/trace_gas/data||||1
 700114|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700115|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700116|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
