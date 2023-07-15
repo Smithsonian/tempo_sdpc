@@ -32,7 +32,7 @@ module m_vars
 ! L1B irradiance
 !----------------
   character(len=255)::name_irr_dir='./'
-  character(len=255)::name_irr_file
+  character(len=255)::name_irr_file='empty'
   character(len=255)::name_irr_swath='Sun Volume VIS Swath'
   real(kind=8)::irr_Time
   real(kind=4)::irr_SecondsInDay
@@ -50,7 +50,7 @@ module m_vars
 ! L1B radiance
 !--------------
   character(len=255)::name_rad_dir='./'
-  character(len=255)::name_rad_file
+  character(len=255)::name_rad_file='empty'
   character(len=255)::name_rad_swath='Earth VIS Swath'
   real(kind=8),   dimension(:),    pointer::rad_Time
   real(kind=4),   dimension(:),    pointer::rad_SecondsInDay
@@ -61,29 +61,23 @@ module m_vars
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingZenithAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingAzimuthAngle
   real(kind=4),   dimension(:,:),  pointer::rad_RelativeAzimuthAngle
-!hqw use out_TerrainHeight in reading for each option
-!  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
-!OMI uses GroundPixelQualityFlags to decide snow/ice
-!TEMPO uses L1 snow_ice_fraction instead
-!  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
-!hqw comments out OMI specific variables
-!hqw moved rad_Radiance and rad_Wavelength inside read_rad_tio
-!  real(kind=4), dimension(:,:,:), pointer :: rad_Radiance, rad_Wavelength
-!hqw added rad_466nm,rad_477nm,rad_440nm which is what needed
-  real(kind=4), dimension(:,:), pointer::rad_466nm,rad_477nm,rad_440nm
-!  integer(kind=2),dimension(:,:,:),pointer::rad_PixelQualityFlags
-!  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficient
-!  real(kind=4),   dimension(:,:,:),pointer::rad_WavelengthCoefficientPrecision
-!  integer(kind=2),dimension(:),    pointer::rad_WavelengthReferenceColumn
-!  integer(kind=2),dimension(:),    pointer::rad_MeasurementQualityFlags
+
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
   integer(kind=4)::rad_nWavel
   integer(kind=4)::rad_nWavelCoef
   real::rad_EarthSunDist
 
-  ! hqw adds rad_SnowIceFraction
+!hqw use out_TerrainHeight in reading for each option
+!  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
+!OMI uses GroundPixelQualityFlags to decide snow/ice
+!TEMPO uses L1 snow_ice_fraction instead
+!  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
+! hqw adds rad_SnowIceFraction
   real(kind=4),   dimension(:,:),   pointer::rad_SnowIceFraction
+
+!hqw added rad_466nm,rad_477nm,rad_440nm which is what needed
+  real(kind=4), dimension(:,:), pointer::rad_466nm,rad_477nm,rad_440nm
 
 !--------------
 ! Lookup table
@@ -276,12 +270,11 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),allocatable :: kleipool_SurfaceReflectivity477
 
   character(len=255)::name_brdf_dir="./"
-  character(len=255)::name_brdf_file
+  character(len=255)::name_brdf_file='empty'
   real(kind=4),dimension(:,:),allocatable::BRDF_SurfaceReflectivity440
   real(kind=4),dimension(:,:),allocatable::BRDF_SurfaceReflectivity466
 !hqw SurfaceReflectivity477 is not used
 !  real(kind=4),dimension(:,:),pointer::BRDF_SurfaceReflectivity477
-
 !hqw 2m windspeed is needed for GLER
    real(kind=4),dimension(:,:),allocatable:: windspeed2m
 
@@ -290,7 +283,6 @@ integer,dimension(12):: &
 ! -----------------
 ! name_option_SnowIce:
 !   Pcld calculations over SnowIce  vs. Pscene calculations over SnowIce
-
 !  character(len=255)::name_option_SnowIce='Pcld'
   character(len=255)::name_option_SnowIce='Pscene'
 
@@ -342,7 +334,7 @@ integer,dimension(12):: &
 ! input NASA SCD
 !----------------
   character(len=255)::name_nasa_dir='./'
-  character(len=255)::name_nasa_file
+  character(len=255)::name_nasa_file='empty'
   integer(kind=4)::nasa_NumTimes
   integer(kind=4)::nasa_nXtrack
   real(kind=4),dimension(:,:),pointer::nasa_SlantColumnAmountO2O2
@@ -386,7 +378,7 @@ integer,dimension(12):: &
 !---------------
   character(len=255)::name_out_dir='./'
 !  character(len=255)::name_out_he5
-  character(len=255)::name_out_ncdf
+  character(len=255)::name_out_ncdf='empty'
   character(len=255)::name_out_txt='OMCDO2N.out'
 !  character(len=255)::name_out_swath='Cloud Product'
   real(kind=8),   dimension(:),    pointer::out_Time
@@ -451,39 +443,41 @@ integer,dimension(12):: &
   integer, parameter ::iFillValue=-32767
 
 !-------------
-! write gmeta 
+! gmeta 
 !-------------
 type gmeta
-  character(len=255)::author_affiliation
-  character(len=255)::author_name
-  character(len= 3)::DayNightFlag 
+  character(len=255)::author_affiliation='SAO'
+  character(len=255)::author_name='TEMPO STM'
+  character(len= 3)::DayNightFlag='Day' 
   character(len= 12)::platformShortName='Intelsat 40e'
   character(len=12)::omiwindow='VIS' 
   character(len=19)::ProcessingCenter='SAO'
   character(len= 1)::ProcessingLevel='2'
   character(len= 9)::InstrumentName='TEMPO'
-  character(len= 7)::APPShortName
-  character(len= 7)::APPVersion
-  character(len=255)::localgranID
+  character(len= 7)::APPShortName='TEMPOCLDO4'
+  character(len= 7)::APPVersion='1.0.0.0'
+  character(len=255)::localgranID='empty'
   character(len=48)::APPLongName='TEMPO Cloud Product 1-Orbit L2 Swath'
-  character(len=11)::HDFVersion
+  character(len=11)::HDFVersion='empty'
   character(len=50)::parameterdescription='Geophysical Cloud Parameters'
-  character(len= 3)::omi_collection
-  character(len= 8)::starttime
-  character(len= 8)::endtime
-  character(len=10)::startdate
-  character(len=10)::enddate
-  real(kind=4) :: geospatial_lon_min, geospatial_lon_max
-  real(kind=4) :: geospatial_lat_min, geospatial_lat_max
-  character(len=13)::leadscientist='TEMPO'
+  character(len= 3)::omi_collection='empty'
+  character(len= 8)::starttime='00:00:00'
+  character(len= 8)::endtime='00:00:00'
+  character(len=10)::startdate='2023_04_07'
+  character(len=10)::enddate='2023_04_07'
+  real(kind=4) :: geospatial_lon_min=-180.
+  real(kind=4) :: geospatial_lon_max=180.
+  real(kind=4) :: geospatial_lat_min=-90.
+  real(kind=4) :: geospatial_lat_max=90.
+  character(len=13)::leadscientist='Science Team'
   character(len=23)::Swathname = 'Cloud Product'
-  character(len=32) :: apriori_source
-  integer :: granule_year, granule_month,granule_day
-  integer:: granule_hour_start,granule_minute_start,granule_seconds_start
-  integer:: granule_hour_end, granule_minute_end,granule_seconds_end
-  integer(kind=4) :: scan_num
-  integer(kind=4) :: granule_num
-  real(kind=8)::tai
+  character(len=32) :: apriori_source = 'empty'
+  integer :: granule_year=0, granule_month=0,granule_day=0
+  integer:: granule_hour_start=0,granule_minute_start=0,granule_seconds_start=0
+  integer:: granule_hour_end=0,granule_minute_end=0,granule_seconds_end=0
+  integer(kind=4) :: scan_num = 0
+  integer(kind=4) :: granule_num = 0
+  real(kind=8)::tai 
 end type gmeta
 
 !hqw moved gmetadata def from OMCDO2N.f90 here

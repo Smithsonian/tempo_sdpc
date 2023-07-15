@@ -1110,8 +1110,7 @@ contains
                               "fitted_slant_column", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                          long_name = "O2-O2 slant column at reference
-temperature" , &
+                          long_name = "O2-O2 slant column at reference temperature" , &
                               comment = "fitted O2-O2 slant column at Tref", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &

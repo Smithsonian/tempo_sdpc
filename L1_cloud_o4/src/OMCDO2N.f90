@@ -25,23 +25,20 @@ program OMCDO2N
   implicit none
 
   !============================
-  ! read control.txt in ../utd
+  ! read control.txt 
   !============================
   include 'GetConfig.inc'
-  !include "Messages.inc"
 
   character(len=CFG_VAL_LEN)::buf
   integer::gmonth
   integer::status
 
-  !character(len=255)::outfile
   character(len=255)::filename, l1radfnm
   character(len=255)::name_gmi_psfc
   character(len=255)::name_gmi_tmp
   integer::id_gmi_psfc,id_gmi_tmp
   character(len=255)::name_kleipool_rsfc
 
-  !integer(kind=4)::ierr
   integer(kind=4) :: errstat
   character(len=80) :: logmsg
   character(len=15), parameter :: swathname = "band_290_490_nm"
@@ -72,43 +69,39 @@ program OMCDO2N
   endif
   name_rad_dir=trim(buf)
 
-  if(name_option_SlantColumnDensity.eq.'NASA') then
-    status=GetConfigString("E","Input Files TEMPOO4SCD_fnm",buf)
-    if(status < 0) then
-      call tell_error(tell_io_read_error,"Problem reading OMO4SCD from control file", errstat)
-      call exit(-1)
-    endif
-    name_nasa_file=trim(buf)
+  status=GetConfigString("E","Input Files TEMPOO4SCD_fnm",buf)
+  if(status < 0) then
+    call tell_error(tell_io_read_error,"Problem reading TEMPOO4SCD_fnm from control file", errstat)
+    call exit(-1)
   endif
+  name_nasa_file=trim(buf)
 
   status=GetConfigString("E","Input Files TEMPOO4SCD_dir",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading OML1BRVG from control file", errstat)
+    call tell_error(tell_io_read_error,"Problem reading TEMPO4SCD_dir from control file", errstat)
     call exit(-1)
   endif
   name_nasa_dir=trim(buf)
 
-!hqw TEMPO GLER is now handled by m_read_input_gler
-!explicit GLER fnm is no longer needed for TEMPO, but is needed for OMI
-  if((name_option_SurfaceReflectivity.eq.'BRDF')) then 
-    status=GetConfigString("E","Input Files OMGLER",buf)
-    if(status < 0) then
-      call tell_error(tell_io_read_error,"Problem reading GLER from control file", errstat)
-      call exit(-1)
-    endif
-    name_brdf_file=trim(buf)
+! TEMPO GLER is now handled by m_read_input_gler
+! explicit GLER fnm is no longer needed for TEMPO, but is needed for OMI
+  status=GetConfigString("E","Input Files OMGLER",buf)
+  if(status < 0) then
+    call tell_error(tell_io_read_error,"Problem reading OMGLER from control file", errstat)
+    call exit(-1)
   endif
+  name_brdf_file=trim(buf)
 
   status=GetConfigString("E","Input Files TEMPOL1IRR_fnm",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading IRR from control file", errstat)
+    call tell_error(tell_io_read_error,"Problem reading TEMPOL1IRR fnm from control file", errstat)
     call exit(-1)
   endif
   name_irr_file=trim(buf)
 
   status=GetConfigString("E","Input Files TEMPOL1IRR_dir",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading IRR from control file", errstat)
+    call tell_error(tell_io_read_error,"Problem reading TEMPOL1IRR dir from control file", errstat)
     call exit(-1)
   endif
   name_irr_dir=trim(buf)
@@ -118,7 +111,7 @@ program OMCDO2N
   ! -----------------------------------------
   status=GetConfigString("E","Output Files TEMPOCLDO4",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading OMCDO2N Output Filename from control file", errstat)
+    call tell_error(tell_io_read_error,"Problem reading Output Filename from control file", errstat)
     call exit(-1)
   endif
   name_out_ncdf=trim(buf)
@@ -208,8 +201,9 @@ program OMCDO2N
   call tell_log(0,'Read control file')
 
   !===========================================
-  !hqw get global attributes from TEMPO L1 RAD to gmetadata
+  ! 0. get global attributes from TEMPO L1 RAD to gmetadata
   !===========================================
+  ! gmetadata is needed for climatology
   l1radfnm = trim(adjustl(name_rad_dir))//trim(adjustl(name_rad_file))
   call get_tio_l1rad_glbattr(l1radfnm,errstat)
   if (errstat < 0) then
@@ -217,13 +211,13 @@ program OMCDO2N
      call exit(-1)
   endif
 
-  !hqw moved 5 to 2.1 because GEOS-CF TP needs rad/lon
-  !  and read_irr_tio need out_ProcessingQualityFlags
   !==============================
-  ! 5. read inputs from radiance file -> 2.1
+  ! 1.1 read inputs from radiance file 
   !==============================
-  !call read_rad
-  ! Ewan Tested read_rad_tio, reports no errors
+  ! Ewan tested read_rad_tio, reports no errors
+  ! read rad for 440nm and 466nm
+  ! also read lat/lon needed for GEOS-CF T-P
+  ! allocate and initialize processing quality flags to zero
   call read_rad_tio (l1radfnm, swathname, errstat)
   if (errstat /= 0) then
     call tell_error (tell_runtime_error, 'read_rad_tio failed', errstat)
@@ -233,10 +227,9 @@ program OMCDO2N
   call tell_log(0,'Read RAD '//l1radfnm)
 
   !============================================
-  ! 1. read inputs from OML1BIRR on 12/22/2004
+  ! 1.2 read inputs from irradiance 
   !============================================
-  !call read_irr ! replaced with TEMPO subroutine
-  ! Ewan TIO irradiance input tested, appears to work OK
+  ! Ewan tested read_irr_tio, appears to work OK
   filename = trim(adjustl(name_irr_dir))//trim(adjustl(name_irr_file))
   call read_irr_tio(filename,swathname,errstat)
   if (errstat /= 0) then
@@ -247,9 +240,8 @@ program OMCDO2N
   call tell_log(0,'Read IRR '//filename)
 
   ! --------------------
-  ! 2.2 read TEMPO O4 SCD from intermediate L2 file
+  ! 1.3 read TEMPO O4 SCD from intermediate L2 file
   ! --------------------
-  ! GGA TIO cldo4 input tested, appears to work OK
   filename = trim(adjustl(name_nasa_dir))//trim(adjustl(name_nasa_file))
   call read_cldo4_tio(filename,errstat)
   if (errstat /= 0) then
@@ -260,9 +252,9 @@ program OMCDO2N
   call tell_log(0, 'Read O4 SCD '//filename)
 
   ! ---------------------
-  ! 2.3 T/P/Psfc from GMI
+  ! 2. read T/P/Psfc 
   ! ---------------------
-  !hqw added the following for gmonth
+  ! 2.1. GMI
   !gmonth is used to decide filename for GMI
   gmonth = gmetadata%granule_month
   write(*,*) '   gmonth=',gmonth
@@ -286,9 +278,10 @@ program OMCDO2N
 
   flush (output_unit)
 
-  !hqw TEMPO operational uses GEOS5 as the option for GEOS-CF
+  ! 2.2. GEOS-CF
+  ! TEMPO operational uses GEOS5 as the option for GEOS-CF
   if(name_option_TemperaturePressure.eq.'GEOS5') then
-  !T-P is not needed in cal_ecf, but surface pressure is needed
+  ! T-P is not needed in cal_ecf, but surface pressure is
      call read_geoscf (errstat)
      if (errstat /= 0) then
        call tell_error (tell_runtime_error, 'read_geoscf failed', errstat)
@@ -299,8 +292,9 @@ program OMCDO2N
   endif
 
   ! ------------------------------
-  ! 2.4 Rsfc from Kleipool or BRDF
+  ! 3. read Rsfc from Kleipool or BRDF
   ! ------------------------------
+  ! 3.1. Kleipool
   if(name_option_SurfaceReflectivity.eq.'Kleipool') then
     status=GetConfigString("E","Input Files Kleipool_dir",buf)
     name_kleipool_dir = trim(adjustl(buf))
@@ -311,7 +305,8 @@ program OMCDO2N
     call tell_log(0,'Read Kleipool Rsfc climatology')
   endif
 
-  !hqw use BRDF option for TEMPO GLER
+  ! 3.2. GLER
+  ! use BRDF option for TEMPO GLER
   if(name_option_SurfaceReflectivity.eq.'BRDF') then
     !call read_BRDF_Rsfc_h5 ! this for OMI, change to
     call read_gler (errstat)
@@ -327,7 +322,7 @@ program OMCDO2N
   endif
 
   !================================
-  ! 3. read radiance LUT at 466 nm and 440nm
+  ! 4. read radiance LUT at 466 nm and 440nm
   !================================
   status=GetConfigString("E","Input Files LUT_dir",buf)
   name_lut_dir = trim(adjustl(buf))
@@ -355,7 +350,7 @@ program OMCDO2N
   call tell_log(0,'Read radiance look-up table at 440 nm')
 
   !===========================
-  ! 4. read AMF LUT at 477 nm
+  ! 5. read AMF LUT at 477 nm
   !===========================
   call read_lut_amf_clr (errstat)
   call read_lut_amf_cld (errstat)
@@ -365,11 +360,6 @@ program OMCDO2N
   endif
   flush (output_unit)
   call tell_log(0,'Read AMF look-up table')
-
-  !hqw moved out_ProcessingQualityFlags to read_rad_tio to do
-  ! allocate and initialize quality flags for better memory usage
-  !allocate(out_ProcessingQualityFlags(nx,nt),stat=ierr)
-  !out_ProcessingQualityFlags=0
 
   !================================
   ! 6. calculate ECF/CRF at 466 nm
@@ -403,24 +393,27 @@ program OMCDO2N
   !===================
   ! 9. write outputs
   !===================
-  logmsg = 'All job done. Now writing '//trim(name_out_ncdf)
+  logmsg = 'All calculation is done. Now writing '//trim(name_out_ncdf)
   call tell_log(0, logmsg)
 
-  !E. O'Sullivan TEMPO-format OUTPUT - only structure & geolocation so far
-  !hqw added other components
   if (run_mode .EQ. 'production') then
     ! JCH: in this mode, we add variables to an existing output file
-    write(*,*) 'update file with output'
+    write(*,*) 'update file with output: '//trim(name_out_ncdf)
     call update_output_file_tio (name_out_ncdf, &
                                  rad_NumTimes, rad_nXtrack, errstat)
   else
-    write(*,*) 'create file for output'
+    write(*,*) 'create file for output: '//trim(name_out_ncdf)
     call create_output_file_tio (name_out_ncdf, &
                                  l1radfnm, swathname, &
                                  rad_NumTimes, rad_nXtrack, errstat)
   endif
 
-  call tell_log(0, 'Success! I have done everything.')
+  if (errstat == 0) then
+     call tell_log(0, 'Success! I have done everything.')
+  else 
+     call tell_log(0, 'Sorry, something is wrong.')
+  endif
+
   call tell_close()
   !*******************
 End program OMCDO2N

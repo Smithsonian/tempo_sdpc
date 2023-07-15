@@ -10,7 +10,6 @@ contains
 
   !> Open a netCDF file
   !-----------------------------------------------------------------------
-  !
   !> @param[in]   l1file     filename
   !> @param[out]  tio_l1obj  libtio file object
   !> @param       errstat    error handling integer, non-zero = problem
@@ -39,9 +38,8 @@ contains
 
   end subroutine open_tio
 
-  !> Get global attribute
+  !> Get 1 global attribute hqw & gga
   !-----------------------------------------------------------------------
-  !hqw & gga
   subroutine get_tio_global_attr(l1file, attrname, attrval, errstat)
 
     use netcdf, only: nf90_global, nf90_get_att, nf90_nowrite
@@ -61,9 +59,8 @@ contains
 
   end subroutine get_tio_global_attr
 
-  !> Get TEMPO L1 RAD attributes
+  !> Get TEMPO L1 RAD attributes hqw&gga
   !----------------------------------------------------------------------
-  !hqw & gga
   !could use get_tio_global_attr, but this one aviods multiple open & close
 
   subroutine get_tio_l1rad_glbattr(l1file, errstat)
@@ -77,7 +74,7 @@ contains
     character (len=*), intent(in) :: l1file
     integer (kind=4), intent(inout) :: errstat
 
-    character(len=CFG_VAL_LEN) :: attrval!, attrname
+    character(len=CFG_VAL_LEN) :: attrval
     integer (kind=4) :: ncerr, tmpint
 
     real (kind=4) :: tmpreal
@@ -137,7 +134,6 @@ contains
 
   !> Close a netCDF file
   !-----------------------------------------------------------------------
-  !
   !> @param[in]  tio_l1obj  libtio file object
   !> @param      errstat    error handling integer, non-zero = problem
   !
@@ -244,7 +240,7 @@ contains
     !write(*,*)'IRR dimension:',ntimes,nxtrack,nwavel
 
     if (irr_nXtrack .NE. rad_nXtrack) then
-         write(*,*) 'irr_nXtrack .NE. rad_nXtrack'
+         write(*,*) 'irr_nXtrack and rad_nXtrack differ'
          errstat = -1
     endif
 
@@ -256,9 +252,10 @@ contains
            errstat)
       return
     endif
-    irr_out_irradiance_440nm = -9999. !0.0 hqw changed to -9999.
-    irr_out_irradiance_466nm = -9999. !0.0
-    irr_out_irradiance_477nm = -9999. !0.0
+    ! initialize 
+    irr_out_irradiance_440nm = -9999. 
+    irr_out_irradiance_466nm = -9999. 
+    irr_out_irradiance_477nm = -9999. 
 
     allocate (tio_irr(nwavel, nxtrack, 1), &
               tio_wvl(nwavel, nxtrack, 1), &
@@ -274,7 +271,7 @@ contains
     call tiof_get_r4 (tio_l1obj, "earth_sun_distance", &
          irr_EarthSunDist, errstat)
 
-    !read wavelength, irradiance, flag values
+    !read wavelength, irradiance, quality flag
     call tiof_push_group (tio_l1obj, swathname, errstat)
     call tiof_get3d_r4 (tio_l1obj, "irradiance", [0,0,0], &
          [1,nXtrack,nWavel], tio_irr, errstat)
@@ -291,19 +288,14 @@ contains
     endif
 
     ! interpolate values at 440, 466, 477nm
-    ! problem with pixel_quality_flag, set to -9999.0
-    !where ( btest(tio_pqf,0) .or. btest(tio_pqf,1) .or. btest(tio_pqf,2))
-    !  tio_irr = -9999.0
-    !endwhere
-    !hqw pixel_qality_flag is now considered inside quick_in_interpol
-    !   nonzero tio_pqf will cause irr_out_irradiance set to -9999.
+    ! problem with pixel_quality_flag, set to -9999.0 in quick_lin_interpol
      
     do ix = 1, nxtrack
       thisirr440 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
            thisirr440, tio_pqf(:,ix,1),errstat)
       if (errstat /= 0) then
-        write (logmsg,'(A,I4)') "440nm interpol failed for cross-track ",ix
+        write (logmsg,'(A,I4)') "440nm irr interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
       if (thisirr440 .GT. 0.) then
@@ -383,21 +375,26 @@ contains
     integer (kind=4), intent(inout) :: errstat
     !local variables
     type(tiof_file_type) :: tio_l1obj
-    !hqw moved rad_Radiance & rad_Wavelength from m_vars.f90 here
 
     integer (kind=4) :: ntimes, nxtrack, nwavel, ix, it
     integer :: iw1, iw2, iw, nw
     real(kind=4) :: rad466, rad477, rad440
-    real(kind=4) :: ww1, ww2, dww, yy1, yy2
+    real(kind=4) :: ww1, ww2, yy1, yy2, min_rad
 
     real (kind=8), parameter :: r8_missval=-1.0d+30
 
+    !hqw moved rad_Radiance, rad_Wavelength from m_vars.f90 here
+    ! local variables save memory as they are deallocated after use
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
     integer(kind=2), dimension(:,:,:), allocatable:: rad_PixelQualityFlags
+
     real(kind=4), dimension(:), allocatable:: temp_wav, temp_rad
 
     if (errstat /= 0) return
+
+    ! min radiance expected, anything smaller is considered invalid
+    min_rad = 0. ! 1.e10 
 
     !Open file, get dimensions
     call open_tio (l1_file, tio_l1obj, errstat)
@@ -407,7 +404,7 @@ contains
     rad_NumTimes = ntimes
     rad_nXtrack = nxtrack
     rad_nWavel = nwavel
-    write(*,*) 'read_rad_tio:nxtrack,ntimes=',nxtrack,ntimes
+    write(*,*) 'read_rad_tio:nxtrack,ntimes,nwavel=',ntimes,nxtrack,nwavel
 
     !allocate m_vars arrays
     call allocate_rad_vars (ntimes, nxtrack, errstat)
@@ -418,7 +415,7 @@ contains
     allocate(rad_Wavelength(nwavel, nxtrack, ntimes), stat=errstat)
     allocate(rad_PixelQualityFlags(nwavel, nxtrack, ntimes), stat=errstat)
 
-    !read the arrays
+    ! read the arrays
     call tiof_use_file_epoch (tio_l1obj, errstat)
     call tiof_get_r4 (tio_l1obj, "earth_sun_distance", rad_EarthSunDist, &
          errstat)
@@ -433,6 +430,7 @@ contains
          [ntimes, nxtrack], rad_SolarZenithAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingZenithAngle, errstat)
+   ! what actually needed is relative azimuth angle read in by read_cldo4_tio
     call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
@@ -443,8 +441,8 @@ contains
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
     call tiof_get2d_r4 (tio_l1obj, "terrain_height", [0,0], &
          [ntimes,nxtrack], out_TerrainHeight, errstat)
-    !hqw removed rad_GroundPixelQualityFlags, it was used for snow/ice
-    ! but not needed any more because of rad_SnowIceFraction
+    !hqw removed rad_GroundPixelQualityFlags, it was used for OMI snow/ice
+    ! but not needed for TEMPO because of rad_SnowIceFraction
     !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
     !     [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
     call tiof_get3d_ui2 (tio_l1obj, "pixel_quality_flag", [0,0,0], &
@@ -471,14 +469,15 @@ contains
 
    do it = 1, ntimes
       do ix = 1, nxtrack
-        ! get local spectrum, if any bit of PixelQualiyFlags is set
-        ! set the corresponding temp_rad to -9999.
+        ! get local spectrum, if PixelQualiyFlags indicate spectral issue
+        ! set the corresponding temp_rad to negative value -9999.
+        ! negative temp_rad will not be used in subsequent interpolation
         do iw = 1, nw
          temp_wav(iw) = rad_Wavelength(iw,ix,it)
-        ! if(btest(rad_PixelQualityFlags(iw,ix,it),0) .or. &
-        !     btest(rad_PixelQualityFlags(iw,ix,it),1) .or. &
-        !     btest(rad_PixelQualityFlags(iw,ix,it),2)) then
-        if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
+         ! if(btest(rad_PixelQualityFlags(iw,ix,it),0) .or. &
+         !     btest(rad_PixelQualityFlags(iw,ix,it),1) .or. &
+         !     btest(rad_PixelQualityFlags(iw,ix,it),2)) then
+         if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
           temp_rad(iw)=-9999.
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
@@ -488,30 +487,34 @@ contains
       ! ----------------------------
       ! calculate radiance at 466 nm
       ! ----------------------------
+      ! find the wavelength index nearest 466 nm
       iw1=-9
       iw2=-9
       do iw=1,nw
-        if((w466 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w466 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw2=iw
           exit
         endif
       end do
 
       do iw=nw,1,-1
-        if((w466 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w466 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw1=iw
           exit
         endif
       end do
 
       !hqw when iw1 and iw2 >=0, yy1 and yy2 should be valid due to above
-      if((iw1 .ge. 0) .and. (iw2 .ge. 0)) then
+      if((iw1 .ge. 0) .and. (iw2 .ge. iw1)) then
         yy1=temp_rad(iw1)
         yy2=temp_rad(iw2)
         ww1=w466-temp_wav(iw1)
         ww2=temp_wav(iw2)-w466
-        rad466=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        dww=iw2-iw1
+        if (iw2 .gt. iw1) then ! should always be the case
+           rad466=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        else ! just for safeguard
+           rad466=yy1
+        endif
       else
         rad466=-999.
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
@@ -524,29 +527,32 @@ contains
       iw1=-9
       iw2=-9
       do iw=1,nw
-        if((w477 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w477 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw2=iw
           exit
         endif
       end do
 
       do iw=nw,1,-1
-        if((w477 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w477 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw1=iw
           exit
         endif
       end do
 
-      if((iw1 .ge. 0) .and. (iw2 .ge. 0)) then
+      if((iw1 .ge. 0) .and. (iw2 .ge. iw1)) then
         yy1=temp_rad(iw1)
         yy2=temp_rad(iw2)
         ww1=w477-temp_wav(iw1)
         ww2=temp_wav(iw2)-w477
-        rad477=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        dww=iw2-iw1
+        if (iw2 .gt. iw1) then
+           rad477=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        else
+           rad477=yy1
+        endif
       else
-        ! rad477 is not actually used for acutal calculation
-        ! thus did not assign ProcessingQualityFlaf for it
+        ! rad477 is not actually used for calculation, only a diagnostic
+        ! thus did not assign ProcessingQualityFlag for it
         rad477=-999.
       endif
       rad_477nm(ix,it) = rad477
@@ -557,39 +563,40 @@ contains
       iw1=-9
       iw2=-9
       do iw=1,nw
-        if((w440 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w440 .lt. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw2=iw
           exit
         endif
       end do
 
       do iw=nw,1,-1
-        if((w440 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. 1.e10)) then
+        if((w440 .ge. temp_wav(iw)) .and. (temp_rad(iw) .gt. min_rad)) then
           iw1=iw
           exit
         endif
       end do
 
-      if((iw1 .ge. 0) .and. (iw2 .ge. 0)) then
+      if((iw1 .ge. 0) .and. (iw2 .ge. iw1)) then
         yy1=temp_rad(iw1)
         yy2=temp_rad(iw2)
         ww1=w440-temp_wav(iw1)
         ww2=temp_wav(iw2)-w440
-        rad440=(ww1*yy2+ww2*yy1)/(ww1+ww2)
-        dww=iw2-iw1
+        if (iw2 .gt. iw1) then 
+           rad440=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        else
+           rad440=yy1
+        endif
       else
         rad440=-999.
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
       rad_440nm(ix,it) = rad440
 
-
       enddo !ix
       !write(*,*)it,rad440,rad466,rad477
     enddo !it
 
-    ! deallocate temporary arrays
-    !write(*,*) 'deallocate rad_Radiance, rad_Wavelength, rad_PixelQualityFlags'
+    ! deallocate large temporary rad arrays
     deallocate(rad_Radiance, rad_Wavelength, rad_PixelQualityFlags)
     deallocate(temp_rad, temp_wav)
 
@@ -615,6 +622,7 @@ contains
      type(tiof_file_type) :: tio_l2obj
      integer (kind=4) :: ntimes, nxtrack, ix, it
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
+     ! normalization factor for o2o2 
      real (kind=8), parameter :: norm = 1.0d43
 
      real(kind=4):: tmp_raa, temp_raa, fspecial
@@ -675,18 +683,19 @@ contains
      call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
            tmp_dbl, errstat)
      if (errstat /= 0) then
-          call tell_error (tell_runtime_error, "read_cldo4_tio: failed", errstat)
+          call tell_error (tell_runtime_error, "read_cldo4_tio: fitted_slant_column failed", errstat)
           return
      endif
      ! normalize scd by norm
      tmp_dbl = tmp_dbl/norm
      ! set values outside -10 to 10 to fFillValue=-1.2676506E30
      ! set mdqfl 2 (bad) to fFillValue
-     ! note: mdqfl=0 (normal) and mdqfl=1 (suspicious) remain
-     !  as any scd<0. will be skipped for ocp and pscene,
-     !  can  use 0. instead of -10. below, but it does not matter
+     ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
+     ! for o2o2, suspicious scds are extremely large, they should not be used
+     !  any scd<0. will be skipped for ocp and pscene,
+     !  can  use 0. or -10. below, it does not matter
      where ((tmp_dbl < 0.) .or. (tmp_dbl > 10.) .or. &
-            (scd_mdqfl .eq. 2)) !scd_mdqfl .ne. 0)
+            (scd_mdqfl .ne. 0)) 
            tmp_dbl = fspecial
      end where
      ! assign nasa_SlantColumnAmountO2O2
@@ -702,7 +711,7 @@ contains
          endif
          ! normalize scd uncertainty and assign nasa_scduncertainty
          tmp_dbl = tmp_dbl/norm
-         where((tmp_dbl < 0.).or.(tmp_dbl > 10.).or.(scd_mdqfl .eq. 2))
+         where((tmp_dbl < 0.).or.(tmp_dbl > 10.).or.(scd_mdqfl .ne. 0))
                tmp_dbl = fspecial
          endwhere
          nasa_scduncertainty = real(tmp_dbl,kind=4)
@@ -752,7 +761,7 @@ contains
     do it = 1, ntimes
       do ix = 1, nxtrack
          tmp_raa = rad_RelativeAzimuthAngle(ix,it)
-         ! bad value above should be a large negative fill value
+         ! bad tmp_raa should be a large negative fill value
          if ((tmp_raa .lt. -360.)) then
              out_RelativeAzimuthAngle(ix,it) = fspecial
          else
@@ -765,7 +774,7 @@ contains
                 temp_raa = temp_raa - 360.
              end do
              
-             ! change to [0.,180.] range, using symmetry
+             ! change to LUT RAA range of [0.,180.], using symmetry w.r.t. 0
              if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
     
              out_RelativeAzimuthAngle(ix,it) = temp_raa
@@ -840,7 +849,9 @@ contains
          out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm, &
          out_ProcessingQualityFlags
-!         rad_GroundPixelQualityFlags, rad_PixelQualityFlags , &
+!         rad_GroundPixelQualityFlags, ! not used 
+! the following arrays are very large, thus move them out
+!         rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
 
     implicit none
@@ -865,12 +876,13 @@ contains
          out_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
 !         rad_GroundPixelQualityFlags(nxtrack, ntimes), &
-!         rad_PixelQualityFlags(nwavel, nxtrack, ntimes), &
          rad_440nm(nxtrack, ntimes), &
          rad_466nm(nxtrack, ntimes), &
          rad_477nm(nxtrack, ntimes), &
+! the following large rad arrays are moved to subroutines to save memory
 !         rad_Radiance(nwavel, nxtrack, ntimes), &
 !         rad_Wavelength(nwavel, nxtrack, ntimes), &
+!         rad_PixelQualityFlags(nwavel, nxtrack, ntimes), &
          out_ProcessingQualityFlags(nxtrack, ntimes), &
          stat = errstat)
 
@@ -880,7 +892,20 @@ contains
       return
     endif
 
-    ! initizlize out_ProcessingQualityFalgs 
+    ! initialize allocated m_vars variables
+    rad_Latitude = fspecial
+    rad_Longitude = fspecial
+    rad_SolarZenithAngle = fspecial
+    rad_ViewingZenithAngle = fspecial
+    rad_SolarAzimuthAngle = fspecial
+    rad_ViewingAzimuthAngle = fspecial
+    rad_SnowIceFraction = fspecial
+    out_TerrainHeight = fspecial
+    rad_440nm = fspecial
+    rad_466nm = fspecial
+    rad_477nm = fspecial
+
+    ! init out_ProcessingQualityFalgs to Zero
     out_ProcessingQualityFlags = 0
 
   end subroutine allocate_rad_vars
