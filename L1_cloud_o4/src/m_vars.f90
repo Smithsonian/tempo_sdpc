@@ -152,7 +152,7 @@ module m_vars
 ! vertical column density
 !-------------------------
   integer,parameter::nvcd=npcld
-!hqw vvcd here is replaced with actual gmi_vcd//geos_vcd 
+! vvcd will be replaced with actual gmi_vcd//geos_vcd 
   real,dimension(nvcd):: &
     vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
            0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
@@ -160,10 +160,10 @@ module m_vars
            0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
            1.32557,1.41490,1.53974/)
 
- !hqw added the multiplicative conversion factor for calculating O4 VCD
+ ! added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
   real,parameter::vcd_convfac = 6.733e-4 !previously = 6.765e-4
- !E. Yang suggested change to 6.733e-4 to be more accurate
+ !EY suggests change to 6.733e-4 to be more accurate
 
 !-----------
 ! input LUN
@@ -217,21 +217,16 @@ integer,dimension(12):: &
  character(len=255)::name_option_TemperaturePressure='GEOS5'
 
   integer :: nlayers
-  integer :: ixdebug=-1800 !set to negative to prevent writing debug output
-  integer :: itdebug=-40
+  integer :: ixdebug=1800 !set to negative to prevent debug output
+  integer :: itdebug=60 !set to negative to prevent debug output
 
   integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
-!hqw change these to allocatable
+! change gmi variables to allocatable
 !   so that they won't be allocated if not needed
-!  real,dimension(gmi_nx)::gmi_lon
-!  real,dimension(gmi_ny)::gmi_lat
-!  real(kind=4),dimension(gmi_nx,gmi_ny,gmi_np)::gmi_Temperature
-!  real(kind=4),dimension(gmi_nx,gmi_ny,gmi_np+1)::gmi_Pressure !include Psfc
-!  real(kind=4),dimension(gmi_nx,gmi_ny)::gmi_TerrainPressure
   real(kind=4),dimension(:), allocatable :: gmi_lon
   real(kind=4),dimension(:), allocatable :: gmi_lat
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Temperature
-  real(kind=4),dimension(:,:,:), allocatable :: gmi_Pressure
+  real(kind=4),dimension(:,:,:), allocatable :: gmi_Pressure !include psfc
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
   real::gmi_psfc
 

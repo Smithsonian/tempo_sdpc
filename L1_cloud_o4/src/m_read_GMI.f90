@@ -1,8 +1,10 @@
 !****************
 module m_read_GMI
 !****************
-
-use m_vars
+use m_vars, only: gmi_nx,gmi_ny,gmi_np, gmi_vcd, gmi_psfc
+use m_vars, only: gmi_lon, gmi_lat, gmi_Temperature
+use m_vars, only: gmi_Pressure, gmi_TerrainPressure
+use m_vars, only: npcld, vcd_convfac, nlayers, lut_pcld
 
 contains
 
@@ -153,11 +155,9 @@ subroutine read_GMI_VCD(pp,tt)
 ! -----------------------
 ! GMI pressure coordinate
 ! -----------------------
-  !tmp_vcd(1)=(6.765e-4)/2.0/tt(1)*(pp(1)**2)
   tmp_vcd(1)=vcd_convfac/2.0/tt(1)*(pp(1)**2)
   sum_vcd=tmp_vcd(1)
   do ip=1,gmi_np
-    !sum_vcd=sum_vcd+(6.765e-4)/2.0/tt(ip)*(pp(ip+1)**2-pp(ip)**2)
     sum_vcd=sum_vcd+vcd_convfac/2.0/tt(ip)*(pp(ip+1)**2-pp(ip)**2)
     tmp_vcd(ip+1)=sum_vcd
   end do
@@ -183,7 +183,6 @@ subroutine read_GMI_VCD(pp,tt)
     if(iflag.ge.1) then
       gmi_vcd(ipcld)=yyy
     else
-      !sum_vcd=(6.765e-4)/2.0/tt(gmi_np)*(lut_pcld(ipcld)**2-lut_pcld(ipcld-1)**2)
       sum_vcd=vcd_convfac/2.0/tt(gmi_np)*(lut_pcld(ipcld)**2-lut_pcld(ipcld-1)**2)
       gmi_vcd(ipcld)=gmi_vcd(ipcld-1)+sum_vcd
     endif

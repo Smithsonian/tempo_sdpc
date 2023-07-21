@@ -12,10 +12,12 @@ contains
        windspeed2m ,name_option_TemperaturePressure,&
        rad_SnowIceFraction
 
+   use m_vars,only: itdebug, ixdebug
+
    implicit none
    integer, intent(inout) :: errstat
    type (gler_type) :: glt
-   logical :: clip_opt
+   logical :: clip_opt ! wether to limit gler to [0.,1.] range
    real(kind=8) :: thistime
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
    integer :: iwavelen, ix, it, nx, nt
@@ -25,11 +27,13 @@ contains
 
    fspecial = -9999.
    clip_opt = .TRUE.
-
+   write(*,*) '   GLER clip_opt=',clip_opt
+ 
    nx = rad_nXtrack
    nt = rad_NumTimes
 
-   !hqw wind_speed set to zero for all other options but 'GEOS5'
+   ! wind_speed set to zero for all options but 'GEOS5'
+   ! GMI climatology does not have surface wind speed
    wind_speed = 0.
 
    !allocate m_vars arrays and initialize
@@ -40,9 +44,9 @@ contains
    ! calculate GLER for 466nm
    !------------------------------
    iwavelen = 466
-!   write(*,*) 'Initializing GLER for 466'
+   write(*,*) '   Initializing GLER for ',iwavelen
    ! The run-time environment should specify the config file location
-   call gler_open(glt, iwavelen, errstat) !, config_file='clim_config.ini')
+   call gler_open(glt, iwavelen, errstat) ! config_file='clim_config.ini')
    if (errstat /= 0) then
      call tell_error (tell_io_error, 'gler_open failed for 466', errstat)
      return
@@ -68,8 +72,6 @@ contains
          if (wind_speed .lt. 0.) continue
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
-!hqw debug
-!         if (ix .eq. 40) write(*,*) ix, it, wind_speed
          call gler_albedo(glt, thislon, thislat, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
@@ -77,8 +79,8 @@ contains
     enddo
    else
     wind_speed = 0.
-    write(*,*)'note: GLER calculate with wind_speed=0.'
-    write(*,*)'    because GMI climatology does not contain wind_speed info'
+    write(*,*)'note:  GMI climatology does not contain wind_speed'
+    write(*,*)' GLER thus calculated with wind_speed=0.'
     do it = 1, nt
       do ix = 1, nx
          thislon = rad_longitude(ix,it)
@@ -94,23 +96,27 @@ contains
     enddo
    endif
 
+   call gler_close(glt)
    !------------------------------
    ! calculate GLER for 440nm
-   ! 440nm is currently not used in cloud calculation, only transfer to output
+   ! 440nm was unavailable during initial development, thus
+   ! 440nm is currently not used in calculation, only transfer to output
    !------------------------------
    iwavelen = 440
    allocate(BRDF_SurfaceReflectivity440(nx,nt), stat=errstat)
    BRDF_SurfaceReflectivity440 = fspecial
 
-   call gler_close(glt)
+   write(*,*) '   GLER is not yet implemented for ',iwavelen
 
-   !hqw debug
-   !write(*,*) 'write debug_gler.txt'
-   !open(unit=19,file='debug_gler.txt')
-   !do it = 1, nt
-   !   write(19,*)(BRDF_SurfaceReflectivity466(ix,it),ix=1,nx)
-   !enddo
-   !close(19)
+   ! debug
+   if ((ixdebug .gt. 0).and.(itdebug .ge. 0)) then
+      write(*,*) ' writing debug_gler.txt'
+      open(unit=49,file='debug_gler.txt')
+      do it = 1, nt
+         write(49,*)(BRDF_SurfaceReflectivity466(ix,it),ix=1,nx)
+      enddo
+      close(49)
+   endif
 
    end subroutine
 

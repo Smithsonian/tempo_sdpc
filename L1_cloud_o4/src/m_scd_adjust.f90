@@ -10,7 +10,7 @@ contains
    subroutine scd_adjust_gmi(pp,tt,cpp,scdm,scdadj,t8p)
 
    use m_vars, only: gmi_np, a203, b203, a233, b233, &
-                      a253, b253, a293, b293
+                      a253, b253, a293, b293, TrefO4
 
    real(kind=4), dimension(gmi_np+1), intent(in) :: pp
    real(kind=4), dimension(gmi_np), intent(in) :: tt
@@ -117,7 +117,7 @@ contains
    subroutine scd_adjust_geos(pp,tt,cpp,scdm,scdadj,t8p)
 
    use m_vars, only: geos_np, a203, b203, a233, b233, &
-                      a253, b253, a293, b293
+                     a253, b253, a293, b293, TrefO4
 
    real(kind=4), dimension(:), intent(in) :: pp ! pp(geos_np+1)
    real(kind=4), dimension(:), intent(in) :: tt ! tt(geos_np)

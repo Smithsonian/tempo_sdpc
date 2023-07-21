@@ -7,7 +7,7 @@ program OMCDO2N
   use he5_swreader
   use m_vars
   use m_read_input_kleipool
-  use m_read_GMI
+  use m_read_GMI, only: read_GMI_TMP
   use m_read_lut
   use m_read_hdf5
   use tell_module
@@ -36,7 +36,7 @@ program OMCDO2N
   character(len=255)::filename, l1radfnm
   character(len=255)::name_gmi_psfc
   character(len=255)::name_gmi_tmp
-  integer::id_gmi_psfc,id_gmi_tmp
+!  integer::id_gmi_psfc,id_gmi_tmp
   character(len=255)::name_kleipool_rsfc
 
   integer(kind=4) :: errstat
@@ -150,52 +150,75 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters APPShortName",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading APPName from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no APPName from control file", errstat)
+  ! will use m_vars default
+  else
+     gmetadata%appshortname=trim(buf)
   endif
-  gmetadata%appshortname=trim(buf)
 
   status=GetConfigString("E","Runtime Parameters APPVersion",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading parameter APPName from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no APPVersion from control file", errstat)
+  ! will use m_vars default
+  else
+     gmetadata%appversion=trim(buf)
   endif
-  gmetadata%appversion=trim(buf)
 
   status=GetConfigString("E","Runtime Parameters AuthorName",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading parameter Author Name from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no Author Name from control file", errstat)
+  !  will use default in m_vars
+  else
+     gmetadata%author_name=trim(buf)
   endif
-  gmetadata%author_name=trim(buf)
 
    status=GetConfigString("E","Runtime Parameters AuthorAffiliation",buf)
    if (status <0) then
-      call tell_error(tell_io_read_error,"Problem reading Author Affiliation from control file", errstat)
-      call exit(-1)
+      call tell_error(tell_io_read_error,"no Author Affiliation from control file", errstat)
+   !  will use default in m_vars
+   else
+      gmetadata%author_affiliation=trim(buf)
    endif
-   gmetadata%author_affiliation=trim(buf)
 
   status=GetConfigString("E","Runtime Parameters ProcessingCenter",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading parameter Processing Center  from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no Processing Center  from control file", errstat)
+  ! will use default in m_vars 
+  else 
+     gmetadata%processingcenter=trim(buf)
   endif
-  gmetadata%processingcenter=trim(buf)
 
   status=GetConfigString("E","Runtime Parameters TEMPO Footprint",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading parameter TEMPO footprint from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no TEMPO footprint from control file", errstat)
+  ! will use default in m_vars 
+  else
+     gmetadata%omiwindow=trim(buf)
   endif
-  gmetadata%omiwindow=trim(buf)
 
   status=GetConfigString("E","Runtime Parameters Collection",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading parameter Collection Number from control file", errstat)
-    call exit(-1)
+    call tell_error(tell_io_read_error,"no Collection Number from control file", errstat)
+  ! will use default in m_vars
+  else
+     gmetadata%omi_collection=trim(buf)
   endif
-  gmetadata%omi_collection=trim(buf)
+
+  status=GetConfigString("E","Runtime Parameters ixdebug",buf)
+  if (status < 0) then
+     write(*,*) "use default ixdebug instead"
+  else
+     read(buf,*,iostat=status) ixdebug
+  endif
+  write(*,*) 'ixdebug=',ixdebug
+
+  status=GetConfigString("E","Runtime Parameters itdebug",buf)
+  if (status < 0) then
+     write(*,*) "use default itdebug instead"
+  else 
+     read(buf,*,iostat=status) itdebug
+  endif
+  write(*,*) 'itdebug=',itdebug
 
   flush (output_unit)
   call tell_log(0,'Read control file')
@@ -261,14 +284,13 @@ program OMCDO2N
   flush (output_unit)
 
   if(name_option_TemperaturePressure.eq.'GMI') then
-    !hqw moved above read(gmeta_orbit_month,'(i2)') gmonth
     status=GetConfigString("E","Input Files "//lun_gmi_psfc(gmonth),buf)
     name_gmi_psfc=trim(name_gmi_dir)//trim(buf)
-    id_gmi_psfc=ilun_gmi_psfc(gmonth)
+  !  id_gmi_psfc=ilun_gmi_psfc(gmonth)
 
     status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
     name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-    id_gmi_tmp=ilun_gmi_tmp(gmonth)
+  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
 
     write(*,*)'   name_gmi_psfc=',trim(name_gmi_psfc)
     write(*,*)'   name_gmi_tmp=',trim(name_gmi_tmp)
@@ -308,7 +330,6 @@ program OMCDO2N
   ! 3.2. GLER
   ! use BRDF option for TEMPO GLER
   if(name_option_SurfaceReflectivity.eq.'BRDF') then
-    !call read_BRDF_Rsfc_h5 ! this for OMI, change to
     call read_gler (errstat)
     if (errstat /= 0) then
       call tell_error (tell_runtime_error, 'read_gler failed', errstat)

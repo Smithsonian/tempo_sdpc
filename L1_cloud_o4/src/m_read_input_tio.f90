@@ -5,6 +5,7 @@ module m_read_input_tio
 
   public open_tio, close_tio, read_irr_tio, read_rad_tio
   private read_rad_dims, quick_lin_interpol, allocate_rad_vars
+  private quick_irr_interpol
 
 contains
 
@@ -212,6 +213,8 @@ contains
          irr_NumTimes, irr_nXtrack, irr_nWavel
 
     use m_vars, only: rad_NumTimes, rad_nXtrack, out_ProcessingQualityFlags
+    use m_vars, only: ixdebug, itdebug
+
     implicit none
 
     !input variables
@@ -219,7 +222,7 @@ contains
     !output variables
     integer (kind=4), intent(inout) :: errstat
     !local variables
-    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, it
+    integer (kind=4) :: nxtrack, ntimes, nwavel, ix, it, iw
     real (kind=4), dimension(:,:,:), allocatable :: tio_irr, tio_wvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     real (kind=4) :: thisirr440, thisirr466, thisirr477
@@ -237,7 +240,7 @@ contains
     irr_NumTimes = ntimes
     irr_nXtrack = nxtrack
     irr_nWavel = nwavel
-    !write(*,*)'IRR dimension:',ntimes,nxtrack,nwavel
+    write(*,*)'read_irr_tio: ntimes,nxtrack,nwavel=',ntimes,nxtrack,nwavel
 
     if (irr_nXtrack .NE. rad_nXtrack) then
          write(*,*) 'irr_nXtrack and rad_nXtrack differ'
@@ -293,7 +296,7 @@ contains
     do ix = 1, nxtrack
       thisirr440 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
-           thisirr440, tio_pqf(:,ix,1),errstat)
+           thisirr440, tio_pqf(:,ix,1),nwavel,errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "440nm irr interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -309,7 +312,7 @@ contains
 
       thisirr466 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-           thisirr466, tio_pqf(:,ix,1),errstat)
+           thisirr466, tio_pqf(:,ix,1),nwavel,errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "466nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -323,9 +326,11 @@ contains
            end do
       endif
 
+      ! irr_out_irradiance_477nm is for diagnostic
+      ! thus, out_ProcessingQualityFlags are not affected by it
       thisirr477 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
-           thisirr477, tio_pqf(:,ix,1),errstat)
+           thisirr477, tio_pqf(:,ix,1),nwavel,errstat)
       if (errstat /= 0) then
         write (logmsg,'(A,I4)') "477nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -338,21 +343,30 @@ contains
       
     enddo !ix
 
+    ! debug
+    if (ixdebug .ge. 0) then
+       write(*,*) 'writing debug_irr.txt'
+       open(unit=19, file='debug_irr.txt')
+       write(19,*)'irr_EarthSunDist=',irr_EarthSunDist
+       write(19,*)'ixdebug=',ixdebug
+       write(19,*)'iw   wavelength    irr'
+       do iw = 1, nwavel
+          write(19,*) iw, tio_wvl(iw,ixdebug,1),tio_irr(iw,ixdebug,1)
+       enddo
+       
+       write(19,*) 'ix   IRR440   IRR466   IRR477'
+       ix = ixdebug
+       !do ix = 1, nxtrack
+       write(19,*) ix, irr_out_irradiance_440nm(ix),&
+          irr_out_irradiance_466nm(ix),irr_out_irradiance_477nm(ix)
+       !enddo
+       close(19)
+    endif
+
     deallocate (tio_wvl, tio_irr, tio_pqf, stat=errstat)
-
-    !hqw debug
-    !write(*,*) 'writing debug_irr.txt'
-    !open(unit=19, file='debug_irr.txt')
-    !write(19,*)'irr_EarthSunDist=',irr_EarthSunDist
-    !write(19,*) 'IRR440   IRR466   IRR477'
-    !do ix = 1, nxtrack
-    !   write(19,*)irr_out_irradiance_440nm(ix),irr_out_irradiance_466nm(ix), &
-    !              irr_out_irradiance_477nm(ix)
-    !enddo
-    !close(19)
-
   end subroutine read_irr_tio
 
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   subroutine read_rad_tio (l1_file, swathname, errstat)
 
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
@@ -365,6 +379,8 @@ contains
          w440, w466, w477, &
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
          rad_NumTimes, rad_nXtrack, rad_nWavel, rad_SnowIceFraction
+
+    use m_vars, only: ixdebug, itdebug
 
     !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
     implicit none
@@ -379,22 +395,27 @@ contains
     integer (kind=4) :: ntimes, nxtrack, nwavel, ix, it
     integer :: iw1, iw2, iw, nw
     real(kind=4) :: rad466, rad477, rad440
-    real(kind=4) :: ww1, ww2, yy1, yy2, min_rad
-
+    real(kind=4) :: ww1, ww2, www, yy1, yy2
+    real(kind=4) :: min_rad, delta_w
+    
     real (kind=8), parameter :: r8_missval=-1.0d+30
 
     !hqw moved rad_Radiance, rad_Wavelength from m_vars.f90 here
-    ! local variables save memory as they are deallocated after use
+    !local variables save memory as they are deallocated after use
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
     integer(kind=2), dimension(:,:,:), allocatable:: rad_PixelQualityFlags
 
     real(kind=4), dimension(:), allocatable:: temp_wav, temp_rad
+    integer(kind=2) :: temp_radflags
 
     if (errstat /= 0) return
 
-    ! min radiance expected, anything smaller is considered invalid
-    min_rad = 0. ! 1.e10 
+    ! min radiance, anything smaller is treated as invalid
+    min_rad = 0. ! 1.e9
+    ! maximum wavelength difference around w440, w466, w477
+    ! to prevent drifting too far from the target due to unusable wavelengths
+    delta_w = 0.5 ! nm
 
     !Open file, get dimensions
     call open_tio (l1_file, tio_l1obj, errstat)
@@ -404,7 +425,7 @@ contains
     rad_NumTimes = ntimes
     rad_nXtrack = nxtrack
     rad_nWavel = nwavel
-    write(*,*) 'read_rad_tio:nxtrack,ntimes,nwavel=',ntimes,nxtrack,nwavel
+    write(*,*) 'read_rad_tio:ntimes,nxtrack,nwavel=',ntimes,nxtrack,nwavel
 
     !allocate m_vars arrays
     call allocate_rad_vars (ntimes, nxtrack, errstat)
@@ -431,6 +452,7 @@ contains
     call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingZenithAngle, errstat)
    ! what actually needed is relative azimuth angle read in by read_cldo4_tio
+   ! SAA and VAA are read as original code uses them to calculate RAA
     call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
@@ -464,9 +486,17 @@ contains
    !rad_Wavelength, radRadiance, rad_PixelQualityFlags can be deallocated
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
 
-   nw = nwavel
-   write(*,*) 'nw, ntimes, nxtrack=',nw,ntimes,nxtrack
+   ! debug
+   if ((ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
+       write(*,*) 'writing debug_rad.txt'
+       open(unit=29, file='debug_rad.txt')
+       write(29,*)'rad_EarthSunDist=',rad_EarthSunDist
+       write(29,*) 'iw   lamda     rad '
+   endif
 
+   nw = nwavel
+
+   ! loop through pixels
    do it = 1, ntimes
       do ix = 1, nxtrack
         ! get local spectrum, if PixelQualiyFlags indicate spectral issue
@@ -474,15 +504,32 @@ contains
         ! negative temp_rad will not be used in subsequent interpolation
         do iw = 1, nw
          temp_wav(iw) = rad_Wavelength(iw,ix,it)
-         ! if(btest(rad_PixelQualityFlags(iw,ix,it),0) .or. &
-         !     btest(rad_PixelQualityFlags(iw,ix,it),1) .or. &
-         !     btest(rad_PixelQualityFlags(iw,ix,it),2)) then
-         if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
+         temp_radflags = rad_PixelQualityFlags(iw,ix,it)
+         ! all bit = 0 is fast but may be too restrictive, 
+         !if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
+         ! thus switch back to bit test 
+          if (btest(temp_radflags,0) .or. & !missing
+              btest(temp_radflags,1) .or. & !bad
+              btest(temp_radflags,2) .or. & !processing_error
+              btest(temp_radflags,5) .or. & !saturated
+              btest(temp_radflags,6) .or. & !noise_underflow
+              btest(temp_radflags,7) .or. & !dark_corr_error
+              btest(temp_radflags,8) .or. & !offset_corr_error
+              btest(temp_radflags,9) .or. & !smear_corr_error
+              btest(temp_radflags,10) .or. & !straylight_corr_error
+              btest(temp_radflags,11))  then !nonlinear_range
           temp_rad(iw)=-9999.
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
          end if
         enddo !iw
+
+        ! debug
+        if ((ix.eq.ixdebug).and.(it.eq.itdebug).and.(itdebug.ge.0)) then 
+            do iw = 1, nw
+               write(29,*) iw, rad_Wavelength(iw,ix,it), rad_Radiance(iw,ix,it)
+            enddo
+        endif
 
       ! ----------------------------
       ! calculate radiance at 466 nm
@@ -504,14 +551,16 @@ contains
         endif
       end do
 
-      !hqw when iw1 and iw2 >=0, yy1 and yy2 should be valid due to above
+      !when iw1 & iw2 >=0, yy1 and yy2 should be valid due to above
       if((iw1 .ge. 0) .and. (iw2 .ge. iw1)) then
         yy1=temp_rad(iw1)
         yy2=temp_rad(iw2)
         ww1=w466-temp_wav(iw1)
         ww2=temp_wav(iw2)-w466
-        if (iw2 .gt. iw1) then ! should always be the case
-           rad466=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        www = ww1 + ww2
+        if ((iw2 .gt. iw1) .and. (www .lt. delta_w) .and. (www .gt. 0.)) then 
+       ! should be the case
+           rad466=(ww1*yy2+ww2*yy1)/www
         else ! just for safeguard
            rad466=yy1
         endif
@@ -545,8 +594,9 @@ contains
         yy2=temp_rad(iw2)
         ww1=w477-temp_wav(iw1)
         ww2=temp_wav(iw2)-w477
-        if (iw2 .gt. iw1) then
-           rad477=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        www = ww1 + ww2
+        if ((iw2 .gt. iw1) .and. (www .lt. delta_w) .and. (www .gt. 0.)) then
+           rad477=(ww1*yy2+ww2*yy1)/www
         else
            rad477=yy1
         endif
@@ -581,8 +631,9 @@ contains
         yy2=temp_rad(iw2)
         ww1=w440-temp_wav(iw1)
         ww2=temp_wav(iw2)-w440
-        if (iw2 .gt. iw1) then 
-           rad440=(ww1*yy2+ww2*yy1)/(ww1+ww2)
+        www = ww1 + ww2
+        if ((iw2 .gt. iw1) .and. (www .lt. delta_w) .and. (www .gt. 0.)) then 
+           rad440=(ww1*yy2+ww2*yy1)/www
         else
            rad440=yy1
         endif
@@ -593,8 +644,15 @@ contains
       rad_440nm(ix,it) = rad440
 
       enddo !ix
-      !write(*,*)it,rad440,rad466,rad477
     enddo !it
+
+    ! debug 
+    if ((itdebug .ge. 0) .and. (ixdebug .ge. 0)) then
+       write(29,*)'ixdebug,itdebug=',ixdebug,itdebug
+       write(29,*)'rad440, rad466, rad477=',rad_440nm(ixdebug,itdebug),&
+          rad_466nm(ixdebug,itdebug),rad_477nm(ixdebug,itdebug)
+       close(29)
+    endif
 
     ! deallocate large temporary rad arrays
     deallocate(rad_Radiance, rad_Wavelength, rad_PixelQualityFlags)
@@ -604,7 +662,6 @@ contains
 
 !-------------------------------------------------------------------
   subroutine read_cldo4_tio (l2_file, errstat)
-     ! original code by gga
      use m_vars, only: nasa_SlantColumnAmountO2O2
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
@@ -622,6 +679,7 @@ contains
      type(tiof_file_type) :: tio_l2obj
      integer (kind=4) :: ntimes, nxtrack, ix, it
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
+     real (kind=8):: dspecial
      ! normalization factor for o2o2 
      real (kind=8), parameter :: norm = 1.0d43
 
@@ -630,6 +688,7 @@ contains
      if (errstat /= 0) return
 
      fspecial = -9999.
+     dspecial = -9999.d0
 
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)
@@ -688,17 +747,18 @@ contains
      endif
      ! normalize scd by norm
      tmp_dbl = tmp_dbl/norm
-     ! set values outside -10 to 10 to fFillValue=-1.2676506E30
-     ! set mdqfl 2 (bad) to fFillValue
+     ! set values outside -10 to 10 to dspecial (a negative value)
+     ! set mdqfl ne 0 to dspecial
      ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
      ! for o2o2, suspicious scds are extremely large, they should not be used
-     !  any scd<0. will be skipped for ocp and pscene,
-     !  can  use 0. or -10. below, it does not matter
+     !  any scd<0. will be skipped for ocp and pscene calculation,
+     !  can use either 0. or -10. below, it does not matter
      where ((tmp_dbl < 0.) .or. (tmp_dbl > 10.) .or. &
             (scd_mdqfl .ne. 0)) 
-           tmp_dbl = fspecial
+           tmp_dbl = dspecial
      end where
-     ! assign nasa_SlantColumnAmountO2O2
+     ! assign nasa_SlantColumnAmountO2O2 
+     ! nasa_SlantColumnAmountO2O2 has been normalized by norm
      nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
 
      ! read fitted SCD uncertainty
@@ -712,8 +772,9 @@ contains
          ! normalize scd uncertainty and assign nasa_scduncertainty
          tmp_dbl = tmp_dbl/norm
          where((tmp_dbl < 0.).or.(tmp_dbl > 10.).or.(scd_mdqfl .ne. 0))
-               tmp_dbl = fspecial
+               tmp_dbl = dspecial
          endwhere
+         ! nasa_scduncertainty has been normalized by norm
          nasa_scduncertainty = real(tmp_dbl,kind=4)
      endif ! run_mode
 
@@ -795,9 +856,9 @@ contains
   !
   !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
-  subroutine quick_lin_interpol (w_array, w_target, irr_array, irr_out, &
+  subroutine quick_irr_interpol (w_array, w_target, irr_array, irr_out, &
        q_array, errstat)
-
+  ! replaced by quick_lin_interpol 
     implicit none
 
     !input variables
@@ -830,7 +891,77 @@ contains
       errstat = -1
     endif
 
+  end subroutine quick_irr_interpol
+
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  !> Use simple linear interpolation to find irrad at target wavelength
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in]  w_array    1D wavelength array
+  !> @param[in]  w_target   target wavelength
+  !> @param[in]  irr_array  1D irradiance array
+  !> @param[out] irr_out    irradiance at target wavelength
+  !> @param      errstat    error handling integer, non-zero = problem
+  !
+  !-----------------------------------------------------------------------
+  subroutine quick_lin_interpol (w_array, w_target, irr_array, irr_out, &
+       q_array, nw, errstat)
+    implicit none
+
+    !input variables
+    real (kind=4), dimension(:), intent(in) :: w_array, irr_array
+    integer (kind=2), dimension(:), intent(in) :: q_array
+    real (kind=4), intent(in) :: w_target
+    !output variables
+    real (kind=4), intent(out) :: irr_out
+    integer (kind=4), intent(in) :: nw
+    integer (kind=4), intent(inout) :: errstat
+    !local variables
+    integer (kind=4) :: iw1, iw2, iw
+    real (kind=4) :: yy1, yy2, ww1, ww2, www, min_val
+
+    ! initial
+    min_val = 0.
+    irr_out = -9999.
+
+    if (errstat /= 0) return
+    iw1 = -9
+    iw2 = -9
+
+    do iw = 1, nw
+       if ((w_target .lt. w_array(iw)) .and. (irr_array(iw) .gt. min_val) &
+          .and. (q_array(iw) .eq. 0)) then
+          iw2=iw
+          exit
+       endif
+    enddo
+
+    do iw = 1, nw
+       if ((w_target .ge. w_array(iw)) .and. (irr_array(iw) .gt. min_val) &
+          .and. (q_array(iw) .eq. 0)) then
+          iw1 = iw
+          exit
+       endif
+    enddo
+        
+    if ((iw2 .ge. iw1) .and. (iw1 .ge. 0)) then
+      yy1=irr_array(iw1)
+      yy2=irr_array(iw2)
+      ww1=w_target-w_array(iw1)
+      ww2=w_array(iw2)-w_target
+      www = ww1 + ww2
+      if (www .gt. 0.) then
+         irr_out=(ww1*yy2+ww2*yy1)/www
+      else
+         irr_out=-9999.
+      endif
+    else
+      irr_out = -9999.
+      errstat = -1
+    endif
+
   end subroutine quick_lin_interpol
+
 
   !> Allocate variables associated with radiance
   !-----------------------------------------------------------------------
@@ -839,7 +970,6 @@ contains
   !> @param[in]  nxtrack    cross-track dimension size
   !> @param      errstat    error handling integer, non-zero = problem
   !
-  !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
   subroutine allocate_rad_vars (ntimes, nxtrack, errstat)
 
