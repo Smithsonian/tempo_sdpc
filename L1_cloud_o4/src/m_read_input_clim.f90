@@ -218,8 +218,10 @@ contains
       ! assign surface pressure (hPa)
         geos_Pressure(ix,it,nz+1) = psurf
       ! l2_TerrainPressure is topography adjusted surface pressure
-      ! currently use geos_Pressure as an approximation, however,
-      ! calculation should use l2_TerrainPressure for possible future change
+      ! currently use geos_Pressure as an approximation, 
+      ! this is probably OK when forecast or climatology is used for TEMPO
+      ! it is better to adjust when reanalysis meteorology is used
+      ! calculation should use l2_TerrainPressure 
         l2_TerrainPressure(ix, it) = psurf
 
      ! get wind speed at 2m for GLER over water surface
@@ -228,14 +230,13 @@ contains
      windspeed2m(ix,it) = sqrt(u2m(1)*u2m(1) + v2m(1)*v2m(1))
 
     enddo ! ix
-    !write(*,*) it, thisyear, thismonth, thisday, thishour
   enddo ! it
 
 ! debug
    if ((ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
       ix = ixdebug
       it = itdebug
-      write(*,*) ' writing debug_geod.txt'
+      write(*,*) ' writing debug_geos.txt'
       open(unit=39, file='debug_geos.txt')
          write(39,*) 'ix,it,u2m,v2m,windspeed2m:'
          write(39,*) ix, it, u2m, v2m, windspeed2m(ix,it)

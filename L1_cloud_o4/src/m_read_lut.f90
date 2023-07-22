@@ -8,7 +8,7 @@ contains
 
   !11111111111111111111111
   subroutine read_lut_rad (errstat)
-    !11111111111111111111111
+  !11111111111111111111111
 
     use hdfeos4_parameters
     use he5_swreader
@@ -28,7 +28,7 @@ contains
     !
     !  04/23/15 Yang original fortran 90
     !---------------------------------------------------------------------72
-
+    ! the following variables are declared in m_vars.f90
     !  real(kind=4),dimension(:,:,:,:,:),pointer:lut_rad_clr
     !  real(kind=4),dimension(:,:,:,:,:),pointer:lut_amf_clr
     !  real(kind=4),dimension(:,:,:,:,:),pointer:lut_amf_cld
@@ -42,7 +42,6 @@ contains
     integer (kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    !integer::ndim,ntmp
     integer(kind=4)::ierr!,status
     integer(hid_t)::h5fid,h5id
     integer(hsize_t),dimension(1)::dims1
@@ -64,7 +63,6 @@ contains
       return
     endif
 
-
     allocate(lut_alb(1:nalb), lut_sza(1:nsza), &
          lut_vza(1:nvza), lut_raa(1:nraa), &
          lut_psfc(1:npsfc),lut_rad_clr(1:nalb,1:nsza,1:nvza,1:nraa,1:npsfc), &
@@ -73,6 +71,7 @@ contains
       call tell_error (tell_malloc_error, "read_lut_rad: allocate fail", &
            errstat)
     endif
+
     !----------------------
     ! ALB,SZA,VZA,RAA,PSFC
     !----------------------
@@ -109,6 +108,7 @@ contains
       call h5dread_f(h5id,H5T_NATIVE_REAL,lut_psfc,dims1,ierr)
       call h5dclose_f(h5id,ierr)
     endif
+
     !---------------------
     ! Radiance: clear sky
     !---------------------
@@ -125,7 +125,7 @@ contains
 
     if (ierr .lt. 0) then
       call tell_error (tell_io_read_error, &
-           "read_lut_rad: failed to read data", errstat)
+           "read_lut_rad: failed to read lut_rad_clr", errstat)
       return
     endif
 
@@ -145,7 +145,7 @@ contains
 
   !440440440440440440440440440
   subroutine read_lut_rad440 (errstat)
-    !440440440440440440440440440
+  !440440440440440440440440440
 
     use hdfeos4_parameters
     use he5_swreader
@@ -159,7 +159,6 @@ contains
     integer (kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    !integer::ndim,ntmp
     integer(kind=4)::ierr!,status
     integer(hid_t)::h5fid,h5id
     !integer(hsize_t),dimension(1)::dims1
@@ -236,7 +235,7 @@ contains
     call h5dclose_f(h5id,ierr)
     if (ierr .lt. 0) then
       call tell_error (tell_io_read_error, &
-           "read_lut_rad440: failed to read data", errstat)
+           "read_lut_rad440: failed to read lut_rad_clr440", errstat)
       return
     endif
 
@@ -250,14 +249,14 @@ contains
     call h5fclose_f(h5fid,ierr)
     call h5close_f(ierr)
 
-    !440440440440440440440440440440
+  !440440440440440440440440440440
   end subroutine read_lut_rad440
   !440440440440440440440440440440
 
 
   !222222222222222222222222222
   subroutine read_lut_amf_clr (errstat)
-    !222222222222222222222222222
+  !222222222222222222222222222
 
     use hdfeos4_parameters
     use he5_swreader
@@ -271,8 +270,7 @@ contains
     integer (kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    !integer::ndim,ntmp
-    integer(kind=4)::ierr!,status
+    integer(kind=4)::ierr
     integer(hid_t)::h5fid,h5id
     !integer(hsize_t), dimension(1) :: dims1
     integer(hsize_t), dimension(5) :: dims5
@@ -294,7 +292,7 @@ contains
     !----------------------
     ! ALB,SZA,VZA,RAA,PSFC
     !----------------------
-    ! EOS - Once again, all these have already been read in and are identical
+    ! EOS - all these have already been read in and are identical
     !       in file, SKIP
     !dims1(1)=nalb
     !allocate(lut_alb(1:nalb),stat=ierr)
@@ -354,7 +352,7 @@ contains
 
     if (ierr .lt. 0) then
       call tell_error (tell_io_read_error, &
-           "read_lut_amf_clr: failed to read data", errstat)
+           "read_lut_amf_clr: failed to read lut_rad_clr", errstat)
       return
     endif
 
@@ -364,14 +362,14 @@ contains
     call h5fclose_f(h5fid,ierr)
     call h5close_f(ierr)
 
-    !===============================
+  !===============================
   end subroutine read_lut_amf_clr
   !===============================
 
 
   !333333333333333333333333333
   subroutine read_lut_amf_cld (errstat)
-    !333333333333333333333333333
+  !333333333333333333333333333
 
     use hdfeos4_parameters
     use he5_swreader
@@ -385,7 +383,6 @@ contains
     integer(kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    !integer::ndim,ntmp
     integer(kind=4)::ierr!,status
     integer(hid_t)::h5fid,h5id
     integer(hsize_t), dimension(1) :: dims1
@@ -395,7 +392,6 @@ contains
     ! read lookup table
     !-------------------
     filename=trim(name_lut_dir)//'/'//trim(name_lut_amf_cld)
-    !filename=trim(name_lut_amf_cld)
     write(*,*)'   reading '//trim(filename)
 
     call h5open_f(ierr)
@@ -409,7 +405,7 @@ contains
     !---------------------------
     ! SZA,VZA,RAA,PSFC,PCLD
     !---------------------------
-    !EOS - SKIP the first four which have already been read
+    !EOS - SKIP the first four which have already been read in read_lut_rad
     !dims1(1)=nsza
     !allocate(lut_sza(1:nsza),stat=ierr)
     !call h5dopen_f(h5fid,"SZA",h5id,ierr)
@@ -473,13 +469,13 @@ contains
     call h5fclose_f(h5fid,ierr)
     call h5close_f(ierr)
 
-    !===============================
+  !===============================
   end subroutine read_lut_amf_cld
   !===============================
 
   !444444444444444444444444444
   subroutine read_lut_amf_ler (errstat)
-    !444444444444444444444444444
+  !444444444444444444444444444
 
     use hdfeos4_parameters
     use he5_swreader
@@ -493,8 +489,7 @@ contains
     integer (kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    !integer::ndim,ntmp
-    integer(kind=4)::ierr!,status
+    integer(kind=4)::ierr
     integer(hid_t)::h5fid,h5id
     !integer(hsize_t),dimension(1)::dims1
     integer(hsize_t),dimension(6)::dims6
@@ -520,8 +515,8 @@ contains
     !----------------------
     ! ALB,SZA,VZA,RAA,PSFC
     !----------------------
-    ! EOS - SKIPPING the first few again, already read in and identical 
-    !       between files
+    ! EOS - SKIPPING the first few again, already read in read_lut_rad 
+    !       they are identical among files
     !dims1(1)=nalb
     !allocate(lut_alb(1:nalb),stat=ierr)
     !call h5dopen_f(h5fid,"ALB",h5id,ierr)
@@ -582,7 +577,7 @@ contains
 
     if (ierr .lt. 0) then
       call tell_error ( tell_io_read_error, &
-           "read_rad_amf_ler: failed to read data", errstat)
+           "read_rad_amf_ler: failed to read lut_amf_ler", errstat)
       return
     endif
     !-------
@@ -591,7 +586,7 @@ contains
     call h5fclose_f(h5fid,ierr)
     call h5close_f(ierr)
 
-    !===============================
+  !===============================
   end subroutine read_lut_amf_ler
   !===============================
 

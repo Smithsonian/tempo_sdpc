@@ -20,12 +20,12 @@ contains
    logical :: clip_opt ! wether to limit gler to [0.,1.] range
    real(kind=8) :: thistime
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
-   integer :: iwavelen, ix, it, nx, nt
+   integer :: iwavelen, ix, it, nx, nt, nana
    real(kind=4) :: fspecial
 
    if (errstat /= 0) return
 
-   fspecial = -9999.
+   fspecial = -999. ! make it negative
    clip_opt = .TRUE.
    write(*,*) '   GLER clip_opt=',clip_opt
  
@@ -38,7 +38,7 @@ contains
 
    !allocate m_vars arrays and initialize
    allocate(BRDF_SurfaceReflectivity466(nx,nt), stat=errstat)
-   BRDF_SurfaceReflectivity466 = -9.9
+   BRDF_SurfaceReflectivity466 = fspecial
 
    !------------------------------
    ! calculate GLER for 466nm
@@ -62,8 +62,10 @@ contains
 
    ! loop through pixels
    if (name_option_TemperaturePressure .eq. 'GEOS5') then
+    nana = 0
     do it = 1, nt
       do ix = 1, nx
+         thisalb = fspecial
          thislon = rad_longitude(ix,it)
          if ((thislon .lt. -360.) .or. (thislon .gt. 360.)) continue
          thislat = rad_latitude(ix,it)
@@ -74,15 +76,21 @@ contains
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
          call gler_albedo(glt, thislon, thislat, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
+         if (isnan(thisalb)) then ! test NAN
+                thisalb = fspecial
+                nana = nana + 1
+         endif
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
       enddo
     enddo
    else
     wind_speed = 0.
     write(*,*)'note:  GMI climatology does not contain wind_speed'
-    write(*,*)' GLER thus calculated with wind_speed=0.'
+    write(*,*)' GLER is thus calculated with wind_speed=0.'
+    nana = 0
     do it = 1, nt
       do ix = 1, nx
+         thisalb = fspecial
          thislon = rad_longitude(ix,it)
          if ((thislon .lt. -360.) .or. (thislon .gt. 360.)) continue
          thislat = rad_latitude(ix,it)
@@ -90,13 +98,19 @@ contains
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
          call gler_albedo(glt, thislon, thislat, wind_speed, &
-                thissnowice, thisalb, errstat, clip_opt)
+              thissnowice, thisalb, errstat, clip_opt)
+         if (isnan(thisalb)) then ! test NAN
+              thisalb = fspecial
+              nana = nana + 1
+         endif 
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
       enddo
     enddo
    endif
 
    call gler_close(glt)
+   write(*,*) '   GLER n_NAN=',nana
+
    !------------------------------
    ! calculate GLER for 440nm
    ! 440nm was unavailable during initial development, thus

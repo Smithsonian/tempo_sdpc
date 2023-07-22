@@ -252,7 +252,7 @@ program OMCDO2N
   !============================================
   ! 1.2 read inputs from irradiance 
   !============================================
-  ! Ewan tested read_irr_tio, appears to work OK
+  ! Ewan tested read_irr_tio, appears to work 
   filename = trim(adjustl(name_irr_dir))//trim(adjustl(name_irr_file))
   call read_irr_tio(filename,swathname,errstat)
   if (errstat /= 0) then
