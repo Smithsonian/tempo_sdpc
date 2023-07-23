@@ -674,6 +674,15 @@ subroutine cal_ecf
          out_EffectiveCloudFractionNotClipped(ix,it)
       endif
 
+      ! safeguard ecf 
+      if (btest(out_ProcessingQualityFlags(ix,it),12)) then
+         out_EffectiveCloudFraction(ix,it) = fspecial
+         out_CloudRadianceFraction440(ix,it) = fspecial
+         out_CloudRadianceFraction466(ix,it) = fspecial
+         out_EffectiveCloudFractionNotClipped(ix,it) = fspecial
+         out_CloudRadianceFractionNotClipped440(ix,it) = fspecial
+         out_CloudRadianceFractionNotClipped466(ix,it) = fspecial
+      endif   
       !=====
     end do ! ix
   end do ! it

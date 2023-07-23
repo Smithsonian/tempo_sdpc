@@ -115,18 +115,17 @@ module m_vars
   integer, parameter:: LUT_ALBID_0p1 = 7
   integer, parameter:: LUT_ALBID_0p2 = 12
 
-  !old LUT dimension
+  !OMI LUT dimension
   !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
   !integer,parameter::npsfc=23, npcld=23, nrsfc=23
-  !new LUT dimension
+  !TEMPO LUT dimension
   integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
   integer,parameter:: npsfc=23, npcld=23
 
   !hqw added the following to remove hard_code in various places
-  ! these are limited by oldLUTs
-  !real(kind=4),parameter::max_SZA=89.,max_VZA=72.
-  ! these are limited by newLUTs
-  real(kind=4),parameter:: max_SZA=89., max_VZA=89.
+  ! these are determined by LUTs
+  !real(kind=4),parameter::max_SZA=89.,max_VZA=72. ! OMI
+  real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
 
 !------------------------
 ! hqw O4 SCD temperature correction coefficients
@@ -137,14 +136,14 @@ module m_vars
 !   real, parameter:: a253=0.9680, b253=-5.8256e-3
 !   real, parameter:: a293=1.0270, b293=-2.4064e-3
 ! coefs updates to account for changes associated with RJH HITRAN2020 H2O
-!  the coefs are derived using Thalman O4 and OMC4 20050701,20060101,20060715
+! coefs are derived using Thalman O4 and OMC4 20050701,20060101,20060715
    real, parameter:: TrefO4 = 273. 
    real, parameter:: a203 = 0.90, b203 = -0.03
    real, parameter:: a233 = 0.96, b233 = -0.02
    real, parameter:: a253 = 0.97, b253 = 0.00
    real, parameter:: a293 = 1.01, b293 = 0.00
    ! maximum number of iteration for SCD temperature adjustment
-   integer, parameter :: max_scd_iter = 20
+   integer, parameter :: max_scd_iter = 20 
    ! if dT < dt_threshold, then stop iteration
    real, parameter :: dt_threshold = 1.0 !K 
 
@@ -153,12 +152,12 @@ module m_vars
 !-------------------------
   integer,parameter::nvcd=npcld
 ! vvcd will be replaced with actual gmi_vcd//geos_vcd 
-  real,dimension(nvcd):: &
-    vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
-           0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
-           0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
-           0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
-           1.32557,1.41490,1.53974/)
+  real,dimension(nvcd):: vvcd 
+!    vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
+!           0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
+!           0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
+!           0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
+!           1.32557,1.41490,1.53974/)
 
  ! added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
@@ -230,12 +229,13 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
   real::gmi_psfc
 
-  ! geos_np = the number of layers is initialized when reading the GEOS-CF forecast
-  integer ::geos_np=0
+  ! geos_np = the number of layers is initialized when reading GEOS-CF
+  integer :: geos_np=0
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure
 
 ! calculate VCD at the LUT pressure level
+! these will replace vvcd
   real,dimension(npcld)::gmi_vcd        
   real,dimension(npcld)::geos_vcd
 
@@ -270,7 +270,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),allocatable::BRDF_SurfaceReflectivity466
 !hqw SurfaceReflectivity477 is not used
 !  real(kind=4),dimension(:,:),pointer::BRDF_SurfaceReflectivity477
-!hqw 2m windspeed is needed for GLER
+!hqw surface windspeed is needed for GLER
    real(kind=4),dimension(:,:),allocatable:: windspeed2m
 
 ! -----------------
@@ -286,11 +286,17 @@ integer,dimension(12):: &
 ! ----------------
 ! name_option_ECF005:
 !   Pcld calculations ECF >= 0.05  vs. ECF >= 0.00
+! 1: skip calculate ocp for ecf = (0., 0.05]
+!   i.e., ocp is for ecf>=0.05
+! 0: calucate ocp for ecf = (0.0, 0.05]
+!   i.e., ocp is for ecf> 0.0
+! Note, for small ecf, ocp is highly uncertainty
+!   ocp for ecf = 0.0 is always skipped
+  integer::name_option_ECF005=0
 
   real,parameter::min_ecf=0.05, min_snowice=0.05
 !hqw changed default name_option_MinECF from yes to no
-!  character(len=255)::name_option_MinECF='yes'
-  character(len=255)::name_option_MinECF='no'
+  character(len=255)::name_option_MinECF='no' ! 'yes'
 
 ! -----------------------------------
 ! option 7: SceneAlbedo/ScenePressure
@@ -304,17 +310,16 @@ integer,dimension(12):: &
 !hqw in production mode, m_cal_pscene force this option to 'no'
 !-----------------------------------------
 ! option 8: option_psfc_clear
-!hqw moved option_psfc_clear from m_cal_ocp here
 ! clear/cloud for high-P interp
 ! find pressure for AMF*VCD
-! 0: Pclr=Psfc (fixed) & Pcld>Psfc (original default)
+! 0: Pclr=Psfc for Pcld>Psfc (original default)
 ! 1: Pclr=Pcld if Pcld>Psfc
 !-------------------------------------
  integer :: option_psfc_clear = 0
 
 !-----------------------------------------
 ! option 9: option_clip_pcld
-! hqw adds this option for whether to clip pcld within [lut_pcld[1], psfc0]
+! whether to clip pcld within [lut_pcld[1], psfc0]
 !-----------------------------------------
  character(len=255):: option_clip_pcld='no'
 
@@ -322,8 +327,8 @@ integer,dimension(12):: &
 !------------
 ! input data 
 !------------
-!hqw inp_ variables are from OMCLDO2 product, not needed for TEMPO
-!    which is no longer needed, thus deleted
+!hqw inp_ variables are from OMCLDO2 product, 
+! not needed for TEMPO, thus deleted
 
 !----------------
 ! input NASA SCD
@@ -342,9 +347,6 @@ integer,dimension(12):: &
 !------------
 ! input extra
 !------------
-! layer
-!46 standard layers + 2 bottom layers to extend to 1100 hPa
-!  integer,parameter::nlay=48 
 
 ! wavelength
   real::w440=440.0 ! nm for cloud fraction calculation

@@ -42,10 +42,12 @@ contains
     integer (kind=4), intent(inout) :: errstat
 
     character(len=255)::filename
-    integer(kind=4)::ierr!,status
+    integer(kind=4)::ierr
     integer(hid_t)::h5fid,h5id
     integer(hsize_t),dimension(1)::dims1
     integer(hsize_t),dimension(5)::dims5
+
+    integer:: i
 
     if (errstat /= 0) return
 
@@ -132,6 +134,20 @@ contains
     !------------------------------------------------------------
     ! Radiance: cloud --> lut_rad_clr(18,1:nsza,1:nvza,1:nraa,18)
     !------------------------------------------------------------
+
+    ! debug
+    !if (itdebug .gt. 0) then
+    !   write(*,*) 'lut_psfc:', npsfc
+    !   write(*,*) (lut_psfc(i),i=1,npsfc)
+    !   write(*,*) 'lut_alb:', nalb
+    !   write(*,*) (lut_alb(i),i=1,nalb)
+    !   write(*,*) 'lut_sza:', nsza
+    !   write(*,*) (lut_sza(i),i=1,nsza)
+    !   write(*,*) 'lut_vza:', nvza
+    !   write(*,*) (lut_vza(i),i=1,nvza)
+    !   write(*,*) 'lut_rss:', nraa
+    !   write(*,*) (lut_raa(i), i=1,nraa)
+    !endif
 
     !-------
     ! close
