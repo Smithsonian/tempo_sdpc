@@ -538,6 +538,9 @@ subroutine cal_ecf
       ! As cal_rad_cld depends on pcld, it makes sense to do iteration
       ! after pcloud is derived until convergence
       ! However, current estimation  uses pcld=700hPa as an approximation
+      ! The error associated with the pcld assumption for ecf
+      ! is not large (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr,
+      ! Which is comparable to error associated with climatology 
       !--------------------------------
       ialb= LUT466rad_cloud_albid ! remove hardcoded lut index 18
       ipsfc= LUT466rad_cloud_psfcid ! remoce hardcoded lut index 18

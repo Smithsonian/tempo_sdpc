@@ -11,6 +11,7 @@ module m_vars
 !
 !  04/23/15 Yang original fortran 90
 !  2021 Wang adaption to TEMPO
+!  2023 Wang modification
 !---------------------------------------------------------------------72
 
   implicit none
@@ -40,7 +41,6 @@ module m_vars
   integer(kind=4)::irr_nXtrack
   integer(kind=4)::irr_nWavel
   integer(kind=4)::irr_nWavelCoef
-! reference Earth-Sun distance on 12/22/2014 !1.4715342E11m
   real::irr_EarthSunDist 
   real(kind=4),dimension(:),pointer::irr_out_irradiance_440nm
   real(kind=4),dimension(:),pointer::irr_out_irradiance_466nm
@@ -82,7 +82,7 @@ module m_vars
 !--------------
 ! Lookup table
 !--------------
-!hqw these initial names can be changed through control file
+! these initial names can be changed through control file
   character(len=255)::name_lut_dir='./refdata/'
   character(len=255)::name_lut_rad440='LUT_4400_RAD.h5'
   character(len=255)::name_lut_rad='LUT_4660_RAD.h5'
@@ -102,14 +102,14 @@ module m_vars
   real(kind=4),dimension(:),pointer::lut_psfc
   real(kind=4),dimension(:),pointer::lut_pcld
 
-  !hqw LUT cloud node
+  ! LUT cloud node
   ! ALB(cloud) = 0.8, Psfc(cloud) = 700hPa
   integer, parameter:: LUT466rad_cloud_albid = 18
   integer, parameter:: LUT466rad_cloud_psfcid = 18
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
 
-  !hqw LUT albedo node
+  ! LUT albedo node
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
   integer, parameter:: LUT_ALBID_0p0 = 1
   integer, parameter:: LUT_ALBID_0p1 = 7
@@ -152,18 +152,20 @@ module m_vars
 !-------------------------
   integer,parameter::nvcd=npcld
 ! vvcd will be replaced with actual gmi_vcd//geos_vcd 
-  real,dimension(nvcd):: vvcd 
-!    vvcd=(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
-!           0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
-!           0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
-!           0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
-!           1.32557,1.41490,1.53974/)
+  real,dimension(nvcd):: vvcd &
+         =(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
+           0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
+           0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
+           0.419688,  0.534917,  0.677226,  0.852079, 1.06600,  &
+           1.32557,1.41490,1.53974/)
 
  ! added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
-  real,parameter::vcd_convfac = 6.733e-4 !previously = 6.765e-4
+  real,parameter::vcd_convfac = 6.733e-4 !previously 6.765e-4
  !EY suggests change to 6.733e-4 to be more accurate
 
+ ! add the fraction used for cpp during scd temperature correction
+  real,parameter:: frac4cpp = 0.7937 !previously 0.5
 !-----------
 ! input LUN
 !-----------
@@ -268,16 +270,16 @@ integer,dimension(12):: &
   character(len=255)::name_brdf_file='empty'
   real(kind=4),dimension(:,:),allocatable::BRDF_SurfaceReflectivity440
   real(kind=4),dimension(:,:),allocatable::BRDF_SurfaceReflectivity466
-!hqw SurfaceReflectivity477 is not used
+! SurfaceReflectivity477 is not used
 !  real(kind=4),dimension(:,:),pointer::BRDF_SurfaceReflectivity477
-!hqw surface windspeed is needed for GLER
+! surface windspeed is needed for GLER
    real(kind=4),dimension(:,:),allocatable:: windspeed2m
 
 ! -----------------
 ! option 4: SnowIce
 ! -----------------
 ! name_option_SnowIce:
-!   Pcld calculations over SnowIce  vs. Pscene calculations over SnowIce
+!  Pcld calculations over SnowIce  vs. Pscene calculations over SnowIce
 !  character(len=255)::name_option_SnowIce='Pcld'
   character(len=255)::name_option_SnowIce='Pscene'
 
@@ -295,7 +297,7 @@ integer,dimension(12):: &
   integer::name_option_ECF005=0
 
   real,parameter::min_ecf=0.05, min_snowice=0.05
-!hqw changed default name_option_MinECF from yes to no
+! changed default name_option_MinECF from yes to no
   character(len=255)::name_option_MinECF='no' ! 'yes'
 
 ! -----------------------------------
@@ -307,7 +309,7 @@ integer,dimension(12):: &
  character(len=255)::name_option_SceneAlbedoAtTerrain='both'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
-!hqw in production mode, m_cal_pscene force this option to 'no'
+! in production mode, m_cal_pscene force this option to 'no'
 !-----------------------------------------
 ! option 8: option_psfc_clear
 ! clear/cloud for high-P interp
@@ -327,7 +329,7 @@ integer,dimension(12):: &
 !------------
 ! input data 
 !------------
-!hqw inp_ variables are from OMCLDO2 product, 
+! inp_ variables are from OMCLDO2 product 
 ! not needed for TEMPO, thus deleted
 
 !----------------
@@ -358,7 +360,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::rad_of_irr477  ! radiance/irradiance at 477 nm calculated by "cal_ecf.f90"
 
 !-----------
-! calculate
+! frequently used variables in ecf, ocp, pscene calculation
 !-----------
   real::alb0,sza0,vza0,raa0,psfc0,rsfc0 ! input values
   real::alb1,sza1,vza1,raa1,psfc1,rsfc1 ! LUT node1 for interpolation
@@ -392,6 +394,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_SlantColumnAmountO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnSceneO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnTerrainO2O2
+! out_TerrainPressure now holds calculated cpp using LER466 in pscene
   real(kind=4),dimension(:,:),pointer::out_TerrainPressure
 !  real(kind=4),dimension(:,:),pointer::out_TerrainPressureStdDev
   real(kind=4),dimension(:,:),pointer::out_TerrainHeight
@@ -401,7 +404,7 @@ integer,dimension(12):: &
 !  integer(kind=2),dimension(:,:),pointer::out_LandAreaFraction
   integer(kind=4)::out_NumTimes
   integer(kind=4)::out_nXtrack
-!hqw changed to cloudfraction to real and removed STDs
+!hqw changed to cloudfraction to real and commented out` STDs
 !  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFraction
 !  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFractionNotClipped
 !  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFractionSTD
@@ -418,10 +421,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction466
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
 
-!hqw changed out_CloudPressure to real(kind=4)  
-!  integer(kind=2),dimension(:,:),pointer::out_CloudPressure
-!  integer(kind=2),dimension(:,:),pointer::out_CloudPressureNotClipped
-!  integer(kind=2),dimension(:,:),pointer::out_CloudPressureSTD
+!  integer(kind=4),dimension(:,:),pointer::out_CloudPressureSTD
   real(kind=4),dimension(:,:),pointer::out_CloudPressure
   real(kind=4),dimension(:,:),pointer::out_CloudPressureNotClipped
 
@@ -431,7 +431,7 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_SceneLER440
   real(kind=4),dimension(:,:),pointer::out_ScenePressure
   real(kind=4),dimension(:,:),pointer::out_ReflectanceFactor
-!hqw added temperature variables for SCD T correction
+! added temperature variables for SCD T correction
   real(kind=4),dimension(:,:),pointer::out_O2O2CloudTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2SceneTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2TerrainTemperature
@@ -477,7 +477,7 @@ type gmeta
   real(kind=8)::tai 
 end type gmeta
 
-!hqw moved gmetadata def from OMCDO2N.f90 here
+! moved gmetadata def from OMCDO2N.f90 here
 type (gmeta) :: gmetadata
 
 !TEMPO time stamp

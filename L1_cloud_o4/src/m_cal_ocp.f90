@@ -21,7 +21,7 @@ subroutine cal_ocp
   ! bit09  (Warning) ecf out of normal range, clipped: m_cal_ecf.g90
   ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
   !        SCD correction problem or max_scd_iter reached: m_cal_pscene
-  ! bit11  SceneAlbedoAtTerrain.eq.'np' // 'both' skipped,
+  ! bit11  SceneAlbedoAtTerrain.eq.'no' // 'both' skipped,
   !        SCD correction problem or max_scd_iter reeached: m_cal_pscene
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
@@ -735,7 +735,8 @@ subroutine cal_ocp
       ! initially used T at 0.5*cpp as it is in the middle of pressure
       !temp_cpp = real (cpp * 0.5, kind=4)
       ! now changed to 0.7937*cpp as it is in the middle of o2o2 column
-      temp_cpp = real (cpp * 0.7937, kind=4)
+      ! set frac4cpp = 0.7937 in m_vars
+      temp_cpp = real (cpp * frac4cpp, kind=4)
       if ((temp_cpp .ge. pp(1)) .and. (temp_cpp .le. psfc0)) then
         if (name_option_TemperaturePressure .eq. 'GMI') then
           call scd_adjust_gmi(pp,tt,temp_cpp,scdmorg,scdadj,temp_t8p)
