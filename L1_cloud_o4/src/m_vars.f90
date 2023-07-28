@@ -218,8 +218,18 @@ integer,dimension(12):: &
  character(len=255)::name_option_TemperaturePressure='GEOS5'
 
   integer :: nlayers
-  integer :: ixdebug=1800 !set to negative to prevent debug output
-  integer :: itdebug=60 !set to negative to prevent debug output
+
+  integer :: ixdebug=-1800 !set to negative to prevent debug output
+  integer :: itdebug=-60 !set to negative to prevent debug output
+  ! ixdebug & itdebug can be overwrite through control file
+  integer :: lun_debug_irr=19
+  integer :: lun_debug_rad=29
+  integer :: lun_debug_clim=39
+  integer :: lun_debug_psfc=49
+  integer :: lun_debug_ecf=59
+  integer :: lun_debug_scdadj=69
+  integer :: lun_debug_ocp=79
+  
 
   integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
 ! change gmi variables to allocatable
@@ -229,11 +239,11 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Temperature
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Pressure !include psfc
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
-  real::gmi_psfc
 
   ! geos_np = the number of layers is initialized when reading GEOS-CF
   integer :: geos_np=0
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
+  real(kind=4),dimension(:,:,:),pointer::geos_Q
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure
 
 ! calculate VCD at the LUT pressure level
@@ -274,6 +284,8 @@ integer,dimension(12):: &
 !  real(kind=4),dimension(:,:),pointer::BRDF_SurfaceReflectivity477
 ! surface windspeed is needed for GLER
    real(kind=4),dimension(:,:),allocatable:: windspeed2m
+! surface geopotential is needed for psfc topo correction
+   real(kind=4),dimension(:,:),allocatable:: phisurf
 
 ! -----------------
 ! option 4: SnowIce

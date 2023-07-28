@@ -12,7 +12,6 @@ subroutine cal_pscene
 
   implicit none
 
-  !real,dimension(nsza)::lut_rsza
   integer::ialb, isza, ivza, iraa, ipsfc, ipcld
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2
@@ -26,11 +25,10 @@ subroutine cal_pscene
   integer(kind=4)::it,ix
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2, iternum
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
+  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
   real (kind=4), dimension(:), allocatable:: tt, pp
-  !real(kind=4)::sum1_vcd,avg_tvcd
   integer(kind=4)::ip
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -43,7 +41,7 @@ subroutine cal_pscene
   real::SceneLER440,SceneLER466
   real::SceneCPP
   real::scdm
-  real::scdmorg, scdadj, t8p, temp_t8p, delta_temp !hqw addition
+  real::scdmorg, scdadj, t8p, temp_t8p, delta_temp 
   real(kind=8),dimension(nalb)::temp_ler_alb466,temp_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_alb466,lev_ler_alb440
   real(kind=8),dimension(npsfc)::lev_ler_amf
@@ -140,7 +138,7 @@ subroutine cal_pscene
       ! -----------------------------
       ! option for SlantColumnDensity
       ! -----------------------------
-      !hqw add scdmorg, skip calculation if <0., start next pixel
+      ! add scdmorg, skip calculation if <0., start next pixel
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
       if (scdmorg .lt. 0.) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15) 
@@ -211,8 +209,8 @@ subroutine cal_pscene
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         !geos_Pressure & geos_temperature are assigned in read_geoscf
         !they are TOA->BOA, the opposite of the GEOS-CF original order
-        !pp & tt are on GEOS-CF vertical grid
-        psfc0=geos_Pressure(ix,it,geos_np+1)
+        !psfc0=geos_Pressure(ix,it,geos_np+1)! not adjusted for topo
+        psfc0= l2_TerrainPressure(ix,it) ! adjusted for topography
         do ip=1,geos_np
           pp(ip)=geos_Pressure(ix,it,ip)
           tt(ip)=geos_temperature(ix,it,ip)
@@ -222,7 +220,7 @@ subroutine cal_pscene
           call read_GEOS5_VCD(pp,tt)
           vvcd=geos_vcd
         else
-          vvcd(1:npcld) = fFillValue9 !-9999.
+          vvcd(1:npcld) = fFillValue9 
         endif
       endif
 
@@ -580,10 +578,10 @@ subroutine cal_pscene
         ! -----------------
         ! calculate AMF*VCD for each cloud level using cal_ler_amf
         ! -----------------
-        !hqw: note cal_ler_amf may be -9999., they are skipped below
+        ! note cal_ler_amf may be -9999., they are skipped below
         do ipcld=1,npcld
           aaa = real(cal_ler_amf(ipcld),kind=4)
-          !hqw added check for aaa>0.
+          ! added check for aaa>0.
           !vvcd should always > 0., otherwise it would have been skipped
           if (aaa .gt. 0.) then
              amfvcd(ipcld)=real(aaa*vvcd(ipcld), kind=4)
@@ -598,7 +596,7 @@ subroutine cal_pscene
         ! all amfvcds should >0. from here on
         ! scdm will be compared against thes amfvcds to derive pressure
 
-        !hqw initialize local vairable before scd T-correction iteration
+        ! initialize local vairable before scd T-correction iteration
         scdm = scdmorg
         scdadj = scdmorg
         t8p = TrefO4
@@ -811,8 +809,7 @@ subroutine cal_pscene
       !hqw use out_TerrainPressure to hold cpp here
       out_TerrainPressure(ix,it) = cpp
       ! out_TerrainPressure should be close to l2_TerrainPressure
-      ! ler466 should be close to BRDF_SurfaceReflectivity466
-      ! these can be checked as assurance
+      ! these can be used as diagnostics
 
       ! Assign out_SurfaceLER 
       out_SurfaceLER466(ix,it)=TerrainLER466
@@ -821,6 +818,7 @@ subroutine cal_pscene
       !**************************************************************
       ! re-init ler466, ler440, cpp
       ! they are used to assign SceneLER after +1+1+1 
+      !**************************************************************
       ler466 = fFillValue9
       ler440 = fFillValue9
       cpp = fFillValue9
@@ -1201,7 +1199,7 @@ subroutine cal_pscene
         !***********************
         ! clip SceneCPP
         !-----------------------
-        ! hqw this will lose calculated cpp when scdm>max(amfvcd)
+        ! this will lose calculated cpp when scdm>max(amfvcd)
         ! uncomment it if that is what you want
         ! if((SceneCPP.gt.psfc0).and.(SceneCPP.le.maxpress)) SceneCPP=psfc0
         ! 20230724: not clip as L2_TerrainPressure is not very accuate

@@ -17,6 +17,8 @@ Input Files:
     - @refdata_dir@
   Kleipool_fnm:
     - OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5
+  GMI_dir:
+    - @refdata_dir@
   LUT_dir:
     - @refdata_dir@
   400201:
@@ -92,8 +94,10 @@ Runtime Parameters:
     RunMode: production
     APPShortName: TEMPOCLDO4
     APPVersion: 1.0.0.0
-    AuthorName: H. Wang, G. Gonzalez Abad, E. O'Sullivan, J. Houck, E.Yang, A. Vasilkov, X. Liu, K. Chance
-    AuthorAffiliation: SAO, SAO, SAO, SAO, SSAI, SSAI, SAO, SAO
+    AuthorName: H. Wang, G. Gonzalez Abad, E. O'Sullivan, J. Houck, C. Nowlan, E.Yang, A. Vasilkov, X. Liu, K. Chance
+    AuthorAffiliation: TEMPO Science Team
     ProcessingCenter: SAO
     TEMPO Footprint: Visible
     Collection: 001
+    ixdebug: -1
+    itdebug: -1

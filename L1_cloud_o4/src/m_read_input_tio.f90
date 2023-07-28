@@ -213,7 +213,7 @@ contains
          irr_NumTimes, irr_nXtrack, irr_nWavel
 
     use m_vars, only: rad_NumTimes, rad_nXtrack, out_ProcessingQualityFlags
-    use m_vars, only: ixdebug, itdebug
+    use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_irr
 
     implicit none
 
@@ -344,24 +344,25 @@ contains
     enddo !ix
 
     ! debug
-    if (ixdebug .ge. 0) then
+    if ((trim(run_mode) .eq. 'development').and.(ixdebug .ge. 0)) then
        write(*,*) 'writing debug_irr.txt'
-       open(unit=19, file='debug_irr.txt')
-       write(19,*)'irr_EarthSunDist=',irr_EarthSunDist
-       write(19,*)'ixdebug=',ixdebug
-       write(19,*)'iw   wavelength    irr'
+       open(unit=lun_debug_irr, file='debug_irr.txt')
+       write(lun_debug_irr,*)'irr_EarthSunDist=',irr_EarthSunDist
+       write(lun_debug_irr,*)'ixdebug=',ixdebug
+       write(lun_debug_irr,*)'iw   wavelength    irr'
        do iw = 1, nwavel
-          write(19,*) iw, tio_wvl(iw,ixdebug,1),tio_irr(iw,ixdebug,1)
+          write(lun_debug_irr,*) iw, tio_wvl(iw,ixdebug,1),tio_irr(iw,ixdebug,1)
        enddo
        
-       write(19,*) 'ix   IRR440   IRR466   IRR477'
+       write(lun_debug_irr,*) 'ix   IRR440   IRR466   IRR477'
        ix = ixdebug
        !do ix = 1, nxtrack
-       write(19,*) ix, irr_out_irradiance_440nm(ix),&
+       write(lun_debug_irr,*) ix, irr_out_irradiance_440nm(ix),&
           irr_out_irradiance_466nm(ix),irr_out_irradiance_477nm(ix)
        !enddo
-       close(19)
     endif
+
+    close(lun_debug_irr)
 
     deallocate (tio_wvl, tio_irr, tio_pqf, stat=errstat)
   end subroutine read_irr_tio
@@ -380,7 +381,7 @@ contains
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
          rad_NumTimes, rad_nXtrack, rad_nWavel, rad_SnowIceFraction
 
-    use m_vars, only: ixdebug, itdebug
+    use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_rad
 
     !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
     implicit none
@@ -487,11 +488,12 @@ contains
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
 
    ! debug
-   if ((ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
+   if ((trim(run_mode) .eq. 'development').and. &
+       (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
        write(*,*) 'writing debug_rad.txt'
-       open(unit=29, file='debug_rad.txt')
-       write(29,*)'rad_EarthSunDist=',rad_EarthSunDist
-       write(29,*) 'iw   lamda     rad '
+       open(unit=lun_debug_rad, file='debug_rad.txt')
+       write(lun_debug_rad,*)'rad_EarthSunDist=',rad_EarthSunDist
+       write(lun_debug_rad,*) 'iw   lamda     rad '
    endif
 
    nw = nwavel
@@ -525,9 +527,10 @@ contains
         enddo !iw
 
         ! debug
-        if ((ix.eq.ixdebug).and.(it.eq.itdebug).and.(itdebug.ge.0)) then 
+        if ((trim(run_mode).eq.'development').and. &
+            (ix.eq.ixdebug).and.(it.eq.itdebug)) then 
             do iw = 1, nw
-               write(29,*) iw, rad_Wavelength(iw,ix,it), rad_Radiance(iw,ix,it)
+               write(lun_debug_rad,*) iw, rad_Wavelength(iw,ix,it), rad_Radiance(iw,ix,it)
             enddo
         endif
 
@@ -647,12 +650,14 @@ contains
     enddo !it
 
     ! debug 
-    if ((itdebug .ge. 0) .and. (ixdebug .ge. 0)) then
-       write(29,*)'ixdebug,itdebug=',ixdebug,itdebug
-       write(29,*)'rad440, rad466, rad477=',rad_440nm(ixdebug,itdebug),&
+    if ((trim(run_mode) .eq. 'development').and. &
+        (itdebug .ge. 0) .and. (ixdebug .ge. 0)) then
+       write(lun_debug_rad,*)'ixdebug,itdebug=',ixdebug,itdebug
+       write(lun_debug_rad,*)'rad440, rad466, rad477=',rad_440nm(ixdebug,itdebug),&
           rad_466nm(ixdebug,itdebug),rad_477nm(ixdebug,itdebug)
-       close(29)
     endif
+
+    close(lun_debug_rad)
 
     ! deallocate large temporary rad arrays
     deallocate(rad_Radiance, rad_Wavelength, rad_PixelQualityFlags)

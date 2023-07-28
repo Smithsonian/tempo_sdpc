@@ -24,7 +24,7 @@ subroutine cal_ecf
   integer(kind=4)::it,ix
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
+  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real:: earthsunfactor2
  
@@ -105,15 +105,10 @@ subroutine cal_ecf
   out_CloudRadianceFractionNotClipped466=fspecial
 !  out_CloudRadianceFractionSTD466=int(iFillValue, kind=2)
 
-  ! moved GMI lat/lon to read_GMI_TMP and read_DEM_GMI_TMP
-  !-----------------
-  ! read GMI lat/lon
-  !-----------------
-   if (itdebug .ge. 0) then
-      close(59)
+   if ((trim(run_mode) .eq. 'development').and.(itdebug .ge. 0)) then
       write(*,*) 'writing debug_ecf.txt'
-      open(unit=59, file='debug_ecf.txt')
-      write(59,*)'ix, alb0,  psfc0,  rad_of_irr466, cal_rad_clr, cal_rad_cld, cldfrac'
+      open(unit=lun_debug_ecf, file='debug_ecf.txt')
+      write(lun_debug_ecf,*)'ix, alb0,  psfc0,  rad_of_irr466, cal_rad_clr, cal_rad_cld, cldfrac'
    endif
 
   ! earthsunfactor2 is to account for earth-sun distance between irr and rad
@@ -527,7 +522,7 @@ subroutine cal_ecf
 
       cal_rad_clr(ix,it)=(walb2*r1+walb1*r2)/(walb1+walb2)
 
-897   continue
+!897   continue
 
       !--------------------------------
       ! 466nm radiance at 700 hPa: cloudy sky
@@ -671,8 +666,8 @@ subroutine cal_ecf
 990   continue
 
       ! debug
-      if (it .eq. itdebug) then
-         write(59,*)ix,alb0,psfc0,rad_of_irr466(ix,it),&
+      if ((trim(run_mode).eq.'development').and.(it.eq.itdebug)) then
+         write(lun_debug_ecf,*)ix,alb0,psfc0,rad_of_irr466(ix,it),&
          cal_rad_clr(ix,it),cal_rad_cld(ix,it),&
          out_EffectiveCloudFractionNotClipped(ix,it)
       endif
@@ -692,7 +687,7 @@ subroutine cal_ecf
   !=====
 
   !close debug file unit
-  close(59)
+  close(lun_debug_ecf)
 
 !**********************
 end subroutine cal_ecf

@@ -1,7 +1,7 @@
 !****************
 module m_read_GMI
 !****************
-use m_vars, only: gmi_nx,gmi_ny,gmi_np, gmi_vcd, gmi_psfc
+use m_vars, only: gmi_nx,gmi_ny,gmi_np, gmi_vcd
 use m_vars, only: gmi_lon, gmi_lat, gmi_Temperature
 use m_vars, only: gmi_Pressure, gmi_TerrainPressure
 use m_vars, only: npcld, vcd_convfac, nlayers, lut_pcld
@@ -149,7 +149,6 @@ subroutine read_GMI_VCD(pp,tt)
   real(kind=4),dimension(gmi_np+1)::tmp_vcd
   real::sum_vcd
   real::xx1,xx2,yy1,yy2,xxx,yyy
-  !real::x1,x2,x3,y1,y2,y3
   integer(kind=4)::iflag,ip,ipcld
 
 ! -----------------------
@@ -193,7 +192,57 @@ subroutine read_GMI_VCD(pp,tt)
 end subroutine read_GMI_VCD
 !22222222222222222222222222
     
- 
+!33333333333333333333333333
+subroutine get_GMIpsfc_lonlat(lon0, lat0, psfcout)
+!33333333333333333333333333
+! get GMI psfc at TEMPO pixel (ix,it)
+
+    real, intent(IN):: lon0, lat0
+    real, intent(OUT):: psfcout
+
+    integer :: gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
+    real:: gmi_wx1, gmi_wx2, gmi_wy1, gmi_wy2
+    real::pp11,pp12,pp21,pp22,pp1,pp2
+
+        gmi_wx1 = 0.
+        gmi_wx2 = 0.
+        gmi_wy1 = 0.
+        gmi_wy2 = 0.
+
+        gmi_ix1=floor((lon0+180.0)/1.25)+1
+        gmi_ix2=gmi_ix1+1
+        gmi_iy1=floor(lat0+90.)+1
+        gmi_iy2=gmi_iy1+1
+
+        if(gmi_ix1.lt.1) gmi_ix1=1
+        if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
+        if(gmi_ix2.lt.1) gmi_ix2=1
+        if(gmi_ix2.gt.gmi_nx) gmi_ix2=gmi_nx
+        if(gmi_iy1.lt.1) gmi_iy1=1
+        if(gmi_iy1.gt.gmi_ny) gmi_iy1=gmi_ny
+        if(gmi_iy2.lt.1) gmi_iy2=1
+        if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
+
+        gmi_wx1=lon0-gmi_lon(gmi_ix1)
+        gmi_wx2=gmi_lon(gmi_ix2)-lon0
+        gmi_wy1=lat0-gmi_lat(gmi_iy1)
+        gmi_wy2=gmi_lat(gmi_iy2)-lat0
+
+        pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
+        pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
+        pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
+        pp22=gmi_TerrainPressure(gmi_ix2,gmi_iy2)
+        pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
+        pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
+
+        psfcout=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
+        gmi_psfc = psfcout
+
+!33333333333333333333333333
+end subroutine get_GMIpsfc_lonlat
+!33333333333333333333333333
+
 !********************
 end module m_read_GMI
 !********************

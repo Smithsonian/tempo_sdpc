@@ -59,7 +59,7 @@ subroutine cal_ocp
   integer(kind=4)::ip
 
   integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2
+  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
   real(kind=4), dimension(:), allocatable :: tt, pp
@@ -121,8 +121,9 @@ subroutine cal_ocp
 
 ! debug
   write(*,*) 'writing debug_scd_adjust.txt'
-  open(unit=69,file='debug_scd_adjust.txt')
-  write(69,*)'    ix   scdmorg    scdm     scdadj      temp_t8p     t8p    temp_cpp'
+  open(unit=lun_debug_scdadj,file='debug_scd_adjust.txt')
+  write(lun_debug_scdadj,*) &
+    '    ix   scdmorg    scdm     scdadj      temp_t8p     t8p    temp_cpp'
 
   ! ==========
   do it=1,nt
@@ -263,7 +264,7 @@ subroutine cal_ocp
 
         call read_GMI_VCD(pp,tt)
         vvcd=gmi_vcd
-      endif
+      endif ! GMI
 
       !---TEMPO option
       if(name_option_TemperaturePressure.eq.'GEOS5') then
@@ -290,34 +291,37 @@ subroutine cal_ocp
        ! vvcd is on LUT pcld grid
         call read_GEOS5_VCD(pp,tt)
         vvcd=geos_vcd
-      endif
+      endif ! GEOS5
 
 ! debug
-      if ((it .eq. itdebug).AND. (ix .eq. ixdebug)) then
+      if ((trim(run_mode).eq.'development').and. &
+          (it .eq. itdebug).and. (ix .eq. ixdebug)) then
          write(*,*) ' writing debug_tpocp.txt'
-         open(unit=68,file='debug_tpocp.txt')
-         write(68,*) 'name_option_TemperaturePressure=',trim(name_option_TemperaturePressure)
-         write(68,*)'ix, it=',ix,it
-         write(68,*)'latitude=',rad_latitude(ix,it)
-         write(68,*)'longitude=',rad_longitude(ix,it)
-         write(68,*) 'psfc=',pp(nlayers+1)
-         write(68,*) 'nlayers=',nlayers
-         write(68,*) 'GEOS_Level, Pressure(hPa), Temperature(K)'
+         open(unit=lun_debug_ocp,file='debug_tpocp.txt')
+         write(lun_debug_ocp,*) 'name_option_TemperaturePressure=', &
+               trim(name_option_TemperaturePressure)
+         write(lun_debug_ocp,*)'ix, it=',ix,it
+         write(lun_debug_ocp,*)'latitude=',rad_latitude(ix,it)
+         write(lun_debug_ocp,*)'longitude=',rad_longitude(ix,it)
+         write(lun_debug_ocp,*) 'psfc=',pp(nlayers+1)
+         write(lun_debug_ocp,*) 'nlayers=',nlayers
+         write(lun_debug_ocp,*) 'GEOS_Level, Pressure(hPa), Temperature(K)'
          do ip = 1, nlayers
-            write(68,*)ip, pp(ip), tt(ip)
+            write(lun_debug_ocp,*)ip, pp(ip), tt(ip)
          end do
-         write(68,*) 'LUT_Level, Pressure (hPa), vvcd'
+
+         write(lun_debug_ocp,*) 'LUT_Level, Pressure (hPa), vvcd'
          do ip = 1, npcld
-            write(68,*) ip, lut_pcld(ip), vvcd(ip)
+            write(lun_debug_ocp,*) ip, lut_pcld(ip), vvcd(ip)
          enddo
-         close(68)
+         close(lun_debug_ocp)
       endif
 
      !---------------------------------
      ! surface reflectivity
      !---------------------------------
-!  directly use out_SurfaceReflectivity assigned in ecf
-!  instead of repeating calculation
+     ! directly use out_SurfaceReflectivity assigned in ecf
+     ! instead of repeating calculation
 
       ! skip if bit 3 (psfc or rsfc error) is set
       if (btest(out_ProcessingQualityFlags(ix,it),3)) then
@@ -718,14 +722,14 @@ subroutine cal_ocp
         cpp=real(nint(xx))
       endif
 
-      !skip if cpp <0.
+      ! skip if cpp <0.
       if (cpp .lt. 0.) then 
           cpp = fFillValue9
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
           go to 990
       endif
 
-      !hqw add clip cpp to within LUT range, safeguard
+      ! add clip cpp to within LUT range, safeguard
       if (cpp .gt. lut_psfc(npsfc)) then
           cpp = lut_psfc(npsfc)
       endif
@@ -733,7 +737,7 @@ subroutine cal_ocp
       ! adjust scd according to T at temp_cpp
       ! use the temperature at temp_cpp when in range
       ! initially used T at 0.5*cpp as it is in the middle of pressure
-      !temp_cpp = real (cpp * 0.5, kind=4)
+      ! temp_cpp = real (cpp * 0.5, kind=4)
       ! now changed to 0.7937*cpp as it is in the middle of o2o2 column
       ! set frac4cpp = 0.7937 in m_vars
       temp_cpp = real (cpp * frac4cpp, kind=4)
@@ -758,7 +762,8 @@ subroutine cal_ocp
       iternum = iternum + 1
 
       ! debug
-      if ((it .eq. itdebug) .and. (ix .eq. itdebug)) then
+      if ((trim(run_mode).eq.'development').and. &
+          (it .eq. itdebug) .and. (ix .eq. ixdebug)) then
          write(*,*) iternum, scdm, scdadj, temp_cpp, temp_t8p
       endif
 
@@ -787,8 +792,8 @@ subroutine cal_ocp
       endif
 
       ! debug
-      if (it .eq. itdebug) then
-         write(69,*) ix, scdmorg, scdm, scdadj, temp_t8p, t8p, temp_cpp
+      if ((trim(run_mode).eq.'development').and.(it .eq. itdebug)) then
+         write(lun_debug_scdadj,*) ix, scdmorg, scdm, scdadj, temp_t8p, t8p, temp_cpp
       endif
 
       ! scdm & t8p is the step right before final iteration
@@ -830,7 +835,7 @@ subroutine cal_ocp
   !=====
 
   ! debug
-  close(69)
+  close(lun_debug_scdadj)
 
   ! deallocate allocated local variables
   deallocate(pp, tt)

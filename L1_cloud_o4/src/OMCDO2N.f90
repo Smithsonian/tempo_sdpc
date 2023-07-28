@@ -284,6 +284,7 @@ program OMCDO2N
   flush (output_unit)
 
   if(name_option_TemperaturePressure.eq.'GMI') then
+    status=GetConfigString("E","Input Files GMI_dir",name_gmi_dir)
     status=GetConfigString("E","Input Files "//lun_gmi_psfc(gmonth),buf)
     name_gmi_psfc=trim(name_gmi_dir)//trim(buf)
   !  id_gmi_psfc=ilun_gmi_psfc(gmonth)
