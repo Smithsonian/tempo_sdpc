@@ -115,6 +115,14 @@ subroutine cal_pscene
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! clear relevant out_ProcessingQualityFlags bits
+      ! not all bits used need clearing
+      out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)
+      out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
+      out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
+      out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
+      out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
+
       ! local variable initialization 
       TerrainLER466 = fFillValue9
       TerrainLER440 = fFillValue9

@@ -30,7 +30,6 @@ subroutine cal_ecf
  
   integer(kind=4)::kleipool_ix,kleipool_iy
 
-! moved pflag00, pflag01 from m_vars.f90 to local variable
   integer(kind=4):: pflag00, pflag01
 
 ! add local variable
@@ -78,16 +77,12 @@ subroutine cal_ecf
   out_SurfaceReflectivity466=fspecial
   out_SurfaceReflectivity440=fspecial
 
-!  STDs are not calculated, thus disabled
   allocate(out_EffectiveCloudFraction(nx,nt),stat=ierr)
   allocate(out_EffectiveCloudFractionNotClipped(nx,nt),stat=ierr)
-!  allocate(out_EffectiveCloudFractionSTD(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFraction440(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFractionNotClipped440(nx,nt),stat=ierr)
-!  allocate(out_CloudRadianceFractionSTD440(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFraction466(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFractionNotClipped466(nx,nt),stat=ierr)
-!  allocate(out_CloudRadianceFractionSTD466(nx,nt),stat=ierr)
 
   allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
   out_ReflectanceFactor=fspecial
@@ -97,13 +92,10 @@ subroutine cal_ecf
 
   out_EffectiveCloudFraction=fspecial
   out_EffectiveCloudFractionNotClipped=fspecial
-!  out_EffectiveCloudFractionSTD=int(iFillValue, kind=2)
   out_CloudRadianceFraction440=fspecial
   out_CloudRadianceFractionNotClipped440=fspecial
-!  out_CloudRadianceFractionSTD440=int(iFillValue, kind=2)
   out_CloudRadianceFraction466=fspecial
   out_CloudRadianceFractionNotClipped466=fspecial
-!  out_CloudRadianceFractionSTD466=int(iFillValue, kind=2)
 
    if ((trim(run_mode) .eq. 'development').and.(itdebug .ge. 0)) then
       write(*,*) 'writing debug_ecf.txt'
@@ -119,6 +111,18 @@ subroutine cal_ecf
     do ix=1,nx
       ! ==========
 
+      ! initialize out_ProcessingQualityFalgs relavent bits to zero
+      ! bit7 & bit8 were set before in m_read_input_tio, however,
+      ! rad_of_irr466 & rad_of_irr440 are checked again here, 
+      ! for later implementation of iteration, it is easier to clear them 
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),0)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),1)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),3)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),7)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),8)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),9)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),12)
+      
       !initialize local variable
       rout_ecf =fspecial
       rout_crf440 =fspecial
@@ -211,6 +215,9 @@ subroutine cal_ecf
          rad_of_irr466(ix,it)=rad466/(irr_out_irradiance_466nm(ix)*earthsunfactor2)
       else
          rad_of_irr466(ix,it) = fspecial
+         ! bit8 was set in m_read_input_tio, thus a safeguard below
+         ! but is also useful later when we implement iteration
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12) 
          go to 990
       endif
@@ -220,6 +227,10 @@ subroutine cal_ecf
          rad_of_irr440(ix,it)=rad440/(irr_out_irradiance_440nm(ix)*earthsunfactor2)
       else
          rad_of_irr440(ix,it) = fspecial
+         ! bit7 was set in m_read_input_tio, thus a safeguard below
+         ! but it is also useful if we implement iteration later on
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
+         ! 440 is not used for ECF, do not skip calculation
       endif
 
       !----------------

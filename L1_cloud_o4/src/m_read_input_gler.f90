@@ -12,7 +12,7 @@ contains
        windspeed2m ,name_option_TemperaturePressure,&
        rad_SnowIceFraction
 
-   use m_vars,only: itdebug, ixdebug
+   use m_vars,only: itdebug, ixdebug, run_mode 
 
    implicit none
    integer, intent(inout) :: errstat
@@ -123,7 +123,8 @@ contains
    write(*,*) '   GLER is not yet implemented for ',iwavelen
 
    ! debug
-   if ((ixdebug .gt. 0).and.(itdebug .ge. 0)) then
+   if ((trim(run_mode) .eq. 'development').and. &
+       (ixdebug .gt. 0).and.(itdebug .ge. 0)) then
       write(*,*) ' writing debug_gler.txt'
       open(unit=49,file='debug_gler.txt')
       do it = 1, nt

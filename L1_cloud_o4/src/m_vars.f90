@@ -416,16 +416,13 @@ integer,dimension(12):: &
 !  integer(kind=2),dimension(:,:),pointer::out_LandAreaFraction
   integer(kind=4)::out_NumTimes
   integer(kind=4)::out_nXtrack
-!hqw changed to cloudfraction to real and commented out` STDs
+!hqw changed to cloudfraction to real 
 !  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFraction
 !  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFractionNotClipped
-!  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFractionSTD
 !  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFraction440
 !  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped440
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionSTD440
 !  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFraction466
 !  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionSTD466
   real(kind=4),dimension(:,:),pointer::out_EffectiveCloudFraction
   real(kind=4),dimension(:,:),pointer::out_EffectiveCloudFractionNotClipped
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction440
@@ -433,7 +430,6 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction466
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
 
-!  integer(kind=4),dimension(:,:),pointer::out_CloudPressureSTD
   real(kind=4),dimension(:,:),pointer::out_CloudPressure
   real(kind=4),dimension(:,:),pointer::out_CloudPressureNotClipped
 

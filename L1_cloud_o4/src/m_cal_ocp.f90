@@ -120,15 +120,26 @@ subroutine cal_ocp
   pp = fFillValue9
 
 ! debug
+  if ((trim(run_mode) .eq. 'development').and. & 
+     (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
   write(*,*) 'writing debug_scd_adjust.txt'
   open(unit=lun_debug_scdadj,file='debug_scd_adjust.txt')
   write(lun_debug_scdadj,*) &
     '    ix   scdmorg    scdm     scdadj      temp_t8p     t8p    temp_cpp'
+  endif
 
   ! ==========
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! clear relevant out_ProcessingQualityFlags bits
+      ! Note, not all bits used here need clearing
+      ! as some(e.g. bit3)  were cleared in cal_ecf called before
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),5)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),6)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),13)
+      out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),14)
+
       ! initialize local variables
       ! this is also the value if calculation skipped
       alb0 = fFillValue9

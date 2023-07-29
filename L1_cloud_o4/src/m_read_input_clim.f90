@@ -255,8 +255,8 @@ contains
      phisurf(ix,it) = thisphis(1)
 
       ! l2_TerrainPressure is topography adjusted surface pressure
-      ! currently use geos_Pressure as an approximation, 
-      ! this is probably OK when forecast or climatology is used for TEMPO
+      ! can use geos_Pressure as an approximation, 
+      ! when forecast or climatology is used for TEMPO
       ! it is better to adjust when reanalysis meteorology is used
       ! calculation should use l2_TerrainPressure 
       !  l2_TerrainPressure(ix, it) = psurf
@@ -265,9 +265,11 @@ contains
       ! tt,qq from TOA to BOA, thus, level closet to surface is nz
       model_tsurf = tt(nz)
       model_qsurf = qq(nz)
+      ! adjust_surface_pressure is used in L1_trace_gas, assumes dry air
+      ! adj_pressure has the same unit as psurf
       !call adjust_surface_pressure(pixel_height,model_height, &
       !     psurf,model_tsurf,adj_pressure,errstat)
-      ! adj_pressure has the same unit as psurf
+      ! psfc_topo_adjust considers humidity
       call psfc_topo_adjust(pixel_height,model_height,psurf, &
             model_tsurf,model_qsurf,adj_pressure,errstat)
       if (errstat /= 0) adj_pressure = psurf
@@ -344,7 +346,9 @@ contains
 
 !!!!!!!!!!!!
 ! borrow adjust_surface_pressure from L1_trace_gas/OMSAO_wramf_module
-! this keeps consistency with trace gas AMF calculation
+! this keeps consistency with trace gas AMF calculation, but for dry air
+! slight modification is made for model_heigt to physical height (m)
+!        instead of the original geopotential height (m^2/s^2)
 !!!!!!!!!!!!
 
   subroutine adjust_surface_pressure (pixel_height, model_height, &
@@ -357,7 +361,7 @@ contains
    ! P_pix = P_mod ( T_mod / (T_mod + lr (H_mod - H_pix) ) )^(-g / R / lr * 1000.0)
    ! Heights are in units of km for this equation
    ! input pixel_height should be in meters
-   ! input model_height is geopotential height in m^2/s^2
+   ! input model_height should also be in meters
 
    implicit none
 
@@ -373,9 +377,9 @@ contains
 
    if (errstat /= 0) return
 
-   ! Geopotential model height from m^2 / s^2 to km
-   mh = model_height / g / 1000.0
-   ! Satellite pixel height from m to km
+   ! model height from meter to km
+   mh = model_height / 1000.0
+   ! Satellite pixel height from meter to km
    sh = pixel_height / 1000.0
 
    ! Hypsometric equation

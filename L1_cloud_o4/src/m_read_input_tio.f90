@@ -401,7 +401,7 @@ contains
     
     real (kind=8), parameter :: r8_missval=-1.0d+30
 
-    !hqw moved rad_Radiance, rad_Wavelength from m_vars.f90 here
+    ! moved rad_Radiance, rad_Wavelength from m_vars.f90 here
     !local variables save memory as they are deallocated after use
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
@@ -418,7 +418,7 @@ contains
     ! to prevent drifting too far from the target due to unusable wavelengths
     delta_w = 0.5 ! nm
 
-    !Open file, get dimensions
+    ! Open file, get dimensions
     call open_tio (l1_file, tio_l1obj, errstat)
     call read_rad_dims (tio_l1obj, swathname, nxtrack, ntimes, nwavel, errstat)
     if (errstat /= 0) return
@@ -459,12 +459,12 @@ contains
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingAzimuthAngle, errstat)
 
-    !hqw added rad_SnowIceFraction
+    ! added rad_SnowIceFraction
     call tiof_get2d_r4 (tio_l1obj, "snow_ice_fraction", [0,0], &
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
     call tiof_get2d_r4 (tio_l1obj, "terrain_height", [0,0], &
          [ntimes,nxtrack], out_TerrainHeight, errstat)
-    !hqw removed rad_GroundPixelQualityFlags, it was used for OMI snow/ice
+    ! removed rad_GroundPixelQualityFlags, it was used for OMI snow/ice
     ! but not needed for TEMPO because of rad_SnowIceFraction
     !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
     !     [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
@@ -482,7 +482,7 @@ contains
 
     call close_tio (tio_l1obj, errstat)
 
-   !hqw moved interpolation to rad440, rad466 and rad440 here
+   ! moved interpolation to rad440, rad466 and rad440 here
    !from cal_ecf.f90 so that big arrays
    !rad_Wavelength, radRadiance, rad_PixelQualityFlags can be deallocated
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
@@ -1041,6 +1041,7 @@ contains
     rad_477nm = fspecial
 
     ! init out_ProcessingQualityFalgs to Zero
+    ! equivalent to all bits cleared
     out_ProcessingQualityFlags = 0
 
   end subroutine allocate_rad_vars
