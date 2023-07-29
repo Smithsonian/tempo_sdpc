@@ -312,6 +312,13 @@ integer,dimension(12):: &
 ! changed default name_option_MinECF from yes to no
   character(len=255)::name_option_MinECF='no' ! 'yes'
 
+! ----------------
+! option 6: adjust total to dry pressure for vvcd
+! ---------------
+! 1 : will adjust total to dry for vvcd
+! 0 : will not adjust, but assume total=dry 
+  integer::name_option_adjdry=1
+
 ! -----------------------------------
 ! option 7: SceneAlbedo/ScenePressure
 ! -----------------------------------

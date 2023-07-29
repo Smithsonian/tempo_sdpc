@@ -28,7 +28,7 @@ subroutine cal_pscene
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
-  real (kind=4), dimension(:), allocatable:: tt, pp
+  real (kind=4), dimension(:), allocatable:: tt, pp, qq, ppdry
   integer(kind=4)::ip
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -107,9 +107,12 @@ subroutine cal_pscene
   out_TerrainPressure=fFillValue9
 
   ! allocate and initialize local arrays
-  allocate(tt(nlayers), pp(nlayers+1))
+  allocate(tt(nlayers), qq(nlayers),pp(nlayers+1))
+  allocate(ppdry(nlayers+1))
   tt(1:nlayers) = fFillValue9
   pp(1:nlayers+1) = fFillValue9
+  qq(1:nlayers) = 0.
+  ppdry(1:nlayers+1) = fFillValue9
 
   ! ==========
   do it=1,nt
@@ -222,10 +225,11 @@ subroutine cal_pscene
         do ip=1,geos_np
           pp(ip)=geos_Pressure(ix,it,ip)
           tt(ip)=geos_temperature(ix,it,ip)
+          qq(ip)=geos_Q(ix,it,ip)
         end do
         pp(geos_np+1)=psfc0
         if (psfc0 .gt. 0.0) then
-          call read_GEOS5_VCD(pp,tt)
+          call read_GEOS5_VCD(pp,tt,qq,ppdry)
           vvcd=geos_vcd
         else
           vvcd(1:npcld) = fFillValue9 

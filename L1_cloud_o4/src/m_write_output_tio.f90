@@ -69,7 +69,7 @@ contains
     call tiof_inq_dimid (tio_l2obj, 'xtrack', dimid_xtrack, errstat)
     call tiof_inq_dimid (tio_l2obj, 'mirror_step', dimid_step, errstat)
 
-    !hqw addition -------------------------------------------------
+    ! addition -------------------------------------------------
     ! product variable definitions
     call write_product_struct (tio_l2obj, dimid_xtrack, dimid_step, errstat)
     if (errstat /= 0) then
@@ -204,7 +204,7 @@ contains
       return
     endif
 
-    !hqw addition -------------------------------------------------
+    ! addition -------------------------------------------------
     ! product variable definitions
     call tiof_dimlist_lookup (dimlist, &
                               ["xtrack     ", "mirror_step"], &
@@ -648,7 +648,7 @@ contains
   end subroutine copy_pixel_corners
 
 !-------------------------------
-! hqw addition below
+!  added
 !-------------------------------
 
    subroutine write_product_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
@@ -699,6 +699,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "effective cloud fraction at 466nm", &
+                              comment = "ECF", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float_nines, &
@@ -711,6 +712,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "cloud radiance fraction at 466nm", &
+                       comment = "CRF = ECF*Ic/Im [Vasilkov et al., 2018]", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float_nines, &
@@ -736,19 +738,19 @@ contains
      call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
                                att_text = "error_geoloc_or_angles "// &
                                           "warn_466nm_crf_invalid "// &
-                                          "warn_ecf_below_min "// &
+                                          "warn_ocp_repaced for_small_ecf "// &
                                           "error_input_psurf_albedo "// &
-                                          "warn_snow_ice_frac_exceeds_min "// &
+                                          "warn_ocp_replaced_for_snowice "// &
                                           "warn_ocp_scd_iteration_exceeds_max "// &
                                           "error_scd_negative_or_bad "// &
                                           "warn_440nm_rad_or_irr_error "// &
                                           "error_466nm_rad_or_irr_error "// &
-                                          "error_ecf_beyond_normal_range "// &
-                                          "warn_saat_yes_or_scd_corr_problem "// &
-                                          "warn_saat_no_or_scd_corr_problem "// &
+                                          "warn_ecf_beyond_normal_range "// &
+                                          "warn_pscene_skipped_for_saat_yes"// &
+                                          "warn_pscene_skipped_for_saat_no"// &
                                           "error_ecf_calc_skipped "// &
                                           "error_ocp_calc_skipped "// &
-                                          "error_ocp_beyond_normal_range "// &
+                                          "warning_ocp_beyond_normal_range "// &
                                           "warn_pscene_calc_skipped")
      do i = 1, 16
        flag = 0
@@ -815,8 +817,6 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction440", [0,0], &
          [nstep, nxtrack], out_CloudRadianceFraction440, errstat)
 
-!    write(*,*)'FIXME: processing_quality_flag still in development'
-    !!!!!!!!out_ProcessingQualityFlags(:,:) = 0
     call tiof_put2d_i2 (tio_l2obj, "processing_quality_flag", [0,0], &
          [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
 
@@ -882,17 +882,18 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-     call tiof_varlist_append (varlist, errstat, &
-                              name440, &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                              long_name = "440nm surface reflectivity used in calculation", &
-                              units = "no unit", &
-                              valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
+    ! 440nm GLER is not used, comment out to save disk
+    ! call tiof_varlist_append (varlist, errstat, &
+    !                          name440, &
+    !                          nf90_float, &
+    !                          dimids = dimids_xtrack_step,  &
+    !                          long_name = "440nm surface reflectivity used in calculation", &
+    !                          units = "no unit", &
+    !                          valid_range = [0.0_r8, 1.0_r8], &
+    !                          fillvalue = fill_float_nines, &
+    !                          deflate_level = deflate_level, &
+    !                          shuffle = shuffle, &
+    !                          attlist=att_support)
 
     if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
         (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
@@ -1312,8 +1313,8 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "SurfaceLER466", [0,0], &
          [nstep, nxtrack], out_SurfaceLER466, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, "SurfaceLER440", [0,0], &
-         [nstep, nxtrack], out_SurfaceLER440, errstat)
+    !call tiof_put2d_r4 (tio_l2obj, "SurfaceLER440", [0,0], &
+    !     [nstep, nxtrack], out_SurfaceLER440, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
          [nstep, nxtrack], out_TerrainPressure, errstat)

@@ -114,7 +114,7 @@ subroutine cal_ecf
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
       ! bit7 & bit8 were set before in m_read_input_tio, however,
       ! rad_of_irr466 & rad_of_irr440 are checked again here, 
-      ! for later implementation of iteration, it is easier to clear them 
+      ! for later implementation of iteration, it is easier to clear them also
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),0)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),1)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),3)

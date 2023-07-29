@@ -154,6 +154,8 @@ contains
    real (kind=4) :: model_tsurf, pixel_height, model_height, &
                     model_qsurf, adj_pressure
 
+   real (kind=4), parameter :: psfc_recordhigh = 1085.0
+
    integer :: ix, it, iz, nx, nt, kk, nz
    integer :: thisyear, thismonth, thisday
 
@@ -185,8 +187,9 @@ contains
 
   !allocate & init windspeed2m
   allocate(windspeed2m(nx,nt), stat=errstat)
-  windspeed2m = 0.
-
+  ! initialization will be used by GMI, overwritten by GEOS-CF 
+  windspeed2m = 5. 
+  
   !allocate & init surface geopotential height
   allocate(phisurf(nx,nt), stat=errstat)
   phisurf = -999.
@@ -260,24 +263,34 @@ contains
       ! it is better to adjust when reanalysis meteorology is used
       ! calculation should use l2_TerrainPressure 
       !  l2_TerrainPressure(ix, it) = psurf
-      model_height = thisphis(1) / g_grav ! meters
       pixel_height = out_TerrainHeight(ix,it) ! meters
-      ! tt,qq from TOA to BOA, thus, level closet to surface is nz
-      model_tsurf = tt(nz)
-      model_qsurf = qq(nz)
-      ! adjust_surface_pressure is used in L1_trace_gas, assumes dry air
-      ! adj_pressure has the same unit as psurf
-      !call adjust_surface_pressure(pixel_height,model_height, &
-      !     psurf,model_tsurf,adj_pressure,errstat)
-      ! psfc_topo_adjust considers humidity
-      call psfc_topo_adjust(pixel_height,model_height,psurf, &
+
+      !  do adjustment only if pixel_height is reasonable
+      if (pixel_height .gt. -1000.) then
+         model_height = thisphis(1) / g_grav ! meters
+         ! tt,qq from TOA to BOA, thus, level closet to surface is nz
+         model_tsurf = tt(nz)
+         model_qsurf = qq(nz)
+         ! adjust_surface_pressure is used in L1_trace_gas, assumes dry air
+         ! adj_pressure has the same unit as psurf
+         !call adjust_surface_pressure(pixel_height,model_height, &
+         !     psurf,model_tsurf,adj_pressure,errstat)
+         ! psfc_topo_adjust considers humidity
+         call psfc_topo_adjust(pixel_height,model_height,psurf, &
             model_tsurf,model_qsurf,adj_pressure,errstat)
-      if (errstat /= 0) adj_pressure = psurf
-      l2_TerrainPressure(ix,it) = adj_pressure
+         if (errstat /= 0) adj_pressure = psurf
+         ! safeguard surface pressure (wikipedia record is ~1085hPa)
+         if (adj_pressure .GT. psfc_recordhigh) adj_pressure = psfc_recordhigh
+         l2_TerrainPressure(ix,it) = adj_pressure
+      else ! unrealistic pixel_height, typically a fill value 
+         ! no adjustment in this case
+         l2_TerrainPressure(ix,it) = psurf
+      endif
      
     enddo ! ix
   enddo ! it
 
+!----------------------
 ! debug
    if ((trim(run_mode) .eq. 'development') .and. &
        (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
@@ -288,12 +301,12 @@ contains
          write(lun_debug_clim,*) 'ix,it=',ix,it
          write(lun_debug_clim,*) 'windspeed2m, phis ='
          write(lun_debug_clim,*) windspeed2m(ix,it),phisurf(ix,it)
-         write(lun_debug_clim,*) 'iz    pp      tt'
+         write(lun_debug_clim,*) 'iz    pp      tt      qq'
          do iz = 1, nz
-            write(lun_debug_clim,*) iz, pp(iz), tt(iz)
+            write(lun_debug_clim,*) iz, geos_Pressure(ix,it,iz), &
+                 geos_Temperature(ix,it,iz), geos_Q(ix,it,iz)
          enddo
-         write(lun_debug_clim,*) nz+1, pp(nz+1)
-         write(lun_debug_clim,*)'psurf=',psurf
+         write(lun_debug_clim,*) nz+1, geos_Pressure(ix,it,nz+1)
        close(lun_debug_clim)
 
       write(*,*) '   writing debug_psfc.txt'
@@ -309,10 +322,11 @@ contains
           write(lun_debug_psfc,*) model_height,pixel_height,psurf,adj_pressure
       enddo
       close(lun_debug_psfc)
-    endif
+   endif
 
-  deallocate(pres_z, temp_z)
-  deallocate(pp, tt)
+!------
+  deallocate(pres_z, temp_z, q_z)
+  deallocate(pp, tt, qq)
 
   end subroutine read_geoscf
 

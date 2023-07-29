@@ -1,5 +1,6 @@
 module m_cal_ocp
   public cal_ocp
+
 contains
 !******************
 subroutine cal_ocp
@@ -62,7 +63,7 @@ subroutine cal_ocp
   real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
   real::pp11,pp12,pp21,pp22,pp1,pp2
   real::tt11,tt12,tt21,tt22,tt1,tt2
-  real(kind=4), dimension(:), allocatable :: tt, pp
+  real(kind=4), dimension(:), allocatable :: tt, pp, qq, ppdry
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -115,9 +116,13 @@ subroutine cal_ocp
 
   ! allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
+  allocate(qq(nlayers),stat=ierr)
   allocate(pp(nlayers+1),stat=ierr)
+  allocate(ppdry(nlayers+1),stat=ierr)
   tt = fFillValue9
   pp = fFillValue9
+  ppdry = fFillValue9
+  qq = 0.
 
 ! debug
   if ((trim(run_mode) .eq. 'development').and. & 
@@ -134,7 +139,8 @@ subroutine cal_ocp
       ! ==========
       ! clear relevant out_ProcessingQualityFlags bits
       ! Note, not all bits used here need clearing
-      ! as some(e.g. bit3)  were cleared in cal_ecf called before
+      ! as some(e.g. bit0, bit3)  were cleared in cal_ecf called before
+      ! and are used here
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),5)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),6)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),13)
@@ -206,6 +212,8 @@ subroutine cal_ocp
       ! initialize local array
       tt(:) = fFillValue9
       pp(:) = fFillValue9
+      ppdry(:) = fFillValue9
+      qq(:) = 0.
       vvcd(:) = fFillValue9
 
       ! ----------------------------------------------
@@ -277,7 +285,7 @@ subroutine cal_ocp
         vvcd=gmi_vcd
       endif ! GMI
 
-      !---TEMPO option
+      !---TEMPO option for GEOS-CF
       if(name_option_TemperaturePressure.eq.'GEOS5') then
         psfc0=l2_TerrainPressure(ix,it)
         ! safeguard
@@ -291,23 +299,24 @@ subroutine cal_ocp
            call exit(-1)
         endif
 
-        ! geos_Pressure is from TOA to BOA
+        ! geos_Pressure,temperature,Q is from TOA to BOA
         do ip=1,geos_np
           pp(ip)=geos_Pressure(ix,it,ip)
-          tt(ip)=geos_temperature(ix,it,ip)
+          tt(ip)=geos_Temperature(ix,it,ip)
+          qq(ip)=geos_Q(ix,it,ip)
         end do
         pp(geos_np+1) = psfc0
 
-       ! pp, tt are on GEOS grid
-       ! vvcd is on LUT pcld grid
-        call read_GEOS5_VCD(pp,tt)
+       ! pp, tt, qq are on GEOS-CF grid
+       ! vvcd = geos_vcd is on LUT pcld grid
+        call read_GEOS5_VCD(pp,tt,qq,ppdry)
         vvcd=geos_vcd
       endif ! GEOS5
 
 ! debug
       if ((trim(run_mode).eq.'development').and. &
           (it .eq. itdebug).and. (ix .eq. ixdebug)) then
-         write(*,*) ' writing debug_tpocp.txt'
+         write(*,*) '  writing debug_tpocp.txt'
          open(unit=lun_debug_ocp,file='debug_tpocp.txt')
          write(lun_debug_ocp,*) 'name_option_TemperaturePressure=', &
                trim(name_option_TemperaturePressure)
@@ -316,9 +325,9 @@ subroutine cal_ocp
          write(lun_debug_ocp,*)'longitude=',rad_longitude(ix,it)
          write(lun_debug_ocp,*) 'psfc=',pp(nlayers+1)
          write(lun_debug_ocp,*) 'nlayers=',nlayers
-         write(lun_debug_ocp,*) 'GEOS_Level, Pressure(hPa), Temperature(K)'
+         write(lun_debug_ocp,*) 'GEOS_Level, Pressure(hPa), DryPressure,  Temperature(K)'
          do ip = 1, nlayers
-            write(lun_debug_ocp,*)ip, pp(ip), tt(ip)
+            write(lun_debug_ocp,*)ip, pp(ip),ppdry(ip),tt(ip)
          end do
 
          write(lun_debug_ocp,*) 'LUT_Level, Pressure (hPa), vvcd'
@@ -334,7 +343,7 @@ subroutine cal_ocp
      ! directly use out_SurfaceReflectivity assigned in ecf
      ! instead of repeating calculation
 
-      ! skip if bit 3 (psfc or rsfc error) is set
+      ! skip if bit3 (psfc or rsfc error) is set
       if (btest(out_ProcessingQualityFlags(ix,it),3)) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
         go to 990
@@ -490,7 +499,7 @@ subroutine cal_ocp
       ! -----------
       ! AMF at Pcld
       ! -----------
-      !hqw in LUT when ipcld>ipsfc, lut_amf_cld<0.
+      ! in LUT when ipcld>ipsfc, lut_amf_cld<0.
       ! but this would not happen below, as ipsfc=ipcld 
       do ipcld=1,npcld
         ipsfc=ipcld ! as if cloud at surface
@@ -689,7 +698,7 @@ subroutine cal_ocp
         x2=lut_pcld(ipm2)
 
         ! defult in m_vars option_psfc_clear=0 
-        if(option_psfc_clear.eq.0) then !original hardcoded choice 
+        if(option_psfc_clear.eq.0) then !original OMCDO2N choice 
         ! use pclr=psfc, ipm0=ipsfc0
           y0=amfvcd_int(ipm0)
           y1=amfvcd_int(ipm1)
@@ -711,8 +720,8 @@ subroutine cal_ocp
 
         !increase xx 1 hPa at a time from psfc0
         ! until mininal difference is found
-        ! 5000 is large and safe, 1500 should be enough
-        ! but should make no difference to the computer
+        ! 5000 is large and safe, 2000 should be enough
+        ! but should make no difference to computer
         do ipp=1,2000
           xx=psfc0+real(ipp)
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
