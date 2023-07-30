@@ -1305,8 +1305,8 @@ contains
     call tiof_put2d_r4 (tio_l2obj, name466, [0,0], &
          [nstep, nxtrack], out_SurfaceReflectivity466, errstat)
 
-    call tiof_put2d_r4 (tio_l2obj, name440, [0,0], &
-         [nstep, nxtrack], out_SurfaceReflectivity440, errstat)
+    !call tiof_put2d_r4 (tio_l2obj, name440, [0,0], &
+    !     [nstep, nxtrack], out_SurfaceReflectivity440, errstat)
 
     if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
         (name_option_SceneAlbedoAtTerrain.eq.'yes')) then

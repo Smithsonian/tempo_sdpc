@@ -59,10 +59,7 @@ subroutine cal_ocp
 
   integer(kind=4)::ip
 
-  integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
-  real::pp11,pp12,pp21,pp22,pp1,pp2
-  real::tt11,tt12,tt21,tt22,tt1,tt2
+  real:: gmi_psfc
   real(kind=4), dimension(:), allocatable :: tt, pp, qq, ppdry
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
@@ -222,33 +219,7 @@ subroutine cal_ocp
       ! bad psfc should have been skipped before
       ! OMI option as a backup
       if((name_option_TemperaturePressure.eq.'GMI')) then 
-        gmi_ix1=floor((lon0+180.0)/1.25)+1
-        gmi_ix2=gmi_ix1+1
-        gmi_iy1=floor(lat0+90.)+1
-        gmi_iy2=gmi_iy1+1
-
-        if(gmi_ix1.lt.1) gmi_ix1=1
-        if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
-        if(gmi_ix2.lt.1) gmi_ix2=1
-        if(gmi_ix2.gt.gmi_nx) gmi_ix2=gmi_nx
-        if(gmi_iy1.lt.1) gmi_iy1=1
-        if(gmi_iy1.gt.gmi_ny) gmi_iy1=gmi_ny
-        if(gmi_iy2.lt.1) gmi_iy2=1
-        if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
-
-        gmi_wx1=lon0-gmi_lon(gmi_ix1)
-        gmi_wx2=gmi_lon(gmi_ix2)-lon0
-
-        gmi_wy1=lat0-gmi_lat(gmi_iy1)
-        gmi_wy2=gmi_lat(gmi_iy2)-lat0
-
-        pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
-        pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
-        pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
-        pp22=gmi_TerrainPressure(gmi_ix2,gmi_iy2)
-        pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
-        pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
-        gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+        call get_GMItmp_lonlat(lon0,lat0,tt,pp,gmi_psfc)
 
         psfc0=gmi_psfc
         ! adds safeguard
@@ -261,25 +232,6 @@ subroutine cal_ocp
            write(*,*)'gmi_np,nlayers incompatible',gmi_np,nlayers
            call exit(-1)
         endif
-
-        do ip=1,gmi_np
-          pp11=gmi_Pressure(gmi_ix1,gmi_iy1,ip)
-          pp12=gmi_Pressure(gmi_ix1,gmi_iy2,ip)
-          pp21=gmi_Pressure(gmi_ix2,gmi_iy1,ip)
-          pp22=gmi_Pressure(gmi_ix2,gmi_iy2,ip)
-          pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
-          pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
-          pp(ip)=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
-
-          tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-          tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-          tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-          tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-          tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-          tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-          tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-        end do
-        pp(gmi_np+1)=gmi_psfc
 
         call read_GMI_VCD(pp,tt)
         vvcd=gmi_vcd

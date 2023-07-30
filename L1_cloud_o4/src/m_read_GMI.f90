@@ -5,6 +5,7 @@ use m_vars, only: gmi_nx,gmi_ny,gmi_np, gmi_vcd
 use m_vars, only: gmi_lon, gmi_lat, gmi_Temperature
 use m_vars, only: gmi_Pressure, gmi_TerrainPressure
 use m_vars, only: npcld, vcd_convfac, nlayers, lut_pcld
+use m_vars, only: gmi_np
 
 contains
 
@@ -12,6 +13,8 @@ contains
 subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
 !11111111111111111111111111111111111111111111111111
 
+  use m_vars, only: ilun_gmi_psfc, ilun_gmi_tmp
+  
   implicit none
       
   character(len=255)::name_gmi_psfc
@@ -72,37 +75,39 @@ subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
 !--------------
 ! read GMI Psfc
 !--------------
-  open(unit=91,file=trim(name_gmi_psfc),form='formatted',status='old',action='read')
+  open(unit=ilun_gmi_psfc,file=trim(name_gmi_psfc),&
+      form='formatted',status='old',action='read')
 
   do ix=1,gmi_nx
   do iy=1,gmi_ny
-    read(91,111) temp 
+    read(ilun_gmi_psfc,111) temp 
     gmi_TerrainPressure(ix,iy)=temp
   end do
   end do
-  close(unit=91)
+  close(unit=ilun_gmi_psfc)
 
 !---------------------
 ! read GMI Temperature
 !---------------------
 ! temperature defined from top (1) to near surface (72)
 
-  open(unit=93,file=trim(name_gmi_tmp),form='formatted',status='old',action='read')
+  open(unit=ilun_gmi_tmp,file=trim(name_gmi_tmp),&
+      form='formatted',status='old',action='read')
 
-  read(93,*) head
+  read(ilun_gmi_tmp,*) head
   do ip=1,12
-    read(93,113) t01,t02,t03,t04,t05,t06
+    read(ilun_gmi_tmp,113) t01,t02,t03,t04,t05,t06
   end do
-  read(93,*) head
+  read(ilun_gmi_tmp,*) head
   do ip=1,12
-    read(93,113) t01,t02,t03,t04,t05,t06
+    read(ilun_gmi_tmp,113) t01,t02,t03,t04,t05,t06
   end do
-  read(93,*) head
+  read(ilun_gmi_tmp,*) head
 
   do iy=1,gmi_ny
     do ix=1,gmi_nx
     do ip=1,12
-      read(93,115) t01,t02,t03,t04,t05,t06
+      read(ilun_gmi_tmp,115) t01,t02,t03,t04,t05,t06
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-1)=t01
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-2)=t02
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-3)=t03
@@ -112,7 +117,7 @@ subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
     end do
     end do
   end do
-  close(unit=93)
+  close(unit=ilun_gmi_tmp)
 
 !-----------------------
 ! calculate GMI Pressure
@@ -187,7 +192,6 @@ subroutine read_GMI_VCD(pp,tt)
     endif
   end do
 
-
 !22222222222222222222222222
 end subroutine read_GMI_VCD
 !22222222222222222222222222
@@ -196,6 +200,8 @@ end subroutine read_GMI_VCD
 subroutine get_GMIpsfc_lonlat(lon0, lat0, psfcout)
 !33333333333333333333333333
 ! get GMI psfc at TEMPO pixel (ix,it)
+
+    implicit none
 
     real, intent(IN):: lon0, lat0
     real, intent(OUT):: psfcout
@@ -237,11 +243,80 @@ subroutine get_GMIpsfc_lonlat(lon0, lat0, psfcout)
 
         psfcout=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
 
-        gmi_psfc = psfcout
-
 !33333333333333333333333333
 end subroutine get_GMIpsfc_lonlat
 !33333333333333333333333333
+
+!44444444444444444444444444
+subroutine get_GMItmp_lonlat(lon0,lat0,tt,pp,gmi_psfc)
+!44444444444444444444444444
+! get GMI T-P profile at lon0 & lat0
+
+    implicit none
+
+    real, intent(IN):: lon0, lat0
+    real, intent(OUT):: gmi_psfc
+    real, dimension(gmi_np), intent(out):: tt
+    real, dimension(gmi_np+1), intent(out)::pp
+
+    integer :: gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
+    real:: gmi_wx1, gmi_wx2, gmi_wy1, gmi_wy2
+    real::pp11,pp12,pp21,pp22,pp1,pp2
+    real::tt11,tt12,tt21,tt22,tt1,tt2
+
+    integer :: ip
+
+        gmi_ix1=floor((lon0+180.0)/1.25)+1
+        gmi_ix2=gmi_ix1+1
+        gmi_iy1=floor(lat0+90.)+1
+        gmi_iy2=gmi_iy1+1
+
+        if(gmi_ix1.lt.1) gmi_ix1=1
+        if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
+        if(gmi_ix2.lt.1) gmi_ix2=1
+        if(gmi_ix2.gt.gmi_nx) gmi_ix2=gmi_nx
+        if(gmi_iy1.lt.1) gmi_iy1=1
+        if(gmi_iy1.gt.gmi_ny) gmi_iy1=gmi_ny
+        if(gmi_iy2.lt.1) gmi_iy2=1
+        if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
+
+        gmi_wx1=lon0-gmi_lon(gmi_ix1)
+        gmi_wx2=gmi_lon(gmi_ix2)-lon0
+        gmi_wy1=lat0-gmi_lat(gmi_iy1)
+        gmi_wy2=gmi_lat(gmi_iy2)-lat0
+
+        pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
+        pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
+        pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
+        pp22=gmi_TerrainPressure(gmi_ix2,gmi_iy2)
+        pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
+        pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
+
+        gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
+        do ip=1,gmi_np
+          pp11=gmi_Pressure(gmi_ix1,gmi_iy1,ip)
+          pp12=gmi_Pressure(gmi_ix1,gmi_iy2,ip)
+          pp21=gmi_Pressure(gmi_ix2,gmi_iy1,ip)
+          pp22=gmi_Pressure(gmi_ix2,gmi_iy2,ip)
+          pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
+          pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
+          pp(ip)=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+
+          tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
+          tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
+          tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
+          tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
+          tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
+          tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
+          tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
+        end do
+
+        pp(gmi_np+1)=gmi_psfc
+
+!444444444444444444444
+end subroutine get_GMItmp_lonlat
+!444444444444444444444
 
 !********************
 end module m_read_GMI

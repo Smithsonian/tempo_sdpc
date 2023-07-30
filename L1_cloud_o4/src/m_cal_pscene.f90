@@ -24,12 +24,15 @@ subroutine cal_pscene
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
 
-  integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2, iternum
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
-  real::pp11,pp12,pp21,pp22,pp1,pp2
-  real::tt11,tt12,tt21,tt22,tt1,tt2
+  real:: lon0, lat0, gmi_psfc
+
+!  integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
+!  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
+!  real::pp11,pp12,pp21,pp22,pp1,pp2
+!  real::tt11,tt12,tt21,tt22,tt1,tt2
+
   real (kind=4), dimension(:), allocatable:: tt, pp, qq, ppdry
-  integer(kind=4)::ip
+  integer(kind=4)::ip, iternum
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -145,6 +148,8 @@ subroutine cal_pscene
       sza0 = rad_SolarZenithAngle(ix,it)
       vza0 = rad_ViewingZenithAngle(ix,it)
       raa0 = out_RelativeAzimuthAngle(ix,it)
+      lat0 = rad_Latitude(ix,it)
+      lon0 = rad_Longitude(ix,it)
 
       ! -----------------------------
       ! option for SlantColumnDensity
@@ -160,54 +165,9 @@ subroutine cal_pscene
       ! option for T-P & Psfc
       ! ----------------------------------------------
       if((name_option_TemperaturePressure.eq.'GMI')) then 
-        gmi_ix1=floor((rad_Longitude(ix,it)+180.0)/1.25)+1
-        gmi_ix2=gmi_ix1+1
-        gmi_iy1=floor(rad_Latitude(ix,it)+90.)+1
-        gmi_iy2=gmi_iy1+1
-
-        if(gmi_ix1.lt.1) gmi_ix1=1
-        if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
-        if(gmi_ix2.lt.1) gmi_ix2=1
-        if(gmi_ix2.gt.gmi_nx) gmi_ix2=gmi_nx
-        if(gmi_iy1.lt.1) gmi_iy1=1
-        if(gmi_iy1.gt.gmi_ny) gmi_iy1=gmi_ny
-        if(gmi_iy2.lt.1) gmi_iy2=1
-        if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
-
-        gmi_wx1=rad_Longitude(ix,it)-gmi_lon(gmi_ix1)
-        gmi_wx2=gmi_lon(gmi_ix2)-rad_Longitude(ix,it)
-
-        gmi_wy1=rad_Latitude(ix,it)-gmi_lat(gmi_iy1)
-        gmi_wy2=gmi_lat(gmi_iy2)-rad_Latitude(ix,it)
-      endif
-
-      if(name_option_TemperaturePressure.eq.'GMI') then
-        pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
-        pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
-        pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
-        pp22=gmi_TerrainPressure(gmi_ix2,gmi_iy2)
-        pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
-        pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
-        gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
+        call get_GMItmp_lonlat(lon0,lat0,tt,pp,gmi_psfc)
         psfc0=gmi_psfc
 
-        do ip=1,gmi_np
-          pp11=gmi_Pressure(gmi_ix1,gmi_iy1,ip)
-          pp12=gmi_Pressure(gmi_ix1,gmi_iy2,ip)
-          pp21=gmi_Pressure(gmi_ix2,gmi_iy1,ip)
-          pp22=gmi_Pressure(gmi_ix2,gmi_iy2,ip)
-          pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
-          pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
-          pp(ip)=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
-          tt11=gmi_temperature(gmi_ix1,gmi_iy1,ip)
-          tt12=gmi_temperature(gmi_ix1,gmi_iy2,ip)
-          tt21=gmi_temperature(gmi_ix2,gmi_iy1,ip)
-          tt22=gmi_temperature(gmi_ix2,gmi_iy2,ip)
-          tt1=(gmi_wy2*tt11+gmi_wy1*tt12)/(gmi_wy1+gmi_wy2)
-          tt2=(gmi_wy2*tt21+gmi_wy1*tt22)/(gmi_wy1+gmi_wy2)
-          tt(ip)=(gmi_wx2*tt1+gmi_wx1*tt2)/(gmi_wx1+gmi_wx2)
-        end do
-        pp(gmi_np+1)=gmi_psfc
         if (psfc0.gt.0.0) then
           call read_GMI_VCD(pp,tt)
           vvcd=gmi_vcd
@@ -222,12 +182,14 @@ subroutine cal_pscene
         !they are TOA->BOA, the opposite of the GEOS-CF original order
         !psfc0=geos_Pressure(ix,it,geos_np+1)! not adjusted for topo
         psfc0= l2_TerrainPressure(ix,it) ! adjusted for topography
+
         do ip=1,geos_np
           pp(ip)=geos_Pressure(ix,it,ip)
           tt(ip)=geos_temperature(ix,it,ip)
           qq(ip)=geos_Q(ix,it,ip)
         end do
         pp(geos_np+1)=psfc0
+
         if (psfc0 .gt. 0.0) then
           call read_GEOS5_VCD(pp,tt,qq,ppdry)
           vvcd=geos_vcd

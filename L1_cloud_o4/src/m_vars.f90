@@ -22,13 +22,6 @@ module m_vars
 ! operation mode ='production' or 'development', set through control
    character(len=255):: run_mode='development'
 
-!-------------
-! allocatable
-!-------------
-  integer(kind=8),dimension(:),allocatable::edge
-  integer(kind=8),dimension(:),allocatable::start
-  integer(kind=8),dimension(:),allocatable::stride
-
 !----------------
 ! L1B irradiance
 !----------------
@@ -68,7 +61,7 @@ module m_vars
   integer(kind=4)::rad_nWavelCoef
   real::rad_EarthSunDist
 
-!hqw use out_TerrainHeight in reading for each option
+! use out_TerrainHeight in reading for each option
 !  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
@@ -76,7 +69,7 @@ module m_vars
 ! hqw adds rad_SnowIceFraction
   real(kind=4),   dimension(:,:),   pointer::rad_SnowIceFraction
 
-!hqw added rad_466nm,rad_477nm,rad_440nm which is what needed
+! added rad_466nm,rad_477nm,rad_440nm which is what needed
   real(kind=4), dimension(:,:), pointer::rad_466nm,rad_477nm,rad_440nm
 
 !--------------
@@ -103,13 +96,13 @@ module m_vars
   real(kind=4),dimension(:),pointer::lut_pcld
 
   ! LUT cloud node
-  ! ALB(cloud) = 0.8, Psfc(cloud) = 700hPa
+  ! ALB(cloud) = 0.8, Pcld = 700hPa
   integer, parameter:: LUT466rad_cloud_albid = 18
   integer, parameter:: LUT466rad_cloud_psfcid = 18
   integer, parameter:: LUT440rad_cloud_albid = 18
   integer, parameter:: LUT440rad_cloud_psfcid = 18
 
-  ! LUT albedo node
+  ! LUT albedo node used for solving sbar, trans 
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
   integer, parameter:: LUT_ALBID_0p0 = 1
   integer, parameter:: LUT_ALBID_0p1 = 7
@@ -122,7 +115,7 @@ module m_vars
   integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
   integer,parameter:: npsfc=23, npcld=23
 
-  !hqw added the following to remove hard_code in various places
+  ! added the following to remove hardcoded numbers 
   ! these are determined by LUTs
   !real(kind=4),parameter::max_SZA=89.,max_VZA=72. ! OMI
   real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
@@ -135,13 +128,14 @@ module m_vars
 !   real, parameter:: a233=0.9318, b233=-1.3336e-2
 !   real, parameter:: a253=0.9680, b253=-5.8256e-3
 !   real, parameter:: a293=1.0270, b293=-2.4064e-3
-! coefs updates to account for changes associated with RJH HITRAN2020 H2O
+! coefs updated to account for changes associated with RJH HITRAN2020 H2O
 ! coefs are derived using Thalman O4 and OMC4 20050701,20060101,20060715
    real, parameter:: TrefO4 = 273. 
    real, parameter:: a203 = 0.90, b203 = -0.03
    real, parameter:: a233 = 0.96, b233 = -0.02
    real, parameter:: a253 = 0.97, b253 = 0.00
    real, parameter:: a293 = 1.01, b293 = 0.00
+
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 
    ! if dT < dt_threshold, then stop iteration
@@ -161,18 +155,19 @@ module m_vars
 
  ! added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
+ ! EY suggests change to 6.733e-4 to be more accurate
   real,parameter::vcd_convfac = 6.733e-4 !previously 6.765e-4
- !EY suggests change to 6.733e-4 to be more accurate
 
  ! add the fraction used for cpp during scd temperature correction
   real,parameter:: frac4cpp = 0.7937 !previously 0.5
+
 !-----------
 ! input LUN
 !-----------
 character(len=6)::lun_lut_amf_clear='477000'
 character(len=6)::lun_lut_amf_cloud='477001'
 character(len=6)::lun_lut_amf_ler6d='477010'
-!hqw month dependent GMI files should keep the lun_ stuff
+! month dependent GMI files should keep the lun_ stuff
 character(len=6),dimension(12):: &
   lun_gmi_psfc=(/'400201','400202','400203','400204','400205','400206', &
                  '400207','400208','400209','400210','400211','400212'/)
@@ -180,15 +175,12 @@ character(len=6),dimension(12):: &
   lun_gmi_tmp=(/'400301','400302','400303','400304','400305','400306', &
                 '400307','400308','400309','400310','400311','400312'/)
 
+integer:: ilun_gmi_psfc = 4002
+integer:: ilun_gmi_tmp = 4003
+
 integer::ilun_lut_amf_clear=477000
 integer::ilun_lut_amf_cloud=477001
 integer::ilun_lut_amf_ler6d=477010
-integer,dimension(12):: &
-  ilun_gmi_psfc=(/400201,400202,400203,400204,400205,400206, &
-                  400207,400208,400209,400210,400211,400212/)
-integer,dimension(12):: &
-  ilun_gmi_tmp=(/400301,400302,400303,400304,400305,400306, &
-                 400307,400308,400309,400310,400311,400312/)
 
 ! =============
 ! input options
@@ -210,18 +202,20 @@ integer,dimension(12):: &
 !  GEOS5: GEOS-5 T/P/Psfc
 
   character(len=255)::name_gmi_dir='refdata/'
-! geos5 is replaced with geoscf using libclim
 !  character(len=255)::name_geos5_dir='refdata/'
 !  character(len=255)::name_geos5_file
 
 ! character(len=255)::name_option_TemperaturePressure='GMI'
+! TEMPO uses GEOS5 option to read GEOS-CF
  character(len=255)::name_option_TemperaturePressure='GEOS5'
 
   integer :: nlayers
 
+! debug
+  ! ixdebug & itdebug can be overwrite through control file
   integer :: ixdebug=-1800 !set to negative to prevent debug output
   integer :: itdebug=-60 !set to negative to prevent debug output
-  ! ixdebug & itdebug can be overwrite through control file
+
   integer :: lun_debug_irr=19
   integer :: lun_debug_rad=29
   integer :: lun_debug_clim=39
@@ -231,22 +225,25 @@ integer,dimension(12):: &
   integer :: lun_debug_ocp=79
   
 
-  integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
+! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
 ! change gmi variables to allocatable
 !   so that they won't be allocated if not needed
+  integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
+
   real(kind=4),dimension(:), allocatable :: gmi_lon
   real(kind=4),dimension(:), allocatable :: gmi_lat
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Temperature
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Pressure !include psfc
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
 
+! GEOS-CF
   ! geos_np = the number of layers is initialized when reading GEOS-CF
   integer :: geos_np=0
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
   real(kind=4),dimension(:,:,:),pointer::geos_Q
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure
 
-! calculate VCD at the LUT pressure level
+! calculated VCD at the LUT pressure levels
 ! these will replace vvcd
   real,dimension(npcld)::gmi_vcd        
   real,dimension(npcld)::geos_vcd
@@ -257,20 +254,16 @@ integer,dimension(12):: &
 ! name_option_SurfaceReflectivity:
 !   Rsfc(Kleipool) vs. Rsfc(BRDF)
 
-!name_kleipool_dir can be changed by control.txt
-  character(len=255)::name_option_SurfaceReflectivity='Kleipool'
-!  character(len=255)::name_option_SurfaceReflectivity='BRDF'
+!  character(len=255)::name_option_SurfaceReflectivity='Kleipool'
+  character(len=255)::name_option_SurfaceReflectivity='BRDF'
 
+! name_kleipool_dir can be changed by control.txt
   character(len=255)::name_kleipool_dir='./refdata/'
   integer,parameter::kleipool_nx=720,kleipool_ny=360
-!hqw changed these to pointer so that they won't allocate if not needed
-!  real,dimension(kleipool_nx)::kleipool_lon
-!  real,dimension(kleipool_ny)::kleipool_lat
-!  real(kind=4),dimension(kleipool_nx,kleipool_ny)::kleipool_SurfaceReflectivity440
-!  real(kind=4),dimension(kleipool_nx,kleipool_ny)::kleipool_SurfaceReflectivity466
-!  real(kind=4),dimension(kleipool_nx,kleipool_ny)::kleipool_SurfaceReflectivity477
-!hqw seems that only 466 is actually used
-!hqw changed pointer to allocatable which can be tested with allocated function
+
+! changed these to pointer so that they won't allocate if not needed
+! seems that only 466 is actually used
+! changed pointer to allocatable which can be tested with allocated function
   real,dimension(:),pointer :: kleipool_lon, kleipool_lat
   real(kind=4),dimension(:,:),allocatable :: kleipool_SurfaceReflectivity440
   real(kind=4),dimension(:,:),allocatable :: kleipool_SurfaceReflectivity466
@@ -292,8 +285,9 @@ integer,dimension(12):: &
 ! -----------------
 ! name_option_SnowIce:
 !  Pcld calculations over SnowIce  vs. Pscene calculations over SnowIce
-!  character(len=255)::name_option_SnowIce='Pcld'
-  character(len=255)::name_option_SnowIce='Pscene'
+! changed default to Pcld
+  character(len=255)::name_option_SnowIce='Pcld'
+!  character(len=255)::name_option_SnowIce='Pscene'
 
 ! ----------------
 ! option 5: ECF005
@@ -328,7 +322,7 @@ integer,dimension(12):: &
  character(len=255)::name_option_SceneAlbedoAtTerrain='both'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='yes'
 ! character(len=255)::name_option_SceneAlbedoAtTerrain='no'
-! in production mode, m_cal_pscene force this option to 'no'
+! in production mode, m_cal_pscene force this option is forced to 'no'
 !-----------------------------------------
 ! option 8: option_psfc_clear
 ! clear/cloud for high-P interp
@@ -406,7 +400,7 @@ integer,dimension(12):: &
   real(kind=4),   dimension(:,:),  pointer::out_SolarZenithAngle
   real(kind=4),   dimension(:,:),  pointer::out_ViewingZenithAngle
   real(kind=4),   dimension(:,:),  pointer::out_RelativeAzimuthAngle
-  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
+!  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
 !  integer(kind=1),dimension(:,:),  pointer::out_XTrackQualityFlags
 !  integer(kind=2),dimension(:),    pointer::out_MeasurementQualityFlags
   integer(kind=2),dimension(:,:),  pointer::out_ProcessingQualityFlags
@@ -421,15 +415,10 @@ integer,dimension(12):: &
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity440
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity466
 !  integer(kind=2),dimension(:,:),pointer::out_LandAreaFraction
+
   integer(kind=4)::out_NumTimes
   integer(kind=4)::out_nXtrack
-!hqw changed to cloudfraction to real 
-!  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFraction
-!  integer(kind=2),dimension(:,:),pointer::out_EffectiveCloudFractionNotClipped
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFraction440
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped440
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFraction466
-!  integer(kind=2),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
+! changed cloud fraction and cloud pressure to real 
   real(kind=4),dimension(:,:),pointer::out_EffectiveCloudFraction
   real(kind=4),dimension(:,:),pointer::out_EffectiveCloudFractionNotClipped
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction440

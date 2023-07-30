@@ -23,9 +23,9 @@ subroutine cal_ecf
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
 
-  integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
-  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
-  real::pp11,pp12,pp21,pp22,pp1,pp2
+  real:: gmi_psfc
+!  real::pp11,pp12,pp21,pp22,pp1,pp2
+
   real:: earthsunfactor2
  
   integer(kind=4)::kleipool_ix,kleipool_iy
@@ -204,9 +204,8 @@ subroutine cal_ecf
       ! ------------------------
       ! calculate cloud fraction
       ! ------------------------
-
-      ! bit 7 and 8 for rad are already set in m_read_input_tio
-      ! bit 12 is for skipped ecf
+      ! bit7 was set in m_read_input_tio, set again here
+      ! bit12 is for skipped ecf
       if ((rad466 .gt. 0.).and.(irr_out_irradiance_466nm(ix) .gt. 0.)) then
       ! earthsunfactor2 = (rad_EarthSunDist/irr_EathSunDist)**2 defined above
       ! bug fix: added () below in the denominator to
@@ -215,7 +214,7 @@ subroutine cal_ecf
          rad_of_irr466(ix,it)=rad466/(irr_out_irradiance_466nm(ix)*earthsunfactor2)
       else
          rad_of_irr466(ix,it) = fspecial
-         ! bit8 was set in m_read_input_tio, thus a safeguard below
+         ! bit8 was set in m_read_input_tio, set again here 
          ! but is also useful later when we implement iteration
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12) 
@@ -238,39 +237,9 @@ subroutine cal_ecf
       !----------------
       !out-of-range rad_Longitude should have been skipped already
       if(name_option_TemperaturePressure.eq.'GMI') then
-        gmi_wx1 = 0.
-        gmi_wx2 = 0.
-        gmi_wy1 = 0.
-        gmi_wy2 = 0.
+        call get_GMIpsfc_lonlat(lon0, lat0, gmi_psfc)
 
-        gmi_ix1=floor((lon0+180.0)/1.25)+1
-        gmi_ix2=gmi_ix1+1
-
-        gmi_iy1=floor(lat0+90.)+1
-        gmi_iy2=gmi_iy1+1
-
-        if(gmi_ix1.lt.1) gmi_ix1=1
-        if(gmi_ix1.gt.gmi_nx) gmi_ix1=gmi_nx
-        if(gmi_ix2.lt.1) gmi_ix2=1
-        if(gmi_ix2.gt.gmi_nx) gmi_ix2=gmi_nx
-        if(gmi_iy1.lt.1) gmi_iy1=1
-        if(gmi_iy1.gt.gmi_ny) gmi_iy1=gmi_ny
-        if(gmi_iy2.lt.1) gmi_iy2=1
-        if(gmi_iy2.gt.gmi_ny) gmi_iy2=gmi_ny
-
-        gmi_wx1=lon0-gmi_lon(gmi_ix1)
-        gmi_wx2=gmi_lon(gmi_ix2)-lon0
-        gmi_wy1=lat0-gmi_lat(gmi_iy1)
-        gmi_wy2=gmi_lat(gmi_iy2)-lat0
-
-        pp11=gmi_TerrainPressure(gmi_ix1,gmi_iy1)
-        pp12=gmi_TerrainPressure(gmi_ix1,gmi_iy2)
-        pp21=gmi_TerrainPressure(gmi_ix2,gmi_iy1)
-        pp22=gmi_TerrainPressure(gmi_ix2,gmi_iy2)
-        pp1=(gmi_wy2*pp11+gmi_wy1*pp12)/(gmi_wy1+gmi_wy2)
-        pp2=(gmi_wy2*pp21+gmi_wy1*pp22)/(gmi_wy1+gmi_wy2)
-        gmi_psfc=(gmi_wx2*pp1+gmi_wx1*pp2)/(gmi_wx1+gmi_wx2)
-
+        ! gmi_psfc is NOT corrected for topography
         ! psfc0 is used later
         psfc0=gmi_psfc
 
