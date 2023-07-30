@@ -11,25 +11,23 @@ subroutine cal_ocp
   ! bit??  meaning:WhereSet
   !------------------------------
   ! bit00  (Error) invalid lat/lon/SZA/VZA/RAA: m_cal_ecf.f90
-  ! bit01  invalid 466nm cloud radiance fraction (crf): m_cal_ecf.f90
-  ! bit02  (Warning) pcld replaced by pscene because ecf<minECF: m_cal_pscene.f90 
+  ! bit01  (Warning) invalid 466nm cloud radiance fraction (crf): m_cal_ecf.f90
+  ! bit02  (Warning) ecf<minECF pcld replaced by pscene: m_cal_pscene.f90 
   ! bit03  (ERROR) input surface pressure or albedo error: m_cal_ecf.f90
-  ! bit04  (Warning) pcld replaced by pscene as snow_ice_fraction>min_snowice: m_cal_pscene.f90
+  ! bit04  (Warning) snow_ice_fraction>min_snowice pcld replaced by pscene: m_cal_pscene.f90
   ! bit05  (Warning) SCD correction problem or max_scd_iter reached in ocp : m_cal_ocp.f90
   ! bit06  (Error) SCD < 0 or SCD quality issue, : m_cal_ocp.f90
   ! bit07  (Warning) invalid 440nm irr,rad or crf: m_read_input_tio.f90,m_cal_ecf.f90
   ! bit08  (ERROR) 466nm radiance or irradiance error: m_read_input_tio.f90
   ! bit09  (Warning) ecf out of normal range, clipped: m_cal_ecf.g90
-  ! bit10  SceneAlbedoAtTerrain.eq.'yes' // 'both' skipped, 
-  !        SCD correction problem or max_scd_iter reached: m_cal_pscene
-  ! bit11  SceneAlbedoAtTerrain.eq.'no' // 'both' skipped,
-  !        SCD correction problem or max_scd_iter reeached: m_cal_pscene
+  ! bit10  (Info) derived SurfaceLER or TerrainPressure error in pscene
+  ! bit11  (Info) derived ScenePressure or SceneLER error in pscene
   ! bit12  (ERROR) skipped cloud ecf calculation 
   !        due to any problem during processing: m_cal_ecf.f90
   ! bit13  (ERROR) skipped cloud ocp calculation due to
   !        any problem during processing,or invalid ocp: m_cal_ocp.f90
   ! bit14  (Warning) ocp out of normal range and clipped: m_cal_ocp.f90
-  ! bit15  (Warning) skipped pscene calculation during processing
+  ! bit15  (Info) skipped pscene calculation during processing
   ! bit 9 & bit 14 have changed from Error to Warning
 
   use m_vars
@@ -233,6 +231,8 @@ subroutine cal_ocp
            call exit(-1)
         endif
 
+        ppdry = pp ! GMI is not adjusted to ppdry
+ 
         call read_GMI_VCD(pp,tt)
         vvcd=gmi_vcd
       endif ! GMI
@@ -277,7 +277,7 @@ subroutine cal_ocp
          write(lun_debug_ocp,*)'longitude=',rad_longitude(ix,it)
          write(lun_debug_ocp,*) 'psfc=',pp(nlayers+1)
          write(lun_debug_ocp,*) 'nlayers=',nlayers
-         write(lun_debug_ocp,*) 'GEOS_Level, Pressure(hPa), DryPressure,  Temperature(K)'
+         write(lun_debug_ocp,*) 'Level, Pressure(hPa), DryPressure,  Temperature(K)'
          do ip = 1, nlayers
             write(lun_debug_ocp,*)ip, pp(ip),ppdry(ip),tt(ip)
          end do
@@ -318,19 +318,21 @@ subroutine cal_ocp
       endif
 
       ! whether to skip ocp when 0<ecf<min_ecf
-      if (name_option_ECF005 .EQ. 1) then ! requested skip small ecf
       if (btest(out_ProcessingQualityFlags(ix,it),2)) then ! ecf< min_ecf
+        if (name_option_skipECFminocp .EQ. 1) then ! requested skip ocp for ecf<min_ecf
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
          go to 990
-      endif
+        endif
       endif
 
-      !hqw do not skip snow/ice for ocp, uncommment if want to skip
-      ! snowice is handled in pscene, flag will move to m_read_gler
-      !if (btest(out_ProcessingQualityFlags(ix,it),4)) then ! snowice
-      !   out_ProcessingQualityFalgs(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
-      !   go to 990
-      !endif
+      ! whether to skip snow/ice for ocp, uncommment if want to skip
+      ! snowice is handled in pscene, flag was set in m_read_gler
+      if (btest(out_ProcessingQualityFlags(ix,it),4)) then ! snowice surface
+        if (name_option_skipSnowocp .eq. 1) then ! requested skip ocp for snowice
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         go to 990
+        endif
+      endif
 
       ! skip ocp if ecf is skipped 
       if (btest(out_ProcessingQualityFlags(ix,it),12)) then

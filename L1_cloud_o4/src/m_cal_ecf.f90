@@ -24,7 +24,6 @@ subroutine cal_ecf
   integer(kind=4)::it,ix
 
   real:: gmi_psfc
-!  real::pp11,pp12,pp21,pp22,pp1,pp2
 
   real:: earthsunfactor2
  

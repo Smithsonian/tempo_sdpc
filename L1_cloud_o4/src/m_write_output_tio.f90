@@ -736,22 +736,22 @@ contains
                                att_text = "time longitude latitude")
      !refer to m_cal_ocp for confirmation of (16) flag meanings
      call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
-                               att_text = "error_geoloc_or_angles "// &
-                                          "warn_466nm_crf_invalid "// &
-                                          "warn_ocp_repaced for_small_ecf "// &
-                                          "error_input_psurf_albedo "// &
-                                          "warn_ocp_replaced_for_snowice "// &
-                                          "warn_ocp_scd_iteration_exceeds_max "// &
-                                          "error_scd_negative_or_bad "// &
-                                          "warn_440nm_rad_or_irr_error "// &
-                                          "error_466nm_rad_or_irr_error "// &
-                                          "warn_ecf_beyond_normal_range "// &
-                                          "warn_pscene_skipped_for_saat_yes"// &
-                                          "warn_pscene_skipped_for_saat_no"// &
-                                          "error_ecf_calc_skipped "// &
-                                          "error_ocp_calc_skipped "// &
-                                          "warning_ocp_beyond_normal_range "// &
-                                          "warn_pscene_calc_skipped")
+                  att_text = "0_error_geoloc_or_angles "// &
+                             "1_warn_466nm_crf_invalid "// &
+                             "2_warn_ocp_repaced for_small_ecf "// &
+                             "3_error_input_psurf_albedo "// &
+                             "4_warn_ocp_replaced_for_snowice "// &
+                             "5_warn_ocp_scd_iteration_exceeds_max "// &
+                             "6_error_scd_negative_or_bad "// &
+                             "7_info_440nm_rad_or_irr_error "// &
+                             "8_error_466nm_rad_or_irr_error "// &
+                             "9_warn_ecf_beyond_normal_range "// &
+                             "10_info_pscene_SurfaceLER_TerrainP_invalid"// &
+                             "11_info_pscene_SceneLER_SceneP_invalid"// &
+                             "12_error_ecf_calc_skipped "// &
+                             "13_error_ocp_calc_skipped "// &
+                             "14_warning_ocp_beyond_normal_range "// &
+                             "15_info_pscene_calc_skipped")
      do i = 1, 16
        flag = 0
        flag_masks(i) = ibset (flag, i-1)

@@ -26,11 +26,6 @@ subroutine cal_pscene
 
   real:: lon0, lat0, gmi_psfc
 
-!  integer(kind=4)::gmi_ix1,gmi_ix2,gmi_iy1,gmi_iy2
-!  real::gmi_wx1,gmi_wx2,gmi_wy1,gmi_wy2,gmi_psfc
-!  real::pp11,pp12,pp21,pp22,pp1,pp2
-!  real::tt11,tt12,tt21,tt22,tt1,tt2
-
   real (kind=4), dimension(:), allocatable:: tt, pp, qq, ppdry
   integer(kind=4)::ip, iternum
 
@@ -94,7 +89,7 @@ subroutine cal_pscene
   allocate(out_SlantColumnTerrainO2O2(nx,nt),stat=ierr)
   allocate(out_O2O2SceneTemperature(nx,nt),stat=ierr)
   allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
-  !hqw moved out_TerrainPressure from m_cal_ocp here
+  ! moved out_TerrainPressure from m_cal_ocp here
   allocate(out_TerrainPressure(nx,nt),stat=ierr)
 
   !initialize array
@@ -138,7 +133,7 @@ subroutine cal_pscene
       psfc0 = fFillValue9
     
 ! m_cal_ocp is called before this module, out_ProcessingQualityFlags
-! bit 0 and 1 can be used to skip pixels with invalid geoloc or angles
+! bit0 and bit1 can be used to skip pixels with invalid geoloc or angles
       if (btest(out_ProcessingQualityFlags(ix,it),0) .or. &
           btest(out_ProcessingQualityFlags(ix,it),1)) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),15)
@@ -275,12 +270,14 @@ subroutine cal_pscene
       ! name_option_SceneAlbedoAtTerrain
       !   'yes' (Ascene at Psfc); 'no' (Ascene at each P level)
       !------------------------------------------------------------
+      ! when both are calculated, both bit10 and bit11 are 0
       if (name_option_SceneAlbedoAtTerrain .ne. 'both') then
+        ! only one is calculated
         if (name_option_SceneAlbedoAtTerrain .eq. 'yes') then
-          ! set bit 11 
+          ! set bit 11: Ascene at P is NOT calculated (or in error)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11) 
         else !  'no'
-          ! set bit 10
+          ! set bit 10: Ascene at Pcld is NOT calculated (or in error)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
       endif
@@ -376,6 +373,7 @@ subroutine cal_pscene
         else
            ler466 = fFillValue9
            alb0 = ler466
+           ! AsceneAtTerrain in error or is not calculated
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
            go to 333
         endif
@@ -442,7 +440,7 @@ subroutine cal_pscene
 
         !-----
         ! find alb node for lut_amf_ler using the calculated ler466
-        ! alb0 was assigned as ler466 before
+        ! alb0 was assigned as ler466 calculated before
         !-----
 
         ialb1=-9; ialb2=-9; walb1=0.; walb2=0.
@@ -455,7 +453,8 @@ subroutine cal_pscene
           endif
         end do
         !if node not found, calculation will be skipped
-        if(ialb1 .lt. 0) then
+        if (ialb1 .lt. 0) then
+          ! bit10: AsceneAtTerrain error (or not calculated, see above)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
           go to 333
         endif
@@ -568,7 +567,7 @@ subroutine cal_pscene
           endif
         end do
         ! all amfvcds should >0. from here on
-        ! scdm will be compared against thes amfvcds to derive pressure
+        ! scdm will be compared against thes amfvcd(ipcld) to derive cloud pressure
 
         ! initialize local vairable before scd T-correction iteration
         scdm = scdmorg
@@ -757,6 +756,7 @@ subroutine cal_pscene
       !+0+0+0+0+0+0+0+0+0+0
 
 ! skip to here if something goes wrong for this name option
+! or if name_option_SceneAlbedoAtTerrain=='no'
 333   continue 
 
       !****************************************************************
@@ -776,18 +776,18 @@ subroutine cal_pscene
       if((TerrainLER440 .ge. -0.2) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
       if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 1.2)) TerrainLER440=1.0
 
+      ! Assign out_SurfaceLER 
+      out_SurfaceLER466(ix,it)=TerrainLER466
+      out_SurfaceLER440(ix,it)=TerrainLER440
+
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !hqw seems cpp calculated above is not used to assign anything yet
       !within the 'no'//'both' option below, cpp will be re-calculated
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       !hqw use out_TerrainPressure to hold cpp here
       out_TerrainPressure(ix,it) = cpp
-      ! out_TerrainPressure should be close to l2_TerrainPressure
-      ! these can be used as diagnostics
-
-      ! Assign out_SurfaceLER 
-      out_SurfaceLER466(ix,it)=TerrainLER466
-      out_SurfaceLER440(ix,it)=TerrainLER440
+      ! cpp is the TerrainPressure calculated using TerrainLER466
+      ! it can be used as a diagnostics
 
       !**************************************************************
       ! re-init ler466, ler440, cpp
@@ -826,8 +826,9 @@ subroutine cal_pscene
         !----------------------
         !1. SceneLER at 466 nm
         !----------------------
-        do ipsfc=1,npsfc
+        do ipsfc=1,npsfc ! loop over LUT pressure levels
           ipcld=ipsfc !unused, but reminds loop is over pcld 
+
           do ialb=1,nalb
             a111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
             a112=lut_rad_clr(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -862,6 +863,7 @@ subroutine cal_pscene
              if(ler466.gt.1.0) ler466=1.0
           else
              ler466 = fFillValue9
+             ! bit11 signal LER466 at some LUT level is invalid
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
              go to 444
           endif 
@@ -965,6 +967,7 @@ subroutine cal_pscene
             lev_ler_amf(ipsfc)=(walb2*a1+walb1*a2)/(walb1+walb2)
           else ! ialb1 <= 0
              lev_ler_amf(ipsfc) = -9999.
+             ! bit11 signal invalid lev_ler_amf at some LUT level 
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
              go to 444
           endif ! ialb1
@@ -972,7 +975,7 @@ subroutine cal_pscene
         end do !ipsfc
 
         ! -----------------
-        ! calculate AMF*VCD for each ipcld
+        ! calculate AMF*VCD for each LUT ipcld
         ! -----------------
         ! vvcd is on LUT pcld grid, so is lev_ler_amf
         do ipcld=1,npcld
@@ -1332,6 +1335,8 @@ subroutine cal_pscene
             out_CloudRadianceFractionNotClipped466(ix,it)=0.
             out_CloudRadianceFraction440(ix,it)=0.
             out_CloudRadianceFractionNotClipped440(ix,it)=0.
+            ! signal pcld replacement by pscene
+            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
           endif
 
           ! large pressure difference over bright surface, assume overcast 
@@ -1344,32 +1349,32 @@ subroutine cal_pscene
             out_CloudRadianceFractionNotClipped466(ix,it)=1.
             out_CloudRadianceFraction440(ix,it)=1.
             out_CloudRadianceFractionNotClipped440(ix,it)=1.
+            ! signal pcld replacement by pscene
+            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
           endif
-
-          !signal pcld replacement by pscene
-          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),4)
         endif ! min_snowice
       endif !name_option_SnowIce
 
       ! no change for any other name_option_SnowIce
 
       !--------------------------------------------------------
-      ! 2. name_option_MinECF = 'yes':
+      ! 2. name_option_MinECF = 'Pscene':
       !       Use scene pressure for ECF < min_ecf
-      !    name_option_MinECF = 'no':
+      !    name_option_MinECF = 'Pcld':
       !       cloud pressure unchanged
-      ! original default choice in m_vars was 'yes', now changed default to 'no'
-      !    so that user has the choice of if/how to clip
+      ! original default choice in m_vars was 'Pscene'
       !--------------------------------------------------------
-      if (name_option_MinECF .eq. 'yes') then
+      if (name_option_MinECF .eq. 'Pscene') then
         if ((out_EffectiveCloudFraction(ix,it).gt.0.).and. &
             (out_EffectiveCloudFraction(ix,it).lt. min_ecf) .and. &
             (out_ScenePressure(ix,it).gt. 0.)) then 
-          out_CloudPressure(ix,it)=out_ScenePressure(ix,it)
           out_CloudPressureNotClipped(ix,it)=out_ScenePressure(ix,it)
+          out_CloudPressure(ix,it)=out_ScenePressure(ix,it)
           ! clip out_CloudPressure
           if((out_CloudPressure(ix,it).gt.psfc0).and.(out_CloudPressure(ix,it).lt.maxpress)) &
              out_CloudPressure(ix,it)=psfc0
+          if (out_CloudPressure(ix,it) .lt. 25.) &
+             out_CloudPressure(ix,it)=fFillValue9
 
           ! signal pcld replacement by pscene
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)

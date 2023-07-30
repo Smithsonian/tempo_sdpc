@@ -283,35 +283,46 @@ integer::ilun_lut_amf_ler6d=477010
 ! -----------------
 ! option 4: SnowIce
 ! -----------------
+! name_option_skipSnowocp 
+! 1: skip ocp calculation when snowice fraction > min_snowice
+! 0: calculte ocp regardless of snowice fraction
+  integer:: name_option_skipSnowocp=0
+
 ! name_option_SnowIce:
 !  Pcld calculations over SnowIce  vs. Pscene calculations over SnowIce
 ! changed default to Pcld
   character(len=255)::name_option_SnowIce='Pcld'
 !  character(len=255)::name_option_SnowIce='Pscene'
 
+  real:: min_snowice=0.05
 ! ----------------
-! option 5: ECF005
+! option 5: skipECF005ocp
 ! ----------------
-! name_option_ECF005:
-!   Pcld calculations ECF >= 0.05  vs. ECF >= 0.00
-! 1: skip calculate ocp for ecf = (0., 0.05]
-!   i.e., ocp is for ecf>=0.05
-! 0: calucate ocp for ecf = (0.0, 0.05]
+! name_option_skipECF005ocp:
+!   Pcld calculations ECF >= min_ecf  vs. ECF >= 0.00
+! 1: skip calculate ocp for ecf = (0., min_ecf]
+!   i.e., ocp is for ecf>=min_ecf
+! 0: calucate ocp for ecf = (0.0, min_ecf]
 !   i.e., ocp is for ecf> 0.0
 ! Note, for small ecf, ocp is highly uncertainty
-!   ocp for ecf = 0.0 is always skipped
-  integer::name_option_ECF005=0
+!   ocp for ecf <= 0.0 is always skipped
+  integer::name_option_skipECFminocp=0
 
-  real,parameter::min_ecf=0.05, min_snowice=0.05
-! changed default name_option_MinECF from yes to no
-  character(len=255)::name_option_MinECF='no' ! 'yes'
+  real:: min_ecf=0.05
+
+! whether to replace pcld with pscene for ecf<min_ecf 
+  character(len=255)::name_option_MinECF='Pscene' ! 'Pcld'
+! when name_option_MinECF='Pscene',set name_option_skipECFminocp=1 saves time
+! as pscene will replace pcld for ecf = (0.,min_ecf)
+! when name_option_MinECF='Pcld', name_option_skipECFminocp controls
+! whether ocp is calculated or skipped for ecf=(0.,min_ecf)
 
 ! ----------------
 ! option 6: adjust total to dry pressure for vvcd
 ! ---------------
 ! 1 : will adjust total to dry for vvcd
 ! 0 : will not adjust, but assume total=dry 
-  integer::name_option_adjdry=1
+  integer, parameter::name_option_adjdry=1
 
 ! -----------------------------------
 ! option 7: SceneAlbedo/ScenePressure
@@ -325,8 +336,8 @@ integer::ilun_lut_amf_ler6d=477010
 ! in production mode, m_cal_pscene force this option is forced to 'no'
 !-----------------------------------------
 ! option 8: option_psfc_clear
-! clear/cloud for high-P interp
-! find pressure for AMF*VCD
+! use clear or cloud for high-P interp
+! to find pressure for AMF*VCD
 ! 0: Pclr=Psfc for Pcld>Psfc (original default)
 ! 1: Pclr=Pcld if Pcld>Psfc
 !-------------------------------------
