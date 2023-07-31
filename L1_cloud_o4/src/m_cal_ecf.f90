@@ -55,46 +55,8 @@ subroutine cal_ecf
   nt=rad_NumTimes
   nx=rad_nXtrack
 
-  ! allocate arrays & fill values with fspecial
-
-  allocate(cal_rad_clr(nx,nt),stat=ierr)
-  allocate(cal_rad_cld(nx,nt),stat=ierr)
-  allocate(cal_rad_cld440(nx,nt),stat=ierr)
-
-  allocate(rad_of_irr440(nx,nt),stat=ierr)
-  allocate(rad_of_irr466(nx,nt),stat=ierr)
-
-  allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
-  allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
-
-  cal_rad_clr=fspecial
-  cal_rad_cld=fspecial
-  cal_rad_cld440=fspecial
-  rad_of_irr440=fspecial
-  rad_of_irr466=fspecial
-
-  out_SurfaceReflectivity466=fspecial
-  out_SurfaceReflectivity440=fspecial
-
-  allocate(out_EffectiveCloudFraction(nx,nt),stat=ierr)
-  allocate(out_EffectiveCloudFractionNotClipped(nx,nt),stat=ierr)
-  allocate(out_CloudRadianceFraction440(nx,nt),stat=ierr)
-  allocate(out_CloudRadianceFractionNotClipped440(nx,nt),stat=ierr)
-  allocate(out_CloudRadianceFraction466(nx,nt),stat=ierr)
-  allocate(out_CloudRadianceFractionNotClipped466(nx,nt),stat=ierr)
-
-  allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
-  out_ReflectanceFactor=fspecial
-
-!  out_RelativeAzimuthAngle is now allocated, read and adjusted
-!  in m_read_input_tio which is called before this module
-
-  out_EffectiveCloudFraction=fspecial
-  out_EffectiveCloudFractionNotClipped=fspecial
-  out_CloudRadianceFraction440=fspecial
-  out_CloudRadianceFractionNotClipped440=fspecial
-  out_CloudRadianceFraction466=fspecial
-  out_CloudRadianceFractionNotClipped466=fspecial
+  ! allocate arrays & initialize with fspecial
+  call allocate_ecf_arrays(nx,nt,fspecial, ierr)
 
    if ((trim(run_mode) .eq. 'development').and.(itdebug .ge. 0)) then
       write(*,*) 'writing debug_ecf.txt'
@@ -113,7 +75,7 @@ subroutine cal_ecf
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
       ! bit7 & bit8 were set before in m_read_input_tio, however,
       ! rad_of_irr466 & rad_of_irr440 are checked again here, 
-      ! for later implementation of iteration, it is easier to clear them also
+      ! for later implementation of iteration, it is easier to clear them, too. 
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),0)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),1)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),3)
@@ -516,8 +478,8 @@ subroutine cal_ecf
       ! is not large (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr,
       ! Which is comparable to error associated with climatology 
       !--------------------------------
-      ialb= LUT466rad_cloud_albid ! remove hardcoded lut index 18
-      ipsfc= LUT466rad_cloud_psfcid ! remoce hardcoded lut index 18
+      ialb= LUTrad_cloud_albid ! remove hardcoded lut index 18
+      ipsfc= LUTrad_cloud_psfcid ! remoce hardcoded lut index 18
 
       r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -542,8 +504,8 @@ subroutine cal_ecf
       ! pcld=701hPa is an assumption used in ecf calculation
       ! future implementation will use iteraction with pcld
       !--------------------------------
-      ialb=LUT440rad_cloud_albid 
-      ipsfc=LUT440rad_cloud_psfcid
+      ialb=LUTrad_cloud_albid 
+      ipsfc=LUTrad_cloud_psfcid
 
       r111=lut_rad_clr440(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr440(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -670,6 +632,62 @@ subroutine cal_ecf
 
 !**********************
 end subroutine cal_ecf
+!**********************
+
+
+!**********************
+subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
+!**********************
+   use m_vars, only: cal_rad_clr, cal_rad_cld, cal_rad_cld440, &
+       rad_of_irr440, rad_of_irr466, out_ReflectanceFactor,&
+       out_SurfaceReflectivity466,out_SurfaceReflectivity440,&
+       out_EffectiveCloudFraction,out_EffectiveCloudFractionNotClipped,&
+       out_CloudRadianceFraction440, out_CloudRadianceFractionNotClipped440,&
+       out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466
+
+   implicit none
+
+   real, intent(in):: fspecial
+   integer, intent(in):: nx,nt
+   integer, intent(inout):: ierr
+
+  allocate(cal_rad_clr(nx,nt),stat=ierr)
+  allocate(cal_rad_cld(nx,nt),stat=ierr)
+  allocate(cal_rad_cld440(nx,nt),stat=ierr)
+
+  allocate(rad_of_irr440(nx,nt),stat=ierr)
+  allocate(rad_of_irr466(nx,nt),stat=ierr)
+
+  allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
+  allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
+
+  cal_rad_clr=fspecial
+  cal_rad_cld=fspecial
+  cal_rad_cld440=fspecial
+  rad_of_irr440=fspecial
+  rad_of_irr466=fspecial
+
+  out_SurfaceReflectivity466=fspecial
+  out_SurfaceReflectivity440=fspecial
+
+  allocate(out_EffectiveCloudFraction(nx,nt),stat=ierr)
+  allocate(out_EffectiveCloudFractionNotClipped(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFraction440(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFractionNotClipped440(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFraction466(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFractionNotClipped466(nx,nt),stat=ierr)
+  allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
+
+  out_EffectiveCloudFraction=fspecial
+  out_EffectiveCloudFractionNotClipped=fspecial
+  out_CloudRadianceFraction440=fspecial
+  out_CloudRadianceFractionNotClipped440=fspecial
+  out_CloudRadianceFraction466=fspecial
+  out_CloudRadianceFractionNotClipped466=fspecial
+  out_ReflectanceFactor=fspecial
+
+!**********************
+end subroutine allocate_ecf_arrays
 !**********************
 
 end module m_cal_ecf

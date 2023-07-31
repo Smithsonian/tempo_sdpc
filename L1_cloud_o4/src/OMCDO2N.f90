@@ -150,7 +150,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters APPShortName",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no APPName from control file", errstat)
+    write(*,*)"no APPShortName from control file, use default"
   ! will use m_vars default
   else
      gmetadata%appshortname=trim(buf)
@@ -158,7 +158,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters APPVersion",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no APPVersion from control file", errstat)
+    write(*,*) "no APPVersion from control file, use default"
   ! will use m_vars default
   else
      gmetadata%appversion=trim(buf)
@@ -166,7 +166,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters AuthorName",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no Author Name from control file", errstat)
+    write(*,*)"no AuthorName from control file, use default"
   !  will use default in m_vars
   else
      gmetadata%author_name=trim(buf)
@@ -174,7 +174,7 @@ program OMCDO2N
 
    status=GetConfigString("E","Runtime Parameters AuthorAffiliation",buf)
    if (status <0) then
-      call tell_error(tell_io_read_error,"no Author Affiliation from control file", errstat)
+      write(*,*)"no AuthorAffiliation from control file, use default"
    !  will use default in m_vars
    else
       gmetadata%author_affiliation=trim(buf)
@@ -182,7 +182,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters ProcessingCenter",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no Processing Center  from control file", errstat)
+    write(*,*)"no ProcessingCenter from control file, use default"
   ! will use default in m_vars 
   else 
      gmetadata%processingcenter=trim(buf)
@@ -190,7 +190,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters TEMPO Footprint",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no TEMPO footprint from control file", errstat)
+    write(*,*) "no Footprint channel from control file, use default"
   ! will use default in m_vars 
   else
      gmetadata%omiwindow=trim(buf)
@@ -198,7 +198,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Runtime Parameters Collection",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"no Collection Number from control file", errstat)
+    write(*,*)"no Collection Number from control file, use default"
   ! will use default in m_vars
   else
      gmetadata%omi_collection=trim(buf)
@@ -280,18 +280,15 @@ program OMCDO2N
   ! 2.1. GMI
   !gmonth is used to decide filename for GMI
   gmonth = gmetadata%granule_month
-  write(*,*) '   gmonth=',gmonth
   flush (output_unit)
 
   if(name_option_TemperaturePressure.eq.'GMI') then
     status=GetConfigString("E","Input Files GMI_dir",name_gmi_dir)
     status=GetConfigString("E","Input Files "//lun_gmi_psfc(gmonth),buf)
     name_gmi_psfc=trim(name_gmi_dir)//trim(buf)
-  !  id_gmi_psfc=ilun_gmi_psfc(gmonth)
 
     status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
     name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-  !  id_gmi_tmp=ilun_gmi_tmp(gmonth)
 
     write(*,*)'   name_gmi_psfc=',trim(name_gmi_psfc)
     write(*,*)'   name_gmi_tmp=',trim(name_gmi_tmp)

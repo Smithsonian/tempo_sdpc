@@ -136,18 +136,18 @@ contains
     !------------------------------------------------------------
 
     ! debug
-    !if (itdebug .gt. 0) then
-    !   write(*,*) 'lut_psfc:', npsfc
-    !   write(*,*) (lut_psfc(i),i=1,npsfc)
-    !   write(*,*) 'lut_alb:', nalb
-    !   write(*,*) (lut_alb(i),i=1,nalb)
+    if ((trim(run_mode).eq.'development').and.(itdebug .gt. 0)) then
+       write(*,*) 'lut_psfc:', npsfc
+       write(*,*) (lut_psfc(i),i=1,npsfc)
+       write(*,*) 'lut_alb:', nalb
+       write(*,*) (lut_alb(i),i=1,nalb)
     !   write(*,*) 'lut_sza:', nsza
     !   write(*,*) (lut_sza(i),i=1,nsza)
     !   write(*,*) 'lut_vza:', nvza
     !   write(*,*) (lut_vza(i),i=1,nvza)
     !   write(*,*) 'lut_rss:', nraa
     !   write(*,*) (lut_raa(i), i=1,nraa)
-    !endif
+    endif
 
     !-------
     ! close

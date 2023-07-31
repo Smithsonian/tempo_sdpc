@@ -79,30 +79,8 @@ subroutine cal_pscene
   endif
 
   !--------
-  ! allocate dimensions for outputs
-  allocate(out_SurfaceLER440(nx,nt),stat=ierr)
-  allocate(out_SurfaceLER466(nx,nt),stat=ierr)
-  allocate(out_SceneLER440(nx,nt),stat=ierr)
-  allocate(out_SceneLER466(nx,nt),stat=ierr)
-  allocate(out_ScenePressure(nx,nt),stat=ierr)
-  allocate(out_SlantColumnSceneO2O2(nx,nt),stat=ierr)
-  allocate(out_SlantColumnTerrainO2O2(nx,nt),stat=ierr)
-  allocate(out_O2O2SceneTemperature(nx,nt),stat=ierr)
-  allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
-  ! moved out_TerrainPressure from m_cal_ocp here
-  allocate(out_TerrainPressure(nx,nt),stat=ierr)
-
-  !initialize array
-  out_SurfaceLER440=fFillValue9
-  out_SurfaceLER466=fFillValue9
-  out_SceneLER440=fFillValue9
-  out_SceneLER466=fFillValue9
-  out_ScenePressure=fFillValue9
-  out_SlantColumnSceneO2O2=fFillValue9
-  out_SlantColumnTerrainO2O2=fFillValue9
-  out_O2O2SceneTemperature=fFillValue9
-  out_O2O2TerrainTemperature=fFillValue9
-  out_TerrainPressure=fFillValue9
+  ! allocate m_vars arrays
+  call allocate_pscene_arrays(nx,nt,fFillValue9,ierr)
 
   ! allocate and initialize local arrays
   allocate(tt(nlayers), qq(nlayers),pp(nlayers+1))
@@ -1388,7 +1366,51 @@ subroutine cal_pscene
   end do
   !=====
 
-  !************************
+!************************
 end subroutine cal_pscene
 !************************
+
+
+!************************
+subroutine allocate_pscene_arrays(nx,nt,fFillValue9,ierr)
+!************************
+
+   use m_vars,only:out_SurfaceLER440,out_SurfaceLER466,&
+       out_SceneLER440, out_SceneLER466, out_ScenePressure,&
+       out_SlantColumnSceneO2O2,out_SlantColumnTerrainO2O2,&
+       out_O2O2SceneTemperature,out_O2O2TerrainTemperature,&
+       out_TerrainPressure
+
+   implicit none
+
+   integer,intent(in):: nx,nt
+   integer,intent(inout)::ierr
+   real,intent(in):: fFillValue9
+
+  allocate(out_SurfaceLER440(nx,nt),stat=ierr)
+  allocate(out_SurfaceLER466(nx,nt),stat=ierr)
+  allocate(out_SceneLER440(nx,nt),stat=ierr)
+  allocate(out_SceneLER466(nx,nt),stat=ierr)
+  allocate(out_ScenePressure(nx,nt),stat=ierr)
+  allocate(out_SlantColumnSceneO2O2(nx,nt),stat=ierr)
+  allocate(out_SlantColumnTerrainO2O2(nx,nt),stat=ierr)
+  allocate(out_O2O2SceneTemperature(nx,nt),stat=ierr)
+  allocate(out_O2O2TerrainTemperature(nx,nt),stat=ierr)
+  ! moved out_TerrainPressure from m_cal_ocp here
+  allocate(out_TerrainPressure(nx,nt),stat=ierr)
+
+  !initialize array
+  out_SurfaceLER440=fFillValue9
+  out_SurfaceLER466=fFillValue9
+  out_SceneLER440=fFillValue9
+  out_SceneLER466=fFillValue9
+  out_ScenePressure=fFillValue9
+  out_SlantColumnSceneO2O2=fFillValue9
+  out_SlantColumnTerrainO2O2=fFillValue9
+  out_O2O2SceneTemperature=fFillValue9
+  out_O2O2TerrainTemperature=fFillValue9
+  out_TerrainPressure=fFillValue9
+
+end subroutine allocate_pscene_arrays
+!************************************
 end module m_cal_pscene

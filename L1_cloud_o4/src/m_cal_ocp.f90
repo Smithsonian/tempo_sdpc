@@ -92,22 +92,8 @@ subroutine cal_ocp
 
   maxpress = 1200 !Pa
 
-! allocate m_vars variables
-  allocate(out_CloudPressure(nx,nt),stat=ierr)
-  allocate(out_CloudPressureNotClipped(nx,nt),stat=ierr)
-! moved out_TerrainPressure to m_cal_pscene
-! repurpose to hold calculated cpp for name_optio_SceneAlbedoAtTerrain='yes' 
-! allocate(out_TerrainPressure(nx,nt),stat=ierr)
-  allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
-  allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
-
-! changed cloud pressure from int2 to real4
-! initialize to negative fill value
-  out_CloudPressure= fFillValue9 
-  out_CloudPressureNotClipped= fFillValue9 
-!  out_TerrainPressure=fFillValue9 
-  out_SlantColumnAmountO2O2=fFillValue9
-  out_O2O2CloudTemperature=fFillValue9
+  ! allocate m_vars variables
+  call allocate_ocp_arrays(nx,nt,fFillValue9, ierr)
 
   ! allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
@@ -814,7 +800,33 @@ subroutine cal_ocp
   ! deallocate allocated local variables
   deallocate(pp, tt)
 
-  !**********************
+!**********************
 end subroutine cal_ocp
 !**********************
+
+!**********************
+subroutine allocate_ocp_arrays(nx,nt,fFillValue9,ierr)
+
+   use m_vars, only: out_CloudPressure,out_CloudPressureNotClipped,&
+        out_SlantColumnAmountO2O2,out_O2O2CloudTemperature
+
+   implicit none
+   integer, intent(in):: nx,nt
+   integer, intent(inout)::ierr
+   real, intent(in):: fFillValue9
+
+  allocate(out_CloudPressure(nx,nt),stat=ierr)
+  allocate(out_CloudPressureNotClipped(nx,nt),stat=ierr)
+  allocate(out_SlantColumnAmountO2O2(nx,nt),stat=ierr)
+  allocate(out_O2O2CloudTemperature(nx,nt),stat=ierr)
+
+! initialize 
+  out_CloudPressure= fFillValue9 
+  out_CloudPressureNotClipped= fFillValue9 
+  out_SlantColumnAmountO2O2=fFillValue9
+  out_O2O2CloudTemperature=fFillValue9
+
+end subroutine allocate_ocp_arrays
+!**********************
+
 end module m_cal_ocp

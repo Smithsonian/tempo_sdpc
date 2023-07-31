@@ -96,11 +96,13 @@ module m_vars
   real(kind=4),dimension(:),pointer::lut_pcld
 
   ! LUT cloud node
-  ! ALB(cloud) = 0.8, Pcld = 700hPa
-  integer, parameter:: LUT466rad_cloud_albid = 18
-  integer, parameter:: LUT466rad_cloud_psfcid = 18
-  integer, parameter:: LUT440rad_cloud_albid = 18
-  integer, parameter:: LUT440rad_cloud_psfcid = 18
+  ! ALB(cloud) = 0.8 (ind=18), Pcld = 700hPa (ind=18)
+  integer, parameter:: LUTrad_cloud_albid = 18
+  integer:: LUTrad_cloud_psfcid = 18 
+  ! during ecfocp iteration LUTrad_cloud_psfcid changes for each pix
+
+  ! array holding nearest 1-based lut_pcld index for ocp
+  integer,dimension(:,:),allocatable:: lut_pcld_indarr
 
   ! LUT albedo node used for solving sbar, trans 
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
@@ -223,13 +225,11 @@ integer::ilun_lut_amf_ler6d=477010
   integer :: lun_debug_ecf=59
   integer :: lun_debug_scdadj=69
   integer :: lun_debug_ocp=79
-  
 
 ! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
 ! change gmi variables to allocatable
 !   so that they won't be allocated if not needed
   integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
-
   real(kind=4),dimension(:), allocatable :: gmi_lon
   real(kind=4),dimension(:), allocatable :: gmi_lat
   real(kind=4),dimension(:,:,:), allocatable :: gmi_Temperature
@@ -237,8 +237,8 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:), allocatable :: gmi_TerrainPressure
 
 ! GEOS-CF
-  ! geos_np = the number of layers is initialized when reading GEOS-CF
-  integer :: geos_np=0
+  ! geos_np = the number of layers, initialized when reading GEOS-CF
+  integer :: geos_np=72
   real(kind=4),dimension(:,:,:),pointer::geos_Temperature
   real(kind=4),dimension(:,:,:),pointer::geos_Q
   real(kind=4),dimension(:,:,:),pointer::geos_Pressure

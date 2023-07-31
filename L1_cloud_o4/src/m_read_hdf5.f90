@@ -9,7 +9,7 @@ contains
 !subroutine read_GEOS5
 !111111111111111111111
 
-! read_GEOS5 is replaced with read_geoscf, thus remove it
+! replaced with read_geoscf, thus removed
 
 !1111111111111111111111111
 !end subroutine read_GEOS5
@@ -150,17 +150,47 @@ subroutine totp_to_dryp(pp,qq,nlevel,nlayer,ppdry)
 end subroutine totp_to_dryp
 !3333333333333333333333333333
 
-!5555555555555555555555555555
-!subroutine read_BRDF_Rsfc_h5
-!5555555555555555555555555555
+!4444444444444444444444444444
+subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
+!4444444444444444444444444444
+! find level index in lut_pcld just above cloud_pressure
+! lut_pcld is in increasing order
 
-! GLER is read in m_read_input_gler.f90
-!the following is no longer needed, thus removed
- 
-!55555555555555555555555555555555
-!end subroutine read_BRDF_Rsfc_h5
-!55555555555555555555555555555555
+   use m_vars, only: lut_pcld, npcld
 
-!**********************
+   implicit none
+
+   real, intent(in):: cloudp !hPa
+   integer, intent(out):: pcld_lut_ind
+
+   integer :: kk
+   real :: w1, w2
+
+   pcld_lut_ind = -1
+
+   if ((cloudp .gt. 0.) .and. (cloudp .lt. lut_pcld(1))) then
+      pcld_lut_ind = 1
+   else if (cloudp .ge. lut_pcld(npcld)) then
+      pcld_lut_ind = npcld
+   else 
+     do kk = 1, npcld-1
+     if ((cloudp .ge. lut_pcld(kk)).and.(cloudp .lt. lut_pcld(kk+1))) then
+        w1 = cloudp - lut_pcld(kk)
+        w2 = lut_pcld(kk+1) - cloudp
+        if (w1 .lt. w2) then 
+           pcld_lut_ind = kk
+        else
+           pcld_lut_ind = kk+1
+        endif
+        exit ! already found, exit loop
+     endif
+     enddo 
+    endif
+
+!44444444444444444444444444
+end subroutine find_pcld_lutind
+!44444444444444444444444444
+
+!*********************
 end module m_read_hdf5
 !**********************
