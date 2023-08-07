@@ -43,7 +43,7 @@ emit_script()
 
    lftp <<- EOF > $remote_pan_list
 	open --user $asdc_user --password DUMMY sftp://$asdc_host
-	cd ingest/tempo
+	cd ingest/tempo || exit
 	glob echo *.PAN
 	exit
 	EOF
@@ -81,7 +81,7 @@ emit_script()
 	open --user $asdc_user --password DUMMY sftp://$asdc_host
 	set xfer:log-file lftp_pan.log
 	set xfer:clobber yes
-	cd ingest/tempo
+	cd ingest/tempo || exit
 	EOF
 
   cat $pan_list |

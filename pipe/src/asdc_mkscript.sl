@@ -303,7 +303,7 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
    () = fprintf (fp, "set xfer:use-temp-file yes\n");
    () = fprintf (fp, "set xfer:log-file lftp.log\n");
    % Use a relative path to work around some confusion at ASDC
-   () = fprintf (fp, "cd %s\n", Dest_Subdir);
+   () = fprintf (fp, "cd %s || exit\n", Dest_Subdir);
 
    % Transfer data files first, then the manifest (PDR) file.
    % The ASDC ingest system assumes the PDR file is uploaded last.

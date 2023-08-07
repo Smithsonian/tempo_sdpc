@@ -69,7 +69,13 @@ do_asdc_upload()
   asdc_mkscript.sl --dest $user_at_host --pdr $pdr_list --output $script $file_list
 
   # perform the upload
-  lftp -f $script
+  error_flag=0
+  lftp -f $script || error_flag=1
+  if test $error_flag -ne 0 ; then
+     echo "*** ERROR: upload failed (see $dir)"
+     asdc_track_uploads.py --set new $file_list
+     return
+  fi
 
   # mark the file status as "uploaded" and record the upload time
   asdc_track_uploads.py --set uploaded $file_list
