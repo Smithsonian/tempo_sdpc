@@ -428,12 +428,14 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
         if ((gr->data_quality_flag[i] != 0)
             || isnan(gr->amf_strat[i])
             || isnan(gr->slant_column[i])
-            || isnan(tropopause_pressure[i]))
+            || isnan(tropopause_pressure[i])
+            || (slant_column_uncertainty[i] < 1.0e13)
+            || (slant_column_uncertainty[i] > 1e16))
           {
              continue;
           }
 
-        gr->slant_uncert[i] = slant_column_uncertainty[i];
+        gr->slant_uncert[i] = slant_column_uncertainty[i];        
 
         if ((ktrop = find_tropopause (i, tropopause_pressure[i], pt)) < 0)
           goto free_and_return;
