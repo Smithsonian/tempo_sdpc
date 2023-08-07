@@ -84,9 +84,10 @@ make_iru_only_file_for_inr()
    dir=$(mktemp -d -p $this_dir)
    cd $dir
 
+   # Note that select_l0.py waits only when it has to
    select_l0.py --wait $wait_iru_sec --table IRU_L0 --begin $tbeg --end $tend > iru.lis
-   select_l0.py --table SMC_L0 --begin $tbeg --end $tend > smc.lis
-   select_l0.py --table HK_L0  --begin $tbeg --end $tend > hk.lis
+   select_l0.py --wait $wait_iru_sec --table SMC_L0 --begin $tbeg --end $tend > smc.lis
+   select_l0.py --wait $wait_hk_sec --table HK_L0  --begin $tbeg --end $tend > hk.lis
 
    # Output goes to inr input cache.
    L1_inr_prep -v 1 --Version $SDPC_PROCESSING_VERSION \
@@ -169,7 +170,7 @@ case "${granule_basename}" in
    select_l0.py --wait $wait_iru_sec --table IRU_L0 --granule "$granule_path" > $iru_file_list
 
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
-   select_l0.py --table SMC_L0 --granule "$granule_path" > $smc_file_list
+   select_l0.py --wait $wait_iru_sec --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
    tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")
    prep_inr_goes_source $tstart
