@@ -105,7 +105,7 @@ F 3
 # ========================================================================
 Fitting window settings
 UV1
-458.0 460.0 488.0 490.0 0.0 0.0
+437.0 439.0 488.0 490.0 0.0 0.0
 
 # ------------------------------------------------------------------------
 # Air Mass Factor calculation
@@ -160,10 +160,10 @@ sc3  -8.0E-05  -1.0e+30   1.0e+30
 sc4   0         0         0       -8.0E-05  -1.0e+30   1.0e+30
 sc5   0         0         0        0.0001   -1.0e+30   1.0e+30
 sin   0.6      -1.0e+30   1.0e+30
-hwe   -0.3       0.0       3.0     # Gaussian HW@1/e
+hwe   0.3       0.0       3.0     # Gaussian HW@1/e
 asy   0.0       0.0       0.0     # Gaussian asymmetry
-sgk   2.0       2.0       2.0     # super-Gaussian shape factor
-shi   0.05     -0.1       0.1
+sgk   3.3       1.0       10.0     # super-Gaussian shape factor
+shi   0.05     -1.0       1.0
 squ   0         0         0    
 eoi   0         0         0        # end of input
 
@@ -177,13 +177,16 @@ Radiance calibration parameters
 bl0    0.001     -1.0e+30    1.0e+30
 bl1    0.001     -1.0e+30    1.0e+30
 bl2    0.0001    -1.0e+30    1.0e+30
+bl3    0.0001    -1.0e+30    1.0e+30
 sc0    1.0        1.0        1.0    
 sc1    0.001     -1.0e+30    1.0e+30
+sc2    5.0E-05   -1.0e+30    1.0e+30
+sc3   -5.0E-05   -1.0e+30    1.0e+30
 sin    0.095     -1.0e+30    1.0e+30
-hwe    0.6        0.01       1.0     # Gaussian HW@1/e
+hwe    0.3        0.01       1.0     # Gaussian HW@1/e
 asy    0.0        0.0        0.0     # Gaussian asymmetry
 sgk    2.0        1.0        10.0     # super-Gaussian shape factor
-shi    0.005     -0.1        0.1
+shi    0.003     -1.0        1.0
 squ    0          0          0
 eoi    0          0          0  # end of input
 
@@ -218,16 +221,25 @@ ring
 ad1    0.02     -1.0e+30    1.0e+30
 eoi    0         0          0
 o3_t1
-lbe    1.00E-3   -1.0e+30    1.0e+30
+lbe    1.0e-3   -1.0e+30    1.0e+30
+eoi    0         0          0
+o3_t3
+lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 no2_t2
-lbe    1.0E-03  -1.0e+30    1.0e+30
+lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 o2o2
-lbe    1.0E-03   -1.0e+30   1.0e+30
+lbe    1.0E-03   -1.0e+45   1.0e+45
 eoi    0         0          0
 h2o
 lbe    1.0e-03  -1.0e+30    1.0e+30  
+eoi    0         0          0
+lqh2o
+lbe    1.0e-03  -1.0e+30    1.0e+30
+eoi    0         0          0
+vraman
+ad1    2.0e-04  -1.0e+30    1.0e+30
 eoi    0         0          0
 usamp1
 ad1   -0.01    -1.0e+30   1.0e+30
