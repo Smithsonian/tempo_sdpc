@@ -115,6 +115,8 @@ subroutine totp_to_dryp(pp,qq,nlevel,nlayer,ppdry)
    ! pp is from TOA to BOA, so is qq [kg H2O/ kg dry air]
    ! pp includes surface, qq does not
    ! qq is for each layer between 2 levels
+   use m_vars, only: geos_np
+   implicit none
 
    integer, intent(in):: nlevel, nlayer
    real(kind=4), dimension(nlevel), intent(in):: pp
