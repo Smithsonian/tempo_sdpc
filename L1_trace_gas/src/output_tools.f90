@@ -2050,11 +2050,11 @@ contains
       return
     endif
 
-    ! Force the cloud parameters into physical bounds, avoiding missing data
-    where (cloud_fraction > r8_missval .and. cloud_fraction < 0.0_r8)
-      cloud_fraction = 0.0_r8
-    elsewhere (cloud_fraction > 1.0_r8)
-      cloud_fraction = 1.0_r8
+    ! Clouds are already cropped to physical bounds in cloud code, but fill
+    ! value is different for cloud fraction between codes, so need to change
+    ! here.
+    where (cloud_fraction < 0.0_r8)
+      cloud_fraction = -1.0_r8
     endwhere
     where (cloud_top_pressure > r8_missval .and. cloud_top_pressure < 0.0_r8)
       cloud_top_pressure = 0.0_r8
