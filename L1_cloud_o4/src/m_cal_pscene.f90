@@ -68,7 +68,7 @@ subroutine cal_pscene
   nt=rad_NumTimes
   nx=rad_nXtrack
 
-  fFillValue9 = -9999.
+  fFillValue9 = fFillValue ! -9999.
   maxpress = 1200 !Pa for high pressure end 
 
   !--------
@@ -80,7 +80,7 @@ subroutine cal_pscene
 
   !--------
   ! allocate m_vars arrays
-  call allocate_pscene_arrays(nx,nt,fFillValue9,ierr)
+  call allocate_pscene_arrays(nx,nt,fFillValue,ierr)
 
   ! allocate and initialize local arrays
   allocate(tt(nlayers), qq(nlayers),pp(nlayers+1))
@@ -145,7 +145,7 @@ subroutine cal_pscene
           call read_GMI_VCD(pp,tt)
           vvcd=gmi_vcd
         else
-          vvcd(1:npcld) = fFillValue9 !-9999.
+          vvcd(1:npcld) = fFillValue9 
         endif
       endif
 
@@ -724,8 +724,8 @@ subroutine cal_pscene
            out_SlantColumnTerrainO2O2(ix,it) = scdm ! scdadj
            out_O2O2TerrainTemperature(ix,it) = t8p  ! temp_t8p 
         else
-           out_SlantColumnTerrainO2O2(ix,it) = fFillValue9
-           out_O2O2TerrainTemperature(ix,it) = fFillValue9
+           out_SlantColumnTerrainO2O2(ix,it) = fFillValue
+           out_O2O2TerrainTemperature(ix,it) = fFillValue
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10) 
         endif
 
@@ -744,13 +744,13 @@ subroutine cal_pscene
       TerrainLER440=ler440
 
       if ((TerrainLER466 .lt. -0.2).or.(TerrainLER466 .gt. 1.2)) then
-         TerrainLER466=fFillValue9
+         TerrainLER466=fFillValue
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
       endif
       if((TerrainLER466 .ge. -0.2) .and. (TerrainLER466 .lt. 0.0)) TerrainLER466=0.0
       if((TerrainLER466 .gt. 1.0) .and. (TerrainLER466 .le. 1.2)) TerrainLER466=1.0
 
-      if((TerrainLER440 .lt. -0.2) .or. (TerrainLER440 .gt. 1.2)) TerrainLER440=fFillValue9
+      if((TerrainLER440 .lt. -0.2) .or. (TerrainLER440 .gt. 1.2)) TerrainLER440=fFillValue
       if((TerrainLER440 .ge. -0.2) .and. (TerrainLER440 .lt. 0.0)) TerrainLER440=0.0
       if((TerrainLER440 .gt.  1.0) .and. (TerrainLER440 .le. 1.2)) TerrainLER440=1.0
 
@@ -1130,8 +1130,8 @@ subroutine cal_pscene
             out_SlantColumnSceneO2O2(ix,it) = scdm
             out_O2O2SceneTemperature(ix,it) = t8p
         else
-            out_SlantColumnSceneO2O2(ix,it)= fFillValue9
-            out_O2O2SceneTemperature(ix,it) = fFillValue9
+            out_SlantColumnSceneO2O2(ix,it)= fFillValue
+            out_O2O2SceneTemperature(ix,it) = fFillValue
             out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
             go to 444
         endif
@@ -1272,13 +1272,13 @@ subroutine cal_pscene
       SceneLER440=ler440
 
       if((SceneLER466 .lt. -0.2) .or. (SceneLER466 .gt. 1.2)) then
-         SceneLER466=fFillValue9
+         SceneLER466=fFillValue
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11)
       endif
       if((SceneLER466 .ge. -0.2) .and. (SceneLER466 .lt. 0.0)) SceneLER466=0.0
       if((SceneLER466 .gt.  1.0) .and. (SceneLER466 .le. 1.2)) SceneLER466=1.0
 
-      if((SceneLER440 .lt. -0.2) .or. (SceneLER440 .gt. 0.2)) SceneLER440=fFillValue9
+      if((SceneLER440 .lt. -0.2) .or. (SceneLER440 .gt. 0.2)) SceneLER440=fFillValue
       if((SceneLER440 .ge. -0.2) .and. (SceneLER440 .lt. 0.0)) SceneLER440=0.0
       if((SceneLER440 .gt.  1.0) .and. (SceneLER440 .le. 0.2)) SceneLER440=1.0
 
@@ -1301,7 +1301,7 @@ subroutine cal_pscene
             (rad_SnowIceFraction(ix,it) .le. 1.0)) then
           ! over snow/ice surface
 
-          pdiff = psfc0-SceneCPP
+          pdiff = abs(psfc0-SceneCPP) ! absolute difference [hPa]
 
           ! small pressure difference over bright surface, assume clear
           if ((SceneLER466 .ge. 0.2).and.(pdiff .lt. 100.)) then
@@ -1350,9 +1350,9 @@ subroutine cal_pscene
           out_CloudPressure(ix,it)=out_ScenePressure(ix,it)
           ! clip out_CloudPressure
           if((out_CloudPressure(ix,it).gt.psfc0).and.(out_CloudPressure(ix,it).lt.maxpress)) &
-             out_CloudPressure(ix,it)=psfc0
+             out_CloudPressure(ix,it) = psfc0
           if (out_CloudPressure(ix,it) .lt. 25.) &
-             out_CloudPressure(ix,it)=fFillValue9
+             out_CloudPressure(ix,it)= fFillValue
 
           ! signal pcld replacement by pscene
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),2)

@@ -17,8 +17,8 @@ program OMCDO2N
   use m_write_output_tio, only: create_output_file_tio, update_output_file_tio
   use m_read_input_clim, only: read_geoscf
   use m_read_input_gler, only: read_gler
-  use m_cal_ecf, only : cal_ecf
-  use m_cal_ocp, only : cal_ocp
+  use m_cal_ecf, only : cal_ecf, allocate_ecf_arrays
+  use m_cal_ocp, only : cal_ocp, allocate_ocp_arrays
   use m_cal_pscene, only : cal_pscene
   use HDF5
 
@@ -36,17 +36,21 @@ program OMCDO2N
   character(len=255)::filename, l1radfnm
   character(len=255)::name_gmi_psfc
   character(len=255)::name_gmi_tmp
-!  integer::id_gmi_psfc,id_gmi_tmp
   character(len=255)::name_kleipool_rsfc
 
   integer(kind=4) :: errstat
+  integer :: nx, nt
+  real :: fspecial
+
   character(len=80) :: logmsg
   character(len=15), parameter :: swathname = "band_290_490_nm"
 
   call tell_open ("L1_cloud_o4", 0)
   errstat = 0
+  nx = 0
+  nt = 0
+  fspecial = fFillValue ! large negative value in m_vars
 
-  ! JCH: this doesn't seem to work.
   !call unbufferstdout()
 
   call tell_log(0, 'Starting L1_cloud_o4')
@@ -237,7 +241,6 @@ program OMCDO2N
   !==============================
   ! 1.1 read inputs from radiance file 
   !==============================
-  ! Ewan tested read_rad_tio, reports no errors
   ! read rad for 440nm and 466nm
   ! also read lat/lon needed for GEOS-CF T-P
   ! allocate and initialize processing quality flags to zero
@@ -379,6 +382,21 @@ program OMCDO2N
   endif
   flush (output_unit)
   call tell_log(0,'Read AMF look-up table')
+
+  !================================
+  ! 6. Allocate arrays for ECF&OCP
+  !================================
+  nx=rad_nXtrack
+  nt=rad_NumTimes
+  call allocate_ecf_arrays(nx,nt,fspecial,errstat)
+  call allocate_ocp_arrays(nx,nt,fspecial,errstat)
+
+  if (errstat /= 0) then
+     call tell_error(tell_runtime_error, 'error allocating ECFOCP failed',errstat)
+     call exit(-1)
+  endif
+  flush (output_unit)
+  call tell_log(0,'Allocate ECFOCP arrays')
 
   !================================
   ! 6. calculate ECF/CRF at 466 nm

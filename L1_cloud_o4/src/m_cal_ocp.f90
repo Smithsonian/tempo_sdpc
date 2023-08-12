@@ -57,6 +57,8 @@ subroutine cal_ocp
 
   integer(kind=4)::ip
 
+  integer :: index_pcld_lut
+
   real:: gmi_psfc
   real(kind=4), dimension(:), allocatable :: tt, pp, qq, ppdry
 
@@ -90,10 +92,7 @@ subroutine cal_ocp
   nt=rad_NumTimes
   nx=rad_nXtrack
 
-  maxpress = 1200 !Pa
-
-  ! allocate m_vars variables
-  call allocate_ocp_arrays(nx,nt,fFillValue9, ierr)
+  maxpress = 1200 !hPa
 
   ! allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
@@ -296,7 +295,7 @@ subroutine cal_ocp
          go to 990
       endif
 
-      ! in read_cldo4_tio, negative or bad SCD are set to fspecial=-9999.,
+      ! in read_cldo4_tio, negative or bad SCD are set to fspecial
       if (nasa_SlantColumnAmountO2O2(ix,it) .lt. 0.0) then
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
@@ -766,10 +765,14 @@ subroutine cal_ocp
          out_O2O2CloudTemperature(ix,it) = TrefO4
       endif
 
-      out_CloudPressure(ix,it)= cpp 
       out_CloudPressureNotClipped(ix,it)= cpp 
+      ! calculate lut_pcld index from cpp
+      call find_pcld_lutind(cpp,index_pcld_lut)
+      lut_pcld_indarr(ix,it) = index_pcld_lut
+
+      out_CloudPressure(ix,it)= cpp 
       if ((cpp .le. 0.).or.(cpp .ge. lut_psfc(npsfc))) then
-        out_CloudPressure(ix,it)= fFillValue9
+        out_CloudPressure(ix,it)= fFillValue 
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
       endif
 
@@ -786,7 +789,7 @@ subroutine cal_ocp
 
       ! safeguard ocp for anything with processing problem (bit 13)  
       if (btest(out_ProcessingQualityFlags(ix,it),13)) then
-         out_CloudPressure(ix,it) = fFillValue9
+         out_CloudPressure(ix,it) = fFillValue
       endif
 
       !=====
@@ -794,11 +797,25 @@ subroutine cal_ocp
   end do
   !=====
 
+  ! deallocate allocated local variables
+  deallocate(pp, tt)
+
   ! debug
   close(lun_debug_scdadj)
 
-  ! deallocate allocated local variables
-  deallocate(pp, tt)
+  if ((trim(run_mode).eq.'development').and. &
+      (itdebug.ge. 0).and.(ixdebug.ge.0)) then
+     write(*,*) '  writing debug_pcldind.txt'
+     open(unit=lun_debug_pcldind,file='debug_pcldind.txt')
+     write(lun_debug_pcldind,*)'it=',ix,itdebug
+     write(lun_debug_pcldind,*) 'OCP(hPa), LUT_pcld_ind'
+     do ix = 1, nx
+        cpp = out_CloudPressure(ix,itdebug)
+        index_pcld_lut = lut_pcld_indarr(ix,itdebug) 
+        write(lun_debug_pcldind,*)cpp, index_pcld_lut
+     enddo
+  close(lun_debug_pcldind)
+  endif
 
 !**********************
 end subroutine cal_ocp

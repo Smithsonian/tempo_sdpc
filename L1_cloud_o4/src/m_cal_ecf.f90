@@ -50,13 +50,11 @@ subroutine cal_ecf
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
-  fspecial = -9999. ! make this a large negative value
+  !fspecial = -9999. ! make this a large negative value
+  fspecial = fFillValue ! large negative value in m_vars
 
   nt=rad_NumTimes
   nx=rad_nXtrack
-
-  ! allocate arrays & initialize with fspecial
-  call allocate_ecf_arrays(nx,nt,fspecial, ierr)
 
    if ((trim(run_mode) .eq. 'development').and.(itdebug .ge. 0)) then
       write(*,*) 'writing debug_ecf.txt'
@@ -65,7 +63,7 @@ subroutine cal_ecf
    endif
 
   ! earthsunfactor2 is to account for earth-sun distance between irr and rad
-   earthsunfactor2 = (rad_EarthSunDist/irr_EarthSunDist)**2
+   earthsunfactor2 = (irr_EarthSunDist/rad_EarthSunDist)**2
 
   ! ==========
   do it=1,nt
@@ -126,7 +124,7 @@ subroutine cal_ecf
 
 !~~~~~~~~~~
 ! out_RelativeAzimuthAngle is now taken care of within m_read_input_tio
-!      invalid raa set to fspecial=-9999. there
+!      invalid raa set to large negative value there
 ! the following is no longer needed, kept here as a clarification on RAA definition
 !      if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
 !           (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
@@ -168,10 +166,9 @@ subroutine cal_ecf
       ! bit7 was set in m_read_input_tio, set again here
       ! bit12 is for skipped ecf
       if ((rad466 .gt. 0.).and.(irr_out_irradiance_466nm(ix) .gt. 0.)) then
-      ! earthsunfactor2 = (rad_EarthSunDist/irr_EathSunDist)**2 defined above
-      ! bug fix: added () below in the denominator to
+      ! earthsunfactor2 = (irr_EarthSunDist/rad_EathSunDist)**2 defined above
       ! calculate the irr expected at time of rad observation
-      ! as earthsunfactor is very close to one, this bug is insignificant
+      ! as earthsunfactor is very close to one for TEMPO,this is not important
          rad_of_irr466(ix,it)=rad466/(irr_out_irradiance_466nm(ix)*earthsunfactor2)
       else
          rad_of_irr466(ix,it) = fspecial
@@ -183,7 +180,6 @@ subroutine cal_ecf
       endif
 
       if ((rad440 .gt. 0.).and.(irr_out_irradiance_440nm(ix) .gt. 0.)) then
-      ! bug fix for denominator as above
          rad_of_irr440(ix,it)=rad440/(irr_out_irradiance_440nm(ix)*earthsunfactor2)
       else
          rad_of_irr440(ix,it) = fspecial
@@ -479,7 +475,14 @@ subroutine cal_ecf
       ! Which is comparable to error associated with climatology 
       !--------------------------------
       ialb= LUTrad_cloud_albid ! remove hardcoded lut index 18
-      ipsfc= LUTrad_cloud_psfcid ! remoce hardcoded lut index 18
+      !now change from fixed index=18 to iteration with ocp
+      !ipsfc= LUTrad_cloud_psfcid ! remove hardcoded lut index 18
+      ipsfc = lut_pcld_indarr(ix,it)
+
+      if (ipsfc .lt. 0.) then
+          ! failed ocp retrieval
+          ipsfc = npcld
+      endif
 
       r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -643,7 +646,8 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
        out_SurfaceReflectivity466,out_SurfaceReflectivity440,&
        out_EffectiveCloudFraction,out_EffectiveCloudFractionNotClipped,&
        out_CloudRadianceFraction440, out_CloudRadianceFractionNotClipped440,&
-       out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466
+       out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466,&
+       lut_pcld_indarr
 
    implicit none
 
@@ -685,6 +689,10 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   out_CloudRadianceFraction466=fspecial
   out_CloudRadianceFractionNotClipped466=fspecial
   out_ReflectanceFactor=fspecial
+
+  allocate(lut_pcld_indarr(nx,nt),stat=ierr)
+  ! initialize to 700hPa which is index 18 in lut_pcld
+  lut_pcld_indarr= 18 
 
 !**********************
 end subroutine allocate_ecf_arrays

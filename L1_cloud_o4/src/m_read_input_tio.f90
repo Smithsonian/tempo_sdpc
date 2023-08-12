@@ -373,11 +373,12 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
-         out_TerrainHeight, &
+         out_TerrainHeight,scddes_day, scddes_hour,&
+         rad_TerrainHeight,&
          !rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
          out_ProcessingQualityFlags, &
-         w440, w466, w477, &
+         w440, w466, w477, fFillValue,&
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
          rad_NumTimes, rad_nXtrack, rad_nWavel, rad_SnowIceFraction
 
@@ -430,6 +431,7 @@ contains
 
     !allocate m_vars arrays
     call allocate_rad_vars (ntimes, nxtrack, errstat)
+    call allocate_init_desvars (nxtrack, errstat)
     if (errstat /= 0) return
 
     !allocate local arrays
@@ -459,11 +461,17 @@ contains
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingAzimuthAngle, errstat)
 
-    ! added rad_SnowIceFraction
-    call tiof_get2d_r4 (tio_l1obj, "snow_ice_fraction", [0,0], &
-         [ntimes, nxtrack], rad_SnowIceFraction, errstat)
-    call tiof_get2d_r4 (tio_l1obj, "terrain_height", [0,0], &
-         [ntimes,nxtrack], out_TerrainHeight, errstat)
+    ! added rad_SnowIceFraction & initialize to zero
+    rad_SnowIceFraction=0.
+
+    ! tranfer rad_TerrainHeight to out_TerrainHeight
+    call tiof_get2d_i2 (tio_l1obj, "terrain_height", [0,0], &
+         [ntimes,nxtrack], rad_TerrainHeight, errstat)
+    out_TerrainHeight = real(rad_TerrainHeight, kind=4)
+    where (rad_TerrainHeight < -1000.)
+        out_TerrainHeight = fFillValue
+    endwhere
+
     ! removed rad_GroundPixelQualityFlags, it was used for OMI snow/ice
     ! but not needed for TEMPO because of rad_SnowIceFraction
     !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
@@ -508,18 +516,18 @@ contains
          temp_wav(iw) = rad_Wavelength(iw,ix,it)
          temp_radflags = rad_PixelQualityFlags(iw,ix,it)
          ! all bit = 0 is fast but may be too restrictive, 
-         !if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
-         ! thus switch back to bit test 
-          if (btest(temp_radflags,0) .or. & !missing
-              btest(temp_radflags,1) .or. & !bad
-              btest(temp_radflags,2) .or. & !processing_error
-              btest(temp_radflags,5) .or. & !saturated
-              btest(temp_radflags,6) .or. & !noise_underflow
-              btest(temp_radflags,7) .or. & !dark_corr_error
-              btest(temp_radflags,8) .or. & !offset_corr_error
-              btest(temp_radflags,9) .or. & !smear_corr_error
-              btest(temp_radflags,10) .or. & !straylight_corr_error
-              btest(temp_radflags,11))  then !nonlinear_range
+         if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
+         !  switch back to bit test if desired 
+         ! if (btest(temp_radflags,0) .or. & !missing
+         !     btest(temp_radflags,1) .or. & !bad
+         !     btest(temp_radflags,2) .or. & !processing_error
+         !     btest(temp_radflags,5) .or. & !saturated
+         !     btest(temp_radflags,6) .or. & !noise_underflow
+         !     btest(temp_radflags,7) .or. & !dark_corr_error
+         !     btest(temp_radflags,8) .or. & !offset_corr_error
+         !     btest(temp_radflags,9) .or. & !smear_corr_error
+         !     btest(temp_radflags,10) .or. & !straylight_corr_error
+         !     btest(temp_radflags,11))  then !nonlinear_range
           temp_rad(iw)=-9999.
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
@@ -667,10 +675,11 @@ contains
 
 !-------------------------------------------------------------------
   subroutine read_cldo4_tio (l2_file, errstat)
-     use m_vars, only: nasa_SlantColumnAmountO2O2
+     use m_vars, only: nasa_SlantColumnAmountO2O2,fFillValue
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
+     use m_vars, only: fFillValue
 
      implicit none
 
@@ -683,6 +692,7 @@ contains
      !local variables
      type(tiof_file_type) :: tio_l2obj
      integer (kind=4) :: ntimes, nxtrack, ix, it
+     real (kind=4), allocatable, dimension(:,:) :: scd_relerr
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
      real (kind=8):: dspecial
      ! normalization factor for o2o2 
@@ -692,7 +702,7 @@ contains
 
      if (errstat /= 0) return
 
-     fspecial = -9999.
+     fspecial = fFillValue
      dspecial = -9999.d0
 
      !Open file, get dimensions
@@ -752,22 +762,24 @@ contains
      endif
      ! normalize scd by norm
      tmp_dbl = tmp_dbl/norm
-     ! set values outside -10 to 10 to dspecial (a negative value)
+     ! set values outside 0 to 10 to dspecial (a negative value)
      ! set mdqfl ne 0 to dspecial
      ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
      ! for o2o2, suspicious scds are extremely large, they should not be used
      !  any scd<0. will be skipped for ocp and pscene calculation,
-     !  can use either 0. or -10. below, it does not matter
      where ((tmp_dbl < 0.) .or. (tmp_dbl > 10.) .or. &
             (scd_mdqfl .ne. 0)) 
            tmp_dbl = dspecial
      end where
+
      ! assign nasa_SlantColumnAmountO2O2 
      ! nasa_SlantColumnAmountO2O2 has been normalized by norm
-     nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
+     ! nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
+     ! de-stripe fitted slant column along it
+     call destripe_o2o2scd(tmp_dbl,nXtrack,nTimes,nasa_SlantColumnAmountO2O2)
 
      ! read fitted SCD uncertainty
-     if (run_mode .NE. 'production') then
+     !if (run_mode .NE. 'production') then
          call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
               [ntimes, nxtrack], tmp_dbl, errstat)
          if (errstat /=0) then
@@ -781,7 +793,10 @@ contains
          endwhere
          ! nasa_scduncertainty has been normalized by norm
          nasa_scduncertainty = real(tmp_dbl,kind=4)
-     endif ! run_mode
+         where(tmp_dbl < 0.)
+               nasa_scduncertainty = fFillValue
+         endwhere
+     !endif ! run_mode
 
      ! deallocate tmp_dbl array
      deallocate(tmp_dbl)
@@ -793,7 +808,41 @@ contains
           return
      endif
 
-    !hqw now read rad_RelativeAzimuthAngle here
+     ! calculate relative scd error
+     allocate(scd_relerr(nXtrack, nTimes), stat = errstat)
+     if (errstat /= 0) then
+          call tell_error (tell_runtime_error, "allocate scd_relerr: failed in read_cldo4_tio", errstat)
+          return
+     endif
+
+     scd_relerr = nasa_scduncertainty / nasa_SlantColumnAmountO2O2
+     ! assign huge positive value for negative scd or uncertainty
+     where (nasa_scduncertainty < 0.) 
+           scd_relerr = 9999. !large positive value
+     endwhere
+     where (nasa_SlantColumnAmountO2O2 < 0.)
+           scd_relerr = 9999.
+     endwhere
+
+    ! filter nasa_SlantColumnO2O2
+    ! fFillValue is a large negative value, will be skiped 
+    where (scd_mdqfl /= 0)
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere 
+    where (scd_relerr > 0.3)
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
+    where (nasa_scduncertainty > 1.) !normalized by normcol
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
+    where (nasa_SlantColumnAmountO2O2 > 8.0)
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
+
+    deallocate(scd_relerr)
+
+    !------
+    ! now read rad_RelativeAzimuthAngle here
     ! open geolocation group to read angle
     call tiof_push_group(tio_l2obj,"geolocation", errstat)
 
@@ -981,13 +1030,15 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
-         out_TerrainHeight, rad_SnowIceFraction,&
+         rad_TerrainHeight, out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm, &
          out_ProcessingQualityFlags
 !         rad_GroundPixelQualityFlags, ! not used 
 ! the following arrays are very large, thus move them out
 !         rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
+
+    use m_vars, only: fFillValue
 
     implicit none
 
@@ -999,7 +1050,7 @@ contains
 
     if (errstat /= 0) return
 
-    fspecial = -9999.
+    fspecial = fFillValue 
 
     allocate (rad_Time(ntimes), &
          rad_Latitude(nxtrack, ntimes), &
@@ -1009,6 +1060,7 @@ contains
          rad_SolarAzimuthAngle(nxtrack, ntimes), &
          rad_ViewingAzimuthAngle(nxtrack, ntimes), &
          out_TerrainHeight(nxtrack, ntimes), &
+         rad_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
 !         rad_GroundPixelQualityFlags(nxtrack, ntimes), &
          rad_440nm(nxtrack, ntimes), &
@@ -1035,6 +1087,7 @@ contains
     rad_SolarAzimuthAngle = fspecial
     rad_ViewingAzimuthAngle = fspecial
     rad_SnowIceFraction = fspecial
+    rad_TerrainHeight = fspecial
     out_TerrainHeight = fspecial
     rad_440nm = fspecial
     rad_466nm = fspecial
@@ -1094,9 +1147,9 @@ end subroutine read_cldo4_dims
   subroutine allocate_cldo4_vars (ntimes, nxtrack, errstat)
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
-                       scd_mdqfl,run_mode,&
-                       nasa_scdrms, nasa_scduncertainty,&
-                    rad_RelativeAzimuthAngle,out_RelativeAzimuthAngle
+           scd_mdqfl,run_mode,fFillValue,&
+           nasa_scdrms, nasa_scduncertainty,&
+           rad_RelativeAzimuthAngle,out_RelativeAzimuthAngle
 
      implicit none
 
@@ -1109,14 +1162,20 @@ end subroutine read_cldo4_dims
 
      allocate (nasa_SlantColumnAmountO2O2(nxtrack, ntimes), &
           stat = errstat)
+     nasa_SlantColumnAmountO2O2 = fFillValue
 
      allocate (l2_TerrainPressure(nxtrack, ntimes), &
           stat = errstat)
+     l2_TerrainPressure = fFillValue
  
      allocate (rad_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
+     rad_RelativeAzimuthAngle = fFillValue
+
      allocate (out_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
+     out_RelativeAzimuthAngle = fFillValue
 
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
+     
 
      if (errstat /= 0) then
        call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed at scd_msqfl", &
@@ -1124,11 +1183,94 @@ end subroutine read_cldo4_dims
        return
      endif
 
-     if (run_mode .NE. 'production') then
+     !if (run_mode .NE. 'production') then
          allocate (nasa_scdrms(nxtrack, ntimes),stat=errstat)
+         nasa_scdrms = fFillValue
          allocate (nasa_scduncertainty(nxtrack, ntimes),stat=errstat)
-     endif
+         nasa_scduncertainty = fFillValue
+     !endif
 
    end subroutine allocate_cldo4_vars
+!--------------------------------------------------------------------
+   subroutine allocate_init_desvars(nxtrack, errstat)
 
+   use m_vars, only: scddes_day,scddes_hour
+   use m_vars, only: lun_desfac_hour,lun_desfac_day
+   use m_vars, only: name_desfac_hour,name_desfac_day
+   use m_vars, only: name_desfac_dir
+
+   implicit none
+   integer, intent(in):: nxtrack
+   integer, intent(inout):: errstat
+   character(len=255):: filename_deshour,filename_desday
+   real :: tmpvalue
+   integer :: ix
+
+   filename_deshour = trim(name_desfac_dir)//trim(name_desfac_hour)
+   filename_desday = trim(name_desfac_dir)//trim(name_desfac_day)
+
+     ! allocate array
+     allocate (scddes_day(nxtrack), stat=errstat)
+     allocate (scddes_hour(nxtrack), stat=errstat)
+     if (errstat /= 0) return
+     ! initialize scddes
+     scddes_day = 1.
+     scddes_hour = 1.
+
+     ! temporary fix below: read scddes from filename_deshour
+     write(*,*) '   reading destripe factor '//trim(filename_deshour)
+     open(unit=lun_desfac_hour,file=trim(filename_deshour))
+     do ix = 1, nxtrack
+        read(lun_desfac_hour,*) tmpvalue
+        scddes_hour(ix) = tmpvalue
+     enddo
+     close(lun_desfac_hour)
+
+     ! scddes_day TBD, set to scddes_hour temporarily 
+     scddes_day = scddes_hour 
+        
+   end subroutine allocate_init_desvars
+   !-----------------------------------------------------------
+   subroutine destripe_o2o2scd(arrin,nXtrack,nTimes,arrout)
+
+   use m_vars, only: scddes_day,scddes_hour
+   use m_vars, only: fFillValue
+
+   implicit none
+   
+   real(kind=8),dimension(nXtrack,nTimes),intent(in)::arrin
+   integer, intent(in):: nXtrack,nTimes
+   real(kind=4),dimension(nXtrack,nTimes),intent(out)::arrout
+   
+   real:: fspecial = fFillValue !-999.
+   real:: desfac, thisarr
+
+   real, dimension(nXtrack):: scddes
+
+   integer:: ix, it
+
+   !arrout = real(arrin,kind=4)
+   arrout = fspecial
+
+   scddes = scddes_hour
+
+   write(*,*) '    destriping scd'
+
+   do ix = 1, nXtrack
+      desfac = scddes(ix)
+      if (desfac .gt. 0.) then
+        do it = 1, nTimes
+          thisarr = arrin(ix,it)
+          if (thisarr < 0.) then
+             arrout(ix,it) = fFillValue
+          else
+             arrout(ix,it) = real(arrin(ix,it),kind=4)/desfac 
+          endif
+        enddo
+      endif
+   enddo 
+
+   end subroutine destripe_o2o2scd
+
+  !-----------------------------------------------------------
 end module m_read_input_tio

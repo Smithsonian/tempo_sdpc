@@ -118,6 +118,9 @@ subroutine totp_to_dryp(pp,qq,nlevel,nlayer,ppdry)
    use m_vars, only: geos_np
    implicit none
 
+   use m_vars, only: geos_np
+   implicit none
+
    integer, intent(in):: nlevel, nlayer
    real(kind=4), dimension(nlevel), intent(in):: pp
    real(kind=4), dimension(nlayer), intent(in):: qq
@@ -168,7 +171,7 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
    integer :: kk
    real :: w1, w2
 
-   pcld_lut_ind = -1
+   pcld_lut_ind = -9
 
    if ((cloudp .gt. 0.) .and. (cloudp .lt. lut_pcld(1))) then
       pcld_lut_ind = 1
@@ -187,7 +190,9 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
         exit ! already found, exit loop
      endif
      enddo 
-    endif
+   endif
+
+   ! negative cloudp will have pcld_lut_ind=-9
 
 !44444444444444444444444444
 end subroutine find_pcld_lutind

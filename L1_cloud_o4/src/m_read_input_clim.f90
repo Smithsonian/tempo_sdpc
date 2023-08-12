@@ -149,12 +149,12 @@ contains
    real (kind=4), dimension(1) :: u2m, v2m, thisphis
    real (kind=4), dimension(:), allocatable :: pres_z, temp_z, q_z
    
-   real (kind=4), parameter :: g_grav = 9.80665
+   real (kind=4), parameter :: g_grav = 9.80665 ! [m/s^2]
 
    real (kind=4) :: model_tsurf, pixel_height, model_height, &
                     model_qsurf, adj_pressure
 
-   real (kind=4), parameter :: psfc_recordhigh = 1085.0
+   real (kind=4), parameter :: psfc_recordhigh = 1085.0 ! [hPa]
 
    integer :: ix, it, iz, nx, nt, kk, nz
    integer :: thisyear, thismonth, thisday
@@ -263,7 +263,7 @@ contains
       ! it is better to adjust when reanalysis meteorology is used
       ! calculation should use l2_TerrainPressure 
       !  l2_TerrainPressure(ix, it) = psurf
-      pixel_height = out_TerrainHeight(ix,it) ! meters
+      pixel_height = real(out_TerrainHeight(ix,it),kind=4) ! meters
 
       !  do adjustment only if pixel_height is reasonable
       if (pixel_height .gt. -1000.) then

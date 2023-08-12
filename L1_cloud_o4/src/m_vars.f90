@@ -61,12 +61,11 @@ module m_vars
   integer(kind=4)::rad_nWavelCoef
   real::rad_EarthSunDist
 
-! use out_TerrainHeight in reading for each option
-!  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
+! read in and transfer to out_TerrainHeight
+  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
 !  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
-! hqw adds rad_SnowIceFraction
   real(kind=4),   dimension(:,:),   pointer::rad_SnowIceFraction
 
 ! added rad_466nm,rad_477nm,rad_440nm which is what needed
@@ -184,6 +183,7 @@ integer::ilun_lut_amf_clear=477000
 integer::ilun_lut_amf_cloud=477001
 integer::ilun_lut_amf_ler6d=477010
 
+
 ! =============
 ! input options
 ! =============
@@ -225,6 +225,7 @@ integer::ilun_lut_amf_ler6d=477010
   integer :: lun_debug_ecf=59
   integer :: lun_debug_scdadj=69
   integer :: lun_debug_ocp=79
+  integer :: lun_debug_pcldind=89
 
 ! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
 ! change gmi variables to allocatable
@@ -366,7 +367,7 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:),pointer::nasa_SlantColumnAmountO2O2
   real(kind=4),dimension(:,:),allocatable::nasa_scduncertainty
   real(kind=4),dimension(:,:),allocatable::nasa_scdrms
-  !hqw adds l2_TerrainPressure 
+  ! adds l2_TerrainPressure 
   real(kind=4),dimension(:,:),pointer::l2_TerrainPressure
   integer(kind=2), dimension(:,:),  pointer::scd_mdqfl
 
@@ -420,9 +421,8 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:),pointer::out_SlantColumnTerrainO2O2
 ! out_TerrainPressure now holds calculated cpp using LER466 in pscene
   real(kind=4),dimension(:,:),pointer::out_TerrainPressure
-!  real(kind=4),dimension(:,:),pointer::out_TerrainPressureStdDev
   real(kind=4),dimension(:,:),pointer::out_TerrainHeight
-!  real(kind=4),dimension(:,:),pointer::out_TerrainHeightStdDev
+!  RAD terrain height is short integer, transfer to real out_TerrainHeight
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity440
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity466
 !  integer(kind=2),dimension(:,:),pointer::out_LandAreaFraction
@@ -455,6 +455,18 @@ integer::ilun_lut_amf_ler6d=477010
   integer, parameter ::iFillValue=-32767
 
 !-------------
+! scd destriping
+!-------------
+  character(len=255)::name_desfac_dir='./'
+  character(len=255)::name_desfac_hour='test_desfac.txt'
+  character(len=255)::name_desfac_day='desfac_date.txt'
+  integer:: lun_desfac_hour=177
+  integer:: lun_desfac_day=178
+
+  real(kind=4),dimension(:),allocatable:: scddes_day
+  real(kind=4),dimension(:),allocatable:: scddes_hour
+
+!-------------
 ! gmeta 
 !-------------
 type gmeta
@@ -475,8 +487,8 @@ type gmeta
   character(len= 3)::omi_collection='empty'
   character(len= 8)::starttime='00:00:00'
   character(len= 8)::endtime='00:00:00'
-  character(len=10)::startdate='2023_04_07'
-  character(len=10)::enddate='2023_04_07'
+  character(len=10)::startdate='2023_08_02'
+  character(len=10)::enddate='2023_08_02'
   real(kind=4) :: geospatial_lon_min=-180.
   real(kind=4) :: geospatial_lon_max=180.
   real(kind=4) :: geospatial_lat_min=-90.

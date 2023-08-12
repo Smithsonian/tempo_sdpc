@@ -20,7 +20,7 @@ module m_write_output_tio
   !fill values
   real (kind=8), private, parameter :: fill_bit = -128, &
        fill_short = iFillValue, fill_int = iFillValue, fill_float = fFillValue, &
-       fill_double = fill_float, fill_float_nines = -9999.0
+       fill_double = fill_float
 
 contains
 
@@ -689,7 +689,7 @@ contains
                               long_name = "optical centroid pressure for cloud", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -702,7 +702,7 @@ contains
                               comment = "ECF", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -715,7 +715,7 @@ contains
                        comment = "CRF = ECF*Ic/Im [Vasilkov et al., 2018]", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -727,7 +727,7 @@ contains
                               long_name = "cloud radiance fraction at 440nm", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_product)
@@ -877,23 +877,23 @@ contains
                               long_name = "466nm surface reflectivity used in calculation", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    ! 440nm GLER is not used, comment out to save disk
-    ! call tiof_varlist_append (varlist, errstat, &
-    !                          name440, &
-    !                          nf90_float, &
-    !                          dimids = dimids_xtrack_step,  &
-    !                          long_name = "440nm surface reflectivity used in calculation", &
-    !                          units = "no unit", &
-    !                          valid_range = [0.0_r8, 1.0_r8], &
-    !                          fillvalue = fill_float_nines, &
-    !                          deflate_level = deflate_level, &
-    !                          shuffle = shuffle, &
-    !                          attlist=att_support)
+     !440nm GLER is not used, not tested, do not use
+     call tiof_varlist_append (varlist, errstat, &
+                              name440, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "440nm surface reflectivity used in calculation", &
+                              units = "no unit", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
 
     if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
         (name_option_SceneAlbedoAtTerrain.eq.'yes')) then
@@ -904,7 +904,7 @@ contains
                               long_name = "LER at 466nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -916,7 +916,7 @@ contains
                               long_name = "LER at 440nm calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -928,7 +928,7 @@ contains
           long_name = "terrain pressure calculated for SurfaceLER466", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.5e3_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -943,7 +943,7 @@ contains
                               long_name = "LER at 466nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -955,7 +955,7 @@ contains
                               long_name = "LER at 440nm calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -967,7 +967,7 @@ contains
                               long_name = "scene pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.5e3_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -995,7 +995,7 @@ contains
                     long_name = "nonclipped 466nm effective cloud fraction", &
                               units = "no unit", &
                               valid_range = [-10.0_r8, 10.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1008,7 +1008,7 @@ contains
                               long_name = "nonclipped cloud pressure", &
                               units = "hPa", &
                               valid_range = [0.0_r8, 1.2e3_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1022,7 +1022,7 @@ contains
                               comment = "O2-O2 slant column at EffectiveTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1037,7 +1037,7 @@ contains
                               comment = "O2-O2 slant column at O2O2SceneTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1053,23 +1053,23 @@ contains
                               comment = "O2-O2 slant column at O2O2TerrainTemperature", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
     endif
 
-!    call tiof_varlist_append (varlist, errstat, &
-!                              "ReflectanceFactor466", &
-!                              nf90_float, &
-!                              dimids = dimids_xtrack_step,  &
-!                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
-!                              units = "no unit", &
-!                              valid_range = [0.0_r8, 1.0_r8], &
-!                              fillvalue = fill_float_nines, &
-!                              deflate_level = deflate_level, &
-!                              shuffle = shuffle, &
-!                              attlist=att_support)
+    call tiof_varlist_append (varlist, errstat, &
+                              "ReflectanceFactor466", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
+                              units = "no unit", &
+                              valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
 
     call tiof_varlist_append (varlist, errstat, &
                               "rad_of_irr466", &
@@ -1078,7 +1078,7 @@ contains
                               long_name = "rad/irr at 466nm for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1090,7 +1090,7 @@ contains
                               long_name = "cal_rad_clr at 466nm for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1102,7 +1102,7 @@ contains
                               long_name = "cal_rad_cld at 466nm for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1115,7 +1115,7 @@ contains
                               comment = "fitted O2-O2 slant column at Tref", &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1127,7 +1127,7 @@ contains
                           long_name = "fitted reference O2-O2 SCD uncertainty" , &
                               units = "1.e43 molec^2 cm^-5", &
                               valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1184,7 +1184,7 @@ contains
                               comment = "effective T for SlantColumnAmountO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1198,7 +1198,7 @@ contains
                               comment = "effective T for SlantColumnSceneO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1213,7 +1213,7 @@ contains
                               comment = "effective T for SlantColumnTerrainO2O2", &
                               units = "K", &
                               valid_range = [160.0_r8, 310.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1226,7 +1226,7 @@ contains
                               comment = "RAA used in calculation", &
                               units = "degree", &
                               valid_range = [0._r8, 180.0_r8], &
-                              fillvalue = fill_float_nines, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1261,7 +1261,7 @@ contains
   subroutine write_support_data(tio_l2obj, nstep, nxtrack, errstat)
 
      use m_vars, only: out_SlantColumnAmountO2O2, nasa_SlantColumnAmountO2O2,&
-              ! out_ReflectanceFactor, &
+               out_ReflectanceFactor, &
                out_O2O2CloudTemperature, out_TerrainPressure,&
                out_SurfaceReflectivity440, out_SurfaceReflectivity466,&
                out_SurfaceLER440, out_SurfaceLER466, out_TerrainHeight,&
@@ -1313,8 +1313,8 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "SurfaceLER466", [0,0], &
          [nstep, nxtrack], out_SurfaceLER466, errstat)
 
-    !call tiof_put2d_r4 (tio_l2obj, "SurfaceLER440", [0,0], &
-    !     [nstep, nxtrack], out_SurfaceLER440, errstat)
+    call tiof_put2d_r4 (tio_l2obj, "SurfaceLER440", [0,0], &
+         [nstep, nxtrack], out_SurfaceLER440, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "TerrainPressure", [0,0], &
          [nstep, nxtrack], out_TerrainPressure, errstat)
@@ -1361,8 +1361,8 @@ contains
          [nstep, nxtrack], out_SlantColumnTerrainO2O2, errstat)
     endif
 
-!    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
-!         [nstep, nxtrack], out_ReflectanceFactor, errstat)
+    call tiof_put2d_r4 (tio_l2obj, "ReflectanceFactor466", [0,0], &
+         [nstep, nxtrack], out_ReflectanceFactor, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "rad_of_irr466", [0,0], &
          [nstep, nxtrack], rad_of_irr466, errstat)
