@@ -15,6 +15,10 @@ Input Files:
     - Not_used_for_TEMPO
   Kleipool_dir:
     - @refdata_dir@
+  desfac_dir:
+    - ./
+  desfac_fnm:
+    - @desfac_file@
   Kleipool_fnm:
     - OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5
   GMI_dir:
@@ -101,3 +105,4 @@ Runtime Parameters:
     Collection: 001
     ixdebug: -1
     itdebug: -1
+    option_destripe_scd: 0
