@@ -373,7 +373,7 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
-         out_TerrainHeight,scddes_day, scddes_hour,&
+         out_TerrainHeight, scddes_hour,&
          rad_TerrainHeight,&
          !rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
@@ -1194,46 +1194,44 @@ end subroutine read_cldo4_dims
 !--------------------------------------------------------------------
    subroutine allocate_init_desvars(nxtrack, errstat)
 
-   use m_vars, only: scddes_day,scddes_hour
-   use m_vars, only: lun_desfac_hour,lun_desfac_day
-   use m_vars, only: name_desfac_hour,name_desfac_day
-   use m_vars, only: name_desfac_dir
+   use m_vars, only: scddes_hour
+   use m_vars, only: lun_desfac_fnm
+   use m_vars, only: name_desfac_fnm
+   use m_vars, only: name_desfac_dir,option_destripe_scd
 
    implicit none
    integer, intent(in):: nxtrack
    integer, intent(inout):: errstat
-   character(len=255):: filename_deshour,filename_desday
+   character(len=255):: filename_deshour
    real :: tmpvalue
    integer :: ix
 
-   filename_deshour = trim(name_desfac_dir)//trim(name_desfac_hour)
-   filename_desday = trim(name_desfac_dir)//trim(name_desfac_day)
+   filename_deshour = trim(name_desfac_dir)//trim(name_desfac_fnm)
 
      ! allocate array
-     allocate (scddes_day(nxtrack), stat=errstat)
      allocate (scddes_hour(nxtrack), stat=errstat)
      if (errstat /= 0) return
      ! initialize scddes
-     scddes_day = 1.
      scddes_hour = 1.
 
+     if (option_destripe_scd .eq. 1) then 
      ! temporary fix below: read scddes from filename_deshour
-     write(*,*) '   reading destripe factor '//trim(filename_deshour)
-     open(unit=lun_desfac_hour,file=trim(filename_deshour))
-     do ix = 1, nxtrack
-        read(lun_desfac_hour,*) tmpvalue
-        scddes_hour(ix) = tmpvalue
-     enddo
-     close(lun_desfac_hour)
-
-     ! scddes_day TBD, set to scddes_hour temporarily 
-     scddes_day = scddes_hour 
+        write(*,*) '   reading destripe factor '//trim(filename_deshour)
+        open(unit=lun_desfac_fnm,file=trim(filename_deshour))
+        do ix = 1, nxtrack
+           read(lun_desfac_fnm,*) tmpvalue
+           scddes_hour(ix) = tmpvalue
+        enddo
+        close(lun_desfac_fnm)
+     else
+        write(*,*) '  desfac=1.0 for all pixels'
+     endif 
         
    end subroutine allocate_init_desvars
    !-----------------------------------------------------------
    subroutine destripe_o2o2scd(arrin,nXtrack,nTimes,arrout)
 
-   use m_vars, only: scddes_day,scddes_hour
+   use m_vars, only: scddes_hour, option_destripe_scd
    use m_vars, only: fFillValue
 
    implicit none
@@ -1242,20 +1240,19 @@ end subroutine read_cldo4_dims
    integer, intent(in):: nXtrack,nTimes
    real(kind=4),dimension(nXtrack,nTimes),intent(out)::arrout
    
-   real:: fspecial = fFillValue !-999.
+   real:: fspecial = fFillValue 
    real:: desfac, thisarr
-
+   ! local variable
    real, dimension(nXtrack):: scddes
 
    integer:: ix, it
 
-   !arrout = real(arrin,kind=4)
    arrout = fspecial
 
    scddes = scddes_hour
 
+   if (option_destripe_scd .eq. 1) then 
    write(*,*) '    destriping scd'
-
    do ix = 1, nXtrack
       desfac = scddes(ix)
       if (desfac .gt. 0.) then
@@ -1269,6 +1266,10 @@ end subroutine read_cldo4_dims
         enddo
       endif
    enddo 
+   else
+       write(*,*) '     scd is not destriped.'
+       arrout = arrin
+   endif
 
    end subroutine destripe_o2o2scd
 

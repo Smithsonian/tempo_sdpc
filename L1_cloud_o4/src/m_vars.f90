@@ -457,13 +457,11 @@ integer::ilun_lut_amf_ler6d=477010
 !-------------
 ! scd destriping
 !-------------
+  integer :: option_destripe_scd = 0
   character(len=255)::name_desfac_dir='./'
-  character(len=255)::name_desfac_hour='test_desfac.txt'
-  character(len=255)::name_desfac_day='desfac_date.txt'
-  integer:: lun_desfac_hour=177
-  integer:: lun_desfac_day=178
+  character(len=255)::name_desfac_fnm='test_desfac.txt'
+  integer:: lun_desfac_fnm=177
 
-  real(kind=4),dimension(:),allocatable:: scddes_day
   real(kind=4),dimension(:),allocatable:: scddes_hour
 
 !-------------

@@ -224,6 +224,32 @@ program OMCDO2N
   endif
   write(*,*) 'itdebug=',itdebug
 
+  status=GetConfigString("E","Runtime Parameters option_destripe_scd",buf)
+  if (status < 0) then
+     write(*,*) "use default option_destripe_scd"
+  else 
+     read(buf,*,iostat=status) option_destripe_scd
+  endif
+  write(*,*) 'option_destripe_scd=',option_destripe_scd
+
+  if (option_destripe_scd .eq. 1) then
+    status=GetConfigString("E","Input Files desfac_dir",buf)
+    if(status < 0) then
+    call tell_error(tell_io_read_error,&
+       "Problem reading desfac_dir from control file", errstat)
+    call exit(-1)
+    endif
+    name_desfac_dir=trim(buf)
+
+    status=GetConfigString("E","Input Files desfac_fnm",buf)
+    if(status < 0) then
+    call tell_error(tell_io_read_error,&
+       "Problem reading desfac_fnm from control file", errstat)
+    call exit(-1)
+    endif
+    name_desfac_fnm=trim(buf)
+  endif
+  
   flush (output_unit)
   call tell_log(0,'Read control file')
 
