@@ -700,6 +700,8 @@ contains
 
      real(kind=4):: tmp_raa, temp_raa, fspecial
 
+     integer :: errstat1 
+
      if (errstat /= 0) return
 
      fspecial = fFillValue
@@ -725,24 +727,38 @@ contains
           return
      endif
 
-     ! Open product group to read main_data_quality flag
+     ! Open product group to read main_data_quality_flag
      call tiof_push_group(tio_l2obj, "product", errstat)
 
-     ! Read main data quality flag
      call tiof_get2d_i2(tio_l2obj,"main_data_quality_flag", [0,0], [ntimes, nxtrack],&
-            scd_mdqfl, errstat)
-     if (errstat /=0) then
-          call tell_error(tell_runtime_error, "read_cldo4_tio: mdqfl fail",errstat)
-          return
-     endif
+            scd_mdqfl, errstat1)
 
-     ! Get out of product group
-     call tiof_pop_group (tio_l2obj, errstat)
+     if (errstat1 /=0) then
+          write(*,*)'-->no main_data_quality_flag found in product group'
+          ! get out of product group
+          call tiof_pop_group (tio_l2obj, errstat)
+          ! open support_data group to read SCD_MainDataQualityFlags
+          call tiof_push_group(tio_l2obj, "support_data", errstat) 
+          call tiof_get2d_i2(tio_l2obj,"SCD_MainDataQualityFlags",[0,0], &
+                   [ntimes,nxtrack],scd_mdqfl, errstat)
+         if (errstat /=0) then
+          call tell_error(tell_runtime_error, "read_cldo4_tio: scd_mdqfl fail",errstat)
+          return
+         endif  
+         write(*,*)' -->SCD_MainDataQualityFlags read from support_data group'
+         ! get out of support_data group
+         call tiof_pop_group(tio_l2obj, errstat) 
+     else
+        write(*,*)'-->main_data_quality_flag read from product group.'
+        ! scd_mdqfl read, get out of product group
+        call tiof_pop_group (tio_l2obj, errstat)
+     endif
 
      ! allocate tmp_dbl array 
      allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
-          call tell_error (tell_runtime_error, "allocate tmp_dbl: failed in read_cldo4_tio", errstat)
+          call tell_error (tell_runtime_error, &
+                "allocate tmp_dbl: failed in read_cldo4_tio", errstat)
           return
      endif
 
