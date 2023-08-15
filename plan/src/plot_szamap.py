@@ -190,7 +190,8 @@ def main():
     if args.date is not None:
         var_name_list = find_vars_for_date (s.nc, args.date)
     elif args.select is not None:
-        var_name_list = ['sza_%02d' % (num) for num in args.select]
+        # must match format used for variable names when file is generated!
+        var_name_list = ['sza_%03d' % (num) for num in args.select]
     else:
         var_name_list = [key for key in s.nc.variables.keys() if key.startswith("sza_")]
 
