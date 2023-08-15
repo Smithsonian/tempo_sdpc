@@ -116,6 +116,8 @@ def append_file_vars (trend_file, target_file):
         return append_vars_to_existing_file (trend_file, target_file)
 
 def copy_selected_wavecal_params (src, dst, dst_time_var_name):
+    if not 'wavecal_params' in src.variables:
+        return
     num_xtrack = len(src.dimensions['xtrack'])
     xtrack = [k for k in range(Xtrack_Sample_Offset,num_xtrack,Xtrack_Sample_Interval)]
     num_select = len(xtrack)
