@@ -8,6 +8,7 @@ subroutine cal_ecf
   use m_vars
   use m_read_GMI
   use m_read_hdf5
+  use m_read_input_kleipool
 
   implicit none
 
@@ -27,13 +28,15 @@ subroutine cal_ecf
 
   real:: earthsunfactor2
  
-  integer(kind=4)::kleipool_ix,kleipool_iy
-
   integer(kind=4):: pflag00, pflag01
 
+! local value moved from m_vars
+  real:: alb0, sza0, vza0, raa0, psfc0
+  
 ! add local variable
   real::lat0, lon0
   real:: alb440
+  real:: kleipool466, kleipool440
 
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
   real::r21111,r21112,r21121,r21122,r21211,r21212,r21221,r21222,r22111,r22112,r22121,r22122,r22211,r22212,r22221,r22222
@@ -222,14 +225,9 @@ subroutine cal_ecf
       ! get actual alb0 & alb440
       !--------------------------
       if(name_option_SurfaceReflectivity.eq.'Kleipool') then
-        kleipool_ix=nint((lon0+180.0)/0.5)
-        kleipool_iy=nint((lat0+90.0)/0.5)
-        if(kleipool_ix.lt.1) kleipool_ix=1
-        if(kleipool_ix.gt.kleipool_nx) kleipool_ix=kleipool_nx
-        if(kleipool_iy.lt.1) kleipool_iy=1
-        if(kleipool_iy.gt.kleipool_ny) kleipool_iy=kleipool_ny
-        alb0=kleipool_SurfaceReflectivity466(kleipool_ix,kleipool_iy)
-        alb440=kleipool_SurfaceReflectivity440(kleipool_ix,kleipool_iy)
+        call get_kleipool_lonlat(lon0, lat0, kleipool466, kleipool440)
+        alb0 = kleipool466
+        alb440 = kleipool440
       endif
 
       if(name_option_SurfaceReflectivity.eq.'BRDF') then

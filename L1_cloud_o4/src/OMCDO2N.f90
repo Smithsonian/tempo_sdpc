@@ -152,80 +152,80 @@ program OMCDO2N
   run_mode = trim(buf)
   write(*,*)'run_mode=',trim(run_mode)
 
-  status=GetConfigString("E","Runtime Parameters APPShortName",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters APPShortName",buf)
+  if(status .NE. 0) then
     write(*,*)"no APPShortName from control file, use default"
   ! will use m_vars default
   else
      gmetadata%appshortname=trim(buf)
   endif
 
-  status=GetConfigString("E","Runtime Parameters APPVersion",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters APPVersion",buf)
+  if(status .NE. 0) then
     write(*,*) "no APPVersion from control file, use default"
   ! will use m_vars default
   else
      gmetadata%appversion=trim(buf)
   endif
 
-  status=GetConfigString("E","Runtime Parameters AuthorName",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters AuthorName",buf)
+  if(status .NE. 0) then
     write(*,*)"no AuthorName from control file, use default"
   !  will use default in m_vars
   else
      gmetadata%author_name=trim(buf)
   endif
 
-   status=GetConfigString("E","Runtime Parameters AuthorAffiliation",buf)
-   if (status <0) then
+   status=GetConfigString("W","Runtime Parameters AuthorAffiliation",buf)
+   if (status .NE. 0) then
       write(*,*)"no AuthorAffiliation from control file, use default"
    !  will use default in m_vars
    else
       gmetadata%author_affiliation=trim(buf)
    endif
 
-  status=GetConfigString("E","Runtime Parameters ProcessingCenter",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters ProcessingCenter",buf)
+  if(status .NE. 0) then
     write(*,*)"no ProcessingCenter from control file, use default"
   ! will use default in m_vars 
   else 
      gmetadata%processingcenter=trim(buf)
   endif
 
-  status=GetConfigString("E","Runtime Parameters TEMPO Footprint",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters TEMPO Footprint",buf)
+  if(status .NE. 0) then
     write(*,*) "no Footprint channel from control file, use default"
   ! will use default in m_vars 
   else
      gmetadata%omiwindow=trim(buf)
   endif
 
-  status=GetConfigString("E","Runtime Parameters Collection",buf)
-  if(status < 0) then
+  status=GetConfigString("W","Runtime Parameters Collection",buf)
+  if(status .NE. 0) then
     write(*,*)"no Collection Number from control file, use default"
   ! will use default in m_vars
   else
      gmetadata%omi_collection=trim(buf)
   endif
 
-  status=GetConfigString("E","Runtime Parameters ixdebug",buf)
-  if (status < 0) then
-     write(*,*) "use default ixdebug instead"
+  status=GetConfigString("W","Runtime Parameters ixdebug",buf)
+  if (status .NE. 0) then
+     write(*,*) "No ixdebug, use default instead"
   else
      read(buf,*,iostat=status) ixdebug
   endif
   write(*,*) 'ixdebug=',ixdebug
 
-  status=GetConfigString("E","Runtime Parameters itdebug",buf)
-  if (status < 0) then
-     write(*,*) "use default itdebug instead"
+  status=GetConfigString("W","Runtime Parameters itdebug",buf)
+  if (status .NE. 0) then
+     write(*,*) "No itdebug, use default instead"
   else 
      read(buf,*,iostat=status) itdebug
   endif
   write(*,*) 'itdebug=',itdebug
 
-  status=GetConfigString("E","Runtime Parameters option_destripe_scd",buf)
-  if (status < 0) then
+  status=GetConfigString("W","Runtime Parameters option_destripe_scd",buf)
+  if (status .NE. 0) then
      write(*,*) "use default option_destripe_scd"
   else 
      read(buf,*,iostat=status) option_destripe_scd

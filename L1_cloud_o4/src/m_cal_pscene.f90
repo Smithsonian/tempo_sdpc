@@ -11,7 +11,10 @@ subroutine cal_pscene
   use m_scd_adjust
 
   implicit none
+  ! local variables moved from m_vars
+  real:: alb0, sza0, vza0, raa0, psfc0
 
+  ! local variables
   integer::ialb, isza, ivza, iraa, ipsfc, ipcld
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2

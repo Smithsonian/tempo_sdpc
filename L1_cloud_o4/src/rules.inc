@@ -17,6 +17,7 @@ $(ODIR)/he5_swreader.o: $(SDIR)/he5_swreader.f90
 $(ODIR)/m_cal_ecf.o: $(SDIR)/m_cal_ecf.f90 \
   $(ODIR)/m_read_GMI.o \
   $(ODIR)/m_read_hdf5.o \
+  $(ODIR)/m_read_input_kleipool.o \
   $(ODIR)/m_vars.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_cal_ecf.f90 -o $(ODIR)/m_cal_ecf.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_cal_ocp.o: $(SDIR)/m_cal_ocp.f90 \

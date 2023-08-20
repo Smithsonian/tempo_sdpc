@@ -387,9 +387,8 @@ integer::ilun_lut_amf_ler6d=477010
 !-----------
 ! frequently used variables in ecf, ocp, pscene calculation
 !-----------
-  real::alb0,sza0,vza0,raa0,psfc0,rsfc0 ! input values
-  real::alb1,sza1,vza1,raa1,psfc1,rsfc1 ! LUT node1 for interpolation
-  real::alb2,sza2,vza2,raa2,psfc2,rsfc2 ! LUT node2 for interpolation
+  ! moved the following into modules 
+  !real::alb0,sza0,vza0,raa0,psfc0 ! input values
 
   real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld,cal_rad_cld440
   real(kind=8),dimension(npsfc)::cal_amf_clr

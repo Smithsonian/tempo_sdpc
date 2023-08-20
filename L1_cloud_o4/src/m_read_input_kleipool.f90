@@ -4,14 +4,14 @@ module m_read_input_kleipool
 
 contains
 
-  !333333333333333333333333333333333333333333
+  !111111111111111111111111111111111111111111
   subroutine read_Kleipool_Rsfc(filename,m12)
-  !333333333333333333333333333333333333333333
+  !111111111111111111111111111111111111111111
 
     use hdfeos4_parameters
     use he5_swreader
     use m_vars, only: kleipool_lon, kleipool_lat, kleipool_SurfaceReflectivity466
-    use m_vars, only: kleipool_SurfaceReflectivity440, BRDF_SurfaceReflectivity466
+    use m_vars, only: kleipool_SurfaceReflectivity440
     use m_vars, only: rad_nXtrack, rad_NumTimes, kleipool_nx, kleipool_ny
 
     implicit none
@@ -138,11 +138,70 @@ contains
       end do
     end do
 
-  !333333333333333333333333333333333
+  !111111111111111111111111111111111
   end subroutine read_Kleipool_Rsfc
-  !333333333333333333333333333333333
+  !111111111111111111111111111111111
 
-! read_BRDF_Rsfc will be replaced by read_gler for TEMPO
+  !222222222222222222222222222222222
+  subroutine get_kleipool_lonlat(lon0,lat0,rsfc466out,rsfc440out)
+  !222222222222222222222222222222222
+  ! get Kleipool rsfc at TEMPO pixel (ix,it)
+  use m_vars, only: kleipool_SurfaceReflectivity466,kleipool_lon
+  use m_vars, only: kleipool_SurfaceReflectivity440,kleipool_lat
+  use m_vars, only: kleipool_nx, kleipool_ny
+ 
+  implicit none
+  real, intent(in):: lon0, lat0
+  real, intent(out):: rsfc466out, rsfc440out
+
+  real:: kle_wx1,kle_wx2,kle_wy1,kle_wy2
+  real:: rsfc11,rsfc12,rsfc21,rsfc22,rsfc1,rsfc2
+  integer:: kle_ix1,kle_ix2,kle_iy1,kle_iy2
+
+  kle_wx1 = 0. 
+  kle_wx2 = 0.
+  kle_wy1 = 0.
+  kle_wy2 = 0.
+
+  kle_ix1 = floor((lon0+180.)/0.5)+1
+  kle_ix2 = kle_ix1+1
+  kle_iy1 = floor((lat0+90.)/0.5)+1
+  kle_iy2 = kle_iy1+1
+
+  if (kle_ix1 .lt. 1) kle_ix1 = 1
+  if (kle_ix1 .gt. kleipool_nx) kle_ix1 = kleipool_nx
+  if (kle_ix2 .lt. 1) kle_ix2 = 1
+  if (kle_ix2 .gt. kleipool_nx) kle_ix2 = kleipool_nx
+  if (kle_iy1 .lt. 1) kle_iy1 = 1
+  if (kle_iy1 .gt. kleipool_ny) kle_iy1 = kleipool_ny
+  if (kle_iy2 .lt. 1) kle_iy2 = 1
+  if (kle_iy2 .gt. kleipool_ny) kle_iy2 = kleipool_ny
+
+  kle_wx1 = lon0 - kleipool_lon(kle_ix1)
+  kle_wx2 = kleipool_lon(kle_ix2) - lon0
+  kle_wy1 = lat0 - kleipool_lat(kle_iy1)
+  kle_wy2 = kleipool_lat(kle_iy2) - lat0
+
+  rsfc11 = kleipool_SurfaceReflectivity466(kle_ix1,kle_iy1)
+  rsfc12 = kleipool_SurfaceReflectivity466(kle_ix1,kle_iy2)
+  rsfc21 = kleipool_SurfaceReflectivity466(kle_ix2,kle_iy1)
+  rsfc22 = kleipool_SurfaceReflectivity466(kle_ix2,kle_iy2)
+  rsfc1 = (kle_wy2*rsfc11+kle_wy1*rsfc12)/(kle_wy1+kle_wy2)
+  rsfc2 = (kle_wy2*rsfc21+kle_wx1*rsfc22)/(kle_wy1+kle_wy2)
+  rsfc466out=(kle_wx2*rsfc1+kle_wx1*rsfc2)/(kle_wx1+kle_wx2)
+  
+  rsfc11 = kleipool_SurfaceReflectivity440(kle_ix1,kle_iy1)
+  rsfc12 = kleipool_SurfaceReflectivity440(kle_ix1,kle_iy2)
+  rsfc21 = kleipool_SurfaceReflectivity440(kle_ix2,kle_iy1)
+  rsfc22 = kleipool_SurfaceReflectivity440(kle_ix2,kle_iy2)
+  rsfc1 = (kle_wy2*rsfc11+kle_wy1*rsfc12)/(kle_wy1+kle_wy2)
+  rsfc2 = (kle_wy2*rsfc21+kle_wx1*rsfc22)/(kle_wy1+kle_wy2)
+  rsfc440out =(kle_wx2*rsfc1+kle_wx1*rsfc2)/(kle_wx1+kle_wx2)
+  
+  !2222222222222222222222222
+  end subroutine get_kleipool_lonlat
+  !2222222222222222222222222
+
   !4444444444444444444444444
   subroutine read_BRDF_Rsfc
   !4444444444444444444444444
