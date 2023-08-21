@@ -19,7 +19,9 @@ subroutine cal_ecf
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2
   real::   walb1,wsza1,wvza1,wraa1,wpsfc1
   real::   walb2,wsza2,wvza2,wraa2,wpsfc2
+
 !  real::temp_raa
+
   integer(kind=4)::ierr
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
@@ -565,29 +567,30 @@ subroutine cal_ecf
       !     these are set to 0.0 or 1.0, and may still be usable    
       ! out_ProcessingQualityFlag bit12 for unreasonable values (ERROR)
       !     these should not be used
-      if ((rout_ecf .lt. 0.) .and. (rout_ecf .ge. -0.2)) then
+
+      if ((rout_ecf .lt. 0.) .and. (rout_ecf .ge. ecf_lowclip)) then
          rout_ecf=0.
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
       endif
-      if ((rout_ecf .gt. 1.) .and. (rout_ecf .le. 1.2)) then
+      if ((rout_ecf .gt. 1.) .and. (rout_ecf .le. ecf_highclip)) then
          rout_ecf=1.
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),9)
       endif
-      if((rout_ecf .lt. -0.2) .or. (rout_ecf .gt. 1.2)) then
+      if((rout_ecf .lt. ecf_lowclip) .or. (rout_ecf .gt. ecf_highclip)) then
          rout_ecf=fspecial 
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
       endif
 
-      if ((rout_crf466 .lt. 0.).and.(rout_crf466 .ge. -0.2)) rout_crf466=0.
-      if ((rout_crf466 .gt. 1.).and.(rout_crf466 .le. 1.2)) rout_crf466=1.
-      if ((rout_crf466 .lt. -0.2) .or. (rout_crf466 .gt. 1.2)) then
+      if ((rout_crf466 .lt. 0.).and.(rout_crf466 .ge. ecf_lowclip)) rout_crf466=0.
+      if ((rout_crf466 .gt. 1.).and.(rout_crf466 .le. ecf_highclip)) rout_crf466=1.
+      if ((rout_crf466 .lt. ecf_lowclip) .or. (rout_crf466 .gt. ecf_highclip)) then
         rout_crf466=fspecial
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),1)
       endif
 
-      if ((rout_crf440 .lt. 0.).and.(rout_crf440 .ge. -0.2)) rout_crf440=0.
-      if ((rout_crf440 .gt. 1.).and.(rout_crf440 .le. 1.2)) rout_crf440=1.
-      if ((rout_crf440 .lt. -0.2) .or. (rout_crf440 .gt. 1.2)) then
+      if ((rout_crf440 .lt. 0.).and.(rout_crf440 .ge. ecf_lowclip)) rout_crf440=0.
+      if ((rout_crf440 .gt. 1.).and.(rout_crf440 .le. ecf_highclip)) rout_crf440=1.
+      if ((rout_crf440 .lt. ecf_lowclip) .or. (rout_crf440 .gt. ecf_highclip)) then
         rout_crf440=fspecial
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif

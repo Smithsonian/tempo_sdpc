@@ -11,7 +11,7 @@ module m_vars
 !
 !  04/23/15 Yang original fortran 90
 !  2021 Wang adaption to TEMPO
-!  2023 Wang modification
+!  2023 Wang modification for TEMPO
 !---------------------------------------------------------------------72
 
   implicit none
@@ -116,7 +116,7 @@ module m_vars
   integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
   integer,parameter:: npsfc=23, npcld=23
 
-  ! added the following to remove hardcoded numbers 
+  ! added the following to remove hardcoded 
   ! these are determined by LUTs
   !real(kind=4),parameter::max_SZA=89.,max_VZA=72. ! OMI
   real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
@@ -125,12 +125,8 @@ module m_vars
 ! hqw O4 SCD temperature correction coefficients
 ! y(T2) = a * y(T1) + b; T1 = 273K, T2=203, 233, 253, 293K
 !------------------------
-!   real, parameter:: a203=0.8423, b203=-2.0170e-2
-!   real, parameter:: a233=0.9318, b233=-1.3336e-2
-!   real, parameter:: a253=0.9680, b253=-5.8256e-3
-!   real, parameter:: a293=1.0270, b293=-2.4064e-3
 ! coefs updated to account for changes associated with RJH HITRAN2020 H2O
-! coefs are derived using Thalman O4 and OMC4 20050701,20060101,20060715
+! coefs are derived using Thalman and OMC4 20050701,20060101,20060715
    real, parameter:: TrefO4 = 273. 
    real, parameter:: a203 = 0.90, b203 = -0.03
    real, parameter:: a233 = 0.96, b233 = -0.02
@@ -379,6 +375,9 @@ integer::ilun_lut_amf_ler6d=477010
   real::w440=440.0 ! nm for cloud fraction calculation
   real::w466=466.0 ! nm for cloud fraction calculation
   real::w477=477.0 ! nm for cloud pressure calculation
+
+! clip threshold
+  real, parameter:: ecf_lowclip=-0.2, ecf_highclip=1.5
 
   real(kind=4),dimension(:,:),pointer::rad_of_irr440  ! radiance/irradiance at 440 nm calculated by "cal_ecf.f90"
   real(kind=4),dimension(:,:),pointer::rad_of_irr466  ! radiance/irradiance at 466 nm calculated by "cal_ecf.f90"
