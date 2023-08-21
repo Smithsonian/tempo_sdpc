@@ -1179,7 +1179,8 @@ static void free_maneuver_table (Maneuver_Table_Type *mt)
 
 static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_file,
                                   double plan_beg_timet, double plan_end_timet,
-                                  int maneuver_margin, char **plan_id)
+                                  int maneuver_margin_before, int maneuver_margin_after,
+                                  char **plan_id)
 {
    IOCLib_String_Table_Type *st = NULL;
    IOCLib_KV_Table_Type *kv = NULL;
@@ -1218,8 +1219,8 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
    /* The target plan interval, including the maneuver margin,
     * must lie entirely inside the time interval covered by the maneuver table.
     */
-   if ((plan_beg_timet - maneuver_margin < table_beg_timet)
-       || (plan_end_timet + maneuver_margin > table_end_timet))
+   if ((plan_beg_timet - maneuver_margin_before < table_beg_timet)
+       || (plan_end_timet + maneuver_margin_after > table_end_timet))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: plan with margin extends beyond maneuver table time limits", __func__);
         goto return_status;
@@ -1280,8 +1281,8 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
           }
 
         /* Expand the maneuver window to include the specified margin */
-        beg_timet -= maneuver_margin;
-        end_timet += maneuver_margin;
+        beg_timet -= maneuver_margin_before;
+        end_timet += maneuver_margin_after;
 
         /* Skip maneuver windows outside the target plan interval */
         if (end_timet < plan_beg_timet)
@@ -1366,8 +1367,10 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
    Plan_List_Type *entry = NULL;
    double jd_utc0, jd_utc1, plan_beg_timet, plan_end_timet;
    double unix_epoch_jd = get_unix_epoch_jd();
-   int maneuver_margin;
+   int margin_input, maneuver_margin_before, maneuver_margin_after;
    int status = -1;
+
+   maneuver_margin_before = maneuver_margin_after = -1;
 
    if (maneuver_file == NULL)
      {
@@ -1375,12 +1378,30 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
         return 0;
      }
 
-   if (CONFIG_TRUE != config_lookup_int (cfg, "limits_config.maneuver_margin", &maneuver_margin))
+   if ((CONFIG_TRUE == config_lookup_int (cfg, "limits_config.maneuver_margin", &margin_input))
+       && (margin_input >= 0))
      {
-        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading limits_config.maneuver_margin: %s",
-                     __func__, config_error_file (cfg));
+        maneuver_margin_before = margin_input;
+        maneuver_margin_after = margin_input;
+     }
+   if ((CONFIG_TRUE == config_lookup_int (cfg, "limits_config.maneuver_margin_before", &margin_input))
+       && (margin_input >= 0))
+      {
+         maneuver_margin_before = margin_input;
+     }
+   if ((CONFIG_TRUE == config_lookup_int (cfg, "limits_config.maneuver_margin_after", &margin_input))
+       && (margin_input >= 0))
+      {
+         maneuver_margin_after = margin_input;
+     }
+
+   if ((maneuver_margin_before < 0) || (maneuver_margin_after < 0))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: maneuver margins not specified in limits_config (maneuver_margin, maneuver_margin_before, maneuver_margin_after)",
+                     __func__);
         return -1;
      }
+
    if (CONFIG_TRUE != config_lookup_float (cfg, "limits_config.min_scan_duration", &Min_Scan_Duration_Sec))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading limits_config.min_scan_duration: %s",
@@ -1408,7 +1429,7 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
    plan_end_timet = (jd_utc1 - unix_epoch_jd) * SEC_PER_DAY;
 
    if (0 != process_maneuver_file (&mt, maneuver_file, plan_beg_timet, plan_end_timet,
-                                   maneuver_margin, plan_id))
+                                   maneuver_margin_before, maneuver_margin_after, plan_id))
      return -1;
 
    for (win = mt.lst; win != NULL; win = win->next)
@@ -1677,7 +1698,7 @@ int main (int argc, char **argv)
              break;
            case 'I':
              irr_only = 1;
-             /* drop */
+             /* FALLTHRU */
            case 'i':
              irr_outfile = optarg;
              if (NULL == (fp_irr = handle_outfile_arg (irr_outfile, "w")))
