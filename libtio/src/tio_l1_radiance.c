@@ -1277,6 +1277,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
     *             A = satellite cross-sectional area [m^2]
     *             m = satellite mass [kg]
     */
+#if 0
      {
         static _pText_Attr_Type amr_attrs[] =
           {
@@ -1286,6 +1287,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_AMR, NC_FLOAT, 0, NULL, amr_attrs, &varid))
           return -1;
      }
+#endif
 
    /* satellite position */
      {
@@ -1381,6 +1383,7 @@ static int define_ephemeris_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
+#if 0
 static int define_maneuvers_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
 {
@@ -1461,6 +1464,7 @@ static int define_maneuvers_group (int parent_grp, const char *grp_name,
 
    return 0;
 }
+#endif
 
 static int define_gyroscope_group (int parent_grp, const char *grp_name,
                                    _pDim_Table_Type *dim_table, int *grp_id)
@@ -1772,7 +1776,7 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
      }
 
    if ((-1 == define_ephemeris_group (grp, TEMPO_GRP_EPHEMERIS, dim_table, NULL))
-       || (-1 == define_maneuvers_group (grp, TEMPO_GRP_MANEUVERS, dim_table, NULL))
+       /* || (-1 == define_maneuvers_group (grp, TEMPO_GRP_MANEUVERS, dim_table, NULL)) */
        || (-1 == define_telemetry_group (grp, TEMPO_GRP_TELEMETRY, dim_table, NULL)))
      {
         return -1;
