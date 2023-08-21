@@ -97,11 +97,19 @@ module m_vars
   ! LUT cloud node
   ! ALB(cloud) = 0.8 (ind=18), Pcld = 700hPa (ind=18)
   integer, parameter:: LUTrad_cloud_albid = 18
-  integer:: LUTrad_cloud_psfcid = 18 
+  integer, parameter:: LUT_pcld_700hPa = 18
   ! during ecfocp iteration LUTrad_cloud_psfcid changes for each pix
+  integer:: LUTrad_cloud_psfcid = 18 !initial
 
-  ! array holding nearest 1-based lut_pcld index for ocp
+  ! nearest 1-based lut_pcld index for ocp
   integer,dimension(:,:),allocatable:: lut_pcld_indarr
+  ! previous iteration lut_pcld index for ocp
+  integer,dimension(:,:),allocatable:: lut_pcld_prevind
+  ! max number of ecfocp iterations 
+  integer:: ecfocp_maxiter = 6
+  ! results from previous iteration
+  real,dimension(:,:),allocatable:: prev_ecf,prev_ecf_notclipped
+  real,dimension(:,:),allocatable:: prev_ocp,prev_ocp_notclipped
 
   ! LUT albedo node used for solving sbar, trans 
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
@@ -109,7 +117,7 @@ module m_vars
   integer, parameter:: LUT_ALBID_0p1 = 7
   integer, parameter:: LUT_ALBID_0p2 = 12
 
-  !OMI LUT dimension
+  !OMI LUT dimension, not used for TEMPO
   !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
   !integer,parameter::npsfc=23, npcld=23, nrsfc=23
   !TEMPO LUT dimension
@@ -122,7 +130,7 @@ module m_vars
   real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
 
 !------------------------
-! hqw O4 SCD temperature correction coefficients
+! O4 SCD temperature correction coefficients (may need update)
 ! y(T2) = a * y(T1) + b; T1 = 273K, T2=203, 233, 253, 293K
 !------------------------
 ! coefs updated to account for changes associated with RJH HITRAN2020 H2O
@@ -399,10 +407,8 @@ integer::ilun_lut_amf_ler6d=477010
 ! write outputs
 !---------------
   character(len=255)::name_out_dir='./'
-!  character(len=255)::name_out_he5
   character(len=255)::name_out_ncdf='empty'
   character(len=255)::name_out_txt='OMCDO2N.out'
-!  character(len=255)::name_out_swath='Cloud Product'
   real(kind=8),   dimension(:),    pointer::out_Time
 !  real(kind=4),   dimension(:),    pointer::out_SecondsInDay
   real(kind=4),   dimension(:,:),  pointer::out_Longitude

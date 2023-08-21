@@ -2,9 +2,11 @@ module m_cal_ocp
   public cal_ocp
 
 contains
+!1111111111111111111
 !******************
 subroutine cal_ocp
-  !******************
+!******************
+!11111111111111111111
   ! -----------------------------
   ! define ProcessingQualityFlags
   ! -----------------------------
@@ -314,7 +316,7 @@ subroutine cal_ocp
         endif
       endif
 
-      ! whether to skip snow/ice for ocp, uncommment if want to skip
+      ! whether to skip snow/ice for ocp
       ! snowice is handled in pscene, flag was set in m_read_gler
       if (btest(out_ProcessingQualityFlags(ix,it),4)) then ! snowice surface
         if (name_option_skipSnowocp .eq. 1) then ! requested skip ocp for snowice
@@ -530,6 +532,11 @@ subroutine cal_ocp
 
       ! Temperature correction will be applied through iteration
       scdmorg = nasa_SlantColumnAmountO2O2(ix,it)
+      ! skip calculation if scdmorg is invalid
+      if (scdmorg .lt. 0.) then
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+        go to 990
+      endif 
 
       ! initial iteration use TrefO4 reference
       iternum = 0
@@ -749,7 +756,7 @@ subroutine cal_ocp
 ! skipped calculation will end up here
 990   continue
 
-      !set out_ProcessingQualityFlags bit 5 for max_scd_iter
+      ! set out_ProcessingQualityFlags bit 5 for max_scd_iter
       if (iternum .ge. max_scd_iter) then
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),5)
       endif
@@ -762,15 +769,19 @@ subroutine cal_ocp
       ! scdm & t8p is the step right before final iteration
       ! scdadj & temp_t8p is the step right after final iterateion
       if (scdm .gt. 0.) then
-         out_SlantColumnAmountO2O2(ix,it) = scdm ! scdadj
-         out_O2O2CloudTemperature(ix,it) = real(t8p, kind=4) ! temp_t8p
+         out_SlantColumnAmountO2O2(ix,it) = scdadj !scdm // scdadj
+         out_O2O2CloudTemperature(ix,it) = real(temp_t8p, kind=4) ! t8p //temp_t8p
       else ! skipped pixels will satisfy this condition
          out_SlantColumnAmountO2O2(ix,it) = nasa_SlantColumnAmountO2O2(ix,it)
          out_O2O2CloudTemperature(ix,it) = TrefO4
       endif
 
       out_CloudPressureNotClipped(ix,it)= cpp 
+
       ! calculate lut_pcld index from cpp
+      ! bad cpp will return negative index_pcld_lut 
+      ! lut_pcld_indarr will be used for ecf in next iteration
+      ! negative elements will revert back to pcld=700hPa assumption there
       call find_pcld_lutind(cpp,index_pcld_lut)
       lut_pcld_indarr(ix,it) = index_pcld_lut
 
@@ -825,11 +836,14 @@ subroutine cal_ocp
 end subroutine cal_ocp
 !**********************
 
+!222222222222222222222222
 !**********************
 subroutine allocate_ocp_arrays(nx,nt,fFillValue9,ierr)
-
+!**********************
+!222222222222222222222222
    use m_vars, only: out_CloudPressure,out_CloudPressureNotClipped,&
         out_SlantColumnAmountO2O2,out_O2O2CloudTemperature
+   use m_vars, only: prev_ocp, prev_ocp_notclipped
 
    implicit none
    integer, intent(in):: nx,nt
@@ -847,7 +861,39 @@ subroutine allocate_ocp_arrays(nx,nt,fFillValue9,ierr)
   out_SlantColumnAmountO2O2=fFillValue9
   out_O2O2CloudTemperature=fFillValue9
 
+   allocate(prev_ocp(nx,nt),stat=ierr)
+   allocate(prev_ocp_notclipped(nx,nt),stat=ierr)
+   prev_ocp = fFillValue9
+   prev_ocp_notclipped = fFillValue9
+
 end subroutine allocate_ocp_arrays
 !**********************
+
+!333333333333333333333333
+!**********************
+subroutine save_previous_ocp
+!**********************
+!3333333333333333333333333
+   use m_vars, only: out_CloudPressure,out_CloudPressureNotClipped
+   use m_vars, only: prev_ocp, prev_ocp_notclipped
+   use m_vars, only: lut_pcld_indarr, lut_pcld_prevind
+
+   prev_ocp = out_CloudPressure
+   prev_ocp_notclipped = out_CloudPressureNotClipped
+   lut_pcld_prevind = lut_pcld_indarr
+
+!*********************
+end subroutine save_previous_ocp
+!*********************
+
+!44444444444444444444444
+!*********************
+subroutine write_previous_ecfocp
+!*********************
+!444444444444444444444444
+! TBD
+!*********************
+end subroutine write_previous_ecfocp
+!*********************
 
 end module m_cal_ocp

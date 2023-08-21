@@ -171,7 +171,7 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
    integer :: kk
    real :: w1, w2
 
-   pcld_lut_ind = -9
+   pcld_lut_ind = -999
 
    if ((cloudp .gt. 0.) .and. (cloudp .lt. lut_pcld(1))) then
       pcld_lut_ind = 1
@@ -192,7 +192,7 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
      enddo 
    endif
 
-   ! negative cloudp will have pcld_lut_ind=-9
+   ! negative cloudp will have pcld_lut_ind=-999
 
 !44444444444444444444444444
 end subroutine find_pcld_lutind

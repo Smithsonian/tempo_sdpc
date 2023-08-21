@@ -55,7 +55,6 @@ subroutine cal_ecf
   ! ------
   pi=4.*atan(1.)
   dtor=pi/180.
-  !fspecial = -9999. ! make this a large negative value
   fspecial = fFillValue ! large negative value in m_vars
 
   nt=rad_NumTimes
@@ -67,9 +66,10 @@ subroutine cal_ecf
       write(lun_debug_ecf,*)'ix, alb0,  psfc0,  rad_of_irr466, cal_rad_clr, cal_rad_cld, cldfrac'
    endif
 
-  ! earthsunfactor2 is to account for earth-sun distance between irr and rad
+  ! earthsunfactor2 accounts for earth-sun distance between irr and rad
    earthsunfactor2 = (irr_EarthSunDist/rad_EarthSunDist)**2
 
+  ! loop through each ground pixel
   ! ==========
   do it=1,nt
     do ix=1,nx
@@ -78,7 +78,7 @@ subroutine cal_ecf
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
       ! bit7 & bit8 were set before in m_read_input_tio, however,
       ! rad_of_irr466 & rad_of_irr440 are checked again here, 
-      ! for later implementation of iteration, it is easier to clear them, too. 
+      ! for ecfocp iteration, it is easier to clear them here, too. 
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),0)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),1)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),3)
@@ -103,8 +103,8 @@ subroutine cal_ecf
       vza0=rad_ViewingZenithAngle(ix,it)
       raa0 = out_RelativeAzimuthAngle(ix,it) 
 !  now use the out_RelativeAzimuthAngle from m_read_input_tio
-!      !xliu: +raa has the same effect as -raa due to symmetry,
-!      !     and RAA needs to be within [0.,180] for use with LUT
+!  !xliu: +raa has the same effect as -raa due to symmetry,
+!  !     and RAA needs to be within [0.,180] for use with LUT
 !  this is taken care of in m_read_input_tio
 
       pflag00=0 ! for lat/lon
@@ -129,14 +129,14 @@ subroutine cal_ecf
 
 !~~~~~~~~~~
 ! out_RelativeAzimuthAngle is now taken care of within m_read_input_tio
-!      invalid raa set to large negative value there
-! the following is no longer needed, kept here as a clarification on RAA definition
+!      invalid raa is set to a large negative value there
+! the following is no longer needed, kept here as a clarification for RAA definition
 !      if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
 !           (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
-!      !hqw RAA = SAA - VAA + PI, Why +PI?
-!      !xliu: this is related to how the SAA and VAA are fined
-!      !      RAA of forward scattering = 0, RAA of backward scattering = 180.
-!      !also see Eun-su Yang slide for explanation
+!      ! RAA = SAA - VAA + PI, Why +PI?
+!      !xliu: this is related to how the SAA and VAA are defined
+!      !    RAA of forward scattering=0, RAA of backward scattering=180.
+!      !also see Eun-Su Yang slide for explanation
 !        temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
 !        ! ensure temp_raa is within [0., 360.) range
 !        do while((temp_raa .lt. 0.0) .or. (temp_raa .ge. 360.0))
@@ -195,23 +195,24 @@ subroutine cal_ecf
       endif
 
       !----------------
-      !get actual psfc0
+      !get psfc0 from model
       !----------------
       !out-of-range rad_Longitude should have been skipped already
-      if(name_option_TemperaturePressure.eq.'GMI') then
+      if(name_option_TemperaturePressure.eq.'GMI') then ! for test
         call get_GMIpsfc_lonlat(lon0, lat0, gmi_psfc)
 
         ! gmi_psfc is NOT corrected for topography
+        ! assign l2_TerrainPressure for GMI here
+        l2_TerrainPressure(ix,it) = gmi_psfc
+
         ! psfc0 is used later
         psfc0=gmi_psfc
-
-        ! assign l2_TerrainPressure for GMI here
-        l2_TerrainPressure(ix,it) = psfc0
       endif
 
       if(name_option_TemperaturePressure.eq.'GEOS5') then ! for TEMPO
         ! l2_TerrainPressure was assigned in read_geoscf
-        ! which is called before this subroutine, use it as psfc0
+        ! which is called before this subroutine
+        ! for this option, it is adjusted for topography
         psfc0=l2_TerrainPressure(ix,it)
       endif
 
@@ -226,13 +227,13 @@ subroutine cal_ecf
       !--------------------------
       ! get actual alb0 & alb440
       !--------------------------
-      if(name_option_SurfaceReflectivity.eq.'Kleipool') then
+      if(name_option_SurfaceReflectivity.eq.'Kleipool') then ! testing
         call get_kleipool_lonlat(lon0, lat0, kleipool466, kleipool440)
         alb0 = kleipool466
         alb440 = kleipool440
       endif
 
-      if(name_option_SurfaceReflectivity.eq.'BRDF') then
+      if(name_option_SurfaceReflectivity.eq.'BRDF') then ! TEMPO
         alb0=BRDF_SurfaceReflectivity466(ix,it)
         alb440=BRDF_SurfaceReflectivity440(ix,it)
       endif
@@ -252,7 +253,7 @@ subroutine cal_ecf
           go to 990
       endif
 
-      !bound alb440 within [0.,1.] if it is reasonable
+      ! bound alb440 within [0.,1.] if it is reasonable
       if((alb440 .ge. -0.2) .and. (alb440 .lt. 0.0)) alb440=0.0
       if((alb440 .gt.  1.0) .and. (alb440 .le. 1.2)) alb440=1.0
       if ((alb440 .lt. -0.2) .or. (alb440 .gt. 1.2)) alb440=fspecial
@@ -275,7 +276,7 @@ subroutine cal_ecf
       wpsfc2 = fspecial
 
       ! added exit within do loops for alb,sza,vza,raa,psfc
-      ! to terminate loop when nodes are found 
+      ! to terminate loop once nodes are found 
       ! if interpolation nodes cannot be found skip calculation
 
       ! find nodes for alb0
@@ -353,7 +354,7 @@ subroutine cal_ecf
       ! this is only for safeguard 
       if (psfc0 .gt. lut_psfc(npsfc)) psfc0=lut_psfc(npsfc)
 
-      !find nodes for psfc0
+      ! find nodes for psfc0
       ipsfc1=-9; ipsfc2=-9
       do ipsfc=1,npsfc-1
         if((psfc0 .ge. lut_psfc(ipsfc)) .and. (psfc0 .le. lut_psfc(ipsfc+1))) then
@@ -374,9 +375,9 @@ subroutine cal_ecf
       !-------------
       ! get LUT values at interpolation node
       ! all node indices should have been found now
+      ! may use a function in future
       !-------------
 
-      ! may use a function in future,
       !------------------------------
       !radiance at surface: clear sky 466nm
       !------------------------------
@@ -414,14 +415,14 @@ subroutine cal_ecf
       r22222=lut_rad_clr(ialb2,isza2,ivza2,iraa2,ipsfc2)
 
       ! -----------------
-      ! in case wsfc2=0.0
+      ! safeguard
       ! -----------------
       ! entries in lut_rad_clr are always >0.
       ! the following is not necessary
-      !if((r11111 .lt. 0.0) .or. (r11112 .lt. 0.0)) then
-      !  cal_rad_clr(ix,it)= fspecial
-      !  go to 897
-      !endif
+      if((r11111 .lt. 0.0) .or. (r11112 .lt. 0.0)) then
+        cal_rad_clr(ix,it)= fspecial
+        go to 897
+      endif
 
       r1111=(wpsfc2*r11111+wpsfc1*r11112)/(wpsfc1+wpsfc2)
       r1112=(wpsfc2*r11121+wpsfc1*r11122)/(wpsfc1+wpsfc2)
@@ -459,7 +460,7 @@ subroutine cal_ecf
 
       cal_rad_clr(ix,it)=(walb2*r1+walb1*r2)/(walb1+walb2)
 
-!897   continue
+ 897   continue
 
       !--------------------------------
       ! 466nm radiance at 700 hPa: cloudy sky
@@ -468,20 +469,24 @@ subroutine cal_ecf
       ! for cloud albedo rationale, refer to Stammes et al. [2008]
       ! the linear (1) ecf (2) ocp process is inherited from OMCDO2N
       ! As cal_rad_cld depends on pcld, it makes sense to do iteration
-      ! after pcloud is derived until convergence
-      ! However, current estimation  uses pcld=700hPa as an approximation
+      ! after pcloud is derived 
+      ! However, first pass uses pcld=700hPa as an approximation
       ! The error associated with the pcld assumption for ecf
-      ! is not large (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr,
-      ! Which is comparable to error associated with climatology 
+      ! is not huge (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr,
+      ! which is comparable to error associated with climatology 
       !--------------------------------
-      ialb= LUTrad_cloud_albid ! remove hardcoded lut index 18
-      !now change from fixed index=18 to iteration with ocp
-      !ipsfc= LUTrad_cloud_psfcid ! remove hardcoded lut index 18
+      ialb= LUTrad_cloud_albid ! ALB(18)=0.8 in LUT
+ 
+      ! change from fixed Psfc(18)=701hPa to iteration with ocp
+      ! ipsfc= LUTrad_cloud_psfcid
       ipsfc = lut_pcld_indarr(ix,it)
 
+      ! on 1st pass, lut_pcld_indarr is initialized to 18
+      ! on subsequent passes, some elements may be negative
       if (ipsfc .lt. 0.) then
           ! failed ocp retrieval
-          ipsfc = npcld
+          ! revert back to 701hPa
+          ipsfc = LUT_pcld_700hPa 
       endif
 
       r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
@@ -507,8 +512,9 @@ subroutine cal_ecf
       ! pcld=701hPa is an assumption used in ecf calculation
       ! future implementation will use iteraction with pcld
       !--------------------------------
-      ialb=LUTrad_cloud_albid 
-      ipsfc=LUTrad_cloud_psfcid
+      ! use the same ialb & ipsfc as 466 above 
+      !ialb=LUTrad_cloud_albid 
+      !ipsfc=LUTrad_cloud_psfcid
 
       r111=lut_rad_clr440(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr440(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -539,6 +545,7 @@ subroutine cal_ecf
       endif
 
       ! calculate cloud radiance fraction at 466
+      ! crf definition follows Vasilkov et al.
       if ((cal_rad_cld(ix,it) .gt. 0.).and.(rad_of_irr466(ix,it).gt. 0.)) then
          rout_crf466=rout_ecf*cal_rad_cld(ix,it)/rad_of_irr466(ix,it)
       else
@@ -554,9 +561,8 @@ subroutine cal_ecf
       endif
 
       ! assign non-clipped ecf & crf to array
-      ! due to assumption of Acld=0.8 and pcld=701hPa and IPA
-      ! ecf and crf can be slightly negative or above 1.0
-      ! the NotClipped values should be used during iteration in future 
+      ! due to assumption of Acld=0.8 (some pcld=701hPa) and IPA
+      ! ecf and crf can be negative or above 1.0 within a reasonable range 
       out_EffectiveCloudFractionNotClipped(ix,it)= rout_ecf
       out_CloudRadianceFractionNotClipped440(ix,it)= rout_crf440
       out_CloudRadianceFractionNotClipped466(ix,it)= rout_crf466
@@ -601,7 +607,7 @@ subroutine cal_ecf
       out_CloudRadianceFraction466(ix,it)=rout_crf466
 
       ! out_ReflectanceFactor is equivalent to observed Lambertian reflectance at 466
-      if(rad_of_irr466(ix,it).gt.0.0) then
+      if(rad_of_irr466(ix,it) .gt. 0.0) then
          out_ReflectanceFactor(ix,it)=pi*rad_of_irr466(ix,it)/cos(dtor*sza0)
       else
          out_ReflectanceFactor(ix,it)=fspecial
@@ -648,7 +654,8 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
        out_EffectiveCloudFraction,out_EffectiveCloudFractionNotClipped,&
        out_CloudRadianceFraction440, out_CloudRadianceFractionNotClipped440,&
        out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466,&
-       lut_pcld_indarr
+       lut_pcld_indarr, lut_pcld_prevind, LUT_pcld_700hPa
+   use m_vars, only: prev_ecf, prev_ecf_notclipped
 
    implicit none
 
@@ -691,12 +698,36 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   out_CloudRadianceFractionNotClipped466=fspecial
   out_ReflectanceFactor=fspecial
 
+  allocate(prev_ecf(nx,nt),stat=ierr)
+  allocate(prev_ecf_notclipped(nx,nt),stat=ierr)
+  prev_ecf=fspecial 
+  prev_ecf_notclipped=fspecial
+
   allocate(lut_pcld_indarr(nx,nt),stat=ierr)
   ! initialize to 700hPa which is index 18 in lut_pcld
-  lut_pcld_indarr= 18 
+  ! this will be used on 1st pass through ecfocp
+  lut_pcld_indarr= LUT_pcld_700hPa
+
+  allocate(lut_pcld_prevind(nx,nt),stat=ierr)
+  ! initialize to negative value 
+  lut_pcld_prevind = -999
 
 !**********************
 end subroutine allocate_ecf_arrays
+!**********************
+
+!**********************
+subroutine save_previous_ecf
+!**********************
+   use m_vars, only: out_EffectiveCloudFraction
+   use m_vars, only: out_EffectiveCloudFractionNotClipped
+   use m_vars, only: prev_ecf, prev_ecf_notclipped
+
+   prev_ecf = out_EffectiveCloudFraction
+   prev_ecf_notclipped = out_EffectiveCloudFractionNotClipped
+
+!**********************
+end subroutine save_previous_ecf
 !**********************
 
 end module m_cal_ecf

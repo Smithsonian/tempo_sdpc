@@ -17,8 +17,9 @@ program OMCDO2N
   use m_write_output_tio, only: create_output_file_tio, update_output_file_tio
   use m_read_input_clim, only: read_geoscf
   use m_read_input_gler, only: read_gler
-  use m_cal_ecf, only : cal_ecf, allocate_ecf_arrays
-  use m_cal_ocp, only : cal_ocp, allocate_ocp_arrays
+  use m_cal_ecf, only: cal_ecf, allocate_ecf_arrays,save_previous_ecf
+  use m_cal_ocp, only: cal_ocp, allocate_ocp_arrays,save_previous_ocp
+  use m_cal_ocp, only: write_previous_ecfocp 
   use m_cal_pscene, only : cal_pscene
   use HDF5
 
@@ -39,7 +40,7 @@ program OMCDO2N
   character(len=255)::name_kleipool_rsfc
 
   integer(kind=4) :: errstat
-  integer :: nx, nt
+  integer :: nx, nt, iter_ecfocp
   real :: fspecial
 
   character(len=80) :: logmsg
@@ -223,6 +224,14 @@ program OMCDO2N
      read(buf,*,iostat=status) itdebug
   endif
   write(*,*) 'itdebug=',itdebug
+  
+  status=GetConfigString("W","Runtime Parameters ecfocp_maxiter",buf)
+  if (status .NE. 0) then 
+     write(*,*) "No ecfocp_maxiter in control file, use default instead"
+  else
+     read(buf,*,iostat=status) ecfocp_maxiter
+  endif
+  write(*,*) 'ecfocp_maxiter=',ecfocp_maxiter
 
   status=GetConfigString("W","Runtime Parameters option_destripe_scd",buf)
   if (status .NE. 0) then
@@ -424,20 +433,41 @@ program OMCDO2N
   flush (output_unit)
   call tell_log(0,'Allocate ECFOCP arrays')
 
-  !================================
-  ! 6. calculate ECF/CRF at 466 nm
-  !================================
-  call cal_ecf
-  flush (output_unit)
-  call tell_log(0,'Calculated effective cloud fraction')
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ! ecf-ocp iteration
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  do iter_ecfocp = 1, ecfocp_maxiter
+     write(*,*) '--------ECFOCP iteration#',iter_ecfocp
+     !================================
+     ! save results from previous iter
+     !================================
+     if (iter_ecfocp .gt. 1) then
+         call save_previous_ecf
+         call save_previous_ocp
+     endif
+     !================================
+     ! 6. calculate ECF/CRF at 466 nm
+     !================================
+     call cal_ecf
+     flush (output_unit)
+     call tell_log(0,'   Calculated effective cloud fraction')
 
-  !==================
-  ! 7. calculate OCP
-  !==================
-  call cal_ocp
-  flush (output_unit)
-  call tell_log(0,'Calculated cloud pressure')
-
+     !==================
+     ! 7. calculate OCP
+     !==================
+     call cal_ocp
+     flush (output_unit)
+     call tell_log(0,'   Calculated cloud pressure')
+  enddo 
+ 
+  if ((trim(run_mode) .eq. 'development') .and. &
+     (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then 
+     call write_previous_ecfocp
+  endif
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ! end of ecf-ocp iteration
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
   !=============================
   ! 8. calculate Scene Pressure
   !=============================
