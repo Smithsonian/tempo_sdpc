@@ -882,7 +882,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-     !440nm GLER is not used, not tested, do not use
+     ! 440nm GLER is not used, not tested, do not use
      call tiof_varlist_append (varlist, errstat, &
                               name440, &
                               nf90_float, &
@@ -1230,6 +1230,31 @@ contains
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "ecf_niter", &
+                              nf90_int, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "number of ECF iteration", &
+                              units = "none", &
+                              valid_range = [0._r8, 100.0_r8], &
+                              fillvalue = -999.0_r8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                             "ocp_niter", &
+                             nf90_int, &
+                             dimids = dimids_xtrack_step, &
+                             comment = "number of OCP iteration", &
+                             units = "none", &
+                             valid_range = [0._r8, 100.0_r8], &
+                             fillvalue = -999.0_r8, &
+                             deflate_level = deflate_level, &
+                             shuffle = shuffle, &
+                             attlist = att_support)
+                           
     endif
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1273,7 +1298,8 @@ contains
                out_EffectiveCloudFractionNotClipped, &
                out_CloudPressureNotClipped,option_clip_pcld,&
                l2_TerrainPressure, name_option_SceneAlbedoAtTerrain,&
-               rad_of_irr466, cal_rad_clr, cal_rad_cld
+               rad_of_irr466, cal_rad_clr, cal_rad_cld, &
+               ecf_niter, ocp_niter
 
      use m_vars, only: scd_mdqfl, run_mode
 
@@ -1405,8 +1431,16 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "O2O2TerrainTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2TerrainTemperature, errstat)
     endif
+
     call tiof_put2d_r4 (tio_l2obj, "RelativeAzimuthAngle", [0,0], &
          [nstep, nxtrack], out_RelativeAzimuthAngle, errstat)
+
+    call tiof_put2d_i4 (tio_l2obj, "ecf_niter", [0,0], &
+         [nstep, nxtrack], ecf_niter, errstat)
+
+    call tiof_put2d_i4 (tio_l2obj, "ocp_niter", [0,0], &
+         [nstep, nxtrack], ocp_niter, errstat)
+
     endif
 
     call tiof_put2d_i2 (tio_l2obj,"SCD_MainDataQualityFlags", [0,0], &

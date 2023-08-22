@@ -2,15 +2,20 @@ module m_cal_ecf
   public cal_ecf
 
 contains
+!11111111111111111111
 !******************
-subroutine cal_ecf
+subroutine cal_ecf(ecfocp_iternum)
   !******************
+!11111111111111111111
   use m_vars
   use m_read_GMI
   use m_read_hdf5
   use m_read_input_kleipool
 
   implicit none
+
+! input
+  integer, intent(in):: ecfocp_iternum
 
   real:: rad466,rad440
   real(kind=4):: rout_ecf,rout_crf440,rout_crf466
@@ -39,6 +44,7 @@ subroutine cal_ecf
   real::lat0, lon0
   real:: alb440
   real:: kleipool466, kleipool440
+  real:: thisecf, thatecf, ecf_change
 
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
   real::r21111,r21112,r21121,r21122,r21211,r21212,r21221,r21222,r22111,r22112,r22121,r22122,r22211,r22212,r22221,r22222
@@ -74,7 +80,36 @@ subroutine cal_ecf
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! if ecf_change is below threshold, no need to recalculate
+      ! previous iteration values and quality flags are still value
+      ! simply skip to next ground pixel
 
+      if (ecfocp_iternum .gt. 2) then ! check only after 2 passes
+         thisecf = out_EffectiveCloudFractionNotClipped(ix,it)
+         thatecf = prev_ecf_notclipped(ix,it)
+         ecf_change = abs(thisecf - thatecf)
+         if ((thisecf .gt. -1.) .and. (thatecf .gt. -1.).and. &
+             (ecf_change .lt. delta_ecf)) then
+             ! no ProcessingQualityFlags change here
+             ! keep previous values and flags, skip calculation
+             go to 3455
+          else
+             ! assign current ecf to previous ecf for next ecfocp iter
+             ! current ecf will be re-calculated
+             ! and compared with previous ecf next time around
+             prev_ecf_notclipped(ix,it)=out_EffectiveCloudFractionNotClipped(ix,it)
+             prev_ecf(ix,it) = out_EffectiveCloudFraction(ix,it)
+             ! update ecf_niter, skipped calculation will not end up here
+             ecf_niter(ix,it) = ecfocp_iternum
+          endif
+       else
+          ! update ecf_niter for the 1st couple of iter
+          ecf_niter(ix,it) = ecfocp_iternum
+       endif
+
+       ! the first two passes always go through the whole thing
+
+      !---------------
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
       ! bit7 & bit8 were set before in m_read_input_tio, however,
       ! rad_of_irr466 & rad_of_irr440 are checked again here, 
@@ -632,6 +667,9 @@ subroutine cal_ecf
          out_CloudRadianceFractionNotClipped440(ix,it) = fspecial
          out_CloudRadianceFractionNotClipped466(ix,it) = fspecial
       endif   
+
+ 3455  continue ! skip to here when ecf does not need re-calculation
+
       !=====
     end do ! ix
   end do ! it
@@ -644,17 +682,18 @@ subroutine cal_ecf
 end subroutine cal_ecf
 !**********************
 
-
+!22222222222222222222222
 !**********************
 subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
 !**********************
+!222222222222222222222222
    use m_vars, only: cal_rad_clr, cal_rad_cld, cal_rad_cld440, &
        rad_of_irr440, rad_of_irr466, out_ReflectanceFactor,&
        out_SurfaceReflectivity466,out_SurfaceReflectivity440,&
        out_EffectiveCloudFraction,out_EffectiveCloudFractionNotClipped,&
        out_CloudRadianceFraction440, out_CloudRadianceFractionNotClipped440,&
        out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466,&
-       lut_pcld_indarr, lut_pcld_prevind, LUT_pcld_700hPa
+       lut_pcld_indarr, LUT_pcld_700hPa, ecf_niter,ocp_niter
    use m_vars, only: prev_ecf, prev_ecf_notclipped
 
    implicit none
@@ -708,26 +747,14 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   ! this will be used on 1st pass through ecfocp
   lut_pcld_indarr= LUT_pcld_700hPa
 
-  allocate(lut_pcld_prevind(nx,nt),stat=ierr)
-  ! initialize to negative value 
-  lut_pcld_prevind = -999
+  ! ecfocp number of iteration 
+  allocate(ecf_niter(nx,nt),stat=ierr)
+  ecf_niter = 0 
+  allocate(ocp_niter(nx,nt),stat=ierr)
+  ocp_niter = 0
 
 !**********************
 end subroutine allocate_ecf_arrays
-!**********************
-
-!**********************
-subroutine save_previous_ecf
-!**********************
-   use m_vars, only: out_EffectiveCloudFraction
-   use m_vars, only: out_EffectiveCloudFractionNotClipped
-   use m_vars, only: prev_ecf, prev_ecf_notclipped
-
-   prev_ecf = out_EffectiveCloudFraction
-   prev_ecf_notclipped = out_EffectiveCloudFractionNotClipped
-
-!**********************
-end subroutine save_previous_ecf
 !**********************
 
 end module m_cal_ecf

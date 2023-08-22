@@ -4,7 +4,7 @@ module m_cal_ocp
 contains
 !1111111111111111111
 !******************
-subroutine cal_ocp
+subroutine cal_ocp(ecfocp_iternum)
 !******************
 !11111111111111111111
   ! -----------------------------
@@ -38,6 +38,9 @@ subroutine cal_ocp
   use m_scd_adjust
 
   implicit none
+
+  ! input variable
+  integer, intent(in):: ecfocp_iternum
 
   !local variable moved from m_vars
   real:: alb0, sza0, vza0, raa0, psfc0
@@ -83,8 +86,9 @@ subroutine cal_ocp
 
   real::pi,dtor
 
-! add local variables
+  ! add local variables
   real:: lat0, lon0
+  real:: thisocp, thatocp, ocp_change
   real:: fFillValue9
 
   ! ------
@@ -111,8 +115,8 @@ subroutine cal_ocp
   qq = 0.
 
 ! debug
-  if ((trim(run_mode) .eq. 'development').and. & 
-     (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
+  if ((trim(run_mode) .eq. 'development').and.(ecfocp_iternum .eq. 1) & 
+     .and. (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
   write(*,*) 'writing debug_scd_adjust.txt'
   open(unit=lun_debug_scdadj,file='debug_scd_adjust.txt')
   write(lun_debug_scdadj,*) &
@@ -123,6 +127,34 @@ subroutine cal_ocp
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! if ocp_change is small enough, no need to recalculate 
+      ! previous iteration values and quality flags are valid here
+      ! simply skip to next ground pixels
+
+      if (ecfocp_iternum .gt. 2) then ! check only after 2 passes
+         thisocp = out_CloudPressureNotClipped(ix,it)
+         thatocp = prev_ocp_notclipped(ix,it)
+         ocp_change = abs(thisocp - thatocp)
+         if ((thisocp .gt. 0.) .and. (thatocp .gt. 0.).and. &
+             (ocp_change .lt. delta_ocp)) then
+             ! no ProcessingQualityFlags change here
+             ! keep previous flags, skip calculation
+             go to 3456
+         else
+             ! assign current ocp to previous ocp for next ecfocp iteration
+             ! current ocp will be re-calculated 
+             ! and compared with previous ocp next time around
+             prev_ocp_notclipped(ix,it) = out_CloudPressureNotClipped(ix,it)
+             prev_ocp(ix,it) = out_CloudPressure(ix,it)
+             ! update ocp_niter, skipped calculation will not end up here
+             ocp_niter(ix,it) = ecfocp_iternum
+         endif
+      else ! for 1st couple of iterations
+         ! update ocp_niter
+         ocp_niter(ix,it) = ecfocp_iternum       
+      endif
+
+      ! -----------
       ! clear relevant out_ProcessingQualityFlags bits
       ! Note, not all bits used here need clearing
       ! as some(e.g. bit0, bit3)  were cleared in cal_ecf called before
@@ -257,8 +289,8 @@ subroutine cal_ocp
       endif ! GEOS5
 
 ! debug
-      if ((trim(run_mode).eq.'development').and. &
-          (it .eq. itdebug).and. (ix .eq. ixdebug)) then
+      if ((trim(run_mode).eq.'development').and.(ecfocp_iternum .eq. 1) &
+          .and.(it .eq. itdebug).and. (ix .eq. ixdebug)) then
          write(*,*) '  writing debug_tpocp.txt'
          open(unit=lun_debug_ocp,file='debug_tpocp.txt')
          write(lun_debug_ocp,*) 'name_option_TemperaturePressure=', &
@@ -762,7 +794,8 @@ subroutine cal_ocp
       endif
 
       ! debug
-      if ((trim(run_mode).eq.'development').and.(it .eq. itdebug)) then
+      if ((trim(run_mode).eq.'development').and.(it .eq. itdebug) &
+          .and.(ecfocp_iternum .eq. 1)) then
          write(lun_debug_scdadj,*) ix, scdmorg, scdm, scdadj, temp_t8p, t8p, temp_cpp
       endif
 
@@ -778,10 +811,12 @@ subroutine cal_ocp
 
       out_CloudPressureNotClipped(ix,it)= cpp 
 
+      !-----------
       ! calculate lut_pcld index from cpp
       ! bad cpp will return negative index_pcld_lut 
       ! lut_pcld_indarr will be used for ecf in next iteration
       ! negative elements will revert back to pcld=700hPa assumption there
+      !-----------
       call find_pcld_lutind(cpp,index_pcld_lut)
       lut_pcld_indarr(ix,it) = index_pcld_lut
 
@@ -807,6 +842,8 @@ subroutine cal_ocp
          out_CloudPressure(ix,it) = fFillValue
       endif
 
+ 3456 continue ! skip to here when ocp does not need re-calculation
+
       !=====
     end do
   end do
@@ -818,8 +855,8 @@ subroutine cal_ocp
   ! debug
   close(lun_debug_scdadj)
 
-  if ((trim(run_mode).eq.'development').and. &
-      (itdebug.ge. 0).and.(ixdebug.ge.0)) then
+  if ((trim(run_mode).eq.'development') &
+      .and.(itdebug.ge. 0).and.(ixdebug.ge.0)) then
      write(*,*) '  writing debug_pcldind.txt'
      open(unit=lun_debug_pcldind,file='debug_pcldind.txt')
      write(lun_debug_pcldind,*)'it=',ix,itdebug
@@ -868,32 +905,5 @@ subroutine allocate_ocp_arrays(nx,nt,fFillValue9,ierr)
 
 end subroutine allocate_ocp_arrays
 !**********************
-
-!333333333333333333333333
-!**********************
-subroutine save_previous_ocp
-!**********************
-!3333333333333333333333333
-   use m_vars, only: out_CloudPressure,out_CloudPressureNotClipped
-   use m_vars, only: prev_ocp, prev_ocp_notclipped
-   use m_vars, only: lut_pcld_indarr, lut_pcld_prevind
-
-   prev_ocp = out_CloudPressure
-   prev_ocp_notclipped = out_CloudPressureNotClipped
-   lut_pcld_prevind = lut_pcld_indarr
-
-!*********************
-end subroutine save_previous_ocp
-!*********************
-
-!44444444444444444444444
-!*********************
-subroutine write_previous_ecfocp
-!*********************
-!444444444444444444444444
-! TBD
-!*********************
-end subroutine write_previous_ecfocp
-!*********************
 
 end module m_cal_ocp

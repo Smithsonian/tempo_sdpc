@@ -103,13 +103,16 @@ module m_vars
 
   ! nearest 1-based lut_pcld index for ocp
   integer,dimension(:,:),allocatable:: lut_pcld_indarr
-  ! previous iteration lut_pcld index for ocp
-  integer,dimension(:,:),allocatable:: lut_pcld_prevind
   ! max number of ecfocp iterations 
-  integer:: ecfocp_maxiter = 6
+  integer(kind=4):: ecfocp_maxiter = 6
   ! results from previous iteration
-  real,dimension(:,:),allocatable:: prev_ecf,prev_ecf_notclipped
-  real,dimension(:,:),allocatable:: prev_ocp,prev_ocp_notclipped
+  real(kind=4),dimension(:,:),allocatable:: prev_ecf,prev_ecf_notclipped
+  real(kind=4),dimension(:,:),allocatable:: prev_ocp,prev_ocp_notclipped
+  integer(kind=4),dimension(:,:),allocatable:: ecf_niter,ocp_niter
+
+  ! ecfocp stopping threshold
+  real(kind=4), parameter:: delta_ocp = 5.0 ! hPa
+  real(kind=4), parameter:: delta_ecf = 0.005
 
   ! LUT albedo node used for solving sbar, trans 
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
