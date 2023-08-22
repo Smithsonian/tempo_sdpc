@@ -70,6 +70,7 @@ subroutine cal_ocp(ecfocp_iternum)
 
   real:: gmi_psfc
   real(kind=4), dimension(:), allocatable :: tt, pp, qq, ppdry
+  integer(kind=2), dimension(:,:), allocatable:: prev_processingflags
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -88,7 +89,7 @@ subroutine cal_ocp(ecfocp_iternum)
 
   ! add local variables
   real:: lat0, lon0
-  real:: thisocp, thatocp, ocp_change
+  real:: thisocp, thatocp, ocp_change, thisscd
   real:: fFillValue9
 
   ! ------
@@ -114,6 +115,10 @@ subroutine cal_ocp(ecfocp_iternum)
   ppdry = fFillValue9
   qq = 0.
 
+  allocate(prev_processingflags(nx,nt),stat=ierr)
+  ! inherit out_ProcessingQualityFlags from before
+  prev_processingflags = out_ProcessingQualityFlags
+
 ! debug
   if ((trim(run_mode) .eq. 'development').and.(ecfocp_iternum .eq. 1) & 
      .and. (ixdebug .ge. 0) .and. (itdebug .ge. 0)) then
@@ -127,35 +132,72 @@ subroutine cal_ocp(ecfocp_iternum)
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! keep a record of previous processing flags for this pixel 
+      prev_processingflags(ix,it) = out_ProcessingQualityflags(ix,it) 
+
+      ! thisscd has been normalized and filtered before
+      ! if thisscd is invalid, ocp cannot be calculated,
+      ! set bit6 and bit13 skip calculation
+      thisscd = nasa_SlantColumnAmountO2O2(ix,it)
+      if (thisscd .lt. 0.) then
+         ! for simplicity, bit6 & bit13 are set for this condition on each iteration
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),6)
+         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),13)
+         ! out_CloudPressure & out_CloudPressureNotClipped will be fFillValue
+         out_CloudPressure(ix,it) = fFillValue
+         out_CloudPressureNotClipped(ix,it) = fFillValue
+         go to 3456
+      endif 
+
+      ! negative thisscd will have been skipped already
       ! if ocp_change is small enough, no need to recalculate 
       ! previous iteration values and quality flags are valid here
       ! simply skip to next ground pixels
-
-      if (ecfocp_iternum .gt. 2) then ! check only after 2 passes
+      if (ecfocp_iternum .gt. 2) then ! check only >2 passes
+         ! 3rd iteration and above
          thisocp = out_CloudPressureNotClipped(ix,it)
          thatocp = prev_ocp_notclipped(ix,it)
-         ocp_change = abs(thisocp - thatocp)
-         if ((thisocp .gt. 0.) .and. (thatocp .gt. 0.).and. &
-             (ocp_change .lt. delta_ocp)) then
-             ! no ProcessingQualityFlags change here
-             ! keep previous flags, skip calculation
-             go to 3456
-         else
-             ! assign current ocp to previous ocp for next ecfocp iteration
-             ! current ocp will be re-calculated 
-             ! and compared with previous ocp next time around
-             prev_ocp_notclipped(ix,it) = out_CloudPressureNotClipped(ix,it)
-             prev_ocp(ix,it) = out_CloudPressure(ix,it)
-             ! update ocp_niter, skipped calculation will not end up here
-             ocp_niter(ix,it) = ecfocp_iternum
-         endif
-      else ! for 1st couple of iterations
+         ! if both ocps are valid
+         if ((thisocp .gt. 0.) .and. (thatocp .gt. 0.)) then
+            ocp_change = abs(thisocp - thatocp)
+            if (ocp_change .lt. delta_ocp) then ! small change 
+               ! no ProcessingQualityFlags change here
+               ! keep previous flags, skip calculation
+               go to 3456
+               ! ocp_niter stay the same as before
+            else ! further iterations needed
+                ! assign current ocp to previous ocp for next iteration
+                ! current ocp will be re-calculated 
+                ! and compared with previous ocp the next time around
+                prev_ocp_notclipped(ix,it) = thisocp
+                prev_ocp(ix,it) = out_CloudPressure(ix,it)
+                ! update ocp_niter, skipped calculation will not end up here
+                ocp_niter(ix,it) = ecfocp_iternum
+            endif ! ocp_change
+         else if ((thisocp .lt. 0.) .and. (thatocp .gt. 0)) then
+            ! thisocp is bad, thatocp is good
+            ! adopt previous
+            out_CloudPressureNotClipped(ix,it) = prev_ocp_notclipped(ix,it)
+            out_ProcessingQualityFlags(ix,it) = prev_processingflags(ix,it) 
+            ! skip calculation
+            go to 3456
+            ! ocp_niter stays the same as previous 
+         else if ((thisocp .lt. 0.) .and. (thatocp .lt. 0)) then
+            ! skip calculation, no update to ocp_niter
+            go to 3456
+         endif ! thisocp & thatocp
+      else ! for 1st couple of iterations when thisscd > 0.
+         ! for 1st iteration, these are basiclly fFillValue
+         ! for 2nd iteration, thses are filled with 1st
+         prev_ocp_notclipped(ix,it) = out_CloudPressureNotClipped(ix,it)
+         prev_ocp(ix,it) = out_CloudPressure(ix,it) 
          ! update ocp_niter
          ocp_niter(ix,it) = ecfocp_iternum       
+         ! code will go through all subsequent calculation
       endif
 
       ! -----------
-      ! clear relevant out_ProcessingQualityFlags bits
+      ! clear relevant out_ProcessingQualityFlags bits for this pass
       ! Note, not all bits used here need clearing
       ! as some(e.g. bit0, bit3)  were cleared in cal_ecf called before
       ! and are used here
@@ -842,7 +884,7 @@ subroutine cal_ocp(ecfocp_iternum)
          out_CloudPressure(ix,it) = fFillValue
       endif
 
- 3456 continue ! skip to here when ocp does not need re-calculation
+ 3456 continue ! skip here when ocp does not need re-calculation
 
       !=====
     end do

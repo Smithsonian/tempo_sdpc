@@ -44,7 +44,7 @@ subroutine cal_ecf(ecfocp_iternum)
   real::lat0, lon0
   real:: alb440
   real:: kleipool466, kleipool440
-  real:: thisecf, thatecf, ecf_change
+  real:: thisecf, thatecf, ecf_change, thisscd
 
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
   real::r21111,r21112,r21121,r21122,r21211,r21212,r21221,r21222,r22111,r22112,r22121,r22122,r22211,r22212,r22221,r22222
@@ -80,6 +80,15 @@ subroutine cal_ecf(ecfocp_iternum)
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! thisscd has been normalized and filtered in read_cldo4_tio
+      ! if thisscd is invalid, only one pass is needed
+      ! because ocp will be missing 
+      thisscd = nasa_SlantColumnAmountO2O2(ix,it)
+      if ((thisscd .lt. 0.).and.(ecfocp_iternum .gt. 1)) then
+         ! first iteration will not end up here
+         go to 3455 ! skip calculation
+      endif   
+
       ! if ecf_change is below threshold, no need to recalculate
       ! previous iteration values and quality flags are still value
       ! simply skip to next ground pixel
@@ -89,7 +98,7 @@ subroutine cal_ecf(ecfocp_iternum)
          thatecf = prev_ecf_notclipped(ix,it)
          ecf_change = abs(thisecf - thatecf)
          if ((thisecf .gt. -1.) .and. (thatecf .gt. -1.).and. &
-             (ecf_change .lt. delta_ecf)) then
+             (ecf_change .lt. delta_ecf) .and. (thisscd .gt. 0.)) then
              ! no ProcessingQualityFlags change here
              ! keep previous values and flags, skip calculation
              go to 3455
@@ -103,11 +112,12 @@ subroutine cal_ecf(ecfocp_iternum)
              ecf_niter(ix,it) = ecfocp_iternum
           endif
        else
+          ! 1st & 2nd iterations will end up here
           ! update ecf_niter for the 1st couple of iter
           ecf_niter(ix,it) = ecfocp_iternum
        endif
 
-       ! the first two passes always go through the whole thing
+       ! the first pass will always go through the whole thing
 
       !---------------
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
