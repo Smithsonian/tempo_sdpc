@@ -158,8 +158,10 @@ end subroutine totp_to_dryp
 !4444444444444444444444444444
 subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
 !4444444444444444444444444444
-! find level index in lut_pcld just above cloud_pressure
-! lut_pcld is in increasing order
+! find level index in lut_pcld for p just< cloudp(hPa)
+! i.e., lut_pcld height just> cloudp height
+! lut_pcld is in increasing order (TOA->BOA)
+! out-of-range cloudp will return pcld_lut_ind at 1//npcld
 
    use m_vars, only: lut_pcld, npcld
 
@@ -173,26 +175,31 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
 
    pcld_lut_ind = -999
 
+   if (cloudp .le. 0.) return
+
+   ! out-of-range
    if ((cloudp .gt. 0.) .and. (cloudp .lt. lut_pcld(1))) then
       pcld_lut_ind = 1
    else if (cloudp .ge. lut_pcld(npcld)) then
       pcld_lut_ind = npcld
-   else 
-     do kk = 1, npcld-1
+   else ! within range
+     do kk = 1, npcld-1 ! loop from TOA->BOA
      if ((cloudp .ge. lut_pcld(kk)).and.(cloudp .lt. lut_pcld(kk+1))) then
-        w1 = cloudp - lut_pcld(kk)
-        w2 = lut_pcld(kk+1) - cloudp
-        if (w1 .lt. w2) then 
-           pcld_lut_ind = kk
-        else
-           pcld_lut_ind = kk+1
-        endif
+       pcld_lut_ind = kk ! lut_pcld(kk) just <= cloudp, lut_height just>= cloudz
+       ! the following is for finding the nearest lut_pcld
+       ! w1 = cloudp - lut_pcld(kk)
+       ! w2 = lut_pcld(kk+1) - cloudp
+       ! if (w1 .lt. w2) then 
+       !    pcld_lut_ind = kk
+       ! else
+       !    pcld_lut_ind = kk+1
+       ! endif
         exit ! already found, exit loop
      endif
      enddo 
    endif
 
-   ! negative cloudp will have pcld_lut_ind=-999
+   ! negative cloudp will have returned pcld_lut_ind=-999
 
 !44444444444444444444444444
 end subroutine find_pcld_lutind

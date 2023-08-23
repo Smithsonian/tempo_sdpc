@@ -53,8 +53,11 @@ subroutine cal_ecf(ecfocp_iternum)
   real::r11,r12,r21,r22
   real::r1,r2
 
+  real:: this_cal_radcld, that_cal_radcld, thiswp, thatwp, thisocp
+  integer:: ipsnext
+
   real::pi,dtor
-  real(kind=4) :: fspecial 
+  real(kind=4) :: fspecial, fspecial9 
 
   ! ------
   ! initialization
@@ -62,6 +65,7 @@ subroutine cal_ecf(ecfocp_iternum)
   pi=4.*atan(1.)
   dtor=pi/180.
   fspecial = fFillValue ! large negative value in m_vars
+  fspecial9 = -999.
 
   nt=rad_NumTimes
   nx=rad_nXtrack
@@ -75,11 +79,20 @@ subroutine cal_ecf(ecfocp_iternum)
   ! earthsunfactor2 accounts for earth-sun distance between irr and rad
    earthsunfactor2 = (irr_EarthSunDist/rad_EarthSunDist)**2
 
+
   ! loop through each ground pixel
   ! ==========
   do it=1,nt
     do ix=1,nx
       ! ==========
+      ! initial local variables
+      ipsnext = -9
+      thisocp = fspecial9
+      this_cal_radcld = fspecial9
+      that_cal_radcld = fspecial9
+      thiswp = fspecial9
+      thatwp = fspecial9
+
       ! thisscd has been normalized and filtered in read_cldo4_tio
       ! if thisscd is invalid, only one pass is needed
       ! because ocp will be missing 
@@ -90,7 +103,7 @@ subroutine cal_ecf(ecfocp_iternum)
       endif   
 
       ! if ecf_change is below threshold, no need to recalculate
-      ! previous iteration values and quality flags are still value
+      ! previous iteration values and quality flags are still valid
       ! simply skip to next ground pixel
 
       if (ecfocp_iternum .gt. 2) then ! check only after 2 passes
@@ -98,7 +111,7 @@ subroutine cal_ecf(ecfocp_iternum)
          thatecf = prev_ecf_notclipped(ix,it)
          ecf_change = abs(thisecf - thatecf)
          if ((thisecf .gt. -1.) .and. (thatecf .gt. -1.).and. &
-             (ecf_change .lt. delta_ecf) .and. (thisscd .gt. 0.)) then
+             (ecf_change .lt. delta_ecf)) then
              ! no ProcessingQualityFlags change here
              ! keep previous values and flags, skip calculation
              go to 3455
@@ -117,13 +130,13 @@ subroutine cal_ecf(ecfocp_iternum)
           ecf_niter(ix,it) = ecfocp_iternum
        endif
 
-       ! the first pass will always go through the whole thing
+      ! the first pass will always go through the whole thing
 
       !---------------
       ! initialize out_ProcessingQualityFalgs relavent bits to zero
       ! bit7 & bit8 were set before in m_read_input_tio, however,
       ! rad_of_irr466 & rad_of_irr440 are checked again here, 
-      ! for ecfocp iteration, it is easier to clear them here, too. 
+      ! for ecfocp iteration, it is easier to clear them here as well. 
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),0)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),1)
       out_ProcessingQualityFlags(ix,it)=ibclr(out_ProcessingQualityFlags(ix,it),3)
@@ -146,12 +159,14 @@ subroutine cal_ecf(ecfocp_iternum)
       lon0=rad_Longitude(ix,it)
       sza0=rad_SolarZenithAngle(ix,it)
       vza0=rad_ViewingZenithAngle(ix,it)
-      raa0 = out_RelativeAzimuthAngle(ix,it) 
+      raa0 = out_RelativeAzimuthAngle(ix,it)
+ 
 !  now use the out_RelativeAzimuthAngle from m_read_input_tio
-!  !xliu: +raa has the same effect as -raa due to symmetry,
-!  !     and RAA needs to be within [0.,180] for use with LUT
+!  ! +raa has the same effect as -raa due to symmetry,
+!  !    and RAA needs to be within [0.,180] for use with LUT
 !  this is taken care of in m_read_input_tio
 
+      ! flags for deciding whether to skip calculation 
       pflag00=0 ! for lat/lon
       pflag01=0 ! for sza/vza/raa
 
@@ -200,7 +215,7 @@ subroutine cal_ecf(ecfocp_iternum)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),0)
        endif
 
-      ! skip calculation if lat/lon/angle are invalid
+      ! skip calculation if location/angle are invalid
       if((pflag00 .ge. 1) .or. (pflag01 .ge. 1)) then
            out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
            go to 990
@@ -213,7 +228,6 @@ subroutine cal_ecf(ecfocp_iternum)
       ! ------------------------
       ! calculate cloud fraction
       ! ------------------------
-      ! bit7 was set in m_read_input_tio, set again here
       ! bit12 is for skipped ecf
       if ((rad466 .gt. 0.).and.(irr_out_irradiance_466nm(ix) .gt. 0.)) then
       ! earthsunfactor2 = (irr_EarthSunDist/rad_EathSunDist)**2 defined above
@@ -229,12 +243,12 @@ subroutine cal_ecf(ecfocp_iternum)
          go to 990
       endif
 
+      ! bit7 was set in m_read_input_tio, set again here
       if ((rad440 .gt. 0.).and.(irr_out_irradiance_440nm(ix) .gt. 0.)) then
          rad_of_irr440(ix,it)=rad440/(irr_out_irradiance_440nm(ix)*earthsunfactor2)
       else
          rad_of_irr440(ix,it) = fspecial
          ! bit7 was set in m_read_input_tio, thus a safeguard below
-         ! but it is also useful if we implement iteration later on
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
          ! 440 is not used for ECF, do not skip calculation
       endif
@@ -508,30 +522,34 @@ subroutine cal_ecf(ecfocp_iternum)
  897   continue
 
       !--------------------------------
-      ! 466nm radiance at 700 hPa: cloudy sky
+      ! original OMCDO2N uses 466nm radiance at 700 hPa for cloudy sky
       ! in LUT_4660_RAD.h5, ALB(18)=0.8, Psfc(18)=701hPa, 1-indexed
       ! NOTE: this ASSUMES Acloud=0.8 & Pcloud=701hPa for ecf
       ! for cloud albedo rationale, refer to Stammes et al. [2008]
-      ! the linear (1) ecf (2) ocp process is inherited from OMCDO2N
+      ! the linear (1) ecf (2) ocp process is also inherited from OMCDO2N
+      !
       ! As cal_rad_cld depends on pcld, it makes sense to do iteration
       ! after pcloud is derived 
-      ! However, first pass uses pcld=700hPa as an approximation
+      ! However, first pass uses pcld=700hPa as a start
       ! The error associated with the pcld assumption for ecf
-      ! is not huge (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr,
-      ! which is comparable to error associated with climatology 
+      ! is not huge (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr
       !--------------------------------
       ialb= LUTrad_cloud_albid ! ALB(18)=0.8 in LUT
  
       ! change from fixed Psfc(18)=701hPa to iteration with ocp
-      ! ipsfc= LUTrad_cloud_psfcid
-      ipsfc = lut_pcld_indarr(ix,it)
+      ipsfc = lut_pcld_indarr(ix,it) ! LUTrad_cloud_psfcid=18
+      ! lut_pcld_indarr is the level where lut_pcld just<= ocp
+      ! lut_pcld_indarr+1 have lut_pcld>ocp
+      ipsnext = ipsfc + 1
 
       ! on 1st pass, lut_pcld_indarr is initialized to 18
       ! on subsequent passes, some elements may be negative
-      if (ipsfc .lt. 0.) then
-          ! failed ocp retrieval
+      if (ipsfc .lt. 0.) then ! failed ocp retrieval
           ! revert back to 701hPa
           ipsfc = LUT_pcld_700hPa 
+          ipsnext = LUT_pcld_700hPa
+      else if (ipsfc .eq. npcld) then
+          ipsnext = npcld
       endif
 
       r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsfc)
@@ -549,7 +567,42 @@ subroutine cal_ecf(ecfocp_iternum)
       r1=(wvza2*r11+wvza1*r12)/(wvza1+wvza2)
       r2=(wvza2*r21+wvza1*r22)/(wvza1+wvza2)
 
-      cal_rad_cld(ix,it)=(wsza2*r1+wsza1*r2)/(wsza1+wsza2)
+      this_cal_radcld =(wsza2*r1+wsza1*r2)/(wsza1+wsza2)
+
+      if ((ipsfc .eq. ipsnext).or.(ecfocp_iternum .eq. 1)) then
+          ! boundary cases end up here
+          cal_rad_cld(ix,it) = this_cal_radcld
+      else ! vertical interplation
+         r111=lut_rad_clr(ialb,isza1,ivza1,iraa1,ipsnext)
+         r112=lut_rad_clr(ialb,isza1,ivza1,iraa2,ipsnext)
+         r121=lut_rad_clr(ialb,isza1,ivza2,iraa1,ipsnext)
+         r122=lut_rad_clr(ialb,isza1,ivza2,iraa2,ipsnext)
+         r211=lut_rad_clr(ialb,isza2,ivza1,iraa1,ipsnext)
+         r212=lut_rad_clr(ialb,isza2,ivza1,iraa2,ipsnext)
+         r221=lut_rad_clr(ialb,isza2,ivza2,iraa1,ipsnext)
+         r222=lut_rad_clr(ialb,isza2,ivza2,iraa2,ipsnext)
+         r11=(wraa2*r111+wraa1*r112)/(wraa1+wraa2)
+         r12=(wraa2*r121+wraa1*r122)/(wraa1+wraa2)
+         r21=(wraa2*r211+wraa1*r212)/(wraa1+wraa2)
+         r22=(wraa2*r221+wraa1*r222)/(wraa1+wraa2)
+         r1=(wvza2*r11+wvza1*r12)/(wvza1+wvza2)
+         r2=(wvza2*r21+wvza1*r22)/(wvza1+wvza2)
+
+         that_cal_radcld =(wsza2*r1+wsza1*r2)/(wsza1+wsza2)
+
+         thisocp = out_CloudPressure(ix,it) ! from previous ecfocp iteration 
+         ! thisocp should be valid and between the 2 levels
+         ! otherwise, ipsc=ipsnext would have been taken care of before
+         ! however, as a safeguard, add condition just to make sure
+         thiswp = thisocp - lut_pcld(ipsfc)
+         thatwp = lut_pcld(ipsnext) - thisocp
+         if ((thiswp .ge. 0.) .and. (thatwp .gt. 0.)) then 
+            cal_rad_cld(ix,it)=(this_cal_radcld*thatwp+&
+                   that_cal_radcld*thiswp)/(thiswp + thatwp)
+         else
+            cal_rad_cld(ix,it) = this_cal_radcld
+         endif
+      endif
 
       !--------------------------------
       ! 440nm radiance at 700 hPa: cloudy sky
@@ -558,8 +611,7 @@ subroutine cal_ecf(ecfocp_iternum)
       ! future implementation will use iteraction with pcld
       !--------------------------------
       ! use the same ialb & ipsfc as 466 above 
-      !ialb=LUTrad_cloud_albid 
-      !ipsfc=LUTrad_cloud_psfcid
+      ! 440nm is not fully implemented yet
 
       r111=lut_rad_clr440(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr440(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -581,7 +633,7 @@ subroutine cal_ecf(ecfocp_iternum)
       !-----------------------------------
       !calculate effective cloud fraction ecf and cloud radiance fraction crf
       !-----------------------------------
-      ! added condition safeguard
+      ! added conditional safeguard
       if ((cal_rad_clr(ix,it) .gt. 0.) .and. (cal_rad_cld(ix,it) .gt. 0.)) then
          rout_ecf=(rad_of_irr466(ix,it)-cal_rad_clr(ix,it))/(cal_rad_cld(ix,it)-cal_rad_clr(ix,it))
       else

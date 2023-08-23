@@ -89,7 +89,10 @@ subroutine cal_ocp(ecfocp_iternum)
 
   ! add local variables
   real:: lat0, lon0
-  real:: thisocp, thatocp, ocp_change, thisscd
+  real:: thisocp, thatocp, thisscd
+  real:: ocp_change_abs, ocp_change_pct
+  real:: ocp_change, delta_ocp
+
   real:: fFillValue9
 
   ! ------
@@ -103,7 +106,7 @@ subroutine cal_ocp(ecfocp_iternum)
   nt=rad_NumTimes
   nx=rad_nXtrack
 
-  maxpress = 1200 !hPa
+  maxpress = 1200 !hPa, make it larger than max(psfc) 
 
   ! allocate and initialize local array
   allocate(tt(nlayers),stat=ierr)
@@ -159,7 +162,17 @@ subroutine cal_ocp(ecfocp_iternum)
          thatocp = prev_ocp_notclipped(ix,it)
          ! if both ocps are valid
          if ((thisocp .gt. 0.) .and. (thatocp .gt. 0.)) then
-            ocp_change = abs(thisocp - thatocp)
+            ! change in ocp
+            ocp_change_abs = abs(thisocp - thatocp) ! absolute
+            ocp_change_pct = ocp_change_abs / thisocp ! relative
+            if (thisocp .ge. 500.) then ! use absolute for ocp>500hpa
+                ocp_change = ocp_change_abs
+                delta_ocp = delta_ocp_abs
+            else ! use ocp percent change for small ocp
+                ocp_change = ocp_change_pct
+                delta_ocp = delta_ocp_pct
+            endif
+
             if (ocp_change .lt. delta_ocp) then ! small change 
                ! no ProcessingQualityFlags change here
                ! keep previous flags, skip calculation

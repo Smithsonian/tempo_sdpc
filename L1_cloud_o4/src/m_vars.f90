@@ -101,17 +101,19 @@ module m_vars
   ! during ecfocp iteration LUTrad_cloud_psfcid changes for each pix
   integer:: LUTrad_cloud_psfcid = 18 !initial
 
-  ! nearest 1-based lut_pcld index for ocp
+  ! 1-based lut_pcld index for ocp whose height is just above cloud
+  ! i.e. pressure is just smaller than cloud pressure
   integer,dimension(:,:),allocatable:: lut_pcld_indarr
   ! max number of ecfocp iterations 
-  integer(kind=4):: ecfocp_maxiter = 6
+  integer(kind=4):: ecfocp_maxiter = 10
   ! results from previous iteration
   real(kind=4),dimension(:,:),allocatable:: prev_ecf,prev_ecf_notclipped
   real(kind=4),dimension(:,:),allocatable:: prev_ocp,prev_ocp_notclipped
   integer(kind=4),dimension(:,:),allocatable:: ecf_niter,ocp_niter
 
   ! ecfocp stopping threshold
-  real(kind=4), parameter:: delta_ocp = 5.0 ! hPa
+  real(kind=4), parameter:: delta_ocp_abs = 1.0 ! hPa
+  real(kind=4), parameter:: delta_ocp_pct = 0.01 ! relative percent change
   real(kind=4), parameter:: delta_ecf = 0.005
 
   ! LUT albedo node used for solving sbar, trans 
