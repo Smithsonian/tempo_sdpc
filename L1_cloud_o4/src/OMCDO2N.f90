@@ -241,21 +241,26 @@ program OMCDO2N
   write(*,*) 'option_destripe_scd=',option_destripe_scd
 
   if (option_destripe_scd .eq. 1) then
-    status=GetConfigString("E","Input Files desfac_dir",buf)
-    if(status < 0) then
-    call tell_error(tell_io_read_error,&
-       "Problem reading desfac_dir from control file", errstat)
-    call exit(-1)
+    status=GetConfigString("W","Input Files desfac_dir",buf)
+    if(status .ne. 0) then
+      write(*,*) 'No desfac_dir in control file, use default'
+    !call tell_error(tell_io_read_error,&
+    !   "Problem reading desfac_dir from control file", errstat)
+    !call exit(-1)
+    else
+       name_desfac_dir=trim(buf)
     endif
-    name_desfac_dir=trim(buf)
 
-    status=GetConfigString("E","Input Files desfac_fnm",buf)
-    if(status < 0) then
-    call tell_error(tell_io_read_error,&
-       "Problem reading desfac_fnm from control file", errstat)
-    call exit(-1)
+    status=GetConfigString("W","Input Files desfac_fnm",buf)
+    if(status .ne. 0) then
+       write(*,*) 'No desfac_fnm in control file, usedefault'
+    !call tell_error(tell_io_read_error,&
+    !   "Problem reading desfac_fnm from control file", errstat)
+    !call exit(-1)
+    else
+       name_desfac_fnm=trim(buf)
     endif
-    name_desfac_fnm=trim(buf)
+    write(*,*) 'desfac_filename=',trim(name_desfac_dir),trim(name_desfac_fnm)
   endif
   
   flush (output_unit)
@@ -329,7 +334,7 @@ program OMCDO2N
 
     write(*,*)'   name_gmi_psfc=',trim(name_gmi_psfc)
     write(*,*)'   name_gmi_tmp=',trim(name_gmi_tmp)
-    call read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
+    call read_GMI_TMP(name_gmi_psfc,name_gmi_tmp, errstat)
     call tell_log(0, "Read GMI T/P & GMI Ps for month ")
   endif
 
@@ -357,7 +362,7 @@ program OMCDO2N
     name_kleipool_dir = trim(adjustl(buf))
     status=GetConfigString("E","Input Files Kleipool_fnm",buf)
     name_kleipool_rsfc=trim(name_kleipool_dir)//trim(adjustl(buf))
-    call read_Kleipool_Rsfc(name_kleipool_rsfc,gmonth)
+    call read_Kleipool_Rsfc(name_kleipool_rsfc,gmonth,errstat)
     flush (output_unit)
     call tell_log(0,'Read Kleipool Rsfc climatology')
   endif

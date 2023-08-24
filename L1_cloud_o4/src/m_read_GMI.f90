@@ -10,18 +10,19 @@ use m_vars, only: gmi_np
 contains
 
 !11111111111111111111111111111111111111111111111111
-subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
+subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp,ierr)
 !11111111111111111111111111111111111111111111111111
 
   use m_vars, only: ilun_gmi_psfc, ilun_gmi_tmp
   
   implicit none
       
-  character(len=255)::name_gmi_psfc
-  character(len=255)::name_gmi_tmp
+  character(len=255), intent(in)::name_gmi_psfc
+  character(len=255), intent(in)::name_gmi_tmp
+  integer(kind=4), intent(inout):: ierr
 
   character(len=255)::head
-  integer(kind=4)::ix,iy,ip, ierr
+  integer(kind=4)::ix,iy,ip
   real(kind=4)::temp,t01,t02,t03,t04,t05,t06
 
   real,dimension(gmi_np):: &
@@ -51,16 +52,21 @@ subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
              0.000000,0.000000,0.000000,0.000000,0.000000,0.000000, &
              0.000000,0.000000,0.000000,0.000000,0.000000,0.000000/)
 !-------------
-!hqw allocate GMI variables
+! allocate GMI variables
 !-------------
     allocate(gmi_lon(gmi_nx), gmi_lat(gmi_ny),stat=ierr)
     allocate(gmi_Temperature(gmi_nx,gmi_ny,gmi_np),stat=ierr)
     allocate(gmi_Pressure(gmi_nx,gmi_ny,gmi_np+1),stat=ierr)
     allocate(gmi_TerrainPressure(gmi_nx,gmi_ny),stat=ierr)
 
+    if (ierr .ne. 0) then
+        write(*,*) ' cannot allocate arrays for GMI.'
+        return
+    endif
+
     nlayers = gmi_np
 !-------------
-!hqw define GMI lon/lat
+! define GMI lon/lat
 !------------
     do ix=1,gmi_nx
       gmi_lon(ix)=-180.0+1.25*real(ix-1)
@@ -75,50 +81,58 @@ subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp)
 !--------------
 ! read GMI Psfc
 !--------------
-  open(unit=ilun_gmi_psfc,file=trim(name_gmi_psfc),&
-      form='formatted',status='old',action='read')
+    open(unit=ilun_gmi_psfc,file=trim(name_gmi_psfc),err=121,&
+      form='formatted',status='old',action='read',iostat=ierr)
 
-  do ix=1,gmi_nx
-  do iy=1,gmi_ny
-    read(ilun_gmi_psfc,111) temp 
-    gmi_TerrainPressure(ix,iy)=temp
-  end do
-  end do
-  close(unit=ilun_gmi_psfc)
+    do ix=1,gmi_nx
+    do iy=1,gmi_ny
+      read(ilun_gmi_psfc,111,iostat=ierr) temp 
+      gmi_TerrainPressure(ix,iy)=temp
+    end do
+    end do
+121 close(unit=ilun_gmi_psfc)
 
+    if (ierr .ne. 0) then
+       write(*,*) 'error reading ',trim(name_gmi_psfc)
+       return
+    endif 
 !---------------------
 ! read GMI Temperature
 !---------------------
 ! temperature defined from top (1) to near surface (72)
 
-  open(unit=ilun_gmi_tmp,file=trim(name_gmi_tmp),&
-      form='formatted',status='old',action='read')
+    open(unit=ilun_gmi_tmp,file=trim(name_gmi_tmp),err=122,&
+      form='formatted',status='old',action='read',iostat=ierr)
 
-  read(ilun_gmi_tmp,*) head
-  do ip=1,12
-    read(ilun_gmi_tmp,113) t01,t02,t03,t04,t05,t06
-  end do
-  read(ilun_gmi_tmp,*) head
-  do ip=1,12
-    read(ilun_gmi_tmp,113) t01,t02,t03,t04,t05,t06
-  end do
-  read(ilun_gmi_tmp,*) head
-
-  do iy=1,gmi_ny
-    do ix=1,gmi_nx
+    read(ilun_gmi_tmp,*,iostat=ierr,err=122) head
     do ip=1,12
-      read(ilun_gmi_tmp,115) t01,t02,t03,t04,t05,t06
+      read(ilun_gmi_tmp,113,iostat=ierr,err=122) t01,t02,t03,t04,t05,t06
+    end do
+    read(ilun_gmi_tmp,*,iostat=ierr,err=122) head
+    do ip=1,12
+      read(ilun_gmi_tmp,113,iostat=ierr,err=122) t01,t02,t03,t04,t05,t06
+    end do
+    read(ilun_gmi_tmp,*,iostat=ierr,err=122) head
+
+    do iy=1,gmi_ny
+      do ix=1,gmi_nx
+      do ip=1,12
+      read(ilun_gmi_tmp,115,iostat=ierr,err=122) t01,t02,t03,t04,t05,t06
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-1)=t01
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-2)=t02
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-3)=t03
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-4)=t04
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-5)=t05
       gmi_Temperature(ix,iy,gmi_np+1-6*(ip-1)-6)=t06
+      end do
+      end do
     end do
-    end do
-  end do
-  close(unit=ilun_gmi_tmp)
+122  close(unit=ilun_gmi_tmp,iostat=ierr)
 
+    if (ierr .ne. 0) then 
+       write(*,*)'error reading ',trim(name_gmi_tmp)
+       return
+    endif
 !-----------------------
 ! calculate GMI Pressure
 !-----------------------

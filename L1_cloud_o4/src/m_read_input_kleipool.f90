@@ -5,7 +5,7 @@ module m_read_input_kleipool
 contains
 
   !111111111111111111111111111111111111111111
-  subroutine read_Kleipool_Rsfc(filename,m12)
+  subroutine read_Kleipool_Rsfc(filename,m12,ierr)
   !111111111111111111111111111111111111111111
 
     use hdfeos4_parameters
@@ -35,12 +35,14 @@ contains
     !  integer(kind=1),dimension(:,:),pointer::MonthlySurfaceReflectanceFlag
     !  integer(kind=2),dimension(:,:),pointer::MonthlyMinimumSurfaceReflectance
 
+    integer, intent(inout):: ierr
+
     integer(kind=4)::he5_gdopen,he5_gdattach,he5_gdrdfld,&
          he5_gddetach,he5_gdclose
 
     character(len=255), intent(in)::filename
     integer (kind=4), intent(in)::m12
-    integer::ix,iy, ierr
+    integer::ix,iy
     integer::nx,ny,nw,n12
     integer(kind=4)::gdfid,gdid,status
     integer(kind=2),dimension(:,:,:,:),pointer::rtemp
@@ -65,8 +67,12 @@ contains
     allocate(kleipool_lat(nx), stat=ierr)
     allocate(kleipool_SurfaceReflectivity466(nx,ny), stat=ierr)
     allocate(kleipool_SurfaceReflectivity440(nx,ny), stat=ierr)
-    ! comment out 477 to save memory
+    ! comment out 477 which is not used 
     !allocate(kleipool_SurfaceReflectivity477(nx,ny), stat=ierr)
+    if (ierr .ne. 0) then
+       write(*,*) 'error allocating kleipool arrays.'
+       return
+    endif
 
     write(*,*) '   reading Kleipool rsfc '//trim(filename)
     !-----------------------
