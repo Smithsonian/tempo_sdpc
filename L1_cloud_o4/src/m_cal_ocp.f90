@@ -11,6 +11,10 @@ subroutine cal_ocp(ecfocp_iternum)
   ! define ProcessingQualityFlags
   ! -----------------------------
   ! bit??  meaning:WhereSet
+  ! the rightmost (least significant) bit has pos=00
+  ! changed out_ProcessingQualityFlags from 2-byte to 4-byte
+  ! the leftmost (most significant) bit has pos = 31 &
+  !   is reserved to indicate fill_value in ncdf output
   !------------------------------
   ! bit00  (Error) invalid lat/lon/SZA/VZA/RAA: m_cal_ecf.f90
   ! bit01  (Warning) invalid 466nm cloud radiance fraction (crf): m_cal_ecf.f90
@@ -30,8 +34,14 @@ subroutine cal_ocp(ecfocp_iternum)
   !        any problem during processing,or invalid ocp: m_cal_ocp.f90
   ! bit14  (Warning) ocp out of normal range and clipped: m_cal_ocp.f90
   ! bit15  (Info) skipped pscene calculation during processing
+  ! bit16-30  unused
+  ! bit31 reserved to indicate fill value in output, 
+  !        do not use this bit for other things,
+  !        fill value should have bit31=1, thus negative. In reality,
+  !        all pixels bit00-15 are examined, bit31 should always be 0.
+  !------------------------------
   ! bit 9 & bit 14 have changed from Error to Warning
-
+  !------------------------------
   use m_vars
   use m_read_GMI
   use m_read_hdf5
@@ -70,7 +80,6 @@ subroutine cal_ocp(ecfocp_iternum)
 
   real:: gmi_psfc
   real(kind=4), dimension(:), allocatable :: tt, pp, qq, ppdry
-  integer(kind=2), dimension(:,:), allocatable:: prev_processingflags
 
   real::a1111,a1112,a1121,a1122,a1211,a1212,a1221,a1222,a2111,a2112,a2121,a2122,a2211,a2212,a2221,a2222
   real::a111,a112,a121,a122,a211,a212,a221,a222
@@ -118,9 +127,9 @@ subroutine cal_ocp(ecfocp_iternum)
   ppdry = fFillValue9
   qq = 0.
 
-  allocate(prev_processingflags(nx,nt),stat=ierr)
-  ! inherit out_ProcessingQualityFlags from before
+  ! inherit out_ProcessingQualityFlags from cal_ecf
   prev_processingflags = out_ProcessingQualityFlags
+  ! out_ProcessingQualityFlags will be updated
 
 ! debug
   if ((trim(run_mode) .eq. 'development').and.(ecfocp_iternum .eq. 1) & 
@@ -136,7 +145,9 @@ subroutine cal_ocp(ecfocp_iternum)
     do ix=1,nx
       ! ==========
       ! keep a record of previous processing flags for this pixel 
-      prev_processingflags(ix,it) = out_ProcessingQualityflags(ix,it) 
+      ! prev_processingflags was set before loop
+      ! this is essentailly not needed, but can be a safeguard
+      !prev_processingflags(ix,it) = out_ProcessingQualityflags(ix,it) 
 
       ! thisscd has been normalized and filtered before
       ! if thisscd is invalid, ocp cannot be calculated,
@@ -154,7 +165,7 @@ subroutine cal_ocp(ecfocp_iternum)
 
       ! negative thisscd will have been skipped already
       ! if ocp_change is small enough, no need to recalculate 
-      ! previous iteration values and quality flags are valid here
+      ! previous iteration values and quality flags are valid 
       ! simply skip to next ground pixels
       if (ecfocp_iternum .gt. 2) then ! check only >2 passes
          ! 3rd iteration and above
@@ -188,7 +199,7 @@ subroutine cal_ocp(ecfocp_iternum)
                 ocp_niter(ix,it) = ecfocp_iternum
             endif ! ocp_change
          else if ((thisocp .lt. 0.) .and. (thatocp .gt. 0)) then
-            ! thisocp is bad, thatocp is good
+            ! thisocp is bad, thatocp (previous) is good
             ! adopt previous
             out_CloudPressureNotClipped(ix,it) = prev_ocp_notclipped(ix,it)
             out_ProcessingQualityFlags(ix,it) = prev_processingflags(ix,it) 
@@ -200,13 +211,20 @@ subroutine cal_ocp(ecfocp_iternum)
             go to 3456
          endif ! thisocp & thatocp
       else ! for 1st couple of iterations when thisscd > 0.
-         ! for 1st iteration, these are basiclly fFillValue
-         ! for 2nd iteration, thses are filled with 1st
+         ! for 1st iteration, prev are fFillValue
+         ! for 2nd iteration, prev are filled with 1st
          prev_ocp_notclipped(ix,it) = out_CloudPressureNotClipped(ix,it)
          prev_ocp(ix,it) = out_CloudPressure(ix,it) 
          ! update ocp_niter
          ocp_niter(ix,it) = ecfocp_iternum       
          ! code will go through all subsequent calculation
+         ! at the end of the loop, there is another check for the 2nd iteration
+         ! in case iteration 2 is invalid but iteration 1 is valid
+         ! if this occurs, set out_ variables to prev_ and set ocp_niter to 1
+         ! in the 3rd round of iterations, ocp_change will be 0
+         !    calculation will be skipped, ocp_niter remains 1.
+         ! if both 1st and 2nd are valid, nothing else is needed
+         !    or if 1st iteration is invalid, but 2nd is valid, then
       endif
 
       ! -----------
@@ -899,13 +917,27 @@ subroutine cal_ocp(ecfocp_iternum)
 
  3456 continue ! skip here when ocp does not need re-calculation
 
+      ! add check for 2nd iteration
+      if (ecfocp_iternum .eq. 2) then
+         ! other iterations are not affected by these
+         if ((out_CloudPressureNotClipped(ix,it) .lt. 0.).and.&
+             (prev_ocp_notclipped(ix,it) .gt. 0.)) then
+            ! 1st iter valid, 2nd iter invalid
+            ! reset result to 1st iter
+            out_CloudPressureNotClipped(ix,it) = prev_ocp_notclipped(ix,it)
+            out_CloudPressure(ix,it) = prev_ocp(ix,it)
+            ocp_niter(ix,it) = 1
+            ! on 3rd iter, ocp_change is 0, calc will be skipped
+         endif 
+      endif
+
       !=====
     end do
   end do
   !=====
 
-  ! deallocate allocated local variables
-  deallocate(pp, tt)
+  ! deallocate allocated local arrays
+  deallocate(pp, tt, qq, ppdry)
 
   ! debug
   close(lun_debug_scdadj)

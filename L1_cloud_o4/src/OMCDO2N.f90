@@ -13,8 +13,9 @@ program OMCDO2N
   use tell_module
   use tio_module
   use m_read_input_tio, only: read_rad_tio, read_irr_tio, read_cldo4_tio, &
-                  get_tio_global_attr, get_tio_l1rad_glbattr
-  use m_write_output_tio, only: create_output_file_tio, update_output_file_tio
+               get_tio_global_attr, get_tio_l1rad_glbattr
+  use m_write_output_tio, only: create_output_file_tio, &
+               update_output_file_tio, write_debug_processing_flags
   use m_read_input_clim, only: read_geoscf
   use m_read_input_gler, only: read_gler
   use m_cal_ecf, only: cal_ecf, allocate_ecf_arrays
@@ -481,12 +482,14 @@ program OMCDO2N
   logmsg = 'All calculation is done. Now writing '//trim(name_out_ncdf)
   call tell_log(0, logmsg)
 
+  call write_debug_processing_flags
+
   if (run_mode .EQ. 'production') then
     ! JCH: in this mode, we add variables to an existing output file
     write(*,*) 'update file with output: '//trim(name_out_ncdf)
     call update_output_file_tio (name_out_ncdf, &
                                  rad_NumTimes, rad_nXtrack, errstat)
-  else
+  else ! in development mode we create new file
     write(*,*) 'create file for output: '//trim(name_out_ncdf)
     call create_output_file_tio (name_out_ncdf, &
                                  l1radfnm, swathname, &

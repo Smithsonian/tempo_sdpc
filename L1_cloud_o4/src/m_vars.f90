@@ -235,6 +235,7 @@ integer::ilun_lut_amf_ler6d=477010
   integer :: lun_debug_scdadj=69
   integer :: lun_debug_ocp=79
   integer :: lun_debug_pcldind=89
+  integer :: lun_debug_pflags=119
 
 ! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
 ! change gmi variables to allocatable
@@ -424,7 +425,10 @@ integer::ilun_lut_amf_ler6d=477010
 !  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
 !  integer(kind=1),dimension(:,:),  pointer::out_XTrackQualityFlags
 !  integer(kind=2),dimension(:),    pointer::out_MeasurementQualityFlags
-  integer(kind=2),dimension(:,:),  pointer::out_ProcessingQualityFlags
+! 4-byte out_ProcessingQualityFlags, leftest bit indicate sign (set to 0)
+!  only bit00-15 are currently used
+  integer(kind=4),dimension(:,:),  pointer::out_ProcessingQualityFlags
+  integer(kind=4),dimension(:,:),  pointer::prev_processingflags
   real(kind=4),dimension(:,:),pointer::out_SlantColumnAmountO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnSceneO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnTerrainO2O2

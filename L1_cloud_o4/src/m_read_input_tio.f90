@@ -1054,7 +1054,7 @@ contains
 !         rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
 
-    use m_vars, only: fFillValue
+    use m_vars, only: fFillValue, prev_processingflags
 
     implicit none
 
@@ -1087,6 +1087,7 @@ contains
 !         rad_Wavelength(nwavel, nxtrack, ntimes), &
 !         rad_PixelQualityFlags(nwavel, nxtrack, ntimes), &
          out_ProcessingQualityFlags(nxtrack, ntimes), &
+         prev_processingflags(nxtrack, ntimes), &
          stat = errstat)
 
     if (errstat /= 0) then
@@ -1112,6 +1113,9 @@ contains
     ! init out_ProcessingQualityFalgs to Zero
     ! equivalent to all bits cleared
     out_ProcessingQualityFlags = 0
+
+    ! init prev_processingflags to out_ProcessingQualityFlags
+    prev_processingflags = out_ProcessingQualityFlags
 
   end subroutine allocate_rad_vars
 

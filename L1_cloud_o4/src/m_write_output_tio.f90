@@ -669,7 +669,7 @@ contains
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
-    integer, dimension(16) :: flag_masks
+    integer, dimension(32) :: flag_masks ! changed from 16 to32
     integer :: i, flag
     !character (len=32) :: epoch_buf
 
@@ -734,7 +734,7 @@ contains
 
      call tiof_attlist_append (pqf_attrs, errstat, "coordinates", &
                                att_text = "time longitude latitude")
-     !refer to m_cal_ocp for confirmation of (16) flag meanings
+     !refer to m_cal_ocp for confirmation of flag meanings
      call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
                   att_text = "0_error_geoloc_or_angles "// &
                              "1_warn_466nm_crf_invalid "// &
@@ -751,22 +751,26 @@ contains
                              "12_error_ecf_calc_skipped "// &
                              "13_error_ocp_calc_skipped "// &
                              "14_warning_ocp_beyond_normal_range "// &
-                             "15_info_pscene_calc_skipped")
-     do i = 1, 16
+                             "15_info_pscene_calc_skipped "// &
+                             "16-30_used_set_to_zero "//&
+                             "31_reserved_set_to_zero")
+
+     ! flag_masks is used to set attributes of processing_quality_flag
+     do i = 1,32 !4-byte has 32 bits 
        flag = 0
-       flag_masks(i) = ibset (flag, i-1)
+       flag_masks(i) = ibset (flag, i-1)!set bit-i to get the uint
      enddo
      call tiof_attlist_append (pqf_attrs, errstat, "flag_masks", &
                                att_i4 = flag_masks)
 
     call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
-                              nf90_short, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "bitwise processing quality flag", &
-                              comment = " ", &
-                              valid_range = [0.0_r8, 32767.0_r8], &
-                              fillvalue = fill_short, &
+                long_name = "bitwise processing quality flag", &
+                comment = "bits00-bit15 currently used, others set to 0", &
+                valid_range = [0.0_r8, 65535.0_r8], & ! 16-used bit all set to 1
+                fillvalue = -2147483648.0_r8, &
                               attlist=pqf_attrs)
 
     call tiof_push_group (tio_l2obj, "product", errstat)
@@ -817,7 +821,7 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction440", [0,0], &
          [nstep, nxtrack], out_CloudRadianceFraction440, errstat)
 
-    call tiof_put2d_i2 (tio_l2obj, "processing_quality_flag", [0,0], &
+    call tiof_put2d_i4 (tio_l2obj, "processing_quality_flag", [0,0], &
          [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
 
     call tiof_pop_group (tio_l2obj, errstat)
@@ -1531,4 +1535,35 @@ contains
 
    end subroutine write_tio_glbattr
 
+!---------------
+   subroutine write_debug_processing_flags
+
+   use m_vars, only: out_ProcessingQualityFlags
+   use m_vars, only: ixdebug, itdebug, run_mode
+   use m_vars, only: lun_debug_pflags
+
+   implicit none
+   integer:: ii, ipos
+   logical:: thisbit
+
+   if (run_mode .EQ. 'production') return
+
+   if ((ixdebug .lt. 0).or.(itdebug .lt. 0)) return
+
+   open(unit=lun_debug_pflags,file='debug_pflags.txt')
+   write(lun_debug_pflags,*)'ixdebug=',ixdebug
+   write(lun_debug_pflags,*)'itdebug=',itdebug
+   write(lun_debug_pflags,*)'ProcessingQualityFlags=',&
+       out_ProcessingQualityFlags(ixdebug,itdebug)
+   write(lun_debug_pflags,*)'bitpos  bitnum   bitvalue'
+ 
+   do ii = 1, 32 ! loop through bits
+      ipos = ii-1
+      thisbit = btest(out_ProcessingQualityFlags(ixdebug,itdebug),ipos)
+      write(lun_debug_pflags,*) ipos,ii, thisbit
+   enddo
+   close(lun_debug_pflags)
+   
+   end subroutine write_debug_processing_flags
+!---------------
 end module m_write_output_tio
