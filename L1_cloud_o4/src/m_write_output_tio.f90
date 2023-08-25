@@ -752,8 +752,8 @@ contains
                              "13_error_ocp_calc_skipped "// &
                              "14_warning_ocp_beyond_normal_range "// &
                              "15_info_pscene_calc_skipped "// &
-                             "16-30_used_set_to_zero "//&
-                             "31_reserved_set_to_zero")
+                             "16-29_unused_set_to_zero "//&
+                             "30-31_reserved_set_to_zero")
 
      ! flag_masks is used to set attributes of processing_quality_flag
      do i = 1,32 !4-byte has 32 bits 

@@ -34,11 +34,12 @@ subroutine cal_ocp(ecfocp_iternum)
   !        any problem during processing,or invalid ocp: m_cal_ocp.f90
   ! bit14  (Warning) ocp out of normal range and clipped: m_cal_ocp.f90
   ! bit15  (Info) skipped pscene calculation during processing
-  ! bit16-30  unused
-  ! bit31 reserved to indicate fill value in output, 
-  !        do not use this bit for other things,
-  !        fill value should have bit31=1, thus negative. In reality,
-  !        all pixels bit00-15 are examined, bit31 should always be 0.
+  ! bit16-29  unused, set to 0
+  ! bit30-31  reserved to indicate fill value in output, 
+  !        do not use them for other things,
+  !        fill value should have bit30-31=1, thus negative. In reality,
+  !        all pixels bit00-15 are examined, bit30-31 should always be 0.
+  !        they are mainly for discriminating fillvalue in ncdf file.
   !------------------------------
   ! bit 9 & bit 14 have changed from Error to Warning
   !------------------------------
