@@ -54,8 +54,10 @@ rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]//")
 # construct granule label string for slurm job names
 export SDPC_GRANULE_LABEL="${rad_basename}"
 
+irr_select_window=$(config_setting level1b.irr_select_window)
+
 # Generate file list file on master node
-irr_file=$(select_irr.py "$rad_path")
+irr_file=$(select_irr.py --window $irr_select_window "$rad_path")
 snow_file=$(select_ims.py "$rad_path")
 granule_dir=$(dirname "$rad_path")
 file_list_file="$granule_dir/${rad_basename}.lis"
