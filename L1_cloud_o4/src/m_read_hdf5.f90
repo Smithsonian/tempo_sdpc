@@ -118,9 +118,6 @@ subroutine totp_to_dryp(pp,qq,nlevel,nlayer,ppdry)
    use m_vars, only: geos_np
    implicit none
 
-   use m_vars, only: geos_np
-   implicit none
-
    integer, intent(in):: nlevel, nlayer
    real(kind=4), dimension(nlevel), intent(in):: pp
    real(kind=4), dimension(nlayer), intent(in):: qq

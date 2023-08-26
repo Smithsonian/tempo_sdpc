@@ -125,6 +125,12 @@ contains
   subroutine create_output_file_tio (outfile, l1_file, swathname, &
        nstep, nxtrack, errstat)
 
+    use netcdf, only: nf90_global, nf90_put_att
+    use m_vars, only: name_option_TemperaturePressure,name_option_SurfaceReflectivity, &
+           name_option_MinECF,name_option_SnowIce,name_option_SceneAlbedoAtTerrain,&
+           option_clip_pcld, option_psfc_clear,ecfocp_maxiter,&
+           option_scdfullfilter, option_destripe_scd
+    
     implicit none
 
     !input variables
@@ -152,6 +158,26 @@ contains
 
     call tiof_put_git_commit_hash (tio_l2obj, errstat)
     !call tiof_write_epoch_timestamp (tio_l2obj, errstat)
+
+    ! write runtime options in global attributes
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'name_option_TemperaturePressure',trim(name_option_TemperaturePressure))
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'name_option_SurfaceReflectivity',trim(name_option_SurfaceReflectivity))
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'name_option_SnowIce',trim(name_option_SnowIce))    
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'name_option_MinECF',trim(name_option_MinECF))
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'name_option_SceneAlbedoAtTerrain',trim(name_option_SceneAlbedoAtTerrain))
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_clip_pcld',option_clip_pcld)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_scdfullfilter',option_scdfullfilter)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_destripe_scd',option_destripe_scd)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'ecfocp_maxiter',ecfocp_maxiter)
 
     ! Create default groups.
     call tiof_def_group (tio_l2obj, "product", errstat)
