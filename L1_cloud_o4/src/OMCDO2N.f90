@@ -233,6 +233,14 @@ program OMCDO2N
   endif
   write(*,*) 'ecfocp_maxiter=',ecfocp_maxiter
 
+  status=GetConfigString("W","Runtime Parameters option_scdfullfilter",buf)
+  if (status .NE. 0) then
+     write(*,*) "use default option_scdfullfilter"
+  else
+     read(buf,*,iostat=status) option_scdfullfilter
+  endif
+  write(*,*) 'option_scdfulltiler=',option_scdfullfilter
+
   status=GetConfigString("W","Runtime Parameters option_destripe_scd",buf)
   if (status .NE. 0) then
      write(*,*) "use default option_destripe_scd"

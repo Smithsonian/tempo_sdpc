@@ -679,7 +679,7 @@ contains
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
-     use m_vars, only: fFillValue
+     use m_vars, only: fFillValue, option_scdfullfilter
 
      implicit none
 
@@ -841,19 +841,22 @@ contains
      endwhere
 
     ! filter nasa_SlantColumnO2O2
-    ! fFillValue is a large negative value, will be skiped 
+    ! fFillValue is a large negative value, will be skiped for ocp & pscene
     where (scd_mdqfl /= 0)
           nasa_SlantColumnAmountO2O2 = fFillValue
     endwhere 
+    where (nasa_SlantColumnAmountO2O2 > 8.0) ! unphysical
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
+    ! stricter scd filtering
+    if (option_scdfullfilter .eq. 1) then
     where (scd_relerr > 0.3)
           nasa_SlantColumnAmountO2O2 = fFillValue
     endwhere
     where (nasa_scduncertainty > 1.) !normalized by normcol
           nasa_SlantColumnAmountO2O2 = fFillValue
     endwhere
-    where (nasa_SlantColumnAmountO2O2 > 8.0)
-          nasa_SlantColumnAmountO2O2 = fFillValue
-    endwhere
+    endif
 
     deallocate(scd_relerr)
 

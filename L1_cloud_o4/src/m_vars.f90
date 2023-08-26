@@ -468,8 +468,9 @@ integer::ilun_lut_amf_ler6d=477010
   integer, parameter ::iFillValue=-32767
 
 !-------------
-! scd destriping
+! scd filtering and destriping
 !-------------
+  integer :: option_scdfullfilter = 0
   integer :: option_destripe_scd = 0
   character(len=255)::name_desfac_dir='./'
   character(len=255)::name_desfac_fnm='test_desfac.txt'
