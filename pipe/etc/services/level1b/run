@@ -9,6 +9,7 @@ then
 fi
 
 export SDPC_RADIANCE_WAVECAL=$(config_setting level1b.wavecal)
+export SDPC_RADIANCE_WAVECAL_NTASKS=$(config_setting level1b.wavecal_ntasks)
 export SDPC_RADIANCE_POLCORR=$(config_setting level1b.polcorr)
 export SDPC_RADIANCE_POSTINR=$(config_setting level1b.postinr)
 export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1b.diagnostic_index)

@@ -1,7 +1,6 @@
 #! /bin/sh
 #SBATCH --output=/dev/null
 #SBATCH --nodes=1
-#SBATCH --ntasks=4
 #SBATCH --ntasks-per-core=1
 
 # 0. This script is normally run on a compute node as a batch process
@@ -50,6 +49,7 @@ ulimit -s unlimited
 # If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).
 # To turn off radiance wavelength calibration, set it to zero.
 : "${SDPC_RADIANCE_WAVECAL:=1}"
+: "${SDPC_RADIANCE_WAVECAL_NTASKS:=2}"
 
 # If SDPC_RADIANCE_POLCORR is not set, define it to be ON (non-zero).
 # To turn off polarization correction, set it to zero
@@ -242,7 +242,7 @@ run_inr_post()
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
    if test $SDPC_RADIANCE_WAVECAL -ne 0 ; then
-      wavecal.sh $radiance_file 2
+      wavecal.sh $radiance_file $SDPC_RADIANCE_WAVECAL_NTASKS
    fi
 
    # polarization correction

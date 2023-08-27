@@ -67,11 +67,21 @@ irr_file=${irr_file}
 snow_file=${snow_file}
 EOF
 
+# If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).
+# To turn off radiance wavelength calibration, set it to zero.
+: "${SDPC_RADIANCE_WAVECAL:=1}"
+: "${SDPC_RADIANCE_WAVECAL_NTASKS:=2}"
+
+max_num_tasks=1
+if test $SDPC_RADIANCE_WAVECAL -ne 0 ; then
+   max_num_tasks=$((2*$SDPC_RADIANCE_WAVECAL_NTASKS))
+fi
+
 # Run the post-INR pipeline to prepare for L2 product generation:
 slurm_logdir="$SDPC_PIPE_DIR/log/level1b/slurm"
 jid=$(sbatch --job-name="L1b" --parsable \
        --comment=$SDPC_GRANULE_LABEL \
-       --chdir $l1_run_dir \
+       --chdir $l1_run_dir --ntasks=$max_num_tasks \
        --output "$slurm_logdir/${rad_basename}.level1b_batch-%j.out" \
        level1b_batch.sh "${rad_basename}.nc" "$file_list_file")
 
