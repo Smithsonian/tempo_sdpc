@@ -228,7 +228,7 @@ contains
                               att_text = "geometric_AMF glint snow_correction "// &
                               "no_cloud_pressure adjusted_surface_pressure "// &
                               "adjusted_cloud_pressure no_albedo no_cloud_fraction "// &
-                              "no_gas_climatology no_scattering_weights AMF_disabled")
+                              "no_gas_profile no_scattering_weights AMF_disabled")
     call tiof_attlist_append (att_amf_diag, errstat, "flag_masks", &
                               att_i4 = [1, 2, 4, 8, 16, 32, 2048, 4096, 8192, 16384, 32768])
     ! append amf variables
