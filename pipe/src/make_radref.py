@@ -167,7 +167,7 @@ for ix in range(0,nx,xtstep):
                 # If granule flag is telemetry only (4) skip this file
                 # Other flag meanings: 0 (nominal), 1(first scan), 2 (last scan)
                 if (gf in [4]):
-                    print_message('WARNING: skipping file {}'.format(fp))
+                    print_message('WARNING: skipping file {}'.format(fprad))
                     print_message('          Granule flag {}'.format(gf))
                     continue
                 # Read granule dimensions
@@ -185,7 +185,7 @@ for ix in range(0,nx,xtstep):
                     print_message(e)
                     print_error_message('reading L2 cloud file {}'.format(fpcld))
                 # For each xtrack position keep only pixels that fill the cloud filter
-                cld_mask = (cfr < mincfr) & (cfr > maxcfr)
+                cld_mask = (cfr < mincfr) | (cfr > maxcfr)
                 # Only use spectral pixels with pqf equal to 0
                 pqf_mask = (pqf != 0)
                 # Apply this mask to the radiances
