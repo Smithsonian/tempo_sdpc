@@ -13,7 +13,6 @@ module m_vars
 !  2021 Wang adaption to TEMPO
 !  2023 Wang modification for TEMPO
 !---------------------------------------------------------------------72
-
   implicit none
 
 !------------
@@ -21,7 +20,9 @@ module m_vars
 !-----------
 ! operation mode ='production' or 'development', set through control
    character(len=255):: run_mode='development'
-
+   ! number of bytes used in processing_quality_flag
+   ! integer, parameter:: pflag_nbyte=4 
+   integer, parameter:: pflag_nbyte=2
 !----------------
 ! L1B irradiance
 !----------------
@@ -425,10 +426,16 @@ integer::ilun_lut_amf_ler6d=477010
 !  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
 !  integer(kind=1),dimension(:,:),  pointer::out_XTrackQualityFlags
 !  integer(kind=2),dimension(:),    pointer::out_MeasurementQualityFlags
-! 4-byte out_ProcessingQualityFlags, leftest bit indicate sign (set to 0)
+! 2- or 4-byte out_ProcessingQualityFlags determined by pflag_nbyte 
 !  only bit00-15 are currently used
-  integer(kind=4),dimension(:,:),  pointer::out_ProcessingQualityFlags
-  integer(kind=4),dimension(:,:),  pointer::prev_processingflags
+! as the leftest bit for an integer indicate sign and
+! all 16 bits are used, apps should not be interpreted as an integer
+! but to check individual bits instead,
+! to resolve this, it was changed to 4-byte, however,
+! total ozone and ozone profile uses 2-byte,to avoid problems there, 
+! pflag_nbyte parameter is used as a temporary workaround
+  integer(kind=pflag_nbyte),dimension(:,:), pointer::out_ProcessingQualityFlags
+  integer(kind=pflag_nbyte),dimension(:,:), pointer::prev_processingflags
   real(kind=4),dimension(:,:),pointer::out_SlantColumnAmountO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnSceneO2O2
   real(kind=4),dimension(:,:),pointer::out_SlantColumnTerrainO2O2

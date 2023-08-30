@@ -679,9 +679,10 @@ contains
 
    subroutine write_product_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
 
-      implicit none
+    use m_vars, only:  pflag_nbyte
+    implicit none
 
-      !input variables
+    !input variables
     type (tiof_file_type), intent(inout) :: tio_l2obj
     integer, intent(in) :: dimid_xtrack, dimid_step
     !output variables
@@ -695,7 +696,8 @@ contains
 
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
-    integer, dimension(32) :: flag_masks ! changed from 16 to32
+    ! changed from flag_masks from 16 to32 to accomodate 4-byte
+    integer, dimension(32) :: flag_masks 
     integer :: i, flag
     !character (len=32) :: epoch_buf
 
@@ -778,26 +780,39 @@ contains
                              "13_error_ocp_calc_skipped "// &
                              "14_warning_ocp_beyond_normal_range "// &
                              "15_info_pscene_calc_skipped "// &
-                             "16-29_unused_set_to_zero "//&
-                             "30-31_reserved_set_to_zero")
+                             "16-29_unused_set_to_zero (4-byte only) "//&
+                             "30-31_reserved_set_to_zero (4-byte only)")
 
      ! flag_masks is used to set attributes of processing_quality_flag
-     do i = 1,32 !4-byte has 32 bits 
+     do i = 1, 32 !4-byte has 32 bits 
        flag = 0
-       flag_masks(i) = ibset (flag, i-1)!set bit-i to get the uint
+       ! set bit-i to get the masked value
+       flag_masks(i) = ibset (flag, i-1) 
      enddo
      call tiof_attlist_append (pqf_attrs, errstat, "flag_masks", &
                                att_i4 = flag_masks)
 
-    call tiof_varlist_append (varlist, errstat, &
+    if (pflag_nbyte .eq. 4) then
+       call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
                               nf90_int, &
-                              dimids = dimids_xtrack_step,  &
-                long_name = "bitwise processing quality flag", &
-                comment = "bits00-bit15 currently used, others set to 0", &
-                valid_range = [0.0_r8, 65535.0_r8], & ! 16-used bit all set to 1
-                fillvalue = -2147483648.0_r8, &
+                           dimids = dimids_xtrack_step,  &
+             long_name = "bitwise processing quality flag", &
+             comment = "bits00-bit15 currently used, better use bit check", &
+            valid_range = [0.0_r8, 65535.0_r8], & 
+            fillvalue = -2147483648.0_r8, & 
                               attlist=pqf_attrs)
+    else
+       call tiof_varlist_append (varlist, errstat, &
+                              "processing_quality_flag", &
+                              nf90_short, &
+                           dimids = dimids_xtrack_step,  &
+             long_name = "bitwise processing quality flag", &
+             comment = "bits00-bit15 currently used, better use bit check", &
+            valid_range = [0.0_r8, 32767.0_r8], & !4-byte only, comment out
+            fillvalue = fill_short, & 
+                              attlist=pqf_attrs)
+    endif
 
     call tiof_push_group (tio_l2obj, "product", errstat)
     call tiof_def_vars (tio_l2obj, varlist, errstat)
@@ -818,7 +833,7 @@ contains
   subroutine write_product_data(tio_l2obj, nstep, nxtrack, errstat)
      use m_vars, only: out_EffectiveCloudFraction, out_CloudPressure, &
             out_CloudRadianceFraction466, out_CloudRadianceFraction440, &
-            out_ProcessingQualityFlags
+            out_ProcessingQualityFlags, pflag_nbyte
 
     implicit none
 
@@ -847,7 +862,14 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "CloudRadianceFraction440", [0,0], &
          [nstep, nxtrack], out_CloudRadianceFraction440, errstat)
 
-    call tiof_put2d_i4 (tio_l2obj, "processing_quality_flag", [0,0], &
+    write(*,*) 'processing_quality_flag nbyte=',pflag_nbyte
+    ! unless preprocessor is used, need to manually uncomment to switch
+    ! between 4-byte and 2-byte, in addition to changes in m_vars
+    ! 4-byte case
+    !   call tiof_put2d_i4 (tio_l2obj, "processing_quality_flag", [0,0], &
+    !     [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
+    ! 2-byte case
+       call tiof_put2d_i2 (tio_l2obj, "processing_quality_flag", [0,0], &
          [nstep, nxtrack], out_ProcessingQualityFlags, errstat)
 
     call tiof_pop_group (tio_l2obj, errstat)

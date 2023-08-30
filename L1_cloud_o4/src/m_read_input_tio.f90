@@ -1058,6 +1058,7 @@ contains
 !         rad_Radiance, rad_Wavelength
 
     use m_vars, only: fFillValue, prev_processingflags
+         
 
     implicit none
 
@@ -1117,8 +1118,8 @@ contains
     ! equivalent to all bits cleared
     out_ProcessingQualityFlags = 0
 
-    ! init prev_processingflags to out_ProcessingQualityFlags
-    prev_processingflags = out_ProcessingQualityFlags
+    ! init prev_processingflags 
+    prev_processingflags = 0
 
   end subroutine allocate_rad_vars
 
