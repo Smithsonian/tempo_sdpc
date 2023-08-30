@@ -2023,7 +2023,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_file_type) :: cld
-    character (len=128) :: logmsg
+    character (len=256) :: logmsg
 
     if (errstat /= 0) return
 
