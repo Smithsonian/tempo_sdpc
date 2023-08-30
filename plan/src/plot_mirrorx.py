@@ -95,7 +95,7 @@ def plot_scan(ax, plan, step_size, indices):
         t0 = t1s[j][0]/3600.0
         t1 = t0s[j+1][0]/3600.0
         ax.fill_between ([t0, t1], [ymin, ymin], y2=[ymax,ymax], hatch='////',
-                         linewidth=0.2, color='r', fc='w')
+                         linewidth=0.2, color='r', facecolor='w')
 
 def new_page (plan_id):
     fig, axs = plt.subplots (7,1, sharex=True)
