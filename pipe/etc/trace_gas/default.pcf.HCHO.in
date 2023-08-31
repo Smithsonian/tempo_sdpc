@@ -249,7 +249,7 @@
 700105|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700106|OMSAO_NO2_220K_IASB.dat|@refdata_dir@/trace_gas/data||||1
 700107|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
-700108|OMSAO_O4_293K_Thalman.dat|@refdata_dir@/trace_gas/data||||1
+700108|OMSAO_O4_293K_Finkenzeller.dat|@refdata_dir@/trace_gas/data||||1
 700109|OMSAO_SO2_293K_ESA_SEOM_IAS.dat|@refdata_dir@/trace_gas/data||||1
 700110|OMSAO_BrO_228K_Wilmouth.dat|@refdata_dir@/trace_gas/data||||1
 700111|OMSAO_OClO_213K_UBremen.dat|@refdata_dir@/trace_gas/data||||1
