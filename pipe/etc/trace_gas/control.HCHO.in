@@ -37,7 +37,7 @@ General fitting parameters
 #     If F, irradiance file is used.
 # ========================================================================
 I0 irradiance spectrum
-F
+T
 
 # ========================================================================
 # Spectrum Normalization
@@ -145,16 +145,16 @@ AMF calculation settings
 # ------------------------------------------------------------------------
 Solar calibration parameters
  20           # maximum number of iterations for (solar) wvl.cal. (<0: default)
-bl0   0.0250   -1.0e+30   1.0e+30
-bl1   0.0030   -1.0e+30   1.0e+30
-bl2   0.0001   -1.0e+30   1.0e+30
-bl3   0.0004   -1.0e+30   1.0e+30
+bl0   0.0001   -1.0e+30   1.0e+30
+bl1   0.0001   -1.0e+30   1.0e+30
+bl2   0         0         0       0.0001   -1.0e+30   1.0e+30
+bl3   0         0         0       0.0004   -1.0e+30   1.0e+30
 bl4   0         0         0       0.0001   -1.0e+30   1.0e+30
 bl5   0         0         0       0.0001   -1.0e+30   1.0e+30
 sc0   1.0       1.0       1.0
 sc1   0.0001   -1.0e+30   1.0e+30
 sc2   0.0001   -1.0e+30   1.0e+30
-sc3   0.0001   -1.0e+30   1.0e+30
+sc3   0         0         0       0.0001   -1.0e+30   1.0e+30
 sc4   0         0         0       -8.0E-05  -1.0e+30   1.0e+30
 sc5   0         0         0        0.0001   -1.0e+30   1.0e+30
 sin   0.6      -1.0e+30   1.0e+30
@@ -188,7 +188,7 @@ sin    0.6       -1.0e+30    1.0e+30
 hwe   -1.0       -1.0       -1.0     # Gaussian HW@1/e
 asy   -1.0       -1.0       -1.0     # Gaussian asymmetry
 sgk    2.0        2.0        2.0     # Super-Gaussian shape factor
-shi   -0.4       -1.0        1.0
+shi    0.01      -1.0        1.0
 squ    0          0          0
 eoi    0          0          0  # end of input
 

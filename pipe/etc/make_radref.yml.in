@@ -6,7 +6,7 @@ L2CLD Input:
 @CLOUD_FILE_PATHS@
 # Use only pixels with mincfr < cloud fraction < maxcfr
 mincfr: 0.0
-maxcfr: 1.0
+maxcfr: 0.5
 # Number of standard deviations (STD) to include a radiance in the radiance reference
 # For each pixel calculate the mean radiance. The for each cross track position
 # calculate the median absolute deviation (MAD) of the mean radiances of all pixels
