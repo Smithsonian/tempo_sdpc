@@ -292,15 +292,15 @@ static int init_ccd_object_layout (CCD_Object_Type *obj)
    image_set_subset (&obj->quad[2], hr, nr, +1,   hc, nc  , +1); /* UV-C */
    image_set_subset (&obj->quad[3], hr, nr, +1,    0, hc  , -1); /* UV-D */
 
-   image_set_subset (&obj->oct[0],   0, hr, -1,    1, hc  , -2); /* VIS-Ao */
+   image_set_subset (&obj->oct[0],   0, hr, -1,    0, hc-1, -2); /* VIS-Ao */
    image_set_subset (&obj->oct[1],   0, hr, -1, hc+1, nc  , +2); /* VIS-Bo */
    image_set_subset (&obj->oct[2],  hr, nr, +1, hc+1, nc  , +2); /* UV-Co */
-   image_set_subset (&obj->oct[3],  hr, nr, +1,    1, hc  , -2); /* UV-Do */
+   image_set_subset (&obj->oct[3],  hr, nr, +1,    0, hc-1, -2); /* UV-Do */
 
-   image_set_subset (&obj->oct[4],   0, hr, -1,    0, hc-1, -2); /* VIS-Ae */
+   image_set_subset (&obj->oct[4],   0, hr, -1,    1, hc  , -2); /* VIS-Ae */
    image_set_subset (&obj->oct[5],   0, hr, -1, hc  , nc-1, +2); /* VIS-Be */
    image_set_subset (&obj->oct[6],  hr, nr, +1, hc  , nc-1, +2); /* UV-Ce */
-   image_set_subset (&obj->oct[7],  hr, nr, +1,    0, hc-1, -2); /* UV-De */
+   image_set_subset (&obj->oct[7],  hr, nr, +1,    1, hc  , -2); /* UV-De */
 
    return 0;
 }
@@ -600,21 +600,28 @@ static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
    if ((oct == NULL) || (img == NULL))
      return -1;
 
-   pb = oct->row_beg;
-   pe = oct->row_end;
+   if (oct->row_step > 0)
+     {/* C, D */
+        pb = oct->row_end - 800;
+        pe = oct->row_end - 199;
+     }
+   else
+     {/* A, B */
+        pb = oct->row_beg + 200;
+        pe = oct->row_beg + 801;
+     }
 
    if (oct->col_step > 0)
      {/* B, C */
         sb = (oct->col_beg
-              + obj->num_serial_trailing
-              - num_skip
-              - num_selected);
+              + num_skip
+              - 1);
      }
    else
      {/* A, D */
         sb = (oct->col_end
-              - obj->num_serial_trailing - 1
-              + num_skip);
+              - num_skip
+              - (num_selected - 2));
      }
    se = sb + num_selected;
 
@@ -640,8 +647,8 @@ static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
 static int compute_mean_eoffsets (const CCD_Object_Type *obj, const Image_Type *img,
                                   float mean_eoffsets[NUM_OCTANTS])
 {
-   int num_skip = 8;
-   int num_selected = 10;
+   int num_skip = 3;
+   int num_selected = 12;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
@@ -702,13 +709,12 @@ static int ccd_configure_using_octant_phase (CCD_Type *ccd, const Image_Type *im
 
    for (i = 0; i < NUM_QUAD; i++)
      {
-        float diff0 = eoff0[i+4] - eoff0[i];
         float diff = eoff[i+4] - eoff[i];
-        pct->phase_change[i] = (diff0 * diff < 0) ? 1 : 0;
+        pct->phase_change[i] = (diff < 0) ? 1 : 0;
         tell_vlog (TELL_MSGTYPE_INFO, 2,
-                   "mean eoffsets, quad %d: o=%7.3f e=%7.3f  FPS test values:o=%7.3f e=%7.3f => %s",
+                   "mean eoffsets, quad %d: o=%7.3f e=%7.3f  first-light values:o=%7.3f e=%7.3f => %s",
                    i, eoff[i], eoff[i+4], eoff0[i], eoff0[i+4],
-                   pct->phase_change[i] ? "parity changed" : "parity matches FPS test");
+                   pct->phase_change[i] ? "parity changed" : "parity matches first-light");
      }
 
    if (0 != trend_collect_eoffsets (pct->mean_eoffset, pct->phase_change))
@@ -1052,19 +1058,25 @@ static int gain_corr_Tfpe (const Gain_Param_Type *gpt, float fpe_temp, float *co
         return 0;
      }
 
-   if (gpt->num_gain_tfpe_coeff != 4)
+   if (gpt->num_gain_tfpe_coeff == 4)
+     {
+        gain_T = c[0] * exp (c[1] * fpe_temp) + c[2] * exp(c[3] * fpe_temp);
+
+        *corr = gain_T / gpt->gain_at_Tref;
+        return 0;
+     }
+   else if (gpt->num_gain_tfpe_coeff == 1)
+     {
+        *corr = ((fpe_temp - gpt->Tref_fpe) * c[0] + 1.0);
+        return 0;
+     }
+   else
      {
         tell_verror (TELL_RUNTIME_ERROR,
-                     "%s: got %d coefficients describing gain dependence on FPE temperature (expected 4)",
+                     "%s: got %d coefficients describing gain dependence on FPE temperature (expected 4 or 1)",
                      __func__, gpt->num_gain_tfpe_coeff);
         return -1;
      }
-
-   gain_T = c[0] * exp (c[1] * fpe_temp) + c[2] * exp(c[3] * fpe_temp);
-
-   *corr = gain_T / gpt->gain_at_Tref;
-
-   return 0;
 }
 
 static int interpolate_gain (const Gain_Param_Type *gpt,
