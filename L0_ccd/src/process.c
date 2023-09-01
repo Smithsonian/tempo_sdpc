@@ -502,6 +502,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    image_scale (exprec->img, 1.0/exposure_time_per_frame);
    if (xr->img_err)
      {
+        image_scale (xr->img_err, 1.0/exprec->num_coadds);
         image_sqrt (xr->img_err);
         image_scale (xr->img_err, 1.0/exposure_time_per_frame);
      }
