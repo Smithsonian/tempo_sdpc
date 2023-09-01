@@ -191,13 +191,13 @@ static int flag_neighbor1 (Neighbor_Type *nt, const Image_Type *img,
              nsb = s - nt->hw_serial;
              nsb = MAX(sb,nsb);
 
-             nse = s + nt->hw_serial;
+             nse = s + nt->hw_serial + 1;
              nse = MIN(se,nse);
 
              npb = p - nt->hw_parallel;
              npb = MAX(pb,npb);
 
-             npe = p + nt->hw_parallel;
+             npe = p + nt->hw_parallel + 1;
              npe = MIN(pe,npe);
 
              for (pp=npb; pp<npe; pp++)
