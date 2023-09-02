@@ -13,13 +13,19 @@ Input files:
 @LEVEL2_PRODUCT_PATHS@
 # Use only pixels with mincfr < cloud fraction < maxcfr
 mincfr: 0.0
-maxcfr: 0.4
+maxcfr: 0.5
 # RMS number of standard deviations (STD) to filter out pixels considered in the
 # destriping and background corrections. MEDIAN(RMS) + nsigma*msig
 # with msig = 1.4826 x MEDIAN(|RMS - MEDIAN(RMS)|)
 nsigma: 1.0
 # Main data quality flags of pixels to be considered in the corrections
 mqfval: [0]
+# Percentile used to calculate background correction
+# Only use pixels below "percentile" (a number between
+# 0 and 100)
+percentile: 90
+# Kernel size of median filter
+kernel: 250
 # Correction file attributes
 processing_version: 1
 output_filename: @DESTRIPE_FILE_PATH@
