@@ -27,7 +27,7 @@ PIPE_DIRS="stage/level0/ccd \
            stage/level0/telem \
            stage/level0/spool \
            stage/granules/inr_input \
-           stage/granules/inr_output/GUI \
+           stage/granules/inr_output/monitor_cache \
            stage/granules/level2_input \
            stage/scans \
            repro/L0 repro/L1 repro/L2 \

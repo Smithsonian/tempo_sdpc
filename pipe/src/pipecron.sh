@@ -141,7 +141,7 @@ do_daily()
   # delete INR GUI directory files
   isup=$(svc_up inr)
   if test x"$isup" = xtrue ; then
-     gui_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/GUI"
+     gui_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/monitor_cache"
      if test -d $gui_dir ; then
         expire_dir_files $mmin_arg $gui_dir
      fi

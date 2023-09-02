@@ -28,7 +28,7 @@ imgDir=@INR_PROCESSING_ROOT@/Staging/Granules/
 # Granule output directory
 outDir=@INR_PROCESSING_ROOT@/Output/
 # Granule output directory for GUI. Hard link of granules are created in this directory if this directory is provided.
-guiOutDir=@INR_PROCESSING_ROOT@/Output/GUI
+guiOutDir=@INR_PROCESSING_ROOT@/Output/monitor_cache
 # Nominal TEMPO longitude in degrees
 refLon=-91.0
 # The amount of time the server will wait for new granules before producing a warning, in seconds.
@@ -68,7 +68,7 @@ east_mode6_end=170
 # Source satellite type ("GOES-NOP" or "GOES-R")
 type=GOES-R
 # Source satellite ID ("13", "14" or "15" for type=="GOES-NOP", "16", "17", "18" for type == "GOES-R")
-satID=17
+satID=18
 # Reference longitude in degrees (-75.0 for GOES-13 East, -89.5 for GOES-14 Center, -135.0 for GOES-15 West)
 # Note that this variable is completely ignored if type (above) is "GOES-R", since GOES-R data files include
 # the subpoint of the satellite at the time of image creation
@@ -196,9 +196,9 @@ imgDir=@INR_PROCESSING_ROOT@/CloudProducts/
 [TiePoints]
 
 # Size of template in up-sampled pixels
-chipSize=64
+chipSize=72
 # Size of search area for match in up-sampled pixels
-hoodSize=192
+hoodSize=144
 # Step size for tie point sites vertically/horizontally in up-sampled pixels
 chipStep=128
 # Margin to leave at boundaries in up-sampled pixels
@@ -233,11 +233,15 @@ solarZenithThreshold=80
 # The minimum ellipse ratio
 minEllipseRatio=0.1
 # The maximum TiePoint horizontal shift in km
-maxTPHorizontalShift=15
+maxTPHorizontalShift=30
 # The minimum parallax in km
 minTPVerticalShift=-1
 # The maximum parallax in km
 maxTPVerticalShift=12
+# The maximimum tiepoint horizontal residual
+maxTPHorizontalResidual=50
+# The maximimum tiepoint vertical residual
+maxTPVerticalResidual=20
 
 ## Parameters related to the flight hardware
 ## TODO item is to update with as-built parameters
@@ -250,46 +254,50 @@ telescopeOffset=13
 numPixUpper=2048
 numPixLower=2048
 # Nominal number of column in a full scan
-numCol=1614
+numCol=1230
 # Angular sampling distance for long and short wavelength bands in radians
 angularSamplingEW=1.23000e-04
 angularSamplingNSUpper=4.1490e-05
 angularSamplingNSLower=4.1490e-05
 # Nominal instantaneous geometric field of view in radians
-IGFOVew=123.0e-6
+IGFOVew=129.2e-6
 IGFOVns=41.49e-6
 # Engineering term to weight individual tie points for binocular pairs in raidans
 # Sets in accordance with INR error requirements for reference image
-measWeight=42e-6
+measWeight=28e-6
 # Gyroscope angle random walk in radians/root(second) for Kalman Filter process noise
 farrenkopf=6.80387520069123e-07
 # The uncertainty in acceleration due to solar radiation pressure in km/s^2
 srp_uncertainty=7e-11
 # The scan mechanism shimming bias in radians
-ewbias=3.595378259108319
-nsbias=0.095232069219954
+#ewbias=3.593891191107580
+ewbias=3.5981
+nsbias=0.094634441669632
+clockingbias=-0.000611683705914
 # The 3-sigma ephemeris position error in km
 ephPosErr=1.5
 # The 3-sigma ephemeris velocity error in km/s
 ephVelErr=2.5e-5
 # The satellite steering method (INERTIAL=0, ORBIT_FRAME=1(default), TARGETED=2)
-steeringMethod=1
+steeringMethod=2
 # The satellite steering latitude in degree. This is only used if sterring method is TARGETED. Default to 0
 steeringLat=0
 # The satellite steering longitude in degree. This is only used if sterring method is TARGETED. Default to -104.5
-steeringLon=-104.5
+steeringLon=-91
 # The satellite steering roll bias in degree. This is only used if sterring method is TARGETED. Default to 0
 steeringRollBias=0
 # The satellite steering pitch bias in degree. This is only used if sterring method is TARGETED. Default to 0
 steeringPitchBias=0
+# Satellite position jumping limit in km
+maxSatPosJump=1.5
 
 # Rates of change allocated to Kalman Filter states for process noise
 # States are ordered as they are documented in TEMPO-SER-4008
 # Units are per second or radians/seconds
-drift_roll=0
-drift_pitch=0
-drift_yaw=0
-drift_mag=1.16e-8
+drift_roll=1e-8
+drift_pitch=1e-8
+drift_yaw=1e-8
+drift_mag=1.16e-08
 drift_misalign=0
 drift_smile=0
 drift_eflvar=0
@@ -299,9 +307,9 @@ drift_ke=1.16e-8
 drift_xe=1.74e-8
 drift_kee2=1.157e-7
 drift_kne2=1.157e-7
-drift_dx=1.1574e-11
+drift_dx=0
 drift_dy=1.1574e-11
-drift_mag_diff=0
+drift_mag_diff=1.16e-08
 drift_misalign_diff=0
 drift_smilediff=0
 drift_eflvardiff=0
@@ -352,10 +360,10 @@ numGyroAxes = 4
 axisEnabledFlag_0 = 1
 axisEnabledFlag_1 = 1
 axisEnabledFlag_2 = 1
-axisEnabledFlag_3 = 1
+axisEnabledFlag_3 = 0
 
 # Analog-to-Digital representation of LSB in radians
-lsb = 0.029802e-6
+lsb = 0.0037876e-6
 
 # Number of bits in Gyroscope output
 numBits = 24
@@ -375,18 +383,30 @@ scaleFactor_2 = 0
 scaleFactor_3 = 0
 
 # Each element in the sensing matrix in row major order (1/sqrt(3))
-sensingElement_0 = 0.577350269189626
-sensingElement_1 = 0.577350269189626
-sensingElement_2 = 0.577350269189626
-sensingElement_3 = 0.577350269189626
-sensingElement_4 = -0.577350269189626
-sensingElement_5 = 0.577350269189626
-sensingElement_6 = -0.577350269189626
-sensingElement_7 = -0.577350269189626
-sensingElement_8 = 0.577350269189626
-sensingElement_9 = -0.577350269189626
-sensingElement_10 = 0.577350269189626
-sensingElement_11 = 0.577350269189626
+sensingElement_0 = 0.600164
+sensingElement_1 = 0.551662
+sensingElement_2 = 0.579200
+sensingElement_3 = 0.598222
+sensingElement_4 = -0.601944
+sensingElement_5 = 0.528955
+sensingElement_6 = -0.555617
+sensingElement_7 = -0.601944
+sensingElement_8 = 0.573545
+sensingElement_9 = -0.553675
+sensingElement_10 = 0.551662
+sensingElement_11 = 0.623789
+
+# Gyroscope Calibration in rad/s
+# For dates prior to 8/17:
+#axisCalibration_0 = 0.053523430394493e-6
+#axisCalibration_1 = 0.053523430394493e-6
+#axisCalibration_2 = -0.071364573859324e-6
+#axisCalibration_3 = -0.169490862915894e-6
+# For dates after 8/17:
+axisCalibration_0 = 0.0
+axisCalibration_1 = 0.0
+axisCalibration_2 = 0.0
+axisCalibration_3 = 0.0
 
 ## Earth orientation data
 
@@ -413,7 +433,7 @@ minNumTPs=2
 nominalCloudHeight=3
 
 # Use of monocular tie points in absence of binocular ones (USE_BOTH USE_LEFT USE_RIGHT USE_NONE)
-useMonocular=USE_NONE
+useMonocular=USE_RIGHT
 
 # Lags for the Smoother in scans, set to zero to smooth at scan completion with nominal OPSCON
 nlags=0
@@ -430,7 +450,7 @@ RTieRightNS = 4.0e-10
 # Fraction of tie points to reserve as witnesses for INR error and not be used in Kalman Filter
 ReservedMeasurementsRatio=0.5
 # Editing threshold for tie points, discards if norm(residual) > limit
-ResidualThreshold=100e-06
+ResidualThreshold=500e-06
 # Editing n-sigma criteria for tie points, discards if norm(residual)>n*sigma(sample)
 MaxMeasurementSigma=3.8
 
@@ -439,7 +459,7 @@ MaxMeasurementSigma=3.8
 delta_roll=1e-3
 delta_pitch=1e-3
 delta_yaw=1e-3
-delta_magnification=1e-3
+delta_magnification=1e-03
 delta_misalignment=0
 delta_smile=0
 delta_eflvar=0
@@ -449,9 +469,9 @@ delta_ke=1e-3
 delta_xe=1e-3
 delta_kee2=1e-3
 delta_kne2=1e-3
-delta_dx=1e-3
+delta_dx=0
 delta_dy=1e-3
-delta_magdiff=0
+delta_magdiff=1e-03
 delta_misaligndiff=0
 delta_smilediff=0
 delta_eflvardiff=0
@@ -464,21 +484,21 @@ delta_v3=1e-3
 
 # Initial state for cold-start of Kalman Filter
 # TODO item is to set up in accordance with as-built instrument
-init_state_roll=0
-init_state_pitch=0
-init_state_yaw=0
-init_state_magnification=0
+init_state_roll=-5e-5
+init_state_pitch=1e-3
+init_state_yaw=-2e-4
+init_state_magnification=7.92e-3
 init_state_misalignment=0
-init_state_smile=0
+init_state_smile=3.4e-6
 init_state_eflvar=0
 init_state_e0=0
 init_state_n0=0
-init_state_ke=0
+init_state_ke=-7.5e-3
 init_state_xe=0
-init_state_kee2=0
-init_state_kne2=0
+init_state_kee2=2e-2
+init_state_kne2=2e-2
 init_state_dx=0
-init_state_dy=0
+init_state_dy=-1.83e-5
 init_state_magdiff=0
 init_state_misaligndiff=0
 init_state_smilediff=0
@@ -492,9 +512,9 @@ init_state_v3=0
 
 # Initial state covariance diagonal one-sigma values for cold-start of Kalman Filter
 # TODO item is to set up in accordance with as-built instrument and Host spacecraft
-init_cov_roll=1.11111111111111e-07
-init_cov_pitch=1.11111111111111e-07
-init_cov_yaw=1.11111111111111e-07
+init_cov_roll=1.11111111111111e-05
+init_cov_pitch=1.11111111111111e-05
+init_cov_yaw=1.11111111111111e-05
 init_cov_magnification=4.4444e-05
 init_cov_misalignment=0
 init_cov_smile=0
@@ -505,9 +525,9 @@ init_cov_ke=4.4444e-05
 init_cov_xe=4.4444e-05
 init_cov_kee2=4.4444e-03
 init_cov_kne2=4.4444e-03
-init_cov_dx=2.25e-10
+init_cov_dx=0
 init_cov_dy=2.25e-10
-init_cov_magdiff=0
+init_cov_magdiff=4.4444e-05
 init_cov_misaligndiff=0
 init_cov_smilediff=0
 init_cov_eflvardiff=0
@@ -541,8 +561,8 @@ ECA=60.0
 SZA=70.0
 # Effective Instantaneous Field of View in radians for spatial sampling uniformity and gaps
 # TODO item to update per the as-built instrument
-EIFOVx=120e-6
-EIFOVy=41.8e-6
+EIFOVx=129.2e-6
+EIFOVy=41.49e-6
 # Effective sigma limit for Median Absolute Difference filtering to cull outlier points
 SigmaLimit=4
 # Spec limits for the geolocation error
@@ -562,9 +582,9 @@ SamplingUniformityReqNS=4.2
 
 [Boresight]
 
-orientation_x=-0.004073186386881
-orientation_y=-0.096760688815806
-orientation_z=0.995299341028893
+orientation_x=-0.001487019974675
+orientation_y=-0.094759886897611
+orientation_z=0.995498999842171
 
 ## Text file with Greater North America latitudes and longitudes in degrees
 ## This is used to test compliance with coverage requirements, and it is a
@@ -608,8 +628,8 @@ blue_factor=12.0542
 # TODO item is to adjust to match MRD spec when Host station is known
 ##target_lat=34.267307178526053
 ##target_lon=-90.804907121282682
-target_lat=33.7220
-target_lon=-92.7366
+target_lat=33.71
+target_lon=-91.6546
 # Fundamental period for Fourier model of repeating attitude offsets in hours
 #### ORIGINAL VALUE -> num_hours_per_period=24
 num_hours_per_period=1
