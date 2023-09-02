@@ -84,19 +84,19 @@ create_iers_file " 1 March   2013  Vol. x No. 1"
 create_iers_file " 6 June    2013  Vol. x No. 1"
 
 # check day of update
-try_lookup "2013-01-01T12:00:00Z" "bulletina_2013001_x_1.txt"
+try_lookup "2013-01-08T12:00:00Z" "bulletina_2013001_x_1.txt"
 
 # check day before update
 try_lookup "2013-01-07T12:00:00Z" "bulletina_2013001_x_1.txt"
 
 # check day of update
-try_lookup "2013-01-08T12:00:00Z" "bulletina_2013008_x_1.txt"
+try_lookup "2013-01-08T12:00:00Z" "bulletina_2013001_x_1.txt"
 
 # check middle of gap
 try_lookup "2013-02-28T12:00:00Z" "bulletina_2013015_x_1.txt"
 
 # check day of update
-try_lookup "2013-03-01T12:00:00Z" "bulletina_2013060_x_1.txt"
+try_lookup "2013-03-01T12:00:00Z" "bulletina_2013015_x_1.txt"
 try_lookup "2013-06-10T12:00:00Z" "bulletina_2013157_x_1.txt"
 
 # check failure
