@@ -47,7 +47,7 @@ def destripe (dst, scd, medval):
             dst.history = '{}{}'.format(dst.history,add_history)
         dst_des[:] = medval
         # leave L2 file's fitted_slant_column unchanged
-        scd = scd - medval
+        return (scd - medval)
     except Exception as e:
         print_message(e)
         print_message('writing destriping correction to L2 file',error=True)
@@ -65,11 +65,11 @@ def correct_background (dst, scd, bgrcor):
             dst_bgr.units = units
         else:
             dst_bgr = grp['background_correction']
-            add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
-            dst.history = '{}{}'.format(dst.history,add_history)
+        add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
+        dst.history = '{}{}'.format(dst.history,add_history)
         dst_bgr[:] = bgrcor
         # leave L2 file's fitted_slant_column unchanged
-        scd = scd + bgrcor
+        return (scd + bgrcor)
     except Exception as e:
         print_message(e)
         print_message('writing background correction to L2 file',error=True)
@@ -90,9 +90,9 @@ def apply_corrections (control, corrfile, input_files):
                 amf = dst['support_data']['amf'][:]
                 scd = dst['support_data']['fitted_slant_column'][:]
                 if yn_L2_des:
-                    destripe (dst, scd, medval)
+                    scd = destripe (dst, scd, medval)
                 if yn_L2_bgr:
-                    correct_background (dst, scd, bgrcor)
+                    scd = correct_background (dst, scd, bgrcor)
                 # Save corrected VCDs to L2 file
                 dst['product']['vertical_column'][:] = scd/amf
         except Exception as e:

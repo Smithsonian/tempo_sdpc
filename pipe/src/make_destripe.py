@@ -3,6 +3,7 @@ import numpy as np
 import numpy.ma as ma
 from netCDF4 import Dataset
 from datetime import datetime
+from scipy.ndimage import generic_filter
 import os
 import yaml
 import sys
@@ -51,6 +52,10 @@ mincfr = float(control['mincfr'])
 maxcfr = float(control['maxcfr'])
 # Get good main data quality flag values
 mqfval = [int(val) for val in control['mqfval']]
+# # Get percentile for background calculation
+perce = int(control['percentile'])
+# Get smoothing median filter kernel
+kernel = int(control['kernel'])
 
 # Logical to save diagnostic fields
 yn_diag = str_to_bool(control['yn_diagnostic'])
@@ -148,6 +153,33 @@ for fp in input_files:
 
     del m,r,c,s,v
 
+#################################
+# Calculate background correction
+# NEEDS to be REVISITED
+#################################
+tmp_vcd = vcd; tmp_vcd[vcd.mask] = np.nan
+tmp_amf = amf; tmp_amf[amf.mask] = np.nan
+# Calculate model SCDs
+tmp_scd = tmp_vcd*tmp_amf
+# Mask by cloud fraction
+cmask = (cfr < mincfr) | (cfr > maxcfr)
+tmp_scd[cmask] = np.nan
+# Calculate percen percentile for each cross track
+p = np.nanpercentile(tmp_scd,perce,axis=0)
+# Mask diff values above p
+t = ma.masked_where(tmp_scd > p, tmp_scd)
+# Calculate mean of values below p percentile for each cross track
+m = np.nanmean(t,axis=0)
+# Calculate smooth correction applying median filter
+# idx = np.isfinite(m)
+# pol = np.polyfit(np.arange(m.size)[idx],m[idx],order)
+# bgrcor = (np.polyval(pol,np.arange(m.size))).astype(np.float32)
+bgrcor = (generic_filter(m,np.nanmedian,size=kernel).astype(np.float32))
+
+##############################
+# Calculate destriping factors
+# NEEDS to be REVISITED
+##############################
 # calculate limit for outliers of fitting rms
 # Here, 3*k*MAD is considered, but it could change.
 k = 1.4826
@@ -175,8 +207,6 @@ rms[cfr_mask | mqf_mask | rms_mask] = ma.masked
 # It's not stable, we need to update it.
 # Calculate medians for each xtrack position
 medval = ma.median(scd,axis=0)
-bgrcor = ma.median(vcd.astype(np.float)*amf.astype(np.float),axis=0)
-bgrcor = bgrcor.astype(np.float32)
 vcd_med = ma.median(vcd,axis=0)
 amf_med = ma.median(amf,axis=0)
 cfr_med = ma.median(cfr,axis=0)
