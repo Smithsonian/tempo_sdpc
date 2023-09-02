@@ -16,7 +16,7 @@ mkdir -p $service_dir
 
 case "$SERVICE" in
   level1a | level1b | level2 )
-     mkdir $service_dir/slurm
+     mkdir -p $service_dir/slurm
      ;;
   *)
      ;;
