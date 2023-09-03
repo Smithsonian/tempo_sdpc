@@ -227,9 +227,11 @@ contains
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     real (kind=4) :: thisirr440, thisirr466, thisirr477
     character(len=80) :: logmsg
+    integer (kind=4) :: lerr
 
     type(tiof_file_type) :: tio_l1obj
 
+    ! only execute if no previous error
     if (errstat /= 0) return
 
     ! open file, get dimensions, allocate arrays
@@ -293,11 +295,13 @@ contains
     ! interpolate values at 440, 466, 477nm
     ! problem with pixel_quality_flag, set to -9999.0 in quick_lin_interpol
      
-    do ix = 1, nxtrack
+    do ix = 1, nxtrack ! loop over pixels
+      ! lerr is local error for each case, donot affect global errstat
       thisirr440 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
-           thisirr440, tio_pqf(:,ix,1),nwavel,errstat)
-      if (errstat /= 0) then
+           thisirr440, tio_pqf(:,ix,1),nwavel, lerr)
+      ! 440nm does not affect ecf
+      if (lerr /= 0) then
         write (logmsg,'(A,I4)') "440nm irr interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
@@ -312,8 +316,11 @@ contains
 
       thisirr466 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-           thisirr466, tio_pqf(:,ix,1),nwavel,errstat)
-      if (errstat /= 0) then
+           thisirr466, tio_pqf(:,ix,1),nwavel,lerr)
+      ! the following is for testing
+      !call quick_irr_interpol(tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
+      !      thisirr466, tio_pqf(:,ix,1), lerr)
+      if (lerr /= 0) then
         write (logmsg,'(A,I4)') "466nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
@@ -326,12 +333,12 @@ contains
            end do
       endif
 
-      ! irr_out_irradiance_477nm is for diagnostic
+      ! irr_out_irradiance_477nm is for diagnostic only
       ! thus, out_ProcessingQualityFlags are not affected by it
       thisirr477 = -999.
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
-           thisirr477, tio_pqf(:,ix,1),nwavel,errstat)
-      if (errstat /= 0) then
+           thisirr477, tio_pqf(:,ix,1),nwavel,lerr)
+      if (lerr /= 0) then
         write (logmsg,'(A,I4)') "477nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
       endif
@@ -341,7 +348,7 @@ contains
            irr_out_irradiance_477nm(ix) = -999.
       endif
       
-    enddo !ix
+    enddo ! end of ix loop
 
     ! debug
     if ((trim(run_mode) .eq. 'development').and.(ixdebug .ge. 0)) then
@@ -364,7 +371,9 @@ contains
 
     close(lun_debug_irr)
 
+    ! deallocate large local arrays after use
     deallocate (tio_wvl, tio_irr, tio_pqf, stat=errstat)
+
   end subroutine read_irr_tio
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -391,6 +400,7 @@ contains
     character (len=*), intent(in) :: l1_file, swathname
     !output variables
     integer (kind=4), intent(inout) :: errstat
+
     !local variables
     type(tiof_file_type) :: tio_l1obj
 
@@ -403,7 +413,7 @@ contains
     real (kind=8), parameter :: r8_missval=-1.0d+30
 
     ! moved rad_Radiance, rad_Wavelength from m_vars.f90 here
-    !local variables save memory as they are deallocated after use
+    ! local variables save memory as they are deallocated after use
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
     integer(kind=2), dimension(:,:,:), allocatable:: rad_PixelQualityFlags
@@ -411,6 +421,7 @@ contains
     real(kind=4), dimension(:), allocatable:: temp_wav, temp_rad
     integer(kind=2) :: temp_radflags
 
+    ! only execute if there is no previous error
     if (errstat /= 0) return
 
     ! min radiance, anything smaller is treated as invalid
@@ -516,18 +527,18 @@ contains
          temp_wav(iw) = rad_Wavelength(iw,ix,it)
          temp_radflags = rad_PixelQualityFlags(iw,ix,it)
          ! all bit = 0 is fast but may be too restrictive, 
-         if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
+         !if (rad_PixelQualityFlags(iw,ix,it) .NE. 0) then
          !  switch back to bit test if desired 
-         ! if (btest(temp_radflags,0) .or. & !missing
-         !     btest(temp_radflags,1) .or. & !bad
-         !     btest(temp_radflags,2) .or. & !processing_error
-         !     btest(temp_radflags,5) .or. & !saturated
+          if (btest(temp_radflags,0) .or. & !missing
+              btest(temp_radflags,1) .or. & !bad
+              btest(temp_radflags,2) .or. & !processing_error
+              btest(temp_radflags,5) .or. & !saturated
          !     btest(temp_radflags,6) .or. & !noise_underflow
-         !     btest(temp_radflags,7) .or. & !dark_corr_error
-         !     btest(temp_radflags,8) .or. & !offset_corr_error
-         !     btest(temp_radflags,9) .or. & !smear_corr_error
-         !     btest(temp_radflags,10) .or. & !straylight_corr_error
-         !     btest(temp_radflags,11))  then !nonlinear_range
+              btest(temp_radflags,7) .or. & !dark_corr_error
+              btest(temp_radflags,8) .or. & !offset_corr_error
+              btest(temp_radflags,9) .or. & !smear_corr_error
+         !     btest(temp_radflags,11) .or. &  !nonlinear_range
+              btest(temp_radflags,10)) then  !straylight_corr_error
           temp_rad(iw)=-9999.
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
@@ -931,7 +942,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine quick_irr_interpol (w_array, w_target, irr_array, irr_out, &
        q_array, errstat)
-  ! replaced by quick_lin_interpol 
+  ! alternative to quick_lin_interpol 
     implicit none
 
     !input variables
@@ -940,18 +951,20 @@ contains
     real (kind=4), intent(in) :: w_target
     !output variables
     real (kind=4), intent(out) :: irr_out
-    integer (kind=4), intent(inout) :: errstat
+    integer (kind=4), intent(out) :: errstat ! change inout to out
+
     !local variables
     integer (kind=4), dimension(1) :: iw1, iw2
     real (kind=4) :: yy1, yy2, ww1, ww2
 
-    if (errstat /= 0) return
+    errstat = 0 ! initialize
 
     iw1=maxloc(w_array-w_target, mask=w_array-w_target.lt.0)
     iw2=minloc(w_array-w_target, mask=w_array-w_target.gt.0)
     if (iw2(1) >= iw1(1)) then
       yy1=irr_array(iw1(1))
       yy2=irr_array(iw2(1))
+      !write(*,*)'quick_irr_interpol:',q_array(iw1(1)),q_array(iw2(1)),yy1,yy2
       if ((yy1 .GT. 0.) .and. (yy2 .GT. 0.) .and. &
          (q_array(iw1(1)) .EQ. 0) .and. (q_array(iw2(1)) .EQ. 0)) then 
          ww1=w_target-w_array(iw1(1))
@@ -988,7 +1001,8 @@ contains
     !output variables
     real (kind=4), intent(out) :: irr_out
     integer (kind=4), intent(in) :: nw
-    integer (kind=4), intent(inout) :: errstat
+    integer (kind=4), intent(out) :: errstat ! changed inout to out
+
     !local variables
     integer (kind=4) :: iw1, iw2, iw
     real (kind=4) :: yy1, yy2, ww1, ww2, www, min_val
@@ -997,7 +1011,8 @@ contains
     min_val = 0.
     irr_out = -9999.
 
-    if (errstat /= 0) return
+    errstat = 0 ! initialize 
+    
     iw1 = -9
     iw2 = -9
 

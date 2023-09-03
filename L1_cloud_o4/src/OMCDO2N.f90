@@ -47,6 +47,9 @@ program OMCDO2N
   character(len=15), parameter :: swathname = "band_290_490_nm"
 
   call tell_open ("L1_cloud_o4", 0)
+  !uncomment the following for verbose loginfo
+  !call tell_set_log_level(1)
+
   errstat = 0
   nx = 0
   nt = 0
@@ -253,9 +256,6 @@ program OMCDO2N
     status=GetConfigString("W","Input Files desfac_dir",buf)
     if(status .ne. 0) then
       write(*,*) 'No desfac_dir in control file, use default'
-    !call tell_error(tell_io_read_error,&
-    !   "Problem reading desfac_dir from control file", errstat)
-    !call exit(-1)
     else
        name_desfac_dir=trim(buf)
     endif
@@ -263,9 +263,6 @@ program OMCDO2N
     status=GetConfigString("W","Input Files desfac_fnm",buf)
     if(status .ne. 0) then
        write(*,*) 'No desfac_fnm in control file, usedefault'
-    !call tell_error(tell_io_read_error,&
-    !   "Problem reading desfac_fnm from control file", errstat)
-    !call exit(-1)
     else
        name_desfac_fnm=trim(buf)
     endif

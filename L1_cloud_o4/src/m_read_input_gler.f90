@@ -109,18 +109,90 @@ contains
    endif
 
    call gler_close(glt)
-   write(*,*) '   GLER n_NAN=',nana
+   write(*,*) '   GLER 466nm n_NAN=',nana
 
    !------------------------------
    ! calculate GLER for 440nm
    ! 440nm was unavailable during initial development, thus
    ! 440nm is currently not used in calculation, only transfer to output
    !------------------------------
+
+   write(*,*) '   GLER is not implemented for 440nm'
+
    iwavelen = 440
    allocate(BRDF_SurfaceReflectivity440(nx,nt), stat=errstat)
    BRDF_SurfaceReflectivity440 = fspecial
 
-   write(*,*) '   GLER is not yet implemented for ',iwavelen
+   go to 888 ! reference gler table issue for 440 nm, skip for now
+   
+   call gler_open(glt, iwavelen, errstat) ! config_file='clim_config.ini')
+   if (errstat /= 0) then
+     call tell_error (tell_io_error, 'gler_open failed for 440', errstat)
+     return
+   endif
+
+   ! use the starting time of swath in gler_interp_time
+   thistime = rad_time(1)
+   call gler_interp_time(glt, thistime, errstat)
+   if (errstat /= 0) then
+     call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
+     return
+   endif
+
+   ! loop through pixels
+   if (name_option_TemperaturePressure .eq. 'GEOS5') then
+    nana = 0
+    do it = 1, nt
+      do ix = 1, nx
+         thisalb = fspecial
+         thislon = rad_longitude(ix,it)
+         if ((thislon .lt. -360.) .or. (thislon .gt. 360.)) continue
+         thislat = rad_latitude(ix,it)
+         if ((thislat .lt. -90.) .or. (thislat .gt. 90.)) continue
+         wind_speed = windspeed2m(ix,it)
+         if (wind_speed .lt. 0.) continue
+         thissnowice = rad_SnowIceFraction(ix,it)
+         if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
+         call gler_albedo(glt, thislon, thislat, wind_speed, &
+                thissnowice, thisalb, errstat, clip_opt)
+         if (isnan(thisalb)) then ! test NAN
+                thisalb = fspecial
+                nana = nana + 1
+         endif
+         BRDF_SurfaceReflectivity440(ix,it) = thisalb
+      enddo
+    enddo
+   else
+    wind_speed = 0.
+    write(*,*)'note:  GMI climatology does not contain wind_speed'
+    write(*,*)' GLER is thus calculated with wind_speed=0.'
+    nana = 0
+    do it = 1, nt
+      do ix = 1, nx
+         thisalb = fspecial
+         thislon = rad_longitude(ix,it)
+         if ((thislon .lt. -360.) .or. (thislon .gt. 360.)) continue
+         thislat = rad_latitude(ix,it)
+         if ((thislat .lt. -90.) .or. (thislat .gt. 90.)) continue
+         thissnowice = rad_SnowIceFraction(ix,it)
+         if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
+         call gler_albedo(glt, thislon, thislat, wind_speed, &
+              thissnowice, thisalb, errstat, clip_opt)
+         if (isnan(thisalb)) then ! test NAN
+              thisalb = fspecial
+              nana = nana + 1
+         endif 
+         BRDF_SurfaceReflectivity440(ix,it) = thisalb
+      enddo
+    enddo
+   endif
+
+   call gler_close(glt)
+   write(*,*) '   GLER440 n_NAN=',nana
+
+   !-------------------------------
+
+888 continue
 
    ! debug
    if ((trim(run_mode) .eq. 'development').and. &
