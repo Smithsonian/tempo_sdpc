@@ -18,7 +18,7 @@ Input Files:
   desfac_dir:
     - ./
   desfac_fnm:
-    - @desfac_file@
+    - replace_with_desfac_file
   Kleipool_fnm:
     - OMI-Aura_L3-OMLER_2005m01-2009m12_v003-2010m0503t063707.he5
   GMI_dir:
