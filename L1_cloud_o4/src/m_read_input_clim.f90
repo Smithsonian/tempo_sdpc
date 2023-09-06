@@ -44,11 +44,13 @@ contains
   call tio_f_taix_time_to_utc_caldate(t_beg, year(1),month(1),day(1),hour_beg)
   call tio_f_taix_time_to_utc_caldate(t_end, year(2),month(2),day(2),hour_end)
 
-  if ((day(1) /= day(2)) .OR. (month(1) /= month(2))  &
-      .OR. (year(1) /= year(2))) then
-     call tell_error(tell_runtime_error,"time error",errstat)
-     return
-  endif
+  ! the following is removed per JCH recommendation
+  !if ((day(1) /= day(2)) .OR. (month(1) /= month(2))  &
+  !    .OR. (year(1) /= year(2))) then
+  !   call tell_error(tell_runtime_error,"time error",errstat)
+  !   return
+  !endif
+
   thisyear = year(1)
   thismonth = month(1)
   thisday = day(1)
