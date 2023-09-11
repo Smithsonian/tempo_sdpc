@@ -120,7 +120,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
-     "label,time,duration,mirror_x,num_steps,integration_time,repeat,timestamp\n";
+     "label,time,duration,mirror_x,num_steps,integration_time,repeat,timestamp,comment\n";
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
    uint16_t scan_num;
@@ -206,7 +206,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 
              num_scan_csm += entry->num_repeats_cbm ? 2 : 3;
 
-             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,%d,\"%s\"\n",
+             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,%d,\"%s\",\n",
                           scan_label,
                           tstart_tai,
                           entry->scan_duration / num_scans,
