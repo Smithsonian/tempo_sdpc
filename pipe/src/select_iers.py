@@ -40,7 +40,6 @@ def time_info (t):
     return info
 
 def run_sql_select (c, field, subst):
-    # Don't select the IERS bulletin that exactly matches the target date!
     cmd = "select path from 'IERS' where ({field} > :beg and {field} < :end) order by abs({field} - :tx)".format(**locals())
     c.execute(cmd, subst)
     rows = c.fetchall()
@@ -51,13 +50,13 @@ def select_iers_file (c, window_days, keys):
     utc_string= keys["time_coverage_start"]
     t = dateutil.parser.isoparse (utc_string)
     dt = dateutil.relativedelta.relativedelta (days=window_days)
+    dt1 = dateutil.relativedelta.relativedelta (days=1.0)
 
-    this = time_info (t)
+    # Don't select the IERS bulletin that exactly matches the target date!
+    prev = time_info (t-dt1)
     beg  = time_info (t-dt)
-    #end  = time_info (t+dt)
 
-    # Try to match both year and yday.
-    subst = {'tx':this["daytag"], 'beg':beg["daytag"], 'end':this["daytag"]}
+    subst = {'tx':prev["daytag"], 'beg':beg["daytag"], 'end':prev["daytag"]}
     rows = run_sql_select (c, 'daytag', subst)
 
     return rows
