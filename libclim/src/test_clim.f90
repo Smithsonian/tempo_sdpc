@@ -26,6 +26,7 @@ program test_clim
   if (errstat /= 0) call exit(1)
 
   bounds % hour_beg = 18.0
+  !bounds % hour_beg = 23.983
   bounds % hour_end = bounds % hour_beg + 6.0/60
   bounds % lon_min = -90.0
   bounds % lon_max = -80.0
@@ -45,6 +46,7 @@ program test_clim
   allocate (pres_z(nz+1), ap(nz+1), bp(nz+1))
 
   hour = 18.0
+  !hour = 0.0 + 1.0/60
   lon  = -85.0
   lat  = +36.0
 
@@ -98,11 +100,11 @@ program test_clim
   write(*,*)' i  pres_z        ap            bp            '// &
     'vmr_z         dN_z [cm^-2]  T_z[K]'
   do i=1,nz
-    write(*,'(i3,10(2x,1pe12.6))')i,pres_z(i),ap(i),bp(i),vmr_z(i), &
+    write(*,'(i3,10(2x,1pe13.6))')i,pres_z(i),ap(i),bp(i),vmr_z(i), &
       partial_column_z(i), temp_z(i)
   enddo
   i=nz+1
-  write(*,'(i3,10(2x,1pe12.6))')i,pres_z(i),ap(i),bp(i)
+  write(*,'(i3,10(2x,1pe13.6))')i,pres_z(i),ap(i),bp(i)
 
   deallocate(pres_z, ap, bp, vmr_z, partial_column_z, temp_z)
 

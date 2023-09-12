@@ -516,7 +516,7 @@ contains
 
     character (kind=c_char, len=path_bufsize) :: file_month0, file_month1
     integer :: i, nhours, have_forecast_files
-    integer (kind=8) :: timet
+    integer (kind=8) :: timet, timet_beg
     real (kind=4) :: wt0
     type (clim_pres_slab_type) :: cps0, cps1
 
@@ -527,15 +527,19 @@ contains
 
     call define_month_interp (cpt, month, day)
 
-    nhours = ceiling(hour_end) - floor(hour_beg) + 1
+    if (hour_beg > hour_end) then
+      nhours = iabs(modulo(ceiling(hour_end)+24 - floor(hour_beg) + 1,24))
+    else
+      nhours = iabs(ceiling(hour_end) - floor(hour_beg) + 1)
+    endif
 
     allocate (cpt % hours(nhours))
     cpt % nhours = nhours
     cpt % hours(:) = real((/(i, i=0,nhours-1)/) + floor(hour_beg), 4)
     cpt % year = year
 
-    timet = c_make_timet (year, month, day, int(hour_beg))
-    have_forecast_files = c_have_forecast_files (timet, nhours)
+    timet_beg = c_make_timet (year, month, day, int(hour_beg))
+    have_forecast_files = c_have_forecast_files (timet_beg, nhours)
     Have_Forecast = (have_forecast_files == 1)
 
     if (present(use_fcast)) then
@@ -545,7 +549,8 @@ contains
     if (Have_Forecast) then
 
       do i = 1, nhours
-        timet = c_make_timet (year, month, day, int(cpt % hours(i)))
+        !timet = c_make_timet (year, month, day, int(modulo(cpt % hours(i),24.0)))
+        timet = timet_beg + 3600 * (i-1)
         call make_forecast_path (timet, file_month0, errstat)
         call maybe_alloc_subset (cpt, file_month0, lon_min, lon_max, lat_min, lat_max, nhours, errstat)
         if (errstat /= 0) return
@@ -562,8 +567,8 @@ contains
       wt0 = cpt % month0_weight
 
       do i = 1, nhours
-        call make_climatology_path (cpt % month0, int(cpt % hours(i)), file_month0, errstat)
-        call make_climatology_path (cpt % month1, int(cpt % hours(i)), file_month1, errstat)
+        call make_climatology_path (cpt % month0, int(modulo(cpt % hours(i),24.0)), file_month0, errstat)
+        call make_climatology_path (cpt % month1, int(modulo(cpt % hours(i),24.0)), file_month1, errstat)
         call maybe_alloc_subset (cpt, file_month0, lon_min, lon_max, lat_min, lat_max, nhours, errstat)
         if (errstat /= 0) return
 
@@ -708,7 +713,7 @@ contains
     real (kind=4), optional, intent(out) :: p_surf, p_trop
 
     integer :: ilon0, ilat0, ihr0
-    real (kind=4) :: hr0, wt0, psurf, hr_min, hr_max
+    real (kind=4) :: hr0, wt0, psurf, hr_min, hr_max, hr_utc
     character (len=msg_bufsize) :: msg
 
     if (errstat /= 0) return
@@ -718,25 +723,32 @@ contains
 
     hr_min = cpt % hours(1)
     hr_max = cpt % hours(cpt % nhours)
+    hr_utc = hour_utc;
 
-    if ((hour_utc < hr_min) .or. (hr_max < hour_utc)) then
-      write (msg, '(a,f10.1)')'clim_pres: domain error: hour_utc=', hour_utc
+    ! If necessary, wrap into hour interval
+    if ((hr_utc < hr_min) .and. ((hr_utc + 24.0) <= hr_max) &
+        .and. (hr_min <= (hr_utc + 24.0))) then
+      hr_utc = hr_utc + 24.0
+    endif
+
+    if ((hr_utc < hr_min) .or. (hr_max < hr_utc)) then
+      write (msg, '(a,f10.1)')'clim_pres: domain error: hr_utc=', hr_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif
 
     hr0  = hr_min
-    ihr0 = ceiling (hour_utc - hr0)
+    ihr0 = ceiling (hr_utc - hr0)
     if (ihr0 <= 0) ihr0 = 1
 
     if (ihr0 + 1 > cpt % nhours) then
-      write (msg, '(a,f10.1)')'clim_pres: domain error: hour_utc=', hour_utc
+      write (msg, '(a,f10.1)')'clim_pres: domain error: hr_utc=', hr_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif
 
     ! This assumes the diurnal grid spacing is 1 hour
-    wt0 = 1.0 - (hour_utc - cpt % hours(ihr0))
+    wt0 = 1.0 - (hr_utc - cpt % hours(ihr0))
 
     psurf = (wt0 * cpt % p_surf (ilat0, ilon0, ihr0) &
              + (1.0 - wt0) * cpt % p_surf (ilat0, ilon0, ihr0+1))
@@ -907,7 +919,7 @@ contains
 
     type (clim_type) :: ct_month0, ct_month1
     integer :: i, nhours, err
-    integer (kind=8) :: timet
+    integer (kind=8) :: timet, timet_beg
     real (kind=4) :: hour_beg, hour_end, wt0
     character (len=path_bufsize) :: file_month0, file_month1
 
@@ -924,7 +936,7 @@ contains
     ! allocate storage for the required number of hours
     ! (usually either 2 or 3 hours)
 
-    nhours = ceiling(hour_end) - floor(hour_beg) + 1
+    nhours = iabs(ceiling(hour_end) - floor(hour_beg) + 1)
 
     allocate (cst % hours(nhours), &
               cst % clim(nhours), &
@@ -946,8 +958,11 @@ contains
     if (Have_Forecast) then
       ! read composition forecast
 
+      timet_beg = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(1),24.0)))
+
       do i = 1, nhours
-        timet = c_make_timet (cpt % year, cpt % month, cpt % day, int(cpt % hours(i)))
+        !timet = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(i),24.0)))
+        timet = timet_beg + 3600 * (i-1)
         call make_forecast_path (timet, file_month0, errstat)
         if (errstat /= 0) return
         call read_climatology (cpt, file_month0, name, cst % clim(i), errstat)
@@ -963,8 +978,8 @@ contains
       wt0 = cpt % month0_weight
 
       do i = 1,nhours
-        call make_climatology_path (cpt % month0, int(cst % hours(i)), file_month0, errstat)
-        call make_climatology_path (cpt % month1, int(cst % hours(i)), file_month1, errstat)
+        call make_climatology_path (cpt % month0, int(modulo(cst % hours(i),24.0)), file_month0, errstat)
+        call make_climatology_path (cpt % month1, int(modulo(cst % hours(i),24.0)), file_month1, errstat)
         if (errstat /= 0) return
 
         call read_climatology (cpt, file_month0, name, ct_month0, errstat)
@@ -988,7 +1003,7 @@ contains
     integer, intent(inout) :: errstat
 
     character (len=msg_bufsize) :: msg
-    real (kind=4) :: hr0, hr_min, hr_max
+    real (kind=4) :: hr0, hr_min, hr_max, hr_utc
 
     if (errstat /= 0) return
 
@@ -999,20 +1014,27 @@ contains
 
     hr_min = cpt % hours(1)
     hr_max = cpt % hours(cpt % nhours)
+    hr_utc = hour_utc
 
-    if ((hour_utc < hr_min) .or. (hr_max < hour_utc)) then
-      write (msg, '(a,f10.1)')'hrlonlat_lookup: domain error: hour_utc=', hour_utc
+    ! If necessary, wrap into hour interval
+    if ((hr_utc < hr_min) .and. ((hr_utc + 24.0) <= hr_max) &
+        .and. (hr_min <= (hr_utc + 24.0))) then
+      hr_utc = hr_utc + 24.0
+    endif
+
+    if ((hr_utc < hr_min) .or. (hr_max < hr_utc)) then
+      write (msg, '(a,f10.1)')'hrlonlat_lookup: domain error: hr_utc=', hr_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif
 
     ! This assumes the diurnal grid spacing is 1 hour
     hr0 = cst % hours(1)
-    ihr0 = ceiling (hour_utc - hr0)
+    ihr0 = ceiling (hr_utc - hr0)
     if (ihr0 <= 0) ihr0 = 1
 
     if (ihr0 + 1 > cst % nhours) then
-      write (msg, '(a,f10.1)')'hrlonlat_lookup: domain error: hour_utc=', hour_utc
+      write (msg, '(a,f10.1)')'hrlonlat_lookup: domain error: hr_utc=', hr_utc
       call tell_error (tell_runtime_error, msg, errstat)
       return
     endif

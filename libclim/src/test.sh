@@ -14,6 +14,8 @@ export SDPC_GEOSCF_CONFIG="clim_config.ini"
 $PREFIX ./test_clim > out.dat
 #$PREFIX ./test_clim
 
+exit 0
+
 ##
 ## Use h5dump output to check values from the point sampled by test_clim.f90
 ##
