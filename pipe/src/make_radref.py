@@ -155,9 +155,6 @@ for ix in range(0,nx,xtstep):
     fx = ix+xtstep
     if fx > nx:
         fx = nx
-        radtmp = ma.array(np.zeros([1,nx-ix,nw],dtype=np.float32),mask=True)
-    else:
-        radtmp = ma.array(np.zeros([1,xtstep,nw],dtype=np.float32),mask=True)
     print_message('Processing xtracks {} to {}'.format(ix,fx))
     for fprad, fpcld in zip(L1RAD_files,L2CLD_files):
         # Read L1 radiance files
@@ -176,25 +173,37 @@ for ix in range(0,nx,xtstep):
                 nominal_wvl = radsrc['band_290_490_nm']['nominal_wavelength'][:,:]
                 rad = radsrc['band_290_490_nm']['radiance'][:,ix:fx,:]
                 pqf = radsrc['band_290_490_nm']['pixel_quality_flag'][:,ix:fx,:]
+                sza = radsrc['band_290_490_nm']['solar_zenith_angle'][:,ix:fx]
+                try:
+                    tmpsza = np.float32(ma.concatenate([tmpsza,sza]))
+                except:
+                    tmpsza = np.float32(sza)
                 # Read L2 cloud files
                 try:
                     with Dataset(fpcld,'r') as cldsrc:
                         # Read cloud fraction
                         cfr = cldsrc['product']['cloud_fraction'][:,ix:fx]
+                        try:
+                            tmpcfr = np.float32(ma.concatenate([tmpcfr,cfr],axis=0))
+                        except:
+                            tmpcfr = np.float32(cfr)
                 except Exception as e:
                     print_message(e)
                     print_error_message('reading L2 cloud file {}'.format(fpcld))
-                # For each xtrack position keep only pixels that fill the cloud filter
+                # For each cross track position keep only pixels that fill the cloud filter
+                # rad[cld_mask,:] = ma.masked
                 cld_mask = (cfr < mincfr) | (cfr > maxcfr)
+                rad = ma.masked_where(np.repeat(cld_mask[:,:,np.newaxis],rad.shape[2],axis=2),rad)
                 # Only use spectral pixels with pqf equal to 0
                 pqf_mask = (pqf != 0)
-                # Apply this mask to the radiances
-                rad[cld_mask,:] = ma.masked
-                rad[pqf_mask] = ma.masked
-                radtmp = ma.concatenate([rad,radtmp],axis=0)
+                rad = ma.masked_where(pqf_mask,rad)
+                try:
+                    radtmp = ma.concatenate([radtmp,rad],axis=0)
+                except:
+                    radtmp = rad
                 # size, peak = tracemalloc.get_traced_memory()
                 # print_message('size: {0}; peak: {1}'.format(size/1024.0/1024.0/1024.0,peak/1024.0/1024.0/1024.0))
-                del rad, pqf, cld_mask, pqf_mask
+                del rad, pqf, cfr, sza, cld_mask, pqf_mask
         except Exception as e:
             print_message(e)
             print_error_message('reading L1 RAD file {}'.format(fprad))
@@ -214,8 +223,24 @@ for ix in range(0,nx,xtstep):
         wvlref[j,:] = nominal_wvl[j,:]
         mdqref[j,:][radref[j,:].mask] = 1
         numref[j]   = ma.sum(rad_mask)
+        try:
+            tmprad_mask = ma.concatenate([tmprad_mask,rad_mask[:,np.newaxis]],axis=1)
+        except:
+            tmprad_mask = rad_mask[:,np.newaxis]
 
-    del radmeans, radmed, radsig, mad, radtmp
+    try:
+        allcfr = ma.concatenate([allcfr,tmpcfr],axis=1)
+    except:
+        allcfr = tmpcfr
+    try:
+        allsza = ma.concatenate([allsza,tmpsza],axis=1)
+    except:
+        allsza = tmpsza
+    try:
+        allradmask = ma.concatenate([allradmask,tmprad_mask],axis=1)
+    except:
+        allradmask = tmprad_mask
+    del radmeans, radmed, radsig, mad, radtmp, tmpcfr, tmpsza, tmprad_mask, rad_mask
 
 # Save calculated radiance reference and associated variables to radref file.
 # First form a unique file name using date,scan,start granule and end granule.
@@ -247,6 +272,7 @@ with Dataset(local_granule_id,'w',clobber=True) as dst:
     # Create dimensions
     dst_nw = dst.createDimension('spectral_channel',nw)
     dst_nx = dst.createDimension('xtrack',nx)
+    dst_ns = dst.createDimension('nsteps',allcfr.shape[0])
     # Create variables
     dst_spc = dst.createVariable('spectrum',np.float64,('xtrack','spectral_channel'),fill_value=-1.0e+30,zlib=True,complevel=Deflate_Level)
     dst_spc.title = 'radiance spectrum'
@@ -267,3 +293,18 @@ with Dataset(local_granule_id,'w',clobber=True) as dst:
     dst_num.title='number of co-added spectra'
     dst_num.description='number of spectra considered in the mean to derive the radiance reference'
     dst_num[:] = numref
+
+    dst_cfr = dst.createVariable('cloud_fraction',np.float32,('nsteps','xtrack'),fill_value=-999,zlib=True,complevel=Deflate_Level)
+    dst_cfr.title='cloud fraction'
+    dst_cfr.description='cloud fraction of pixels from CLDO4 files'
+    dst_cfr[:] = allcfr
+
+    dst_sza = dst.createVariable('solar_zenith_angle',np.float32,('nsteps','xtrack'),fill_value=-999,zlib=True,complevel=Deflate_Level)
+    dst_sza.title='solar zenith angle'
+    dst_sza.description='solar zenith angles from L1B files'
+    dst_sza[:] = allsza
+
+    dst_msk = dst.createVariable('ground_pixel_mask',np.int8,('nsteps','xtrack'),fill_value=True,zlib=True,complevel=Deflate_Level)
+    dst_msk.title='groud pixel mask'
+    dst_msk.description='pixels used in radiance reference calculation; meaning: 0 pixel not used; 1 pixel used'
+    dst_msk[:] = ma.where(allradmask.data,1,0)
