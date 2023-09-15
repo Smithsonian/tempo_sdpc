@@ -70,6 +70,7 @@ Surface_Region_Type;
 #define SCAN_TYPE_PRIVATE_DATA \
    double min_sun_angle; \
    double max_sza; \
+   double short_scan_overlap_frac; \
    Surface_Point_Type scan_beg; \
    Surface_Point_Type scan_end; \
    Scan_Angle_Type scan_beg_angle; \
@@ -490,6 +491,16 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
                      "%s: reading surface point 'day_end': %s",
                      __func__, config_error_file (cfg));
         return -1;
+     }
+
+   /* Controls overlap of short scans; (0 <= f <= 1)
+    * values >0.5 give non-zero overlap.
+    * value = 0.5 gives gapless coverage with no overlap
+    * values <0.5 probably aren't particularly useful
+    */
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "short_scan_overlap_frac", &st->short_scan_overlap_frac))
+     {
+        st->short_scan_overlap_frac = 0.5;
      }
 
    if (0 != read_step_config (cfg, s, &st->dt))
@@ -1051,6 +1062,11 @@ static double scan_step_size (const Scan_Type *st)
    return st->step_size;
 }
 
+static double short_scan_overlap_frac (const Scan_Type *st)
+{
+   return st->short_scan_overlap_frac;
+}
+
 /* scan duration [days] */
 static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
 {
@@ -1114,6 +1130,7 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_delete = free_scan_type;
    st->st_scan_duration = scan_duration;
    st->st_step_size = scan_step_size;
+   st->st_short_scan_overlap_frac = short_scan_overlap_frac;
    st->st_integration_time = scan_integration_time;
    st->st_min_sun_angle = scan_min_sun_angle;
    st->st_max_sza = scan_max_sza;

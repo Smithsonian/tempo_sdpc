@@ -55,6 +55,9 @@ struct Scan_Type
    int (*st_scan_day_end)(const Scan_Type *, double *, double *);
    /**< retrieve the (lon,lat) coordinates of the day-end control point [deg] */
 
+   double (*st_short_scan_overlap_frac)(const Scan_Type *st);
+   /**< retrieve the short scan overlap fraction */
+
    int (*st_print_params)(const Scan_Type *, const char *, FILE *);
    /**< print the scan parameters to an open FILE pointer */
 

@@ -810,6 +810,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
 static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const AziElev_Type *end,
                             double *xstart, double *ystart, int *num_steps)
 {
+   double f = st->st_short_scan_overlap_frac (st);
    double step_size;
    int max_num_steps;
 
@@ -840,19 +841,14 @@ static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const 
     */
    xstart[0] = beg->azimuth;
    xstart[1] = xstart[0];
-   xstart[2] = (beg->azimuth + end->azimuth) * 0.5;
+   xstart[2] = f * beg->azimuth + (1.0 - f) * end->azimuth;
 
    *ystart = beg->elevation;
 
-   /* Morning and evening scans are the same length, to minimize
-    * the number of scan CBMs that might be generated to implement
-    * the scan plan. Both morning and evening scans purposely avoid
-    * the exact midpoint position. If all scans hit the midpoint,
-    * there is effectively a time coverage spike at that point.
-    * Smoother time coverage seems like a good idea, so we try
-    * to avoid such spikes.
+   /* When morning and evening scans are the same length, fewer custom
+    * CBMs may be needed to implement the scan plan.
     */
-   num_steps[0] = max_num_steps/2 - 1;
+   num_steps[0] = max_num_steps * f - 1;
    num_steps[1] = max_num_steps;
    num_steps[2] = num_steps[0];
 
@@ -993,7 +989,6 @@ static int scan_vis (Vis_Type *v, const Plan_List_Type *lst, double step_size,
           }
      }
    (void) fputs ("\n", stderr);
-
 
 #if 0
    if (entry)
