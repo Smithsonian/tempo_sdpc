@@ -118,6 +118,13 @@ static int read_limits (config_t *cfg, Scan_Type *st)
        || (CONFIG_TRUE != config_setting_lookup_float (s, "min_sun_angle", &st->min_sun_angle)))
      goto return_error;
 
+   /* hard-coded safety constraint */
+   if ((st->min_sun_angle < 60.0) || (st->min_sun_angle > 180.0))
+     {
+        fprintf (stderr, "*** SAFETY CONSTRAINT: limits_config.min_sun_angle must be in the range [60.0, 180.0] degrees\n");
+        goto return_error;
+     }
+
    return 0;
 
 return_error:
