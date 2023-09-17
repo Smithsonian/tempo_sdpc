@@ -102,7 +102,8 @@ def main():
     vm = read_var (filename, var_config, args.layer)
     lons, lats = np.meshgrid (vm.lon, vm.lat)
     cs = ax.pcolormesh (lons, lats, vm.var, cmap=cmap, rasterized=True,
-                        vmin=var_config.min, vmax=var_config.max)
+                        vmin=var_config.min, vmax=var_config.max,
+                        transform=ccrs.PlateCarree())
 
     sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
     sm.set_array([])

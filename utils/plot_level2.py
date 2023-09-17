@@ -83,7 +83,8 @@ def plot_var_map (ax, vm, var_config, cmap):
         var = np.transpose(vm.var[[ix],:])
         # If not rasterized, the output plot would be enormous.
         cs = ax.pcolormesh(lons, lats, var, cmap=cmap, rasterized=True,
-                           vmin=var_config.min, vmax=var_config.max)
+                           vmin=var_config.min, vmax=var_config.max,
+                           transform=ccrs.PlateCarree())
     return cs
 
 def main():
