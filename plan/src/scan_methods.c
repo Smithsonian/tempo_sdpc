@@ -810,7 +810,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
 static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const AziElev_Type *end,
                             double *xstart, double *ystart, int *num_steps)
 {
-   double f = st->st_short_scan_overlap_frac (st);
+   double f = st->st_short_scan_frac (st);
    double step_size;
    int max_num_steps;
 
