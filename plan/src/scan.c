@@ -314,7 +314,8 @@ static int lookup_int_time_and_dwell_time (const char *ccdtiming_path, int num_c
         if (integration_time < int_time[0]) {
            k = 0;
         } else if (integration_time > int_time[num_int_lines-1]) {
-           k = num_int_lines-1;
+           status = 1;
+           goto quiet_return_status;
         } else {
            k = bsearch_f (integration_time, int_time, num_int_lines);
         }
@@ -343,6 +344,7 @@ return_status:
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: lookup failed", __func__);
      }
+quiet_return_status:
    FREE(int_time);
    TIO_close (ncid);
    return status;
