@@ -697,7 +697,7 @@ contains
                               dimids = dimids_xtrack_step, &
                               long_name = "main data quality flag", &
                               valid_range = [0.0_r8, 2.0_r8], &
-                              fillvalue = -1.0_r8, &
+                              fillvalue = fill_short, &
                               attlist=att_main_dqf)
     call tiof_push_group (obj, tg_grp_product, errstat)
     call tiof_def_vars (obj, varlist, errstat)
