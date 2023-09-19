@@ -25,17 +25,24 @@ program test_clim
   call clim_query_nz (nz, errstat)
   if (errstat /= 0) call exit(1)
 
-  bounds % hour_beg = 18.0
-  !bounds % hour_beg = 23.983
-  bounds % hour_end = bounds % hour_beg + 6.0/60
+  !bounds % hour_beg = 18.0
+  !bounds % hour_end = bounds % hour_beg + 6.0/60
+
+  ! time intervals that contain 0h UTC can be troublesome
+  bounds % hour_beg = 23.9606525
+  bounds % hour_end = 0.06416
+
   bounds % lon_min = -90.0
   bounds % lon_max = -80.0
   bounds % lat_min = 15.0
   bounds % lat_max = 70.0
 
-  year = 2022
-  month = 1
-  day   = 25
+  !year = 2022
+  !month = 1
+  !day   = 25
+  year = 2023
+  month = 8
+  day   = 30
 
   call clim_pres_init (cpt, year, month, day, bounds, errstat)
   if (errstat /= 0) call exit(1)
@@ -45,8 +52,12 @@ program test_clim
 
   allocate (pres_z(nz+1), ap(nz+1), bp(nz+1))
 
-  hour = 18.0
-  !hour = 0.0 + 1.0/60
+  !hour = 18.0
+
+  ! try both sides of 0h UTC in troublesome interval
+  !hour = 23.98
+  hour = 0.04
+
   lon  = -85.0
   lat  = +36.0
 

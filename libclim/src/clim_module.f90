@@ -1059,7 +1059,7 @@ contains
     integer, intent(inout) :: errstat
 
     integer :: ihr0, ilon0, ilat0
-    real (kind=4) :: wt0
+    real (kind=4) :: wt0, hr_utc, hr_min, hr_max
     character (len=msg_bufsize) :: msg
 
     if (errstat /= 0) return
@@ -1071,11 +1071,21 @@ contains
       return
     endif
 
-    call hrlonlat_lookup (cst, cpt, hour_utc, lon, lat, ihr0, ilon0, ilat0, errstat)
+    hr_min = cst % hours(1)
+    hr_max = cst % hours(cst % nhours)
+    hr_utc = hour_utc
+
+    ! If necessary, wrap into hour interval
+    if ((hr_utc < hr_min) .and. ((hr_utc + 24.0) <= hr_max) &
+        .and. (hr_min <= (hr_utc + 24.0))) then
+      hr_utc = hr_utc + 24.0
+    endif
+
+    call hrlonlat_lookup (cst, cpt, hr_utc, lon, lat, ihr0, ilon0, ilat0, errstat)
     if (errstat /= 0) return
 
     ! This assumes the diurnal grid spacing is 1 hour
-    wt0 = 1.0 - (hour_utc - cst % hours(ihr0))
+    wt0 = 1.0 - (hr_utc - cst % hours(ihr0))
 
     values_z(:) = (wt0 * cst % clim(ihr0) % values(:,ilat0,ilon0) &
                 + (1.0 - wt0) * cst % clim(ihr0+1) % values(:,ilat0,ilon0))
