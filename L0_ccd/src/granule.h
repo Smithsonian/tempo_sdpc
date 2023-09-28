@@ -22,6 +22,7 @@ enum
    EXPREC_TYPE_IRR_REF,    /**< irradiance [reference diffuser] */
    EXPREC_TYPE_LIN_IRR,    /**< irradiance - linearity */
    EXPREC_TYPE_LIN_DARK,   /**< dark - linearity */
+   EXPREC_TYPE_RAD_TWI,    /**< twilight radiance (city lights) */
    EXPREC_TYPE_UNKNOWN = -1   /**< unknown */
 };
 

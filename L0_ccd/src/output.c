@@ -690,6 +690,7 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
         return NULL;
 
       case EXPREC_TYPE_RAD:
+      case EXPREC_TYPE_RAD_TWI:
         out->out_create = create_rad_file;
         out->out_write_rec = write_rad_rec;
         break;

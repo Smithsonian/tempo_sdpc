@@ -236,6 +236,11 @@ static int write_std_metadata (int ncid, int exposure_type, const Control_Type *
         template_basename = "radiance.met.template";
         break;
 
+      case EXPREC_TYPE_RAD_TWI:
+        prod_name = TEMPO_PROD_TYPE_RAD_TWI;
+        template_basename = "radiance.met.template";
+        break;
+
       default:
         tell_vwarn (0, "%s: no metadata template expansion support for exposure records of type %d",
                     __func__, exposure_type);
@@ -259,6 +264,7 @@ static int write_std_metadata (int ncid, int exposure_type, const Control_Type *
      goto return_status;
 
    if ((exposure_type == EXPREC_TYPE_RAD)
+       || (exposure_type == EXPREC_TYPE_RAD_TWI)
        || (exposure_type == EXPREC_TYPE_IRR_WRK)
        || (exposure_type == EXPREC_TYPE_IRR_REF))
      {
@@ -471,7 +477,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
               xr->storage_region_dark[3]);
 
    /* Compute noisesq before smear correction */
-   if ((exprec->exposure_type == EXPREC_TYPE_RAD)
+   if ((exprec->exposure_type == EXPREC_TYPE_RAD) || (exprec->exposure_type == EXPREC_TYPE_RAD_TWI)
        || (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type)))
      {
         if (0 != compute_noisesq_for_active_pixels (ccd, exprec->img, xr))
@@ -1230,6 +1236,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
    switch (exposure_type)
      {
       case EXPREC_TYPE_RAD:
+      case EXPREC_TYPE_RAD_TWI:
         if (0 != TIO_copy_granule_ident (ncid_from, ncid_to))
           goto return_status;
         if (0 != tio_copy_granule_flag_var (ncid_from, ncid_to))
@@ -1499,6 +1506,7 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
       case EXPREC_TYPE_IRR_REF:
       case EXPREC_TYPE_LIN_IRR:
       case EXPREC_TYPE_RAD:
+      case EXPREC_TYPE_RAD_TWI:
         /* For irradiances, we'll need to compute the solar illumination geometry.
          * For radiances, we'll compute the earth-sun distance.
          */
@@ -1511,8 +1519,8 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
 
       default:
         tell_verror (TELL_INVALID_DATA_ERROR,
-                     "%s: input granule contains exposures of unknown or unexpected type",
-                     __func__);
+                     "%s: input granule contains exposures of unknown or unexpected type (type=%d)",
+                     __func__, exposure_type);
         break;
      }
 

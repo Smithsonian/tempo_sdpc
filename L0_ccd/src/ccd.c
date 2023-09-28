@@ -586,6 +586,8 @@ static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
    int s, sb, se, p, pb, pe, num;
    double sum;
 
+   (void) obj;
+
    /* Consider the trailing serial pixels in quadrant A that reads
     * out toward the left.
     * This is a lovely diagram of those num_serial_trailing pixels:
