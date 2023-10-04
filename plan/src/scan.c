@@ -1085,16 +1085,31 @@ static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
    /* adjust scan duration to an integer number of seconds [in units of days] */
    return ceil_sec (duration);
 }
+static int __scan_num_steps_in_duration (const Step_Config_Type *dt, double duration_days)
+{
+   /* underestimate the number of steps to allow margin */
+   int np1 = (floor_sec(duration_days) * SEC_PER_DAY
+              - dt->scan_timing_margin - 2*dt->scan_reset) / dt->position_dwell;
+   return (np1 > 0) ? (np1-1) : 0;
+}
 
 static double scan_duration (const Scan_Type *st, int num_steps)
 {
    return __scan_duration_days (&st->dt, num_steps);
+}
+static int scan_num_steps_in_duration (const Scan_Type *st, double duration_days)
+{
+   return __scan_num_steps_in_duration (&st->dt, duration_days);
 }
 
 static double twilight_scan_duration (const Twilight_Scan_Type *tst, int num_steps)
 {
    /* FIXME - should twilight scan duration be computed differently? */
    return __scan_duration_days (&tst->dt, num_steps);
+}
+static int twilight_scan_num_steps_in_duration (const Twilight_Scan_Type *tst, double duration_days)
+{
+   return __scan_num_steps_in_duration (&tst->dt, duration_days);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,
@@ -1138,6 +1153,7 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
 
    st->st_delete = free_scan_type;
    st->st_scan_duration = scan_duration;
+   st->st_scan_num_steps_in_duration = scan_num_steps_in_duration;
    st->st_step_size = scan_step_size;
    st->st_short_scan_frac = short_scan_frac;
    st->st_integration_time = scan_integration_time;
@@ -1183,6 +1199,7 @@ Twilight_Scan_Type *twilight_scan_open (config_t *cfg)
    tst->tst_twilight_scan_region = twilight_scan_region;
    tst->tst_twilight_scan_region_angles = twilight_scan_region_angles;
    tst->tst_twilight_scan_duration = twilight_scan_duration;
+   tst->tst_twilight_scan_num_steps_in_duration = twilight_scan_num_steps_in_duration;
    tst->tst_twilight_integration_time = twilight_scan_integration_time;
 
    if (0 != read_twilight_scan_config (cfg, tst))

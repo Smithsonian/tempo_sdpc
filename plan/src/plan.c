@@ -42,6 +42,10 @@ int Plan_Verbose;
 
 #define IRRADIANCE_SUN_ANGLE_DEG 30.0
 
+#define CAL_WHEEL_CLOSE_DURATION_SEC (35.0)
+#define CAL_WHEEL_OPEN_DURATION_SEC (35.0)
+/* 25 sec for cal wheel to open/close, plus 10 sec margin */
+
 static double Min_Scan_Duration_Sec;
 
 static double __Unix_Epoch_JD;
@@ -810,7 +814,8 @@ return_status:
    return plan_list;
 }
 
-static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bound, Plan_List_Type **pnew_entry)
+static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, const Twilight_Scan_Type *twilight_scan,
+                         int is_start, double t_bound, Plan_List_Type **pnew_entry)
 {
    Plan_List_Type *new_entry = NULL;
    double scan_duration_days = entry->scan_duration / SEC_PER_DAY;
@@ -849,7 +854,19 @@ static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bou
    new_entry->xstart = xstart;
    new_entry->tstart = tstart;
    new_entry->scan_duration = duration_sec;
+#if 0
    new_entry->num_steps = frac * entry->num_steps;
+#else
+   /* FIXME - this is pretty ugly.  A more object oriented design would be better. */
+   if (entry->scan_type == TEMPO_SCAN_TYPE_NIGHTLIGHTS)
+     {
+        new_entry->num_steps = twilight_scan->tst_twilight_scan_num_steps_in_duration (twilight_scan, duration_sec/SEC_PER_DAY);
+     }
+   else
+     {
+        new_entry->num_steps = scan->st_scan_num_steps_in_duration (scan, duration_sec/SEC_PER_DAY);
+     }
+#endif
    new_entry->num_repeats = 1;
 
    *pnew_entry = new_entry;
@@ -857,7 +874,9 @@ static int partial_scan (const Plan_List_Type *entry, int is_start, double t_bou
    return 1;
 }
 
-static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, double mnv_end)
+static int insert_maneuver_gap (Plan_List_Type *plan_list,
+                                const Scan_Type *scan, const Twilight_Scan_Type *twilight_scan,
+                                double mnv_beg, double mnv_end)
 {
    Plan_List_Type *entry = NULL;
    Plan_List_Type *parent_entry = NULL;
@@ -964,7 +983,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              orig_num_repeats = entry->num_repeats;
 
              /* pre-gap partial scan */
-             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
+             if ((need_partial_scan = partial_scan (entry, scan, twilight_scan, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
                return -1;
              if (need_partial_scan)
                {
@@ -973,7 +992,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
                }
 
              /* post-gap partial scan */
-             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
+             if ((need_partial_scan = partial_scan (entry, scan, twilight_scan, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
                return -1;
              if (need_partial_scan)
                {
@@ -1008,7 +1027,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
         else if ((entry_beg <= mnv_beg) && (mnv_beg < entry_end))  /* maneuver begins during plan entry */
           {
              /* pre-gap partial scan */
-             if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
+             if ((need_partial_scan = partial_scan (entry, scan, twilight_scan, PARTIAL_SCAN_END, mnv_beg, &pre_gap_partial)) < 0)
                return -1;
              if (need_partial_scan)
                {
@@ -1024,7 +1043,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list, double mnv_beg, doubl
              /* post-gap partial scan */
              if (parent_entry)
                {
-                  if ((need_partial_scan = partial_scan (entry, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
+                  if ((need_partial_scan = partial_scan (entry, scan, twilight_scan, PARTIAL_SCAN_BEGIN, mnv_end, &post_gap_partial)) < 0)
                     return -1;
 
                   if (need_partial_scan)
@@ -1359,8 +1378,9 @@ return_status:
    return status;
 }
 
-static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
-                              const char *maneuver_file, char **plan_id)
+static int include_maneuvers (Plan_List_Type *plan_list, const Scan_Type *scan,
+                              const Twilight_Scan_Type *twilight_scan,
+                              config_t *cfg, const char *maneuver_file, char **plan_id)
 {
    Maneuver_Table_Type mt = MANEUVER_TABLE_DEFAULT_INIT;
    Maneuver_Window_Type *win;
@@ -1401,6 +1421,10 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
                      __func__);
         return -1;
      }
+
+   /* always allow time for the cal wheel to move */
+   maneuver_margin_before += CAL_WHEEL_CLOSE_DURATION_SEC;
+   maneuver_margin_after += CAL_WHEEL_OPEN_DURATION_SEC;
 
    if (CONFIG_TRUE != config_lookup_float (cfg, "limits_config.min_scan_duration", &Min_Scan_Duration_Sec))
      {
@@ -1447,7 +1471,7 @@ static int include_maneuvers (Plan_List_Type *plan_list, config_t *cfg,
              fprintf (stderr, "  end: time_t = %f -> %f sec since epoch\n", win->end_timet, mnv_end);
           }
 
-        if (0 != insert_maneuver_gap (plan_list, mnv_beg, mnv_end))
+        if (0 != insert_maneuver_gap (plan_list, scan, twilight_scan, mnv_beg, mnv_end))
           goto return_status;
      }
 
@@ -1873,7 +1897,7 @@ int main (int argc, char **argv)
    if (NULL == plan_list)
      goto return_status;
 
-   if (0 != include_maneuvers (plan_list, &cfg, maneuver_file, &plan_id))
+   if (0 != include_maneuvers (plan_list, scan, twilight_scan, &cfg, maneuver_file, &plan_id))
      goto return_status;
 
    if (0 != verify_safety_constraints (solar_geom, scan, plan_list))

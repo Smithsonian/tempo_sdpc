@@ -22,6 +22,9 @@ struct Scan_Type
    double (*st_scan_duration)(const Scan_Type *, int);
    /**< compute the time [sec] required to complete a scan with N steps */
 
+   int (*st_scan_num_steps_in_duration)(const Scan_Type *, double);
+   /**< compute the number of steps in a scan that fits with a given time [days], including margins, etc */
+
    double (*st_integration_time)(const Scan_Type *);
    /**< retrieve the integration time [sec] for a single exposure in a co-add */
 
@@ -88,6 +91,9 @@ struct Twilight_Scan_Type
 
    double (*tst_twilight_scan_duration)(const Twilight_Scan_Type *, int);
    /**< compute the time [sec] required to complete a scan with N steps */
+
+   int (*tst_twilight_scan_num_steps_in_duration)(const Twilight_Scan_Type *, double);
+   /**< compute the number of steps in a scan that fits with a given time [days], including margins, etc */
 
    double (*tst_twilight_integration_time)(const Twilight_Scan_Type *);
    /**< retrieve the integration time [sec] for a single twilight exposure in a co-add */
