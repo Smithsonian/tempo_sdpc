@@ -104,7 +104,7 @@ def main():
         window_sec = 0
 
     if args.wait > 0:
-        num_tries_remaining = 2
+        num_tries_remaining = 10
     else:
         num_tries_remaining = 1
 
