@@ -133,7 +133,7 @@ def main():
 
     sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
     sm.set_array([])
-    cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.0e')
+    cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.2e')
     cbar.set_label(vm.units, size=6)
     cbar.ax.tick_params(labelsize=6)
 
