@@ -429,7 +429,6 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
             || isnan(gr->amf_strat[i])
             || isnan(gr->slant_column[i])
             || isnan(tropopause_pressure[i])
-            || (slant_column_uncertainty[i] < 1.0e13)
             || (slant_column_uncertainty[i] > 1e16))
           {
              continue;
