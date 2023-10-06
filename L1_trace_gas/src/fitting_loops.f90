@@ -704,6 +704,14 @@ CONTAINS
       omi_column_amount(ipix,iloop) = fitcol
       omi_column_uncert(ipix,iloop) = dfitcol
 
+      ! On occasion, the fit returns an exit value of 0 or 1 
+      ! (suspicious or good) but a fitting uncertainty of zero. 
+      ! In these cases, the SCD fit is almost always unphysical. 
+      ! If this happens, force the fit convergence flag to "suspect".
+      IF ( (ABS(dfitcol) < 1e-15) .AND. (radfit_exval > -1) ) THEN
+         omi_fitconv_flag (ipix,iloop) = INT (0, KIND=i2)
+      END IF
+
       ! CCM assign fit residual
       fitspc_out(1:adj_num,ipix,1) = fitspc(1:adj_num)
       fitspc_out(1:adj_num,ipix,2) = adj_spec(1:adj_num)
