@@ -1,3 +1,42 @@
+TEMPO_SDPC_v4.1.0   2023 Oct
+============================
+Numerous updates based on performance during on-orbit instrument commissioning:
+1. Updates to reference data and configuration files:
+   * Molecular cross-sections (O2-O2, water vapor)
+   * Instrument calibration key data parameters
+   * Tuning retrieval algorithm configuration parameters
+2. Code changes
+   * Level 0-1a CCD processing
+     - change octant phase identification method
+     - fix flagging neighbors of saturated pixels
+     - (ir)radiance uncertainty was overestimated
+   * Eliminate time coverage gaps in IRU, SMC telemetry
+     delivered to INR SW in L1 radiance granules
+   * Wavelength calibration
+     - support fitting wavelength-dependent additive
+       correction to nominal wavelength grid
+     - support generating more diagnostic output
+   * O2O2 cloud algorithm
+     - change temperature correction coefficients
+     - change temperature used for O2O2 SCD correction
+     - use dry pressure to compute SCD
+     - implement surface topography correction of surface pressure
+   * Trace gas algorithm
+     - Improve diagnostic output
+     - Fix handling of fill values on cloud fraction input
+   * NO2 strat/trop separation
+     - compute vertical column troposphere uncertainty
+     - fix quality flagging issue
+   * Revise cloud filter logic for HCHO radiance reference
+     calculation
+   * Fix problem handling time intervals that span 0h UTC
+   * drop unused variables from L1 radiance file
+3. Observation planning updates
+    * support specifying two-sided margins on maneuver windows
+    * support tuning morning/evening scan region width
+    * add a comment field to CSV scan plan file
+4. Default OTS configuration updated to use INRSW R2.3.8
+
 TEMPO_SDPC_v4.0.0   2023 Mar 28
 ===============================
    * Make GOES spacecraft references more generic (e.g. GOES-East/West
