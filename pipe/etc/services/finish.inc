@@ -31,4 +31,6 @@ case "$exitval" in
       ;;
 esac
 
+(export msg ; envsubst < $SDPC_PIPE_DIR/etc/alert_message.tmpl | mailx -t)
+
 s6-permafailon 300 5 1,sigabrt,sigsegv,sigbus echo "$msg" 1>&2

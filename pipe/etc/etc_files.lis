@@ -1,3 +1,4 @@
+alert_message.tmpl
 sdpc_env.sh
 pipe_control.cfg
 table_config.ini
