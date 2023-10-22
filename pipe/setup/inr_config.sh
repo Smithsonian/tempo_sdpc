@@ -47,3 +47,7 @@ sed -e s,@INR_PROCESSING_ROOT@,$inr_run_dir,g \
     -e s,@SDPC_REFDATA_DIR@,$SDPC_REFDATA_DIR,g \
     -e s,@SDPC_ANCILLARY_ROOT@,$SDPC_ANCILLARY_ROOT,g \
    $INR_CONFIG_SRCDIR/${PIPELINE_CONF_FILE}.in > $INR_CONFIG_TARGET_DIR/$PIPELINE_CONF_FILE
+
+# Create a backup copy of the original config file to facilitate cold restart
+/bin/cp $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE} \
+        $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE}.cold_start

@@ -31,6 +31,11 @@ case "$exitval" in
       ;;
 esac
 
-(export msg ; envsubst < $SDPC_PIPE_DIR/etc/alert_message.tmpl | mailx -t)
+(export SERVICE ; export msg ; envsubst < $SDPC_PIPE_DIR/etc/alert_message.tmpl | mailx -t)
+
+if [ "$SERVICE" == inr ] && [ "$sigval" -eq 6 ] ; then
+   # start background process to recover from INR crash
+   handle_inr_crash.py 2>&1 > $SDPC_PIPE_DIR/log/inr/crashlog.$(date -Is) &
+fi
 
 s6-permafailon 300 5 1,sigabrt,sigsegv,sigbus echo "$msg" 1>&2

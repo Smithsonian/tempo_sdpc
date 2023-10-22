@@ -19,6 +19,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                select_ims.py select_iers.py pull_ioc_cache.sh \
                select_l0.py select_irr.py select_dark.py register.py \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py \
+               fixup_radl1_inputfiles.py handle_inr_crash.py \
                copy_level1_frame.py global_attribute.py radiance_telem_only.py \
                asdc_mkscript.sl asdc_files.py asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
                asdc_transfer.py asdc_exclude_filter.py update_trend_files.py \
