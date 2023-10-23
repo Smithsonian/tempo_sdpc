@@ -900,24 +900,41 @@ opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    full.tstart = ceil(full.tstart * SEC_PER_DAY)/SEC_PER_DAY;
 
    /* Fill out the morning with sunrise scans: */
-   rise.tstart = full.tstart;   /* initialization */
-   rise.num_repeats = ceil((full.tstart - limit_times->jd_utc_beg)
-                          / rise.duration);
-   /* impose sun_angle safety constraint */
-   while (rise.num_repeats > 0)
+   if (limit_times->user_imposed_start_time)
      {
-        rise.tstart = full.tstart - rise.num_repeats * rise.duration;
-        if (0 != solar_geom->sgt_sat_sun_position (solar_geom, rise.tstart, &sun_angle, NULL, NULL))
-          return NULL;
-        if (sun_angle > min_sun_angle)
-          break;
-        rise.num_repeats -= 1;
+        rise.tstart = limit_times->jd_utc_beg;
+        rise.num_repeats = floor((full.tstart - limit_times->jd_utc_beg)
+                                 / rise.duration);
+     }
+   else
+     {
+        rise.tstart = full.tstart;   /* initialization */
+        /* impose sun_angle safety constraint */
+        rise.num_repeats = ceil((full.tstart - limit_times->jd_utc_beg)
+                                / rise.duration);
+        while (rise.num_repeats > 0)
+          {
+             rise.tstart = full.tstart - rise.num_repeats * rise.duration;
+             if (0 != solar_geom->sgt_sat_sun_position (solar_geom, rise.tstart, &sun_angle, NULL, NULL))
+               return NULL;
+             if (sun_angle > min_sun_angle)
+               break;
+             rise.num_repeats -= 1;
+          }
      }
 
    /* Fill out the afternoon with sunset scans: */
    set.tstart = full.tstart + full.num_repeats * full.duration;
-   set.num_repeats = ceil((limit_times->jd_utc_end - set.tstart)
-                         / set.duration);
+   if (limit_times->user_imposed_start_time)
+     {
+        set.num_repeats = floor((limit_times->jd_utc_end - set.tstart)
+                                / set.duration);
+     }
+   else
+     {
+        set.num_repeats = ceil((limit_times->jd_utc_end - set.tstart)
+                               / set.duration);
+     }
    /* impose sun_angle safety constraint */
    while (set.num_repeats > 0)
      {

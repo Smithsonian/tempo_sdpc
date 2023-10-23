@@ -923,6 +923,7 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
    slt->jd_utc_end_full = floor_sec (slt->jd_utc_end_full);
    slt->jd_utc_beg_safe = ceil_sec (slt->jd_utc_beg_safe);
    slt->jd_utc_end_safe = floor_sec (slt->jd_utc_end_safe);
+   slt->user_imposed_start_time = 0;
 
    return 0;
 }

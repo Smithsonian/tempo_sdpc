@@ -158,6 +158,9 @@ typedef struct
 
    double jd_utc_end_safe;
    /**< Time when the aperture must close [days] */
+
+   int user_imposed_start_time;
+   /**< Non-zero when user specified the scan start time */
 }
 Scan_Limit_Times_Type;
 

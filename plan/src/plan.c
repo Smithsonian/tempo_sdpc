@@ -92,6 +92,8 @@ static void usage (void)
    fprintf (stderr, "   -e | --epoch EPOCH       Define the epoch as a UTC time: YYYY-MM-DDTHH:MM:SSZ\n");
    fprintf (stderr, "   -d | --date DATE         Plan start date:\n");
    fprintf (stderr, "                                DATE = (YYYY-MM-DD | DDDD days since the epoch)\n");
+   fprintf (stderr, "   -H | --hour [HOUR[;delta]]   HOUR=UTC hour to start scanning, with optional delta [hours] adjustment\n");
+   fprintf (stderr, "                                When HOUR=0, program will choose nearest safe start hour based on SZA\n");
    fprintf (stderr, "   -n | --ndays N           N=number of days to plan [default=14]\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME[-k] [default=std]\n");
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file.\n");
@@ -761,9 +763,66 @@ static int write_safe_limits (const Scan_Type *scan, Solar_Geom_Type *solar_geom
    return 0;
 }
 
+static int impose_user_specified_start_hour (double utc_start_hour, double utc_start_hour_delta,
+                                             Scan_Limit_Times_Type *limits)
+{
+   Cal_Date_Type u;
+   double jd_utc = limits->jd_utc_beg;
+
+   /* utc_start_hour < -1 means the program will choose the start time,
+    * not constrained to be on the hour */
+   if (utc_start_hour < -1.0)
+     return 0;
+
+   novas_cal_date (limits->jd_utc_beg, &u.year, &u.month, &u.day, &u.hour);
+
+   /* -1 <= utc_start_hour < 0.0 means program will choose based on SZA,
+    * and round to the nearest hour consistent with safety */
+   if (utc_start_hour < 0.0)
+     {
+        utc_start_hour = (int) u.hour;
+     }
+
+   while ((0.0 <= utc_start_hour) && (utc_start_hour < 24.0))
+     {
+        char datestr[32];
+
+        jd_utc = novas_julian_date (u.year, u.month, u.day, utc_start_hour);
+        if ((limits->jd_utc_beg_safe < jd_utc) && (jd_utc < limits->jd_utc_end_safe))
+          break;
+
+        if (utc_start_hour_delta != 0.0)
+          {
+             utc_start_hour += utc_start_hour_delta;
+             continue;
+          }
+
+        if (0 == mkjdtimestr (jd_utc, datestr, sizeof(datestr)))
+          {
+             fprintf (stderr, "*** Start time %s violates safety constraint\n", datestr);
+          }
+        else fprintf (stderr, "*** UTC start hour %f violates safety constraint (jd_utc=%f)\n", utc_start_hour, jd_utc);
+        return -1;
+     }
+
+   limits->user_imposed_start_time = 1;
+   limits->jd_utc_beg = jd_utc;
+
+   /* We've confirmed that the new start time is safe, but we also
+    * need to ensure the other limit times are consistent with this
+    * start time.
+    */
+   if (limits->jd_utc_beg_full < jd_utc) limits->jd_utc_beg_full = jd_utc;
+   if (limits->jd_utc_end_full < jd_utc) limits->jd_utc_end_full = jd_utc;
+   if (limits->jd_utc_end < jd_utc) limits->jd_utc_end = jd_utc;
+
+   return 0;
+}
+
 static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Type *solar_geom,
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
                                            const Cal_Date_Type *t0, int num_plan_days,
+                                           double utc_start_hour, double utc_start_hour_delta,
                                            Twilight_Scan_Type *twilight_scan,
                                            Split_Scan_Type *split_scan)
 {
@@ -788,6 +847,9 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
         Plan_List_Type *entry = NULL;
 
         if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
+          goto return_status;
+
+        if (0 != impose_user_specified_start_hour (utc_start_hour, utc_start_hour_delta, &limit_times))
           goto return_status;
 
         if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, split_scan)))
@@ -1566,6 +1628,8 @@ int main (int argc, char **argv)
    FILE *fp_scan = stdout;
    FILE *fp_master = NULL;
    FILE *fp_irr = NULL;
+   double utc_start_hour = -2.0;
+   double utc_start_hour_delta = 0.0;
    double irr_angle = IRRADIANCE_SUN_ANGLE_DEG;
    char *scan_method = DEFAULT_SCAN_METHOD_NAME;
    uint16_t scan_type = 0;
@@ -1585,6 +1649,7 @@ int main (int argc, char **argv)
    static struct option long_options[] =
      {
         {"help",         no_argument,       0, 'h'},
+        {"hour",         required_argument, 0, 'H'},
         {"config",       required_argument, 0, 'c'},
         {"date",         required_argument, 0, 'd'},
         {"epoch",        required_argument, 0, 'e'},
@@ -1640,7 +1705,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hNvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hH:NvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1702,6 +1767,25 @@ int main (int argc, char **argv)
              break;
            case 'h':
              usage();
+             break;
+           case 'H':
+             if (NULL == strchr (optarg, ';'))
+               {
+                  if (1 != sscanf (optarg, "%lf", &utc_start_hour))
+                    {
+                       fprintf (stderr, "*** error reading UTC start hour option %s\n", optarg);
+                       usage();
+                    }
+               }
+             else
+               {
+                  if (2 != sscanf (optarg, "%lf;%lf", &utc_start_hour, &utc_start_hour_delta))
+                    {
+                       fprintf (stderr, "*** error reading UTC start hour option %s\n", optarg);
+                       usage();
+                    }
+               }
+             if (utc_start_hour == 0.0) utc_start_hour = -1.0;
              break;
            case 'M':
              maneuver_file = optarg;
@@ -1893,6 +1977,7 @@ int main (int argc, char **argv)
      }
 
    plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
+                                   utc_start_hour, utc_start_hour_delta,
                                    twilight_scan, split_scan);
    if (NULL == plan_list)
      goto return_status;
