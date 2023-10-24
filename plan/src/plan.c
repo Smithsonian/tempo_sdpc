@@ -1336,8 +1336,13 @@ static int process_maneuver_file (Maneuver_Table_Type *mt, const char *maneuver_
           }
         else if (beg_timet < last_end)
           {
+#if 0
              tell_verror (TELL_RUNTIME_ERROR, "%s: invalid maneuver table: %s", __func__, maneuver_file);
              goto return_status;
+#else
+             tell_vwarn (0, "%s: maneuver windows overlap (beg=%lf precedes end=%lf) in %s",
+                         __func__, beg_timet, last_end, maneuver_file);
+#endif
           }
      }
 
