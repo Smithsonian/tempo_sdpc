@@ -641,7 +641,11 @@ static int mean_serial_trailing_oct (const CCD_Object_Type *obj,
           }
      }
 
-   *mean = sum / num;
+   if (num > 0)
+     {
+        *mean = sum / num;
+     }
+   else *mean = nan("");
 
    return 0;
 }
@@ -769,6 +773,7 @@ static int correct_offset_oct (float mean_eoffset, const Image_Subset_Type *oct,
                                Image_Type *img)
 {
    int s, sb0, se0, p, pb0, pe0;
+   int finite_mean_offset = isfinite(mean_eoffset);
 
    if ((oct == NULL) || (img == NULL))
      return -1;
@@ -786,8 +791,8 @@ static int correct_offset_oct (float mean_eoffset, const Image_Subset_Type *oct,
           {
              if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                continue;
-             oct_pixels[s] -= mean_eoffset;
-             if (oct_pixels[s] < 0)
+             if (finite_mean_offset) oct_pixels[s] -= mean_eoffset;
+             if ((oct_pixels[s] < 0) || (0 == finite_mean_offset))
                {
                   pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
                }

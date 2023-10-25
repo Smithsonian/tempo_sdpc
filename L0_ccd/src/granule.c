@@ -94,6 +94,12 @@ static int unpack_pixel_buffer (int *pixel_buffer, Image_Type *img)
              break;
           }
 
+        if (0 == isfinite(pixel_value))
+          {
+             pixel_value = IMAGE_PIXEL_FILL_VALUE;
+             quality_flag |= IMAGE_PQF_MISSING_DATA;
+          }
+
         pixel_quality_flags[i] = quality_flag;
         pixels[i] = pixel_value;
      }
