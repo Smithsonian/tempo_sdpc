@@ -2,8 +2,6 @@
 ###
 ### File is self documenting - comment lines are prefixed with hash, grouped parameters fall after brackets.
 ###
-### TODO marks items needing attention later in SDPC integration, after instrument delivery, host selection or launch
-###
 
 ## Granule configuration
 
@@ -37,7 +35,7 @@ timeoutPeriod=900
 continuityInterval=5000
 # The time of day to generate the status report, in seconds from 0:00 UTC.
 statusReportTime=0
-# The amount of time each granule covers, in seconds
+# The nominal amount of time each granule covers, in seconds
 granuleTime=360
 # The regular expression for filename to determine whether a file is a granule
 filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})(\.\w+)??\.nc$
@@ -203,7 +201,7 @@ hoodSize=144
 chipStep=128
 # Margin to leave at boundaries in up-sampled pixels
 hoodMargin=128
-# Limit on Earth central angle beyond which there are no tie points in degrees
+# Limit on Earth central angle beyond which there are no tie points allowed in degrees
 ECALimit=80
 # Mode of measuring TiePoints. Possible values are "LEFT_REF", "RIGHT_REF", "BINOCULAR"
 # "LEFT_REF" and "RIGHT_REF" is used when we are testing the software in AutoCorrelation Mode
@@ -219,10 +217,10 @@ useOpticalFlowMaxLoops=10
 useOpticalFlowRTol=1e-4
 # The velocity tolerance for optical flow calculation in km/s
 useOpticalFlowVTol=1e-5
-# The cos of limb limit (cos(85*pi/180))
+# The cos of limb limit (cos(85*pi/180)) for binocular tie-point solution
 cosLimb=0.087155742747658
 
-## Parameters to contral tie-point validity checking
+## Parameters to control tie-point validity checking
 
 [TiePointChecker]
 
@@ -244,7 +242,6 @@ maxTPHorizontalResidual=50
 maxTPVerticalResidual=20
 
 ## Parameters related to the flight hardware
-## TODO item is to update with as-built parameters
 
 [satellite]
 
@@ -266,37 +263,33 @@ IGFOVns=41.49e-6
 # Sets in accordance with INR error requirements for reference image
 measWeight=28e-6
 # Gyroscope angle random walk in radians/root(second) for Kalman Filter process noise
-farrenkopf=6.80387520069123e-07
+farrenkopf_e=0
+farrenkopf_v=6.80387520069123e-07
+farrenkopf_u=0
 # The uncertainty in acceleration due to solar radiation pressure in km/s^2
 srp_uncertainty=7e-11
 # The scan mechanism shimming bias in radians
-#ewbias=3.593891191107580
-ewbias=3.5981
-nsbias=0.094634441669632
-clockingbias=-0.000611683705914
+ewbias=3.599225
+nsbias=0.09479
+clockingbias=110e-6
 # The 3-sigma ephemeris position error in km
 ephPosErr=1.5
 # The 3-sigma ephemeris velocity error in km/s
 ephVelErr=2.5e-5
-# The satellite steering method (INERTIAL=0, ORBIT_FRAME=1(default), TARGETED=2)
+# Satellite attitude control steering method (targeted)
 steeringMethod=2
-# The satellite steering latitude in degree. This is only used if sterring method is TARGETED. Default to 0
+# Targeted sterring parameters in degrees
 steeringLat=0
-# The satellite steering longitude in degree. This is only used if sterring method is TARGETED. Default to -104.5
 steeringLon=-91
-# The satellite steering roll bias in degree. This is only used if sterring method is TARGETED. Default to 0
 steeringRollBias=0
-# The satellite steering pitch bias in degree. This is only used if sterring method is TARGETED. Default to 0
 steeringPitchBias=0
-# Satellite position jumping limit in km
-maxSatPosJump=1.5
 
 # Rates of change allocated to Kalman Filter states for process noise
 # States are ordered as they are documented in TEMPO-SER-4008
 # Units are per second or radians/seconds
-drift_roll=1e-8
-drift_pitch=1e-8
-drift_yaw=1e-8
+drift_roll=1e-9
+drift_pitch=1e-9
+drift_yaw=1e-9
 drift_mag=1.16e-08
 drift_misalign=0
 drift_smile=0
@@ -322,9 +315,9 @@ drift_v3=0
 
 # Random walk coefficients allocated to Kalman Filter states for process noise
 # Units are per root(second) or radians/root(second)
-randomWalkCoefficient_roll=1.111e-6
-randomWalkCoefficient_pitch=1.111e-6
-randomWalkCoefficient_yaw=1.111e-6
+randomWalkCoefficient_roll=1.111e-7
+randomWalkCoefficient_pitch=1.111e-7
+randomWalkCoefficient_yaw=1.111e-7
 randomWalkCoefficient_mag=0
 randomWalkCoefficient_misalign=0
 randomWalkCoefficient_smile=0
@@ -351,6 +344,9 @@ randomWalkCoefficient_v3=0
 # Polarities of the DITs
 north_dit_sense=-1
 east_dit_sense=1
+
+# Satellite position jumping limit in km
+maxSatPosJump=1.5
 
 ## Gyroscope configuration
 [Gyroscope]
@@ -381,8 +377,7 @@ scaleFactor_0 = 0
 scaleFactor_1 = 0
 scaleFactor_2 = 0
 scaleFactor_3 = 0
-
-# Each element in the sensing matrix in row major order (1/sqrt(3))
+# Each element in the sensing matrix in row major order
 sensingElement_0 = 0.600164
 sensingElement_1 = 0.551662
 sensingElement_2 = 0.579200
@@ -424,7 +419,7 @@ UT1UTCTimeout=10
 
 # The number of hours (That has tiepoint measurement) in training mode. In training mode,
 # the tiepoints are not edited based on n-signa criteria, nor norm of residual
-numHoursInTraining=4
+numHoursInTraining=1
 
 # The minimum number of TiePoints needed to update the Kalman Filter
 minNumTPs=2
@@ -439,7 +434,7 @@ useMonocular=USE_RIGHT
 nlags=0
 
 # The uncertainties for the TiePoints
-# These values are (20.0e-6)^2 to estimate tie-points accuracy
+# These values are (20.0e-6)^2 to estimate tie-point accuracy
 RTieBothEW = 4.0e-10
 RTieBothNS = 4.0e-10
 RTieLeftEW = 4.0e-10
@@ -448,7 +443,7 @@ RTieRightEW = 4.0e-10
 RTieRightNS = 4.0e-10
 
 # Fraction of tie points to reserve as witnesses for INR error and not be used in Kalman Filter
-ReservedMeasurementsRatio=0.5
+ReservedMeasurementsRatio=0.05
 # Editing threshold for tie points, discards if norm(residual) > limit
 ResidualThreshold=500e-06
 # Editing n-sigma criteria for tie points, discards if norm(residual)>n*sigma(sample)
@@ -465,13 +460,13 @@ delta_smile=0
 delta_eflvar=0
 delta_e0=0
 delta_n0=0
-delta_ke=1e-3
-delta_xe=1e-3
-delta_kee2=1e-3
-delta_kne2=1e-3
+delta_ke=0
+delta_xe=0
+delta_kee2=0
+delta_kne2=0
 delta_dx=0
-delta_dy=1e-3
-delta_magdiff=1e-03
+delta_dy=0
+delta_magdiff=0
 delta_misaligndiff=0
 delta_smilediff=0
 delta_eflvardiff=0
@@ -483,22 +478,21 @@ delta_v2=1e-3
 delta_v3=1e-3
 
 # Initial state for cold-start of Kalman Filter
-# TODO item is to set up in accordance with as-built instrument
-init_state_roll=-5e-5
-init_state_pitch=1e-3
-init_state_yaw=-2e-4
+init_state_roll=0
+init_state_pitch=0
+init_state_yaw=0
 init_state_magnification=7.92e-3
 init_state_misalignment=0
 init_state_smile=3.4e-6
-init_state_eflvar=0
+init_state_eflvar=3.367e-7
 init_state_e0=0
 init_state_n0=0
 init_state_ke=-7.5e-3
 init_state_xe=0
-init_state_kee2=2e-2
+init_state_kee2=0
 init_state_kne2=2e-2
 init_state_dx=0
-init_state_dy=-1.83e-5
+init_state_dy=-5.5e-6
 init_state_magdiff=0
 init_state_misaligndiff=0
 init_state_smilediff=0
@@ -511,11 +505,10 @@ init_state_v2=0
 init_state_v3=0
 
 # Initial state covariance diagonal one-sigma values for cold-start of Kalman Filter
-# TODO item is to set up in accordance with as-built instrument and Host spacecraft
-init_cov_roll=1.11111111111111e-05
-init_cov_pitch=1.11111111111111e-05
-init_cov_yaw=1.11111111111111e-05
-init_cov_magnification=4.4444e-05
+init_cov_roll=1.0e-08
+init_cov_pitch=1.0e-08
+init_cov_yaw=1.0e-08
+init_cov_magnification=4.4444e-07
 init_cov_misalignment=0
 init_cov_smile=0
 init_cov_eflvar=0
@@ -526,7 +519,7 @@ init_cov_xe=4.4444e-05
 init_cov_kee2=4.4444e-03
 init_cov_kne2=4.4444e-03
 init_cov_dx=0
-init_cov_dy=2.25e-10
+init_cov_dy=4.67e-11
 init_cov_magdiff=4.4444e-05
 init_cov_misaligndiff=0
 init_cov_smilediff=0
@@ -538,6 +531,9 @@ init_cov_v1=1.18e-12
 init_cov_v2=1.18e-12
 init_cov_v3=1.18e-12
 
+# maximum idle seconds for the granules before triggering a warm restart. Default to 1200 seconds (20 minutes)
+maxIdleSecs=1200
+
 ## File with the JPL planetary ephemeris data
 
 [jplephem]
@@ -545,7 +541,6 @@ init_cov_v3=1.18e-12
 filename=@INR_REFDATA_DIR@/jpleph2000-2060.dat
 
 ## File for logs and directory for alarms
-## TODO item is to tailor to the SDPC environment
 
 [Logging]
 
@@ -560,7 +555,6 @@ ECA=60.0
 # Max Solar Zenith Angle in degrees beyond which data is not included in evaluation
 SZA=70.0
 # Effective Instantaneous Field of View in radians for spatial sampling uniformity and gaps
-# TODO item to update per the as-built instrument
 EIFOVx=129.2e-6
 EIFOVy=41.49e-6
 # Effective sigma limit for Median Absolute Difference filtering to cull outlier points
@@ -582,9 +576,9 @@ SamplingUniformityReqNS=4.2
 
 [Boresight]
 
-orientation_x=-0.001487019974675
-orientation_y=-0.094759886897611
-orientation_z=0.995498999842171
+orientation_x=0.004563
+orientation_y=-0.094710
+orientation_z=0.995494
 
 ## Text file with Greater North America latitudes and longitudes in degrees
 ## This is used to test compliance with coverage requirements, and it is a
@@ -609,16 +603,19 @@ red_min_spectral=657.5
 red_max_spectral=686.0
 # Red band white balancing factor
 red_factor=11.9402
+#red_factor=4.0378e+28
 # Green band construction: min and max wavelengths in nm
 green_min_spectral=550.0
 green_max_spectral=575.5
 # Red band white balancing factor
 green_factor=12.0595
+#green_factor=3.4164e+28
 # Blue band construction: min and max wavelengths in nm
 blue_min_spectral=450.0
 blue_max_spectral=471.0
 # Blue band white balancing factor
 blue_factor=12.0542
+#blue_factor=2.7944e+28
 
 ## Parameters for controlling the Scan Tailoring Function
 
@@ -626,21 +623,21 @@ blue_factor=12.0542
 
 # Target latitude and longitude for the center of the Field of Regard in degrees
 # TODO item is to adjust to match MRD spec when Host station is known
-##target_lat=34.267307178526053
-##target_lon=-90.804907121282682
 target_lat=33.71
 target_lon=-91.6546
-# Fundamental period for Fourier model of repeating attitude offsets in hours
-#### ORIGINAL VALUE -> num_hours_per_period=24
-num_hours_per_period=1
+# Maximum period for Fourier model of repeating attitude offsets in hours
+num_hours_per_period=24
 # Number of roll, pitch, and yaw states to use in model fitting each granule
-#### ORIGINAL VALUE -> samples_per_granule=1
+#samples_per_granule=1
 samples_per_granule=4
 # Order of the Fourier model for each attitude state
 # TODO item is to adjust in orbit
-fourier_terms_roll=0
-fourier_terms_pitch=0
-fourier_terms_yaw=0
+fourier_terms_roll=4
+fourier_terms_pitch=4
+fourier_terms_yaw=4
+# The threshold of fitting R squared to calculate scan tailoring coefficients. Default to 0.7
+minRsquared=0.6
+
 # The directory where the planning ephemeris files are located
 ephemerisDir=@SDPC_ANCILLARY_ROOT@/var/host/ephemeris
 # The regular expression for filename to determine whether the file is a ephemeris file
