@@ -931,9 +931,9 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    int varid, no_fill, lon_bounds_status, num_kept;
    int status = -1;
    float fill_value = TIO_FILL_FLOAT;
-   float band_km = 5.0;      /* output bounding polygon resolution */
-   float vza_max_deg = 85.0; /* avoid pixels near the Earth's limb */
-   int dx=8, ds=2;            /* reduce final polygon point density */
+   float band_km = 15.0;     /* output bounding polygon resolution */
+   float vza_max_deg = 80.0; /* avoid pixels near the Earth's limb */
+   int dx=1, ds=1;           /* set >1 to reduce final polygon point density */
 
    *num = 0;
    *plon = NULL;
@@ -1100,26 +1100,24 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
              n++;
           }
      }
-#if 0
    /* The northernmost boundary points are sometimes jagged and/or
-    * confusing to deal with.  The simplest solution is to just omit
-    * these boundary points, letting that side of the polygon close
-    * with a single line segment connecting the northernmost endpoints
+    * confusing to deal with.  The simplest solution is to just omit the
+    * the most troublesome of these points, letting any remaining boundary gap
+    * close with a single line segment connecting the northernmost endpoints
     * of the eastern and western boundaries.
     */
-   for (s = num_steps-1; s >= 0; s -= ds)
+   for (s = 0; s < num_steps; s += ds)
      {
-        if (bx1[s] >= 0)
+        if ((bx1[s] % num_xtrack) == 0)
           {
              side[n] = 3;
              bdry[n] = bx1[s];
              n++;
           }
      }
-#endif
 
-   /* The polygon is assumed to be a closed shape, so there's no need
-    * to explicitly close it by appending a copy of the first point */
+   /* If necessary, we will explicitly close the polygon by appending
+    * a copy of the first point */
 
    if ((NULL == (lon = (float *)TIO_MALLOC(n * sizeof(float))))
        ||(NULL == (lat = (float *)TIO_MALLOC(n * sizeof(float)))))
@@ -1190,6 +1188,14 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
         int k = indices[i];
         lon[i] = lon[k];
         lat[i] = lat[k];
+     }
+
+   /* If necessary, close the polygon */
+   if ((lon[num_kept-1] != lon[0]) || (lat[num_kept-1] != lat[0]))
+     {
+        lon[num_kept] = lon[0];
+        lat[num_kept] = lat[0];
+        num_kept++;
      }
 
    *num = num_kept;

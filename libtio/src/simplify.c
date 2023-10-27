@@ -188,11 +188,11 @@ int simplify_dp (const float *lon_deg, const float *lat_deg, int num,
              point_sep_sqr (&pt, beg, i, &d13);
              point_sep_sqr (&pt, i, end, &d23);
 
-             if (d13.len_sqr > d12.len_sqr + d23.len_sqr)
+             if (d13.len_sqr >= d12.len_sqr + d23.len_sqr)
                {
                   dev_sqr = d23.len_sqr;
                }
-             else if (d23.len_sqr > d12.len_sqr + d13.len_sqr)
+             else if (d23.len_sqr >= d12.len_sqr + d13.len_sqr)
                {
                   dev_sqr = d13.len_sqr;
                }
