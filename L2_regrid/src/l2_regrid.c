@@ -576,10 +576,13 @@ cleanup_and_return:
    return status;
 }
 
-static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
+static int meta_set_bounding_polygon (TIO_Meta_Type *meta, const Pixel_Regrid_Type *r,
                                       const Pixel_Grid_Param_Type *dest)
 {
-   float lon[4], lat[4];
+   float *lon=NULL, *lat=NULL, *slon=NULL, *slat=NULL;
+   int *indices=NULL;
+   float dx, dy, band_km = 5.0;
+   int i, num, num_kept, status = -1;
 
    /* The following standard keyword values are set:
     * @verbatim
@@ -590,20 +593,75 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta,
     * @endverbatim
     */
 
-   lon[0] = dest->xmin;  lat[0] = dest->ymin;
-   lon[1] = dest->xmax;  lat[1] = dest->ymin;
-   lon[2] = dest->xmax;  lat[2] = dest->ymax;
-   lon[3] = dest->xmin;  lat[3] = dest->ymax;
-
-   if ((0 != tio_meta_set_acdd_geospatial_bounds (meta, lon, lat, 4))
-       || (0 != tio_meta_set_odl_bounding_polygon (meta, lon, lat, 4)))
+   if (0 != Pixel_regrid_dest_boundary (r, dest, &indices, &num))
      return -1;
 
-   return 0;
+   if (NULL == (lon = (float *)MALLOC (2 * num * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+   lat = lon + num;
+
+   dx = (dest->xmax - dest->xmin) / dest->nx;
+   dy = (dest->ymax - dest->ymin) / dest->ny;
+
+   for (i = 0; i < num; i++)
+     {
+        int k = indices[i];
+        int ix = k % dest->nx;
+        int iy = k / dest->nx;
+        lon[i] = dest->xmin + ix * dx;
+        lat[i] = dest->ymin + iy * dy;
+     }
+
+   FREE(indices);
+   indices = NULL;
+
+   /* simplify the boundary */
+   if ((num_kept = tio_meta_simplify_dp (lon, lat, num, band_km, &indices)) < 0)
+     goto return_status;
+
+   /* Allocate an extra (lon,lat) point in case
+    * we need to add a point to close the polygon */
+   if ((NULL == (slon = (float *)MALLOC ((num_kept+1) * sizeof(float))))
+       || (NULL == (slat = (float *)MALLOC ((num_kept+1) * sizeof(float)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+   for (i = 0; i < num_kept; i++)
+     {
+        int k = indices[i];
+        slon[i] = lon[k];
+        slat[i] = lat[k];
+     }
+
+   /* If necessary, close the polygon */
+   if ((slon[num_kept-1] != slon[0]) || (slat[num_kept-1] != slat[0]))
+     {
+        slon[num_kept] = slon[0];
+        slat[num_kept] = slat[0];
+        num_kept++;
+     }
+
+   if ((0 != tio_meta_set_acdd_geospatial_bounds (meta, slon, slat, num_kept))
+       || (0 != tio_meta_set_odl_bounding_polygon (meta, slon, slat, num_kept)))
+     goto return_status;
+
+   status = 0;
+return_status:
+   FREE(lon);
+   FREE(slon);
+   FREE(slat);
+   FREE(indices);
+
+   return status;
 }
 
 static int write_metadata (TIO_Meta_Type *meta, int ncid,
-                           const Product_Type *prod,
+                           const Product_Type *prod, const Pixel_Regrid_Type *r,
                            const Pixel_Grid_Param_Type *dest,
                            const TIO_Scan_Ident_Type *lst)
 {
@@ -635,7 +693,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
           return -1;
      }
 
-   if (0 != meta_set_bounding_polygon (meta, dest))
+   if (0 != meta_set_bounding_polygon (meta, r, dest))
      return -1;
 
    if (0 != tio_meta_write_ncattr (meta, ncid))
@@ -778,7 +836,7 @@ static int make_l3_product (const Product_Type *prod,
    if (-1 == TIO_label_product (ncid, prod->name, 3, prod->processing_version))
      goto return_status;
 
-   if (0 != write_metadata (meta, ncid, prod, dest, lst))
+   if (0 != write_metadata (meta, ncid, prod, r, dest, lst))
      goto return_status;
 
    /* The first input file establishes each variable's dimensionality */
@@ -902,11 +960,13 @@ int main (int argc, char **argv)
    int status = 1;
    int log_level = 0;
    int want_diagnostic_output = 0;
+   int force = 0;
    static struct option long_options[] =
      {
         {"help",       no_argument,       0, 'h'},
         {"config",     required_argument, 0, 'c'},
         {"ignore",     no_argument,       0, 'i'},
+        {"force",     no_argument,       0, 'f'},
         {"diagnostic", no_argument,       0, 'd'},
         {"verbose",    no_argument,       0, 'v'},
         {0,0,0,0}
@@ -915,7 +975,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "dhivc:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "dfhivc:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -926,6 +986,9 @@ int main (int argc, char **argv)
              break;
            case 'c':
              param_file = optarg;
+             break;
+           case 'f':
+             force++;
              break;
            case 'h':
              usage();
@@ -991,8 +1054,8 @@ int main (int argc, char **argv)
    for (prod = product_list; prod != NULL; prod = prod->next)
      {
         int reject;
-        /* Don't overwrite an existing file */
-        if (0 == access (prod->outfile, F_OK))
+        /* Don't overwrite an existing file unless force option is present */
+        if ((force == 0) && (0 == access (prod->outfile, F_OK)))
           continue;
         if ((expect_scan_ident != 0)
             && (NULL == (lst = read_scan_ident (prod->input_files, prod->num_input_files, prod->name, &reject))))

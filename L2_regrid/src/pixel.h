@@ -320,6 +320,21 @@ extern int *Pixel_regrid_overlap_map (const Pixel_Regrid_Type *r);
  */
 extern double *Pixel_regrid_area_weight_sum (const Pixel_Regrid_Type *r, double scale, double fill_value);
 
+/** Find the boundary pixels of the destination region.
+ *
+ * @param[in]  r      Pixel_Regrid_Type structure allocated
+ *                    by \ref Pixel_open_regrid, and with (private)
+ *                    pixel overlap structure initialized by
+ *                    \ref Pixel_find_overlaps.
+ * @param[in]  dest       The destination grid parameters.
+ * @param[out] pindices   Pointer to allocated array of boundary pixel indices in the
+ *                        destination grid, index = lon_index + lat_index * num_lons
+ * @param[out] num        Number of boundary points
+ * @return 0 on success, -1 on error
+ */
+extern int Pixel_regrid_dest_boundary (const Pixel_Regrid_Type *r, const Pixel_Grid_Param_Type *dest,
+                                       int **pindices, int *num);
+
 /* Debugging tools */
 
 extern int __Pixel_print_overlap (const Pixel_Regrid_Type *r, int dest_pixel_index);

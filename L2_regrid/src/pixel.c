@@ -872,6 +872,98 @@ int Pixel_regrid (const Pixel_Regrid_Type *r, const int *src_mask,
    return 0;
 }
 
+int Pixel_regrid_dest_boundary (const Pixel_Regrid_Type *r, const Pixel_Grid_Param_Type *dest,
+                                int **pindices, int *num)
+{
+   int *mask=NULL, *indices=NULL;
+   int *byb=NULL, *byt=NULL, *bdry=NULL;
+   int max_num_boundary, y_first_ok, y_last_ok;
+   int i, j, n, status = -1;
+
+   *pindices = NULL;
+   *num = 0;
+
+   /* Quick return if source and destination grids don't overlap. */
+   if (r->overlap == NULL)
+     return 0;
+
+   max_num_boundary = 2 * (dest->nx + dest->ny);
+
+   if ((NULL == (mask = (int *)MALLOC (r->num_dest_pixels * sizeof(int))))
+       || (NULL == (bdry = (int *)MALLOC (max_num_boundary * sizeof(int))))
+       || (NULL == (indices = (int *)MALLOC (max_num_boundary * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+
+   /* create a mask showing which destination pixels
+    * receive source contributions */
+   for (i = 0; i < r->num_dest_pixels; i++)
+     {
+        mask[i] = (r->overlap[i] != NULL);
+     }
+
+   byt = indices;
+   byb = byt + max_num_boundary/2;
+
+   /* for each x, find the y boundaries */
+   for (i = 0; i < dest->nx; i++)
+     {
+        y_first_ok = -1;
+        y_last_ok = -1;
+        for (j = 0; j < dest->ny; j++)
+          {
+             if (mask[i + j * dest->nx] != 0)
+               {
+                  y_last_ok = j;
+                  if (y_first_ok < 0)
+                    y_first_ok = j;
+               }
+          }
+        if (y_first_ok >= 0)
+          {
+             byb[i] = i + y_first_ok * dest->nx;
+             byt[i] = i + y_last_ok * dest->nx;
+          }
+        else
+          {
+             byb[i] = -1;
+             byt[i] = -1;
+          }
+     }
+
+   /* The region boundary polygon we want is now this set of points
+    * {byb, rev(byt)}, skipping -1 boundary indices.
+    */
+   n = 0;
+   for (i = 0; i < dest->nx; i++)
+     {
+        if (byb[i] >= 0)
+          {
+             bdry[n] = byb[i];
+             n++;
+          }
+     }
+   for (i = dest->nx-1; i >= 0; i--)
+     {
+        if (byt[i] >= 0)
+          {
+             bdry[n] = byt[i];
+             n++;
+          }
+     }
+
+   *pindices = bdry;
+   *num = n;
+
+   status = 0;
+return_status:
+   FREE(mask);
+   FREE(indices);
+   return status;
+}
+
 #define REGRID_BYTES(typestr, type) \
 static int regrid_bytes_##typestr (const Pixel_Regrid_Type *r, const int *src_mask, \
                                    const type *fill_value, const type *src, type *dest) \
