@@ -765,6 +765,37 @@ extern int tio_meta_set_lev1_bounding_polygon (TIO_Meta_Type *meta, int grp);
  */
 extern int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat);
 
+/** Douglas-Peucker polyline simplification.
+ * @param[in] lon_deg   Pointer to an array of num longitude coordinates
+ *                      defining a polygon boundary
+ * @param[in] lat_deg   Pointer to an array of num latitude coordinates
+ *                      defining a polygon boundary
+ * @param[in] num       Number of input polygon boundary points
+ * @param[in] band_km   Width of a band within which boundary details
+ *                      (departures from a straight-line) may be eliminated.
+ * @param[in] pindex    Pointer to an output array of array indices indicating
+ *                      which points are to be kept.
+ * @return -1 on error, num_kept = number of kept points on success
+ *
+ * This is a stack-based (non-recursive) implementation.
+ * The algorithm is described in:
+ *   Douglas, D. H., and T. K. Peucker, Algorithms for the reduction
+ *   of the number of points required to represent a digitized line
+ *   of its caricature, Can. Cartogr., 10, 112-122, 1973.
+ * and this implementation was based on an earlier implementation by:
+ *   Dr. Gary J. Robinson, Environmental Systems Science Centre,
+ *   University of Reading, Reading, UK
+ *
+ * The polygon is assumed to be specified in geospatial longitude-latitude
+ * coordinates in degrees.  The simplification eliminates details within
+ * a band of width band_km kilometers.  Vertices of the simplified polygon
+ * are returned in an index array:
+ *
+ *  num_kept = simplify_dp (lon, lat, num, band_km, &indices)
+ */
+extern int tio_meta_simplify_dp (const float *lon_deg, const float *lat_deg, int num,
+                                 float band_km, int **pindex);
+
 /** Write metadata keywords as attributes in a specified netCDF4/HDF5 group
  * @param[in]  meta   Pointer of type \a TIO_Meta_Type allocated by \a tio_meta_open
  * @param[in]  grp   Integer device code for writing to a group in a netCDF4/HDF5

@@ -1407,6 +1407,12 @@ return_status:
    return status;
 }
 
+int tio_meta_simplify_dp (const float *lon_deg, const float *lat_deg, int num,
+                          float band_km, int **pindex)
+{
+   return simplify_dp (lon_deg, lat_deg, num, band_km, pindex);
+}
+
 #define MAX_DATETIME_KEYLEN 72
 static int meta_set_datetime (TIO_Meta_Type *meta, const char *str, const char *key_prefix)
 {
