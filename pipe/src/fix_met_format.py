@@ -45,6 +45,24 @@ def impose_paren_state (name, parens_required, text):
 
     return text[:b] + s + text[eol:]
 
+def filter_boundary_coords_for_asdc (name, text):
+    """
+    ASDC asked us to remove newlines from bounding polygon coordinate arrays.
+    Whatever.
+    """
+    # find the object
+    beg = re.search ('OBJECT[ ]*=[ ]*{}'.format(name), text)
+    if (beg == None):
+        return text
+    b = beg.end()
+    end = re.search ('[ \n]*END_OBJECT[ ]*=[ ]*{}'.format(name), text)
+    e = end.start()
+    # find the value
+    value = re.search ('VALUE[ ]*=', text[b:e])
+    b += value.end()
+    s = " " + " ".join(text[b:e].split())
+    return text[:b] + s + text[e:]
+
 def process_file (metfile):
 
     with open (metfile, 'r') as fp:
@@ -56,6 +74,10 @@ def process_file (metfile):
 
     for name,state in paren_states.items():
         text = impose_paren_state (name, state, text)
+
+    coordinates = ['GRINGPOINTLATITUDE', 'GRINGPOINTLONGITUDE', 'GRINGPOINTSEQUENCENO']
+    for name in coordinates:
+        text = filter_boundary_coords_for_asdc (name, text)
 
     with open (metfile, 'w') as fp:
         fp.write(text)
