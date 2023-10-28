@@ -83,11 +83,18 @@ def main():
 
     filename = args.filename[0]
 
+    # parse OGS boundary polygon attribute
+    with NetCDFFile(filename) as nc:
+        geospatial_bounds = nc.getncattr("geospatial_bounds")
+    bdry_pts = geospatial_bounds.lstrip('POLYGON((').rstrip('))').split(',')
+    bdry_lon = [float(p.split(' ')[1]) for p in bdry_pts]
+    bdry_lat = [float(p.split(' ')[0]) for p in bdry_pts]
+
     var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
 
     fig = plt.figure()
     ax = plt.subplot (1,1,1, projection=ccrs.Miller())
-    ax.set_extent ([-155, -30, 15, 55], ccrs.PlateCarree())
+    ax.set_extent ([-155, -30, 15, 62], ccrs.PlateCarree())
     gl = ax.gridlines(draw_labels=True, linewidth=0.5)
     gl.top_labels=False
     gl.right_labels=False
@@ -111,7 +118,8 @@ def main():
     cbar.set_label(vm.units, size=6)
     cbar.ax.tick_params(labelsize=6)
 
-    plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.73)
+    ax.plot (bdry_lon, bdry_lat, color='g', transform=ccrs.PlateCarree())
+    plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.825)
     plt.title ("{}".format(os.path.basename(filename)), fontsize='x-small')
 
     #plt.show()
