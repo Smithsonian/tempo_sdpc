@@ -12,6 +12,8 @@ import numpy as np
 import yaml
 import argparse
 
+Sqlite_Trace = False
+
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -28,9 +30,11 @@ def get_rad_info (path):
     with NetCDFFile (path, "r") as nc:
         tstart = nc.getncattr ('time_coverage_start_since_epoch')
         tend = nc.getncattr ('time_coverage_end_since_epoch')
+        scan_num = nc.getncattr ('scan_num')
 
     info = {}
     info["tmid"] = 0.5*(tstart+tend)
+    info["scan_num"] = scan_num
     return info
 
 def lookup_radiance_path (c, basename):
@@ -42,7 +46,7 @@ def lookup_radiance_path (c, basename):
     else:
         return result[0]
 
-def select_matching_radref (c, window_days, window_hours, minwidth, info):
+def select_matching_radref (c, window_days, window_hours, minwidth, thisscan, info):
     sec_per_day = 86400.0
     sec_per_hour = 3600.0
     tx = info["tmid"]
@@ -50,8 +54,16 @@ def select_matching_radref (c, window_days, window_hours, minwidth, info):
     tmax = window_days * sec_per_day + window_hours * sec_per_hour;
 
     # First, get the candidate list, with the newest listed first
-    subst = {'beg':tx-tmax, 'end':tx-sec_per_day, 'minwidth':minwidth}
-    cmd = "select path,0.5*(tstart+tend) from 'RADREF_L1' where :beg <= 0.5*(tstart+tend) and 0.5*(tstart+tend) <= :end and num_mirror_pos >= :minwidth order by tstart desc;"
+    if thisscan:
+        scan_num_label = "%%S%03d%%" % (info["scan_num"])
+        subst = {'beg':tx - 3*3600.0, 'end':tx, 'scan_num_label': scan_num_label}
+        cmd = 'select path,0.5*(tstart+tend) from "RADREF_L1" where 0.5*(tstart + tend) between :beg and :end and filename like :scan_num_label order by tstart desc;'
+    else:
+        t1 = tx-tmax
+        t2 = tx-sec_per_day
+        subst = {'beg':min(t1,t2), 'end':max(t1,t2), 'minwidth':minwidth}
+        cmd = "select path,0.5*(tstart+tend) from 'RADREF_L1' where 0.5*(tstart + tend) between :beg and :end and num_mirror_pos >= :minwidth order by tstart desc;"
+
     c.execute(cmd, subst)
 
     # Select from the list
@@ -59,6 +71,8 @@ def select_matching_radref (c, window_days, window_hours, minwidth, info):
     min_t_delta = window_days
     min_h_delta = window_hours / 24.0
     tol = min_t_delta * min_h_delta
+    if tol <= 0.0:
+        tol = 1/24.0
     for row in c:
         tmid = row[1]
         t_delta = abs(tx - tmid) / sec_per_day
@@ -80,7 +94,9 @@ def connect_database (db_path):
     """
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
-    #conn.set_trace_callback(print)
+    global Sqlite_Trace
+    if Sqlite_Trace:
+        conn.set_trace_callback(print)
     return conn
 
 def config_file_defaults (filename):
@@ -127,16 +143,21 @@ def main():
                          help="Acceptable offset in hours")
     parser.add_argument ('--minwidth', default=minwidth, type=int,
                          help="Minimum acceptable scan width")
+    parser.add_argument ('--thisscan', action='store_true', help="scan specific search")
+    parser.add_argument ('--trace', action='store_true', help="trace sqlite query")
     parser.add_argument ('radiance_file', help="Basename of Level 1 radiance file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
 
+    global Sqlite_Trace
+    Sqlite_Trace = args.trace
+
     db_path = get_db_path()
 
     with connect_database (db_path) as conn:
-        radiance_path = lookup_radiance_path (conn.cursor(), args.radiance_file)
+        radiance_path = lookup_radiance_path (conn.cursor(), os.path.basename(args.radiance_file))
 
     if radiance_path is None:
         print ('*** radiance file not in database: {}'.format (args.radiance_file))
@@ -147,7 +168,7 @@ def main():
     with connect_database (db_path) as conn:
         c = conn.cursor()
         try:
-            radref = select_matching_radref (c, args.days, args.hours, args.minwidth, rad_info)
+            radref = select_matching_radref (c, args.days, args.hours, args.minwidth, args.thisscan, rad_info)
         except:
             radref = ""
 
