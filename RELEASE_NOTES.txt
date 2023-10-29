@@ -1,3 +1,15 @@
+TEMPO_SDPC_v4.2.0   YYYY MMM
+============================
+  * Add handler script to recover from INR crashes caused by data dropouts
+  * New features for observation planning
+    - support two-sided maneuver window margins
+    - support starting scans at a user-specified UTC hour
+  * Update L0_ccd to more robustly handle data corruption
+  * Update to INR release r2.3.9
+  * Improve geospatial bounding polygons in product metadata
+    - L2 polygons are now closed
+    - L3 polygons now bound L2 coverage area
+
 TEMPO_SDPC_v4.1.0   2023 Oct
 ============================
 Numerous updates based on performance during on-orbit instrument commissioning:
