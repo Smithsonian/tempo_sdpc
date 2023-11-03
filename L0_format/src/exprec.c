@@ -402,15 +402,19 @@ static void set_radiance_granule_flag (int curr_granule, int num_granules, uint1
    if (curr_granule == 0)
      {
         granule_flag |= TEMPO_GRANULE_FLAG_IS_FIRST;
+        /* INR warm restart is triggered when the first granule of a scan has bit
+         * TEMPO_SCAN_TYPE_SCAN_SEQ_START set and is followed by a granule with that bit not set.
+         * In my opinion [JCH 2023-11-03], the INR SW's interpretation of this bit is not optimal,
+         * but since the automatic warm restart mechanism is expected to handle the vast majority
+         * of restart situations, it seems not worthwhile to pursue refining the restart mechanism
+         * that's driven by setting this granule flag bit. */
+        if (scan_type & TEMPO_SCAN_TYPE_SCAN_SEQ_START) granule_flag |= TEMPO_GRANULE_FLAG_SCAN_SEQ_START;
      }
    if (curr_granule == num_granules-1)
      {
         granule_flag |= TEMPO_GRANULE_FLAG_IS_LAST;
      }
-   if (scan_type & TEMPO_SCAN_TYPE_SCAN_SEQ_START)
-     {
-        granule_flag |= TEMPO_GRANULE_FLAG_SCAN_SEQ_START;
-     }
+
    *pgranule_flag = granule_flag;
 }
 
