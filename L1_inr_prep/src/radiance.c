@@ -94,6 +94,60 @@ void radiance_close (Radiance_Type *r)
    free_radiance_type (r);
 }
 
+static int fixup_granule_flag (int ncid)
+{
+   int start, count, granule_num, granule_flag;
+
+   /* Early in the TEMPO mission, the scan_seq_start bit was set in all
+    * granules of a scan for which an INR warm restart was needed
+    * (e.g. first scan of each day, or first scan following a maneuver).
+    * On the other hand, the INR server triggered a warm restart only
+    * when it encountered a subsequent granule with the scan_seq_start
+    * bit not set. There was a misunderstanding here. The INR server implementation
+    * assumed the scan_seq_start bit would only be set in the first granule
+    * of the scan (handling of a single-granule scan might have been a problematic
+    * corner case, but let's not go there right now). Later, the INR SW was modified
+    * to perform an automatic restart after any sufficiently long idle period,
+    * so setting the scan_seq_start bit was mostly not needed, and this mechanism
+    * became much less important. To facilitate reprocessing of radiance scans collected
+    * early in the mission, we fixup the misunderstanding by adjusting the bit setting.
+    * We ensure that the scan_seq_start bit is set only in the first granule of any scan.
+    * Everywhere else, we un-set it.
+    */
+   if (0 != TIO_get_att (ncid, NC_GLOBAL, "granule_num", NC_INT, &granule_num))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unable to read granule_num", __func__);
+        return -1;
+     }
+
+   /* We make changes only in granules that aren't the first */
+   if (granule_num == 1)
+     return 0;
+
+   start = 0;
+   count = 1;
+   if (0 != TIO_get_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &granule_flag))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unable to read granule_flag", __func__);
+        return -1;
+     }
+
+   /* We make no change when the scan_seq_start bit is not set */
+   if ((granule_flag & TEMPO_GRANULE_FLAG_SCAN_SEQ_START) == 0)
+     return 0;
+
+   /* When the scan_seq_start bit is set, we clear it, and update
+    * the file before delivery to INR */
+   granule_flag &= ~TEMPO_GRANULE_FLAG_SCAN_SEQ_START;
+   if (0 != TIO_put_var_section (ncid, TEMPO_VAR_GRANULE_FLAG, &start, &count, NC_INT, &granule_flag))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unable to write granule_flag", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
 Radiance_Type *radiance_open (const char *file)
 {
    Radiance_Type *r = NULL;
@@ -105,6 +159,9 @@ Radiance_Type *radiance_open (const char *file)
      goto return_error;
 
    if (0 != tio_history_append_cmdline (r->ncid))
+     goto return_error;
+
+   if (0 != fixup_granule_flag (r->ncid))
      goto return_error;
 
    if (0 != tio_use_file_epoch (r->ncid))
