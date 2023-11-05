@@ -118,7 +118,7 @@ def main():
     cbar.set_label(vm.units, size=6)
     cbar.ax.tick_params(labelsize=6)
 
-    ax.plot (bdry_lon, bdry_lat, color='g', transform=ccrs.PlateCarree())
+    ax.plot (bdry_lon, bdry_lat, color='g', lw=0.5, transform=ccrs.PlateCarree())
     plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.825)
     plt.title ("{}".format(os.path.basename(filename)), fontsize='x-small')
 

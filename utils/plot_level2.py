@@ -24,11 +24,13 @@ import cartopy.crs as ccrs
 import cartopy.feature
 
 class Var_Map (object):
-    def __init__(self, lon_bnds, lat_bnds, var, units):
+    def __init__(self, lon_bnds, lat_bnds, var, units, bdry_lon, bdry_lat):
         self.lon_bnds = lon_bnds
         self.lat_bnds = lat_bnds
         self.var = var
         self.units = units
+        self.bdry_lon = bdry_lon
+        self.bdry_lat = bdry_lat
 
 class Var_Map_Config (object):
     def __init__(self, varpath, min, max, geogrp='geolocation'):
@@ -44,6 +46,10 @@ class Var_Map_Config (object):
 # the outer pixel edge locations are known.
 def read_var (filename, var_config, layer):
     nc = NetCDFFile(filename)
+    geospatial_bounds = nc.getncattr("geospatial_bounds")
+    bdry_pts = geospatial_bounds.lstrip('POLYGON((').rstrip('))').split(',')
+    bdry_lon = [float(p.split(' ')[1]) for p in bdry_pts]
+    bdry_lat = [float(p.split(' ')[0]) for p in bdry_pts]
     geogrp = nc.groups[var_config.geogroup];
     lon_bnds = geogrp.variables['longitude_bounds'][:]  # NE, NW, SW, SE
     lat_bnds = geogrp.variables['latitude_bounds'][:]
@@ -61,7 +67,7 @@ def read_var (filename, var_config, layer):
         var_config.min = var.min()
     if var_config.max is None:
         var_config.max = var.max()
-    return Var_Map (lon_bnds, lat_bnds, var, units)
+    return Var_Map (lon_bnds, lat_bnds, var, units, bdry_lon, bdry_lat)
 
 def select_scan_step (packed_corners, ix):
     # pixel corner packing sequence,
@@ -85,6 +91,7 @@ def plot_var_map (ax, vm, var_config, cmap):
         cs = ax.pcolormesh(lons, lats, var, cmap=cmap, rasterized=True,
                            vmin=var_config.min, vmax=var_config.max,
                            transform=ccrs.PlateCarree())
+        ax.plot (vm.bdry_lon, vm.bdry_lat, color='g', lw=0.5, transform=ccrs.PlateCarree())
     return cs
 
 def main():
