@@ -428,6 +428,50 @@ static int read_sat_time_zone (config_t *cfg, double *hour)
    return 0;
 }
 
+static int set_geometry_params (config_t *cfg)
+{
+   config_setting_t *s;
+   double ewbias, nsbias, clockingbias, telescopeOffset;
+
+   if (NULL == (s = config_lookup (cfg, "sat_config")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing sat_config in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "ewbias", &ewbias))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading ewbias: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "nsbias", &nsbias))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading nsbias: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "clockingbias", &clockingbias))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading clockingbias: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s, "telescopeOffset", &telescopeOffset))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,"%s: reading telescopeOffset: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   return Set_Geometry_Params (ewbias, nsbias, clockingbias, telescopeOffset);
+}
+
 static int generate_scan_vis (config_t *cfg, const char *optional_output_string,
                               Solar_Geom_Type *solar_geom, Scan_Type *scan,
                               const Plan_List_Type *plan_list, const char *plan_id,
@@ -1927,6 +1971,9 @@ int main (int argc, char **argv)
 
    /* satellite orbital station determines effective time zone */
    if (0 != read_sat_time_zone (&cfg, &t0.hour))
+     goto return_status;
+
+   if (0 != set_geometry_params (&cfg))
      goto return_status;
 
    if ((0 != ephem_open (&cfg, &eph))
