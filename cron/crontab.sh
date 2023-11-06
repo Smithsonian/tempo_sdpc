@@ -86,4 +86,9 @@ esac
 exit_status="$?"
 tend=$(date +%s)
 tdelta=$((tend-tbeg))
-printf "${tstamp}: crontab.sh $_task: exit status ${exit_status}: $tdelta seconds\n"
+msg="${tstamp}: crontab.sh $_task: exit status ${exit_status}: $tdelta seconds"
+printf "${msg}\n"
+
+if test x"$exit_status" != x0 ; then
+   (export _task ; export msg ; envsubst < $SDPC_ANCILLARY_ROOT/etc/alert_message.tmpl | mailx -t)
+fi
