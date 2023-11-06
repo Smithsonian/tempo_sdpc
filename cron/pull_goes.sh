@@ -8,7 +8,7 @@ then
     exit 1
 fi
 
-set -e
+#set -e
 set -u
 
 if test $# -ne 1 ; then
