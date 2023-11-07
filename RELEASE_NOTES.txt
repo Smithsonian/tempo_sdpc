@@ -9,6 +9,10 @@ TEMPO_SDPC_v4.2.0   YYYY MMM
   * Improve geospatial bounding polygons in product metadata
     - L2 polygons are now closed
     - L3 polygons now bound L2 coverage area
+  * Update plan, L0_ccd to match flight boresight geometry from INR
+  * Verify sha1 checksums for downloaded GOES imagery
+  * Support email alerts upon failure of pipeline service or cron process
+  * Refine logic for generating and selecting radiance reference files
 
 TEMPO_SDPC_v4.1.0   2023 Oct
 ============================
