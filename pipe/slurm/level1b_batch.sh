@@ -239,6 +239,15 @@ run_inr_post()
     L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
+   domain_file="${etc_dir}/asdc_collection_domain.csv"
+   if test -f $domain_file ; then
+      inr_ok=$(polygon_inside_domain.py --domain $domain_file $radiance_file)
+      if test x"$inr_ok" != xyes ; then
+         echo "ERROR: bounding polygon outside collection domain: $radiance_file"
+         exit 1
+      fi
+   fi
+
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
    if test $SDPC_RADIANCE_WAVECAL -ne 0 ; then

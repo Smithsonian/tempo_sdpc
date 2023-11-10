@@ -1,0 +1,8 @@
+# TEMPO data collection outer boundary used by ASDC
+longitude,latitude
+-170.0,10.0
+ -10.0,10.0
+ -10.0,80.0
+-170.0,80.0
+-170.0,10.0
+
