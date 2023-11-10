@@ -25,7 +25,7 @@
 *INFO:
    ENABLED              =  true
 * DEBUG:
-    ENABLED             =  true
+    ENABLED             =  false
 * WARNING:
     ENABLED             =  true
 *ERROR:
@@ -45,7 +45,7 @@
 * INFO:
    ENABLED              =  true
 * DEBUG:
-   ENABLED              =  true
+   ENABLED              =  false
 
 --pipeline
 * GLOBAL:
@@ -59,7 +59,7 @@
 * INFO:
    ENABLED              =  true
 * DEBUG:
-   ENABLED              =  true
+   ENABLED              =  false
 
 --processing
 * GLOBAL:
@@ -73,7 +73,7 @@
 * INFO:
    ENABLED              =  true
 * DEBUG:
-   ENABLED              =  true
+   ENABLED              =  false
 
 --filter
 * GLOBAL:
@@ -87,7 +87,7 @@
 * INFO:
    ENABLED              =  true
 * DEBUG:
-   ENABLED              =  true
+   ENABLED              =  false
 
 --external
 * GLOBAL:
@@ -101,4 +101,4 @@
 * INFO:
    ENABLED              =  true
 * DEBUG:
-   ENABLED              =  true
+   ENABLED              =  false
