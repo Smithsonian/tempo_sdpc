@@ -15,7 +15,7 @@ no2_t1
 # will add several data fields on fitting correlations.
 # ============================================================
 Processing mode
-diagnostic
+production
 tempo
 
 General fitting parameters
