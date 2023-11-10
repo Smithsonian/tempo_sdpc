@@ -116,7 +116,7 @@ static double mirror_tilt (double azimuth)
 
 #define TIME_BUFSIZE 32
 
-int plan_list_write (FILE *fp, const Plan_List_Type *head)
+int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
@@ -195,7 +195,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
              /* mark only the first scan of each new sequence destined for INR */
              if (is_twilight == 0) scan_num_to_inr++;
              if (((scan_num_to_inr == 1) || (entry->post_maneuver != 0))
-                 && (i == 0))
+                 && (i == 0) && (mark_scan_seq_start != 0))
                {
                   scan_type = entry->scan_type | TEMPO_SCAN_TYPE_SCAN_SEQ_START;
                }

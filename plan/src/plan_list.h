@@ -58,9 +58,11 @@ extern void plan_list_free (Plan_List_Type *head);
 
 /** Write plan list parameters to an ASCII file.
  * @param[in]  fp     Initialized FILE pointer for the destination file
+ * @param[in]  mark_scan_seq_start  When non-zero, scan labels will have
+ *                                  the scan_seq_start bit set
  * @param[in]  head  The head of a plan list.
  * @return 0 on success, -1 on error.
 */
-extern int plan_list_write (FILE *fp, const Plan_List_Type *head);
+extern int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head);
 
 #endif

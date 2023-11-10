@@ -113,6 +113,7 @@ static void usage (void)
    fprintf (stderr, "   -z | --szaout FILE       Generate netCDF SZA map output to visualize\n");
    fprintf (stderr, "                            the solar illumination at the start of each scan\n");
    fprintf (stderr, "   -c | --config FILE       Configuration file\n");
+   fprintf (stderr, "   --mark-scan-seq-start    When present, scan labels will have the scan_seq_start bit set as needed\n");
    fprintf (stderr, "   -v | --verbose           Increase verbosity\n");
    fprintf (stderr, "  For testing:\n");
    fprintf (stderr, "   -T | --tailor FILE       Output ONLY a 'nominal' scan tailoring file\n");
@@ -672,7 +673,8 @@ static int verify_safety_constraints (Solar_Geom_Type *solar_geom, const Scan_Ty
 }
 
 static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Type *solar_geom, const Scan_Type *scan,
-                            const char *scan_method, const Plan_List_Type *plan_list, const char *plan_id)
+                            const char *scan_method, const Plan_List_Type *plan_list, const char *plan_id,
+                            int mark_scan_seq_start)
 {
    time_t epoch;
    char epoch_str[32];
@@ -693,7 +695,7 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_path);
    (void) fprintf (fp, "#\n");
 
-   return plan_list_write (fp, plan_list);
+   return plan_list_write (fp, mark_scan_seq_start, plan_list);
 }
 
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom,
@@ -1690,6 +1692,7 @@ int main (int argc, char **argv)
    int after_midnight = 0;
    Cal_Date_Type t0 = {0};
    int ndays_since_epoch = 0;
+   static int mark_scan_seq_start = 0;
    const char *epoch_string = NULL;
    const char *maneuver_file = NULL;
    const char *scan_tailoring_file = NULL;
@@ -1715,6 +1718,7 @@ int main (int argc, char **argv)
         {"tailor",       required_argument, 0, 'T'},
         {"maneuver",     required_argument, 0, 'M'},
         {"master",       no_argument,       0, 'm'},
+        {"mark-scan-seq-start",  no_argument, &mark_scan_seq_start, 1},
         {"verbose",      no_argument,       0, 'v'},
         {"Zenith",       required_argument, 0, 'Z'},
         {0,0,0,0}
@@ -1764,6 +1768,9 @@ int main (int argc, char **argv)
                           "%s: getopt returned character %d??",
                           __func__, c);
              usage();
+             break;
+           case 0:
+             /* handle long-only options */
              break;
            case 'a':
              if (*optarg == '@')
@@ -2040,7 +2047,7 @@ int main (int argc, char **argv)
    if (0 != verify_safety_constraints (solar_geom, scan, plan_list))
      goto return_status;
 
-   if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list, plan_id))
+   if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list, plan_id, mark_scan_seq_start))
      goto return_status;
 
    /* Optionally, generate some plots */
