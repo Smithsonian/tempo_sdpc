@@ -38,6 +38,7 @@ module l1b_tio_class
     real (kind=4), dimension(:,:), allocatable :: lon, lat, sza, saz, vza, vaz
     real (kind=4), dimension(:,:,:), allocatable :: lon_bounds, lat_bounds
     real (kind=4), dimension(:,:,:), allocatable :: radiance, wavelength
+    real (kind=8), dimension(:), allocatable :: time
     integer (kind=4), dimension(:), allocatable :: step_indices
     integer (kind=2), dimension(:,:,:), allocatable :: qa_flags
     integer (kind=2), dimension(:,:), allocatable :: geoflg, hgt
@@ -272,6 +273,7 @@ contains
               rg % radiance (nw, nx, nl), &
               rg % wavelength (nw, nx, nl), &
               rg % step_indices (ns), &
+              rg % time (ns), &
               rg % qa_flags (nw, nx, nl), &
               rg % measurement_quality_flags (nl), &
               rg % instid (nl), &
@@ -287,6 +289,8 @@ contains
     call tiof_push_group (this % ft, "/", errstat)
     call tiof_get1d_i4 (this % ft, o3t_dim_step, [0], [ns], &
                         rg % step_indices(1:ns), errstat)
+    call tiof_get1d_r8 (this % ft, o3t_var_time, [0], [ns], &
+                        rg % time(1:ns), errstat)
     if (errstat == 0) then
       call tell_pop_queue(0)
     else
@@ -502,6 +506,7 @@ contains
   !! @param[inout]  this  Level 1 file object
   !! @param[inout] rg  The \a l1b_radgeo_type object
   !! @param[in]  iline  The scan line to copy.
+  !! @param[out] time Time for each mirror step
   !! @param[out] lat  Latitude for each cross-track pixel
   !! @param[out] lon  Longitude for each cross-track pixel
   !! @param[out] lat_bounds  Latitude corners for each cross-track pixel
@@ -519,7 +524,7 @@ contains
   !! If \a iline isn't in the block cached
   !! by the \a l1b_radgeo_type object, a block of spectra at
   !! \a iline will be loaded from the open Level 1 file (\a this).
-  subroutine l1b_tio_getgeo (this, rg, iline, lat, lon, &
+  subroutine l1b_tio_getgeo (this, rg, iline, time, lat, lon, &
                              lat_bounds, lon_bounds, step_index, &
                              sza, saz, vza, vaz, height, geoflg, errstat, &
                              anomflg)
@@ -527,6 +532,7 @@ contains
     type (l1b_tio_type), intent(inout) :: this
     type (l1b_radgeo_type), intent(inout) :: rg
     integer, intent(in) :: iline
+    real (kind=8), intent(out) :: time
     real (kind=4), dimension(:), intent(out) :: lat, lon, sza, saz, vza, vaz
     real (kind=4), dimension(:,:), intent(out) :: lat_bounds, lon_bounds
     integer (kind=4) :: step_index
@@ -548,6 +554,7 @@ contains
     nx = this % num_xtrack
     i  = iline + 1
 
+    time = rg % time(i)
     lat(1:nx) = rg % lat(1:nx, i)
     lon(1:nx) = rg % lon(1:nx, i)
     lat_bounds(1:4,1:nx) = rg % lat_bounds(1:4, 1:nx, i)

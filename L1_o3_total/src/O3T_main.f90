@@ -711,7 +711,8 @@ PROGRAM O3T_mainNVAdj
 
   iLine = 0
   if (use_tio_in) then
-    call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+    call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, time, &
+                         latitude, longitude, &
          lat_bounds, lon_bounds, step_index, &
          szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
          errstat)
@@ -731,7 +732,7 @@ PROGRAM O3T_mainNVAdj
 
   iLine = 1
   if (use_tio_in) then
-    call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+    call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, time, latitude, longitude, &
          lat_bounds, lon_bounds, step_index, &
          szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
          errstat)
@@ -787,12 +788,12 @@ PROGRAM O3T_mainNVAdj
 
     if (use_tio_in) then
       if (have_omi_data) then
-        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, longitude, &
+        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, time, latitude, longitude, &
            lat_bounds, lon_bounds, step_index, &
            szenith, sazimuth, vzenith, vazimuth, height, geoflg, &
            errstat, anomflg)
       else
-        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, latitude, &
+        call l1b_tio_getgeo (rad_file_obj, radgeo_blk, iLine, time, latitude, &
              longitude, lat_bounds, lon_bounds, step_index, szenith, &
              sazimuth, vzenith, vazimuth, height, geoflg, errstat)
         anomflg = 0
