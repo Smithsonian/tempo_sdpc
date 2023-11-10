@@ -623,8 +623,8 @@ blue_factor=12.0542
 
 # Target latitude and longitude for the center of the Field of Regard in degrees
 # TODO item is to adjust to match MRD spec when Host station is known
-target_lat=33.71
-target_lon=-91.6546
+target_lat=33.5231
+target_lon=-89.2170
 # Maximum period for Fourier model of repeating attitude offsets in hours
 num_hours_per_period=24
 # Number of roll, pitch, and yaw states to use in model fitting each granule
