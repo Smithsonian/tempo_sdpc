@@ -12,11 +12,11 @@ refdata_dir="$soft_home/refdata"
 ancdata_dir="$archive_home/ancillary"
 
 install_root="$soft_home/install/$build_arch"
-inrroot="$install_root/inr_r2.3.8"
+inrroot="$install_root/inr_r2.3.10"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 
-prefix="$install_root/sdpc/v4p1"
+prefix="$install_root/sdpc/v4p2"
 
 ./configure --prefix=$prefix \
             --with-compilers=$compilers \
