@@ -191,6 +191,7 @@ static void file_array_free (File_Array_Type *fa)
      {
         FREE(fa->file_list[i]);
      }
+   FREE(fa->file_list);
 }
 
 static int file_array_new (int num_files, File_Array_Type *fa)
