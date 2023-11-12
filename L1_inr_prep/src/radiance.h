@@ -123,4 +123,7 @@ extern int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta,
 extern int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta,
                               const char *from_group_path,
                               const Row_Select_Type *rst);
+extern int radiance_copy_eph_predicted (Radiance_Type *r, double time_beg, double time_end,
+                                        int enable_adjust_velocity,
+                                        TIO_Meta_Type *meta, const char *eph_dir);
 #endif

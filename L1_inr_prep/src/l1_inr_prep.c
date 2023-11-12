@@ -495,14 +495,42 @@ static void free_rename_path_type (Rename_Path_Type *rpt)
    FREE(rpt->target_dir);
 }
 
+static int get_predicted_ephemeris_config (config_t *cfg, char **eph_dirp, int *enable_adjust_velocity)
+{
+   const char *eph_dir_pat;
+   char *eph_dir;
+
+   if (CONFIG_TRUE != config_lookup_bool (cfg, "eph_config.predicted_ephemeris_vel_adj", enable_adjust_velocity))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: reading eph_config.predicted_ephemeris_vel_adj from file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_lookup_string (cfg, "eph_config.predicted_ephemeris_dir", &eph_dir_pat))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR, "%s: reading eph_config.predicted_ephemeris_dir from file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (NULL == (eph_dir = expand_string (eph_dir_pat)))
+     return -1;
+
+   *eph_dirp = eph_dir;
+
+   return 0;
+}
+
 static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
-                       double time_beg, double time_end, int pad_enable)
+                       double time_beg, double time_end, int pad_enable, int *is_ecef)
 {
    Selection_Type eph = {0};
    File_Array_Type fa = {0};
    Row_Select_Type *rst = NULL;
    const char *group_path = "anc_gps";
    const char *time_var = "anc_gps_time";
+   char *eph_dir = NULL;
    int status = -1;
 
    if (0 != read_common_params (cfg, "eph_config", &eph))
@@ -515,21 +543,44 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                              fa.num_files, fa.file_list, group_path, time_var, &rst))
      goto return_status;
 
-   if (rst)
+   if ((rst != NULL) && (rst->count > 0))
      {
+        /* FIXME:  For now, the anc_gps data in telemetry comes from the DOP
+         * (Digital Orbit Propagator) and is in the J2000 frame. Before delivery
+         * to INR, we need to transform from J2000 to ECEF, hence we set *is_ecef=0.
+         * When direct GPSR data becomes available, we will set is_ecef depending
+         * on which ephemeris we actually use:
+         *   Using DOP (J2000) --> set *is_ecef=0
+         *   Using GPSR (ECEF) --> set *is_ecef=1
+         */
+
+        *is_ecef = 0;
+
         if (0 != radiance_copy_eph (r, meta, group_path, rst))
           goto return_status;
      }
    else
      {
-        tell_vwarn (0, "%s: no GPS samples in time interval [%0.4f, %0.4f)",
+        int enable_adjust_velocity;
+
+        tell_vwarn (0, "%s: no ephemeris samples in time interval [%0.4f, %0.4f)",
                     __func__, time_beg, time_end);
+
+        /* predicted ephemeris is already ECEF */
+        *is_ecef = 1;
+
+        if (0 != get_predicted_ephemeris_config (cfg, &eph_dir, &enable_adjust_velocity))
+          goto return_status;
+
+        if (0 != radiance_copy_eph_predicted (r, time_beg, time_end, enable_adjust_velocity, meta, eph_dir))
+          goto return_status;
      }
 
    status = 0;
 return_status:
    row_select_free (rst);
    file_array_free (&fa);
+   FREE(eph_dir);
    return status;
 }
 
@@ -545,6 +596,7 @@ static int process_inputs (config_t *cfg, char *iers_bulletin,
    int radiance_is_telemetry_only = 0;
    int pad_enable = 1;
    int status = -1;
+   int is_ecef;
 
    if (radiance_file)
      {
@@ -593,7 +645,7 @@ static int process_inputs (config_t *cfg, char *iers_bulletin,
    if (0 != copy_iru (r, meta, cfg, time_beg, time_end, pad_enable))
      goto return_status;
 
-   if (0 != copy_ephem (r, meta, cfg, time_beg, time_end, pad_enable))
+   if (0 != copy_ephem (r, meta, cfg, time_beg, time_end, pad_enable, &is_ecef))
      goto return_status;
 
    if (radiance_is_telemetry_only)
@@ -621,14 +673,15 @@ static int process_inputs (config_t *cfg, char *iers_bulletin,
         r = NULL;
      }
 
-   if (iers_bulletin)
+   if (is_ecef == 0)
      {
+        if (iers_bulletin == NULL)
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: IERS bulletin not provided (must transform ephemeris from J2000 to ECEF frame)", __func__);
+             goto return_status;
+          }
         if (0 != convert_j2k_to_ecef (iers_bulletin, logmsg_filename))
           goto return_status;
-     }
-   else
-     {
-        tell_vwarn (0, "IERS bulletin not provided: skipping ephemeris coordinate transformation");
      }
 
    status = 0;

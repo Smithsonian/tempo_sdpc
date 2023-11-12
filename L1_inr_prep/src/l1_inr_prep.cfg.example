@@ -18,4 +18,6 @@ iru_config: {
 
 ephemeris_config: {
   num_pad = 10;
+  predicted_ephemeris_dir = "$SDPC_ANCILLARY_ROOT/var/host/ephemeris";
+  predicted_ephemeris_vel_adj = true;
 };

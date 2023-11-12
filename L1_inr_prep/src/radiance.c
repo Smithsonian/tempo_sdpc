@@ -3,6 +3,7 @@
  */
 #include "config.h"
 #include <math.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -632,5 +633,309 @@ int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_g
      }
 
    return 0;
+}
+
+static int convert_ioc_string_to_taix (const char *str, double *ptaix)
+{
+   int day, msec, usec;
+   double taix;
+
+   if (str == NULL)
+     {
+        fprintf (stderr, "%s: NULL string\n", __func__);
+        return -1;
+     }
+
+   if (3 != sscanf (str, "d%5dm%8du%3d", &day, &msec, &usec))
+     {
+        fprintf (stderr, "*** Error: parsing timestamp: %s\n", str);
+        return -1;
+     }
+
+   taix = day * 86400.0 + msec/1000.0 + usec/1.e6;
+   if (ptaix) *ptaix = taix;
+
+   return 0;
+}
+
+typedef struct
+{
+   double *eph_time;
+   double *satx;
+   double *saty;
+   double *satz;
+   double *satvx;
+   double *satvy;
+   double *satvz;
+   int num;
+   int num_alloc;
+}
+Eph_Predicted_Type;
+
+typedef struct
+{
+   double eph_time;
+   double satx, saty, satz;
+   double satvx, satvy, satvz;
+}
+Eph_Point_Type;
+
+static void free_ephem (Eph_Predicted_Type *pred)
+{
+   FREE(pred->eph_time);
+   FREE(pred->satx);
+   FREE(pred->saty);
+   FREE(pred->satz);
+   FREE(pred->satvx);
+   FREE(pred->satvy);
+   FREE(pred->satvz);
+}
+
+static int realloc_dbl (double **x, int new_num)
+{
+   double *new_x;
+   if (NULL == (new_x = (double *)REALLOC (*x, new_num * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: realloc failed", __func__);
+        return -1;
+     }
+   *x = new_x;
+   return 0;
+}
+
+static int append_ephem_point (Eph_Predicted_Type *pred, const Eph_Point_Type *pt)
+{
+   int i;
+
+   /* assumes pred->num, pred->num_alloc are both initialized to zero */
+   if (pred->num == pred->num_alloc)
+     {
+        int new_num = (pred->num_alloc > 0) ? (pred->num_alloc*2) : 10;
+        if ((0 != realloc_dbl (&pred->eph_time, new_num))
+            || (0 != realloc_dbl (&pred->satx, new_num))
+            || (0 != realloc_dbl (&pred->saty, new_num))
+            || (0 != realloc_dbl (&pred->satz, new_num))
+            || (0 != realloc_dbl (&pred->satvx, new_num))
+            || (0 != realloc_dbl (&pred->satvy, new_num))
+            || (0 != realloc_dbl (&pred->satvz, new_num)))
+          return -1;
+        pred->num_alloc = new_num;
+     }
+
+   i = pred->num;
+   pred->eph_time[i] = pt->eph_time;
+   pred->satx[i] = pt->satx;
+   pred->saty[i] = pt->saty;
+   pred->satz[i] = pt->satz;
+   pred->satvx[i] = pt->satvx;
+   pred->satvy[i] = pt->satvy;
+   pred->satvz[i] = pt->satvz;
+   pred->num++;
+
+   return 0;
+}
+
+static int parse_ephem_point (char ***data, unsigned int row, Eph_Point_Type *pt)
+{
+   if ((1 != sscanf (data[0][row], "%lf", &pt->eph_time))
+       ||(1 != sscanf (data[1][row], "%lf", &pt->satx))
+       ||(1 != sscanf (data[2][row], "%lf", &pt->saty))
+       ||(1 != sscanf (data[3][row], "%lf", &pt->satz))
+       ||(1 != sscanf (data[4][row], "%lf", &pt->satvx))
+       ||(1 != sscanf (data[5][row], "%lf", &pt->satvy))
+       ||(1 != sscanf (data[6][row], "%lf", &pt->satvz)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: parsing ephemeris data", __func__);
+        return -1;
+     }
+   return 0;
+}
+
+static int transform_velocity_vector (Eph_Point_Type *pt)
+{
+   double v_geo = 3.074666284127684;  /* km/sec */
+   double phi = atan2 (pt->saty, pt->satx);
+
+   /* While the HGS/IOC ICD says that the predicted ephemeris velocities
+    * are to be in km/sec, we seem to be getting meters/sec, relative to
+    * the idealized geostationary orbital station.
+    * INR wants something slightly different, so we make the (apparently)
+    * necessary changes here.
+    */
+
+   /* convert m/sec to km/sec */
+   pt->satvx *= 1.e-3;
+   pt->satvy *= 1.e-3;
+   pt->satvz *= 1.e-3;
+
+   /* Add geostationary orbital velocity:
+    * x = R cos(phi)  -> dx/dt = - R sin(phi) dphi/dt = - v_geo * sin(phi)
+    * y = R sin(phi)  -> dy/dt =   R cos(phi) dphi/dt =   v_geo * cos(phi)
+    */
+   pt->satvx = - v_geo * sin(phi);
+   pt->satvy =   v_geo * cos(phi);
+
+   return 0;
+}
+
+static int append_predicted_ephemeris (Eph_Predicted_Type *pred, double time_beg, double time_end,
+                                       int enable_adjust_velocity, const char *path)
+{
+   IOCLib_String_Table_Type *tbl = NULL;
+   const char *eph_columns[] = {"time","sat_x","sat_y","sat_z","sat_vx","sat_vy","sat_vz"};
+   int num_columns = sizeof(eph_columns)/sizeof(*eph_columns);
+   unsigned int row;
+   int loaded_points, status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: reading %s", __func__, path);
+
+   if (NULL == (tbl = ioclib_csv_read_string_table (path, eph_columns, num_columns)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading CSV file: %s", __func__, path);
+        goto return_status;
+     }
+
+   loaded_points = 0;
+   for (row = 0; row < tbl->num_rows; row++)
+     {
+        Eph_Point_Type pt;
+        char *s0 = tbl->data[0][row];
+        if (*s0 == ':') continue;
+        if (0 != parse_ephem_point (tbl->data, row, &pt))
+          goto return_status;
+        if (pt.eph_time < time_beg)
+          continue;
+        if (pt.eph_time > time_end)
+          break;
+        if (enable_adjust_velocity)
+          {
+             (void) transform_velocity_vector (&pt);
+          }
+        if (0 != append_ephem_point (pred, &pt))
+          goto return_status;
+        loaded_points++;
+     }
+
+   status = loaded_points;
+return_status:
+   ioclib_free_string_table (tbl);
+   return status;
+}
+
+static int write_predicted_ephemeris (Radiance_Type *r, const Eph_Predicted_Type *pred)
+{
+   int start = 0;
+   int count = pred->num;
+   int grp;
+
+   if ((0 != TIO_inq_grp (r->ncid, "/inr_input/ephemeris", &grp))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_TIME_EPHEM, &start, &count, NC_DOUBLE, pred->eph_time))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_X, &start, &count, NC_DOUBLE, pred->satx))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_Y, &start, &count, NC_DOUBLE, pred->saty))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_Z, &start, &count, NC_DOUBLE, pred->satz))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VX, &start, &count, NC_DOUBLE, pred->satvx))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VY, &start, &count, NC_DOUBLE, pred->satvy))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VZ, &start, &count, NC_DOUBLE, pred->satvz)))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing ephemeris to file: %s", __func__, r->file);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int parse_filename (const char *filename, double *taix)
+{
+   const char *basename = ioclib_basename (filename);
+   const char *timestamp;
+
+   if ((NULL == (timestamp = strchr (basename, 'd')))
+       || (0 != convert_ioc_string_to_taix (timestamp, taix)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: error parsing timestamp: %s", __func__, timestamp);
+        return -1;
+     }
+   return 0;
+}
+
+int radiance_copy_eph_predicted (Radiance_Type *r, double time_beg, double time_end,
+                                 int enable_adjust_velocity, TIO_Meta_Type *meta, const char *eph_dir)
+{
+   IOCLib_Glob_Type *g = NULL;
+   Eph_Predicted_Type pred = {0};
+   char *eph_glob = NULL;
+   double taix, delta, delta_min;
+   unsigned int i;
+   int k, num_points, status = -1;
+
+   (void) meta;
+
+   tell_vwarn (0, "%s: looking for predicted ephemeris files in dir: %s", __func__, eph_dir);
+
+   if (NULL == (eph_glob = ioclib_pathconcat (eph_dir, "tempo_d*ephemeris.csv")))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: ioclib_pathconcat failed", __func__);
+        return -1;
+     }
+
+   if ((NULL == (g = ioclib_glob (eph_glob, 0)))
+       || (g->num_files == 0))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: no files found using glob pattern: %s", __func__, eph_glob);
+        goto return_status;
+     }
+
+   /* Pick the ephemeris file received just prior to the start of the observation.
+    * The ephemeris files span 21 days, are normally updated weekly, and have only
+    * relatively coarse time resolution, so there's little point in reading more
+    * than one file, especially since this is the 2nd or 3rd fallback option,
+    * and should be used only rarely.
+    */
+
+   time_beg -= 600.0; /* pad the time interval [sec] */
+
+   k = -1;
+   delta_min = DBL_MAX;
+
+   for (i = 0; i < g->num_files; i++)
+     {
+        /* The first ephemeris point in the file is the same as the filename timestamp */
+        if (0 != parse_filename (g->files[i], &taix))
+          goto return_status;
+        if (taix > time_end)
+          break;
+        delta = time_beg - taix;
+        if ((0 <= delta) && (delta < delta_min))
+          {
+             delta_min = delta;
+             k = i;
+          }
+     }
+
+   if (k >= 0)
+     {
+        if ((num_points = append_predicted_ephemeris (&pred, time_beg, time_end, enable_adjust_velocity, g->files[k])) < 0)
+          goto return_status;
+     }
+   else num_points = 0;
+
+   if (num_points > 0)
+     {
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: read %d ephemeris points from %s", __func__, num_points, g->files[k]);
+        if (0 != write_predicted_ephemeris (r, &pred))
+          goto return_status;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: found no predicted ephemeris data", __func__);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   free_ephem (&pred);
+   ioclib_free (eph_glob);
+   ioclib_glob_free (g);
+   return status;
 }
 
