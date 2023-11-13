@@ -13,6 +13,8 @@ TEMPO_SDPC_v4.2.0   YYYY MMM
   * Verify sha1 checksums for downloaded GOES imagery
   * Support email alerts upon failure of pipeline service or cron process
   * Refine logic for generating and selecting radiance reference files
+  * L1_inr_prep can use the predicted ephemeris if the telemetry stream
+    lacks ephemeris data
 
 TEMPO_SDPC_v4.1.0   2023 Oct
 ============================
