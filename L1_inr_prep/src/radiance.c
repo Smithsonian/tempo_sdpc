@@ -751,24 +751,27 @@ static int parse_ephem_point (char ***data, unsigned int row, Eph_Point_Type *pt
    return 0;
 }
 
-static int transform_velocity_vector (Eph_Point_Type *pt)
+static int transform_velocity_vector (Eph_Point_Type *pt, int plan_id)
 {
    double v_geo = 3.074666284127684;  /* km/sec */
    double phi = atan2 (pt->saty, pt->satx);
 
-   /* While the HGS/IOC ICD says that the predicted ephemeris velocities
-    * are to be in km/sec, we seem to be getting meters/sec, relative to
-    * the idealized geostationary orbital station.
-    * INR wants something slightly different, so we make the (apparently)
-    * necessary changes here.
+   /* The HGS delivers the WGS84 position R=(X,Y,Z) and the coordinate derivatives,
+    * V=(dX/dt, dY/dt, dZ/dt), so the velocities describe the motion relative to the
+    * nominal geostationary orbital station. The INR SW wants the velocity vector to
+    * include the nominal geostationary orbital velocity, so we add that component here.
     */
 
-   /* convert m/sec to km/sec */
-   pt->satvx *= 1.e-3;
-   pt->satvy *= 1.e-3;
-   pt->satvz *= 1.e-3;
+   if (plan_id <= 52)
+     {
+        /* Up to and including plan_id=52, the predicted ephemeris had
+         * velocities in meters/sec, so we first to convert to km/sec */
+        pt->satvx *= 1.e-3;
+        pt->satvy *= 1.e-3;
+        pt->satvz *= 1.e-3;
+     }
 
-   /* Add geostationary orbital velocity:
+   /* Add geostationary orbital velocity component:
     * x = R cos(phi)  -> dx/dt = - R sin(phi) dphi/dt = - v_geo * sin(phi)
     * y = R sin(phi)  -> dy/dt =   R cos(phi) dphi/dt =   v_geo * cos(phi)
     */
@@ -782,16 +785,24 @@ static int append_predicted_ephemeris (Eph_Predicted_Type *pred, double time_beg
                                        int enable_adjust_velocity, const char *path)
 {
    IOCLib_String_Table_Type *tbl = NULL;
+   IOCLib_KV_Table_Type *kv = NULL;
    const char *eph_columns[] = {"time","sat_x","sat_y","sat_z","sat_vx","sat_vy","sat_vz"};
    int num_columns = sizeof(eph_columns)/sizeof(*eph_columns);
    unsigned int row;
-   int loaded_points, status = -1;
+   int plan_id, loaded_points, status = -1;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: reading %s", __func__, path);
 
-   if (NULL == (tbl = ioclib_csv_read_string_table (path, eph_columns, num_columns)))
+   if ((NULL == (tbl = ioclib_csv_read_string_table (path, eph_columns, num_columns)))
+       || (NULL == (kv = ioclib_extract_csv_metadata (tbl))))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading CSV file: %s", __func__, path);
+        goto return_status;
+     }
+
+   if (0 != ioclib_kv_table_get_int (kv, "plan_id", &plan_id))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading plan_id from predicted ephemeris file: %s", __func__, path);
         goto return_status;
      }
 
@@ -809,7 +820,7 @@ static int append_predicted_ephemeris (Eph_Predicted_Type *pred, double time_beg
           break;
         if (enable_adjust_velocity)
           {
-             (void) transform_velocity_vector (&pt);
+             (void) transform_velocity_vector (&pt, plan_id);
           }
         if (0 != append_ephem_point (pred, &pt))
           goto return_status;
@@ -819,6 +830,7 @@ static int append_predicted_ephemeris (Eph_Predicted_Type *pred, double time_beg
    status = loaded_points;
 return_status:
    ioclib_free_string_table (tbl);
+   ioclib_kv_table_free (kv);
    return status;
 }
 
