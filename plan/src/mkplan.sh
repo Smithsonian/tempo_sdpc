@@ -29,6 +29,9 @@ fi
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT is not set}"
 : "${SDPC_ROOT:?SDPC_ROOT is not set}"
 
+plan_pgm="$SDPC_ROOT/bin/plan"
+
+default_plan_start_day="thursday"
 default_config_file="$SDPC_ROOT/share/plan.cfg"
 example_sched_file="$SDPC_ROOT/share/plan_sched.sh.example"
 notes_file=""
@@ -77,8 +80,11 @@ output_sched_file()
       exit 1
    fi
 
-   sed -i -e s,"@SCAN_START_DAY@","$(date --date friday +%Y-%m-%d)", \
-          -e s,"@TAILOR_START_DAY@","$(date --date thursday +%Y-%m-%d)", \
+   start_timet=$(date --date $default_plan_start_day +%s)
+   tailor_timet=$(($start_timet - 86400))
+
+   sed -i -e s,"@SCAN_START_DAY@","$(date --date @$start_timet +%Y-%m-%d)", \
+          -e s,"@TAILOR_START_DAY@","$(date --date @$tailor_timet +%Y-%m-%d)", \
           $temp_file
 
    cat $temp_file
@@ -155,7 +161,7 @@ _plan="${target_dir}/${utc}_earthscan.csv"
 _notes="${target_dir}/NOTES.txt"
 
 # generate master scan table, and scan plan
-plan -c $config_file -M $maneuver_file \
+$plan_pgm -c $config_file -M $maneuver_file \
      -s $plan_type -d $plan_start_day -n $plan_num_days \
      $plan_options -o $_plan \
      -m $_master || error_exit "failed generating scan plan"
@@ -175,7 +181,7 @@ if test x"$tailoring_file" = x ; then
    if test \( x"${tailor_epoch}" = x \) -o \( x"${tailor_start_day}" = x \) -o \( x"${tailor_num_days}" = x \) ; then
       error_exit "Parameters for dummy scan tailoring file not specified"
    else
-      plan -c $config_file --epoch $tailor_epoch \
+      $plan_pgm -c $config_file --epoch $tailor_epoch \
         -d $tailor_start_day -n $tailor_num_days \
         -T $_tailor || error_exit "failed generating scan tailoring file"
    fi
