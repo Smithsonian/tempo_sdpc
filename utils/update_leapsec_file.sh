@@ -5,8 +5,17 @@ set -e
 
 LEAP_FILE="leap-seconds.list"
 
+# 2023 Dec: Apparently only source for this file still works.
+# Presumably this won't matter because in Nov 2022, BIPM resolved
+# to phase out leap seconds by 2035. IERS prediction center says:
+# "NO leap second will be introduced at the end of December 2023.
+# The last leap second was positive and WAS introduced in UTC at the end of December 2016."
+
+#URL="https://www.ietf.org/timezones/data/leap-seconds.list"
+URL="https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list"
+
 target=$(mktemp)
-wget -q https://www.ietf.org/timezones/data/leap-seconds.list -O $target
+wget -q $URL -O $target
 
 if test -f $LEAP_FILE ; then
    old_md5sum=$(md5sum $LEAP_FILE | cut -d' ' -f1)
