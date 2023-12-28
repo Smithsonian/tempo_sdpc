@@ -931,7 +931,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    int varid, no_fill, lon_bounds_status, num_kept;
    int status = -1;
    float fill_value = TIO_FILL_FLOAT;
-   float band_km = 15.0;     /* output bounding polygon resolution */
+   float band_km = 5.0;      /* output bounding polygon resolution */
    float vza_max_deg = 80.0; /* avoid pixels near the Earth's limb */
    int dx=1, ds=1;           /* set >1 to reduce final polygon point density */
 
