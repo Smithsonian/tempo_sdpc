@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <tio.h>
 #include <tell.h>
+
+#include "tio.h"
 
 static int process_file (const char *ncfile, int replace)
 {
