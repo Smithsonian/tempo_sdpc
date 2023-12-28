@@ -66,7 +66,9 @@ int main (int argc, char **argv)
    int status, replace = 0;
    char *path = NULL;
 
-   if (argc < 2)
+   if ((argc < 2)
+       || (0 == strcmp ("-h", argv[1]))
+       || (0 == strcmp ("--help", argv[1])))
      {
         usage (pgm);
      }
