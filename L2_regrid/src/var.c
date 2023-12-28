@@ -912,15 +912,16 @@ static int copy_extra_dims (int ncid_infile, const TIO_Var_Info_Type *vi,
 {
    char dimname[TIO_MAX_NAME_LEN];
    int i;
+   /* copy each dimid[i] into dims[i+1] to enable inserting a time dimension */
    for (i = 2; i < vi->ndims; i++)
      {
         if (-1 == TIO_inq_dimname (ncid_infile, vi->dimids[i], dimname))
           return -1;
         /* If this dimension already exists in the output file,
          * record the dimid and continue.  Otherwise, create it. */
-        if (0 == TIO_inq_dimid (ncid, dimname, &dims[i]))
+        if (0 == TIO_inq_dimid (ncid, dimname, &dims[i+1]))
           continue;
-        if (-1 == TIO_def_dim (ncid, dimname, vi->dimlens[i], &dims[i]))
+        if (-1 == TIO_def_dim (ncid, dimname, vi->dimlens[i], &dims[i+1]))
           return -1;
      }
 
@@ -1044,9 +1045,9 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
    char *in_var_name=NULL, *out_var_name=NULL;
    char *in_grp_path = NULL, *out_grp_path = NULL;
    int start[TIO_MAX_VAR_DIMS], count[TIO_MAX_VAR_DIMS];
-   size_t lon_dimlen, lat_dimlen;
-   int lon_dimid, lat_dimid, len_in_var_path, len_out_var_path;
-   int i, dims[TIO_MAX_VAR_DIMS];
+   size_t time_dimlen, lon_dimlen, lat_dimlen;
+   int time_dimid, lon_dimid, lat_dimid, len_in_var_path, len_out_var_path;
+   int i, num_dims, dims[TIO_MAX_VAR_DIMS];
    int in_grp, in_varid, out_grp, out_varid, out_type;
    int in_no_fill, shuffle=1, deflate=1, deflate_level=1;
    int status = -1;
@@ -1098,31 +1099,39 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
           goto free_and_return;
      }
 
-   if ((0 != TIO_inq_dim (ncid, TEMPO_VAR_LONGITUDE, &lon_dimid, &lon_dimlen))
+   if ( (0 != TIO_inq_dim (ncid, TEMPO_VAR_TIME, &time_dimid, &time_dimlen))
+       || (0 != TIO_inq_dim (ncid, TEMPO_VAR_LONGITUDE, &lon_dimid, &lon_dimlen))
        || (0 != TIO_inq_dim (ncid, TEMPO_VAR_LATITUDE, &lat_dimid, &lat_dimlen)))
-     return -1;
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading dimension sizes: time, longitude, latitude", __func__);
+        goto free_and_return;
+     }
 
-   dims[0] = lat_dimid;
-   dims[1] = lon_dimid;
+   num_dims = vb->num_dims + 1;  /* add time dimension of length 1 */
+   dims[0] = time_dimid;
+   dims[1] = lat_dimid;
+   dims[2] = lon_dimid;
 
-   if ((-1 == TIO_def_var (out_grp, out_var_name, vi.type, vb->num_dims, dims, &out_varid))
+   if ((-1 == TIO_def_var (out_grp, out_var_name, vi.type, num_dims, dims, &out_varid))
        || (-1 == TIO_inq_var_fill (in_grp, in_varid, &in_no_fill, NULL))
        || (-1 == TIO_def_var_fill (out_grp, out_varid, in_no_fill, &vb->fill_value.d))
        || (-1 == TIO_def_var_deflate (out_grp, out_varid, shuffle, deflate, deflate_level))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, out_grp, out_varid)))
      {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: defining output variable: %s", __func__, out_var_name);
         goto free_and_return;
      }
 
-   for (i = 0; i < vb->num_dims; i++)
+   for (i = 0; i < num_dims; i++)
      {
         start[i] = 0;
      }
-   count[0] = lat_dimlen;
-   count[1] = lon_dimlen;
-   for (i = 2; i < vb->num_dims; i++)
+   count[0] = time_dimlen;  /* expect time_dimlen=1 */
+   count[1] = lat_dimlen;
+   count[2] = lon_dimlen;
+   for (i = 2; i < num_dims; i++)
      {
-        count[i] = vb->dimlens[i];
+        count[i+1] = vb->dimlens[i];
      }
    if ((-1 == (out_type = value_io_type (vb->value_type)))
        || (-1 == TIO_put_var_section (out_grp, out_var_name, start, count,
@@ -1132,7 +1141,7 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
    if (var_qa_label)
      {
         if (-1 == write_src_value_stats (ncid, in_grp, in_varid, var_qa_label,
-                                         vi.type, vb->num_dims, dims, count, vb->regrid_stats))
+                                         vi.type, num_dims, dims, count, vb->regrid_stats))
           goto free_and_return;
      }
 

@@ -25,6 +25,7 @@
 #include "pixel.h"
 #include "regrid.h"
 #include "var.h"
+#include "version.h"
 
 typedef struct Product_Type Product_Type;
 struct Product_Type
@@ -62,6 +63,7 @@ static void usage (void)
    fprintf (stderr, "   -i | --ignore          Ignore scan metadata fields\n");
    fprintf (stderr, "   -d | --diagnostic      Generate diagnostic output\n");
    fprintf (stderr, "   -v | --verbose         Verbosity (more instances means more verbose, e.g. -vvv)\n");
+   fprintf (stderr, "Version: " REGRID_VERSION_STRING "\n");
    exit (EXIT_SUCCESS);
 }
 
@@ -665,7 +667,7 @@ static int write_metadata (TIO_Meta_Type *meta, int ncid,
                            const Pixel_Grid_Param_Type *dest,
                            const TIO_Scan_Ident_Type *lst)
 {
-   const char *version_string = "0.1.0"; /* FIXME */
+   const char *version_string = REGRID_VERSION_STRING;
    int i;
 
    if (0 != tio_meta_set_datetime_production (meta))

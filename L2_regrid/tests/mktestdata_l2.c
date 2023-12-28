@@ -365,6 +365,7 @@ int main (int argc, char **argv)
    int num_granules = NUM_GRANULES;
    int b, c, num_var2, num_var3, pattern_scale;
    double bbox[4] = {DBL_MAX, -DBL_MAX, DBL_MAX, -DBL_MAX};
+   double tstart, tend, delta_step = 3.0;
    float float_fill = NC_FILL_FLOAT, float_valid_min = 0.0, float_valid_max;
    const char *out_dir = OUTPUT_DIR;
    int status = 1;
@@ -447,6 +448,8 @@ int main (int argc, char **argv)
    pattern_scale = o.num_steps / 32;
    if (pattern_scale == 0) pattern_scale = 1;
 
+   tstart = 0.0;
+
    step = 0;
    for (granule = 0; granule < o.num_granules; granule++)
      {
@@ -471,8 +474,17 @@ int main (int argc, char **argv)
         status = nc_create (outfile, NC_NETCDF4, &ncid);
         NC_CHECK_STATUS(status);
 
+        tend = tstart + num_steps_this_granule * delta_step;
+
         if ((0 != tio_time_set_taix_epoch ("2000-01-01T00:00:00Z"))
-            || (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL)))
+#if 0
+            || (0 != tio_write_epoch_timestamp (ncid, NC_GLOBAL))
+#else
+            || (0 != tio_write_granule_ident_times (ncid, tstart, tend))
+            || (0 != tio_write_granule_ident_indices (ncid, 1, granule+1))
+            || (0 != TIO_label_product (ncid, "TEST", 1, 1))
+#endif
+           )
           goto cleanup_and_exit;
 
         status = nc_put_att_int (ncid, NC_GLOBAL, "processing_version", NC_INT, 1, &processing_version);
@@ -718,6 +730,7 @@ int main (int argc, char **argv)
              fprintf (stderr, "*** ERROR: closing file %s\n", outfile);
           }
 
+        tstart = tend;
         ncid = -1;
      }
 
