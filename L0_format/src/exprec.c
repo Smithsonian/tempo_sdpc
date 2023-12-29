@@ -72,7 +72,7 @@ Exprec_Info_Type;
    int exprec_type; \
    int granule_size; \
    unsigned int curr_mirror_step; \
-   time_t when_last_erec_cached; \
+   double last_erec_cached_timestamp; \
    Granule_Schedule_Type sched;
 #include "l0_format.h"
 
@@ -657,7 +657,7 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
    /* If the cache is empty, do nothing */
    if (num_erecs == 0)
      {
-        pmt->when_last_erec_cached = 0;
+        pmt->last_erec_cached_timestamp = 0.0;
         return cmt->cache_close (cmt);
      }
 
@@ -802,7 +802,10 @@ return_status:
         tell_vlog (TELL_MSGTYPE_ERROR, 0, "processing exprec cache: num_erecs=%ld",
                    num_erecs);
      }
-
+   else if (process_all_erecs != 0)
+     {
+        pmt->last_erec_cached_timestamp = 0.0;
+     }
    (void) cmt->cache_close (cmt);
 
    if (erec) iocsdpc_exprec_close (erec);
@@ -898,7 +901,7 @@ static int process_exprec1 (Process_Method_Type *pmt,
    pmt->img_data_source = exprec_info->img_data_source;
    if (0 != cmt->cache_erec (cmt, file, exprec_index))
      return -1;
-   pmt->when_last_erec_cached = time(NULL);
+   pmt->last_erec_cached_timestamp = exprec_info->image_end_time;
 
    /* Non-radiance exposure records are cached until something
     * triggers cache processing: 1) arrival of a different
@@ -1061,9 +1064,9 @@ static int query_latest_timestamp (Process_Method_Type *pmt, int exprec_type, do
    return 0;
 }
 
-static int query_when_last_erec_cached (const Process_Method_Type *pmt, time_t *when)
+static int query_last_erec_cached_timestamp (const Process_Method_Type *pmt, double *timestamp)
 {
-   *when = pmt->when_last_erec_cached;
+   *timestamp = pmt->last_erec_cached_timestamp;
    return 0;
 }
 
@@ -1088,7 +1091,7 @@ Process_Method_Type *init_exprec_method (config_t *cfg)
    pmt->pmt_delete = delete_exprec;
    pmt->pmt_flush_cache = flush_cache;
    pmt->pmt_query_latest_timestamp = query_latest_timestamp;
-   pmt->pmt_query_when_last_rec_cached = query_when_last_erec_cached;
+   pmt->pmt_query_last_erec_cached_timestamp = query_last_erec_cached_timestamp;
 
    pmt->latest_radiance_timestamp_seen = -1.0;
 

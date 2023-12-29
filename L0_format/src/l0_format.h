@@ -174,7 +174,7 @@ struct Process_Method_Type
    void (*pmt_delete)(Process_Method_Type *);
    int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *);
    int (*pmt_query_latest_timestamp)(Process_Method_Type *, int, double *);
-   int (*pmt_query_when_last_rec_cached)(const Process_Method_Type *, time_t *);
+   int (*pmt_query_last_erec_cached_timestamp)(const Process_Method_Type *, double *);
 
    Process_Method_Callback_Function *pmt_post_process_callback;
 

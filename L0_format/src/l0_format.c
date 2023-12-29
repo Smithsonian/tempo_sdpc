@@ -35,6 +35,10 @@
 # define PROCESSED_FILE_MAX_LOG_ENTRIES 100000
 #endif
 
+#ifndef CACHE_FLUSH_EXPREC_WAIT_SECS_MINIMUM
+# define CACHE_FLUSH_EXPREC_WAIT_SECS_MINIMUM 60.0
+#endif
+
 #define SDPC_FILETYPE_MANEUVER   (-100)
 #define SDPC_FILETYPE_EPHEMERIS  (-101)
 
@@ -92,7 +96,6 @@ typedef struct
    double monitor_wait_secs;
    double start_time;
    double stop_time;
-   double cache_flush_idle_wait_secs;
    double cache_flush_exprec_wait_secs;
    int exit_on_emptydir;
    IRU_Interval_Type iru_interval;
@@ -100,6 +103,7 @@ typedef struct
 }
 Control_Type;
 
+static double First_Packet_Time;
 static double Last_Packet_Time;
 
 static void usage (void)
@@ -341,13 +345,22 @@ static int read_main_params (config_t *cfg, Control_Type *ctrl)
        || (CONFIG_TRUE != config_setting_lookup_string (s, "tpinfo_file", &tpinfo_file))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "monitor_wait_secs", &ctrl->monitor_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "start_time", &ctrl->start_time))
-       || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_idle_wait_secs", &ctrl->cache_flush_idle_wait_secs))
        || (CONFIG_TRUE != config_setting_lookup_float (s, "cache_flush_exprec_wait_secs", &ctrl->cache_flush_exprec_wait_secs))
       )
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading 'main' parameters in param file: %s",
                      __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (ctrl->cache_flush_exprec_wait_secs < CACHE_FLUSH_EXPREC_WAIT_SECS_MINIMUM)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: %s: cache_flush_exprec_wait_secs = %0.3f sec (minimum valid value = %0.3f sec)",
+                     __func__, config_error_file (cfg),
+                     ctrl->cache_flush_exprec_wait_secs,
+                     CACHE_FLUSH_EXPREC_WAIT_SECS_MINIMUM);
         return -1;
      }
 
@@ -704,6 +717,7 @@ static int classify_file (const char *file, Control_Type *ctrl, int *filetype, i
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
+   First_Packet_Time = chdr.first_packet_time;
    Last_Packet_Time = chdr.last_packet_time;
 
    /* To handle a corner case when generating telemetry-only radiance
@@ -867,25 +881,29 @@ static int flush_iru_coverage_for_inr (IRU_Interval_Type *iru_interval)
 static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ctrl)
 {
    Process_Method_Type *pmt = Exprec_Process_Method;
-   time_t when_last_exprec_cached, age_secs;
+   double last_erec_cached_timestamp, age_secs;
 
    /* If we're not processing exposure records, there's nothing more to do here */
    if (pmt == NULL)
      return 0;
 
-   if (0 != pmt->pmt_query_when_last_rec_cached (pmt, &when_last_exprec_cached))
+   if (0 != pmt->pmt_query_last_erec_cached_timestamp (pmt, &last_erec_cached_timestamp))
      return -1;
 
    /* If the cache is empty, we're done */
-   if (when_last_exprec_cached <= 0)
+   if (last_erec_cached_timestamp <= 0.0)
      return 0;
 
-   age_secs = time(NULL) - when_last_exprec_cached;
+   /* Incoming data stream is time-ordered, so once we receive a file beginning
+    * with timestamp, T, all subsequent timestamps, t, should be >=T */
+   age_secs = First_Packet_Time - last_erec_cached_timestamp;
 
+   /* If exposure records arrived recently, then it's too soon to flush the exprec cache. */
    if (age_secs < ctrl->cache_flush_exprec_wait_secs)
      return 0;
 
-   tell_vinfo (0, "flush exprec cache (newest cached data is %ld sec old)", age_secs);
+   tell_vinfo (0, "flush exprec cache (first_packet_time - last_erec_time = %0.3f sec > cache_flush_exprec_wait_secs = %0.3f sec)",
+               age_secs, ctrl->cache_flush_exprec_wait_secs);
 
    return pmt->pmt_flush_cache (pmt, tpinfo);
 }
@@ -996,8 +1014,7 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
 {
    IOCLib_Glob_Type *gt = NULL;
    char *pattern = NULL;
-   int may_have_cached_files, status = -1;
-   double time_since_last_file;
+   int status = -1;
 
    pattern = ioclib_pathconcat (ctrl->incoming_dir,
                                 ctrl->input_filename_glob_pattern);
@@ -1014,9 +1031,6 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
                     __func__);
         return -1;
      }
-
-   time_since_last_file = 0.0;
-   may_have_cached_files = 0;
 
    while (0 == caught_signal())
      {
@@ -1036,30 +1050,13 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
 
-        /* If we haven't seen an exprec in a while, maybe it's time to flush the exprec cache */
+        /* If exposure records are cached, but when haven't seen one in a while, that likely
+         * indicates that it's time to flush the cache and close that granule file.
+         * This is an important mechanism for triggering IRR processing soon after IRR records
+         * stop arriving, but a similar situation can arrive for other exposure record types.
+         */
         if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
           goto return_status;
-
-        if (gt->num_files)
-          {
-             time_since_last_file = 0.0;
-             may_have_cached_files = 1;
-          }
-        else
-          {
-             time_since_last_file += ctrl->monitor_wait_secs;
-          }
-
-        /* If we haven't seen any files in a while, all the caches may need flushing. */
-        if ((may_have_cached_files != 0) &&
-            (time_since_last_file > ctrl->cache_flush_idle_wait_secs))
-          {
-             tell_vinfo (0, "flush caches (%g sec since last file)", time_since_last_file);
-             if (0 != flush_caches (tbl, tpinfo))
-               goto return_status;
-             may_have_cached_files = 0;
-             (void) flush_processed_file_log (ctrl->log_incoming);
-          }
      }
 
    if (caught_signal())
