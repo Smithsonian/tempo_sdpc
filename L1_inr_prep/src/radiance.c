@@ -482,6 +482,17 @@ static Var_Name_Type EPH_Vars[] =
    VAR_TABLE_END
 };
 
+static Var_Name_Type EPH_GPSR_Vars[] =
+{
+   {"anc_gpsr_satx", TEMPO_VAR_SAT_X, NULL, NULL},
+   {"anc_gpsr_saty", TEMPO_VAR_SAT_Y, NULL, NULL},
+   {"anc_gpsr_satz", TEMPO_VAR_SAT_Z, NULL, NULL},
+   {"anc_gpsr_satvx", TEMPO_VAR_SAT_VX, NULL, NULL},
+   {"anc_gpsr_satvy", TEMPO_VAR_SAT_VY, NULL, NULL},
+   {"anc_gpsr_satvz", TEMPO_VAR_SAT_VZ, NULL, NULL},
+   VAR_TABLE_END
+};
+
 static int annotate_gyro_dqf (int grp)
 {
    uint16_t flag_masks[2] = {IOCSDPC_IRU_DATA_INVALID, IOCSDPC_IRU_DATA_SATURATED};
@@ -614,9 +625,35 @@ int radiance_copy_iru (Radiance_Type *r, TIO_Meta_Type *meta, const Row_Select_T
    return 0;
 }
 
-int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_group_path,
+static int annotate_ephemeris_source (int grp, const char *source_string)
+{
+   char buf[128];
+   int status, len, n;
+
+   n = snprintf (buf, sizeof(buf), "%s", source_string);
+   if ((n < 0) || (n == sizeof(buf)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: creating source attribute string: %s",
+                     __func__, source_string);
+        return -1;
+     }
+   len = strlen(buf) + 1;
+
+   status = nc_put_att_text (grp, NC_GLOBAL, "source", len, buf);
+   if (NC_NOERR != status)
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing source attribute string (%s)",
+                     __func__, nc_strerror(status));
+        return -1;
+     }
+
+   return 0;
+}
+
+int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_group_path, int use_gpsr_vars,
                        const Row_Select_Type *eph_head)
 {
+   Var_Name_Type *varray;
    Var_Name_Type *v;
    int grp;
 
@@ -626,7 +663,18 @@ int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_g
    if (0 != radiance_write_times (r, eph_head, grp, TEMPO_VAR_TIME_EPHEM))
      return -1;
 
-   for (v = EPH_Vars; v->from != NULL; v++)
+   if (use_gpsr_vars)
+     {
+        varray = EPH_GPSR_Vars;
+        (void) annotate_ephemeris_source (grp, "GPSR");
+     }
+   else
+     {
+        varray = EPH_Vars;
+        (void) annotate_ephemeris_source (grp, "DOP");
+     }
+
+   for (v = varray; v->from != NULL; v++)
      {
         if (0 != radiance_copy_vars (eph_head, meta, v, from_group_path, grp, 0))
           return -1;
@@ -834,7 +882,7 @@ return_status:
    return status;
 }
 
-static int write_predicted_ephemeris (Radiance_Type *r, const Eph_Predicted_Type *pred)
+static int write_predicted_ephemeris (Radiance_Type *r, const Eph_Predicted_Type *pred, const char *source_file_path)
 {
    int start = 0;
    int count = pred->num;
@@ -852,6 +900,8 @@ static int write_predicted_ephemeris (Radiance_Type *r, const Eph_Predicted_Type
         tell_verror (TELL_IO_WRITE_ERROR, "%s: writing ephemeris to file: %s", __func__, r->file);
         return -1;
      }
+
+   (void) annotate_ephemeris_source (grp, ioclib_basename (source_file_path));
 
    return 0;
 }
@@ -934,7 +984,7 @@ int radiance_copy_eph_predicted (Radiance_Type *r, double time_beg, double time_
    if (num_points > 0)
      {
         tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: read %d ephemeris points from %s", __func__, num_points, g->files[k]);
-        if (0 != write_predicted_ephemeris (r, &pred))
+        if (0 != write_predicted_ephemeris (r, &pred, g->files[k]))
           goto return_status;
      }
    else

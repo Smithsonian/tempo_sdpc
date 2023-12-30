@@ -522,6 +522,60 @@ static int get_predicted_ephemeris_config (config_t *cfg, char **eph_dirp, int *
    return 0;
 }
 
+static int ephemeris_files_have_gpsr_vars (config_t *cfg, const char *gpsr_time_var,
+                                           const File_Array_Type *fa, const char *group_path)
+{
+   int i, enable_gpsr_vars, have_gpsr_vars;
+
+   /* If usage of GPSR vars is disabled, then there's no point looking for them */
+   if (CONFIG_TRUE == config_lookup_bool (cfg, "eph_config.enable_gpsr_vars", &enable_gpsr_vars))
+     {
+        if (enable_gpsr_vars == 0)
+          return 0;
+     }
+
+   /* If the GPSR time variable is in the first file we can read
+    * that contains the specified group (if one was specified), then
+    * we assume all the files have it.
+    * Otherwise, we assume none of the files have it.
+    */
+
+   have_gpsr_vars = 0;
+
+   for (i = 0; i < fa->num_files; i++)
+     {
+        const char *file = fa->file_list[i];
+        int ncid, grp, gpsr_time_varid;
+
+        if ((0 == strcasecmp (file, "NONE"))
+            || (0 != TIO_open (file, NC_NOWRITE, &ncid)))
+          {
+             continue;
+          }
+
+        if (group_path)
+          {
+             if (NC_NOERR != nc_inq_grp_full_ncid (ncid, group_path, &grp))
+               {
+                  (void) TIO_close (ncid);
+                  ncid = 0;
+                  continue;
+               }
+          }
+        else grp = ncid;
+
+        if (0 == tio_inq_varid (grp, gpsr_time_var, &gpsr_time_varid))
+          {
+             have_gpsr_vars = 1;
+          }
+        (void) TIO_close (ncid);
+
+        break;
+     }
+
+   return have_gpsr_vars;
+}
+
 static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                        double time_beg, double time_end, int pad_enable, int *is_ecef)
 {
@@ -529,8 +583,10 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
    File_Array_Type fa = {0};
    Row_Select_Type *rst = NULL;
    const char *group_path = "anc_gps";
-   const char *time_var = "anc_gps_time";
+   const char *gpsr_time_var = "anc_gpsr_gps_time";
+   const char *time_var;
    char *eph_dir = NULL;
+   int use_gpsr_vars;
    int status = -1;
 
    if (0 != read_common_params (cfg, "eph_config", &eph))
@@ -539,24 +595,37 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
    if (0 != get_file_list (time_beg, time_end, eph.file_list_source, &fa))
      goto return_status;
 
+   use_gpsr_vars = 0;
+   if (ephemeris_files_have_gpsr_vars (cfg, gpsr_time_var, &fa, group_path) > 0)
+     {
+        use_gpsr_vars = 1;
+     }
+
+   time_var = use_gpsr_vars ? gpsr_time_var : "anc_gps_time";
+
    if (0 != row_select_scan (time_beg, time_end, pad_enable ? eph.num_pad : 0,
                              fa.num_files, fa.file_list, group_path, time_var, &rst))
      goto return_status;
 
    if ((rst != NULL) && (rst->count > 0))
      {
-        /* FIXME:  For now, the anc_gps data in telemetry comes from the DOP
-         * (Digital Orbit Propagator) and is in the J2000 frame. Before delivery
-         * to INR, we need to transform from J2000 to ECEF, hence we set *is_ecef=0.
-         * When direct GPSR data becomes available, we will set is_ecef depending
-         * on which ephemeris we actually use:
+        /* The anc_gps telemetry section may contain two sets of ephemeris data:
+         *   a) anc_sat* variables that come from the DOP (Digital Orbit Propagator)
+         *      and are in the J2000 frame.
+         *   b) anc_gpsr_sat* variables that come directly from the GPS receiver
+         *      and are in the ECEF frame.
+         * INR needs the ECEF ephemeris, so the GPSR variables are preferred when
+         * available (and when usage is not explicitly disabled in the config file).
+         * Here, we set *is_ecef to indicate to the calling routine which ephemeris
+         * variables are being used.  The calling routine can then trigger
+         * a reference frame transformation when needed:
          *   Using DOP (J2000) --> set *is_ecef=0
          *   Using GPSR (ECEF) --> set *is_ecef=1
          */
 
-        *is_ecef = 0;
+        *is_ecef = use_gpsr_vars;
 
-        if (0 != radiance_copy_eph (r, meta, group_path, rst))
+        if (0 != radiance_copy_eph (r, meta, group_path, use_gpsr_vars, rst))
           goto return_status;
      }
    else

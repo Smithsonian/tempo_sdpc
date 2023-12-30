@@ -116,12 +116,14 @@ extern int radiance_copy_smc (Radiance_Type *r, TIO_Meta_Type *meta,
  * @param[in] meta Pointer to @c TIO_Meta_Type struct associated with an open
  *                 Level 1 radiance file
  * @param[in] from_group_path  Path to file group containing ephemeris data
+ * @param[in] use_gpsr_vars    Boolean indicating which ephemeris variables to use
+ *                             (0 means use anc_sat*, non-zero means use anc_gpsr_sat*)
  * @param[in] rst  Pointer to a @c Row_Select_Type object referencing
  *                 the relevant ephemeris time series data
  * @return 0 on success, -1 on error
  */
 extern int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta,
-                              const char *from_group_path,
+                              const char *from_group_path, int use_gpsr_vars,
                               const Row_Select_Type *rst);
 extern int radiance_copy_eph_predicted (Radiance_Type *r, double time_beg, double time_end,
                                         int enable_adjust_velocity,
