@@ -316,7 +316,7 @@ static int regrid_polar_stereographic_src (Snow_Type *sn, unsigned int num_pixel
         double x0[4], y0[4];
         const double *lon_cnr, *lat_cnr;
         unsigned int pix, num_bb_pixels;
-        double sum_area;
+        double covered_area, total_area;
         int pixel_status;
 
         /* Next 4 (lon,lat) pixel corners: */
@@ -348,25 +348,15 @@ static int regrid_polar_stereographic_src (Snow_Type *sn, unsigned int num_pixel
           goto return_status;
 
         num_bb_pixels = bbox.num_rows * bbox.num_cols;
-        sum_area = 0.0;
+        covered_area = 0.0;
+        total_area = 0.0;
 
         for (pix = 0; pix < num_bb_pixels; pix++)
           {
              unsigned int row = bbox.row_start + (pix / bbox.num_cols);
              unsigned int col = bbox.col_start + (pix % bbox.num_cols);
              int value = sn->pixels[col + row * sn->num_cols];
-             double x[4], y[4];
-
-             /* No contribution when there's no snow or ice.
-              * IMS product pixel values are:
-              *    0 = outside coverage area
-              *    1 = Sea
-              *    2 = Land (without snow)
-              *    3 = Sea ice
-              *    4 = Snow covered land
-              */
-             if (value < 3)
-               continue;
+             double x[4], y[4], pix_overlap_area;
 
              if (0 != get_pixel_lonlat_corners (&tform, col, row, x, y))
                goto return_status;
@@ -384,13 +374,31 @@ static int regrid_polar_stereographic_src (Snow_Type *sn, unsigned int num_pixel
              if (0 == Polygon_length (overlap))
                continue;
 
-             sum_area += Polygon_area (overlap);
+             /* Area of IMS pixel that overlaps TEMPO pixel */
+             pix_overlap_area = Polygon_area (overlap);
+
+             /* Accumulate total area overlapping the TEMPO pixel, ensuring that
+              * the total area and the covered area are computed with the same
+              * geometry and resolution. */
+             total_area += pix_overlap_area;
+
+             /* No contribution when there's no snow or ice.
+              * IMS product pixel values are:
+              *    0 = outside coverage area
+              *    1 = Sea
+              *    2 = Land (without snow)
+              *    3 = Sea ice
+              *    4 = Snow covered land
+              */
+             if (value >= 3)
+               {
+                  covered_area += pix_overlap_area;
+               }
           }
 
-        if (sum_area > 0)
+        if (covered_area > 0)
           {
-             double total_area = Polygon_area (target);
-             snow_ice_fraction[i] = sum_area / total_area;
+             snow_ice_fraction[i] = covered_area / total_area;
           }
      }
 
