@@ -482,14 +482,20 @@ static Var_Name_Type EPH_Vars[] =
    VAR_TABLE_END
 };
 
+static double _pGPSR_Velocity_Convert_mm_per_sec_to_km_per_sec = 1.e-6;
+/* _pGPSR_Velocity_Convert_mm_per_sec_to_km_per_sec is the conversion factor:
+ *     (mm/sec)*(1.e-6 km/mm) -> (km/sec)
+ * Incoming IOC data stream provides GPSR velocity values in mm/sec.
+ * Downstream, the INR software expects km/sec.
+ */
 static Var_Name_Type EPH_GPSR_Vars[] =
 {
    {"anc_gpsr_satx", TEMPO_VAR_SAT_X, NULL, NULL},
    {"anc_gpsr_saty", TEMPO_VAR_SAT_Y, NULL, NULL},
    {"anc_gpsr_satz", TEMPO_VAR_SAT_Z, NULL, NULL},
-   {"anc_gpsr_satvx", TEMPO_VAR_SAT_VX, NULL, NULL},
-   {"anc_gpsr_satvy", TEMPO_VAR_SAT_VY, NULL, NULL},
-   {"anc_gpsr_satvz", TEMPO_VAR_SAT_VZ, NULL, NULL},
+   {"anc_gpsr_satvx", TEMPO_VAR_SAT_VX, NULL, &_pGPSR_Velocity_Convert_mm_per_sec_to_km_per_sec},
+   {"anc_gpsr_satvy", TEMPO_VAR_SAT_VY, NULL, &_pGPSR_Velocity_Convert_mm_per_sec_to_km_per_sec},
+   {"anc_gpsr_satvz", TEMPO_VAR_SAT_VZ, NULL, &_pGPSR_Velocity_Convert_mm_per_sec_to_km_per_sec},
    VAR_TABLE_END
 };
 
