@@ -98,6 +98,45 @@ static int define_global_vars (int grp, const _pDim_Table_Type *dim_table)
           return -1;
      }
 
+   /* solar boresight angles (phi, theta) */
+     {
+        static _pText_Attr_Type solar_phi_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "solar boresight azimuthal angle"},
+             _pTEXT_ATTRS_END
+          };
+        static _pText_Attr_Type solar_theta_attrs[] =
+          {
+             {"units", "degrees"},
+             {"long_name", "solar boresight polar angle"},
+             _pTEXT_ATTRS_END
+          };
+        static _pFloat_Attr_Type solar_phi_float_attrs[] =
+          {
+             {"valid_min", -180.0},
+             {"valid_max",  180.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        static _pFloat_Attr_Type solar_theta_float_attrs[] =
+          {
+             {"valid_min",    0.0},
+             {"valid_max",  180.0},
+             {_FillValue, TIO_FILL_FLOAT},
+             _pFLOAT_ATTRS_END
+          };
+        dims[0] = dim_table->step.id;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SOLAR_BORESIGHT_PHI, NC_FLOAT, 1, dims, solar_phi_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, solar_phi_float_attrs))
+          return -1;
+        if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_SOLAR_BORESIGHT_THETA, NC_FLOAT, 1, dims, solar_theta_attrs, &varid))
+          return -1;
+        if (-1 == _pTIO_define_float_attrs (grp, varid, solar_theta_float_attrs))
+          return -1;
+     }
+
    /* earth_sun_distance */
    if (0 != tio_set_earth_sun_distance (grp, _pTIO_EARTH_SUN_DISTANCE))
      return -1;
