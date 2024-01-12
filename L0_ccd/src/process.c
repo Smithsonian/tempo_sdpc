@@ -780,7 +780,7 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
                                    Exprec_Meta_Type *xr)
 {
    Granule_Exprec_Type *exprec = xr->exprec;
-   double jd_utc, solar_theta, solar_phi;
+   double jd_utc;
 
    if (cal->cal_straylight_correction)
      {
@@ -814,7 +814,7 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
     * we compute the solar position for both.  It's cheap, so no worries.
     */
    if ((0 != julian_date_from_taix (exprec->start_time, &jd_utc))
-       || (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &solar_theta, &solar_phi, &xr->earth_sun_distance)))
+       || (0 != sgt->sgt_sat_sun_position (sgt, jd_utc, &xr->solar_theta, &xr->solar_phi, &xr->earth_sun_distance)))
      return -1;
 
    if (EXPREC_TYPE_IS_IRRADIANCE(exprec->exposure_type))
@@ -825,7 +825,7 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
 
         tell_vlog (TELL_MSGTYPE_INFO, 1, "BTDF correction");
 
-        if (0 != trend_collect_solar_angles (solar_theta, solar_phi, use_reference_diffuser))
+        if (0 != trend_collect_solar_angles (xr->solar_theta, xr->solar_phi, use_reference_diffuser))
           return -1;
 
         if (want_diagnostic_output(xr->index))
@@ -836,16 +836,16 @@ static int radiometric_correction (const Calibration_Type *cal, Solar_Geom_Type 
              img_polcorr = image_new (exprec->img->num_rows, exprec->img->num_cols);
           }
 
-        if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, exprec->img, img_btdf))
-            || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, solar_phi, solar_theta, xr->img_err, NULL)))
+        if ((0 != cal->cal_apply_btdf (cal, use_reference_diffuser, xr->solar_phi, xr->solar_theta, exprec->img, img_btdf))
+            || (0 != cal->cal_apply_btdf (cal, use_reference_diffuser, xr->solar_phi, xr->solar_theta, xr->img_err, NULL)))
           {
              image_free (img_btdf);
              image_free (img_polcorr);
              return -1;
           }
 
-        if ((0 != cal->cal_apply_diffuser_polcorr (cal, solar_phi, solar_theta, exprec->img, img_polcorr))
-            || (0 != cal->cal_apply_diffuser_polcorr (cal, solar_phi, solar_theta, xr->img_err, NULL)))
+        if ((0 != cal->cal_apply_diffuser_polcorr (cal, xr->solar_phi, xr->solar_theta, exprec->img, img_polcorr))
+            || (0 != cal->cal_apply_diffuser_polcorr (cal, xr->solar_phi, xr->solar_theta, xr->img_err, NULL)))
           {
              image_free (img_btdf);
              image_free (img_polcorr);
@@ -933,6 +933,8 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
    outrec.meta.exposure_time = xr->exprec->exposure_time;
    outrec.meta.mirror_step = xr->exprec->curr_mirror_step;
    outrec.meta.earth_sun_distance = xr->earth_sun_distance;
+   outrec.meta.solar_phi = xr->solar_phi;
+   outrec.meta.solar_theta = xr->solar_theta;
 
    outrec.write_nominal_wavelength_grid = Write_Nominal_Wavelength_Grid;
 

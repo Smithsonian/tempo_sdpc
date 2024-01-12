@@ -13,6 +13,8 @@ typedef struct
    double start_time;           /**< exposure start time in sec elapsed since the TEMPO epoch */
    double exposure_time;        /**< total exposure duration [sec] */
    double earth_sun_distance;   /**< earth-sun distance [km] */
+   double solar_phi;            /**< solar boresight azimuthal angle [deg] */
+   double solar_theta;          /**< solar boresight polar angle [deg] */
    int mirror_step;             /**< current mirror step */
 }
 Output_Metadata_Type;

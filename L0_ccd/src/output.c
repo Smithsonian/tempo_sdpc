@@ -381,6 +381,30 @@ static int write_rec_meta (Output_Type *out, int index,
         return -1;
      }
 
+   switch (out->exposure_type)
+     {
+      case EXPREC_TYPE_IRR_WRK: /* drop */
+      case EXPREC_TYPE_IRR_REF:
+        if (0 != TIO_put_var_section (ncid, TEMPO_VAR_SOLAR_BORESIGHT_PHI, &start, &count, TIO_DOUBLE,
+                                      &meta->solar_phi))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                          __func__, TEMPO_VAR_SOLAR_BORESIGHT_PHI, out->file);
+             return -1;
+          }
+        if (0 != TIO_put_var_section (ncid, TEMPO_VAR_SOLAR_BORESIGHT_THETA, &start, &count, TIO_DOUBLE,
+                                      &meta->solar_theta))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s to %s",
+                          __func__, TEMPO_VAR_SOLAR_BORESIGHT_THETA, out->file);
+             return -1;
+          }
+        break;
+
+      default:
+        break;
+     }
+
    return 0;
 }
 
@@ -436,6 +460,35 @@ static int insert_comment (int grp, const char *varname, const char *comment)
    return 0;
 }
 
+static double mean_double (int num, double *x, double fillval)
+{
+   double tot = 0.0;
+   int i, n = 0;
+   for (i = 0; i < num; i++)
+     {
+        if (x[i] != fillval)
+          {
+             tot += x[i];
+             n++;
+          }
+     }
+   return n ? (tot / n) : fillval;
+}
+static float mean_float (int num, float *x, float fillval)
+{
+   double tot = 0.0;
+   int i, n = 0;
+   for (i = 0; i < num; i++)
+     {
+        if (x[i] != fillval)
+          {
+             tot += x[i];
+             n++;
+          }
+     }
+   return n ? (float)(tot / n) : fillval;
+}
+
 static int band_average_irradiance (Output_Type *out, const char *band_name)
 {
    int src_grp, dest_grp;
@@ -444,13 +497,15 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
    float *tmp_irr = NULL;
    float *tmp_irr_err = NULL;
    float *exptime = NULL;
+   float *solar_phi = NULL;
+   float *solar_theta = NULL;
    double *obstime = NULL;
-   double obstime_avg, tot_obstime, tot_exptime;
-   float exptime_avg, earth_sun_distance;
+   double obstime_avg;
+   float exptime_avg, solar_phi_avg, solar_theta_avg, earth_sun_distance;
    unsigned short *pqf = NULL;
    unsigned short *tmp_pqf = NULL;
    char comment_string[1024];
-   int i, k, len, start[3], count[3], n_obstime, n_exptime;
+   int i, k, len, start[3], count[3];
    int processing_version;
    int *num = NULL;
    int status = -1;
@@ -478,6 +533,8 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
        || (NULL == (num = (int *)MALLOC (len * sizeof(int))))
        || (NULL == (obstime = (double *)MALLOC (out->num_recs * sizeof(double))))
        || (NULL == (exptime = (float *)MALLOC (out->num_recs * sizeof(float))))
+       || (NULL == (solar_phi = (float *)MALLOC (out->num_recs * sizeof(float))))
+       || (NULL == (solar_theta = (float *)MALLOC (out->num_recs * sizeof(float))))
       )
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc error", __func__);
@@ -561,33 +618,23 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
    start[0] = 0;
    count[0] = out->num_recs;
    if ((0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, obstime))
-       ||(0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, exptime)))
+       ||(0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, exptime))
+       ||(0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_SOLAR_BORESIGHT_PHI, start, count, TIO_FLOAT, solar_phi))
+       ||(0 != TIO_get_var_section (out->ncid_irr_frames, TEMPO_VAR_SOLAR_BORESIGHT_THETA, start, count, TIO_FLOAT, solar_theta)))
      goto return_status;
 
-   tot_obstime = 0.0;
-   tot_exptime = 0.0;
-   n_obstime = 0;
-   n_exptime = 0;
-   for (i = 0; i < out->num_recs; i++)
-     {
-        if (obstime[i] != TIO_FILL_DOUBLE)
-          {
-             tot_obstime += obstime[i];
-             n_obstime++;
-          }
-        if (exptime[i] != TIO_FILL_FLOAT)
-          {
-             tot_exptime += exptime[i];
-             n_exptime++;
-          }
-     }
-   obstime_avg = n_obstime ? (tot_obstime / n_obstime) : TIO_FILL_DOUBLE;
-   exptime_avg = n_exptime ? (tot_exptime / n_exptime) : TIO_FILL_FLOAT;
+   obstime_avg = mean_double (out->num_recs, obstime, TIO_FILL_DOUBLE);
+   exptime_avg = mean_float (out->num_recs, exptime, TIO_FILL_FLOAT);
+   solar_phi_avg = mean_float (out->num_recs, solar_phi, TIO_FILL_FLOAT);
+   solar_theta_avg = mean_float (out->num_recs, solar_theta, TIO_FILL_FLOAT);
 
    start[0] = 0;
    count[0] = 1;
    if ((0 != TIO_put_var_section (out->ncid, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, &obstime_avg))
-       ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, &exptime_avg)))
+       ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_EXPOSURE_TIME, start, count, TIO_FLOAT, &exptime_avg))
+       ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_SOLAR_BORESIGHT_PHI, start, count, TIO_FLOAT, &solar_phi_avg))
+       ||(0 != TIO_put_var_section (out->ncid, TEMPO_VAR_SOLAR_BORESIGHT_THETA, start, count, TIO_FLOAT, &solar_theta_avg))
+      )
      goto return_status;
 
    snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_TIME);
@@ -595,6 +642,12 @@ static int band_average_irradiance (Output_Type *out, const char *band_name)
      goto return_status;
    snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_EXPOSURE_TIME);
    if (0 != insert_comment (out->ncid, TEMPO_VAR_EXPOSURE_TIME, comment_string))
+     goto return_status;
+   snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_SOLAR_BORESIGHT_PHI);
+   if (0 != insert_comment (out->ncid, TEMPO_VAR_SOLAR_BORESIGHT_PHI, comment_string))
+     goto return_status;
+   snprintf (comment_string, sizeof(comment_string), "Average of /frames/%s", TEMPO_VAR_SOLAR_BORESIGHT_THETA);
+   if (0 != insert_comment (out->ncid, TEMPO_VAR_SOLAR_BORESIGHT_THETA, comment_string))
      goto return_status;
 
    i = 1;

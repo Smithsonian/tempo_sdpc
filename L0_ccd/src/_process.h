@@ -15,6 +15,8 @@ typedef struct
    float fpa_temp;
    float fpe_temp;
    double earth_sun_distance;
+   double solar_phi;
+   double solar_theta;
    int index;
 }
 Exprec_Meta_Type;
