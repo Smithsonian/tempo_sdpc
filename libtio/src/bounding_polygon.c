@@ -16,7 +16,7 @@ static int process_file (const char *ncfile, int replace)
    mode = replace ? NC_WRITE : NC_NOWRITE;
 
    if ((0 != TIO_open (ncfile, mode, &ncid))
-       || (0 != TIO_def_grp (ncid, "band_290_490_nm", &grp)))
+       || (0 != TIO_inq_grp (ncid, "band_290_490_nm", &grp)))
      {
         fprintf (stderr, "*** Error opening netcdf file metadata group: %s\n", ncfile);
         goto cleanup_and_exit;
@@ -56,7 +56,7 @@ cleanup_and_exit:
 
 static int usage (const char *pgm)
 {
-   fprintf (stdout, "Usage: %s [--replace] FILE\n", pgm);
+   fprintf (stdout, "Usage: %s [--replace] <level1b-radiance-file>\n", pgm);
    exit(EXIT_SUCCESS);
 }
 
