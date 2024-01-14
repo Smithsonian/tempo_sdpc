@@ -72,6 +72,28 @@ SF_Convolution_Type;
 
 typedef struct
 {
+   int *sample_indices;
+   int num_samples;
+}
+Sample_Type;
+
+typedef struct
+{
+   Sample_Type *sample_model;
+   Sample_Type *sample_data;
+   double *wave0_samp;
+   double *spec_scaled_samp;
+   double *weight_samp;
+   double *waves_eval_samp;
+   double *combined_model_samp;
+   double *irr_value_samp;
+   double *convolved_model;
+   double isrf_pad_frac;
+}
+Window_Sample_Type;
+
+typedef struct
+{
    int xtrack;      /**< cross-track index to be fitted */
    size_t num_wave; /**< total number of wavelength points in measured spectrum */
    double *wave0;   /**< initial guess at wavelength grid for measured spectrum */
@@ -99,6 +121,8 @@ typedef struct
    double *residuals;       /**< weighted fit residual, (model - spec_scaled)*weight */
 
    SF_Convolution_Type *sfct;   /**< extra storage to perform the slit-function convolution */
+
+   Window_Sample_Type samp;     /**< structure to support sub-sampling the data */
 }
 Window_Type;
 
@@ -172,6 +196,318 @@ struct Wavecal_Type
    int is_irradiance;
    int xtrack;                  /**< slit function lookup table requires xtrack index */
 };
+
+static int select_ref_irr_subset (const Reference_Irr_Type *irr, double wave_beg, double wave_end, int num_pad,
+                                  int *pindex_irr_beg, int *pindex_irr_end);
+
+static void sample_free (Sample_Type *s)
+{
+   if (s == NULL) return;
+   FREE(s->sample_indices);
+   FREE(s);
+}
+
+static Sample_Type *sample_alloc (int n)
+{
+   Sample_Type *s = NULL;
+
+   if (NULL == (s = (Sample_Type *)MALLOC (sizeof *s)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   s->num_samples = n;
+   s->sample_indices = NULL;
+
+   if (NULL == (s->sample_indices = (int *)MALLOC (n * sizeof(int))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        sample_free (s);
+        return NULL;
+     }
+
+   return s;
+}
+
+static Sample_Type *sample_dup (const Sample_Type *s)
+{
+   Sample_Type *dup = NULL;
+   if (NULL == (dup = sample_alloc (s->num_samples)))
+     return NULL;
+   memcpy ((char *)dup->sample_indices, (char *)s->sample_indices, s->num_samples * sizeof(int));
+   return dup;
+}
+
+#if 0
+static Sample_Type *sample_interval (int num, int first, int interval)
+{
+   Sample_Type *s = NULL;
+   int i, nsamples = num / interval;
+   int offset = first + (num/2) % interval;
+
+   if (NULL == (s = sample_alloc (nsamples)))
+     return NULL;
+
+   for (i = 0; i < nsamples; i++)
+     {
+        s->sample_indices[i] = offset + i * interval;
+     }
+
+   return s;
+}
+#endif
+
+static Sample_Type *sample_threshold (int num, const double *x, double thresh)
+{
+   Sample_Type *s = NULL;
+   int i, k, nsamples;
+
+   nsamples = 0;
+   for (i = 0; i < num; i++)
+     {
+        if (x[i] > thresh) nsamples++;
+     }
+
+   if (NULL == (s = sample_alloc (nsamples)))
+     return NULL;
+
+   k = 0;
+   for (i = 0; i < num; i++)
+     {
+        if (x[i] > thresh)
+          {
+             s->sample_indices[k++] = i;
+          }
+     }
+
+   return s;
+}
+
+static int sample_gather (const Sample_Type *s, const double *x, double *xsamp, int *num_xsamp)
+{
+   int i;
+   if (num_xsamp) *num_xsamp = s->num_samples;
+   for (i = 0; i < s->num_samples; i++)
+     {
+        int k = s->sample_indices[i];
+        xsamp[i] = x[k];
+     }
+   return 0;
+}
+
+static int sample_scatter (const Sample_Type *s, const double *xsamp, double *x)
+{
+   int i;
+   for (i = 0; i < s->num_samples; i++)
+     {
+        int k = s->sample_indices[i];
+        x[k] = xsamp[i];
+     }
+   return 0;
+}
+
+static int init_data_sampling (Window_Type *win, int interval, int half_width)
+{
+   Window_Sample_Type *samp = &win->samp;
+   double *mask = NULL;
+   int i0, i, num_samples;
+   int num = win->num_wave;
+
+   if (interval <= 1)
+     return 0;
+
+   if (half_width < 0) half_width = 0;
+
+   if (NULL == (mask = (double *)MALLOC (num * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return -1;
+     }
+   memset ((char *)mask, 0, num * sizeof(double));
+
+   /* Construct a mask that defines sample windows each spanning
+    * (2*half_width+1) pixels and with window centers spaced a
+    *  distance 'interval' apart.
+    * The sample windows are offset from the end of the mask to
+    * center the entire mask pattern in the user-specified data range.
+    */
+
+   i0 = win->start_pix + (num/2) % interval;
+   for (i = 0; (i + i0) < num; i++)
+     {
+        int k = abs((i % interval) - half_width);
+        if (k <= half_width) mask[i+i0] = 1.0;
+     }
+
+   samp->sample_data = sample_threshold (num, mask, 0.0);
+   FREE(mask);
+   if (NULL == samp->sample_data)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: initializing data subsampling", __func__);
+        return -1;
+     }
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1,
+              "data sampling: interval=%d half_width=%d num_samples=%d",
+              interval, half_width, samp->sample_data->num_samples);
+
+   /* allocate additional temporary workspace based on the number of samples */
+   num_samples = samp->sample_data->num_samples;
+
+   if ((NULL == (samp->wave0_samp = alloc_doubles (num_samples)))
+       || (NULL == (samp->spec_scaled_samp = alloc_doubles (num_samples)))
+       || (NULL == (samp->weight_samp = alloc_doubles (num_samples))))
+     return -1;
+
+   return 0;
+}
+
+static int init_model_sampling (Window_Type *win, int sf_mode, const double *waves,
+                                const Reference_Irr_Type *irr)
+{
+   SF_Convolution_Type *sfct = win->sfct;
+   Window_Sample_Type *samp = &win->samp;
+   double *irr_wavelen;
+   double *mask = NULL;
+   double wave_beg, wave_end;
+   int i, index_irr_beg, index_irr_end, num_irr_waves, num_samples, num_pad;
+   int *sample_indices = NULL;
+   int status = -1;
+
+   /* Quick return when slit function convolution is turned off --
+    * Model and data are on the same grid */
+   if (sf_mode == SF_MODE_NONE)
+     {
+        if ((NULL == (samp->sample_model = sample_dup (samp->sample_data)))
+            || (NULL == (samp->waves_eval_samp = alloc_doubles (samp->sample_model->num_samples))))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: initializing model subsampling", __func__);
+             return -1;
+          }
+        tell_vlog (TELL_MSGTYPE_INFO, 1,
+                   "model sampling: num_samples=%d", samp->sample_model->num_samples);
+        return 0;
+     }
+
+   /* Select the relevant subset of the reference irradiance wavelength grid */
+   if (0 != select_ref_irr_subset (irr, win->wave0[0], win->wave0[win->num_wave-1], sfct->num_pad, &index_irr_beg, &index_irr_end))
+     return -1;
+
+   /* define irradiance subset pointers */
+   num_irr_waves = index_irr_end - index_irr_beg + 1;
+   irr_wavelen = irr->wavelen + index_irr_beg;
+
+   wave_beg = irr_wavelen[0];
+   wave_end = irr_wavelen[num_irr_waves-1];
+
+   /* Ideally we should use the slit function to determine which model wavelengths
+    * contribute to each sampled data pixel for the current slit function, but the
+    * "exact" mapping could change with every fit iteration.  However, that's
+    * needlessly complicated, because an approximate mapping is good enough.
+    *
+    * Instead, we sample the model in a (user adjustable) fixed-size window around
+    * each sampled data wavelength. Increasing the window size can reduce the sensitivity
+    * of the final result to this assumption.
+    */
+   if (NULL == (mask = alloc_doubles (num_irr_waves)))
+     goto return_status;
+   memset ((char *)mask, 0, num_irr_waves * sizeof(double));
+
+   num_samples = samp->sample_data->num_samples;
+   sample_indices = samp->sample_data->sample_indices;
+
+   num_pad = sfct->num_pad;
+   if (samp->isrf_pad_frac > 0.0) num_pad *= samp->isrf_pad_frac;
+
+   /* Mark each model wavelength that contributes to a sampled data pixel */
+   for (i = 0; i < num_samples; i++)
+     {
+        int k, i_irr, jbeg, jend, j;
+        double wave_k;
+
+        k = sample_indices[i];
+        wave_k = waves[k];
+
+        if ((wave_k < wave_beg) || (wave_end < wave_k))
+          continue;
+        i_irr = bsearch_d (wave_k, irr_wavelen, num_irr_waves);
+
+        jbeg = i_irr - num_pad;
+        jend = i_irr + num_pad;
+
+        if (jbeg < 0) jbeg = 0;
+        if (jend > num_irr_waves) jend = num_irr_waves;
+
+        for (j = jbeg; j < jend; j++)
+          {
+             mask[j] += 1;
+          }
+     }
+
+   /* The mask now marks all model wavelengths that map to the sampled data pixels */
+   if (NULL == (samp->sample_model = sample_threshold (num_irr_waves, mask, 0.0)))
+     goto return_status;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1,
+              "model sampling: isrf_pad_frac=%0.2g num_pad=%d num_samples=%d",
+              samp->isrf_pad_frac, num_pad, samp->sample_model->num_samples);
+
+   /* allocate additional temporary workspace based on the number of samples */
+   if ((NULL == (samp->waves_eval_samp = alloc_doubles (samp->sample_model->num_samples)))
+       || (NULL == (samp->combined_model_samp = alloc_doubles (samp->sample_model->num_samples)))
+       || (NULL == (samp->irr_value_samp = alloc_doubles (sfct->num_alloc)))
+       || (NULL == (samp->convolved_model = alloc_doubles (win->num_wave))))
+     goto return_status;
+
+   status = 0;
+return_status:
+   FREE(mask);
+
+   return status;
+}
+
+static void free_window_sample (Window_Sample_Type *samp)
+{
+   if (samp == NULL)
+     return;
+   sample_free (samp->sample_model);
+   sample_free (samp->sample_data);
+   FREE(samp->wave0_samp);
+   FREE(samp->spec_scaled_samp);
+   FREE(samp->weight_samp);
+   FREE(samp->waves_eval_samp);
+   FREE(samp->combined_model_samp);
+   FREE(samp->irr_value_samp);
+   FREE(samp->convolved_model);
+}
+
+static int init_sampling (Window_Type *win, config_setting_t *s_band)
+{
+   config_setting_t *s_samp;
+   double isrf_pad_frac;
+   int interval, half_width;
+
+   if (NULL == (s_samp = config_setting_get_member (s_band, "sampling")))
+     return 0;
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s_samp, "interval", &interval))
+     interval = 1;
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s_samp, "half_width", &half_width))
+     half_width = 1;
+
+   if (CONFIG_TRUE != config_setting_lookup_float (s_samp, "isrf_pad_frac", &isrf_pad_frac))
+     isrf_pad_frac = 1.0;
+
+   win->samp.isrf_pad_frac = isrf_pad_frac;
+
+   /* Data sampling is independent of the slit function, so we can
+    * initialize the necessary structures here.
+    * Model sampling must be deferred until after the slit function
+    * is initialized. */
+   return init_data_sampling (win, interval, half_width);
+}
 
 static void free_file_type (File_Type *file)
 {
@@ -656,6 +992,7 @@ static void free_window (Window_Type *win)
    FREE(win->weight);
    FREE(win->residuals);
    FREE(win->wave_params);
+   free_window_sample (&win->samp);
    free_shapefun_type (win->wavegrid_shapefun);
    free_sf_convolution_type (win->sfct);
 }
@@ -675,6 +1012,8 @@ static int alloc_window (Window_Type *win, int num_data_waves, int num_model_wav
      return -1;
 
    win->xerror = NULL;        /* set this later */
+
+   memset ((char *)&win->samp, 0, sizeof (win->samp));
 
    if (num_pad)
      {
@@ -1486,6 +1825,9 @@ Wavecal_Type *wavecal_open (config_t *cfg, const char *cfg_name, TIO_Meta_Type *
    if (0 != config_control (s, wct))
      goto error_return;
 
+   if (0 != init_sampling (win, s_band))
+     goto error_return;
+
    return wct;
 
 error_return:
@@ -1774,9 +2116,12 @@ static int compute_wavelengths (const Window_Type *win, const double *par, size_
 static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
 {
    Window_Type *win = &wct->window;
+   Window_Sample_Type *samp = &win->samp;
    Reference_Irr_Type *irr = &wct->irr;
    Term_Type *term;
    const double *par;
+   double *waves_eval = NULL;
+   int num_waves_eval;
 
    (void) derivs;
 
@@ -1794,21 +2139,33 @@ static int pre_convolved_forward_model (Wavecal_Type *wct, const double *params,
         return -1;
      }
 
+   if (samp->sample_model == NULL)
+     {
+        num_waves_eval = win->num_wave;
+        waves_eval = win->wave0;
+     }
+   else
+     {
+        if (0 != sample_gather (samp->sample_model, win->wave0, samp->waves_eval_samp, &num_waves_eval))
+          return -1;
+        waves_eval = samp->waves_eval_samp;
+     }
+
    /* evaluate the reference irradiance on the new wavelength grid */
-   if (cspline_eval (irr->cspline, win->num_wave, win->wave0, wct->irr0))
+   if (cspline_eval (irr->cspline, num_waves_eval, waves_eval, wct->irr0))
      return -1;
 
    /* evaluate all model terms on the new wavelength grid */
    for (term = wct->terms; term != NULL; term = term->next)
      {
         double scale_factor = win->rad_mean_ratio;
-        if (evaluate_term (term, win->num_wave, win->wave0, scale_factor, par) < 0)
+        if (evaluate_term (term, num_waves_eval, waves_eval, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
      }
 
    /* combine terms to construct the updated model spectrum */
-   if (0 != combine_terms (wct, wct->irr0, win->num_wave, model))
+   if (0 != combine_terms (wct, wct->irr0, num_waves_eval, model))
      return -1;
 
    return 0;
@@ -1907,9 +2264,44 @@ static int get_sf_params (int wave_index, int num_pars, double *pars, double *no
    return status;
 }
 
+static int select_ref_irr_subset (const Reference_Irr_Type *irr, double wave_beg, double wave_end, int num_pad,
+                                  int *pindex_irr_beg, int *pindex_irr_end)
+{
+   int index_irr_beg, index_irr_end;
+
+   /* Select the relevant subset of the reference irradiance wavelength grid */
+   index_irr_beg = bsearch_d (wave_beg, irr->wavelen, irr->num_wavelen);
+   index_irr_end = bsearch_d (wave_end, irr->wavelen, irr->num_wavelen);
+   index_irr_end++;
+
+   /* evaluate the irradiance spectrum a bit beyond the required wavelength range */
+   index_irr_beg -= num_pad;
+   index_irr_end += num_pad;
+
+   /* Make sure the indices are still valid */
+   if (index_irr_beg < 0)
+     index_irr_beg = 0;
+   if ((int) irr->num_wavelen <= index_irr_end)
+     index_irr_end = irr->num_wavelen - 1;
+
+   /* Check for the impossible */
+   if (index_irr_end < index_irr_beg)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid interval!!: %f @index_irr_beg=%d, %f @index_irr_end=%d",
+                     __func__, wave_beg, index_irr_beg, wave_end, index_irr_end);
+        return -1;
+     }
+
+   *pindex_irr_beg = index_irr_beg;
+   *pindex_irr_end = index_irr_end;
+
+   return 0;
+}
+
 static int convolve_forward_model (Wavecal_Type *wct, const double *params, double *model, double **derivs)
 {
    Window_Type *win = &wct->window;
+   Window_Sample_Type *samp = &win->samp;
    Reference_Irr_Type *irr = &wct->irr;
    SF_Convolution_Type *sfct = win->sfct;
    Term_Type *term;
@@ -1917,9 +2309,12 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    const double *par;
    double *irr_wavelen = NULL;
    double *irr_value = NULL;
+   double *waves_eval;
+   double *model_tmp;
    size_t num_irr_waves;
    int index_irr_beg, index_irr_end;
    int status, index_slit_param0;
+   int num_waves_eval;
    int use_derivs=0;
 
    par = params;
@@ -1937,29 +2332,8 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
      }
 
    /* Select the relevant subset of the reference irradiance wavelength grid */
-   index_irr_beg = bsearch_d (win->wave0[0], irr->wavelen, irr->num_wavelen);
-   index_irr_end = bsearch_d (win->wave0[win->num_wave-1], irr->wavelen, irr->num_wavelen);
-   index_irr_end++;
-
-   /* evaluate the irradiance spectrum a bit beyond the required wavelength range */
-   index_irr_beg -= sfct->num_pad;
-   index_irr_end += sfct->num_pad;
-
-   /* Make sure the indices are still valid */
-   if (index_irr_beg < 0)
-     index_irr_beg = 0;
-   if ((int) irr->num_wavelen <= index_irr_end)
-     index_irr_end = irr->num_wavelen - 1;
-
-   /* Check for the impossible */
-   if (index_irr_end < index_irr_beg)
-     {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid interval!!: %ld waves, %f @index_irr_beg=%d, %f @index_irr_end=%d",
-                     __func__, win->num_wave,
-                     win->wave0[0], index_irr_beg,
-                     win->wave0[win->num_wave-1], index_irr_end);
-        return -1;
-     }
+   if (0 != select_ref_irr_subset (irr, win->wave0[0], win->wave0[win->num_wave-1], sfct->num_pad, &index_irr_beg, &index_irr_end))
+     return -1;
 
    /* define irradiance subset pointers */
    num_irr_waves = index_irr_end - index_irr_beg + 1;
@@ -1972,11 +2346,24 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
    /* skip wavelength grid parameters */
    par += win->num_wave_params;
 
+   if (samp->sample_model == NULL)
+     {
+        num_waves_eval = num_irr_waves;
+        waves_eval = irr_wavelen;
+     }
+   else
+     {
+        if ((0 != sample_gather (samp->sample_model, irr_wavelen, samp->waves_eval_samp, &num_waves_eval))
+            || (0 != sample_gather (samp->sample_model, irr_value, samp->irr_value_samp, NULL)))
+          return -1;
+        waves_eval = samp->waves_eval_samp;
+     }
+
    /* Construct the model on the high-resolution reference irradiance wavelength grid */
    for (term = wct->terms; term != NULL; term = term->next)
      {
         double scale_factor = win->rad_mean_ratio;
-        if (evaluate_term (term, num_irr_waves, irr_wavelen, scale_factor, par) < 0)
+        if (evaluate_term (term, num_waves_eval, waves_eval, scale_factor, par) < 0)
           return -1;
         par += term->num_params;
      }
@@ -1985,8 +2372,21 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
     * After the call, the zero-padded array sfct->model_padded looks like this:
     * [<num_pad zeros>|<num_irr_waves model values>|<num_pad zeros><more zeros>]
     */
-   if (0 != combine_terms (wct, irr_value, num_irr_waves, sfct->model_padded + sfct->num_pad))
-     return -1;
+   if (samp->sample_model == NULL)
+     {
+        if (0 != combine_terms (wct, irr_value, num_irr_waves, sfct->model_padded + sfct->num_pad))
+          return -1;
+        model_tmp = model;
+     }
+   else
+     {
+        if (0 != combine_terms (wct, samp->irr_value_samp, num_waves_eval, samp->combined_model_samp))
+          return -1;
+        memset ((char *)sfct->model_padded, 0, sfct->num_alloc * sizeof(double));
+        if (0 != sample_scatter (samp->sample_model, samp->combined_model_samp, sfct->model_padded + sfct->num_pad))
+          return -1;
+        model_tmp = samp->convolved_model;
+     }
 
    /* slit-function parameter lookup needs some context and reference data */
    sf_lookup.mode = wct->sf_ctrl.mode;
@@ -2016,9 +2416,16 @@ static int convolve_forward_model (Wavecal_Type *wct, const double *params, doub
 
    /* Interpolate the convolved model and derivatives onto the parametrized wavelength grid
     * (sfct->hr_model_convolved -> model) */
-   status = interpolate_sf_convolved (irr_wavelen, num_irr_waves, win, sfct, model,
+   status = interpolate_sf_convolved (irr_wavelen, num_irr_waves, win, sfct, model_tmp,
                                       use_derivs ? &derivs[index_slit_param0] : NULL);
    if (status) return -1;
+
+   /* note that model_tmp = model when we're not sampling (see above) */
+   if (samp->sample_data)
+     {
+        if (0 != sample_gather (samp->sample_data, model_tmp, model, NULL))
+          return -1;
+     }
 
    return 0;
 }
@@ -2068,14 +2475,18 @@ static int mpfit_objective_function
 (int m, int n, double *x, double *fvec, double **dvec, void *private_data)
 {
    Mpfit_Interface_Type *p = (Mpfit_Interface_Type *)private_data;
+   Window_Type *win = &p->wct->window;
+   Window_Sample_Type *samp = &win->samp;
    const double *spec = p->spec;
    const double *weight = p->weight;
    double *model = p->model;
-   int i, eval_status;
+   int i, num_resid, eval_status;
 
    (void) n;
 
    if (0) write_params (stderr, x, n);
+
+   num_resid = samp->sample_data ? samp->sample_data->num_samples : m;
 
    if (p->wct->sf_ctrl.mode == SF_MODE_NONE)
      {
@@ -2091,10 +2502,10 @@ static int mpfit_objective_function
         /* Model evaluation failed, but returning a negative value
          * would halt the optimizer. Zero the model to penalize
          * this parameter set and keep going. */
-        memset ((char *)model, 0, m * sizeof(double));
+        memset ((char *)model, 0, num_resid * sizeof(double));
      }
 
-   for (i = 0; i < m; i++)
+   for (i = 0; i < num_resid; i++)
      {
         fvec[i] = (model[i] - spec[i]) * weight[i];
      }
@@ -2109,7 +2520,7 @@ static int mpfit_objective_function
                continue;
              if (eval_status == 0)
                {
-                  for (i = 0; i < m; i++)
+                  for (i = 0; i < num_resid; i++)
                     {
                        dvec_k[i] *= weight[i];
                     }
@@ -2117,12 +2528,12 @@ static int mpfit_objective_function
              else
                {
                   /* Handle failure of the model evaluation */
-                  memset ((char *)dvec_k, 0, m * sizeof(double));
+                  memset ((char *)dvec_k, 0, num_resid * sizeof(double));
                }
           }
      }
 
-   if (0) write_statistic (stderr, fvec, m);
+   if (0) write_statistic (stderr, fvec, num_resid);
 
    return 0;
 }
@@ -2320,6 +2731,7 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    struct mp_par_struct *param_ctrl = NULL;
    Fit_Control_Type *fit_ctrl = &wct->fit_ctrl;
    Window_Type *win = &wct->window;
+   Window_Sample_Type *samp = &win->samp;
    double fill_value = config->fill_value;
    const double *wave = p_wave + win->start_pix;
    const double *spec = p_spec + win->start_pix;
@@ -2327,6 +2739,8 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    const unsigned int *pqf = p_pixel_quality_flag + win->start_pix;
    double *spec_scaled = win->spec_scaled;
    double *weight = win->weight;
+   double *win_spec_scaled = NULL;
+   double *win_weight = NULL;
    double *params = NULL;
    double scale_factor;
    size_t i, num;
@@ -2393,9 +2807,32 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
    if (0 != init_slit_function (wct, xtrack, num, &param_ctrl))
      goto return_error;
 
+   if (samp->sample_data == NULL)
+     {
+        /* fit all data pixels in the specified range */
+        win_spec_scaled = win->spec_scaled;
+        win_weight = win->weight;
+     }
+   else
+     {
+        /* select a sample of data pixels to fit */
+        if ((0 != sample_gather (samp->sample_data, win->spec_scaled, samp->spec_scaled_samp, NULL))
+            || (0 != sample_gather (samp->sample_data, win->weight, samp->weight_samp, NULL))
+            || (0 != sample_gather (samp->sample_data, win->wave0, samp->wave0_samp, NULL))
+           )
+          goto return_error;
+        win_spec_scaled = samp->spec_scaled_samp;
+        win_weight = samp->weight_samp;
+
+        /* the slit function determines which model wavelengths
+         * contribute to the sampled data pixels */
+        if (0 != init_model_sampling (win, wct->sf_ctrl.mode, wave, &wct->irr))
+          goto return_error;
+     }
+
    mp.wct = wct;
-   mp.spec = win->spec_scaled;
-   mp.weight = win->weight;
+   mp.spec = win_spec_scaled;
+   mp.weight = win_weight;
    mp.model = win->model;
    mp.counter = 0;
 
@@ -2449,13 +2886,13 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
              result->sf_params = NULL;
              result->num_sf_params = 0;
           }
-        result->wave = win->wave0;
+        result->wave = samp->sample_data ? samp->wave0_samp : win->wave0;
         result->model = win->model;
-        result->spec_scaled = win->spec_scaled;
-        result->weight = win->weight;
+        result->spec_scaled = win_spec_scaled;
+        result->weight = win_weight;
         result->residuals = win->residuals;
         result->bestnorm = fit_result.bestnorm;
-        result->num_fit = win->num_wave;
+        result->num_fit = samp->sample_data ? (size_t) samp->sample_data->num_samples : win->num_wave;
         result->start_pix = win->start_pix;
         result->nfev = fit_result.nfev;
         result->niter = fit_result.niter;
