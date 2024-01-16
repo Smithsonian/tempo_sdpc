@@ -206,7 +206,7 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
 
              num_scan_csm += entry->num_repeats_cbm ? 2 : 3;
 
-             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.3f,%d,\"%s\",\n",
+             if (fprintf (fp, "%d,%0.3f,%0.3f,%0.1f,%d,%0.6f,%d,\"%s\",\n",
                           scan_label,
                           tstart_tai,
                           entry->scan_duration / num_scans,
