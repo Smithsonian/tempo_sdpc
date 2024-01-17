@@ -10,6 +10,7 @@ fi
 # number of backup archive dbfiles to keep
 archive_dbfile_num_backups=7
 
+wait_third=1200
 wait_hour=3600
 wait_day=86400
 wait_week=604800
@@ -119,6 +120,16 @@ replace_old_subdirs_with_tarfiles()
      subdir="$(basename $dir)"
      tar czf "${dir}.tar.gz" --remove-files -C "$parent_dir" "$subdir"
   done
+}
+
+do_third()
+{
+  trace_message third
+
+  cron_trigger_level2=$(config_setting radref.cron_trigger_level2)
+  if test $cron_trigger_level2 -ne 0 ; then
+     flush_radref_pending.sh
+  fi
 }
 
 do_hourly()
@@ -232,6 +243,11 @@ main()
    while true ; do
 
       now=$(date +%s)
+
+      if test $now -gt $(($last_third + $wait_third)) ; then
+         do_third
+	 last_third=$now
+      fi
 
       if test $now -gt $(($last_hourly + $wait_hour)) ; then
          do_hourly

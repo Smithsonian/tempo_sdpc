@@ -117,6 +117,9 @@ make_radref()
    # Register the file in the sqlite database.
    ln -s $radref_path $SDPC_ARCHIVE_DIR/registry/incoming
 
-   # Trigger any Level 2 processing that was waiting for this
-   trigger_level2 "$radref_filename" "$rad_files"
+   # Trigger Level 2 processing of any granules that were waiting for this.
+   cron_trigger_level2=$(config_setting radref.cron_trigger_level2)
+   if test $cron_trigger_level2 -eq 0 ; then
+      trigger_level2 "$radref_filename" "$rad_files"
+   fi
 }
