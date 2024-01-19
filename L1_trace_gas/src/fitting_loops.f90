@@ -22,7 +22,7 @@ CONTAINS
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
       database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg,
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
-      curr_xtrack_pixnum, refspecs_original
+      curr_xtrack_pixnum, refspecs_original, radwavcal_freq
     use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_do_he5_output
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
@@ -202,7 +202,7 @@ CONTAINS
           deallocate (adj_wvls, adj_spec, adj_wgts, adj_resid, stat=locerr)
           if (locerr /= 0) then
             call tell_error (tell_malloc_error, &
-                 "xtrack_radiance_wvl_calibration: deallocate failed", errstat)
+                "xtrack_radiance_wvl_calibration: deallocate failed", errstat)
             return
           endif
         endif
@@ -210,7 +210,7 @@ CONTAINS
                   adj_resid(adj_num), stat=locerr)
         if (locerr /= 0) then
           call tell_error (tell_malloc_error, &
-               "xtrack_radiance_wvl_calibration: allocate failed", errstat)
+              "xtrack_radiance_wvl_calibration: allocate failed", errstat)
           return
         endif
         adj_wvls(1:adj_num) = r8_missval
@@ -234,67 +234,57 @@ CONTAINS
         rad_spec_avg, do_skip_pix )
 
       ! ------------------------------------------------------------------------------------
-      IF (do_skip_pix) then ! .OR. locerrstat >= pge_errstat_error ) THEN
-        !errstat = MAX ( errstat, locerrstat )
-        omi_cross_track_skippix (ipix) = .TRUE.
+      IF (do_skip_pix) then
+        omi_cross_track_skippix (ipix) = .FALSE.
         addmsg = ''
         WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
         call tell_log (0, addmsg)
-        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-        !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-        !                  locerrstat )
-        CYCLE
       END IF
 
-      is_bad_pixel = .FALSE.
+      ! ------------------------------------------------
+      ! Logincal to skip radiance wavelength calibration
+      ! ------------------------------------------------
+      IF (radwavcal_freq > 0) THEN
+        is_bad_pixel = .FALSE.
 
-      CALL radiance_wavecal ( & ! Radiance wavelength calibration
-        ipix, adj_num, &
-        adj_wvls(1:adj_num), adj_spec(1:adj_num), &
-        adj_wgts(1:adj_num), adj_resid(1:adj_num), &
-        ctrl_n_fitres_loop(radcal_idx), ctrl_fitres_range(radcal_idx), &
-        radcal_exval, radcal_itnum, chisquav, is_bad_pixel, errstat) !locerrstat )
+        CALL radiance_wavecal ( & ! Radiance wavelength calibration
+          ipix, adj_num, &
+          adj_wvls(1:adj_num), adj_spec(1:adj_num), &
+          adj_wgts(1:adj_num), adj_resid(1:adj_num), &
+          ctrl_n_fitres_loop(radcal_idx), ctrl_fitres_range(radcal_idx), &
+          radcal_exval, radcal_itnum, chisquav, is_bad_pixel, errstat)
 
-      if (yn_diagnostic_run) then
-        save_wvl(1:adj_num,ipix) = adj_wvls(1:adj_num)
-        save_resid(1:adj_num,ipix) = adj_resid(1:adj_num)
-      endif
+        if (yn_diagnostic_run) then
+          save_wvl(1:adj_num,ipix) = adj_wvls(1:adj_num)
+          save_resid(1:adj_num,ipix) = adj_resid(1:adj_num)
+        endif
 
-      IF ( is_bad_pixel .OR. errstat /= 0) then !locerrstat >= pge_errstat_error ) THEN
-        !errstat = MAX ( errstat, locerrstat )
-        omi_cross_track_skippix (ipix) = .TRUE.
+        IF ( is_bad_pixel .OR. errstat /= 0) then
+          omi_cross_track_skippix (ipix) = .FALSE.
+          addmsg = ''
+          WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
+          call tell_log (0, addmsg)
+          call tell_set_error (0)
+          errstat = 0
+        END IF
+
         addmsg = ''
-        WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
-        call tell_log (0, addmsg)
-        call tell_set_error (0)
-        errstat = 0
-        !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-        !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-        !                  locerrstat )
-        CYCLE
-      END IF
-      ! ------------------------------------------------------------------------------------
+        WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
+          ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
+          '; k = ', Slit_Shape_Factor, &
+          '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
+          '; rms = ', sqrt(sum(adj_resid(1:adj_num)**2)/real(adj_num, kind=8)), &
+          '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
+        call tell_log (1, addmsg)
 
-      addmsg = ''
-      WRITE (addmsg, '(A,I4,6(A,1PE10.3),2(A,I9))') 'RADIANCE Wavcal    #', ipix, &
-        ': hw 1/e = ', Slit_Half_Width_1e, '; e_asy = ', Slit_Asym_Factor, &
-        '; k = ', Slit_Shape_Factor, &
-        '; shift = ', fitvar_cal(shi_idx), '; squeeze = ', fitvar_cal(squ_idx), &
-        '; rms = ', sqrt(sum(adj_resid(1:adj_num)**2)/real(adj_num, kind=8)), &
-        '; exit val = ', radcal_exval, '; iter num = ', radcal_itnum
-      call tell_log (1, addmsg)
-      !CALL error_check ( &
-      !  0, 1, pge_errstat_ok, OMSAO_S_PROGRESS, TRIM(ADJUSTL(addmsg)), &
-      !  vb_lev_omidebug, locerrstat )
-      !IF ( verb_thresh_lev >= vb_lev_screen ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
-
-      ! ---------------------------------
-      ! Save crucial variables for output
-      ! ---------------------------------
-      omi_radcal_pars (1:max_calfit_idx,ipix) = fitvar_cal(1:max_calfit_idx)
-      omi_radcal_xflag(ipix)                  = INT (radcal_exval, KIND=i2)
-      omi_radcal_chisq(ipix)                  = chisquav
-      ! -----------------------------------------------------------------------
+        ! ---------------------------------
+        ! Save crucial variables for output
+        ! ---------------------------------
+        omi_radcal_pars (1:max_calfit_idx,ipix) = fitvar_cal(1:max_calfit_idx)
+        omi_radcal_xflag(ipix)                  = INT (radcal_exval, KIND=i2)
+        omi_radcal_chisq(ipix)                  = chisquav
+        ! -----------------------------------------------------------------------
+      ENDIF
 
       IF (yn_radiance_reference) THEN
         n_ref_wvl = adj_num
@@ -302,7 +292,7 @@ CONTAINS
         ref_spc(1:adj_num) = adj_spec(1:adj_num)
         ref_wgt(1:adj_num) = adj_wgts(1:adj_num)
 
-        omi_nwav_radref(ipix)             = adj_num
+        omi_nwav_radref(ipix)           = adj_num
         omi_radref_wavl(1:adj_num,ipix) = adj_wvls(1:adj_num)
         omi_radref_spec(1:adj_num,ipix) = adj_spec(1:adj_num)
         omi_radref_wght(1:adj_num,ipix) = adj_wgts(1:adj_num)
@@ -311,7 +301,7 @@ CONTAINS
         ref_wvl(1:n_ref_wvl) = Irr_Data%wavelengths(1:n_ref_wvl,ipix)
         ref_spc(1:n_ref_wvl) = Irr_Data%spectrum(1:n_ref_wvl,ipix)
         ref_wgt(1:n_ref_wvl) = omi_irradiance_wght(1:n_ref_wvl,ipix)
-      END IF
+      ENDIF
 
       ! ----------------------------------------------------
       ! Spline reference spectra to current wavelength grid.
@@ -328,7 +318,6 @@ CONTAINS
         errstat = 0
         cycle
       endif
-      !IF ( locerrstat >= pge_errstat_error ) EXIT XTrackWavCal
 
       ! ---------------------------------------------------------
       ! Save DATABASE in OMI_DATABASE for radiance fitting loops.
