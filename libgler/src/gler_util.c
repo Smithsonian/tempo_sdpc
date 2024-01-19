@@ -344,6 +344,7 @@ static int file_lookup (const GLER_File_Map_Type *fmt, double taix, int *a, int 
         kb = 0;
         ya = (double) fmt->yearday[ka];
         yb = 365.0 + fmt->yearday[kb];
+        if (yday < fmt->yearday[0]) yday += 365;
      }
    else
      {
