@@ -27,6 +27,10 @@
 
 #define MAX_PATHLEN 1024
 
+#ifndef SDPC_VERSION
+# define SDPC_VERSION "(unknown)"
+#endif
+
 #ifndef SPACECRAFT_TIMEZONE
 # define SPACECRAFT_TIMEZONE (-6)
 #endif
@@ -471,10 +475,12 @@ int TIO_label_product (int ncid, const char *product_type, int processing_level,
 {
    const char processing_level_names[] = "0123";
    const char *level_name;
+   const char *sdpc_version = SDPC_VERSION ;
+   size_t len;
 
    if (product_type != NULL)
      {
-        size_t len = strlen (product_type) + 1;
+        len = strlen (product_type) + 1;
         if (-1 == TIO_put_att (ncid, NC_GLOBAL, "product_type", NC_CHAR, len, product_type))
           return -1;
      }
@@ -491,6 +497,10 @@ int TIO_label_product (int ncid, const char *product_type, int processing_level,
      return -1;
 
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "processing_version", NC_INT, 1, &version))
+     return -1;
+
+   len = strlen(sdpc_version) + 1;
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "sdpc_version", NC_CHAR, len, sdpc_version))
      return -1;
 
    return 0;

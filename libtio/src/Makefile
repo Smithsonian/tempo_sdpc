@@ -230,7 +230,11 @@ $(elfdir)/simplify.o:	$(srcdir)/simplify.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/simplify.c $(LIBS)
 
 $(elfdir)/tio_template.o:	$(srcdir)/tio_template.c
-	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_template.c $(LIBS)
+	sdpc_version="(unknown)" ; \
+	if test -f $(config_dir)/utils/get_sdpc_version.sh ; then \
+	   sdpc_version=`cd $(config_dir) && ./utils/get_sdpc_version.sh` ; \
+	fi ; \
+	cd $(elfdir) && $(ELF_COMPILE_CMD) -DSDPC_VERSION='"'$${sdpc_version}'"' $(INCS) $(srcdir)/tio_template.c $(LIBS)
 
 $(elfdir)/tio_l1_radiance.o:	$(srcdir)/tio_l1_radiance.c
 	cd $(elfdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tio_l1_radiance.c $(LIBS)
