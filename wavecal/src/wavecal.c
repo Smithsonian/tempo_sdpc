@@ -495,7 +495,7 @@ static int init_sampling (Window_Type *win, config_setting_t *s_band)
      interval = 1;
 
    if (CONFIG_TRUE != config_setting_lookup_int (s_samp, "half_width", &half_width))
-     half_width = 1;
+     half_width = 0;
 
    if (CONFIG_TRUE != config_setting_lookup_float (s_samp, "isrf_pad_frac", &isrf_pad_frac))
      isrf_pad_frac = 1.0;
