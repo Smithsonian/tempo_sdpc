@@ -115,6 +115,10 @@ typedef int Smear_Corr_Method_Type
 #define CCD_TYPE_PRIVATE_DATA \
    CCD_Object_Type obj; \
    int sdc_row_offset; \
+   int offset_rowbyrow; \
+   int offset_num_skip; \
+   int offset_num_selected; \
+   int filter_window_half; \
    float saturation_fudge_factor; \
    Response_Info_Type resp_info; \
    Phase_Change_Type pct; \
@@ -503,13 +507,66 @@ CCD_Select_Type *clt_select_alloc (const CCD_Linearity_Type *clt, size_t num_pix
    return sel;
 }
 
+static int fill_window (double *w, size_t nw, size_t i, const double *x, size_t n)
+{
+   size_t k, h = (nw-1)/2;
+
+   for (k = 0; k < nw; k++)
+     {
+        int j = k + i-h;
+        if (j < 0)
+          {
+             j = 0;
+          }
+        else if ((int)n <= j)
+          {
+             j = n-1;
+          }
+        w[k] = x[j];
+     }
+
+   return 0;
+}
+
+static int dbl_compare (const void *a, const void *b)
+{
+   double va = *(const double *)a;
+   double vb = *(const double *)b;
+   if (va < vb) return -1;
+   else if (va > vb) return +1;
+   else return 0;
+}
+
+static double median (double *w, size_t nw)
+{
+   qsort ((char *)w, nw, sizeof(double), dbl_compare);
+   return w[(nw-1)/2];
+}
+
+static int median_filter (const double *x, size_t n, size_t filter_window_half, double *x_med)
+{
+   size_t filter_window_size = 2*filter_window_half + 1;
+   double w[filter_window_size];
+   size_t i, nw = filter_window_size;
+
+   for (i = 0; i < n; i++)
+     {
+        fill_window (w, nw, i, x, n);
+        x_med[i] = median (w, nw);
+     }
+
+   return 0;
+}
+
 /* This is mainly used for linearity correction */
-static int correct_byrow_mean_serial_trailing_oct (const CCD_Object_Type *obj,
-                                                   const Image_Subset_Type *oct,
-                                                   Image_Type *img,
-                                                   int num_skip, int num_selected)
+static int linear_correct_byrow_mean_serial_trailing_oct (const CCD_Object_Type *obj,
+                                                          const Image_Subset_Type *oct,
+                                                          Image_Type *img,
+                                                          int num_skip, int num_selected)
 {
    int s, sb_trail, se_trail, p, pb, pe;
+   double mean_trail_p    [obj->num_parallel / 2];
+   double smoothed_trail_p[obj->num_parallel / 2];
 
    /* Consider the trailing serial pixels in quadrant A that reads
     * out toward the left.
@@ -531,23 +588,20 @@ static int correct_byrow_mean_serial_trailing_oct (const CCD_Object_Type *obj,
    if (oct->col_step > 0)
      {/* B, C */
         sb_trail = (oct->col_beg
-                    + obj->num_serial_trailing
-                    - num_skip
-                    - num_selected);
+                    + num_skip);
      }
    else
      {/* A, D */
         sb_trail = (oct->col_end
-                    - obj->num_serial_trailing - 1
-                    + num_skip);
+                    - num_skip
+                    - (num_selected - 1));
      }
    se_trail = sb_trail + num_selected;
 
    for (p = pb; p < pe; p += 1)
      {
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
-        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
-        double mean_trail_p, sum_trail_p = 0.0;
+        double sum_trail_p = 0.0;
         int num_trail_p = 0;
 
         for (s = sb_trail; s < se_trail; s += 2)
@@ -560,13 +614,102 @@ static int correct_byrow_mean_serial_trailing_oct (const CCD_Object_Type *obj,
 
         if (num_trail_p == 0)
           continue;
-        mean_trail_p = sum_trail_p / num_trail_p;
+        mean_trail_p[p - pb] = sum_trail_p / num_trail_p;
+     }
+
+   (void) median_filter(mean_trail_p, obj->num_parallel / 2, 10, smoothed_trail_p);
+
+   for (p = pb; p < pe; p += 1)
+     {
+        Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
 
         for (s = oct->col_beg; s < oct->col_end; s += 2)
           {
              if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                continue;
-             oct_pixels[s] -= mean_trail_p;
+             oct_pixels[s] -= smoothed_trail_p[p - pb];
+             if (oct_pixels[s] < 0)
+               {
+                  pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
+               }
+          }
+     }
+
+   return 0;
+}
+
+static int correct_byrow_mean_serial_trailing_oct (const CCD_Type *ccd,
+                                                   const Image_Subset_Type *oct,
+                                                   Image_Type *img,
+                                                   int num_skip, int num_selected)
+{
+   const CCD_Object_Type *obj = &ccd->obj;
+   int s, sb_trail, se_trail, p, pb, pe;
+   double mean_trail_p    [obj->num_parallel / 2];
+   double smoothed_trail_p[obj->num_parallel / 2];
+
+   /* Consider the trailing serial pixels in quadrant A that reads
+    * out toward the left.
+    * This is a lovely diagram of those num_serial_trailing pixels:
+    *    <--- readout ...aaaSSSSSSSSiiiiiiiiiiUUUU
+    * 'a' represents the last few photo-active pixels.
+    * 'S' represents the first num_skip pixels (not included in avg)
+    * 'i' represents the next num_selected pixels that will be included
+    *     in the average,
+    * 'U' represents any remaining unused serial trailing pixels.
+    */
+
+   if ((oct == NULL) || (img == NULL))
+     return -1;
+
+   pb = oct->row_beg;
+   pe = oct->row_end;
+
+   if (oct->col_step > 0)
+     {/* B, C */
+        sb_trail = (oct->col_beg
+                    + num_skip);
+     }
+   else
+     {/* A, D */
+        sb_trail = (oct->col_end
+                    - num_skip
+                    - (num_selected - 1));
+     }
+   se_trail = sb_trail + num_selected;
+
+   for (p = pb; p < pe; p += 1)
+     {
+        Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        double sum_trail_p = 0.0;
+        int num_trail_p = 0;
+
+        for (s = sb_trail; s < se_trail; s += 2)
+          {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             sum_trail_p += oct_pixels[s];
+             num_trail_p += 1;
+          }
+
+        if (num_trail_p == 0)
+          continue;
+        mean_trail_p[p - pb] = sum_trail_p / num_trail_p;
+     }
+
+   (void) median_filter(mean_trail_p, obj->num_parallel / 2, ccd->filter_window_half, smoothed_trail_p);
+
+   for (p = pb; p < pe; p += 1)
+     {
+        Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *pixel_quality_flags = img->pixel_quality_flags + p * img->num_cols;
+
+        for (s = oct->col_beg; s < oct->col_end; s += 2)
+          {
+             if (oct_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
+               continue;
+             oct_pixels[s] -= smoothed_trail_p[p - pb];
              if (oct_pixels[s] < 0)
                {
                   pixel_quality_flags[s] |= IMAGE_PQF_OFFSET_CORR_ERROR;
@@ -803,16 +946,25 @@ static int correct_offset_oct (float mean_eoffset, const Image_Subset_Type *oct,
 }
 
 /* This is also called "bias correction" */
-static int perform_offset_correction (const CCD_Object_Type *obj,
+static int perform_offset_correction (const CCD_Type *ccd,
                                       const float mean_eoffsets[NUM_OCTANTS],
                                       Image_Type *img)
 {
+   const CCD_Object_Type *obj = &ccd->obj;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
-        if (-1 == correct_offset_oct (mean_eoffsets[i], &obj->oct[i], img))
-          return -1;
+        if (ccd->offset_rowbyrow)
+          { 
+             if (-1 == correct_byrow_mean_serial_trailing_oct (ccd, &obj->oct[i], img, ccd->offset_num_skip, ccd->offset_num_selected))
+               return -1;
+          }
+        else
+          {
+             if (-1 == correct_offset_oct (mean_eoffsets[i], &obj->oct[i], img))
+               return -1;
+          }
      }
 
    return 0;
@@ -822,19 +974,19 @@ static int ccd_correct_offset (const CCD_Type *ccd, Image_Type *img)
 {
    const Phase_Change_Type *pct = &ccd->pct;
    /* Assume mean_eoffsets were computed before calling this. */
-   return perform_offset_correction (&ccd->obj, pct->mean_eoffset, img);
+   return perform_offset_correction (ccd, pct->mean_eoffset, img);
 }
 
 static int clt_correct_offset (const CCD_Linearity_Type *clt, Image_Type *img)
 {
    const CCD_Object_Type *obj = &clt->obj;
-   int num_skip = 8;
-   int num_selected = obj->num_serial_trailing - num_skip;
+   int num_skip = 6;
+   int num_selected = 10;
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
      {
-        if (-1 == correct_byrow_mean_serial_trailing_oct (obj, &obj->oct[i], img, num_skip, num_selected))
+        if (-1 == linear_correct_byrow_mean_serial_trailing_oct (obj, &obj->oct[i], img, num_skip, num_selected))
           return -1;
      }
 
@@ -2051,7 +2203,7 @@ return_status:
 
 static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *meta)
 {
-   config_setting_t *setting, *sub;
+   config_setting_t *setting, *sub, *member;
    double saturation_fudge_factor;
    const char *cal_param_file;
    char *path = NULL;
@@ -2073,6 +2225,33 @@ static int init_ccd_cal_params (config_t *cfg, CCD_Type *ccd, TIO_Meta_Type *met
         return -1;
      }
    if (ccd->sdc_row_offset) ccd->sdc_row_offset = 1;
+
+   if (NULL == (member = config_setting_get_member (setting, "offset_rowbyrow")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading boolean for row-by-row offset correction: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   ccd->offset_rowbyrow = config_setting_get_bool (member);
+
+   if ((CONFIG_TRUE != config_setting_lookup_int (setting, "offset_num_skip", &ccd->offset_num_skip))
+       || (CONFIG_TRUE != config_setting_lookup_int (setting, "offset_num_selected", &ccd->offset_num_selected)))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading offset trailing column configurations in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (setting, "filter_window_half", &ccd->filter_window_half))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: reading half width of median filter window in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
 
    if (CONFIG_TRUE != config_setting_lookup_string (setting, "cal_param_file", &cal_param_file))
      {
