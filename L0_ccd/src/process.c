@@ -1196,7 +1196,9 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
           goto return_status;
      }
 
-   if (NULL == (cal = sensorcal_init (cfg, meta)))
+   if (NULL == (cal = sensorcal_init (cfg, meta, ctrl->irr_file, exposure_type)))
+     goto return_status;
+   if (0 != meta_record_basename (meta, ctrl->irr_file))
      goto return_status;
 
    if (NULL == (drk = drk_init (cfg)))

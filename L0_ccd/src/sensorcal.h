@@ -90,7 +90,7 @@ struct Calibration_Type
  * @param meta non-NULL pointer to a \ref TIO_Meta_Type object
  * @return non-NULL pointer to a Calibration_Type object on success, NULL on error
  */
-extern Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta);
+extern Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char *irr_file, int exposure_type);
 
 typedef struct
 {

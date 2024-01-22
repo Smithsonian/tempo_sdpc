@@ -7,6 +7,7 @@ typedef struct
    const char *output_file;
    const char *bpix_file;
    const char *dark_file;
+   const char *irr_file;
    const char *instr_status_file;
    const char *instr_glob;
    const char *trend_file;

@@ -12,6 +12,7 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_matrix_float.h>
 
+#include "granule.h"
 #include "config.h"
 #include "util.h"
 
@@ -126,7 +127,7 @@ static void free_lps_table (Lps_Table_Type *tbl);
    int num_col_bot;
 #include "sensorcal.h"
 
-static int read_wavelength_grid (Calibration_Type *cal, const char *file)
+static int read_wavelength_grid_cal (Calibration_Type *cal, const char *file)
 {
    size_t num_waves, num_xpos, len;
    int start[2], count[2];
@@ -172,6 +173,149 @@ close_and_return:
      {
         FREE(cal->wavelength_grid);
         cal->wavelength_grid = NULL;
+     }
+
+   return 0;
+}
+
+static int read_wavelength_grid_irr (Calibration_Type *cal, const char *irr_file)
+{
+   TIO_Var_Info_Type info_uv, info_vis;
+   size_t num_waves_uv, num_waves_vis, num_xpos_uv, num_xpos_vis, len_uv, len_vis, len;
+   float *wave_uv, *wave_vis;
+   int grp_uv, grp_vis, start[3], count[3], ix, iw;
+   int ncid, status = -1;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", irr_file);
+
+   if (0 != TIO_open (irr_file, NC_NOWRITE, &ncid))
+     return -1;
+
+   if ((0 != TIO_inq_grp (ncid, "band_290_490_nm", &grp_uv))
+       || (0 != TIO_inq_grp (ncid, "band_540_740_nm", &grp_vis)))
+     goto close_and_return;
+
+   if ((0 != TIO_inq_var (grp_uv, "irradiance", &info_uv))
+       || (0 != TIO_inq_var (grp_vis, "irradiance", &info_vis)))
+     goto close_and_return;
+
+   num_waves_uv  = info_uv.dimlens [2];
+   num_xpos_uv   = info_uv.dimlens [1];
+   num_waves_vis = info_vis.dimlens[2];
+   num_xpos_vis  = info_vis.dimlens[1];
+
+   if ((num_xpos_uv != num_xpos_vis)
+       || (num_waves_uv != num_waves_vis))
+     {
+        tell_verror (TELL_IO_READ_ERROR,
+                     "%s: the UV and VIS wavelength variables have different dimensions: %s",
+                     __func__, irr_file);
+        goto close_and_return;
+     }
+   else
+     {
+        cal->num_waves = num_waves_uv + num_waves_vis;
+        cal->num_xpos  = num_xpos_uv;
+     }
+
+   len_uv  = num_waves_uv  * num_xpos_uv;
+   len_vis = num_waves_vis * num_xpos_vis;
+
+   if ((NULL == (wave_uv = (float *)MALLOC (len_uv * sizeof(float))))
+       || (NULL == (wave_vis = (float *)MALLOC (len_vis * sizeof(float)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = 1;
+   count[1] = num_xpos_uv;
+   count[2] = num_waves_uv;
+
+   if (0 != TIO_get_var_section (grp_uv, "wavelength", start, count, TIO_FLOAT, wave_uv))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading UV wavelength grid: %s",
+                     __func__, irr_file);
+        goto close_and_return;
+     }
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = 1;
+   count[1] = num_xpos_vis;
+   count[2] = num_waves_vis;
+
+   if (0 != TIO_get_var_section (grp_vis, "wavelength", start, count, TIO_FLOAT, wave_vis))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading VIS wavelength grid: %s",
+                     __func__, irr_file);
+        goto close_and_return;
+     }
+
+   len = cal->num_waves * cal->num_xpos;
+
+   if (NULL == (cal->wavelength_grid = (float *)MALLOC (len * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+
+   for (ix = 0; ix < cal->num_xpos; ix++)
+     {
+        float *wave_uv_x  = wave_uv  + ix * num_waves_uv;
+        float *wave_vis_x = wave_vis + ix * num_waves_vis;
+        for (iw = 0; iw < cal->num_waves/2; iw++)
+          {
+             float *nom_uv  = cal->wavelength_grid + (cal->num_waves   - iw - 1) * cal->num_xpos;
+             float *nom_vis = cal->wavelength_grid + (cal->num_waves/2 - iw - 1) * cal->num_xpos;
+             nom_uv [ix] = wave_uv_x [iw];
+             nom_vis[ix] = wave_vis_x[iw];
+          }
+     }
+
+   status = 0;
+close_and_return:
+   (void) TIO_close (ncid);
+   if (status)
+     {
+        FREE(cal->wavelength_grid);
+        cal->wavelength_grid = NULL;
+     }
+
+   return 0;
+}
+
+static int read_wavelength_grid (Calibration_Type *cal, const char *file, const char *irr_file,
+                                 int exposure_type)
+{
+   if (irr_file == NULL)
+     {
+        if (0 != read_wavelength_grid_cal (cal, file))
+          return -1;
+     }
+   else
+     {
+        switch (exposure_type)
+          {
+           case EXPREC_TYPE_IRR_WRK:
+           case EXPREC_TYPE_IRR_REF:
+             if (0 != read_wavelength_grid_cal (cal, file))
+               return -1;
+             break;
+           case EXPREC_TYPE_RAD:
+           case EXPREC_TYPE_RAD_TWI:
+             if (0 != read_wavelength_grid_irr (cal, irr_file))
+               return -1;
+             break;
+
+           default:
+             tell_verror (TELL_RUNTIME_ERROR, "%s: unsupported exposure record type = %d", __func__, exposure_type);
+             return -1;
+          }
      }
 
    return 0;
@@ -2053,12 +2197,14 @@ static int diffuser_index_of_refraction (Calibration_Type *cal)
    return 0;
 }
 
-Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
+Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char *irr_file,
+                                  int exposure_type)
 {
    config_setting_t *s;
    const char *sensorcal_file = NULL;
    Calibration_Type *cal = NULL;
    char *path = NULL;
+   char *irr_path = NULL;
    char *radcal_trend_file = NULL;
    char *btdf_trend_file = NULL;
 
@@ -2102,8 +2248,14 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta)
    cal->cal_apply_diffuser_polcorr = cal_apply_diffuser_polcorr;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
+   if (irr_file != NULL)
+     {
+        if (NULL == (irr_path = expand_string (irr_file)))
+          return NULL;
+     }
+
    if ((0 != read_radcal_coeffs (cal, path, radcal_trend_file))
-       || (0 != read_wavelength_grid (cal, path)))
+       || (0 != read_wavelength_grid (cal, path, irr_path, exposure_type)))
      {
         goto free_and_return;
      }

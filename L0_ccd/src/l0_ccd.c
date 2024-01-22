@@ -23,6 +23,7 @@ static void usage (void)
    fprintf (stderr, "   -d | --dark FILE       Input corrected dark current file\n");
    fprintf (stderr, "   -o | --output FILE     Output file\n");
    fprintf (stderr, "  Optional:\n");
+   fprintf (stderr, "   -s | --solar FILE      Solar irradiance file\n");
    fprintf (stderr, "   -b | --bpix FILE       Bad pixel file\n");
    fprintf (stderr, "   -c | --config FILE     Configuration file\n");
    fprintf (stderr, "   -i | --instr FILE      Instrument telemetry points file.\n");
@@ -140,6 +141,7 @@ int main (int argc, char **argv)
         {"config",  required_argument, 0, 'c'},
         {"bpix",    required_argument, 0, 'b'},
         {"dark",    required_argument, 0, 'd'},
+        {"solar",   required_argument, 0, 's'},
         {"instr",   required_argument, 0, 'i'},
         {"trend",   required_argument, 0, 't'},
         {"output",  required_argument, 0, 'o'},
@@ -171,7 +173,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hvb:c:d:i:o:n:t:V:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hvb:c:d:s:i:o:n:t:V:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -196,6 +198,8 @@ int main (int argc, char **argv)
              break;
            case 'h':
 	     usage();
+             break;
+           case 's': ctrl.irr_file = optarg;
              break;
            case 'i': ctrl.instr_status_file = optarg;
              break;
