@@ -112,7 +112,9 @@ static void free_lps_table (Lps_Table_Type *tbl);
    float *radcal_coeffs; \
    int num_waves; \
    int num_xpos; \
-   unsigned int straylight_shadow_method;
+   unsigned int straylight_shadow_method; \
+   int num_col_top; \
+   int num_col_bot;
 #include "sensorcal.h"
 
 static int read_wavelength_grid (Calibration_Type *cal, const char *file)
@@ -1136,12 +1138,24 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
    int status = -1;
 
    /* Use the good pixels to define a function, then linearly
-    * interpolate values to fill in the bad pixels in this row
+    * interpolate values to fill in the bad pixels in this row.
+    * In this process, exclude the first five and the last seven
+    * columns since they are "shadow" pixels.
+    * Put zeros for those pixels instead.
     */
+
+   for (i = 0; i < 5; i++)
+     {
+        pix[i] = 0.0;
+     }
+   for (i = (n-7); i < n; i++)
+     {
+        pix[i] = 0.0;
+     }
 
    g = 0;
    b = 0;
-   for (i = 0; i < n; i++)
+   for (i = 5; i < (n-7); i++)
      {
         if (pqf[i] & mask)
           {
@@ -1462,8 +1476,8 @@ static int subtract_weighted_shadows (const Shadow_Type *top, const Shadow_Type 
    return 0;
 }
 
-static int subtract_shadows (unsigned int method, const Image_Type *img_src,
-                             Image_Type *img)
+static int subtract_shadows (unsigned int method, int num_col_top, int num_col_bot,
+                             const Image_Type *img_src, Image_Type *img)
 {
    const Shadow_Type *sh = NULL;
    Shadow_Type top = {0};
@@ -1473,7 +1487,7 @@ static int subtract_shadows (unsigned int method, const Image_Type *img_src,
    if (method & SHADOW_TOP)
      {
         /* shadowed columns on the top/north end of the slit */
-        if (0 != shadow_alloc (&top, img_src->num_rows, 0, 4))
+        if (0 != shadow_alloc (&top, img_src->num_rows, 0, (num_col_top-1)))
           goto return_status;
         if (0 != shadow_mean_spectrum (&top, img_src))
           goto return_status;
@@ -1483,7 +1497,7 @@ static int subtract_shadows (unsigned int method, const Image_Type *img_src,
    if (method & SHADOW_BOT)
      {
         /* shadowed columns on the bottom/south end of the slit */
-        if (0 != shadow_alloc (&bot, img_src->num_rows, 2043, 2047))
+        if (0 != shadow_alloc (&bot, img_src->num_rows, (2048-num_col_bot), 2047))
           goto return_status;
         if (0 != shadow_mean_spectrum (&bot, img_src))
           goto return_status;
@@ -1517,8 +1531,10 @@ return_status:
 static int slcorr_using_shadows (const Calibration_Type *cal, Image_Type *img)
 {
    unsigned int method = cal->straylight_shadow_method;
+   int num_col_top = cal->num_col_top;
+   int num_col_bot = cal->num_col_bot;
    tell_vlog (TELL_MSGTYPE_INFO, 1, "straylight correction: shadow");
-   return subtract_shadows (method, img, img);
+   return subtract_shadows (method, num_col_top, num_col_bot, img, img);
 }
 
 static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
@@ -1606,7 +1622,9 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    if (psf->use_shadows)
      {
         unsigned int method = cal->straylight_shadow_method;
-        if (0 != subtract_shadows (method, img0, img))
+        int num_col_top = cal->num_col_top;
+        int num_col_bot = cal->num_col_bot;
+        if (0 != subtract_shadows (method, num_col_top, num_col_bot, img0, img))
           goto return_status;
      }
 
@@ -1720,6 +1738,18 @@ static int read_shadow_qualifiers (Calibration_Type *cal, config_t *cfg)
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: accessing group 'straylight.shadow_method' in param file: %s",
                      __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_col_top", &cal->num_col_top))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "num_col_bot", &cal->num_col_bot))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
         return -1;
      }
 
