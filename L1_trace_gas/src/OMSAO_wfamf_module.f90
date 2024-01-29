@@ -1972,12 +1972,16 @@ CONTAINS
                               local_srf * real(eta_b(ilay),kind=r8)  ) + &
                             ( real(eta_a(ilay+1),kind=r8) + &
                               local_srf * real(eta_b(ilay+1),kind=r8) )) / 2.0
-             IF ( (out_pre_lay > MAXVAL(lut_pre_lay)) .OR. (out_pre_lay < MINVAL(lut_pre_lay)) ) THEN
-                scattw(ilay,ixtrack,itime) = 0.0
-                cycle
+             IF (out_pre_lay > MAXVAL(lut_pre_lay)) THEN
+              scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, REAL(LOG(MAXVAL(lut_pre_lay)), KIND=r8), status=status)
+             ELSE IF (out_pre_lay < MINVAL(lut_pre_lay)) THEN
+              scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, REAL(LOG(MINVAL(lut_pre_lay)), KIND=r8), status=status)
+             ELSE
+              scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, LOG(out_pre_lay), status=status)
              ENDIF
-             scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), REAL(LOG(lut_pre_lay),KIND=r8), &
-                  Sca_1D, LOG(out_pre_lay), status=status)
              IF ( status /= 0 ) THEN
                amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                write(logmsg, '(a55,i4,i4)') &
