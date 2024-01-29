@@ -2052,7 +2052,8 @@ CONTAINS
     type (synth_met_type) :: smt
     type (clim_val_type) :: cvt_temp
 
-    real (kind=r8), parameter :: amf_temperature_bucsela = 220.0_r8
+    real (kind=r8), parameter :: alpha_temperature = 220.0_r8
+    real (kind=r8), parameter :: alpha_slope = 0.003_r8
     real (kind=r8) :: hour, tai93_offset
     real (kind=r4) :: hour_f
     real (kind=r4), dimension(:), allocatable :: pres_z, temp_z
@@ -2092,7 +2093,8 @@ CONTAINS
     call clim_query_nz (nz, errstat)
     if (errstat /= 0) return
 
-    allocate (pres_z(nz+1), pmid(nz), temp_z(nz))
+    allocate (pres_z(nz+1), pmid(nz), temp_z(nz), alpha(1:CmETA))
+
 
     ! ----------------------
     ! Subroutine starts here
@@ -2112,13 +2114,24 @@ CONTAINS
         ! -------------------------------------------
         IF ( btest(amfdiag(ixtrack,itimes),yn_gas_cli) .or. btest(amfdiag(ixtrack,itimes),yn_sca) ) cycle
 
+        
+        ! --------------------------------------------------------
+        ! Initialize alpha to 1, which implies no alpha correction
+        ! In the future the control file can provide the two parameters
+        ! (molecule dependent) to provide some flexibility
+        ! with the alpha (temperature correction)
+        ! FIXME: make it an option in the control file with two
+        !        parameters alpha_slope = 0 (for no correction)
+        !        and alpha_temperature (220K for NO2 (Bucsela))
+        ! --------------------------------------------------------
+        alpha = 1.0_r8
+
         ! ---------------------------------------------------
         ! Read tropopause pressure from met forecast file
         ! ---------------------------------------------------
         IF (yn_stratrop) THEN
            ! Allocate pressure_grid and temperature vertical profile
-           ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA), &
-                alpha(1:CmETA))
+           ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA))
            ! Work out pressure_grid
            DO ilay = 1, CmETA
               pressure_grid(ilay) = (( real(eta_a(ilay),kind=r8) + &
@@ -2133,10 +2146,10 @@ CONTAINS
                                       tropopause_pressure(ixtrack,itimes), errstat, &
                                       pprof = pressure_grid, tprof = temperature_profile)
              ! If any pressure grid values are out of range, the interpolated temperature
-             ! will be NaN.  Replace such temperatures with the magic buscela temp.
+             ! will be NaN. Replace such temperatures with the alpha temperature.
              do ilay=1,CmETA
                if (isnan(temperature_profile(ilay))) then
-                 temperature_profile(ilay) = amf_temperature_bucsela
+                 temperature_profile(ilay) = alpha_temperature
                endif
              enddo
            else
@@ -2172,7 +2185,7 @@ CONTAINS
            ! DOI:10.5194/amt-6-2607-2013
            ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
            ! EJOS adding a test for zero in profiles to avoid NaN AMFs
-           alpha = 1.0_r8-0.003_r8*(temperature_profile-amf_temperature_bucsela)
+           alpha = 1.0_r8-alpha_slope*(temperature_profile-alpha_temperature)
            if (SUM(profiles(1:tropopause_idx,ixtrack,itimes)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
@@ -2187,14 +2200,14 @@ CONTAINS
                   profiles(tropopause_idx+1:CmETA,ixtrack,itimes) * alpha(tropopause_idx+1:CmETA) ) / &
                   SUM(profiles(tropopause_idx+1:CmETA,ixtrack,itimes))
            endif
-           DEALLOCATE(pressure_grid,temperature_profile,alpha)
+           DEALLOCATE(pressure_grid,temperature_profile)
         END IF
 
         ! -------------------------
         ! Finally work out the AMFs
         ! -------------------------
         saoamf(ixtrack,itimes) = SUM(scattw(1:CmETA,ixtrack, itimes) * &
-             profiles(1:CmETA,ixtrack,itimes))     / &
+             profiles(1:CmETA,ixtrack,itimes) * alpha(1:CmETA))     / &
              SUM(profiles(1:CmETA,ixtrack,itimes))
 
         ! --------------------------------------------------------------------
@@ -2204,6 +2217,8 @@ CONTAINS
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
+
+    DEALLOCATE(pres_z, pmid, temp_z, alpha)
 
     if (have_synthetic_met_data) then
       call close_synth_met_data (smt, errstat)
