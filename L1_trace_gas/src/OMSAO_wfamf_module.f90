@@ -1034,6 +1034,8 @@ CONTAINS
     else if (clim_db_molecule_name == 'H2O   ') then
       clim_db_molecule_name = 'Q     '  ! specific humidity (kg kg^-1)
       water_vapor = .true.
+    else if (clim_db_molecule_name == 'HONO  ') then
+      clim_db_molecule_name = 'HNO2  ' ! nitrous acid
     endif
 
     call clim_val_init (cvt, cpt, trim(clim_db_molecule_name), errstat)
