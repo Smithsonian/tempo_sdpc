@@ -2177,8 +2177,6 @@ CONTAINS
                call tell_error (tell_runtime_error, errmsg, errstat)
                return
              endif
-             pressure_grid(1:CmETA) = pressure_grid(CmETA:1:-1)
-             temperature_profile(1:CmETA) = temperature_profile(CmETA:1:-1)
              tropopause_pressure(ixtrack,itimes) = ptrop
            endif
 
