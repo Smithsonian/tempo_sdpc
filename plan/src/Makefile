@@ -43,14 +43,14 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = plan.o bisect.o solar.o scan.o plan_list.o scan_methods.o vis.o
+OFILES   = plan.o bisect.o solar.o scan.o plan_list.o scan_methods.o compute_scan_angles.o vis.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
 # --------------------------------------------------------------------------
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/mirror_angles
 
 tests:	$(objdir)/solar_test
 
@@ -75,6 +75,7 @@ install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/mirror_angles $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/plot_mirrorx.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/plot_szamap.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/mkplan.sh $(bindir)/
@@ -98,6 +99,10 @@ distclean: clean
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
+
+$(objdir)/mirror_angles:	$(srcdir)/mirror_angles.c $(objdir)/compute_scan_angles.o
+	$(COMPILE_CMD) -o $(objdir)/mirror_angles $(srcdir)/mirror_angles.c $(objdir)/compute_scan_angles.o \
+	    -I$(INR_INC) -I$(LIBCONFIG_INC) $(INR_LIBPATHS) $(LIBCONFIG_LIBPATHS) -lconfig -lm
 
 $(objdir)/solar_test:	$(srcdir)/solar.c
 	$(COMPILE_CMD) -o $(objdir)/solar_test -DUNIT_TEST $(srcdir)/solar.c \
@@ -124,6 +129,9 @@ $(objdir)/plan_list.o:	$(srcdir)/plan_list.c
 
 $(objdir)/scan_methods.o:	$(srcdir)/scan_methods.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/scan_methods.c
+
+$(objdir)/compute_scan_angles.o:	$(srcdir)/compute_scan_angles.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/compute_scan_angles.c
 
 $(objdir)/vis.o:	$(srcdir)/vis.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/vis.c

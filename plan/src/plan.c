@@ -470,7 +470,7 @@ static int set_geometry_params (config_t *cfg)
         return -1;
      }
 
-   return Set_Geometry_Params (ewbias, nsbias, clockingbias, telescopeOffset);
+   return __set_geometry_params (ewbias, nsbias, clockingbias, telescopeOffset);
 }
 
 static int generate_scan_vis (config_t *cfg, const char *optional_output_string,

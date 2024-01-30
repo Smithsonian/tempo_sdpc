@@ -15,8 +15,6 @@
 #include <tio.h>
 #include <tio_template.h>
 
-#include <tempo_geo.h>
-
 #include "scan.h"
 #include "plan_list.h"
 #include "scan_methods.h"
@@ -24,149 +22,9 @@
 #include "vis.h"
 
 #define DEGTORAD       (M_PI/180.0)
-#define DEGTOMICRORAD  (1.e6*DEGTORAD)
-
-/* #define USE_PREFLIGHT_CONFIG 1 */
-#undef USE_PREFLIGHT_CONFIG
 
 static Plan_List_Type *opt1_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
                                   const Scan_Limit_Times_Type *limit_times, void *cl);
-
-typedef struct
-{
-   double azimuth;
-   double elevation;
-}
-AziElev_Type;
-
-typedef struct
-{
-   double ewbias_rad;      /**< East-West bias [rad] */
-   double nsbias_rad;      /**< North-South bias [rad] */
-   double clockbias_rad;   /**< clock angle [rad] */
-   double theta0_rad;      /**< mirror incidence angle [rad] */
-}
-Geometry_Param_Type;
-
-/* The following parameter values should be set to the flight defaults,
- * and should match the indicated parameter values in the [satellite]
- * section of the operational INR config file. These parameters should
- * be consistent with a nominal flight boresight point of:
- *   boresight: {lon = -89.2170, lat = 33.5231};
- * Boresight coordinates from 2023-10-30 email to JCH from
- * Jim Carr <jcarr@carrastro.com>
- */
-static Geometry_Param_Type Geometry_Params =
-{
-   .ewbias_rad    = 3.599225,          /* 'ewbias' config file parameter */
-   .nsbias_rad    = 0.09479,           /* 'nwbias' config file parameter */
-   .clockbias_rad = 110.0e-6,          /* 'clockingbias' config file parameter */
-   .theta0_rad    = 13.0 * DEGTORAD    /* 'telescopeOffset' config file parameter, converted to radians */
-};
-
-/* This function enables overriding the hard-coded defaults,
- * mostly so that pre-flight regression tests run correctly.
- */
-int Set_Geometry_Params (double ewbias, double nsbias, double clockingbias, double telescopeOffset)
-{
-   Geometry_Param_Type *g = &Geometry_Params;
-   g->ewbias_rad    = ewbias;
-   g->nsbias_rad    = nsbias;
-   g->clockbias_rad = clockingbias;
-   g->theta0_rad    = telescopeOffset * DEGTORAD;
-   return 0;
-}
-
-static int geometry_params (double sat_lon_deg, Geometry_Param_Type *p)
-{
-#ifndef USE_PREFLIGHT_CONFIG
-   (void) sat_lon_deg;
-   *p = Geometry_Params;  /* struct copy */
-#else
-   double ratio = 6.610702780451408;  /* (GEO orbit radius)/(Earth equatorial radius) */
-   double dlon = (-57.32 - 0.6288 * sat_lon_deg) * DEGTORAD;
-
-   /* From TEMPO-SER-4008_TEMPO_Instrument_Geometric_Model_for_INR.pdf
-    * theta0 = mirror incidence angle
-    *        = 13.0 deg  (nominal)
-    * Define:  nsbias = 5.53 rad   (nominal)
-    *          ewbias = \pi + 2*theta0 + C
-    *                 = 3.595378259108319  (nominal, for C=0)
-    *
-    *   lon_target = -57.32 + 0.3712 * lon_sat [deg]
-    *   C = clock angle
-    *     = arctan (Re * sin(lon_target - lon_sat) / (a0 - Re*cos(lon_target - lon_sat)))
-    *   lon_sat = nominal satellite longitude [deg]
-    *   Re = equatorial radius of Earth
-    *   a0 = nominal satellite semi-major axis
-    *
-    * Simplifying, we get:
-    *    C = arctan (sin(dlon) / (ratio - cos(dlon)))
-    * where
-    *    dlon = (lon_target - lon_sat)
-    *         = (-57.32 - 0.6288 * lon_sat)
-    *    ratio = a0/Re = (42163.968 / 6378.1370) = 6.610702780451408
-    */
-
-   /* These values below are derived from the nominal equations,
-    * but for operations we may have different (off-nominal) values.
-    * The operational values can be derived from the following
-    * INRSW config file parameters:
-    * [satellite]
-    *     ewbias
-    *     nsbias
-    *     telescopeOffset
-    * There's also a clock angle parameter in the INRSW config file,
-    * but I don't know the param name.
-    */
-   p->theta0_rad = 13.0 * DEGTORAD;
-   p->nsbias_rad = 5.53 * DEGTORAD;
-   p->clockbias_rad = atan2 (sin(dlon), ratio - cos(dlon));
-   p->ewbias_rad = M_PI + 2*p->theta0_rad + p->clockbias_rad;
-#endif
-
-   return 0;
-}
-
-static int compute_scan_angles (const EarthPoint *c_pt, double sat_lon, AziElev_Type *apt)
-{
-   EarthPoint pt = *c_pt;  /* struct copy */
-   EarthPoint *fg_pts = NULL;
-   EarthPolygon polygon =
-     {
-        .thePointCount = 1,
-        .theAllocatedPoints = 1,
-        .thePoints = &pt
-     };
-   EarthPolygon fg_polygon = {0};
-   Geometry_Param_Type g = {0};
-
-   /* need sat_lon in degrees */
-   sat_lon /= DEGTORAD;
-
-   geometry_params (sat_lon, &g);
-
-   /* WARNING: This subroutine call modifies polygon.thePoints values!! */
-   calculateScanFG (&polygon, sat_lon,
-                    g.ewbias_rad, g.nsbias_rad, g.clockbias_rad, g.theta0_rad,
-                    &fg_polygon);
-
-   /* fg_polygon values are in degrees,
-    * we want values in microradians */
-   fg_pts = fg_polygon.thePoints;
-#define SCANFG_HAS_COORDINATES_SWAPPED 1
-#ifndef SCANFG_HAS_COORDINATES_SWAPPED
-   apt->azimuth = fg_pts->theLon * DEGTOMICRORAD;
-   apt->elevation = fg_pts->theLat * DEGTOMICRORAD;
-#else
-   apt->azimuth = fg_pts->theLat * DEGTOMICRORAD;
-   apt->elevation = fg_pts->theLon * DEGTOMICRORAD;
-#endif
-
-   free (fg_polygon.thePoints);
-
-   return 0;
-}
 
 typedef struct
 {
@@ -184,7 +42,7 @@ static int delta_elevation (double lat, double *d_elev, void *pv)
 
    st->pt.theLat = lat;
 
-   if (0 != compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
+   if (0 != __compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
      return -1;
 
    *d_elev = st->apt.elevation - st->elevation;
@@ -198,7 +56,7 @@ static int delta_azimuth (double lon, double *d_azi, void *pv)
 
    st->pt.theLon = lon;
 
-   if (0 != compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
+   if (0 != __compute_scan_angles (&st->pt, st->sat_lon, &st->apt))
      return -1;
 
    *d_azi = st->apt.azimuth - st->azimuth;
@@ -274,7 +132,7 @@ static int lonlat_for_xy (double x, double y, double sat_lon,
         st.pt.theLon = lon;
 
         /* Check the angles for the new (lon,lat) point */
-        if (0 != compute_scan_angles (&st.pt, sat_lon, &apt))
+        if (0 != __compute_scan_angles (&st.pt, sat_lon, &apt))
           goto return_status;
         delta = hypot (x - apt.azimuth, y - apt.elevation);
 
@@ -325,7 +183,7 @@ static int radiance_scan_endpoints (const Scan_Type *st,
         /* Compute the angles for the given surface point */
         if (0 != st->st_scan_beg (st, &beg_pt.theLon, &beg_pt.theLat))
           return -1;
-        if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+        if (0 != __compute_scan_angles (&beg_pt, sat_lon, beg))
           return -1;
      }
 
@@ -340,7 +198,7 @@ static int radiance_scan_endpoints (const Scan_Type *st,
         EarthPoint end_pt={0};
         if (0 != st->st_scan_end (st, &end_pt.theLon, &end_pt.theLat))
           return -1;
-        if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+        if (0 != __compute_scan_angles (&end_pt, sat_lon, end))
           return -1;
      }
 
@@ -362,9 +220,9 @@ static int split_scan_endpoints (const Split_Scan_Type *sst,
           return -1;
         if (0 != sst->sst_scan_region (sst, &beg_pt.theLon, &beg_pt.theLat, &end_pt.theLon, &end_pt.theLat))
           return -1;
-        if (0 != compute_scan_angles (&beg_pt, sat_lon, beg))
+        if (0 != __compute_scan_angles (&beg_pt, sat_lon, beg))
           return -1;
-        if (0 != compute_scan_angles (&end_pt, sat_lon, end))
+        if (0 != __compute_scan_angles (&end_pt, sat_lon, end))
           return -1;
      }
 
@@ -392,7 +250,7 @@ static int twilight_scan_endpoints (const Twilight_Scan_Type *tst,
           return -1;
         if (0 != tst->tst_twilight_scan_region (tst, is_east, &pt.theLon, &pt.theLat, &width, &num))
           return -1;
-        if (0 != compute_scan_angles (&pt, sat_lon, &p))
+        if (0 != __compute_scan_angles (&pt, sat_lon, &p))
           return -1;
      }
 

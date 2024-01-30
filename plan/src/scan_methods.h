@@ -8,6 +8,7 @@
 #include "scan.h"
 #include "plan_list.h"
 #include "vis.h"
+#include "compute_scan_angles.h"
 
 #define SMA_MAX_CALIBRATED_MIRROR_X  49600.0
 #define SMA_MAX_CALIBRATED_MIRROR_Y   4400.0
@@ -45,5 +46,4 @@ extern int scan_xy_to_lonlat (const double *x_urad, const double *y_urad, int n,
 extern void scan_set_lonlat_bounding_box (double lon_min, double lon_max,
                                           double lat_min, double lat_max, double yoffset);
 
-extern int Set_Geometry_Params (double ewbias, double nsbias, double clockingbias, double telescopeOffset);
 #endif

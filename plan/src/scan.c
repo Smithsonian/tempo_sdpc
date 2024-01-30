@@ -1244,11 +1244,11 @@ static int parse_scan_method_string (const char *pscan_method,
 
    if (NULL == (tok = strtok (NULL, delim)))
      goto free_and_return;
-   strncpy (base_scan_method, tok, size_bsm);
+   strncpy (base_scan_method, tok, size_bsm-1);
 
    if (NULL == (tok = strtok (NULL, delim)))
      goto free_and_return;
-   strncpy (config_group_name, tok, size_cgn);
+   strncpy (config_group_name, tok, size_cgn-1);
 
    /* optional 3rd field to specify a custom scanning CBM */
    if (NULL != (tok = strtok (NULL, delim)))
