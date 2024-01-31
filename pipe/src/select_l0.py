@@ -81,7 +81,7 @@ def main():
     parser.add_argument ('--begin', type=float, help="start time")
     parser.add_argument ('--end', type=float, help="end time")
     parser.add_argument ('--window', metavar='SECONDS', default=300.0, type=float,
-                         help="Time coverage padding in minutes")
+                         help="Time coverage padding in seconds")
     parser.add_argument ('--granule', help="Path to relevant product file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
