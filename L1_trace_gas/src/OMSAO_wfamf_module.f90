@@ -2057,7 +2057,8 @@ CONTAINS
     type (clim_val_type) :: cvt_temp
 
     real (kind=r8), parameter :: alpha_temperature = 220.0_r8
-    real (kind=r8), parameter :: alpha_slope = 0.003_r8
+    real (kind=r8), parameter :: alpha_slope = 0.00316_r8
+    real (kind=r8), parameter :: alpha_quad  = 3.39e-6_r8
     real (kind=r8) :: hour, tai93_offset
     real (kind=r4) :: hour_f
     real (kind=r4), dimension(:), allocatable :: pres_z, temp_z
@@ -2119,15 +2120,15 @@ CONTAINS
         IF ( btest(amfdiag(ixtrack,itimes),yn_gas_cli) .or. btest(amfdiag(ixtrack,itimes),yn_sca) ) cycle
 
         
-        ! --------------------------------------------------------
+        ! ------------------------------------------------------------------------
         ! Initialize alpha to 1, which implies no alpha correction
-        ! In the future the control file can provide the two parameters
+        ! In the future the control file can provide the three parameters
         ! (molecule dependent) to provide some flexibility
         ! with the alpha (temperature correction)
-        ! FIXME: make it an option in the control file with two
-        !        parameters alpha_slope = 0 (for no correction)
+        ! FIXME: make it an option in the control file with three
+        !        parameters alpha_slope = 0 and alpha_quad = 0 (for no correction)
         !        and alpha_temperature (220K for NO2 (Bucsela))
-        ! --------------------------------------------------------
+        ! ------------------------------------------------------------------------
         alpha = 1.0_r8
 
         ! ---------------------------------------------------
@@ -2185,9 +2186,12 @@ CONTAINS
 
            ! Compute stratospheric and tropospheric AMFs following Bucsela et al., 2013
            ! DOI:10.5194/amt-6-2607-2013
-           ! Apply temperature correction factor alpha(p) = 1-0.003 [T(p)-T0] with T0 .EQ. 220K
+           ! Apply temperature correction factor alpha(p) = 1-0.00336[T(p)-T0] + 3.39e-6[T(p)-T0]^2
+           ! with T0 .EQ. 220K
+           ! https://sentinel.esa.int/documents/247904/2476257/sentinel-5p-tropomi-atbd-no2-data-products
            ! EJOS adding a test for zero in profiles to avoid NaN AMFs
-           alpha = 1.0_r8-alpha_slope*(temperature_profile-alpha_temperature)
+           alpha = 1.0_r8-alpha_slope*(temperature_profile-alpha_temperature)+ &
+             alpha_quad*((temperature_profile-alpha_temperature)**2.0_r8)
            if (SUM(profiles(1:tropopause_idx,ixtrack,itimes)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
            else
