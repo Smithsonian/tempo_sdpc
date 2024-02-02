@@ -408,27 +408,56 @@ return_status:
 
 static int image_add_weighted (Image_Type *img, Image_Type *weights, double weight, const Image_Type *tmp)
 {
-   const Image_Pqf_Bitmap_Type *pqf = tmp->pixel_quality_flags;
-   const Image_Pixel_Type *pix = tmp->pixels;
-   Image_Pixel_Type *wt = weights->pixels;
-   Image_Pixel_Type *sum = img->pixels;
-   Image_Pqf_Bitmap_Type *sum_pqf = img->pixel_quality_flags;
-   size_t i, n = img->num_rows * img->num_cols;
+   int p, pb, pe, s, sb, se; // n = img->num_rows * img->num_cols;
 
-   for (i = 0; i < n; i++)
+   pb = 0;
+   pe = img->num_rows;
+   sb = 0;
+   se = img->num_cols;
+
+   for (p = pb; p < pe; p++)
      {
-        if (pqf[i] == 0)
+        const Image_Pqf_Bitmap_Type *pqf = tmp->pixel_quality_flags + p * img->num_cols;
+        const Image_Pixel_Type *pix = tmp->pixels + p * img->num_cols;
+        Image_Pixel_Type *wt = weights->pixels + p * img->num_cols;
+        Image_Pixel_Type *sum = img->pixels + p * img->num_cols;
+        Image_Pqf_Bitmap_Type *sum_pqf = img->pixel_quality_flags + p * img->num_cols;
+
+        for (s = sb; s < se; s++)
           {
-             if (sum[i] == IMAGE_PIXEL_FILL_VALUE)
-               {  /* first contribution to the total at this pixel */
-                  sum[i] = pix[i] * weight;
-                  wt[i] = weight;
-                  sum_pqf[i] = 0;
+             if ((s < 5) || (s >= (se-7)))
+               {
+                  if ((pqf[s] == 1) && (pix[s] != IMAGE_PIXEL_FILL_VALUE))
+                    {
+                      if (sum[s] == IMAGE_PIXEL_FILL_VALUE)
+                        {  /* first contribution to the total at this pixel */
+                            sum[s] = pix[s] * weight;
+                            wt[s] = weight;
+                            sum_pqf[s] = 0;
+                        }
+                      else
+                        {
+                            sum[s] += pix[s] * weight;
+                            wt[s] += weight;
+                        }
+                    }
                }
              else
                {
-                  sum[i] += pix[i] * weight;
-                  wt[i] += weight;
+                  if (pqf[s] == 0)
+                    {
+                      if (sum[s] == IMAGE_PIXEL_FILL_VALUE)
+                        {  /* first contribution to the total at this pixel */
+                            sum[s] = pix[s] * weight;
+                            wt[s] = weight;
+                            sum_pqf[s] = 0;
+                        }
+                      else
+                        {
+                            sum[s] += pix[s] * weight;
+                            wt[s] += weight;
+                        }
+                    }
                }
           }
      }
