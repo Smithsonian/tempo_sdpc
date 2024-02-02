@@ -10,7 +10,7 @@ set -e
 set -u
 
 if test $# -ne 1 ; then
-    echo "Usage: $0 USER@HOST"
+    echo "Usage: $0 USER@HOST:dirpath"
     exit 0
 fi
 

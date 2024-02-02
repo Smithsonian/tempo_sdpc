@@ -10,13 +10,15 @@ fi
 set -u
 
 if test $# -ne 1 ; then
-    echo "Usage: $0 USER@HOST"
+    echo "Usage: $0 USER@HOST:dirpath"
     exit 0
 fi
 
 user_at_host=$1
 asdc_user=$(echo $user_at_host | cut -d@ -f1)
-asdc_host=$(echo $user_at_host | cut -d@ -f2)
+asdc_host_dirpath=$(echo $user_at_host | cut -d@ -f2)
+asdc_host=$(echo $asdc_host_dirpath | cut -d: -f1)
+asdc_dirpath=$(echo $asdc_host_dirpath | cut -d: -f2)
 
 pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs.sqlite"
 
@@ -43,7 +45,7 @@ emit_script()
 
    lftp <<- EOF > $remote_pan_list
 	open --user $asdc_user --password DUMMY sftp://$asdc_host
-	cd ingest/tempo || exit
+	cd $asdc_dirpath || exit
 	glob echo *.PAN
 	exit
 	EOF
@@ -81,7 +83,7 @@ emit_script()
 	open --user $asdc_user --password DUMMY sftp://$asdc_host
 	set xfer:log-file lftp_pan.log
 	set xfer:clobber yes
-	cd ingest/tempo || exit
+	cd $asdc_dirpath || exit
 	EOF
 
   cat $pan_list |

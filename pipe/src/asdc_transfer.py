@@ -42,7 +42,7 @@ def main():
     parser.add_argument('--wait', type=int, default=300,
                         help="time interval [sec] between updates")
     parser.add_argument('user_at_host', default=None,
-                         metavar='USER@HOST', help="ASDC dropbox account")
+                         metavar='USER@HOST:dirpath', help="ASDC dropbox account")
     args = parser.parse_args()
 
     wait = abs(args.wait)

@@ -5,7 +5,6 @@ require ("chksum");
 require ("cmdopt");
 require ("pcre");
 
-private variable Dest_Subdir   = "ingest/tempo";
 private variable Dest_Target_Dir = ".";
 % Weirdly, absolute directory paths viewed from inside ASDC are
 % different from those viewed from outside ASDC. To avoid
@@ -303,7 +302,7 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
    () = fprintf (fp, "set xfer:use-temp-file yes\n");
    () = fprintf (fp, "set xfer:log-file lftp.log\n");
    % Use a relative path to work around some confusion at ASDC
-   () = fprintf (fp, "cd %s || exit\n", Dest_Subdir);
+   () = fprintf (fp, "cd %s || exit\n", dest.subdir);
 
    % Transfer data files first, then the manifest (PDR) file.
    % The ASDC ingest system assumes the PDR file is uploaded last.
@@ -471,7 +470,7 @@ private define usage ()
    variable msg =
 `Usage: asdc_mkscript.sl [options] <files.lis>
 Options:
-    -d|--dest USER@HOST   Destination account
+    -d|--dest USER@HOST:dirpath   Destination account/host/path
     -o|--output FILE      Write lftp script to FILE
     -p|--pdr FILE         Write PDR filenames to FILE
     -h|--help             Show usage message
@@ -534,7 +533,9 @@ define slsh_main ()
      };
    variable tok = strtok (user_at_host, "@");
    dest.user = tok[0];
-   dest.host = tok[1];
+   variable htok = strtok (tok[1], ":");
+   dest.host = htok[0];
+   dest.dirpath = htok[1];
 
    variable file_list_file = __argv[i];
 
