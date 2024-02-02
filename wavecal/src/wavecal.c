@@ -2786,6 +2786,16 @@ int wavecal_fit (Wavecal_Type *wct, int xtrack,
              weight[i] = 1.0/(fabs(err_i) * scale_factor);
           }
         else weight[i] = 0.0;
+
+        // adding by WHou
+        if (win->num_wave == 1028)
+          {
+             if ( (i < 10) || (i > 1017) )
+               {
+                  weight[i] = weight[i] / 100.0;
+               }
+          }
+        // end adding
      }
 
    /* Too many bad pixels? */
