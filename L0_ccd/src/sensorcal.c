@@ -36,6 +36,8 @@ typedef struct
    float *aov;
    /* [deg] "angle of view" */
 
+   int do_scat_ang_corr;
+   /* whether to perform scattering angle correction of BTDF */
    int do_extra_corr;
    /* whether to perform extra BTDF correction */
 
@@ -603,7 +605,7 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
    size_t num_waves, num_aov, num_slope_aoi;
    int start[2], count[2];
    int ncid, dimid, status = -1;
-   int do_extra_corr;
+   int do_extra_corr, do_scat_ang_corr;
    double lab_scaling_factor;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
@@ -615,6 +617,14 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
                      __func__, config_error_file (cfg));
         goto close_and_return;
      }
+
+   if (NULL == (m = config_setting_get_member (s, "do_scat_ang_corr")))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file",__func__);
+        goto close_and_return;
+     }
+
+   do_scat_ang_corr = config_setting_get_bool (m);
 
    if (NULL == (m = config_setting_get_member (s, "do_extra_corr")))
      {
@@ -641,6 +651,7 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
    if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_slope_aoi)))
      goto close_and_return;
 
+   btdf->do_scat_ang_corr = do_scat_ang_corr;
    btdf->do_extra_corr = do_extra_corr;
    btdf->lab_sf = lab_scaling_factor;
    btdf->is_reference_diffuser = is_reference_diffuser;
@@ -877,7 +888,10 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              fw0 = (bt->waves[iw+1] - wave_s) / wave_step;
              fw1 = (wave_s   - bt->waves[iw]) / wave_step;
 
-             btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction) / (1.0 + sa_correction);
+             btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
+
+             if (bt->do_scat_ang_corr)
+               btdfe_s /= (1.0 + sa_correction);
 
              if (bt->do_extra_corr)
                btdfe_s /= (1.0 + aoi_correction_extra);
@@ -1349,17 +1363,7 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
     * interpolate values to fill in the bad pixels in this row.
     * In this process, exclude the first five and the last seven
     * columns since they are "shadow" pixels.
-    * Put zeros for those pixels instead.
     */
-
-   for (i = 0; i < 5; i++)
-     {
-        pix[i] = 0.0;
-     }
-   for (i = (n-7); i < n; i++)
-     {
-        pix[i] = 0.0;
-     }
 
    g = 0;
    b = 0;
@@ -1628,7 +1632,8 @@ static int subtract_weighted_shadows (const Shadow_Type *top, const Shadow_Type 
                                       Image_Type *img)
 {
    float *col_weight = NULL;
-   int p, s, num_not_shadowed;
+   int p, s;
+   float num_not_shadowed;
 
    if (NULL == (col_weight = (float *)MALLOC (img->num_cols * sizeof(float))))
      {
