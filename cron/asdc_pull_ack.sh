@@ -7,7 +7,7 @@ set -e
 set -u
 
 if test $# -ne 3 ; then
-    echo "Usage: $0 USER@HOST <dbfile-path> <pan-prefix>"
+    echo "Usage: $0 USER@HOST:dirpath <dbfile-path> <pan-prefix>"
     exit 0
 fi
 
@@ -32,7 +32,9 @@ fi
 . $agent_env_file
 
 asdc_user=$(echo $user_at_host | cut -d@ -f1)
-asdc_host=$(echo $user_at_host | cut -d@ -f2)
+asdc_host_dirpath=$(echo $user_at_host | cut -d@ -f2)
+asdc_host=$(echo $asdc_host_dirpath | cut -d: -f1)
+asdc_dirpath=$(echo $asdc_host_dirpath | cut -d: -f2)
 
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
@@ -45,7 +47,7 @@ cat << EOF > $script
 open --user $asdc_user --password DUMMY sftp://$asdc_host
 set xfer:log-file lftp_pan.log
 set xfer:clobber yes
-cd ingest/tempo
+cd $asdc_dirpath
 glob --exist ${prefix}_*.PAN || exit 0
 mget -E ${prefix}_*.PAN
 exit

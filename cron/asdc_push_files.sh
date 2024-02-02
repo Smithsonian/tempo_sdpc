@@ -10,7 +10,7 @@ set -e
 set -u
 
 if test $# -ne 2 ; then
-    echo "Usage: $0 USER@HOST <dbfile-path>"
+    echo "Usage: $0 USER@HOST:dirpath <dbfile-path>"
     exit 0
 fi
 user_at_host=$1
