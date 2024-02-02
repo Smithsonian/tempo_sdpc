@@ -68,10 +68,54 @@ static void usage (void)
    exit (EXIT_SUCCESS);
 }
 
+// added by WHou
+/* generate the index of param_slab_i from the index of opt_status_slab_i,
+ * here, m = rams_dimlen_src, i is the index of param_slab_i
+ */
+int* generate_vector_index(int i, int m)
+{
+    int *vec_ind = (int *)malloc(m * sizeof(int));
+
+    for (int j = 0; j < m; j++)
+      {
+        vec_ind[j] = m * i + j;
+      }
+
+    return vec_ind;
+}
+
+/* find the neaset index of non-fail pixel for interplation,
+ * here, opt_status is vector, index corresponds to the failed pixel,
+ * opt_status >= 1 && <= 3 mean the sucessfull wavecal pixel.
+ */
+int find_nearest_non_fail_index(int *opt_status, int size, int index)
+{
+    int left_index  = index - 1;
+    int right_index = index + 1;
+
+    while (left_index >= 0 || right_index < size)
+      {
+        if ((left_index >= 0) && (opt_status[left_index] >= 1)
+                              && (opt_status[left_index] <= 3))
+           return left_index;
+
+        if ((right_index < size) && (opt_status[right_index] >= 1)
+                                 && (opt_status[right_index] <= 3))
+           return right_index;
+
+        left_index--;
+        right_index++;
+      }
+    // if no failed opt_status, then retun -1
+    return -1;
+}
+// end adding
+
 static int perform_merge (int ncid_target, const char *file)
 {
    const char *params_varname = TEMPO_VAR_WAVECAL_PARAM;
    TIO_Var_Info_Type info = {0};
+   TIO_Var_Info_Type info1 = {0}; // added by WHou
    char group_name[TIO_MAX_NAME_LEN] = {0};
    int ncid_src, grp_target, varid, start_pix, num_pix, num_coefs;
    int step_dimlen_src, xtrack_dimlen_src;
@@ -83,6 +127,12 @@ static int perform_merge (int ncid_target, const char *file)
    size_t params_dimlen_src, len_params, len_slab;
    size_t channel_dimlen_src;
    size_t i;
+   size_t len_niter; // added by WHou
+   int *niter = NULL; // added by WHou
+   int *opt_status = NULL; // added by WHou
+   int *vec_ind_j0 = NULL; // added by WHou
+   int *vec_ind_j1 = NULL; // added by WHou
+   int *vec_opt_status_flag = NULL; // added by WHou
    float *wavecal_params = NULL;
    SlitFun_Type *sf = NULL;
    int *mirror_step = NULL;
@@ -114,6 +164,12 @@ static int perform_merge (int ncid_target, const char *file)
         have_sf = 0;
         channel_dimlen_src = 0;
      }
+
+   // added by WHou
+   if ((0 != TIO_inq_var (ncid_src, "niter", &info1))
+       || (0 != TIO_inq_var (ncid_src, "opt_status", &info1)))
+     goto close_and_return;  
+   // end adding
 
    if (0 != TIO_inq_dim (ncid_target, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
      {
@@ -153,6 +209,17 @@ static int perform_merge (int ncid_target, const char *file)
         goto close_and_return;
      }
 
+   // added by WHou
+   /* same length for niter & opt_status */
+   len_niter = step_dimlen_src * xtrack_dimlen_src;
+   if ((NULL == (niter = MALLOC (len_niter * sizeof(int))))
+       ||(NULL == (opt_status = MALLOC (len_niter * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
+   // end adding
+
    if (have_sf)
      {
         if (NULL == (sf = sf_alloc (xtrack_dimlen_src, channel_dimlen_src)))
@@ -183,6 +250,16 @@ static int perform_merge (int ncid_target, const char *file)
        || (0 != TIO_get_att (ncid_src, varid, "start_spectral_channel", NC_INT, &start_pix))
        || (0 != TIO_get_att (ncid_src, varid, "num_spectral_channels", NC_INT, &num_pix)))
      goto close_and_return;
+
+   // added by WHou
+   count[2] = 0;
+
+   if ((0 != TIO_get_var_section (ncid_src, "niter", start, count,
+                                  TIO_INT, niter))
+       || (0 != TIO_get_var_section (ncid_src, "opt_status", start, count,
+                                  TIO_INT, opt_status)))
+     goto close_and_return;
+   // end anding
 
    /* For back-compatibility, this attribute is optional */
    adjust_att = 0;
@@ -223,6 +300,7 @@ static int perform_merge (int ncid_target, const char *file)
 
         if (0 != TIO_def_var (grp_target, params_varname, TIO_FLOAT, 3, params_dimid_list, &dest_varid))
           goto close_and_return;
+
         if ((0 != TIO_put_att (grp_target, dest_varid, "num_coefficients", NC_INT, 1, &num_coefs))
             || (0 != TIO_put_att (grp_target, dest_varid, "start_spectral_channel", NC_INT, 1, &start_pix))
             || (0 != TIO_put_att (grp_target, dest_varid, "num_spectral_channels", NC_INT, 1, &num_pix)))
@@ -248,12 +326,68 @@ static int perform_merge (int ncid_target, const char *file)
         if (0 != TIO_def_var (grp_target, "sf_asym", TIO_FLOAT, 3, sf_dimids, &dest_varid))
           goto close_and_return;
      }
+   
+   // added by WHou
+   if ((0 != tio_inq_varid (grp_target, "wavecal_niter", &dest_varid))
+       && (0 != tio_inq_varid (grp_target, "wavecal_opt_status", &dest_varid)))
+     {
+        int niter_dimids[2];
+
+        niter_dimids[0] = step_dimid;
+        niter_dimids[1] = xtrack_dimid;
+
+        if ((0 != TIO_def_var (grp_target, "wavecal_niter", TIO_INT, 2, niter_dimids, &dest_varid))
+            || (0 != TIO_def_var (grp_target, "wavecal_opt_status", TIO_INT, 2, niter_dimids, &dest_varid)))
+          goto close_and_return;
+     }   
+
+   /* record the flag of refilled pixel for failure (if opt_status > 3 or < 1) */
+   vec_opt_status_flag = (int *)malloc(info.dimlens[0] * xtrack_dimlen_src * sizeof(int));
+
+   /* assign the initial value to 0 */
+   for (i = 0; i < info.dimlens[0] * xtrack_dimlen_src; i++)
+     {
+        vec_opt_status_flag[i] = 0;
+     }
+   // end adding
 
    len_slab = xtrack_dimlen_src * params_dimlen_src;
 
    for (i = 0; i < info.dimlens[0]; i++)
      {
         float *param_slab_i = wavecal_params + i * len_slab;
+        
+        // added by WHou
+        int *opt_status_slab_i = opt_status + i * xtrack_dimlen_src;
+        
+        for (int j = 0; j < xtrack_dimlen_src; j++)
+          {
+             if ((opt_status_slab_i[j] > 3) || (opt_status_slab_i[j] < 1))
+               {  
+                  int j1 = find_nearest_non_fail_index(opt_status_slab_i, xtrack_dimlen_src, j);
+
+                  if (j1 >= 0)
+                    {
+                       /* generate vector index of param_slab_i */
+                       vec_ind_j0 = generate_vector_index(j,  params_dimlen_src);
+                       vec_ind_j1 = generate_vector_index(j1, params_dimlen_src);
+
+                       for (int k = 0; k < params_dimlen_src; k++)
+                         { 
+                            int ind_k0 = vec_ind_j0[k];
+                            int ind_k1 = vec_ind_j1[k];
+ 
+                            /* refill the element's value of param_slab_i 
+                             * with the generate vector index
+                             */
+                            param_slab_i[ind_k0] = param_slab_i[ind_k1];
+                          }
+                        /* record the flag of refill with 1*/
+                        vec_opt_status_flag[i * xtrack_dimlen_src + j] = 1;                   
+                    } 
+               }
+          }
+        // end adding
 
         start[0] = mirror_step[i];
         start[1] = xtrack0;
@@ -280,6 +414,37 @@ static int perform_merge (int ncid_target, const char *file)
                goto close_and_return;
           }
      }
+ 
+   // added by WHou
+   for (i = 0; i < info.dimlens[0]; i++)
+     {
+        int *niter_slab_i = niter + i * xtrack_dimlen_src;
+        int *opt_status_slab_i = opt_status + i * xtrack_dimlen_src;
+
+        /* update the value of opt_status for the refilled pixel */
+        for (int j = 0; j < xtrack_dimlen_src; j++)
+          {
+             if (vec_opt_status_flag[i * xtrack_dimlen_src + j] == 1)
+               {  
+                  /* update the refilled pixel with opt_status = 9 */
+                  opt_status_slab_i[j] = 9;
+               }
+          }
+
+        start[0] = mirror_step[i];
+        start[1] = xtrack0;
+        start[2] = 0;
+        count[0] = 1;
+        count[1] = xtrack_dimlen_src;
+        count[2] = 0;
+
+        if ((0 != TIO_put_var_section (grp_target, "wavecal_niter", start, count,
+                                      TIO_INT, niter_slab_i))
+            || (0 != TIO_put_var_section (grp_target, "wavecal_opt_status", start, count,
+                                      TIO_INT, opt_status_slab_i)))
+          goto close_and_return;
+     }
+   // end adding
 
    status = 0;
 close_and_return:
@@ -287,6 +452,11 @@ close_and_return:
    FREE(wavecal_params);
    sf_free (sf);
    FREE(mirror_step);
+   FREE(niter); // added by WHou
+   FREE(opt_status); // added by WHou
+   FREE(vec_ind_j0); // added by WHou
+   FREE(vec_ind_j1); // added by WHou
+   FREE(vec_opt_status_flag);  // added by WHou
 
    return status;
 }
