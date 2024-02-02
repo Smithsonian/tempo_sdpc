@@ -12,6 +12,8 @@ from datetime import datetime,timedelta
 import argparse
 import subprocess
 
+from netCDF4 import Dataset as NetCDFFile
+
 Verbose = False
 Dryrun = False
 
@@ -87,14 +89,44 @@ def get_yday_subdir (base, zone):
     yday_subdir = datetime.strftime (tstamp_slt_obj, "%Y/%j")
     return yday_subdir
 
-def archive_goes_file (path, dest_dir, zone, goes_subdir, dbfile):
+def classify_goes_file (path, root_dir):
+    try:
+        with NetCDFFile(path, "r") as nc:
+            orbital_slot = nc.getncattr ("orbital_slot")
+    except:
+        eprint ("*** Error: cannot read orbital slot from file: {}".format(path))
+        return None, None
+
+    if orbital_slot == "GOES-East":
+        goes_subdir = "east_cmi"
+        dbfilename  = "cmieast.sqlite"
+    elif orbital_slot == "GOES-West":
+        goes_subdir = "west_cmi"
+        dbfilename  = "cmiwest.sqlite"
+    else:
+        eprint ("*** Error: unsupported orbital slot {}:{}".format(orbital_slot, path))
+        return None, None
+
+    return goes_subdir, os.path.join (root_dir, dbfilename)
+
+def archive_goes_file (path, root_dir, zone):
+    """
+    Classify the file, decide where it goes, move it there,
+    and register the final archived path in the tracking database
+    """
+    # classify the file as either GOES-East or GOES-West
+    (goes_subdir, dbfile) = classify_goes_file (path, root_dir)
+    if goes_subdir is None:
+        return
+
+    # Determine the archive path from the filename
     base = os.path.basename (path)
     yday_subdir = get_yday_subdir (base, zone)
     if yday_subdir is None:
         return
 
     # Ensure destination directory exists
-    dest_dir = os.path.join (dest_dir, yday_subdir, goes_subdir)
+    dest_dir = os.path.join (root_dir, yday_subdir, goes_subdir)
     if not Dryrun:
         pathlib.Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
@@ -110,18 +142,17 @@ def archive_goes_file (path, dest_dir, zone, goes_subdir, dbfile):
     else:
         print (" ".join (argv))
 
-def handle_bad_checksum (path, dest_dir):
-    dir = os.path.join (dest_dir, "bad_checksum")
+def handle_bad_checksum (path, root_dir):
+    dir = os.path.join (root_dir, "bad_checksum")
     pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
     move_file_to_dir (path, dir, clobber=False)
     move_file_to_dir (suffix_sha1(path), dir, clobber=False)
 
 def main():
+    default_zone = 6 # spacecraft local time zone
     parser = argparse.ArgumentParser(description='Validate and archive GOES CMI data products')
-    parser.add_argument('--dbfile', help="sqlite database file")
-    parser.add_argument('--dest', metavar='DIR', help="Root directory to hold destination directory tree: YYYY/ddd/xxxx_cmi")
-    parser.add_argument('--subdir', help="GOES subdirectory name [east_cmi|west_cmi]")
-    parser.add_argument('--zone', help="Satellite local time zone [integer hours east of UTC]", type=int, default=6)
+    parser.add_argument('--root', metavar='DIR', help="Root directory to hold GOES archive directory tree: YYYY/ddd/xxxx_cmi")
+    parser.add_argument('--zone', type=int, default=default_zone, help="Satellite local time zone [integer hours east of UTC; default={}]".format(default_zone))
     parser.add_argument('--verbose', help="Show verbose progress", action='store_true')
     parser.add_argument('--dryrun', help="Print actions, but don't modify any files or directories", action='store_true')
     parser.add_argument('source', metavar='SOURCE', help="source directory or source file list", nargs=argparse.REMAINDER)
@@ -130,15 +161,9 @@ def main():
         sys.exit(0)
     args = parser.parse_args()
 
-    dest_dir = args.dest
-    if not os.path.isdir (dest_dir):
-        eprint ("*** Error: cannot access destination root directory: {}".format(dest_dir))
-        sys.exit(1)
-
-    if args.subdir in ["east_cmi", "west_cmi"]:
-        goes_subdir = args.subdir
-    else:
-        eprint ("*** Error: invalid GOES subdirectory: {}".format(args.subdir))
+    root_dir = args.root
+    if not os.path.isdir (root_dir):
+        eprint ("*** Error: cannot access destination root directory: {}".format(root_dir))
         sys.exit(1)
 
     global Verbose
@@ -158,9 +183,9 @@ def main():
     num_bad_checksums = 0
     for path in ncfile_list:
         if have_valid_checksum (path):
-            archive_goes_file (path, dest_dir, args.zone, goes_subdir, args.dbfile)
+            archive_goes_file (path, root_dir, args.zone)
         else:
-            handle_bad_checksum (path, dest_dir)
+            handle_bad_checksum (path, root_dir)
             num_bad_checksums += 1
 
     if num_bad_checksums > 0:

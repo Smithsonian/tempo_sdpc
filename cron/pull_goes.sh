@@ -35,10 +35,10 @@ EOF
 # Move files to their final location, and
 # register them in the asdc upload database
 
-goes_archive.py --dbfile $rootdir/cmieast.sqlite --dest $rootdir --subdir east_cmi $incoming_dir/east_cmi
+goes_archive.py --root $rootdir $incoming_dir/east_cmi
 badchksum_east=$?
 
-goes_archive.py --dbfile $rootdir/cmiwest.sqlite --dest $rootdir --subdir west_cmi $incoming_dir/west_cmi
+goes_archive.py --root $rootdir $incoming_dir/west_cmi
 badchksum_west=$?
 
 # Exit non-zero if any checksums failed
