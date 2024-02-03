@@ -287,6 +287,8 @@ close_and_return:
         FREE(cal->wavelength_grid);
         cal->wavelength_grid = NULL;
      }
+   FREE(wave_uv);
+   FREE(wave_vis);
 
    return 0;
 }
@@ -2292,6 +2294,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char
    status = 0;
 free_and_return:
    FREE(path);
+   FREE(irr_path);
    FREE(radcal_trend_file);
    FREE(btdf_trend_file);
    if (status)
