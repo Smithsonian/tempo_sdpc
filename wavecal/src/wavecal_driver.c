@@ -628,8 +628,7 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
 }
 
 // added by WHou
-static int def_diagnostic_part_vars (int grp, const Wavecal_Type *wct,
-                                const Wavecal_Result_Type *wavecal_result)
+static int def_diagnostic_part_vars (int grp, const Wavecal_Result_Type *wavecal_result)
 {
    const char *dimname_wavelen = DIMNAME_WAVELEN;
    int varid, dimid_wavelen, dimid_xtrack, dimid_step, dimid_wavecal_param;
@@ -727,8 +726,7 @@ static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, i
 
 // added by WHou
 static int write_diagnostic_part (int grp, int beg_step, int step, int beg_xtrack, int xtrack,
-                              const Wavecal_Type *wct,
-                              const Wavecal_Result_Type *wavecal_result)
+                                  const Wavecal_Result_Type *wavecal_result)
 {
    int start[3], count[3];
 
@@ -736,7 +734,7 @@ static int write_diagnostic_part (int grp, int beg_step, int step, int beg_xtrac
      return 0;
 
    /* quick return if variables already defined */
-   (void) def_diagnostic_part_vars (grp, wct, wavecal_result);
+   (void) def_diagnostic_part_vars (grp, wavecal_result);
    start[0] = step - beg_step;
    start[1] = xtrack - beg_xtrack;
    start[2] = 0;
@@ -1258,7 +1256,7 @@ int main (int argc, char **argv)
              else
                {  
                   /* output niter & opt_status */
-                  if (write_diagnostic_part (ncid_result, beg_step, step, beg_xtrack, xtrack, wct, wrt))
+                  if (write_diagnostic_part (ncid_result, beg_step, step, beg_xtrack, xtrack, wrt))
                     goto return_status;
                }
              // end adding
