@@ -72,16 +72,14 @@ static void usage (void)
 /* generate the index of param_slab_i from the index of opt_status_slab_i,
  * here, m = rams_dimlen_src, i is the index of param_slab_i
  */
-int* generate_vector_index(int i, int m)
+int generate_vector_index(int *vec_ind, int i, int m)
 {
-    int *vec_ind = (int *)malloc(m * sizeof(int));
-
-    for (int j = 0; j < m; j++)
-      {
+   int j;
+   for (j = 0; j < m; j++)
+     {
         vec_ind[j] = m * i + j;
-      }
-
-    return vec_ind;
+     }
+   return 0;
 }
 
 /* find the neaset index of non-fail pixel for interplation,
@@ -168,7 +166,7 @@ static int perform_merge (int ncid_target, const char *file)
    // added by WHou
    if ((0 != TIO_inq_var (ncid_src, "niter", &info1))
        || (0 != TIO_inq_var (ncid_src, "opt_status", &info1)))
-     goto close_and_return;  
+     goto close_and_return;
    // end adding
 
    if (0 != TIO_inq_dim (ncid_target, TEMPO_DIM_STEP, &step_dimid, &step_dimlen))
@@ -326,7 +324,7 @@ static int perform_merge (int ncid_target, const char *file)
         if (0 != TIO_def_var (grp_target, "sf_asym", TIO_FLOAT, 3, sf_dimids, &dest_varid))
           goto close_and_return;
      }
-   
+
    // added by WHou
    if ((0 != tio_inq_varid (grp_target, "wavecal_niter", &dest_varid))
        && (0 != tio_inq_varid (grp_target, "wavecal_opt_status", &dest_varid)))
@@ -339,10 +337,16 @@ static int perform_merge (int ncid_target, const char *file)
         if ((0 != TIO_def_var (grp_target, "wavecal_niter", TIO_INT, 2, niter_dimids, &dest_varid))
             || (0 != TIO_def_var (grp_target, "wavecal_opt_status", TIO_INT, 2, niter_dimids, &dest_varid)))
           goto close_and_return;
-     }   
+     }
 
    /* record the flag of refilled pixel for failure (if opt_status > 3 or < 1) */
-   vec_opt_status_flag = (int *)malloc(info.dimlens[0] * xtrack_dimlen_src * sizeof(int));
+   if ((NULL == (vec_opt_status_flag = (int *)MALLOC(info.dimlens[0] * xtrack_dimlen_src * sizeof(int))))
+       || (NULL == (vec_ind_j0 = (int *)MALLOC (params_dimlen_src * sizeof(int))))
+       || (NULL == (vec_ind_j1 = (int *)MALLOC (params_dimlen_src * sizeof(int)))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto close_and_return;
+     }
 
    /* assign the initial value to 0 */
    for (i = 0; i < info.dimlens[0] * xtrack_dimlen_src; i++)
@@ -356,35 +360,36 @@ static int perform_merge (int ncid_target, const char *file)
    for (i = 0; i < info.dimlens[0]; i++)
      {
         float *param_slab_i = wavecal_params + i * len_slab;
-        
+
         // added by WHou
         int *opt_status_slab_i = opt_status + i * xtrack_dimlen_src;
-        
+
         for (int j = 0; j < xtrack_dimlen_src; j++)
           {
              if ((opt_status_slab_i[j] > 3) || (opt_status_slab_i[j] < 1))
-               {  
+               {
                   int j1 = find_nearest_non_fail_index(opt_status_slab_i, xtrack_dimlen_src, j);
+                  size_t k;
 
                   if (j1 >= 0)
                     {
                        /* generate vector index of param_slab_i */
-                       vec_ind_j0 = generate_vector_index(j,  params_dimlen_src);
-                       vec_ind_j1 = generate_vector_index(j1, params_dimlen_src);
+                       (void) generate_vector_index(vec_ind_j0, j,  params_dimlen_src);
+                       (void) generate_vector_index(vec_ind_j1, j1, params_dimlen_src);
 
-                       for (int k = 0; k < params_dimlen_src; k++)
-                         { 
+                       for (k = 0; k < params_dimlen_src; k++)
+                         {
                             int ind_k0 = vec_ind_j0[k];
                             int ind_k1 = vec_ind_j1[k];
- 
-                            /* refill the element's value of param_slab_i 
+
+                            /* refill the element's value of param_slab_i
                              * with the generate vector index
                              */
                             param_slab_i[ind_k0] = param_slab_i[ind_k1];
                           }
                         /* record the flag of refill with 1*/
-                        vec_opt_status_flag[i * xtrack_dimlen_src + j] = 1;                   
-                    } 
+                        vec_opt_status_flag[i * xtrack_dimlen_src + j] = 1;
+                    }
                }
           }
         // end adding
@@ -414,7 +419,7 @@ static int perform_merge (int ncid_target, const char *file)
                goto close_and_return;
           }
      }
- 
+
    // added by WHou
    for (i = 0; i < info.dimlens[0]; i++)
      {
@@ -425,7 +430,7 @@ static int perform_merge (int ncid_target, const char *file)
         for (int j = 0; j < xtrack_dimlen_src; j++)
           {
              if (vec_opt_status_flag[i * xtrack_dimlen_src + j] == 1)
-               {  
+               {
                   /* update the refilled pixel with opt_status = 9 */
                   opt_status_slab_i[j] = 9;
                }
