@@ -627,42 +627,30 @@ static int def_diagnostic_vars (int grp, const Wavecal_Type *wct,
    return 0;
 }
 
-// added by WHou
-static int def_diagnostic_part_vars (int grp, const Wavecal_Result_Type *wavecal_result)
+static int def_diagnostic_part_vars (int grp)
 {
-   const char *dimname_wavelen = DIMNAME_WAVELEN;
-   int varid, dimid_wavelen, dimid_xtrack, dimid_step, dimid_wavecal_param;
-   int dimids[3];
-   size_t num_waves = wavecal_result->num_fit;
+   int varid, dimid_xtrack, dimid_step;
+   int dimids[2];
 
-   if (0 == TIO_inq_dimid (grp, dimname_wavelen, &dimid_wavelen))
+   /* quick return if these variables already exist */
+   if (0 == tio_inq_varid (grp, "niter", &varid))
      return 0;
 
    if ((0 != TIO_inq_dimid (grp, TEMPO_DIM_XTRACK, &dimid_xtrack))
-       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dimid_step))
-       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_WAVECAL_PARAM, &dimid_wavecal_param)))
-     return -1;
-
-   if (0 != TIO_def_dim (grp, dimname_wavelen, num_waves, &dimid_wavelen))
+       || (0 != TIO_inq_dimid (grp, TEMPO_DIM_STEP, &dimid_step)))
      return -1;
 
    dimids[0] = dimid_step;
    dimids[1] = dimid_xtrack;
 
-   dimids[2] = dimid_wavecal_param;
-
-   dimids[2] = dimid_wavelen;
-
    if ((0 != TIO_def_var (grp, "niter", TIO_INT, 2, dimids, &varid))
-       || (0 != TIO_def_var (grp, "opt_status", TIO_INT, 2, dimids, &varid))
-      )
+       || (0 != TIO_def_var (grp, "opt_status", TIO_INT, 2, dimids, &varid)))
      {
         return -1;
      }
 
    return 0;
 }
-// end adding
 
 static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, int xtrack,
                               const Wavecal_Type *wct,
@@ -724,40 +712,40 @@ static int write_diagnostics (int grp, int beg_step, int step, int beg_xtrack, i
    return 0;
 }
 
-// added by WHou
 static int write_diagnostic_part (int grp, int beg_step, int step, int beg_xtrack, int xtrack,
                                   const Wavecal_Result_Type *wavecal_result)
 {
-   int start[3], count[3];
+   int start[2], count[2];
+   int niter, opt_status;
 
-   if (wavecal_result == NULL)
-     return 0;
+   if (0 != def_diagnostic_part_vars (grp))
+     return -1;
 
-   /* quick return if variables already defined */
-   (void) def_diagnostic_part_vars (grp, wavecal_result);
+   if (wavecal_result)
+     {
+        niter = wavecal_result->niter;
+        opt_status = wavecal_result->opt_status;
+     }
+   else
+     {
+        niter = -1;
+        opt_status = -1;
+     }
+
    start[0] = step - beg_step;
    start[1] = xtrack - beg_xtrack;
-   start[2] = 0;
 
    count[0] = 1;
    count[1] = 1;
 
-   count[2] = wavecal_result->num_wave_params;
-
-   count[2] = wavecal_result->num_fit;
-   
-   if ((0 != TIO_put_var_section (grp, "niter", start, count, TIO_INT,
-                                     &wavecal_result->niter))
-       || (0 != TIO_put_var_section (grp, "opt_status", start, count, TIO_INT,
-                                     &wavecal_result->opt_status))
-      )
+   if ((0 != TIO_put_var_section (grp, "niter", start, count, TIO_INT, &niter))
+       || (0 != TIO_put_var_section (grp, "opt_status", start, count, TIO_INT, &opt_status)))
      {
         return -1;
      }
 
    return 0;
 }
-// end adding
 
 int main (int argc, char **argv)
 {
@@ -1234,7 +1222,7 @@ int main (int argc, char **argv)
                     goto return_status;
                }
 
-             if ( write_result (ncid_result, beg_step, step, beg_xtrack, xtrack, final_coeff, num_final_coeff, wrt))
+             if (write_result (ncid_result, beg_step, step, beg_xtrack, xtrack, final_coeff, num_final_coeff, wrt))
                goto return_status;
 
              progress++;
@@ -1251,24 +1239,22 @@ int main (int argc, char **argv)
                   if (write_diagnostics (ncid_result, beg_step, step, beg_xtrack, xtrack, wct, wrt))
                     goto return_status;
                }
-
-             // added by WHou
              else
-               {  
+               {
                   /* output niter & opt_status */
                   if (write_diagnostic_part (ncid_result, beg_step, step, beg_xtrack, xtrack, wrt))
                     goto return_status;
                }
-             // end adding
 
              if ((verbose > 1) && (wrt != NULL))
-               {  /* 
+               {
+#if 0
                   fprintf (stderr, "%4d %4d %12.4e %4d %4d\n", step, xtrack,
                            wrt->bestnorm, wrt->nfev, wrt->opt_status);
-                  */
+#else
                   fprintf (stderr, "%4d %4d %12.4e %4d %4d\n", step, xtrack,
                            wrt->bestnorm, wrt->niter, wrt->opt_status);
-
+#endif
                   if (params_outfile)
                     {
                        (void) write_fit_details (fp, xtrack, wct, wave_params, num_wave_params, wrt);
