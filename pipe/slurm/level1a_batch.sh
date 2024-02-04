@@ -46,6 +46,7 @@ file_list_file="$2"
 # including this file should define these variables:
 #    granule_path
 #    dark_file_path
+#    irr_file_path
 #    hk_file_list
 #    iru_file_list
 #    smc_file_list
@@ -102,7 +103,21 @@ run_l0_ccd()
    output_file="$1"
    dark_option="$2"
 
-   /bin/cp ${etc_dir}/l0_ccd.cfg .
+   case "${granule_basename}" in
+      *DRK* | *RADT* )
+          config_file="l0_ccd_drk.cfg"
+          ;;
+      * )
+          config_file="l0_ccd.cfg"
+          ;;
+   esac
+   /bin/cp ${etc_dir}/${config_file} .
+
+   if test -n "$irr_file_path" ; then
+      solar_option="--solar $irr_file_path"
+   else
+      solar_option=""
+   fi
 
    # If no HK files were found, let L0_ccd search the archive for something suitable.
    hk_none=$(grep NONE hk.lis || true)
@@ -118,9 +133,10 @@ run_l0_ccd()
    # backfill scheduler queue this task as soon as possible.
    srun --ntasks=1 --time=$SDPC_L0CCD_TIME_LIMIT \
         --output=log_l0_ccd.txt \
-   L0_ccd -vv --Version $SDPC_PROCESSING_VERSION $lookup_option \
-          --trend trend_params.nc \
-          -o $output_file $dark_option \
+   L0_ccd -vv --Version $SDPC_PROCESSING_VERSION \
+          --config $config_file $lookup_option $solar_option \
+          --trend trend_params.nc $dark_option \
+          -o $output_file \
           $granule_basename
 }
 

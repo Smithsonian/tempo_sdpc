@@ -56,6 +56,10 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 wait_iru_sec="$(config_setting level1a.wait_iru_sec)"
 wait_hk_sec="$(config_setting level1a.wait_hk_sec)"
 
+# Take nominal wavelength grid from recent IRR_L1 file?
+nominal_rad_wavegrid_from_irr="$(config_setting level1a.nominal_rad_wavegrid_from_irr)"
+irr_file_path=""
+
 make_iru_only_file_for_inr()
 {
    time_interval_file="$1"
@@ -172,6 +176,11 @@ case "${granule_basename}" in
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
    select_l0.py --wait $wait_iru_sec --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
+   if test $nominal_rad_wavegrid_from_irr -ne 0 ; then
+      irr_select_window=$(config_setting level1b.irr_select_window)
+      irr_file_path=$(select_irr.py --window $irr_select_window "$granule_path")
+   fi
+
    tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")
    prep_inr_goes_source $tstart
    ntasks=1
@@ -191,6 +200,7 @@ file_list_file="$granule_dir/.${granule_basename}.lis"
 cat <<EOF > $file_list_file
 granule_path=${granule_path}
 dark_file_path=${dark_file_path}
+irr_file_path=${irr_file_path}
 hk_file_list=${hk_file_list}
 iru_file_list=${iru_file_list}
 smc_file_list=${smc_file_list}

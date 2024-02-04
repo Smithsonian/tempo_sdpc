@@ -47,6 +47,7 @@ level1/irradiance.met.template
 level3/simple.met.template
 l0_format.cfg
 l0_ccd.cfg
+l0_ccd_drk.cfg
 make_destripe.yml.in
 make_radref.yml.in
 select_destripe.yml

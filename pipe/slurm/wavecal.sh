@@ -24,7 +24,8 @@ wrap_wavecal()
 
    case "$bn" in
     *RAD* )
-       adjust="--adjust"
+       #adjust="--adjust"
+       adjust=""
        block_args="--s_block $block_spec"
        config="${etc_dir}/wavecal_rad.cfg"
        ;;
