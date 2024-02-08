@@ -656,6 +656,71 @@ static int annotate_ephemeris_source (int grp, const char *source_string)
    return 0;
 }
 
+static void __add_orbital_velocity_vector (const double satx, const double saty,
+                                           double *satvx, double *satvy)
+{
+   double v_geo = 3.074666284127684;  /* km/sec */
+   double phi = atan2 (saty, satx);
+   /* Add geostationary orbital velocity component:
+    * x = R cos(phi)  -> dx/dt = - R sin(phi) dphi/dt = - v_geo * sin(phi)
+    * y = R sin(phi)  -> dy/dt =   R cos(phi) dphi/dt =   v_geo * cos(phi)
+    */
+   *satvx += - v_geo * sin(phi);
+   *satvy +=   v_geo * cos(phi);
+}
+
+static int add_orbital_velocity_vector (int grp)
+{
+   struct vec_type
+     {
+        double *x, *y, *vx, *vy;
+        size_t n;
+     }
+   vec = {0};
+   int start, count, time_dimid;
+   size_t i, time_dimlen;
+   int status = -1;
+
+   if (0 != TIO_inq_dim (grp, "ephemeris_time", &time_dimid, &time_dimlen))
+     goto return_status;
+
+   /* do nothing when there's no data */
+   if (time_dimlen == 0)
+     return 0;
+
+   if (NULL == (vec.x = (double *)MALLOC (4*time_dimlen * sizeof(double))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+   vec.y  = vec.x + time_dimlen * 1;
+   vec.vx = vec.x + time_dimlen * 2;
+   vec.vy = vec.x + time_dimlen * 3;
+
+   start = 0;
+   count = time_dimlen;
+
+   if ((0 != TIO_get_var_section (grp, "satellite_X", &start, &count, NC_DOUBLE, vec.x))
+       || (0 != TIO_get_var_section (grp, "satellite_Y", &start, &count, NC_DOUBLE, vec.y))
+       || (0 != TIO_get_var_section (grp, "satellite_velocity_X", &start, &count, NC_DOUBLE, vec.vx))
+       || (0 != TIO_get_var_section (grp, "satellite_velocity_Y", &start, &count, NC_DOUBLE, vec.vy)))
+     goto return_status;
+
+   for (i = 0; i < time_dimlen; i++)
+     {
+        __add_orbital_velocity_vector (vec.x[i], vec.y[i], &vec.vx[i], &vec.vy[i]);
+     }
+
+   if ((0 != TIO_put_var_section (grp, "satellite_velocity_X", &start, &count, NC_DOUBLE, vec.vx))
+       || (0 != TIO_put_var_section (grp, "satellite_velocity_Y", &start, &count, NC_DOUBLE, vec.vy)))
+     goto return_status;
+
+   status = 0;
+return_status:
+   FREE(vec.x);
+   return status;
+}
+
 int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_group_path, int use_gpsr_vars,
                        const Row_Select_Type *eph_head)
 {
@@ -683,6 +748,13 @@ int radiance_copy_eph (Radiance_Type *r, TIO_Meta_Type *meta, const char *from_g
    for (v = varray; v->from != NULL; v++)
      {
         if (0 != radiance_copy_vars (eph_head, meta, v, from_group_path, grp, 0))
+          return -1;
+     }
+
+   if (use_gpsr_vars)
+     {
+        /* INR wants this */
+        if (0 != add_orbital_velocity_vector (grp))
           return -1;
      }
 
@@ -807,9 +879,6 @@ static int parse_ephem_point (char ***data, unsigned int row, Eph_Point_Type *pt
 
 static int transform_velocity_vector (Eph_Point_Type *pt, int plan_id)
 {
-   double v_geo = 3.074666284127684;  /* km/sec */
-   double phi = atan2 (pt->saty, pt->satx);
-
    /* The HGS delivers the WGS84 position R=(X,Y,Z) and the coordinate derivatives,
     * V=(dX/dt, dY/dt, dZ/dt), so the velocities describe the motion relative to the
     * nominal geostationary orbital station. The INR SW wants the velocity vector to
@@ -825,12 +894,7 @@ static int transform_velocity_vector (Eph_Point_Type *pt, int plan_id)
         pt->satvz *= 1.e-3;
      }
 
-   /* Add geostationary orbital velocity component:
-    * x = R cos(phi)  -> dx/dt = - R sin(phi) dphi/dt = - v_geo * sin(phi)
-    * y = R sin(phi)  -> dy/dt =   R cos(phi) dphi/dt =   v_geo * cos(phi)
-    */
-   pt->satvx = - v_geo * sin(phi);
-   pt->satvy =   v_geo * cos(phi);
+   __add_orbital_velocity_vector (pt->satx, pt->saty, &pt->satvx, &pt->satvy);
 
    return 0;
 }
