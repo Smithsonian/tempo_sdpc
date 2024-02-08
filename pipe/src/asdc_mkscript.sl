@@ -528,14 +528,14 @@ define slsh_main ()
 
    variable dest = struct
      {
-        host, user, password = "DUMMY"
+        host, user, password = "DUMMY", subdir
         % ASDC (password DUMMY causes lftp to use the ssh-agent for authentication)
      };
    variable tok = strtok (user_at_host, "@");
    dest.user = tok[0];
    variable htok = strtok (tok[1], ":");
    dest.host = htok[0];
-   dest.dirpath = htok[1];
+   dest.subdir = htok[1];
 
    variable file_list_file = __argv[i];
 
