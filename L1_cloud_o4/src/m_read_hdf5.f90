@@ -138,12 +138,18 @@ subroutine totp_to_dryp(pp,qq,nlevel,nlayer,ppdry)
       return
    endif 
 
-   ! ptot = pdry + pwet = pdry + pdry * qq
+   ! ptot = pdry + pwet = pdry + pdry * rv
+   ! thus, pdry = ptot/(1+rv)
+   ! where rv is water vapor mixing ratio
+   ! specific humidity qq = rv/(1+rv)
+   ! pdry = ptot - pwet = ptot - ptot*qq = (1-qq)*ptot
    ppdry(1) = pp(1) !TOA
    sumdry = ppdry(1)
    do iz = 1, nlayer 
       detptot = pp(iz+1) - pp(iz)
-      detpdry = detptot / (1. + qq(iz)) 
+      !detpdry = detptot / (1. + qq(iz)) !qq here should be rv
+      ! bug fix below using qq
+      detpdry = detptot * ( 1. - qq(iz))
       sumdry = sumdry + detpdry ! accumulate
       ppdry(iz+1) = sumdry
    enddo
