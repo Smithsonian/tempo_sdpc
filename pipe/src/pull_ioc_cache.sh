@@ -14,11 +14,13 @@ exit_usage()
    exit "$1"
 }
 
+# Seems likely that the Level 0 version number won't need to change,
+# but provide a mechanism anyway.
+: "${SDPC_LEVEL0_VERSION:=1}"
+
 run_l0_format()
 {
    cachedir_list="$1"
-
-   processing_version=$(config_setting product.processing_version)
 
    logdir="$SDPC_PIPE_DIR/log/level0"
    if ! test -d $logdir ; then
@@ -29,7 +31,7 @@ run_l0_format()
 
    L0_format --archive "$SDPC_ARCHIVE_DIR" --register --verbose \
              --cache @${cachedir_list} \
-             --Version "$processing_version" \
+             --Version "$SDPC_LEVEL0_VERSION" \
              --logdir "$logdir" \
              "$SDPC_PIPE_DIR/etc/l0_format.cfg" > "$logdir/l0_format.$$.log" 2>&1
 }

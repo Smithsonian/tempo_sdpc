@@ -8,8 +8,12 @@ then
   exit 1
 fi
 
+# Seems likely that the Level 0 version number won't need to change,
+# but provide a mechanism anyway.
+: "${SDPC_LEVEL0_VERSION:=1}"
+
 exec L0_format --register \
-               --Version "$SDPC_PROCESSING_VERSION" \
+               --Version "$SDPC_LEVEL0_VERSION" \
                --logdir "${SDPC_PIPE_DIR}/log/level0" \
                --mirror "${SDPC_PIPE_DIR}/public_mirror" \
                --archive "$SDPC_ARCHIVE_DIR" \
