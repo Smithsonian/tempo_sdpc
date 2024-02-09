@@ -474,6 +474,8 @@ contains
 
     ! added rad_SnowIceFraction & initialize to zero
     rad_SnowIceFraction=0.
+    call tiof_get2d_r4 (tio_l1obj, "snow_ice_fraction", [0,0], &
+         [ntimes, nxtrack], rad_SnowIceFraction, errstat)
 
     ! tranfer rad_TerrainHeight to out_TerrainHeight
     call tiof_get2d_i2 (tio_l1obj, "terrain_height", [0,0], &
