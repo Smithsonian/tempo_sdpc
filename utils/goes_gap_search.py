@@ -7,7 +7,7 @@ import os, sys
 import glob
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import argparse
 import numpy as np
 
@@ -28,13 +28,14 @@ def filename_start_time (base):
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
         return None
-    tstamp = fields.group(1)
-    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S')
+    # help strptime by adding a timezone specification
+    tstamp = fields.group(1)+'+0000'
+    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S%z')
     timet = time.mktime(tstamp_obj.timetuple())
     return timet
 
 def utc_time_string (t):
-    return datetime.utcfromtimestamp(t).strftime('%Y-%m-%dT%H:%M:%SZ')
+    return datetime.fromtimestamp(t).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 def find_gaps (files, dt):
 
@@ -42,7 +43,7 @@ def find_gaps (files, dt):
     for f in files:
         times.append (filename_start_time (os.path.basename(f)))
 
-    sorted_times = np.asarray(sorted(times))
+    sorted_times = sorted(np.asarray(times))
     deltas = np.diff(sorted_times, 1)
 
     gap_indices = np.argwhere (deltas > dt)
@@ -59,7 +60,7 @@ def find_gaps (files, dt):
 def main():
     default_delta = 1800.0
     parser = argparse.ArgumentParser(description='Find gaps in GOES CMI archive time coverage')
-    parser.add_argument('--delta', type=float, default=default_delta, 
+    parser.add_argument('--delta', type=float, default=default_delta,
                         help="Minimum coverage gap [sec, default={}]".format (default_delta))
     parser.add_argument('dirs', help="Directory list", nargs=argparse.REMAINDER)
     if len(sys.argv)==1:
