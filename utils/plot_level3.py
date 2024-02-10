@@ -6,7 +6,6 @@ import os
 import argparse
 
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
@@ -63,8 +62,8 @@ def read_var (filename, var_config, layer):
 
 def main():
     parser = argparse.ArgumentParser(description='plot science data')
-    parser.add_argument('--outfile', help="path to output file")
-    parser.add_argument('--varpath', help="path to variable in file")
+    parser.add_argument('--outfile', help="path to output file", default=None)
+    parser.add_argument('--varpath', help="path to variable in file", default=None)
     parser.add_argument('--varmin', help="min plot value", type=float)
     parser.add_argument('--varmax', help="max plot value", type=float)
     parser.add_argument('--layer', help="", default=None)
@@ -81,7 +80,13 @@ def main():
     else:
         extra_label = args.label
 
+    plot_var = (args.varpath is not None)
+
     filename = args.filename[0]
+
+    outfile = args.outfile
+    if outfile is not None:
+        matplotlib.use('Agg')
 
     # parse OGS boundary polygon attribute
     with NetCDFFile(filename) as nc:
@@ -90,11 +95,15 @@ def main():
     bdry_lon = [float(p.split(' ')[1]) for p in bdry_pts]
     bdry_lat = [float(p.split(' ')[0]) for p in bdry_pts]
 
-    var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
+    if plot_var:
+        var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
 
     fig = plt.figure()
     ax = plt.subplot (1,1,1, projection=ccrs.Miller())
-    ax.set_extent ([-155, -30, 15, 62], ccrs.PlateCarree())
+    if plot_var:
+        ax.set_extent ([-155, -30, 15, 62], ccrs.PlateCarree())
+    else:
+        ax.set_extent ([min(bdry_lon), max(bdry_lon), min(bdry_lat), max(bdry_lat)], ccrs.PlateCarree())
     gl = ax.gridlines(draw_labels=True, linewidth=0.5)
     gl.top_labels=False
     gl.right_labels=False
@@ -106,24 +115,29 @@ def main():
 
     cmap = plt.get_cmap('jet')
 
-    vm = read_var (filename, var_config, args.layer)
-    lons, lats = np.meshgrid (vm.lon, vm.lat)
-    cs = ax.pcolormesh (lons, lats, vm.var, cmap=cmap, rasterized=True,
-                        vmin=var_config.min, vmax=var_config.max,
-                        transform=ccrs.PlateCarree())
+    if plot_var:
+        vm = read_var (filename, var_config, args.layer)
+        lons, lats = np.meshgrid (vm.lon, vm.lat)
+        cs = ax.pcolormesh (lons, lats, vm.var, cmap=cmap, rasterized=True,
+                            vmin=var_config.min, vmax=var_config.max,
+                            transform=ccrs.PlateCarree())
 
-    sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
-    sm.set_array([])
-    cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.2e')
-    cbar.set_label(vm.units, size=6)
-    cbar.ax.tick_params(labelsize=6)
+        sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
+        sm.set_array([])
+        cbar = fig.colorbar (sm, ax=ax, orientation='horizontal', pad=0.05, aspect=50, format='%.2e')
+        cbar.set_label(vm.units, size=6)
+        cbar.ax.tick_params(labelsize=6)
 
     ax.plot (bdry_lon, bdry_lat, color='g', lw=0.5, transform=ccrs.PlateCarree())
-    plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.825)
     plt.title ("{}".format(os.path.basename(filename)), fontsize='x-small')
+    if plot_var:
+        plt.suptitle ("{}{}".format(var_config.name, extra_label), y=0.825)
 
-    #plt.show()
-    plt.savefig(args.outfile, dpi=300, bbox_inches="tight")
+    if outfile is None:
+        plt.show()
+    else:
+        print('Creating plot file: {}'.format(outfile))
+        plt.savefig(outfile, dpi=300, bbox_inches="tight")
 
 if __name__ == '__main__':
     main()
