@@ -549,7 +549,10 @@ def register_files (db_path, filenames):
                 move_failing(fn)
             else:
                 status_list.append(status)
-                os.remove(fn)
+                if status == 0:
+                    os.remove(fn)
+                else:
+                    move_failing(fn)
 
     return status_list
 
