@@ -878,6 +878,7 @@ int Pixel_regrid_dest_boundary (const Pixel_Regrid_Type *r, const Pixel_Grid_Par
    int *mask=NULL, *indices=NULL;
    int *byb=NULL, *byt=NULL, *bdry=NULL;
    int max_num_boundary, y_first_ok, y_last_ok;
+   int min_dy = (dest->ny > 100) ? (dest->ny/100) : 5;
    int i, j, n, status = -1;
 
    *pindices = NULL;
@@ -921,7 +922,8 @@ int Pixel_regrid_dest_boundary (const Pixel_Regrid_Type *r, const Pixel_Grid_Par
                     y_first_ok = j;
                }
           }
-        if (y_first_ok >= 0)
+        /* require segment size to exceed some threshold */
+        if ((y_first_ok >= 0) && ((y_last_ok-y_first_ok) > min_dy))
           {
              byb[i] = i + y_first_ok * dest->nx;
              byt[i] = i + y_last_ok * dest->nx;

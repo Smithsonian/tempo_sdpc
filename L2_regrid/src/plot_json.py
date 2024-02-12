@@ -21,6 +21,8 @@ parser.add_argument('--format', default='pdf',
                                 help="plot format [e.g. pdf, svgz]")
 parser.add_argument('--lonlat', default=False, action='store_true',
                                 help="plot in longitude-latitude coordinates")
+parser.add_argument('--limits', metavar='XMIN XMAX YMIN YMAX',
+                                nargs=4, type=float, help="plot limits")
 parser.add_argument('filename')
 args = parser.parse_args()
 
@@ -36,6 +38,9 @@ idlist = [geom[k]['id'] for k in range(len(geom))]
 fig, ax = plt.subplots()
 ax.ticklabel_format (style='sci', scilimits=(-3,4), useMathText=True)
 ax.set_title(basename)  # <-- error message 'Unable to parse the pattern' is a known python bug
+
+if args.limits is not None:
+   plt.axis(args.limits)
 
 if args.lonlat:
     # plot lon-lat coordinates in degrees
