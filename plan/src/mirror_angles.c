@@ -5,6 +5,7 @@
 #include <math.h>
 #include <limits.h>
 #include <getopt.h>
+#include <wordexp.h>
 #include <libconfig.h>
 
 #include "compute_scan_angles.h"
@@ -79,6 +80,51 @@ static int set_geometry_params (config_t *cfg, double *sat_lon, double *bs_lon, 
    return __set_geometry_params (ewbias, nsbias, clockingbias, telescopeOffset);
 }
 
+static char *expand_string (const char *s)
+{
+   wordexp_t we = {0};
+   char *s_exp = NULL;
+
+   memset ((char *)&we, 0, sizeof (wordexp_t));
+
+   if ((0 != wordexp (s, &we, WRDE_NOCMD | WRDE_UNDEF))
+       || (we.we_wordc != 1))
+     {
+        fprintf (stderr, "*** Error: %s: expanding path: %s\n", __func__, s ? s : "(null)");
+        wordfree (&we);
+        return NULL;
+     }
+
+   s_exp = strdup (we.we_wordv[0]);
+   wordfree (&we);
+
+   if (NULL == s_exp)
+     {
+        fprintf (stderr, "*** Error: %s: strdup failed\n", __func__);
+     }
+
+   return s_exp;
+}
+
+static int find_config_file (char **config_file)
+{
+   const char *defaults[] = {"plan.cfg", "$SDPC_ROOT/share/plan.cfg", NULL};
+   const char **p;
+   char *s;
+
+   for (p = defaults; *p != NULL; p++)
+     {
+        if (NULL == (s = expand_string (*p)))
+          return -1;
+        if (0 == access (s, F_OK | R_OK))
+          break;
+        free (s);
+     }
+
+   *config_file = s;
+   return s ? 1 : 0;
+}
+
 static void usage (void)
 {
    fprintf (stderr, "Usage: mirror_angles [options]\n");
@@ -105,7 +151,7 @@ int main (int argc, char **argv)
         {"gridlon", required_argument, 0, 'g'},
         {0,0,0,0}
      };
-   char *config_file = "plan.cfg";
+   char *config_file = NULL;
    double nan_value = nan("");
    double sat_lon = nan_value;
    double lon = nan_value;
@@ -113,6 +159,7 @@ int main (int argc, char **argv)
    double dlon = 0.25;
    int status = -1;
    int num_lons = 0;
+   int malloced_config_file = 0;
    EarthPoint earth_point = {0};
    AziElev_Type scan_angles = {0};
    AziElev_Type mirror_angles = {0};
@@ -120,10 +167,25 @@ int main (int argc, char **argv)
 
    config_init (&cfg);
 
+   if ((malloced_config_file = find_config_file (&config_file)) < 0)
+     goto exit_status;
+
+   /* If we found a config file, read it now, otherwise, keep going
+    * in case there's a config file on the command line */
+   if (config_file)
+     {
+        if (0 == config_read_file (&cfg, config_file))
+          {
+             fprintf (stderr, "*** Error: reading %s:%d - %s",
+                      config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+             goto exit_status;
+          }
+     }
+
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hs:o:a:g:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hc:s:o:a:g:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -136,7 +198,27 @@ int main (int argc, char **argv)
              /* handle long-only options */
              break;
            case 'c':
+             if (0 != access (optarg, F_OK | R_OK))
+               {
+                  fprintf (stderr, "*** Error: cannot access %s\n", optarg);
+                  goto exit_status;
+               }
+             /* This config file will override the default one
+              * that might have been read previously.
+              * Subsequent command-line args will override
+              * any corresponding config file values */
+             if (malloced_config_file)
+               {
+                  free(config_file);
+                  malloced_config_file = 0;
+               }
              config_file = optarg;
+             if (0 == config_read_file (&cfg, config_file))
+               {
+                  fprintf (stderr, "*** Error: reading %s:%d - %s",
+                           config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+                  goto exit_status;
+               }
              break;
            case 'h':
              usage();
@@ -175,6 +257,8 @@ int main (int argc, char **argv)
           }
      }
 
+   if (config_file == NULL) usage();
+
    if (optind < argc)
      {
         fprintf (stdout, "Remaining arguments ignored:  ");
@@ -183,13 +267,6 @@ int main (int argc, char **argv)
              fprintf (stdout, "%s ", argv[optind++]);
           }
         fprintf (stdout, "\n");
-     }
-
-   if (0 == config_read_file (&cfg, config_file))
-     {
-        fprintf (stderr, "*** Error: reading %s:%d - %s",
-                 config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
-        goto exit_status;
      }
 
    if (0 != set_geometry_params (&cfg, &cfg_sat_lon, &bs_lon, &bs_lat))
@@ -251,6 +328,7 @@ int main (int argc, char **argv)
 
    status = 0;
 exit_status:
+   if (malloced_config_file) free(config_file);
    config_destroy (&cfg);
    return status;
 }
