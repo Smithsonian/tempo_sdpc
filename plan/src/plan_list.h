@@ -28,6 +28,18 @@ struct Plan_List_Type
    uint16_t scan_type;       /**< scan type value */
 };
 
+typedef struct Plan_Stats_Type Plan_Stats_Type;
+struct Plan_Stats_Type
+{
+   Plan_Stats_Type *next;
+   double jd_utc_beg;         /**< Earliest time when radiance scanning could begin [days] */
+   double jd_utc_end;         /**< Time when radiance scanning should end [days] */
+   double jd_utc_beg_safe;    /**< Earliest time when the aperture may safely open [days] */
+   double jd_utc_end_safe;    /**< Time when the aperture must close [days] */
+   double radiance_scan_first_start;  /**< nominal first scan start time [sec] */
+   double radiance_scan_last_end;     /**< nominal last scan end time [sec] */
+};
+
 /** Allocate a \ref Plan_List_Type structure
  * @param[in]  \ref scan_type   scan type label
  * @return  A \ref Plan_List_Type pointer on success, NULL on error
@@ -56,13 +68,22 @@ extern int plan_list_append (Plan_List_Type **head,
 */
 extern void plan_list_free (Plan_List_Type *head);
 
+extern void plan_stats_list_free (Plan_Stats_Type *stats);
+extern Plan_Stats_Type *plan_stats_list_append (Plan_Stats_Type *head,
+                                                double jd_utc_beg, double jd_utc_end,
+                                                double jd_utc_beg_safe, double jd_utc_end_safe);
+extern int plan_stats_set_scan_times (Plan_Stats_Type *stats, const Plan_List_Type *entry);
+
 /** Write plan list parameters to an ASCII file.
  * @param[in]  fp     Initialized FILE pointer for the destination file
  * @param[in]  mark_scan_seq_start  When non-zero, scan labels will have
  *                                  the scan_seq_start bit set
  * @param[in]  head  The head of a plan list.
+ * @param[in]  stats  The head of a Plan_Stats_Type list (NULL is ok)
  * @return 0 on success, -1 on error.
 */
 extern int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head);
+
+extern int plan_stats_write (const Plan_Stats_Type *stats, const char *filename);
 
 #endif

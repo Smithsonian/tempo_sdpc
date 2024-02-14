@@ -233,3 +233,149 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
 
    return 0;
 }
+
+void plan_stats_list_free (Plan_Stats_Type *stats)
+{
+   while (stats != NULL)
+     {
+        Plan_Stats_Type *next = stats->next;
+        FREE(stats);
+        stats = next;
+     }
+}
+
+Plan_Stats_Type *plan_stats_list_append (Plan_Stats_Type *head, double jd_utc_beg, double jd_utc_end,
+                                         double jd_utc_beg_safe, double jd_utc_end_safe)
+{
+   Plan_Stats_Type *p, *stats;
+
+   if (NULL == (stats = (Plan_Stats_Type *)MALLOC (sizeof *stats)))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        return NULL;
+     }
+
+   memset ((char *)stats, 0, sizeof (*stats));
+   stats->jd_utc_beg = jd_utc_beg;
+   stats->jd_utc_end = jd_utc_end;
+   stats->jd_utc_beg_safe = jd_utc_beg_safe;
+   stats->jd_utc_end_safe = jd_utc_end_safe;
+
+   for (p = head; p != NULL; p = p->next)
+     {
+        if (p->next == NULL)
+          break;
+     }
+
+   p->next = stats;
+
+   return stats;
+}
+
+int plan_stats_set_scan_times (Plan_Stats_Type *stats, const Plan_List_Type *head)
+{
+   const Plan_List_Type *entry;
+   double tbeg, tend;
+
+   tbeg = 0.0;
+   tend = 0.0;
+
+   for (entry = head; entry != NULL; entry = entry->next)
+     {
+        int is_twilight = (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS);
+        if (is_twilight) continue;
+
+        if (tbeg == 0.0)
+          {
+             tbeg = entry->tstart;
+             tend = tbeg;
+          }
+
+        tend += entry->num_repeats * entry->scan_duration/SEC_PER_DAY;
+     }
+
+   stats->radiance_scan_first_start = tbeg;
+   stats->radiance_scan_last_end = tend;
+
+   return 0;
+}
+
+static double Unix_Epoch_JD;
+static int jd_to_tai (double tstamp_jd, double *tstamp_tai)
+{
+   double tstamp_utc;
+
+   if (Unix_Epoch_JD == 0.0)
+     {
+        Unix_Epoch_JD = novas_julian_date (1970,1,1,0.0);
+     }
+
+   tstamp_utc = (tstamp_jd - Unix_Epoch_JD) * SEC_PER_DAY;
+   return tio_time_utc_to_taix (tstamp_utc, tstamp_tai);
+}
+
+int plan_stats_write (const Plan_Stats_Type *stats, const char *filename)
+{
+   FILE *fp = NULL;
+   const Plan_Stats_Type *p;
+   const char hdr[] =
+     "#  scan_beg/end = Radiance scanning start/end times (ignoring maneuvers)\n"
+     "#   sza_beg/end = SZA constraint times\n"
+     "#  safe_beg/end = Safety constraint times\n"
+     "date,scan_beg,scan_end,sza_beg,sza_end,safe_beg,safe_end\n";
+   struct time_bounds
+     {
+        double beg;
+        double end;
+     }
+   safe, sza, scan;
+   time_t epoch;
+   time_t now_tt = time(NULL);
+   char epoch_str[32];
+   int status = -1;
+
+   epoch = tio_time_taix_epoch_timet();
+   if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
+     return -1;
+
+   if (NULL == (fp = fopen (filename, "w")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: opening file for writing: %s", __func__, filename);
+        return -1;
+     }
+
+   (void) fprintf (fp, "# Created: %s", ctime(&now_tt));
+   (void) fprintf (fp, "# epoch = %s = %ld (time_t)\n", epoch_str, epoch);
+   (void) fprintf (fp, hdr);
+
+   p = stats;
+   /* head node may be only a handle */
+   if (p->radiance_scan_first_start == 0.0)
+     p = p->next;
+
+   for ( ; p != NULL; p = p->next)
+     {
+        short year, month, day;
+        double hour;
+
+        novas_cal_date (p->radiance_scan_first_start, &year, &month, &day, &hour);
+
+        if ((0 != jd_to_tai (p->jd_utc_beg_safe, &safe.beg))
+            || (0 != jd_to_tai (p->jd_utc_end_safe, &safe.end))
+            || (0 != jd_to_tai (p->jd_utc_beg, &sza.beg))
+            || (0 != jd_to_tai (p->jd_utc_end, &sza.end))
+            || (0 != jd_to_tai (p->radiance_scan_first_start, &scan.beg))
+            || (0 != jd_to_tai (p->radiance_scan_last_end, &scan.end)))
+          goto close_and_return;
+
+        if (fprintf (fp, "%4d-%02d-%02d,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f,%0.3f\n",
+                     year, month, day,
+                     scan.beg, scan.end, sza.beg, sza.end, safe.beg, safe.end)<0)
+          goto close_and_return;
+     }
+
+   status = 0;
+close_and_return:
+   fclose (fp);
+   return status;
+}

@@ -102,6 +102,7 @@ static void usage (void)
    fprintf (stderr, "   -N | --nightlights       Enable night-lights scans\n");
    fprintf (stderr, "   -M | --maneuver FILE     Read maneuver windows from FILE.\n");
    fprintf (stderr, "   -o | --output FILE       Radiance scan output file [default=stdout]\n");
+   fprintf (stderr, "   -D | --daily FILE        Daily summary output file\n");
    fprintf (stderr, "   -i | --irr FILE          Generate irradiance geometry output file\n");
    fprintf (stderr, "   -I | --Irr FILE          Generate only irradiance geometry output file\n");
    fprintf (stderr, "   -S | --safe[='LON LAT']  Generate table showing SZA at (LON,LAT) at min(SBA) safe limit times\n");
@@ -869,6 +870,7 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
                                            const Scan_Type *scan, const Scan_Method_Type *sm,
                                            const Cal_Date_Type *t0, int num_plan_days,
                                            double utc_start_hour, double utc_start_hour_delta,
+                                           Plan_Stats_Type *stats,
                                            Twilight_Scan_Type *twilight_scan,
                                            Split_Scan_Type *split_scan)
 {
@@ -891,14 +893,24 @@ static Plan_List_Type *generate_scan_plan (const Ephem_Type *eph, Solar_Geom_Typ
      {
         Scan_Limit_Times_Type limit_times = {0};
         Plan_List_Type *entry = NULL;
+        Plan_Stats_Type *day_stats = NULL;
 
         if (0 != scan_limit_times (scan, jd_utc, solar_geom, &limit_times))
+          goto return_status;
+
+        if (NULL == (day_stats = plan_stats_list_append (stats, limit_times.jd_utc_beg, limit_times.jd_utc_end,
+                                                         limit_times.jd_utc_beg_safe, limit_times.jd_utc_end_safe)))
           goto return_status;
 
         if (0 != impose_user_specified_start_hour (utc_start_hour, utc_start_hour_delta, &limit_times))
           goto return_status;
 
         if (NULL == (entry = sm->sm_plan (scan, solar_geom, &limit_times, split_scan)))
+          goto return_status;
+
+        /* Daily scan time interval table intentionally excludes loss due to maneuvers.
+         * Maneuvers will be accounted for elsewhere in downstream reporting. */
+        if (0 != plan_stats_set_scan_times (day_stats, entry))
           goto return_status;
 
         if (twilight_scan)
@@ -1698,6 +1710,7 @@ int main (int argc, char **argv)
    const char *scan_tailoring_file = NULL;
    const char *sza_check_string = NULL;
    const char *optional_output_string = NULL;
+   const char *stats_file = NULL;
    static struct option long_options[] =
      {
         {"help",         no_argument,       0, 'h'},
@@ -1711,6 +1724,7 @@ int main (int argc, char **argv)
         {"safe",         optional_argument, 0, 'S'},
         {"type",         required_argument, 0, 't'},
         {"output",       required_argument, 0, 'o'},
+        {"daily",        required_argument, 0, 'D'},
         {"irr",          required_argument, 0, 'i'},
         {"Irr",          required_argument, 0, 'I'},
         {"angle",        required_argument, 0, 'a'},
@@ -1725,6 +1739,7 @@ int main (int argc, char **argv)
      };
    config_t cfg = {0};
    Ephem_Type eph = {0};
+   Plan_Stats_Type stats = {0};
    Scan_Type *scan = NULL;
    Twilight_Scan_Type *twilight_scan = NULL;
    Split_Scan_Type *split_scan = NULL;
@@ -1758,7 +1773,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hH:NvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hH:NvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:D:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1882,6 +1897,9 @@ int main (int argc, char **argv)
                   fprintf (stderr, "*** error opening file %s for writing\n", scan_outfile);
                   goto return_status;
                }
+             break;
+           case 'D':
+             stats_file = optarg;
              break;
            case 's':
              scan_method = optarg;
@@ -2036,7 +2054,7 @@ int main (int argc, char **argv)
      }
 
    plan_list = generate_scan_plan (&eph, solar_geom, scan, sm, &t0, num_plan_days,
-                                   utc_start_hour, utc_start_hour_delta,
+                                   utc_start_hour, utc_start_hour_delta, &stats,
                                    twilight_scan, split_scan);
    if (NULL == plan_list)
      goto return_status;
@@ -2049,6 +2067,12 @@ int main (int argc, char **argv)
 
    if (0 != write_scan_plan (fp_scan, &eph, solar_geom, scan, scan_method, plan_list, plan_id, mark_scan_seq_start))
      goto return_status;
+
+   if (stats_file)
+     {
+        if (0 != plan_stats_write (&stats, stats_file))
+          goto return_status;
+     }
 
    /* Optionally, generate some plots */
    if (0 != generate_scan_vis (&cfg, optional_output_string, solar_geom, scan, plan_list, plan_id, sm))
@@ -2064,6 +2088,7 @@ return_status:
    if (split_scan) split_scan->sst_delete (split_scan);
    (void) ephem_close (&eph);
    plan_list_free (plan_list);
+   plan_stats_list_free (stats.next);
    close_outfile (fp_scan, scan_outfile);
    close_outfile (fp_master, master_outfile);
    close_outfile (fp_irr, irr_outfile);

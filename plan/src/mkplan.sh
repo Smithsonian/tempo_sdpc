@@ -158,12 +158,13 @@ echo "Writing output to $target_dir"
 _tailor="${target_dir}/${utc}_scantailor.csv"
 _master="${target_dir}/${utc}_masterscan.csv"
 _plan="${target_dir}/${utc}_earthscan.csv"
+_stats="${target_dir}/stats.csv"
 _notes="${target_dir}/NOTES.txt"
 
 # generate master scan table, and scan plan
 $plan_pgm -c $config_file -M $maneuver_file \
      -s $plan_type -d $plan_start_day -n $plan_num_days \
-     $plan_options -o $_plan \
+     $plan_options -o $_plan --daily $_stats \
      -m $_master || error_exit "failed generating scan plan"
 
 /bin/cp $config_file $target_dir/${utc}_plan.cfg
