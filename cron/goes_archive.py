@@ -81,10 +81,11 @@ def get_yday_subdir (base, zone):
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
         return None
-    tstamp = fields.group(1)
+    # help strptime by adding a timezone specification
+    tstamp = fields.group(1)+'+0000'
 
     # archive using day-of-year in satellite local time zone (SLT)
-    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S')
+    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S%z')
     tstamp_slt_obj = tstamp_obj - timedelta(hours=zone)
     yday_subdir = datetime.strftime (tstamp_slt_obj, "%Y/%j")
     return yday_subdir
