@@ -771,6 +771,7 @@ static int write_area_weight_sums (int ncid, const char *lonlat_grp,
    float fill_value = NC_FILL_FLOAT;
    size_t lon_dimlen, lat_dimlen;
    int dimids[2], start[2], count[2];
+   int shuffle=1, deflate=1, deflate_level=1;
    int grp, varid, status;
 
    if (lonlat_grp)
@@ -784,6 +785,7 @@ static int write_area_weight_sums (int ncid, const char *lonlat_grp,
      return -1;
 
    if ((0 != TIO_def_var (grp, varname, NC_FLOAT, 2, dimids, &varid))
+       || (0 != TIO_def_var_deflate (grp, varid, shuffle, deflate, deflate_level))
        || (0 != TIO_def_var_fill (grp, varid, 0, &fill_value))
        || (0 != TIO_put_text_attrs (grp, varid, attrs)))
      return -1;

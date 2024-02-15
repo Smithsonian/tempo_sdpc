@@ -955,6 +955,7 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
    int *num_samples=NULL;
    double *min_sample=NULL, *max_sample=NULL;
    int i, qa_grp, num_varid, min_varid, max_varid, num_values;
+   int shuffle=1, deflate=1, deflate_level=1;
    double fill_minmax;
    int fill_num = PIXEL_INIT_NUM_SAMPLES;
 
@@ -975,15 +976,18 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
      }
 
    if ((-1 == TIO_def_var (qa_grp, num_buf, NC_INT, num_dims, dims, &num_varid))
+       || (0 != TIO_def_var_deflate (qa_grp, num_varid, shuffle, deflate, deflate_level))
        || (0 != TIO_put_text_attrs (qa_grp, num_varid, num_attrs))
        || (-1 == TIO_def_var_fill (qa_grp, num_varid, 0, &fill_num)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, min_buf, in_type, num_dims, dims, &min_varid))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, min_varid))
+       || (0 != TIO_def_var_deflate (qa_grp, min_varid, shuffle, deflate, deflate_level))
        || (0 != TIO_put_text_attrs (qa_grp, min_varid, min_attrs)))
      return -1;
    if ((-1 == TIO_def_var (qa_grp, max_buf, in_type, num_dims, dims, &max_varid))
        || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, qa_grp, max_varid))
+       || (0 != TIO_def_var_deflate (qa_grp, max_varid, shuffle, deflate, deflate_level))
        || (0 != TIO_put_text_attrs (qa_grp, max_varid, max_attrs)) )
      return -1;
 
