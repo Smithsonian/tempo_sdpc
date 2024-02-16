@@ -3,6 +3,8 @@
 # The functions are intended to be called from a parent script
 # which imports these definitions.
 
+: "${SDPC_DSTR_VERSION:=1}"
+
 # Format the YAML file lists
 # The result will have a trailing newline, but
 # AFAIK, blank lines in yaml files are ok.
@@ -61,7 +63,8 @@ make_destripe()
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
-   version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
+   #version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
+   version="$(printf V%02d $SDPC_DSTR_VERSION)"
    destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    destripe_path="$destripe_dir/$destripe_filename"

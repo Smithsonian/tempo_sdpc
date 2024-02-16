@@ -6,6 +6,8 @@
 : "${SDPC_ARCHIVE_DBFILE:?SDPC_ARCHIVE_DBFILE not set}"
 : "${SDPC_ARCHIVE_DBFILE_L1:?SDPC_ARCHIVE_DBFILE_L1 not set}"
 
+: "${SDPC_RADREF_VERSION:=1}"
+
 # Format the YAML file lists
 # The result will have a trailing newline, but
 # AFAIK, blank lines in yaml files are ok.
@@ -98,7 +100,8 @@ make_radref()
    tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_radiance_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
-   version="$(echo $first_radiance_filename_sans_extname | cut -d_ -f4)"
+   #version="$(echo $first_radiance_filename_sans_extname | cut -d_ -f4)"
+   version="$(printf V%02d $SDPC_RADREF_VERSION)"
    radref_filename="TEMPO_RADREF_L1_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    radref_path="$radref_dir/$radref_filename"
