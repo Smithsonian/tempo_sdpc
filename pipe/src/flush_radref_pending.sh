@@ -25,14 +25,19 @@ process_tar_file()
 
 main()
 {
-   if test $# -ne 0 ; then
-      case "$1" in
-         --help) usage_message
-           ;;
-      esac
-   fi
+  if test $# -ne 0 ; then
+     case "$1" in
+        --help) usage_message
+          ;;
+     esac
+  fi
 
-  files=$(find $SDPC_PIPE_DIR/stage/granules/level2_input/radref_pending -mindepth 1 -maxdepth 1 -type f)
+  pending_dir="$SDPC_PIPE_DIR/stage/granules/level2_input/radref_pending"
+  if ! test -d $pending_dir ; then
+     exit 0
+  fi
+
+  files=$(find $pending_dir -mindepth 1 -maxdepth 1 -type f)
 
   for f in $files ; do
      process_tar_file $f
