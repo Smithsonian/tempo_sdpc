@@ -6,6 +6,7 @@ from __future__ import print_function
 import os, sys
 import time
 import math
+import csv
 import signal
 from threading import Event
 from subprocess import check_output
@@ -31,11 +32,11 @@ def time_filter (beg, end):
     if beg is None and end is None:
         where = ""
     elif end is None:
-        where = "where time_coverage_start_since_epoch >= {beg}".format (**locals())
+        where = "where {beg} <= time_coverage_start_since_epoch".format (**locals())
     elif beg is None:
         where = "where time_coverage_end_since_epoch < {end}".format (**locals())
     else:
-        where= "where time_coverage_start_since_epoch >= {beg} and time_coverage_end_since_epoch < {end}".format (**locals())
+        where= "where {beg} <= time_coverage_start_since_epoch and time_coverage_end_since_epoch < {end}".format (**locals())
     return where
 
 def level1_query (c, beg, end):
@@ -104,7 +105,7 @@ class Signal_Catcher:
   def caught(self):
       return self.exit.is_set()
 
-  def handler(self,signum, frame):
+  def handler(self, signum, frame):
     self.exit.set()
     self.signum = signum
 
@@ -160,10 +161,93 @@ def emit_n_telemetry_only (t_prev_iru, t_i, file_i, destdir, sig, wait_time):
 
     return t_end
 
+def read_csv_file_list (csvpath):
+    if not os.path.isfile(csvpath):
+        return None
+    tstart = []
+    path = []
+    with open (csvpath, 'r') as fp:
+        reader = csv.reader(fp)
+        for row in reader:
+            tstart.append (int(row[0]))
+            path.append (row[1])
+
+    tstart = np.asarray(tstart)
+    path = np.asarray(path)
+    indices = np.argsort(tstart)
+    return {"tstart":tstart[indices], "path":path[indices]}
+
+def query_files_in_time_range (dbfile, level1_select, start, end):
+    """
+    For back-compatibility sqlite has foreign keys turned off by default,
+    and foreign_keys=off is ALWAYS stored in the database, regardless of
+    the runtime setting when the database was created.  For this reason,
+    we apparently need to turn it on explicitly, each time the database
+    connection is established.
+    """
+    with sqlite3.connect (dbfile) as conn:
+        conn.execute("pragma foreign_keys=on")
+        #conn.set_trace_callback(print)
+        file_dict = select_files (conn.cursor(), level1_select, start, end)
+    return file_dict
+
+class TrackDB:
+
+    dbfile = None
+
+    def __create_if_not_exists (self):
+        table_name = "File_Table"
+        fields = {}
+        fields["istart"] = "integer not null"
+        fields["filename"] = "text"
+        fields["path"] = "text"
+        quals = "primary key(istart)"
+        field_list = ','.join ('{} {}'.format (k, fields[k]) for k in fields.keys())
+        sql = "create table if not exists {table_name} ({field_list}, {quals});".format (**locals())
+        # journal_mode=WAL mode is persistent
+        with sqlite3.connect (self.dbfile) as conn:
+            conn.execute("pragma journal_mode=WAL")
+            conn.execute (sql)
+
+    def __define_db_path (self, dbfile):
+        if '/' in dbfile:
+            self.dbfile = dbfile
+            return
+        pipe_dbfile = os.getenv ("SDPC_ARCHIVE_DBFILE")
+        if pipe_dbfile is None:
+            raise Exception("SDPC_ARCHIVE_DBFILE is not set")
+        dir = os.path.dirname (pipe_dbfile)
+        if not os.path.isdir(dir):
+            raise Exception("Nonexistent directory: {}".format(dir))
+        self.dbfile = os.path.join (dir, dbfile)
+        if self.dbfile == pipe_dbfile:
+            raise Exception("Tracking database file must differ from SDPC_ARCHIVE_DBFILE")
+
+    def __init__ (self, dbfile):
+        self.__define_db_path (dbfile)
+        self.__create_if_not_exists ()
+
+    def has_file (self, path):
+        filename = os.path.basename(path)
+        sql = "select exists(select 1 from File_Table where filename = '{filename}')".format(**locals())
+        with sqlite3.connect (self.dbfile) as conn:
+            cur = conn.cursor()
+            cur.execute (sql)
+            result = cur.fetchone()
+        return int(result[0]) != 0
+
+    def insert_file (self, istart, path):
+        filename = os.path.basename(path)
+        sql = "insert into File_Table (istart,filename,path) values ({istart},'{filename}','{path}')".format(**locals())
+        with sqlite3.connect (self.dbfile) as conn:
+            conn.execute(sql)
+
 def main():
     parser = argparse.ArgumentParser(description='Deliver time-ordered Level 0 or Level 1 image data to a target directory')
     parser.add_argument('--dbfile', metavar='DBFILE',
-                        help="Sqlite database path")
+                        help="Path to sqlite database containing source files")
+    parser.add_argument('--csvfile', metavar='CSVFILE',
+                        help="Path to CSV file containing source file list")
     parser.add_argument('--wait', default=None, type=float,
                         help="Time interval [sec] between files")
     parser.add_argument('--level1', action='store_true',
@@ -174,6 +258,10 @@ def main():
                         help="End time [TAI sec since TEMPO epoch]")
     parser.add_argument('--telemonly', action='store_true',
                         help="Trigger generation of telemetry-only radiance files")
+    parser.add_argument('--notrack', action='store_true',
+                        help="Disable tracking of source files")
+    parser.add_argument('--trackdbfile', default="reprocess_input_files.sqlite",
+                        help="Specify non-default filename for sqlite source file tracking database")
     parser.add_argument('--silent', action='store_true',
                         help="Minimize output")
     parser.add_argument('--dryrun', action='store_true',
@@ -191,26 +279,35 @@ def main():
     global DryRun
     DryRun = args.dryrun
 
-    dbfile = args.dbfile
-
-    # For back-compatibility sqlite has foreign keys turned off by default,
-    # and foreign_keys=off is ALWAYS stored in the database, regardless of
-    # the runtime setting when the database was created.  For this reason,
-    # we apparently need to turn it on explicitly, each time the database
-    # connection is established.
-
-    with sqlite3.connect (dbfile) as conn:
-        conn.execute("pragma foreign_keys=on")
-        #conn.set_trace_callback(print)
-        c = conn.cursor()
-        file_dict = select_files (c, args.level1, args.start, args.end)
+    file_dict = None
+    if args.dbfile is not None:
+        file_dict = query_files_in_time_range (args.dbfile, args.level1, args.start, args.end)
+    elif args.csvfile is not None:
+        file_dict = read_csv_file_list (args.csvfile)
 
     if file_dict is None:
-        eprint ('No files selected')
-        return
+        eprint ('*** Error: No source files to deliver: dbfile={} csvfile={}'.format(args.dbfile, args.csvfile))
+        sys.exit(1)
 
     files = file_dict['path']
-    t = np.asarray(file_dict['tstart'])
+    times = np.asarray(file_dict['tstart'])
+
+    # Check the files actually exist
+    num_files = 0
+    for f in files:
+        if not os.path.isfile(f):
+            eprint ('*** Cannot access file: {}'.format(f))
+            sys.exit(1)
+        num_files += 1
+
+    print('Files input: {} (all exist)'.format(num_files))
+
+    if args.notrack:
+        trackdb = None
+        do_tracking = False
+    else:
+        trackdb = TrackDB (args.trackdbfile)
+        do_tracking = True
 
     sig = Signal_Catcher()
 
@@ -221,10 +318,13 @@ def main():
     global Epoch_Timet
     Epoch_Timet = datetime.timestamp(epoch_struct)
 
-    t_prev = t[0]
+    num_linked = 0
+    num_skipped = 0
+
+    t_prev = times[0]
     t_prev_iru = t_prev
     for i in range(len(files)):
-        dt = t[i] - t_prev
+        dt = times[i] - t_prev
 
         if args.wait is None:
             wait_time = dt
@@ -232,20 +332,37 @@ def main():
             wait_time = args.wait
 
         if sig.caught():
-            print('\nCaught signal:  Resume using --start {}'.format(int(t[i])))
+            print('\nCaught signal')
+            if args.dbfile is not None:
+                print('Resume using --start {}'.format(int(times[i])))
             break
 
         if args.telemonly:
-            t_prev_iru = emit_n_telemetry_only (t_prev_iru, t[i], files[i], args.destdir, sig, wait_time)
+            t_prev_iru = emit_n_telemetry_only (t_prev_iru, times[i], files[i], args.destdir, sig, wait_time)
 
-        t_prev = t[i]
+        t_prev = times[i]
         src = files[i]
         dst = os.path.join (args.destdir, os.path.basename(src))
+
+        if do_tracking:
+            if trackdb.has_file (src):
+                eprint ('already processed: {}'.format(src))
+                num_skipped += 1
+                continue
+
         if not Silent:
             print('{}: {} -> {}'.format(datetime.now().isoformat(), src, dst), flush=True)
+
         if not DryRun:
+            if do_tracking:
+                trackdb.insert_file (times[i], src)
             os.symlink (src, dst)
+            num_linked += 1
+
         sig.wait (wait_time)
+
+    if not Silent:
+         print ('Files processed: total:{} linked:{} skipped:{}'.format(num_files, num_linked, num_skipped))
 
 if __name__ == "__main__":
     main()
