@@ -397,7 +397,7 @@ sensingElement_11 = 0.623789
 #axisCalibration_1 = 0.053523430394493e-6
 #axisCalibration_2 = -0.071364573859324e-6
 #axisCalibration_3 = -0.169490862915894e-6
-# For dates after 8/17:
+# For dates after sunrise 8/18:
 axisCalibration_0 = 0.0
 axisCalibration_1 = 0.0
 axisCalibration_2 = 0.0
