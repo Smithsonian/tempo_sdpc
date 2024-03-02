@@ -236,8 +236,9 @@ class TrackDB:
             result = cur.fetchone()
         return int(result[0]) != 0
 
-    def insert_file (self, istart, path):
+    def insert_file (self, tstart, path):
         filename = os.path.basename(path)
+        istart = int(tstart)
         sql = "insert into File_Table (istart,filename,path) values ({istart},'{filename}','{path}')".format(**locals())
         with sqlite3.connect (self.dbfile) as conn:
             conn.execute(sql)
@@ -300,7 +301,7 @@ def main():
             sys.exit(1)
         num_files += 1
 
-    print('Files input: {} (all exist)'.format(num_files))
+    print('Files input: {} (all exist)'.format(num_files), flush=True)
 
     if args.notrack:
         trackdb = None
@@ -346,7 +347,7 @@ def main():
 
         if do_tracking:
             if trackdb.has_file (src):
-                eprint ('already processed: {}'.format(src))
+                eprint ('already processed: {}'.format(src), flush=True)
                 num_skipped += 1
                 continue
 
@@ -362,7 +363,7 @@ def main():
         sig.wait (wait_time)
 
     if not Silent:
-         print ('Files processed: total:{} linked:{} skipped:{}'.format(num_files, num_linked, num_skipped))
+         print ('Files processed: total:{} linked:{} skipped:{}'.format(num_files, num_linked, num_skipped), flush=True)
 
 if __name__ == "__main__":
     main()
