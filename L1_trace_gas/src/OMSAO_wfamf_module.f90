@@ -2183,6 +2183,10 @@ CONTAINS
 
            ! Find which layer is closer to the tropopause.
            tropopause_idx = MINLOC(ABS(pressure_grid-REAL(tropopause_pressure(ixtrack,itimes),KIND=r4)),1)
+           ! Ensure the tropopause_idx layer is in the troposphere
+           if (tropopause_pressure(ixtrack,itimes) > pressure_grid(tropopause_idx)) then
+             tropopause_idx = tropopause_idx - 1
+           endif
 
            ! Compute stratospheric and tropospheric AMFs following Bucsela et al., 2013
            ! DOI:10.5194/amt-6-2607-2013
