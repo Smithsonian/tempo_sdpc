@@ -9,8 +9,7 @@ contains
 
    subroutine scd_adjust_gmi(pp,tt,cpp,scdm,scdadj,t8p)
 
-   use m_vars, only: gmi_np, a203, b203, a233, b233, &
-                      a253, b253, a293, b293, TrefO4
+   use m_vars, only: gmi_np, a263, b263, a293, b293, TrefO4
 
    real(kind=4), dimension(gmi_np+1), intent(in) :: pp
    real(kind=4), dimension(gmi_np), intent(in) :: tt
@@ -68,39 +67,27 @@ contains
       t8p = (tbot*wtop + ttop*wbot) / (wtop + wbot)
    end if
 
-   ! ensure t8p is within 10K of (203., 303.)K
-   if (t8p .lt. 193.) t8p = 193.
-   if (t8p .gt. 303.) t8p = 303.
+   ! ensure t8p is within Finkenzeller T range
+   if (t8p .lt. 223.) t8p = 223.
+   if (t8p .gt. 293.) t8p = 293.
 
-   ! original L2 SCD are for TrefO4
-   ! T correction within [203, 293]K, clip on both ends
+   ! original L2 SCD are for TrefO4=223K
+   ! T correction within range, clip on both ends
    ! scdm and scdadj need to be normalized by 1.e43 to use the a & b coeffs
-   if (t8p .le. 203.) then
-       scdadj = a203 * scdm + b203
-   else if ((t8p .gt. 203.) .and. (t8p .le. 233.)) then
-       y1 = a203 * scdm + b203
-       y2 = a233 * scdm + b233
-       w1 = t8p - 203.
-       w2 = 233. - t8p
+   if (t8p .le. 223.) then
+       scdadj = scdm 
+   else if ((t8p .gt. 223.) .and. (t8p .le. 263.)) then
+       y1 = scdm 
+       y2 = a263 * scdm + b263
+       w1 = t8p - 223.
+       w2 = 263. - t8p
        scdadj = (y1*w2 + y2*w1)/(w1+w2)
-   else if ((t8p .gt. 233.) .and. (t8p .le. 253.)) then
-       y1 = a233 * scdm + b233
-       y2 = a253 * scdm + b253
-       w1 = t8p - 233.
-       w2 = 253. - t8p
-       scdadj = (y1*w2 + y2 * w1)/(w1 + w2)
-   else if ((t8p .gt. 253.) .and. (t8p .le. 273.)) then
-       y1 = a253 * scdm + b253
-       y2 = scdm
-       w1 = t8p - 253.
-       w2 = 273. - t8p
-       scdadj = (y1*w2 + y2*w1) / (w1 + w2)
-   else if ((t8p .gt. 273.) .and. (t8p .le. 293.)) then
-       y1 = scdm
+   else if ((t8p .gt. 263.) .and. (t8p .le. 293.)) then 
+       y1 = a263 * scdm + b263
        y2 = a293 * scdm + b293
-       w1 = t8p - 273.
+       w1 = t8p - 263.
        w2 = 293. - t8p
-       scdadj = (y1*w2+y2*w1)/(w1 + w2)
+       scdadj = (y1*w2 + y2*w1)/(w1+w2)
    else if (t8p .gt. 293.) then
        scdadj = a293 * scdm + b293
    endif
@@ -116,8 +103,8 @@ contains
 
    subroutine scd_adjust_geos(pp,tt,cpp,scdm,scdadj,t8p)
 
-   use m_vars, only: geos_np, a203, b203, a233, b233, &
-                     a253, b253, a293, b293, TrefO4
+   use m_vars, only: geos_np, &
+                     a263, b263, a293, b293, TrefO4
 
    real(kind=4), dimension(:), intent(in) :: pp ! pp(geos_np+1)
    real(kind=4), dimension(:), intent(in) :: tt ! tt(geos_np)
@@ -173,44 +160,33 @@ contains
       t8p = (tbot*wtop + ttop*wbot) / (wtop + wbot)
    end if
 
-   ! ensure t8p is within 10K of (203., 303.)K
-   if (t8p .lt. 193.) t8p = 193.
-   if (t8p .gt. 303.) t8p = 303.
+   ! ensure t8p is within O4 T range(223., 293.)K
+   ! thus, t8p is for cpp only when within range
+   if (t8p .lt. 223.) t8p = 223.
+   if (t8p .gt. 293.) t8p = 293.
 
-   ! original L2 SCD are for TrefO4
-   ! T correction within [203, 293]K, clip on both ends
+   ! original L2 SCD are for TrefO4=223K
+   ! T correction within Finkenzeller T range, clip on both ends
    ! scdm and scdadj need to be normalized by 1.e43 to use the a & b coeffs
-   if (t8p .le. 203.) then
-       scdadj = a203 * scdm + b203
-   else if ((t8p .gt. 203.) .and. (t8p .le. 233.)) then
-       y1 = a203 * scdm + b203
-       y2 = a233 * scdm + b233
-       w1 = t8p - 203.
-       w2 = 233. - t8p
+   if (t8p .le. 223.) then ! actually only t8p=223 will happen 
+       scdadj = scdm
+   else if ((t8p .gt. 223.) .and. (t8p .le. 263.)) then
+       y1 = scdm 
+       y2 = a263 * scdm + b263
+       w1 = t8p - 223.
+       w2 = 263. - t8p
        scdadj = (y1*w2 + y2*w1)/(w1+w2)
-   else if ((t8p .gt. 233.) .and. (t8p .le. 253.)) then
-       y1 = a233 * scdm + b233
-       y2 = a253 * scdm + b253
-       w1 = t8p - 233.
-       w2 = 253. - t8p
-       scdadj = (y1*w2 + y2 * w1)/(w1 + w2)
-   else if ((t8p .gt. 253.) .and. (t8p .le. 273.)) then
-       y1 = a253 * scdm + b253
-       y2 = scdm
-       w1 = t8p - 253.
-       w2 = 273. - t8p
-       scdadj = (y1*w2 + y2*w1) / (w1 + w2)
-   else if ((t8p .gt. 273.) .and. (t8p .le. 293.)) then
-       y1 = scdm
+   else if ((t8p .gt. 263.) .and. (t8p .le. 293.)) then
+       y1 = a263 * scdm + b263
        y2 = a293 * scdm + b293
-       w1 = t8p - 273.
+       w1 = t8p - 263.
        w2 = 293. - t8p
-       scdadj = (y1*w2+y2*w1)/(w1 + w2)
-   else if (t8p .gt. 293.) then
+       scdadj = (y1*w2 + y2 * w1)/(w1 + w2)
+   else if (t8p .gt. 293.) then !should not happen, safeguard
        scdadj = a293 * scdm + b293
    endif
 
-   !ensure scdadj is positive
+   ! ensure scdadj is positive
    if (scdadj .lt. 0.) then
       scdadj = scdm !scdm>0. otherwise should have returned
       t8p = TrefO4

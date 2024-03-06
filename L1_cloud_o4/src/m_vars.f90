@@ -137,15 +137,14 @@ module m_vars
 
 !------------------------
 ! O4 SCD temperature correction coefficients (may need update)
-! y(T2) = a * y(T1) + b; T1 = 273K, T2=203, 233, 253, 293K
+! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
 ! coefs updated to account for changes associated with RJH HITRAN2020 H2O
-! coefs are derived using Thalman and OMC4 20050701,20060101,20060715
-   real, parameter:: TrefO4 = 273. 
-   real, parameter:: a203 = 0.90, b203 = -0.03
-   real, parameter:: a233 = 0.96, b233 = -0.02
-   real, parameter:: a253 = 0.97, b253 = 0.00
-   real, parameter:: a293 = 1.01, b293 = 0.00
+! coefs are derived using ops3_4p3_livetest 20240216 with
+! new O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
+   real, parameter:: TrefO4 = 223. 
+   real, parameter:: a263 = 1.0043, b263 = 0.0066
+   real, parameter:: a293 = 1.0219, b293 = 0.1117
 
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 
