@@ -213,6 +213,9 @@ contains
          irr_NumTimes, irr_nXtrack, irr_nWavel
 
     use m_vars, only: rad_NumTimes, rad_nXtrack, out_ProcessingQualityFlags
+
+    use m_vars, only: irr_waveshift, option_apply_solshift
+
     use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_irr
 
     implicit none
@@ -224,6 +227,7 @@ contains
     !local variables
     integer (kind=4) :: nxtrack, ntimes, nwavel, ix, it, iw
     real (kind=4), dimension(:,:,:), allocatable :: tio_irr, tio_wvl
+    real (kind=4), dimension(:), allocatable :: tmpwvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     real (kind=4) :: thisirr440, thisirr466, thisirr477
     character(len=80) :: logmsg
@@ -288,8 +292,20 @@ contains
 
     if (errstat /= 0) then
       call tell_error (tell_io_read_error, &
-           "read_irr_tio: failed to read irrad", errstat)
+           "read_irr_tio: failed to read irr", errstat)
       return
+    endif
+
+    ! apply solar wavelength shift
+    if (option_apply_solshift == 1) then
+       write(*,*) 'applying solar wavelength shift'
+       allocate (tmpwvl(nwavel),stat=errstat) 
+       do ix = 1, nxtrack
+          tmpwvl(:) = tio_wvl(:,ix,1) - irr_waveshift(ix)
+          tio_wvl(:,ix,1) = tmpwvl(:)
+       enddo       
+       ! tio_wvl now agrees with solar reference spectrum in fitting
+       deallocate(tmpwvl)
     endif
 
     ! interpolate values at 440, 466, 477nm
@@ -391,6 +407,8 @@ contains
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
          rad_NumTimes, rad_nXtrack, rad_nWavel, rad_SnowIceFraction
 
+    use m_vars, only: rad_waveshift, option_apply_radshift
+
     use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_rad
 
     !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
@@ -465,7 +483,7 @@ contains
          [ntimes, nxtrack], rad_SolarZenithAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingZenithAngle, errstat)
-   ! what actually needed is relative azimuth angle read in by read_cldo4_tio
+   ! what needed is relative azimuth angle read in by read_cldo4_tio
    ! SAA and VAA are read as original code uses them to calculate RAA
     call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
@@ -504,9 +522,22 @@ contains
     call close_tio (tio_l1obj, errstat)
 
    ! moved interpolation to rad440, rad466 and rad440 here
-   !from cal_ecf.f90 so that big arrays
-   !rad_Wavelength, radRadiance, rad_PixelQualityFlags can be deallocated
+   ! from cal_ecf.f90 so that big arrays
+   ! rad_Wavelength, radRadiance, rad_PixelQualityFlags can be deallocated
+
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
+
+   ! apply rad wavelength shift
+   if (option_apply_radshift .eq. 1) then 
+      write(*,*) 'applying rad wavelength shift'
+      do it = 1, ntimes
+         do ix = 1, nxtrack
+            temp_wav(:) = rad_Wavelength(:,ix,it)-rad_waveshift(ix,it)
+            rad_Wavelength(:,ix,it) = temp_wav(:)
+         enddo
+      enddo 
+      ! rad_Wavelength now agrees with solar reference used in fitting
+   endif
 
    ! debug
    if ((trim(run_mode) .eq. 'development').and. &
@@ -1232,6 +1263,118 @@ end subroutine read_cldo4_dims
      !endif
 
    end subroutine allocate_cldo4_vars
+
+!--------------------------------------------------------------------
+   subroutine allocate_diaglog_vars(ntimes,nxtrack,errstat)
+
+   use m_vars, only: rad_waveshift, irr_waveshift
+
+   implicit none
+   integer, intent(in):: nxtrack, ntimes
+   integer (kind=4), intent(inout) :: errstat
+
+   allocate(rad_waveshift(nxtrack,ntimes),stat=errstat)
+   allocate(irr_waveshift(nxtrack), stat=errstat)
+ 
+   ! initialize all shifts to zero
+   rad_waveshift = 0.
+   irr_waveshift = 0.
+
+   end subroutine allocate_diaglog_vars
+!-------------------------------------------------------------------
+   subroutine read_diaglog_vars(diaglogfnm,errstat)
+
+   use m_vars, only: rad_waveshift, irr_waveshift
+   use m_vars, only: maxradshift,  maxirrshift
+   use m_vars, only: option_apply_solshift, option_apply_radshift
+   use m_vars, only: lun_debug_shift, ixdebug, itdebug, run_mode
+   use netcdf, only: nf90_nowrite
+
+   implicit none
+   character(len=*),intent(in):: diaglogfnm
+   integer(kind=4),intent(inout):: errstat
+
+   !local variables
+   integer(kind=4) :: nxtrack, ntimes, ix, it, nx, nt
+   integer(kind=4) :: errhere
+   type (tiof_file_type) :: diaglog_obj
+
+   errhere = 0
+   
+   ! initial nx,nt large enough, they will be replaced below if successful
+   nx = 2050
+   nt = 500 
+
+   call tiof_open(trim(diaglogfnm),diaglog_obj,nf90_nowrite,errhere)
+   if (errhere /= 0) then
+      write(*,*) 'read_diaglog_vars: failed to open diaglog file.'
+      write(*,*) 'continue with assumption of shifts = 0.'
+      write(*,*) 'force option_apply_solshift=0, option_apply_radshift=0'
+      ! force option_apply_XXXshift to 0
+      option_apply_solshift = 0
+      option_apply_radshift = 0
+      ! allocate & initialize to 0 wavelength shift 
+      write(*,*) 'diaglog: fake nx,nt=',nx,nt
+      call allocate_diaglog_vars(nt,nx,errstat)
+      ! if allocation fails, errstat tells the calling program 
+      return
+   else 
+      call tiof_inq_dimlen(diaglog_obj, "xtrack", nx, errhere)
+      call tiof_inq_dimlen(diaglog_obj, "mirror_step", nt, errhere)
+      write(*,*) 'diaglog: nx,nt=',nx,nt
+      ! allocate & initialize to 0 wavelength shift 
+      call allocate_diaglog_vars(nt,nx,errstat)
+
+      ! read wavelength shift 
+      call tiof_get2d_r4(diaglog_obj,"radshi", [0,0], [nt,nx], &
+        rad_waveshift, errhere)
+
+      call tiof_get1d_r4(diaglog_obj,"solshi", [0], [nx], &
+        irr_waveshift, errhere)
+
+      call tiof_close(diaglog_obj, errhere)
+      if (errhere /=0) then
+          rad_waveshift = 0.
+          irr_waveshift = 0.
+          write(*,*) "read_diag_nvars: failed to read data, assume all 0s"
+          return
+      endif
+   endif
+
+   ! set large shift to zero
+   where ((rad_waveshift > maxradshift).or.(rad_waveshift < -maxradshift)) 
+       rad_waveshift = 0.
+   endwhere
+   where((irr_waveshift > maxirrshift).or.(irr_waveshift < -maxirrshift))
+       irr_waveshift = 0.
+   endwhere
+
+   ! option for wavelength shift_
+   write(*,*) 'option_apply_solshift=',option_apply_solshift
+   if (option_apply_solshift == 0) then
+       irr_waveshift = 0.
+   endif
+   write(*,*)'option_apply_radshift=',option_apply_radshift
+   if (option_apply_radshift == 0) then
+       rad_waveshift = 0.
+   endif
+
+   ! debug
+   if ((trim(run_mode) .eq. 'development').and.(ixdebug .ge. 0)) then
+      write(*,*) 'writing debug_shift.txt'
+      open(unit=lun_debug_shift,file='debug_shift.txt')
+      write(lun_debug_shift,*) 'option_apply_solshift=',option_apply_solshift
+      write(lun_debug_shift,*) 'option_apply_radshift=',option_apply_radshift
+      write(lun_debug_shift,*) 'ixdebug,itdebug=',ixdebug,itdebug
+      write(lun_debug_shift,*)'ix    irr_waveshift         rad_waveshift'
+      do ix = 1, nx
+         write(lun_debug_shift,*)ix,irr_waveshift(ix),rad_waveshift(ix,itdebug)
+      enddo
+      close(lun_debug_shift)
+   endif
+
+   end subroutine read_diaglog_vars
+
 !--------------------------------------------------------------------
    subroutine allocate_init_desvars(nxtrack, errstat)
 
@@ -1269,7 +1412,8 @@ end subroutine read_cldo4_dims
      endif 
         
    end subroutine allocate_init_desvars
-   !-----------------------------------------------------------
+!-----------------------------------------------------------
+
    subroutine destripe_o2o2scd(arrin,nXtrack,nTimes,arrout)
 
    use m_vars, only: scddes_hour, option_destripe_scd

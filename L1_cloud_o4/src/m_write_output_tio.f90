@@ -129,7 +129,8 @@ contains
     use m_vars, only: name_option_TemperaturePressure,name_option_SurfaceReflectivity, &
            name_option_MinECF,name_option_SnowIce,name_option_SceneAlbedoAtTerrain,&
            option_clip_pcld, option_psfc_clear,ecfocp_maxiter,&
-           option_scdfullfilter, option_destripe_scd
+           option_scdfullfilter, option_destripe_scd, &
+           option_apply_solshift, option_apply_radshift
     
     implicit none
 
@@ -178,6 +179,10 @@ contains
         'option_destripe_scd',option_destripe_scd)
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
         'ecfocp_maxiter',ecfocp_maxiter)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_apply_solshift',option_apply_solshift)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_apply_radshift',option_apply_radshift)
 
     ! Create default groups.
     call tiof_def_group (tio_l2obj, "product", errstat)

@@ -13,7 +13,8 @@ program OMCDO2N
   use tell_module
   use tio_module
   use m_read_input_tio, only: read_rad_tio, read_irr_tio, read_cldo4_tio, &
-               get_tio_global_attr, get_tio_l1rad_glbattr
+               get_tio_global_attr, get_tio_l1rad_glbattr, &
+               read_diaglog_vars
   use m_write_output_tio, only: create_output_file_tio, &
                update_output_file_tio, write_debug_processing_flags
   use m_read_input_clim, only: read_geoscf
@@ -38,8 +39,9 @@ program OMCDO2N
   character(len=255)::name_gmi_psfc
   character(len=255)::name_gmi_tmp
   character(len=255)::name_kleipool_rsfc
+  character(len=255)::diaglogfnm
 
-  integer(kind=4) :: errstat
+  integer(kind=4) :: errstat, errhere
   integer(kind=4) :: nx, nt, iter_ecfocp
   real :: fspecial
 
@@ -50,7 +52,9 @@ program OMCDO2N
   !uncomment the following for verbose loginfo
   !call tell_set_log_level(1)
 
-  errstat = 0
+  status = 0 ! local to catch status of reading control file
+  errstat = 0 ! used among subroutines, non-zero causes termination 
+  errhere = 0 ! used only here, non-zero is a warning
   nx = 0
   nt = 0
   fspecial = fFillValue ! large negative value in m_vars
@@ -65,6 +69,7 @@ program OMCDO2N
   buf(:) = ' '
   status=GetConfigString("E","Input Files TEMPOL1RAD_fnm",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPOL1RAD_fnm from control file", errstat)
     call exit(-1)
   endif
@@ -72,6 +77,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Input Files TEMPOL1RAD_dir",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPOL1RAD_dir from control file", errstat)
     call exit(-1)
   endif
@@ -79,6 +85,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Input Files TEMPOO4SCD_fnm",buf)
   if(status < 0) then
+     errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPOO4SCD_fnm from control file", errstat)
     call exit(-1)
   endif
@@ -86,6 +93,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Input Files TEMPOO4SCD_dir",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPO4SCD_dir from control file", errstat)
     call exit(-1)
   endif
@@ -95,13 +103,14 @@ program OMCDO2N
 ! explicit GLER fnm is no longer needed for TEMPO, but is needed for OMI
   status=GetConfigString("E","Input Files OMGLER",buf)
   if(status < 0) then
-    call tell_error(tell_io_read_error,"Problem reading OMGLER from control file", errstat)
-    call exit(-1)
+    errhere = status
+    call tell_error(tell_io_read_error,"Problem reading OMGLER from control file", errhere)
   endif
   name_brdf_file=trim(buf)
 
   status=GetConfigString("E","Input Files TEMPOL1IRR_fnm",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPOL1IRR fnm from control file", errstat)
     call exit(-1)
   endif
@@ -109,6 +118,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Input Files TEMPOL1IRR_dir",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading TEMPOL1IRR dir from control file", errstat)
     call exit(-1)
   endif
@@ -119,6 +129,7 @@ program OMCDO2N
   ! -----------------------------------------
   status=GetConfigString("E","Output Files TEMPOCLDO4",buf)
   if(status < 0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading Output Filename from control file", errstat)
     call exit(-1)
   endif
@@ -131,6 +142,7 @@ program OMCDO2N
   ! -----------------------------------------
   status=GetConfigString("E","Name Options T-P profile", buf)
   if (status < 0) then
+     errstat = status
      call tell_error(tell_io_read_error,"Problem reading T-P profile option", errstat)
      call exit(-1)
   endif
@@ -139,6 +151,7 @@ program OMCDO2N
 
   status=GetConfigString("E","Name Options Surface Reflectivity",buf)
   if (status < 0) then
+     errstat = status
      call tell_error(tell_io_read_error,"Problem reading Surface Reflectivity option", errstat)
      call exit(-1)
   endif
@@ -150,6 +163,7 @@ program OMCDO2N
   ! -------------------------------------------
   status=GetConfigString("E","Runtime Parameters RunMode",buf)
   if(status <0) then
+    errstat = status
     call tell_error(tell_io_read_error,"Problem reading RunMode from control file", errstat)
     call exit(-1)
   endif
@@ -159,7 +173,7 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters APPShortName",buf)
   if(status .NE. 0) then
     write(*,*)"no APPShortName from control file, use default"
-  ! will use m_vars default
+   ! default to  m_vars 
   else
      gmetadata%appshortname=trim(buf)
   endif
@@ -167,7 +181,6 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters APPVersion",buf)
   if(status .NE. 0) then
     write(*,*) "no APPVersion from control file, use default"
-  ! will use m_vars default
   else
      gmetadata%appversion=trim(buf)
   endif
@@ -175,7 +188,6 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters AuthorName",buf)
   if(status .NE. 0) then
     write(*,*)"no AuthorName from control file, use default"
-  !  will use default in m_vars
   else
      gmetadata%author_name=trim(buf)
   endif
@@ -183,7 +195,6 @@ program OMCDO2N
    status=GetConfigString("W","Runtime Parameters AuthorAffiliation",buf)
    if (status .NE. 0) then
       write(*,*)"no AuthorAffiliation from control file, use default"
-   !  will use default in m_vars
    else
       gmetadata%author_affiliation=trim(buf)
    endif
@@ -191,7 +202,6 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters ProcessingCenter",buf)
   if(status .NE. 0) then
     write(*,*)"no ProcessingCenter from control file, use default"
-  ! will use default in m_vars 
   else 
      gmetadata%processingcenter=trim(buf)
   endif
@@ -199,7 +209,6 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters TEMPO Footprint",buf)
   if(status .NE. 0) then
     write(*,*) "no Footprint channel from control file, use default"
-  ! will use default in m_vars 
   else
      gmetadata%omiwindow=trim(buf)
   endif
@@ -207,7 +216,6 @@ program OMCDO2N
   status=GetConfigString("W","Runtime Parameters Collection",buf)
   if(status .NE. 0) then
     write(*,*)"no Collection Number from control file, use default"
-  ! will use default in m_vars
   else
      gmetadata%omi_collection=trim(buf)
   endif
@@ -268,7 +276,39 @@ program OMCDO2N
     endif
     write(*,*) 'desfac_filename=',trim(name_desfac_dir),trim(name_desfac_fnm)
   endif
-  
+
+  status=GetConfigString("W","Runtime Parameters option_apply_solshift",buf)
+  if (status .NE. 0) then
+     write(*,*) "use default option_apply_solshift"
+  else 
+     read(buf,*,iostat=status) option_apply_solshift
+  endif
+  write(*,*) 'option_apply_solshift=',option_apply_solshift
+
+  status=GetConfigString("W","Runtime Parameters option_apply_radshift",buf)
+  if (status .NE. 0) then
+     write(*,*) "use default option_apply_radshift"
+  else 
+     read(buf,*,iostat=status) option_apply_radshift
+  endif
+  write(*,*) 'option_apply_solshift=',option_apply_solshift
+
+  status=GetConfigString("W","Input Files TEMPOdiaglog_dir",buf)
+  if(status .ne. 0) then
+      write(*,*) 'No TEMPOdiaglog_dir in control file, use TEMPOO4SCD_dir'
+      name_diaglog_dir = trim(name_nasa_dir)
+  else
+      name_diaglog_dir=trim(buf)
+  endif
+
+  status=GetConfigString("W","Input Files TEMPOdiaglog_fnm",buf)
+  if(status .ne. 0) then
+       write(*,*) 'No TEMPOdiaglog_fnm in control file, use default'
+  else
+       name_diaglog_fnm=trim(buf)
+  endif
+  write(*,*) 'TEMPOdiaglog file: ',trim(name_diaglog_dir)//trim(name_diaglog_fnm)
+
   flush (output_unit)
   call tell_log(0,'Read control file')
 
@@ -279,8 +319,24 @@ program OMCDO2N
   l1radfnm = trim(adjustl(name_rad_dir))//trim(adjustl(name_rad_file))
   call get_tio_l1rad_glbattr(l1radfnm,errstat)
   if (errstat < 0) then
-     call tell_error(tell_io_read_error,"Error getting time_coverage_start from TEMPO L1 RAD" ,errstat)
+     call tell_error(tell_io_read_error,&
+          "Error getting time_coverage_start from TEMPO L1 RAD" ,errstat)
      call exit(-1)
+  endif
+
+  !=============================
+  ! 1.0 read wavelength shift from diaglog file
+  !=============================
+  ! irr_waveshift & rad_waveshift are used in m_read_input_tio.f90
+  ! they need to be initilized regardless of option_apply_XXXshift
+  ! if the options are 0, wavelengths will be shift by 0.
+  ! for read error from diaglogfnm, the options will be forced to 0.
+  diaglogfnm = trim(adjustl(name_diaglog_dir))//trim(adjustl(name_diaglog_fnm))
+  call read_diaglog_vars(diaglogfnm, errhere)
+  if (errhere /= 0) then
+     write(*,*) 'diaglog file not used, assume 0 wavelength shift'
+  else
+     call tell_log(0,'Read diaglog '//diaglogfnm)
   endif
 
   !==============================
@@ -422,7 +478,7 @@ program OMCDO2N
   call read_lut_amf_clr (errstat)
   call read_lut_amf_cld (errstat)
   if (errstat /= 0) then
-    call tell_error (tell_runtime_error, 'error reading AMF LUTs failed', errstat)
+    call tell_error (tell_runtime_error, 'reading AMF LUTs failed', errstat)
     call exit(-1)
   endif
   flush (output_unit)
@@ -437,7 +493,7 @@ program OMCDO2N
   call allocate_ocp_arrays(nx,nt,fspecial,errstat)
 
   if (errstat /= 0) then
-     call tell_error(tell_runtime_error, 'error allocating ECFOCP failed',errstat)
+     call tell_error(tell_runtime_error, 'allocating ECFOCP failed',errstat)
      call exit(-1)
   endif
   flush (output_unit)
@@ -449,15 +505,15 @@ program OMCDO2N
   do iter_ecfocp = 1, ecfocp_maxiter
      write(*,*) '--------ECFOCP iteration#',iter_ecfocp
      !================================
-     ! 6. calculate ECF/CRF at 466 nm
+     ! 6. calculate ECF at 466 nm
      !================================
      call cal_ecf(iter_ecfocp)
      flush (output_unit)
      call tell_log(0,'   Calculated effective cloud fraction')
 
-     !==================
-     ! 7. calculate OCP
-     !==================
+     !===============================
+     ! 7. calculate OCP using ECF
+     !===============================
      call cal_ocp(iter_ecfocp)
      flush (output_unit)
      call tell_log(0,'   Calculated cloud pressure')
@@ -471,7 +527,7 @@ program OMCDO2N
   !=============================
   call read_lut_amf_ler (errstat)
   if (errstat /= 0) then
-    call tell_error (tell_runtime_error, 'error read_lut_amf_ler failed', errstat)
+    call tell_error (tell_runtime_error, 'read_lut_amf_ler failed', errstat)
     call exit(-1)
   endif
   flush (output_unit)
@@ -484,7 +540,7 @@ program OMCDO2N
   !===================
   ! 9. write outputs
   !===================
-  logmsg = 'All calculation is done. Now writing '//trim(name_out_ncdf)
+  logmsg = 'All done. Now writing '//trim(name_out_ncdf)
   call tell_log(0, logmsg)
 
   call write_debug_processing_flags
@@ -508,6 +564,7 @@ program OMCDO2N
   endif
 
   call tell_close()
-  !*******************
+
+!*******************
 End program OMCDO2N
 !*******************

@@ -59,7 +59,7 @@ module m_vars
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
   integer(kind=4)::rad_nWavel
-  integer(kind=4)::rad_nWavelCoef
+  !integer(kind=4)::rad_nWavelCoef !not used
   real::rad_EarthSunDist
 
 ! read in and transfer to out_TerrainHeight
@@ -136,10 +136,9 @@ module m_vars
   real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
 
 !------------------------
-! O4 SCD temperature correction coefficients (may need update)
+! O4 SCD temperature correction coefficients 
 ! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
-! coefs updated to account for changes associated with RJH HITRAN2020 H2O
 ! coefs are derived using ops3_4p3_livetest 20240216 with
 ! new O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
    real, parameter:: TrefO4 = 223. 
@@ -212,7 +211,7 @@ integer::ilun_lut_amf_ler6d=477010
 !    GMI: GMI monthly T/P/Psfc
 !  GEOS5: GEOS-5 T/P/Psfc
 
-  character(len=255)::name_gmi_dir='refdata/'
+  character(len=255)::name_gmi_dir='./refdata/'
 !  character(len=255)::name_geos5_dir='refdata/'
 !  character(len=255)::name_geos5_file
 
@@ -235,6 +234,7 @@ integer::ilun_lut_amf_ler6d=477010
   integer :: lun_debug_scdadj=69
   integer :: lun_debug_ocp=79
   integer :: lun_debug_pcldind=89
+  integer :: lun_debug_shift=109
   integer :: lun_debug_pflags=119
 
 ! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
@@ -381,6 +381,21 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:),pointer::l2_TerrainPressure
   integer(kind=2), dimension(:,:),  pointer::scd_mdqfl
 
+!----------------
+! input tracegas diagnostic & log file
+! for wavelength shifts
+!----------------
+  integer:: option_apply_solshift = 1
+  integer:: option_apply_radshift = 1
+  ! option_apply_waveshift = 0 will not apply wavelength shift
+  !                        = 1 will attempt to apply shift
+  character(len=255):: name_diaglog_dir = './'
+  character(len=255):: name_diaglog_fnm='empty'
+  real(kind=4),dimension(:,:),allocatable:: rad_waveshift
+  real(kind=4),dimension(:),allocatable:: irr_waveshift
+  real(kind=4):: maxradshift = 0.5 ! larger rad_waveshift will be set to 0.
+  real(kind=4):: maxirrshift = 0.5 ! larger irr_waveshift will be set to 0.
+
 !------------
 ! input extra
 !------------
@@ -499,7 +514,7 @@ type gmeta
   character(len= 7)::APPShortName='TEMPOCLDO4'
   character(len= 7)::APPVersion='1.0.0.0'
   character(len=255)::localgranID='empty'
-  character(len=48)::APPLongName='TEMPO Cloud Product 1-Orbit L2 Swath'
+  character(len=48)::APPLongName='TEMPO Cloud O4 Product 1-Orbit L2 Swath'
   character(len=11)::HDFVersion='empty'
   character(len=50)::parameterdescription='Geophysical Cloud Parameters'
   character(len= 3)::omi_collection='empty'
@@ -511,8 +526,8 @@ type gmeta
   real(kind=4) :: geospatial_lon_max=180.
   real(kind=4) :: geospatial_lat_min=-90.
   real(kind=4) :: geospatial_lat_max=90.
-  character(len=13)::leadscientist='Science Team'
-  character(len=23)::Swathname = 'Cloud Product'
+  character(len=13)::leadscientist='hwang'
+  character(len=23)::Swathname = 'Cloud O4 Product'
   character(len=32) :: apriori_source = 'empty'
   integer :: granule_year=0, granule_month=0,granule_day=0
   integer:: granule_hour_start=0,granule_minute_start=0,granule_seconds_start=0
