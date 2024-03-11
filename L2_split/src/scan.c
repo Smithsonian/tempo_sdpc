@@ -1017,7 +1017,7 @@ static int write_granule_vars (const Granule_Type *gr, double fill_value,
    if (0 != TIO_inq_grp (ncid, "product", &grp_product))
      goto close_and_return;
 
-   if (-1 == TIO_inq_var (grp_product, "vertical_column_total", &vi))
+   if (-1 == TIO_inq_var (grp_support, "vertical_column_total", &vi))
      goto close_and_return;
 
    if (0 != tio_inq_varid (grp_product, vtrop.name, &vtrop.varid))
