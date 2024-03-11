@@ -606,6 +606,7 @@ contains
 
     type (tiof_varlist_type) :: varlist_geo, varlist_qa
     type (tiof_varlist_type), target :: varlist, varlist_supp
+    type (tiof_varlist_type), target :: varlist_tmp
     type (tiof_attlist_type) :: att_coord, att_latbnd, att_lonbnd
     type (tiof_attlist_type) :: att_main_dqf, att_convergence_flag
     type (tiof_attlist_type) :: att_time
@@ -655,13 +656,15 @@ contains
     if (target_molecule % pge_idx == pge_no2_idx) then
       ! For NO2, separate contributions from stratosphere/troposphere will be derived
       ! in post-processing. For this reason, selected NO2 file variable names have
-      ! the word "total".
+      ! the word "total". These columns go to support data group.
+      varlist_tmp = varlist_supp
       var_amf       = trim(tg_var_amf)//"_total"
       !var_amf_error = trim(tg_var_amf)//"_total_uncertainty"
       var_vertical_column       = trim(tg_var_vertical_column)//"_total"
       var_vertical_column_error = trim(tg_var_vertical_column)//"_total_uncertainty"
     else
       ! For all other molecules, the vertical column goes to the "product" group.
+      varlist_tmp = varlist
       var_amf       =      tg_var_amf
       !var_amf_error = trim(tg_var_amf)//"_uncertainty"
       var_vertical_column       =      tg_var_vertical_column
@@ -669,8 +672,9 @@ contains
     endif
 
     ! data field variables with optional attribute lists:
+ 
     if (amf_wvl > 0.0) then
-      call tiof_varlist_append (varlist, errstat, &
+      call tiof_varlist_append (varlist_tmp, errstat, &
                                 var_vertical_column, &
                                 nf90_double, &
                                 dimids = dimids_xtrack_step,  &
@@ -681,14 +685,20 @@ contains
                                 " and total AMF calculated from surface to top of atmosphere", &
                                 fillvalue = fill_double, &
                                 attlist=att_coord)
-      call tiof_varlist_append (varlist, errstat, &
-                                var_vertical_column_error, &
-                                nf90_double, &
-                                dimids = dimids_xtrack_step,  &
-                                long_name = trim(target_molecule % name)//" vertical column uncertainty", &
-                                units = "molecules/cm^2", &
-                                fillvalue = fill_double, &
-                                attlist=att_coord)
+
+       call tiof_varlist_append (varlist_tmp, errstat, &
+                                 var_vertical_column_error, &
+                                 nf90_double, &
+                                 dimids = dimids_xtrack_step,  &
+                                 long_name = trim(target_molecule % name)//" vertical column uncertainty", &
+                                 units = "molecules/cm^2", &
+                                 fillvalue = fill_double, &
+                                 attlist=att_coord)
+    endif
+    if (target_molecule % pge_idx == pge_no2_idx) then
+        varlist_supp = varlist_tmp
+    else
+        varlist = varlist_tmp
     endif
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1463,6 +1473,7 @@ contains
                                    amf_corr_column, amf_corr_column_uncertainty, &
                                    yn_write_cloud_variables, crfrc, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
+    use OMSAO_indices_module, only : pge_no2_idx
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes
@@ -1523,7 +1534,11 @@ contains
 
     call tiof_pop_group (obj, errstat)
 
-    call tiof_push_group (obj, tg_grp_product, errstat)
+    if (target_molecule % pge_idx == pge_no2_idx) then
+        call tiof_push_group (obj, tg_grp_support_data, errstat)
+    else
+        call tiof_push_group (obj, tg_grp_product, errstat)
+    endif
     call tiof_put2d_r8 (obj, var_vertical_column, [0,0], [ntimes,nxtrack], &
                         amf_corr_column (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, var_vertical_column_error, [0,0], [ntimes,nxtrack], &
