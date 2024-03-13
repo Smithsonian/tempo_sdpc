@@ -117,7 +117,8 @@ CONTAINS
     use OMSAO_indices_module, only: voc_omicld_idx
     use OMSAO_omidata_module, only : amf_correction_type
     use output_tools, only : write_albedo, write_gas_profile, &
-      write_scattering_weights, write_amf_correction
+      write_scattering_weights, write_amf_correction, &
+      write_temperature_profile
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
     use ctrlvars, only : yn_stratrop, yn_gems
@@ -152,8 +153,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     real    (kind=r8), dimension (1:nx,0:nt-1)       :: crfrc
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
-    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: profiles
-    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: scattw
+    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: profiles, scattw, ptemperature
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: idx_ozo_pro
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
@@ -186,6 +186,7 @@ CONTAINS
     psurf        = r4_missval ! Not output
     tsurf        = r4_missval ! Not output
     wind_speed   = 0.0
+    ptemperature = r8_missval
     scattw       = r8_missval
     saoamf       = r8_missval
     amfgeo       = r8_missval
@@ -350,12 +351,12 @@ CONTAINS
        call tell_log (1, 'amf_calculation: compute amfs')
        CALL compute_amf (cpt,  nt, nx, time, CmETA, profiles, &
                          scattw, saoamf, stratospheric_amf, tropospheric_amf, &
-                         surface_pressure, tropopause_pressure, lat, lon, amfdiag, &
-                         locerrstat)
+                         surface_pressure, tropopause_pressure, ptemperature, &
+                         lat, lon, amfdiag, locerrstat)
 
-       ! ----------------------------
-       ! Write out scattering weights
-       ! ----------------------------
+       ! ----------------------------------------------------
+       ! Write out scattering weights and temperature profile
+       ! ----------------------------------------------------
        IF (do_write) then
           call tell_log (1, 'amf_calculation: write scattering weights to L2 file')
           call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
@@ -363,6 +364,12 @@ CONTAINS
              call tell_error (tell_io_read_error, 'writting scattering weights to L2 file', errstat)
              return
           endif
+          call tell_log (1, 'amf_calculation: write temperature profile to L2 file')
+          call write_temperature_profile (ptemperature, nx, nt, CmETA, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_io_read_error, 'writting temperature profile to L2 file', errstat)
+             return
+          endif          
        endif
 
     END IF
@@ -1190,6 +1197,7 @@ CONTAINS
           call get_lut_o3_idx(o3_col, lat_f, wgh_ozo_pro(ixtrack,itimes,1:2), idx_ozo_pro(ixtrack,itimes,1:2), errstat)
        enddo
     enddo
+  deallocate (pres, vmr, partial_column,temp)  
   end subroutine get_atmos_model
 
   SUBROUTINE vlidort_deallocate (errstat)
@@ -2017,7 +2025,7 @@ CONTAINS
 
   SUBROUTINE compute_amf (cpt, nt, nx, time, CmETA, profiles, &
       scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
-      tropopause_pressure, lat, lon, amfdiag, errstat)
+      tropopause_pressure, ptemperature, lat, lon, amfdiag, errstat)
 
     use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char, c_null_ptr, c_associated
     use ctrlvars, only: yn_stratrop, yn_gems
@@ -2040,6 +2048,7 @@ CONTAINS
     ! -----------------------------
     ! Output and modified variables
     ! -----------------------------
+    REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(INOUT) :: ptemperature
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: saoamf, stratospheric_amf, tropospheric_amf
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: tropopause_pressure
     INTEGER (KIND=i4), INTENT(INOUT) :: errstat
@@ -2098,8 +2107,11 @@ CONTAINS
     call clim_query_nz (nz, errstat)
     if (errstat /= 0) return
 
+    ! ------------------------
+    ! Allocate local variables
+    ! ------------------------
+    ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA))
     allocate (pres_z(nz+1), pmid(nz), temp_z(nz), alpha(1:CmETA))
-
 
     ! ----------------------
     ! Subroutine starts here
@@ -2131,56 +2143,57 @@ CONTAINS
         ! ------------------------------------------------------------------------
         alpha = 1.0_r8
 
-        ! ---------------------------------------------------
-        ! Read tropopause pressure from met forecast file
-        ! ---------------------------------------------------
+        ! ----------------------
+        ! Work out pressure_grid
+        ! ----------------------
+        DO ilay = 1, CmETA
+          pressure_grid(ilay) = (( real(eta_a(ilay),kind=r8) + &
+                                   surface_pressure(ixtrack,itimes) * real(eta_b(ilay),kind=r8)  ) + &
+                                 ( real(eta_a(ilay+1),kind=r8) + &
+                                   surface_pressure(ixtrack,itimes) * real(eta_b(ilay+1),kind=r8) )) / 2.0
+        END DO
+
+        ! ---------------------------------------------------------------
+        ! Read tropopause pressure and TEMPERATIRE from met forecast file
+        ! ---------------------------------------------------------------
+        ! Get temperature profile
+        if (have_synthetic_met_data) then
+          call read_synth_met_data(smt, lat(ixtrack,itimes), lon(ixtrack,itimes), &
+                                   tropopause_pressure(ixtrack,itimes), errstat, &
+                                   pprof = pressure_grid, tprof = temperature_profile)
+          ! If any pressure grid values are out of range, the interpolated temperature
+          ! will be NaN. Replace such temperatures with the alpha temperature.
+          do ilay=1,CmETA
+            if (isnan(temperature_profile(ilay))) then
+              temperature_profile(ilay) = alpha_temperature
+            endif
+          enddo
+        else
+          lon_f = real (lon(ixtrack,itimes), kind=r4)
+          lat_f = real (lat(ixtrack,itimes), kind=r4)
+
+          call clim_pres (cpt, hour_f, lon_f, lat_f, pres_z, errstat, p_trop=ptrop)
+          call clim_val_interp (cvt_temp, cpt, hour_f, lon_f, lat_f, temp_z, errstat)
+          if (errstat /= 0) return
+
+          do ilay = 1, nz
+            pmid(ilay) = 0.5 * (pres_z(ilay) + pres_z(ilay+1))
+          enddo
+
+          ! Routine requires X axis to be in ascending order
+          call ezspline_1d_interpolation (nz, pmid(nz:1:-1), real(temp_z(nz:1:-1),kind=r8), &
+                                          CmETA, pressure_grid, temperature_profile, &
+                                          errstat)
+          if (errstat /= 0) then
+            write(errmsg, *)'interpolating temperature forecast for lon=',lon_f,' lat=',lat_f
+            call tell_error (tell_runtime_error, errmsg, errstat)
+            return
+          endif
+          tropopause_pressure(ixtrack,itimes) = ptrop
+        endif
+        ptemperature(1:CmETA,ixtrack,itimes) = temperature_profile(1:CmETA)
+
         IF (yn_stratrop) THEN
-           ! Allocate pressure_grid and temperature vertical profile
-           ALLOCATE(pressure_grid(1:CmETA),temperature_profile(1:CmETA))
-           ! Work out pressure_grid
-           DO ilay = 1, CmETA
-              pressure_grid(ilay) = (( real(eta_a(ilay),kind=r8) + &
-                                       surface_pressure(ixtrack,itimes) * real(eta_b(ilay),kind=r8)  ) + &
-                                     ( real(eta_a(ilay+1),kind=r8) + &
-                                       surface_pressure(ixtrack,itimes) * real(eta_b(ilay+1),kind=r8) )) / 2.0
-           END DO
-
-           ! Get tropopause pressure and temperature profile
-           if (have_synthetic_met_data) then
-             call read_synth_met_data(smt, lat(ixtrack,itimes), lon(ixtrack,itimes), &
-                                      tropopause_pressure(ixtrack,itimes), errstat, &
-                                      pprof = pressure_grid, tprof = temperature_profile)
-             ! If any pressure grid values are out of range, the interpolated temperature
-             ! will be NaN. Replace such temperatures with the alpha temperature.
-             do ilay=1,CmETA
-               if (isnan(temperature_profile(ilay))) then
-                 temperature_profile(ilay) = alpha_temperature
-               endif
-             enddo
-           else
-             lon_f = real (lon(ixtrack,itimes), kind=r4)
-             lat_f = real (lat(ixtrack,itimes), kind=r4)
-
-             call clim_pres (cpt, hour_f, lon_f, lat_f, pres_z, errstat, p_trop=ptrop)
-             call clim_val_interp (cvt_temp, cpt, hour_f, lon_f, lat_f, temp_z, errstat)
-             if (errstat /= 0) return
-
-             do ilay = 1, nz
-               pmid(ilay) = 0.5 * (pres_z(ilay) + pres_z(ilay+1))
-             enddo
-
-             ! Routine requires X axis to be in ascending order
-             call ezspline_1d_interpolation (nz, pmid(nz:1:-1), real(temp_z(nz:1:-1),kind=r8), &
-                                             CmETA, pressure_grid, temperature_profile, &
-                                             errstat)
-             if (errstat /= 0) then
-               write(errmsg, *)'interpolating forecast for lon=',lon_f,' lat=',lat_f
-               call tell_error (tell_runtime_error, errmsg, errstat)
-               return
-             endif
-             tropopause_pressure(ixtrack,itimes) = ptrop
-           endif
-
            ! Find which layer is closer to the tropopause.
            tropopause_idx = MINLOC(ABS(pressure_grid-REAL(tropopause_pressure(ixtrack,itimes),KIND=r4)),1)
            ! Ensure the tropopause_idx layer is in the troposphere
@@ -2210,7 +2223,6 @@ CONTAINS
                   profiles(tropopause_idx+1:CmETA,ixtrack,itimes) * alpha(tropopause_idx+1:CmETA) ) / &
                   SUM(profiles(tropopause_idx+1:CmETA,ixtrack,itimes))
            endif
-           DEALLOCATE(pressure_grid,temperature_profile)
         END IF
 
         ! -------------------------
@@ -2228,7 +2240,7 @@ CONTAINS
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
 
-    DEALLOCATE(pres_z, pmid, temp_z, alpha)
+    DEALLOCATE(pressure_grid, temperature_profile, pres_z, pmid, temp_z, alpha)
 
     if (have_synthetic_met_data) then
       call close_synth_met_data (smt, errstat)

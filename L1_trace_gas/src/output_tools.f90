@@ -21,7 +21,7 @@ module output_tools
   public create_output_file, close_output_file, write_wavcal_output, &
     write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_gas_profile, write_scattering_weights, &
-    write_amf_correction, write_refspec_database, &
+    write_amf_correction, write_temperature_profile, write_refspec_database, &
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
     write_radiance_wavecal_diagnostics, copy_pixel_corners, &
@@ -265,7 +265,19 @@ contains
                               long_name = "surface albedo", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               attlist = att_coord)
-
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_amf_temperature_profile, &
+                              nf90_float, &
+                              dimids = dimids_levels_xtrack_step,  &
+                              long_name = "air temperature", &
+                              units = "K", &
+                              valid_min = 0.0_r8, &
+                              valid_max = 400.0_r8, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes, &
+                              attlist = att_coord)
+                        
     call tiof_varlist_append (varlist, errstat, &
                               var_amf, &
                               nf90_float, &
@@ -1458,6 +1470,33 @@ contains
       return
     endif
   end subroutine write_scattering_weights
+
+  !> Write AMF vertical temperature profile climatology to Level 2 product file
+  !! @param[in] temperature_profile  Temperature vertical profile climatology for each pixel [K]
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] ntimes  Number of scans
+  !! @param[in] nlevels  Number of altitudes in vertical profile climatology
+  !! @param[inout] errstat  Error status variable
+  subroutine write_temperature_profile (temperature_profile, &
+                                        nxtrack, ntimes, nlevels, &
+                                        errstat)
+    implicit none
+    integer, intent(in) :: nxtrack, ntimes, nlevels
+    real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: temperature_profile
+    integer, intent(inout) :: errstat
+    type (tiof_file_type), pointer :: obj
+    if (errstat /= 0) return
+    obj => primary_output_file
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_put3d_r4 (obj, tg_var_amf_temperature_profile, [0,0,0], &
+         [ntimes,nxtrack,nlevels], &
+         real(temperature_profile(1:nlevels,1:nxtrack, 0:ntimes-1), kind=4), errstat)
+    call tiof_pop_group (obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "in write_temperature_profile", errstat)
+      return
+    endif
+  end subroutine write_temperature_profile
 
   !> Write AMF correction to Level 2 product file
   !! @param[in] nxtrack Number of cross-track pixels
