@@ -242,8 +242,8 @@
 # tpk> all the reference files.
 # =======================================================================
 700100|@control_file@|@product_dir@||||1
-700101|OMSAO_NKPNO_SolarSpec_JQSRT2011.dat|@refdata_dir@/trace_gas/data||||1
-700102|OMSAO_MolecularRing_JQSRT2010.dat|@refdata_dir@/trace_gas/data||||1
+700101|OMSAO_CU2020_SolarSpec.dat|@refdata_dir@/trace_gas/data||||1
+700102|OMSAO_MolecularRing_CU2020.dat|@refdata_dir@/trace_gas/data||||1
 700103|OMSAO_O3_223K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700104|OMSAO_O3_243K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700105|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
