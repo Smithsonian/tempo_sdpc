@@ -169,7 +169,7 @@ Radiance calibration parameters
  T                    # Correct O3 cross sections for "solar I0 effect"?
  10                   # maximum number of iterations for fitting (<0: default)
  10000                # frequency of radiance wavelength calibration
-  85.00               # maximum solar zenith angle to process
+  90.00               # maximum solar zenith angle to process
    0.00               # "Top of Atmosphere" height [km]
   +0.91               # "phase" of undersampling spectrum
 bl0    0.001     -1.0e+30    1.0e+30
