@@ -11,6 +11,10 @@ Input Files:
     - ../
   TEMPOL1IRR_fnm:
     - @irradiance_file@
+  TEMPOdiaglog_dir:
+    - replace_with_tempo_diaglog_dir/
+  TEMPOdiaglog_fnm:
+    - replace_with_tempo_diaglog_fnm
   OMGLER:
     - Not_used_for_TEMPO
   Kleipool_dir:
@@ -102,8 +106,11 @@ Runtime Parameters:
     AuthorAffiliation: TEMPO Science Team
     ProcessingCenter: SAO
     TEMPO Footprint: UV
-    Collection: 001
+    Collection: 002
     ixdebug: -1
     itdebug: -1
     option_destripe_scd: 0
-    ecfocp_maxiter: 1
+    ecfocp_maxiter: 5
+    option_scdfullfilter: 1
+    option_apply_solshift: 1
+    option_apply_radshift: 1
