@@ -216,7 +216,7 @@ contains
 
     use m_vars, only: irr_waveshift, option_apply_solshift
 
-    use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_irr
+    use m_vars, only: ixdebug, run_mode, lun_debug_irr
 
     implicit none
 
@@ -1156,7 +1156,7 @@ contains
     rad_SolarAzimuthAngle = fspecial
     rad_ViewingAzimuthAngle = fspecial
     rad_SnowIceFraction = fspecial
-    rad_TerrainHeight = fspecial
+    rad_TerrainHeight = 0 ! integer from L1B
     out_TerrainHeight = fspecial
     rad_440nm = fspecial
     rad_466nm = fspecial
@@ -1219,7 +1219,7 @@ end subroutine read_cldo4_dims
   subroutine allocate_cldo4_vars (ntimes, nxtrack, errstat)
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
-           scd_mdqfl,run_mode,fFillValue,&
+           scd_mdqfl, fFillValue,&
            nasa_scdrms, nasa_scduncertainty,&
            rad_RelativeAzimuthAngle,out_RelativeAzimuthAngle
 
@@ -1295,7 +1295,7 @@ end subroutine read_cldo4_dims
    integer(kind=4),intent(inout):: errstat
 
    !local variables
-   integer(kind=4) :: nxtrack, ntimes, ix, it, nx, nt
+   integer(kind=4) :: ix, nx, nt
    integer(kind=4) :: errhere
    type (tiof_file_type) :: diaglog_obj
 
@@ -1442,18 +1442,18 @@ end subroutine read_cldo4_dims
       desfac = scddes(ix)
       if (desfac .gt. 0.) then
         do it = 1, nTimes
-          thisarr = arrin(ix,it)
+          thisarr = real(arrin(ix,it),kind=4)
           if (thisarr < 0.) then
              arrout(ix,it) = fFillValue
           else
-             arrout(ix,it) = real(arrin(ix,it),kind=4)/desfac 
+             arrout(ix,it) = thisarr/desfac
           endif
         enddo
       endif
    enddo 
    else
        write(*,*) '     scd is not destriped.'
-       arrout = arrin
+       arrout = real(arrin,kind=4)
    endif
 
    end subroutine destripe_o2o2scd

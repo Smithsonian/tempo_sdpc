@@ -128,7 +128,7 @@ contains
     use netcdf, only: nf90_global, nf90_put_att
     use m_vars, only: name_option_TemperaturePressure,name_option_SurfaceReflectivity, &
            name_option_MinECF,name_option_SnowIce,name_option_SceneAlbedoAtTerrain,&
-           option_clip_pcld, option_psfc_clear,ecfocp_maxiter,&
+           option_clip_pcld, ecfocp_maxiter,&
            option_scdfullfilter, option_destripe_scd, &
            option_apply_solshift, option_apply_radshift
     
@@ -1345,7 +1345,8 @@ contains
      use m_vars, only: out_SlantColumnAmountO2O2, nasa_SlantColumnAmountO2O2,&
                out_ReflectanceFactor, &
                out_O2O2CloudTemperature, out_TerrainPressure,&
-               out_SurfaceReflectivity440, out_SurfaceReflectivity466,&
+              ! out_SurfaceReflectivity440, &
+               out_SurfaceReflectivity466,&
                out_SurfaceLER440, out_SurfaceLER466, out_TerrainHeight,&
                out_SceneLer440, out_SceneLER466, out_ScenePressure,&
                out_SlantColumnSceneO2O2, out_O2O2SceneTemperature,&
