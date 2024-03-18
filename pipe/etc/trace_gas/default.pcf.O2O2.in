@@ -241,14 +241,14 @@
 # tpk> all the reference files.
 # =======================================================================
 700100|@control_file@|@product_dir@||||1
-700101|OMSAO_NKPNO_SolarSpec_JQSRT2011.dat|@refdata_dir@/trace_gas/data||||1
-700102|OMSAO_MolecularRing_JQSRT2010.dat|@refdata_dir@/trace_gas/data||||1
+700101|OMSAO_CU2020_SolarSpec.dat|@refdata_dir@/trace_gas/data||||1
+700102|OMSAO_MolecularRing_CU2020.dat|@refdata_dir@/trace_gas/data||||1
 700103|OMSAO_O3_223K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700104|OMSAO_O3_243K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700105|OMSAO_O3_293K_SerdyuchenkoGorshelev.dat|@refdata_dir@/trace_gas/data||||1
 700106|OMSAO_NO2_294K_IASB.dat|@refdata_dir@/trace_gas/data||||1
 700107|OMSAO_NO2_220K_IASB.dat|@refdata_dir@/trace_gas/data||||1
-700108|OMSAO_O4_273K_Thalman.dat|@refdata_dir@/trace_gas/data||||1
+700108|OMSAO_O4_223K_Finkenzeller.dat|@refdata_dir@/trace_gas/data||||1
 700109|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700110|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
 700111|OMSAO_Zero_Spec.dat|@refdata_dir@/trace_gas/data||||1
@@ -336,14 +336,14 @@
 #
 200100|SMF Verbosity Threshold|6
 200105|PGEVERSION|"3.0.0"
-200110|ProcessingCenter|"OMIDAPS"
+200110|ProcessingCenter|"SDPC"
 200115|ProcessingHost|"Linux ompspeate3.gsfc.nasa.gov 2.6.9-55.0.2.ELsmp #1 SMP Tue Jun 26 14:30:58 EDT 2007 i686 i686 i386 GNU/Linux"
 200135|REPROCESSINGACTUAL|"processed 1 time"
 200170|ProcessLevel|"2"
 200175|InstrumentName|"TEMPO"
 200180|OPERATIONMODE|"Test"
 200185|AuthorAffiliation|"Smithsonian Astrophysical Observatory"
-200190|AuthorName|"Helen Wang / Gonzalo Gonzalez Abad / John Houck"
+200190|AuthorName|"Helen Wang / Gonzalo Gonzalez Abad / Caroline Nowlan / John Houck"
 200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
 200200|OrbitNumber|08541
 200210|SwathName|"TEMPO Total Column Amount O2O2"

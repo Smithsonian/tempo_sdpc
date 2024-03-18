@@ -15,7 +15,7 @@ o2o2
 # will add several data fields on fitting correlations.
 # ============================================================
 Processing mode
-production
+diagnostic
 tempo
 
 General fitting parameters
@@ -151,14 +151,14 @@ bl0   0.0250   -1.0e+30   1.0e+30
 bl1   0.0030   -1.0e+30   1.0e+30
 bl2   0.0001   -1.0e+30   1.0e+30
 bl3  -5.0E-05  -1.0e+30   1.0e+30
-bl4   0         0         0       0.0001   -1.0e+30   1.0e+30
-bl5   0         0         0       0.0001   -1.0e+30   1.0e+30
+bl4   0         0         0       
+bl5   0         0         0      
 sc0   1.0       1.0       1.0    
 sc1  -0.0050   -1.0e+30   1.0e+30
 sc2  -0.0003   -1.0e+30   1.0e+30
 sc3  -8.0E-05  -1.0e+30   1.0e+30
-sc4   0         0         0       -8.0E-05  -1.0e+30   1.0e+30
-sc5   0         0         0        0.0001   -1.0e+30   1.0e+30
+sc4   0         0         0       
+sc5   0         0         0       
 sin   0.6      -1.0e+30   1.0e+30
 hwe   0.3       0.0       3.0     # Gaussian HW@1/e
 asy   0.0       0.0       0.0     # Gaussian asymmetry
@@ -171,21 +171,19 @@ Radiance calibration parameters
  T                    # Correct O3 cross sections for "solar I0 effect"?
  15                   # maximum number of iterations for fitting (<0: default)
  10000                # frequency of radiance wavelength calibration
-  85.00               # maximum solar zenith angle to process
+  90.00               # maximum solar zenith angle to process
    0.00               # "Top of Atmosphere" height [km]
   +0.91               # "phase" of undersampling spectrum
 bl0    0.001     -1.0e+30    1.0e+30
 bl1    0.001     -1.0e+30    1.0e+30
 bl2    0.0001    -1.0e+30    1.0e+30
-bl3    0.0001    -1.0e+30    1.0e+30
 sc0    1.0        1.0        1.0    
 sc1    0.001     -1.0e+30    1.0e+30
 sc2    5.0E-05   -1.0e+30    1.0e+30
-sc3   -5.0E-05   -1.0e+30    1.0e+30
 sin    0.095     -1.0e+30    1.0e+30
-hwe    0.3        0.01       1.0     # Gaussian HW@1/e
-asy    0.0        0.0        0.0     # Gaussian asymmetry
-sgk    2.0        1.0        10.0     # super-Gaussian shape factor
+hwe    -1.0      -1.0       -1.0     # Gaussian HW@1/e
+asy    -1.0      -1.0       -1.0     # Gaussian asymmetry
+sgk    2.0        2.0        2.0     # super-Gaussian shape factor
 shi    0.003     -1.0        1.0
 squ    0          0          0
 eoi    0          0          0  # end of input
@@ -220,11 +218,8 @@ Radiance fitting parameters
 ring
 ad1    0.02     -1.0e+30    1.0e+30
 eoi    0         0          0
-o3_t1
+o3_t2
 lbe    1.0e-3   -1.0e+30    1.0e+30
-eoi    0         0          0
-o3_t3
-lbe    1.0e-03  -1.0e+30    1.0e+30
 eoi    0         0          0
 no2_t2
 lbe    1.0e-03  -1.0e+30    1.0e+30
