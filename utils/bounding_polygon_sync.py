@@ -23,7 +23,7 @@ def replace_bounding_polygon (name, values, text):
     value = re.search ('VALUE[ ]*=', text[b:e])
     b += value.end()
     #s = " " + " ".join(text[b:e].split())
-    new_s = " ({}".format(", ".join(["{}".format(v) for v in values]))
+    new_s = " ({})".format(", ".join(["{}".format(v) for v in values]))
     return text[:b] + new_s + text[e:]
 
 def update_metfile (bounding_polygon, metfile):
