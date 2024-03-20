@@ -764,6 +764,7 @@ extern int tio_meta_set_lev1_bounding_polygon (TIO_Meta_Type *meta, int grp);
  * @see tio_meta_set_lev1_bounding_polygon
  */
 extern int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat);
+extern int __tio_set_bounding_polygon_controls (float band_km, float vza_max_deg);
 
 /** Douglas-Peucker polyline simplification.
  * @param[in] lon_deg   Pointer to an array of num longitude coordinates

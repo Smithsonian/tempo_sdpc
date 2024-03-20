@@ -918,9 +918,137 @@ static inline float merge_coordinates (float corner1, float corner2, float cente
    return (corner2 == fill_value) ? corner1 : 0.5 * (corner1 + corner2);
 }
 
+static int intersect_lines (const double *seg1, const double *seg2,
+                            double *x, double *y, double rtol)
+{
+   double x21, x31, x43, y21, y31, y43;
+   double num_a, num_b, denom;
+   double tol_a, tol_b, tol_d;
+   int type;
+
+   /* seg1 = [x1,y1, x2,y2]
+    * seg2 = [x3,y3, x4,y4]
+    */
+
+   x21 = seg1[2] - seg1[0];
+   x31 = seg2[0] - seg1[0];
+   x43 = seg2[2] - seg2[0];
+
+   y21 = seg1[3] - seg1[1];
+   y31 = seg2[1] - seg1[1];
+   y43 = seg2[3] - seg2[1];
+
+   num_a = x43 * y31 - x31 * y43;
+   num_b = x21 * y31 - x31 * y21;
+   denom = x43 * y21 - x21 * y43;
+
+   tol_a = fabs(x43*y31) + fabs(x31*y43);
+   tol_b = fabs(x21*y31) + fabs(x31*y21);
+   tol_d = fabs(x43*y21) + fabs(x21*y43);
+
+   if (isnan(rtol)) rtol = DBL_EPSILON;
+   tol_a = rtol * ((tol_a > 0) ? tol_a : 1.0);
+   tol_b = rtol * ((tol_b > 0) ? tol_b : 1.0);
+   tol_d = rtol * ((tol_d > 0) ? tol_d : 1.0);
+
+   /*
+    * type:
+    * -1 = lines parallel, no intersection point
+    *  0 = lines coincide
+    *  1 = intersection point on segment 1, but not segment 2
+    *  2 = intersection point on segment 2, but not segment 1
+    *  3 = intersection point on both segment 1 and segment 2
+    */
+
+   if ((fabs(num_a) < tol_a)
+       && (fabs(num_b) < tol_b)
+       && (fabs(denom) < tol_d))
+     {
+        /* lines coincide */
+        *x = seg1[0];
+        *y = seg1[1];
+        type = 0;
+     }
+   else if (fabs(denom) < tol_d)
+     {
+        /* lines parallel */
+        *x = nan("");
+        *y = nan("");
+        type = -1;
+     }
+   else
+     {
+        /* lines intersect */
+        double a = num_a / denom;
+        double b = num_b / denom;
+        *x = seg1[0] + a * x21;
+        *y = seg1[1] + a * y21;
+        type = 0;
+        /* FIXME - floating point equality comparison... */
+        if (0 <= a && a <= 1) type += 1;
+        if (0 <= b && b <= 1) type += 2;
+     }
+
+   return type;
+}
+
+/* Brute force test for polygon self-intersection.
+ * Shamos-Hoey algorithm is more general and more efficient, but also more complicated. */
+static int polygon_self_intersects (const double *px, const double *py, int n)
+{
+   int a, b;
+
+   for (a = 0; a < n-1; a++)
+     {
+        double aseg[4];
+
+        aseg[0] = px[a  ];  aseg[1] = py[a  ];
+        aseg[2] = px[a+1];  aseg[3] = py[a+1];
+
+        for (b = 0; b < n-1; b++)
+          {
+             double bseg[4], x, y;
+
+             /* compare sides that do not share a vertex */
+             if ((a == b) || (a == (b+1)) || ((a+1) == b)
+                 || ((a == 0) && (b == (n-2)))
+                 || ((b == 0) && (a == (n-2))))
+               continue;
+
+             bseg[0] = px[b  ];  bseg[1] = py[b  ];
+             bseg[2] = px[b+1];  bseg[3] = py[b+1];
+
+             if (3 == intersect_lines (aseg, bseg, &x, &y, DBL_EPSILON))
+               return 1;
+          }
+     }
+
+   return 0;
+}
+
+/* output bounding polygon resolution */
+#ifndef DOUGLAS_PEUCKER_BAND_WIDTH_KM
+# define DOUGLAS_PEUCKER_BAND_WIDTH_KM 5.0
+#endif
+static float Douglas_Peucker_Band_Width_Km = DOUGLAS_PEUCKER_BAND_WIDTH_KM;
+
+/* avoid pixels near the Earth's limb */
+#ifndef BOUNDING_POLYGON_MAX_VZA_DEG
+# define BOUNDING_POLYGON_MAX_VZA_DEG 80.0
+#endif
+static float Bounding_Polygon_Max_VZA_Deg = BOUNDING_POLYGON_MAX_VZA_DEG;
+
+int __tio_set_bounding_polygon_controls (float band_km, float vza_max_deg)
+{
+   Douglas_Peucker_Band_Width_Km = (band_km > 0.0) ? band_km : DOUGLAS_PEUCKER_BAND_WIDTH_KM;
+   Bounding_Polygon_Max_VZA_Deg = (vza_max_deg > 0.0) ? vza_max_deg : BOUNDING_POLYGON_MAX_VZA_DEG;
+   return 0;
+}
+
 int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **plat)
 {
    TIO_Var_Info_Type info;
+   double *tmp_lon = NULL, *tmp_lat = NULL;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
    float *lon2d_bnds=NULL, *lat2d_bnds=NULL;
    int *inrqf=NULL, *indices=NULL;
@@ -928,11 +1056,11 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    int start[3], count[3];
    int num_steps, num_xtrack, num_pixels, max_num_boundary;
    int s, x, i, n, x_first_ok, x_last_ok, s_first_ok, s_last_ok;
-   int varid, no_fill, lon_bounds_status, num_kept;
+   int varid, no_fill, lon_bounds_status, num_kept, polygon_type;
    int status = -1;
    float fill_value = TIO_FILL_FLOAT;
-   float band_km = 5.0;      /* output bounding polygon resolution */
-   float vza_max_deg = 80.0; /* avoid pixels near the Earth's limb */
+   float band_km = Douglas_Peucker_Band_Width_Km;
+   float vza_max_deg = Bounding_Polygon_Max_VZA_Deg;
    int dx=1, ds=1;           /* set >1 to reduce final polygon point density */
 
    *num = 0;
@@ -1177,26 +1305,52 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
           }
      }
 
-   TIO_FREE(indices);
-   indices = NULL;
-
-   if ((num_kept = simplify_dp (lon, lat, n, band_km, &indices)) < 0)
-     goto return_status;
-
-   for (i = 0; i < num_kept; i++)
+   if (NULL == (tmp_lon = (double *)TIO_MALLOC (2 * n * sizeof(double))))
      {
-        int k = indices[i];
-        lon[i] = lon[k];
-        lat[i] = lat[k];
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+   tmp_lat = tmp_lon + n;
+
+   /* Try to simplify the polygon, but if the result is self-intersecting,
+    * keep all the boundary points..
+    */
+   for ( ; band_km > 0.0; band_km -= 1.0)
+     {
+        TIO_FREE(indices);
+        indices = NULL;
+
+        if ((num_kept = simplify_dp (lon, lat, n, band_km, &indices)) < 0)
+          goto return_status;
+
+        for (i = 0; i < num_kept; i++)
+          {
+             int k = indices[i];
+             tmp_lon[i] = (double) lon[k];
+             tmp_lat[i] = (double) lat[k];
+          }
+
+        /* If necessary, close the polygon */
+        if ((tmp_lon[num_kept-1] != tmp_lon[0]) || (tmp_lat[num_kept-1] != tmp_lat[0]))
+          {
+             tmp_lon[num_kept] = (double) lon[0];
+             tmp_lat[num_kept] = (double) lat[0];
+             num_kept++;
+          }
+
+        if (0 == (polygon_type = polygon_self_intersects (tmp_lon, tmp_lat, num_kept)))
+          break;
      }
 
-   /* If necessary, close the polygon */
-   if ((lon[num_kept-1] != lon[0]) || (lat[num_kept-1] != lat[0]))
+   if (polygon_type == 0)
      {
-        lon[num_kept] = lon[0];
-        lat[num_kept] = lat[0];
-        num_kept++;
+        for (i = 0; i < num_kept; i++)
+          {
+             lon[i] = (float) tmp_lon[i];
+             lat[i] = (float) tmp_lat[i];
+          }
      }
+   else num_kept = n;  /* e.g. boundary simplification failed */
 
    *num = num_kept;
    *plon = lon;
@@ -1212,6 +1366,7 @@ return_status:
    TIO_FREE(vza2d);
    TIO_FREE(indices);
    TIO_FREE(side);
+   TIO_FREE(tmp_lon);
 
    if (status)
      {
