@@ -4,7 +4,7 @@ MODULE omi_read_l1b_data
 
   private
   public omi_read_binning_factor, read_earth_sun_distance, &
-    omi_read_radiance_lines, omi_read_glint_ice_flags
+    omi_read_radiance_lines, omi_read_glint_ice_land_flags
 
 CONTAINS
 
@@ -392,10 +392,10 @@ CONTAINS
 
   END SUBROUTINE omi_read_radiance_lines
 
-  SUBROUTINE omi_read_glint_ice_flags ( l1bfile, nx, nt, snow_ice_flg, glint_flg, errstat )
+  SUBROUTINE omi_read_glint_ice_land_flags ( l1bfile, nx, nt, snow_ice_flg, glint_flg, land_water_flg, errstat )
 
     USE OMSAO_precision_module
-    USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname
+    USE OMSAO_omidata_module,   ONLY: omi_radiance_swathname
     !use l1bread
     use tio_module
     use tg_names_module
@@ -413,6 +413,7 @@ CONTAINS
     ! Output variables
     ! ----------------
     INTEGER (KIND=i2), DIMENSION (nx,0:nt-1), INTENT (OUT)   :: glint_flg, snow_ice_flg
+    INTEGER (KIND=i2), DIMENSION (nx,0:nt-1), INTENT (OUT)   :: land_water_flg
     INTEGER (KIND=i4),                        INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -453,8 +454,9 @@ CONTAINS
     !       to save the full array.
     ! ------------------------------------------------------------------------
 
-    ! Bits 0-3 are land/water -- not used here
-    ! land_water_flg = iand (geoflg, 15_i2)
+    ! Bits 0-3 are land/water:
+    ! Integer value of 1 is land, 15 is error, and 0, 2-7 are water.
+    land_water_flg = int(ibits(geoflg, 0, 4), kind=i2)
 
     ! Bit 4 is glint
     glint_flg = int (iand (ishft(geoflg, -4), 1_i4), kind=i2)
@@ -470,7 +472,7 @@ CONTAINS
       snow_ice_flg  = int (iand (ishft(geoflg, -8), 127_i4), kind=i2)
     endif
 
-  END SUBROUTINE omi_read_glint_ice_flags
+  END SUBROUTINE omi_read_glint_ice_land_flags
 
   SUBROUTINE convert_xtqualflag_info ( nxtrack, loc_xtrflg_l1b, loc_xtrflg )
 

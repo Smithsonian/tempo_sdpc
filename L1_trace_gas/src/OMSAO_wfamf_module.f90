@@ -102,7 +102,7 @@ CONTAINS
 
   SUBROUTINE amf_calculation (            &
       pge_idx, nt, nx, lat, lon, sza, vza, saa, vaa, time,  &
-      snow, glint, xtrange,    &
+      snow, glint, land, xtrange,    &
       saocol, saodco, saoamf, terrain_height,&
       do_write, errstat                                )
 
@@ -133,7 +133,7 @@ CONTAINS
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: lat, lon, sza, &
          vza, saa, vaa, terrain_height
     REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
-    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (IN) :: snow, glint, land
     LOGICAL                                                 :: do_write
     INTEGER (KIND=i4), DIMENSION (0:nt-1,1:2),  INTENT (IN) :: xtrange
 
@@ -301,7 +301,8 @@ CONTAINS
 
        call tell_log (1, 'amf_calculation: read and prepare albedo')
        if (yn_gler) then
-         call get_gler_albedo (nt, nx, lat, lon, time,  wind_speed, snow, &
+
+         call get_gler_albedo (nt, nx, lat, lon, time, land, wind_speed, snow, &
                                amfdiag, albedo, errstat)
          if (errstat /= 0) then
            call tell_error (tell_runtime_error, &
@@ -472,7 +473,7 @@ CONTAINS
     return
   end subroutine compute_geometric_amf
 
-  subroutine get_gler_albedo (nt, nx, lat, lon, time, wind_speed, snow, &
+  subroutine get_gler_albedo (nt, nx, lat, lon, time, land, wind_speed, snow, &
                               amfdiag, albedo, errstat)
     use gler_module
     use OMSAO_omidata_module, only: NISE_snowfree, NISE_permice
@@ -481,7 +482,7 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: wind_speed
-    integer (KIND=i2), dimension (1:nx,0:nt-1), intent (in) :: snow
+    integer (kind=i2), dimension (1:nx,0:nt-1), intent (in) :: land, snow
     integer (kind=i4), intent (inout) :: errstat
     real (kind=r8), dimension (1:nx,0:nt-1), intent (inout) :: albedo
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
@@ -519,7 +520,7 @@ CONTAINS
           snow_ice_fraction = 0.0
         endif
 
-        call gler_albedo (glt, lon(ix,it), lat(ix,it), wind_speed(ix,it), &
+        call gler_albedo (glt, lon(ix,it), lat(ix,it), land(ix,it), wind_speed(ix,it), &
                           snow_ice_fraction, alb, errstat)
         albedo(ix,it) = real(alb, kind=r8)
 

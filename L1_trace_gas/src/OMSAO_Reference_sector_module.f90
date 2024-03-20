@@ -343,7 +343,7 @@ CONTAINS
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
       compute_fitting_statistics, fitting_statistics_type
     use commonmode, only: finalize_common_mode
-    USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags, omi_read_binning_factor
+    USE omi_read_l1b_data, ONLY: omi_read_glint_ice_land_flags, omi_read_binning_factor
     USE swathline_loop, ONLY: swathline_loops
     !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
     USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_error
@@ -378,7 +378,7 @@ CONTAINS
     !REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_latitude, mem_longitude, mem_sza, mem_vza, &
     !  mem_height
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, mem_xtrflg
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint
+    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint, mem_land_water
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
     LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, common_range_ok
     INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)              :: binfac_rs
@@ -446,6 +446,7 @@ CONTAINS
     !mem_xtrflg             = i2_missval
     mem_snow               = i2_missval
     mem_glint              = i2_missval
+    mem_land_water         = i2_missval
     !mem_height             = r4_missval
 
     ! -----------------------------------------------------
@@ -538,9 +539,9 @@ CONTAINS
     ! Read L1b glint and snow/ice flags
     ! ----------------------------------
     if (.not. yn_gems) then !TEMPO
-      CALL omi_read_glint_ice_flags ( &
+      CALL omi_read_glint_ice_land_flags ( &
            l1b_radref_filename, nXtrackRadRR, nTimesRadRR, mem_snow, &
-           mem_glint, locerrstat )
+           mem_glint, mem_land_water, locerrstat )
     else !GEMS
       call gems_read_ice_glint(l1b_radref_filename, nXtrackRadRR, nTimesRadRR,&
            mem_snow, mem_glint, locerrstat)
@@ -571,7 +572,7 @@ CONTAINS
     CALL amf_calculation (                                            &
       pge_idx, nTimesRadRR, nXtrackRadRR, rt%latitude, rt%longitude, &
       rt%sza, rt%vza, rt%saa, rt%vaa, rt%time, mem_snow, mem_glint, &
-      omi_xtrpix_range_rr, rt%column_amount, &
+      mem_land_water, omi_xtrpix_range_rr, rt%column_amount, &
       rt%column_uncertainty, mem_amf, rt%height, yn_write, locerrstat )
 
     ! --------------------------------------------------------

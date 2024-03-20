@@ -35,7 +35,7 @@ SUBROUTINE omi_pge_postprocess ( &
     he5_write_fitting_statistics, saopge_geofieldtime_read
   use output_tools, only : read_geofields, read_column_results, &
     copy_pixel_corners, copy_metadata, copy_gpqf_attributes
-  USE omi_read_l1b_data, ONLY: omi_read_glint_ice_flags
+  USE omi_read_l1b_data, ONLY: omi_read_glint_ice_land_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
   use m_read_gems, only: gems_read_ice_glint, gems_read_geofields
@@ -66,7 +66,7 @@ SUBROUTINE omi_pge_postprocess ( &
        saa, vaa, thg
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
-  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg
+  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg, land_water_flg
   LOGICAL                                             :: do_write
   logical :: corners_copied
 
@@ -128,8 +128,8 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Read L1b glint and snow/ice flags
   ! ----------------------------------
   if (.not. yn_gems) then !TEMPO
-    CALL omi_read_glint_ice_flags ( &
-         l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, errstat )
+    CALL omi_read_glint_ice_land_flags ( &
+         l1bfile, nxtrack, ntimes, snow_ice_flg, glint_flg, land_water_flg, errstat )
   else !GEMS
     call gems_read_ice_glint (l1bfile, nxtrack, ntimes, snow_ice_flg, &
          glint_flg, errstat)
@@ -143,7 +143,7 @@ SUBROUTINE omi_pge_postprocess ( &
   call tell_log (1, 'omi_pge_postprocess:  calling amf_calculation')
   CALL amf_calculation (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, time,  &
-    snow_ice_flg, glint_flg, xtrange,       &
+    snow_ice_flg, glint_flg, land_water_flg, xtrange,       &
     saocol, saodco, saoamf, thg, do_write, &
     errstat              )
   if (errstat /= 0) return
