@@ -400,7 +400,7 @@ contains
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
          out_TerrainHeight, scddes_hour,&
          rad_TerrainHeight,&
-         !rad_GroundPixelQualityFlags, &
+         rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
          out_ProcessingQualityFlags, &
          w440, w466, w477, fFillValue,&
@@ -503,10 +503,8 @@ contains
         out_TerrainHeight = fFillValue
     endwhere
 
-    ! removed rad_GroundPixelQualityFlags, it was used for OMI snow/ice
-    ! but not needed for TEMPO because of rad_SnowIceFraction
-    !call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
-    !     [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
+    call tiof_get2d_ui4 (tio_l1obj, "ground_pixel_quality_flag", [0,0], &
+         [ntimes,nxtrack], rad_GroundPixelQualityFlags, errstat)
     call tiof_get3d_ui2 (tio_l1obj, "pixel_quality_flag", [0,0,0], &
          [ntimes,nxtrack,nwavel], rad_PixelQualityFlags, errstat)
     call tiof_get3d_r4 (tio_l1obj, "radiance", [0,0,0], &
@@ -1099,8 +1097,7 @@ contains
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
          rad_TerrainHeight, out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm, &
-         out_ProcessingQualityFlags
-!         rad_GroundPixelQualityFlags, ! not used 
+         out_ProcessingQualityFlags, rad_GroundPixelQualityFlags
 ! the following arrays are very large, thus move them out
 !         rad_PixelQualityFlags , &
 !         rad_Radiance, rad_Wavelength
@@ -1130,7 +1127,7 @@ contains
          out_TerrainHeight(nxtrack, ntimes), &
          rad_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
-!         rad_GroundPixelQualityFlags(nxtrack, ntimes), &
+         rad_GroundPixelQualityFlags(nxtrack, ntimes), &
          rad_440nm(nxtrack, ntimes), &
          rad_466nm(nxtrack, ntimes), &
          rad_477nm(nxtrack, ntimes), &
@@ -1156,6 +1153,7 @@ contains
     rad_SolarAzimuthAngle = fspecial
     rad_ViewingAzimuthAngle = fspecial
     rad_SnowIceFraction = fspecial
+    rad_GroundPixelQualityFlags = -1
     rad_TerrainHeight = 0 ! integer from L1B
     out_TerrainHeight = fspecial
     rad_440nm = fspecial

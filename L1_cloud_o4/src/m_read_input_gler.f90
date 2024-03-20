@@ -10,7 +10,7 @@ contains
        BRDF_SurfaceReflectivity440, rad_NumTimes, &
        rad_nXtrack, rad_longitude, rad_latitude, rad_time,&
        windspeed2m ,name_option_TemperaturePressure,&
-       rad_SnowIceFraction
+       rad_SnowIceFraction, rad_GroundPixelQualityFlags
 
    use m_vars,only: itdebug, ixdebug, run_mode 
 
@@ -22,6 +22,7 @@ contains
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
    integer :: iwavelen, ix, it, nx, nt, nana
    real(kind=4) :: fspecial
+   integer(kind=2) :: thislandwater
 
    if (errstat /= 0) return
 
@@ -74,7 +75,8 @@ contains
          if (wind_speed .lt. 0.) continue
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
-         call gler_albedo(glt, thislon, thislat, wind_speed, &
+         thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
+         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
                 thisalb = fspecial
@@ -97,8 +99,9 @@ contains
          if ((thislat .lt. -90.) .or. (thislat .gt. 90.)) continue
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
-         call gler_albedo(glt, thislon, thislat, wind_speed, &
-              thissnowice, thisalb, errstat, clip_opt)
+         thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
+         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
+                thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
               thisalb = fspecial
               nana = nana + 1
@@ -153,7 +156,8 @@ contains
          if (wind_speed .lt. 0.) continue
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
-         call gler_albedo(glt, thislon, thislat, wind_speed, &
+         thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
+         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
                 thisalb = fspecial
@@ -176,8 +180,9 @@ contains
          if ((thislat .lt. -90.) .or. (thislat .gt. 90.)) continue
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
-         call gler_albedo(glt, thislon, thislat, wind_speed, &
-              thissnowice, thisalb, errstat, clip_opt)
+         thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
+         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
+                thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
               thisalb = fspecial
               nana = nana + 1

@@ -66,7 +66,7 @@ module m_vars
   integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
-!  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
+  integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
   real(kind=4),   dimension(:,:),   pointer::rad_SnowIceFraction
 
 ! added rad_466nm,rad_477nm,rad_440nm which is what needed
