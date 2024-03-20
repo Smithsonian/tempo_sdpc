@@ -15,7 +15,7 @@ module gler_module
   real (kind=4), private, parameter :: albedo_fill_value = -1.e30
 
   ! Mask values
-  integer (kind=2), private, parameter :: m_land=0, m_water=1, m_shadow=2
+  integer (kind=2), private, parameter :: m_valid=0, m_nodata=1, m_shadow=2
 
   ! NOTE: The ocean (lon,lat) grid is much coarser than on land.
 
@@ -209,23 +209,23 @@ contains
         m1 = mask (lat,lon,1)
         m2 = mask (lat,lon,2)
 
-        ! assume land, and change below when necessary
-        mm = m_land
+        ! assume valid data, and change below when necessary
+        mm = m_valid
 
-        ! water pixels have albedo==fill_value
+        ! grid boxes with invalid GLER have albedo==fill_value
         if (a1 == albedo_fill_value .and. a2 == albedo_fill_value) then
-          mm = m_water
+          mm = m_nodata
           alb = albedo_fill_value
-        else if (m1 == m_land) then
-          if (m2 == m_land) then
+        else if (m1 == m_valid) then
+          if (m2 == m_valid) then
             alb = wt0 * a1 + (1.0 - wt0) * a2
-          else  ! m2=water is not possible, so must be m2=shadow
+          else  ! must be m2=shadow
             alb = a1
           endif
-        else if (m2 == m_land) then  ! m1 must be shadow
+        else if (m2 == m_valid) then  ! m1 must be shadow
           alb = a2
-        else      ! case m2=water already checked, so m2 must be shadow
-          alb = 0 ! both in shadow
+        else      ! case m2=fill_value already checked, so m2 must be shadow
+          alb = albedo_fill_value ! both in shadow
           mm = m_shadow
         endif
         gl % albedo(lat,lon) = real (alb, kind=4)
@@ -409,7 +409,7 @@ contains
         a = glt % land % albedo(i,j)
         a_tmp = tmp % albedo(i,j)
 
-        if (glt % land % mask(i,j) /= m_water) then
+        if (glt % land % mask(i,j) /= m_nodata) then
           if (a_tmp /= albedo_fill_value) then
             if (a /= albedo_fill_value) then
               glt % land % albedo(i,j) = wt0f * a + (1.0 - wt0f) * a_tmp
@@ -475,7 +475,7 @@ contains
         a = glt % snow % albedo(i,j)
         a_tmp = tmp % albedo(i,j)
 
-        if (glt % snow % mask(i,j) /= m_water) then
+        if (glt % snow % mask(i,j) /= m_nodata) then
           if (a_tmp /= albedo_fill_value) then
             if (a /= albedo_fill_value) then
               glt % snow % albedo(i,j) = wt0f * a + (1.0 - wt0f) * a_tmp
@@ -617,13 +617,14 @@ contains
 
   end function
 
-  subroutine gler_albedo (glt, lon, lat, wind_speed, snow_ice_fraction, alb, errstat, clip_opt)
+  subroutine gler_albedo (glt, lon, lat, land_water_flag, wind_speed, snow_ice_fraction, alb, errstat, clip_opt)
     use, intrinsic :: iso_fortran_env
     use, intrinsic :: ieee_arithmetic
     implicit none
     type (gler_type), intent(in) :: glt
     real (kind=4), intent(in) :: lon, lat, wind_speed, snow_ice_fraction
     real (kind=4), intent(out) :: alb
+    integer (kind=2), intent(in) :: land_water_flag
     integer, intent(inout) :: errstat
     logical, intent(in), optional :: clip_opt
 
@@ -644,7 +645,7 @@ contains
       return
     endif
 
-    if (glt % land % mask(ilat, ilon) == m_land) then
+    if (land_water_flag == 1) then
       x_land(:) = real ((/lat, lon/), kind=8)
       call ndi_table_interp (glt % land % dims, &
                              glt % land % albedo, &
@@ -662,7 +663,8 @@ contains
           endif
         endif
       endif
-    else if (glt % land % mask(ilat, ilon) == m_water) then
+    else if ((land_water_flag == 0) .or. ((land_water_flag > 1) .and. (land_water_flag <= 7))) then
+      ! Ocean, inland water, shoreline, etc.
       ! Force the wind speed coordinate to be on the tabulated grid
       nw = size (glt % ocean % dims(1) % x)
       wmax = glt % ocean % dims(1) % x(nw)
@@ -675,11 +677,25 @@ contains
       endif
 
       x_ocean(:) = real ((/wind_speed_trim, lat, lon/), kind=8)
+      x_land(:) = real ((/lat, lon/), kind=8)
       call ndi_table_interp (glt % ocean % dims, &
                              glt % ocean % albedo, &
                              x_ocean, alb, errstat, fill_value=albedo_fill_value)
+      if (0.0 < snow_ice_fraction .and. snow_ice_fraction <= 1.0) then
+        ! When snow/ice is present, use snow_ice_fraction to account for sea ice
+        call ndi_table_interp (glt % snow % dims, &
+                               glt % snow % albedo, &
+                               x_land, snow_alb, errstat, fill_value=albedo_fill_value)
+        if (snow_alb /= albedo_fill_value) then
+          if (alb /= albedo_fill_value) then
+            alb = snow_ice_fraction * snow_alb + (1.0 - snow_ice_fraction) * alb
+          else
+            alb = snow_alb
+          endif
+        endif
+      endif      
     else
-      alb = 0.0
+      alb = albedo_fill_value
     endif
 
     if (errstat /= 0) then
