@@ -582,11 +582,12 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
    Selection_Type eph = {0};
    File_Array_Type fa = {0};
    Row_Select_Type *rst = NULL;
+   Row_Select_Type *rr = NULL;
    const char *group_path = "anc_gps";
    const char *gpsr_time_var = "anc_gpsr_gps_time";
    const char *time_var;
    char *eph_dir = NULL;
-   int use_gpsr_vars;
+   int use_gpsr_vars, num_eph_points;
    int status = -1;
 
    if (0 != read_common_params (cfg, "eph_config", &eph))
@@ -607,7 +608,14 @@ static int copy_ephem (Radiance_Type *r, TIO_Meta_Type *meta, config_t *cfg,
                              fa.num_files, fa.file_list, group_path, time_var, &rst))
      goto return_status;
 
-   if ((rst != NULL) && (rst->count > 0))
+   /* Count the number of ephemeris points in the linked list */
+   num_eph_points = 0;
+   for (rr = rst; rr != NULL; rr = rr->next)
+     {
+        if (rr->count > 0) num_eph_points += rr->count;
+     }
+
+   if ((rst != NULL) && (num_eph_points > 0))
      {
         /* The anc_gps telemetry section may contain two sets of ephemeris data:
          *   a) anc_sat* variables that come from the DOP (Digital Orbit Propagator)
