@@ -170,7 +170,7 @@ def insert_radiance_entry (conn, table_name, entry):
         eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
         return -1
 
-def insert_product_entry (conn, product_name, init_product_table, entry):
+def insert_generic_product_entry (conn, product_name, init_product_table, entry):
     c = conn.cursor()
     p = init_product_table (product_name)
     p.create(c)
@@ -185,18 +185,31 @@ def insert_product_entry (conn, product_name, init_product_table, entry):
         return -1
 
 def insert_radiance_product_entry (conn, product_name, entry):
-    status = insert_product_entry (conn, product_name, init_radiance_product_table, entry)
+    status = insert_generic_product_entry (conn, product_name, init_radiance_product_table, entry)
     if status == 0:
         maybe_handle_scan_completion (conn, product_name, entry["scan_id"])
     return status
 
 def insert_dark_product_entry (conn, product_name, entry):
-    status = insert_product_entry (conn, product_name, init_dark_product_table, entry)
+    status = insert_generic_product_entry (conn, product_name, init_dark_product_table, entry)
     return status
 
 def insert_other_product_entry (conn, product_name, entry):
-    status = insert_product_entry (conn, product_name, init_other_product_table, entry)
+    status = insert_generic_product_entry (conn, product_name, init_other_product_table, entry)
     return status
+
+def connect_database (db_path):
+    """
+    For back-compatibility sqlite has foreign keys turned off by default,
+    and foreign_keys=off is ALWAYS stored in the database, regardless of
+    the runtime setting when the database was created.  For this reason,
+    we apparently need to turn it on explicitly, each time the database
+    connection is established.
+    """
+    conn = sqlite3.connect (db_path)
+    conn.execute("pragma foreign_keys=on")
+    #conn.set_trace_callback(print)
+    return conn
 
 def get_dark_keys (nc, keys):
     variables_to_average = ["exposure_time_per_coadd", "fpa_temp"]
@@ -318,7 +331,24 @@ def table_exists (conn, table_name):
     result = cur.fetchone()
     return result != None
 
-def process_file (conn, filename, nc):
+def insert_product_entry (conn, product_name, keys):
+    global Have_Rad_L1a_Table
+    Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
+    global Have_Rad_L1_Table
+    Have_Rad_L1_Table = table_exists (conn, 'RAD_L1')
+
+    if product_name in Radiance_Files:
+        status = insert_radiance_entry (conn, product_name, keys)
+    elif product_name in Radiance_Derived_Files:
+        status = insert_radiance_product_entry (conn, product_name, keys)
+    elif product_name == "DRK_L1":
+        status = insert_dark_product_entry (conn, product_name, keys)
+    else:
+        status = insert_other_product_entry (conn, product_name, keys)
+
+    return status
+
+def process_file (db_path, filename, nc):
 
     basename = os.path.basename (filename)
     tok = basename.split('_')
@@ -383,23 +413,16 @@ def process_file (conn, filename, nc):
         keys["asdc_status"] = Asdc_Status["defer"]
         keys["asdc_status_met"] = Asdc_Status["defer"]
 
-    global Have_Rad_L1a_Table
-    Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
-    global Have_Rad_L1_Table
-    Have_Rad_L1_Table = table_exists (conn, 'RAD_L1')
-
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)
         get_radiance_keys (nc, keys)
-        status = insert_radiance_entry (conn, product_name, keys)
     elif product_name in Radiance_Derived_Files:
         keys["scan_id"] = get_scan_id (final_path)
-        status = insert_radiance_product_entry (conn, product_name, keys)
     elif product_name == "DRK_L1":
         get_dark_keys (nc, keys)
-        status = insert_dark_product_entry (conn, product_name, keys)
-    else:
-        status = insert_other_product_entry (conn, product_name, keys)
+
+    with connect_database (db_path) as conn:
+        status = insert_product_entry (conn, product_name, keys)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
@@ -408,7 +431,7 @@ def process_file (conn, filename, nc):
 
     return status
 
-def process_file_raw (conn, filename):
+def process_file_raw (db_path, filename):
 
     basename = os.path.basename (filename)
     final_path = os.readlink (filename)
@@ -431,7 +454,8 @@ def process_file_raw (conn, filename):
     keys["asdc_status_met"] = Asdc_Status["nonexistent"]
     keys["asdc_disposition"] = ""
 
-    status = insert_raw_entry (conn, table_name, keys)
+    with connect_database (db_path) as conn:
+        status = insert_raw_entry (conn, table_name, keys)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
@@ -448,7 +472,7 @@ def convert_hms_to_float (hms_array):
         hour_f.append (h_f)
     return hour_f
 
-def process_file_corr (conn, filename, nc):
+def process_file_corr (db_path, filename, nc):
 
     basename = os.path.basename (filename)
     final_path = os.readlink (filename)
@@ -484,7 +508,8 @@ def process_file_corr (conn, filename, nc):
     keys["end_hour_utc"] = max(end_time)
     keys["num_mirror_pos"] = nc.getncattr("num_mirror_pos")
 
-    status = insert_corrfile_entry (conn, table_name, keys)
+    with connect_database (db_path) as conn:
+        status = insert_corrfile_entry (conn, table_name, keys)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
@@ -493,32 +518,19 @@ def process_file_corr (conn, filename, nc):
 
     return status
 
-def connect_database (db_path):
-    # For back-compatibility sqlite has foreign keys turned off by default,
-    # and foreign_keys=off is ALWAYS stored in the database, regardless of
-    # the runtime setting when the database was created.  For this reason,
-    # we apparently need to turn it on explicitly, each time the database
-    # connection is established.
-
-    conn = sqlite3.connect (db_path)
-    conn.execute("pragma foreign_keys=on")
-    #conn.set_trace_callback(print)
-    return conn
-
 def register_one_file (db_path, fn):
     status = -1
-    with connect_database (db_path) as conn:
-        basename = os.path.basename(fn)
-        if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
-            with NetCDFFile (fn, "r") as nc:
-                status = process_file_corr (conn, fn, nc)
-        elif fn.endswith ('.nc'):
-            with NetCDFFile (fn, "r") as nc:
-                status = process_file (conn, fn, nc)
-        elif fn.endswith ('.tar'):
-            status = process_file_raw (conn, fn)
-        if status != 0:
-            eprint('Error processing file: {}'.format(fn))
+    basename = os.path.basename(fn)
+    if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
+        with NetCDFFile (fn, "r") as nc:
+            status = process_file_corr (db_path, fn, nc)
+    elif fn.endswith ('.nc'):
+        with NetCDFFile (fn, "r") as nc:
+            status = process_file (db_path, fn, nc)
+    elif fn.endswith ('.tar'):
+        status = process_file_raw (db_path, fn)
+    if status != 0:
+        eprint('Error processing file: {}'.format(fn))
     return status
 
 def move_failing (fn):
