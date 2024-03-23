@@ -36,6 +36,8 @@ HCHO_Needs_Destripe = False
 
 Reload_Config = False
 
+Enable_Sqlite_Trace = False
+
 # python3 will provide file= redirection to stderr
 # noninteractive stderr is line-buffered so use explicit flush.
 def eprint(*args, **kwargs):
@@ -206,9 +208,19 @@ def connect_database (db_path):
     we apparently need to turn it on explicitly, each time the database
     connection is established.
     """
+    db_exists = os.path.isfile (db_path)
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
-    #conn.set_trace_callback(print)
+
+    # When creating a new database file, use journal_mode=WAL.
+    # When accessing an existing database, leave journal_mode as-is.
+    if not db_exists:
+        conn.execute ("pragma journal_mode=WAL")
+
+    # Optionally, trace callbacks
+    if Enable_Sqlite_Trace == True:
+        conn.set_trace_callback (print)
+
     return conn
 
 def get_dark_keys (nc, keys):
@@ -662,8 +674,13 @@ def run_as_service (reg):
 def main():
     parser = argparse.ArgumentParser(description='register data products in a sqlite database')
     parser.add_argument('--service', help="run as a service", action='store_true')
+    parser.add_argument('--trace', help="enable sqlite tracing", action='store_true')
     parser.add_argument('filename', help="netCDF4 file name", nargs='*', default=None)
     args = parser.parse_args()
+
+    global Enable_Sqlite_Trace
+    if args.trace == True:
+        Enable_Sqlite_Trace = True
 
     reg = init_registry()
 
