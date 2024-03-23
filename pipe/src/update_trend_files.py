@@ -243,14 +243,14 @@ def table_files_matching_trend_status (cur, table_name, trend_status):
     nc_paths = [item for t in cur.fetchall() for item in t]
     return nc_paths
 
-def connect_database (db_file_path):
-    conn = sqlite3.connect (db_file_path)
+def connect_database (db_file_path, mode):
+    conn = sqlite3.connect ("file:{}?mode={}".format(db_file_path, mode), uri=True)
     conn.execute ("pragma foreign_keys=on")
     return conn
 
 def unprocessed_files (db_file_path, table_names):
     paths = []
-    with connect_database (db_file_path) as conn:
+    with connect_database (db_file_path, "ro") as conn:
         for tbl in table_names:
             paths = paths + table_files_matching_trend_status (conn.cursor(), tbl, 0)
     return paths
@@ -262,7 +262,7 @@ def table_name_for_file (filename):
 def mark_as_processed (db_file_path, path_list):
     if len(path_list) == 0:
         return
-    with connect_database (db_file_path) as conn:
+    with connect_database (db_file_path, "rw") as conn:
         for path in path_list:
             basename = os.path.basename (path)
             table_name = table_name_for_file (basename)

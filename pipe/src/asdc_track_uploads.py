@@ -10,6 +10,7 @@ import argparse
 
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 DryRun = False
+DB_Path = None
 
 class Tokenizer:
     def __init__ (self):
@@ -19,13 +20,8 @@ class Tokenizer:
         s = line.rstrip(';\n')
         return self.regex.split(s)
 
-def connect_database ():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
-
-    conn = sqlite3.connect (db_file_path)
+def connect_database (mode):
+    conn = sqlite3.connect ("file:{}?mode={}".format(DB_Path, mode), uri=True)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn
@@ -127,7 +123,7 @@ def update_file_status (cur, filename, asdc_status, status_time, update_stat=Fal
         cur.execute (sql)
 
 def count_files_matching_status (asdc_status):
-    with connect_database() as conn:
+    with connect_database("ro") as conn:
         table_lists = files_matching_status (conn.cursor(), asdc_status)
     num_files=0
     for table in table_lists.keys():
@@ -135,7 +131,7 @@ def count_files_matching_status (asdc_status):
     print(num_files)
 
 def print_files_matching_status (asdc_status, **kwargs):
-    with connect_database() as conn:
+    with connect_database("ro") as conn:
         table_lists = files_matching_status (conn.cursor(), asdc_status, **kwargs)
     for table in table_lists.keys():
         for f in table_lists[table]:
@@ -220,7 +216,7 @@ def process_longpan(cur, longpan_file):
     return num_bad
 
 def process_longpan_files (longpan_file_list):
-    with connect_database() as conn:
+    with connect_database("rw") as conn:
         cur = conn.cursor()
         for longpan_file in longpan_file_list:
             try:
@@ -236,7 +232,7 @@ def set_file_status (status, file_list, update_stat):
         files = fp.readlines()
     files = [f.strip() for f in files]
     status_time = int(time.time())
-    with connect_database() as conn:
+    with connect_database("rw") as conn:
         cur = conn.cursor()
         for f in files:
             update_file_status (cur, f, Asdc_Status[status], status_time, update_stat=update_stat)
@@ -257,7 +253,7 @@ def print_report (asdc_status_name, ymd):
         times="asdc_upload_time,asdc_ingest_time"
     other_columns="asdc_disposition,path"
     print ("#{times},{other_columns}".format(**locals()))
-    with connect_database() as conn:
+    with connect_database("ro") as conn:
         cur = conn.cursor()
         table_names = get_product_table_names (cur)
         for tbl in table_names:
@@ -293,6 +289,12 @@ def main():
 
     global DryRun
     DryRun = args.dryrun
+
+    global DB_Path
+    DB_Path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if DB_Path == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
 
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])

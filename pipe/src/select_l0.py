@@ -49,7 +49,7 @@ def db_connect (db_path):
      we apparently need to turn it on explicitly, each time the database
      connection is established.
     """
-    conn = sqlite3.connect (db_path)
+    conn = sqlite3.connect ("file:{}?mode=ro".format(db_path), uri=True)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn

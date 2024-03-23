@@ -90,7 +90,7 @@ def main():
     # we apparently need to turn it on explicitly, each time the database
     # connection is established.
 
-    with sqlite3.connect (db_path) as conn:
+    with sqlite3.connect ("file:{}?mode=ro".format(db_path), uri=True) as conn:
         conn.execute("pragma foreign_keys=on")
         #conn.set_trace_callback(print)
         c = conn.cursor()
