@@ -15,13 +15,8 @@ Asdc_Status_Lookup = {value: key for key, value in Asdc_Status.items()}
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def connect_database ():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
-
-    conn = sqlite3.connect (db_file_path)
+def connect_database (db_file_path):
+    conn = sqlite3.connect ("file:{}?mode=ro".format(db_file_path), uri=True)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn
@@ -88,7 +83,7 @@ def table_status_summary (cur, table_name, tbeg, tend):
             sys.exit(1)
     return status_count, num_files
 
-def print_table_summaries (table_list, tbeg, tend):
+def print_table_summaries (db_file_path, table_list, tbeg, tend):
     print ("#")
     print (f"#      SDPC_PIPE_NAME: {os.environ['SDPC_PIPE_NAME']}")
     print (f"# SDPC_ARCHIVE_DBFILE: {os.environ['SDPC_ARCHIVE_DBFILE']}")
@@ -96,7 +91,7 @@ def print_table_summaries (table_list, tbeg, tend):
         print("# Start time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tbeg))))
     print("#   End time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tend))))
     print ("#")
-    with connect_database() as conn:
+    with connect_database(db_file_path) as conn:
         cur = conn.cursor()
         if table_list is None:
             table_list = get_product_table_names (cur)
@@ -139,7 +134,16 @@ def main():
     else:
         tend = int(dateutil.parser.isoparse(args.end).timestamp())
 
-    print_table_summaries (args.tables, tbeg, tend)
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_file_path == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
+
+    if not os.path.isfile (db_file_path):
+        eprint ('nonexistent database file: {}'.format(db_file_path))
+        sys.exit(0)
+
+    print_table_summaries (db_file_path, args.tables, tbeg, tend)
 
 if __name__ == "__main__":
     main()
