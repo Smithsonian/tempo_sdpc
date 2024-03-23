@@ -295,6 +295,9 @@ def run_as_service (args_dir, arch_dir):
         eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
 
+    if not os.path.isfile (db_file_path):
+        return 0
+
     table_names = ["DRK_L1", "IRR_L1", "RAD_L1"]
 
     sig = Signal_Catcher()
