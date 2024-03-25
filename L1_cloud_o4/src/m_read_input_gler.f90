@@ -86,9 +86,9 @@ contains
       enddo
     enddo
    else
-    wind_speed = 0.
+    wind_speed = 5.
     write(*,*)'note:  GMI climatology does not contain wind_speed'
-    write(*,*)' GLER is thus calculated with wind_speed=0.'
+    write(*,*)' GLER is thus calculated with wind_speed=5.'
     nana = 0
     do it = 1, nt
       do ix = 1, nx

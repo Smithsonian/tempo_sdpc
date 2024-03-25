@@ -5,7 +5,7 @@ module m_write_output_tio
   use netcdf, only: nf90_clobber, nf90_write, &
     nf90_double, nf90_float, nf90_short, nf90_uint, nf90_int
   use m_read_input_tio, only: open_tio, close_tio
-  use m_vars, only: iFillValue, fFillValue
+  use m_vars, only: iFillValue, fFillValue, dFillValue
 
   private write_coordinate_vars, write_geo_struct, write_geo_data, &
        copy_pixel_corners
@@ -19,8 +19,17 @@ module m_write_output_tio
 
   !fill values
   real (kind=8), private, parameter :: fill_bit = -128, &
-       fill_short = iFillValue, fill_int = iFillValue, fill_float = fFillValue, &
-       fill_double = fill_float
+       fill_short = iFillValue, fill_int = iFillValue, &
+       fill_float = fFillValue, &
+       fill_double = dFillValue
+
+  real (kind=8), parameter :: &
+      ! SCD_MainDataQualityFlag fill
+       mdqf_fill = -30000.d0, & 
+      ! processing_quality_flag fill
+       pflag_fill = -30000.d0 !-2147483648.d0 
+      ! ground_pix_quality_flag fill
+      ! gflag_fill = -2147483647.d0 
 
 contains
 
@@ -50,6 +59,9 @@ contains
 
     if (errstat /= 0) return
 
+    ! add final check for output
+    call final_check_output_vars
+
     tio_l2obj => primary_output_file
 
     ! Open the file
@@ -69,7 +81,6 @@ contains
     call tiof_inq_dimid (tio_l2obj, 'xtrack', dimid_xtrack, errstat)
     call tiof_inq_dimid (tio_l2obj, 'mirror_step', dimid_step, errstat)
 
-    ! addition -------------------------------------------------
     ! product variable definitions
     call write_product_struct (tio_l2obj, dimid_xtrack, dimid_step, errstat)
     if (errstat /= 0) then
@@ -146,6 +157,9 @@ contains
 
     if (errstat /= 0) return
 
+    ! add final check for output vars
+    call final_check_output_vars
+
     tio_l2obj => primary_output_file
 
     ! Create the file
@@ -184,7 +198,7 @@ contains
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
         'option_apply_radshift',option_apply_radshift)
 
-    ! Create default groups.
+    ! Create default groups
     call tiof_def_group (tio_l2obj, "product", errstat)
     call tiof_def_group (tio_l2obj, "geolocation", errstat)
     call tiof_def_group (tio_l2obj, "support_data", errstat)
@@ -235,7 +249,6 @@ contains
       return
     endif
 
-    ! addition -------------------------------------------------
     ! product variable definitions
     call tiof_dimlist_lookup (dimlist, &
                               ["xtrack     ", "mirror_step"], &
@@ -395,7 +408,7 @@ contains
                               standard_name = "time", &
                               long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
-                              valid_range = [0.0_r8, 1.0e30_r8], &
+                              valid_range = [0.0_r8, 1.0e10_r8], &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               fillvalue = fill_double, &
@@ -515,7 +528,7 @@ contains
 !                              dimids = dimids_xtrack_step,  &
 !                              comment = "ground pixel quality flag", &
 !                              valid_range = [0.0_r8, 65535.0_r8], &
-!                              fillvalue = fill_int, &
+!                              fillvalue = gflag_fill, & !fill_int, &
 !                              attlist=att_geo)
 
     call tiof_push_group (tio_l2obj, "geolocation", errstat)
@@ -702,7 +715,8 @@ contains
     !define r8 kind for use in setting parameter valid ranges
     integer, parameter :: r8 = kind(1.0d0)
     ! changed from flag_masks from 16 to32 to accomodate 4-byte
-    integer, dimension(32) :: flag_masks 
+    integer, dimension(32) :: flag_masks32
+    integer, dimension(16) :: flag_masks16 
     integer :: i, flag
     !character (len=32) :: epoch_buf
 
@@ -747,7 +761,7 @@ contains
                               long_name = "cloud radiance fraction at 466nm", &
                        comment = "CRF = ECF*Ic/Im [Vasilkov et al., 2018]", &
                               units = "no unit", &
-                              valid_range = [0.0_r8, 1.0_r8], &
+                              valid_range = [0.0_r8, 10.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -759,7 +773,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               long_name = "cloud radiance fraction at 440nm", &
                               units = "no unit", &
-                              valid_range = [0.0_r8, 1.0_r8], &
+                              valid_range = [0.0_r8, 10.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -769,53 +783,62 @@ contains
                                att_text = "time longitude latitude")
      !refer to m_cal_ocp for confirmation of flag meanings
      call tiof_attlist_append (pqf_attrs, errstat, "flag_meanings", &
-                  att_text = "0_error_geoloc_or_angles "// &
-                             "1_warn_466nm_crf_invalid "// &
-                             "2_warn_ocp_repaced for_small_ecf "// &
-                             "3_error_input_psurf_albedo "// &
-                             "4_warn_ocp_replaced_for_snowice "// &
-                             "5_warn_ocp_scd_iteration_exceeds_max "// &
-                             "6_error_scd_negative_or_bad "// &
-                             "7_info_440nm_rad_or_irr_error "// &
-                             "8_error_466nm_rad_or_irr_error "// &
-                             "9_warn_ecf_beyond_normal_range "// &
-                             "10_info_pscene_SurfaceLER_TerrainP_invalid"// &
-                             "11_info_pscene_SceneLER_SceneP_invalid"// &
-                             "12_error_ecf_calc_skipped "// &
-                             "13_error_ocp_calc_skipped "// &
-                             "14_warning_ocp_beyond_normal_range "// &
-                             "15_info_pscene_calc_skipped "// &
-                             "16-29_unused_set_to_zero (4-byte only) "//&
-                             "30-31_reserved_set_to_zero (4-byte only)")
+                  att_text = "bit0_error_geoloc_or_angles "// &
+                             "bit1_warn_466nm_crf_invalid "// &
+                             "bit2_warn_ocp_repaced for_small_ecf "// &
+                             "bit3_error_input_psurf_albedo "// &
+                             "bit4_warn_ocp_replaced_for_snowice "// &
+                             "bit5_warn_ocp_scd_iteration_exceeds_max "// &
+                             "bit6_error_scd_negative_or_bad "// &
+                             "bit7_info_440nm_rad_or_irr_error "// &
+                             "bit8_error_466nm_rad_or_irr_error "// &
+                             "bit9_warn_ecf_beyond_normal_range "// &
+                             "bit10_info_pscene_SurfaceLER_TerrainP_invalid "// &
+                             "bit11_info_pscene_SceneLER_SceneP_invalid "// &
+                             "bit12_error_ecf_calc_skipped "// &
+                             "bit13_error_ocp_calc_skipped "// &
+                             "bit14_warning_ocp_beyond_normal_range "// &
+                             "bit15_info_pscene_calc_skipped ") !// &
+                             !"16-29_unused_set_to_zero (4-byte only) "//&
+                             !"30-31_reserved_set_to_zero (4-byte only)")
 
      ! flag_masks is used to set attributes of processing_quality_flag
      do i = 1, 32 !4-byte has 32 bits 
        flag = 0
        ! set bit-i to get the masked value
-       flag_masks(i) = ibset (flag, i-1) 
+       flag_masks32(i) = ibset(flag, i-1) 
      enddo
-     call tiof_attlist_append (pqf_attrs, errstat, "flag_masks", &
-                               att_i4 = flag_masks)
+     do i = 1, 16 !2-byte has 16 bits
+        flag = 0
+        flag_masks16(i) = ibset(flag, i-1)
+     enddo
 
     if (pflag_nbyte .eq. 4) then
+       ! this will not execute, as pflag_nbyte=2
+       call tiof_attlist_append (pqf_attrs, errstat, "flag_masks", &
+                               att_i4 = flag_masks32)
+
        call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
                               nf90_int, &
                            dimids = dimids_xtrack_step,  &
              long_name = "bitwise processing quality flag", &
-             comment = "bits00-bit15 currently used, better use bit check", &
+             comment = "bits00-bit15 are all used, _Fillvalue and valid_range should be ignored, use bit check instead", &
             valid_range = [0.0_r8, 65535.0_r8], & 
-            fillvalue = -2147483648.0_r8, & 
+            fillvalue = pflag_fill, & !-2147483648.0_r8, & 
                               attlist=pqf_attrs)
     else
+      ! this will execute
+      ! call tiof_attlist_append(pqf_attrs, errstat, "flag_masks", &
+      !                    att_i4 = flag_masks16)
        call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
                               nf90_short, &
                            dimids = dimids_xtrack_step,  &
              long_name = "bitwise processing quality flag", &
-             comment = "bits00-bit15 currently used, better use bit check", &
-            valid_range = [0.0_r8, 32767.0_r8], & !4-byte only, comment out
-            fillvalue = fill_short, & 
+             comment = "bits00-bit15 are all used, _FillValue & valid_range should be ignored", &
+            valid_range = [0.0_r8, 32767.0_r8], & 
+            fillvalue = pflag_fill, & !fill_short, & 
                               attlist=pqf_attrs)
     endif
 
@@ -958,7 +981,7 @@ contains
                               "SurfaceLER466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "LER at 466nm calculated at surface pressure", &
+                              long_name = "466nm reflectance calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -970,7 +993,7 @@ contains
                               "SurfaceLER440", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "LER at 440nm calculated at surface pressure", &
+                              long_name = "440nm reflectance calculated at surface pressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -997,7 +1020,7 @@ contains
                               "SceneLER466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "LER at 466nm calculated at ScenePressure", &
+                              long_name = "466nm reflectance calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1009,7 +1032,7 @@ contains
                               "SceneLER440", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "LER at 440nm calculated at ScenePressure", &
+                              long_name = "440nm reflectance calculated at ScenePressure", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1044,7 +1067,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-    else
+    else ! 'development'
     call tiof_varlist_append (varlist, errstat, &
                               "nonclipped_cloud_fraction", &
                               nf90_float, &
@@ -1120,7 +1143,7 @@ contains
                               "ReflectanceFactor466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "466nm Reflectance=(Pi*rad466)/(irr466*cos(SZA))", &
+                              long_name = "measured 466nm reflectance factor=(Pi*rad466)/(irr466*cos(SZA))", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1132,7 +1155,7 @@ contains
                               "rad_of_irr466", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "rad/irr at 466nm for ecf", &
+                              long_name = "rad/irr at 466nm used for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1144,7 +1167,7 @@ contains
                               "cal_rad_clr", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "cal_rad_clr at 466nm for ecf", &
+                              long_name = "cal_rad_clr at 466nm used for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1156,7 +1179,7 @@ contains
                               "cal_rad_cld", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "cal_rad_cld at 466nm for ecf", &
+                              long_name = "cal_rad_cld at 466nm used for ecf", &
                               units = "no unit", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1227,7 +1250,7 @@ contains
                               "snow_ice_fraction", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
-                  long_name = "fraction of pixel area covered by snow and/or ice", &
+                  long_name = "fraction of pixel area covered by snowice", &
                               units = "unitless", &
                               valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
@@ -1321,7 +1344,7 @@ contains
                    long_name = "main data quality flags for fitted_slant_column", &
                               comment = "0=normal, 1=suspicious, 2=bad", &
                               valid_range = [0.0_r8, 2.0_r8], &
-                              fillvalue = -30000.0_r8, &
+                              fillvalue = mdqf_fill, & !-30000.0_r8, &
                               attlist=att_support)
 
     call tiof_push_group (tio_l2obj, "support_data", errstat)
@@ -1620,4 +1643,50 @@ contains
    
    end subroutine write_debug_processing_flags
 !---------------
+
+   subroutine final_check_output_vars
+
+    use m_vars, only: rad_Latitude,rad_Longitude,out_TerrainHeight, &
+                     out_TerrainPressure, l2_TerrainPressure, &
+                     out_SurfaceReflectivity466       
+    use m_vars, only: out_SurfaceLER466, out_SurfaceLER440
+    use m_vars, only: out_EffectiveCloudFraction,out_CloudRadianceFraction466,&
+                     out_CloudRadianceFraction440, out_CloudPressure,&
+                     out_SceneLER466, out_ScenePressure
+
+    use m_vars, only: fFillValue, rad_NumTimes, rad_nXtrack
+ 
+    implicit none
+    integer:: ix, it, nx, nt
+    real(kind=4) :: thislat
+
+    nx = rad_nXtrack
+    nt = rad_NumTimes
+    write(*,*)'final check:',nx,nt
+ 
+    do it = 1, nt
+       do ix = 1, nx
+          thislat = abs(rad_Latitude(ix,it))
+          if (thislat .gt. 90.) then
+             rad_Latitude(ix,it) = fFillValue
+             rad_Longitude(ix,it) = fFillValue
+             out_TerrainHeight(ix, it) = fFillValue
+             out_TerrainPressure(ix, it) = fFillValue
+             l2_TerrainPressure(ix, it) = fFillValue
+             out_SurfaceReflectivity466(ix, it) = fFillValue
+             out_SurfaceLER466(ix, it) = fFillValue
+             out_SurfaceLER440(ix, it) = fFillValue
+             out_EffectiveCloudFraction(ix, it) = fFillValue
+             out_CloudRadianceFraction466(ix, it) = fFillValue
+             out_CloudRadianceFraction440(ix, it) = fFillValue
+             out_CloudPressure(ix, it) = fFillValue
+             out_SceneLER466(ix, it) = fFillValue
+             out_ScenePressure(ix, it) = fFillValue
+           endif
+       enddo
+     enddo
+
+    end subroutine final_check_output_vars
+
+!---------------- 
 end module m_write_output_tio

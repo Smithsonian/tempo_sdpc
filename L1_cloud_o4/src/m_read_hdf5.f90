@@ -174,7 +174,7 @@ subroutine find_pcld_lutind(cloudp,pcld_lut_ind)
    integer, intent(out):: pcld_lut_ind
 
    integer :: kk
-   real :: w1, w2
+   !real :: w1, w2
 
    pcld_lut_ind = -999
 

@@ -12,6 +12,12 @@ module m_vars
 !  04/23/15 Yang original fortran 90
 !  2021 Wang adaption to TEMPO
 !  2023 Wang modification for TEMPO
+!
+! reference: 
+!  Vasilkov et al., (2018). A cloud algorithm base on the O2-O2 477nm
+!     absorption featuring an advanced spectral fitting method and the
+!     use of surface geometry-dependent Lambertian-equivalent reflectivity,
+!  Atmos. Meas. Tech., 11, 4093-4107, doi:10.5194/amt-11-4093-2018. 
 !---------------------------------------------------------------------72
   implicit none
 
@@ -59,13 +65,14 @@ module m_vars
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
   integer(kind=4)::rad_nWavel
-  !integer(kind=4)::rad_nWavelCoef !not used
   real::rad_EarthSunDist
 
 ! read in and transfer to out_TerrainHeight
-  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
+! move rad_TerrainHeight to m_read_input_tio
+!  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
+!TEMPO uses GroundPixelQualityFlags for land/ocean in GLER
   integer(kind=4),dimension(:,:),  pointer::rad_GroundPixelQualityFlags
   real(kind=4),   dimension(:,:),   pointer::rad_SnowIceFraction
 
@@ -105,7 +112,7 @@ module m_vars
   ! 1-based lut_pcld index for ocp whose height is just above cloud
   ! i.e. pressure is just smaller than cloud pressure
   integer,dimension(:,:),allocatable:: lut_pcld_indarr
-  ! max number of ecfocp iterations 
+  ! max number of ecfocp iterations, typically converges within 3 
   integer(kind=4):: ecfocp_maxiter = 10
   ! results from previous iteration
   real(kind=4),dimension(:,:),allocatable:: prev_ecf,prev_ecf_notclipped
@@ -117,20 +124,20 @@ module m_vars
   real(kind=4), parameter:: delta_ocp_pct = 0.01 ! relative percent change
   real(kind=4), parameter:: delta_ecf = 0.005
 
-  ! LUT albedo node used for solving sbar, trans 
+  ! LUT albedo node used for solving sbar & trans, Eq(2) of reference
   ! ALB=0.0, 0.1, 0.2 used to calc tran & sbar in pscene
   integer, parameter:: LUT_ALBID_0p0 = 1
   integer, parameter:: LUT_ALBID_0p1 = 7
   integer, parameter:: LUT_ALBID_0p2 = 12
 
-  !OMI LUT dimension, not used for TEMPO
+  !OMI LUT dimension, changed for TEMPO
   !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
   !integer,parameter::npsfc=23, npcld=23, nrsfc=23
   !TEMPO LUT dimension
   integer,parameter:: nalb=20, nsza=30, nvza=25, nraa=37
   integer,parameter:: npsfc=23, npcld=23
 
-  ! added the following to remove hardcoded 
+  ! added the following to remove hardcoded values 
   ! these are determined by LUTs
   !real(kind=4),parameter::max_SZA=89.,max_VZA=72. ! OMI
   real(kind=4),parameter:: max_SZA=89., max_VZA=89. ! TEMPO
@@ -140,7 +147,7 @@ module m_vars
 ! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
 ! coefs are derived using ops3_4p3_livetest 20240216 with
-! new O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
+! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
    real, parameter:: TrefO4 = 223. 
    real, parameter:: a263 = 1.0043, b263 = 0.0066
    real, parameter:: a293 = 1.0219, b293 = 0.1117
@@ -155,7 +162,7 @@ module m_vars
 !-------------------------
   integer,parameter::nvcd=npcld
 ! vvcd will be replaced with actual gmi_vcd//geos_vcd 
-  real,dimension(nvcd):: vvcd &
+  real,dimension(nvcd):: vvcd & 
          =(/0.00472129,0.00648191,0.00889265,0.0121931,0.0166994, &
            0.0228845, 0.0313553, 0.0429509, 0.0588269,0.0805602, &
            0.109367,  0.146245,  0.193142,  0.252468, 0.326837,  &
@@ -173,24 +180,24 @@ module m_vars
 !-----------
 ! input LUN
 !-----------
-character(len=6)::lun_lut_amf_clear='477000'
-character(len=6)::lun_lut_amf_cloud='477001'
-character(len=6)::lun_lut_amf_ler6d='477010'
-! month dependent GMI files should keep the lun_ stuff
+! for reading LUTs , not used
+!character(len=6)::lun_lut_amf_clear='477000'
+!character(len=6)::lun_lut_amf_cloud='477001'
+!character(len=6)::lun_lut_amf_ler6d='477010'
+!integer::ilun_lut_amf_clear=477000
+!integer::ilun_lut_amf_cloud=477001
+!integer::ilun_lut_amf_ler6d=477010
+
+
+! for reading month dependent GMI files
 character(len=6),dimension(12):: &
   lun_gmi_psfc=(/'400201','400202','400203','400204','400205','400206', &
                  '400207','400208','400209','400210','400211','400212'/)
 character(len=6),dimension(12):: &
   lun_gmi_tmp=(/'400301','400302','400303','400304','400305','400306', &
                 '400307','400308','400309','400310','400311','400312'/)
-
 integer:: ilun_gmi_psfc = 4002
 integer:: ilun_gmi_tmp = 4003
-
-integer::ilun_lut_amf_clear=477000
-integer::ilun_lut_amf_cloud=477001
-integer::ilun_lut_amf_ler6d=477010
-
 
 ! =============
 ! input options
@@ -212,6 +219,7 @@ integer::ilun_lut_amf_ler6d=477010
 !  GEOS5: GEOS-5 T/P/Psfc
 
   character(len=255)::name_gmi_dir='./refdata/'
+! the following is not needed as geos-cf is handled in libclim
 !  character(len=255)::name_geos5_dir='refdata/'
 !  character(len=255)::name_geos5_file
 
@@ -393,8 +401,8 @@ integer::ilun_lut_amf_ler6d=477010
   character(len=255):: name_diaglog_fnm='empty'
   real(kind=4),dimension(:,:),allocatable:: rad_waveshift
   real(kind=4),dimension(:),allocatable:: irr_waveshift
-  real(kind=4):: maxradshift = 0.5 ! larger rad_waveshift will be set to 0.
-  real(kind=4):: maxirrshift = 0.5 ! larger irr_waveshift will be set to 0.
+  real(kind=4):: maxradshift = 0.5 !nm larger rad_waveshift will be set to 0.
+  real(kind=4):: maxirrshift = 0.5 !nm larger irr_waveshift will be set to 0.
 
 !------------
 ! input extra
@@ -405,8 +413,10 @@ integer::ilun_lut_amf_ler6d=477010
   real::w466=466.0 ! nm for cloud fraction calculation
   real::w477=477.0 ! nm for cloud pressure calculation
 
-! clip threshold
-  real, parameter:: ecf_lowclip=-0.2, ecf_highclip=1.5
+! ecf clip threshold
+! relaxed threshold reduce missing ecf in output
+  real, parameter:: ecf_lowclip= -1.0 !-0.2
+  real, parameter:: ecf_highclip= 2.0 !1.5
 
   real(kind=4),dimension(:,:),pointer::rad_of_irr440  ! radiance/irradiance at 440 nm calculated by "cal_ecf.f90"
   real(kind=4),dimension(:,:),pointer::rad_of_irr466  ! radiance/irradiance at 466 nm calculated by "cal_ecf.f90"
@@ -429,25 +439,22 @@ integer::ilun_lut_amf_ler6d=477010
 !---------------
   character(len=255)::name_out_dir='./'
   character(len=255)::name_out_ncdf='empty'
-  character(len=255)::name_out_txt='OMCDO2N.out'
+!  character(len=255)::name_out_txt='OMCDO2N.out'
   real(kind=8),   dimension(:),    pointer::out_Time
-!  real(kind=4),   dimension(:),    pointer::out_SecondsInDay
-  real(kind=4),   dimension(:,:),  pointer::out_Longitude
-  real(kind=4),   dimension(:,:),  pointer::out_Latitude
-  real(kind=4),   dimension(:,:),  pointer::out_SolarZenithAngle
-  real(kind=4),   dimension(:,:),  pointer::out_ViewingZenithAngle
+!  real(kind=4),   dimension(:,:),  pointer::out_Longitude ! not used
+!  real(kind=4),   dimension(:,:),  pointer::out_Latitude ! not used
+!  real(kind=4),   dimension(:,:),  pointer::out_SolarZenithAngle ! not used
+!  real(kind=4),   dimension(:,:),  pointer::out_ViewingZenithAngle ! not used
   real(kind=4),   dimension(:,:),  pointer::out_RelativeAzimuthAngle
 !  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
-!  integer(kind=1),dimension(:,:),  pointer::out_XTrackQualityFlags
-!  integer(kind=2),dimension(:),    pointer::out_MeasurementQualityFlags
 ! 2- or 4-byte out_ProcessingQualityFlags determined by pflag_nbyte 
 !  only bit00-15 are currently used
 ! as the leftest bit for an integer indicate sign and
-! all 16 bits are used, apps should not be interpreted as an integer
+! all 16 bits are used, apps should not interpret it as an integer
 ! but to check individual bits instead,
 ! to resolve this, it was changed to 4-byte, however,
 ! total ozone and ozone profile uses 2-byte,to avoid problems there, 
-! pflag_nbyte parameter is used as a temporary workaround
+! pflag_nbyte parameter is changed back to 2-byte
   integer(kind=pflag_nbyte),dimension(:,:), pointer::out_ProcessingQualityFlags
   integer(kind=pflag_nbyte),dimension(:,:), pointer::prev_processingflags
   real(kind=4),dimension(:,:),pointer::out_SlantColumnAmountO2O2
@@ -455,8 +462,8 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:),pointer::out_SlantColumnTerrainO2O2
 ! out_TerrainPressure now holds calculated cpp using LER466 in pscene
   real(kind=4),dimension(:,:),pointer::out_TerrainPressure
+! rad_TerrainHeight is local short int, transfered to real out_TerrainHeight
   real(kind=4),dimension(:,:),pointer::out_TerrainHeight
-!  RAD terrain height is short integer, transfer to real out_TerrainHeight
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity440
   real(kind=4),dimension(:,:),pointer::out_SurfaceReflectivity466
 !  integer(kind=2),dimension(:,:),pointer::out_LandAreaFraction
@@ -485,8 +492,9 @@ integer::ilun_lut_amf_ler6d=477010
   real(kind=4),dimension(:,:),pointer::out_O2O2SceneTemperature
   real(kind=4),dimension(:,:),pointer::out_O2O2TerrainTemperature
 
-  real, parameter ::fFillValue=-1.2676506E30
-  integer, parameter ::iFillValue=-32767
+  real, parameter ::fFillValue= -1.e30 !-1.2676506E30
+  real(kind=8), parameter ::dFillValue= -1.d30 !-1.2676506d30 ! needs large negative 
+  integer, parameter ::iFillValue= -9999 !-32767
 
 !-------------
 ! scd filtering and destriping
@@ -511,13 +519,13 @@ type gmeta
   character(len=19)::ProcessingCenter='SAO'
   character(len= 1)::ProcessingLevel='2'
   character(len= 9)::InstrumentName='TEMPO'
-  character(len= 7)::APPShortName='TEMPOCLDO4'
+  character(len= 10)::APPShortName='TEMPOCLDO4'
   character(len= 7)::APPVersion='1.0.0.0'
   character(len=255)::localgranID='empty'
   character(len=48)::APPLongName='TEMPO Cloud O4 Product 1-Orbit L2 Swath'
   character(len=11)::HDFVersion='empty'
   character(len=50)::parameterdescription='Geophysical Cloud Parameters'
-  character(len= 3)::omi_collection='empty'
+  character(len= 3)::omi_collection='  '
   character(len= 8)::starttime='00:00:00'
   character(len= 8)::endtime='00:00:00'
   character(len=10)::startdate='2023_08_02'

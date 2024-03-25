@@ -12,7 +12,7 @@ contains
     use he5_swreader
     use m_vars, only: kleipool_lon, kleipool_lat, kleipool_SurfaceReflectivity466
     use m_vars, only: kleipool_SurfaceReflectivity440
-    use m_vars, only: rad_nXtrack, rad_NumTimes, kleipool_nx, kleipool_ny
+    use m_vars, only: kleipool_nx, kleipool_ny
 
     implicit none
 

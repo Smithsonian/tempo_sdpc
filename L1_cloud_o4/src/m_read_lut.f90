@@ -47,8 +47,6 @@ contains
     integer(hsize_t),dimension(1)::dims1
     integer(hsize_t),dimension(5)::dims5
 
-    integer:: i
-
     if (errstat /= 0) return
 
     !-------------------

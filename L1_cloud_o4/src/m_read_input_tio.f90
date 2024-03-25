@@ -399,7 +399,6 @@ contains
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
          out_TerrainHeight, scddes_hour,&
-         rad_TerrainHeight,&
          rad_GroundPixelQualityFlags, &
          !rad_PixelQualityFlags, &
          out_ProcessingQualityFlags, &
@@ -435,6 +434,7 @@ contains
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
     real(kind=4), dimension(:,:,:), allocatable:: rad_Wavelength
     integer(kind=2), dimension(:,:,:), allocatable:: rad_PixelQualityFlags
+    integer(kind=2), dimension(:,:), allocatable:: rad_TerrainHeight
 
     real(kind=4), dimension(:), allocatable:: temp_wav, temp_rad
     integer(kind=2) :: temp_radflags
@@ -463,10 +463,15 @@ contains
     call allocate_init_desvars (nxtrack, errstat)
     if (errstat /= 0) return
 
-    !allocate local arrays
+    !allocate local arrays & initilize
     allocate(rad_Radiance(nwavel, nxtrack, ntimes), stat=errstat)
     allocate(rad_Wavelength(nwavel, nxtrack, ntimes), stat=errstat)
     allocate(rad_PixelQualityFlags(nwavel, nxtrack, ntimes), stat=errstat)
+    allocate(rad_TerrainHeight(nxtrack, ntimes), stat=errstat)
+    rad_Radiance = fFillValue
+    rad_Wavelength = fFillValue
+    rad_PixelQualityFlags = 0
+    rad_TerrainHeight = 0
 
     ! read the arrays
     call tiof_use_file_epoch (tio_l1obj, errstat)
@@ -495,11 +500,12 @@ contains
     call tiof_get2d_r4 (tio_l1obj, "snow_ice_fraction", [0,0], &
          [ntimes, nxtrack], rad_SnowIceFraction, errstat)
 
-    ! tranfer rad_TerrainHeight to out_TerrainHeight
+    ! read L1b terrain_height as local variable rad_TerrainHeight
+    ! tranfer int rad_TerrainHeight to real out_TerrainHeight
     call tiof_get2d_i2 (tio_l1obj, "terrain_height", [0,0], &
          [ntimes,nxtrack], rad_TerrainHeight, errstat)
     out_TerrainHeight = real(rad_TerrainHeight, kind=4)
-    where (rad_TerrainHeight < -1000.)
+    where (rad_TerrainHeight < -1000)
         out_TerrainHeight = fFillValue
     endwhere
 
@@ -711,6 +717,7 @@ contains
 
     ! deallocate large temporary rad arrays
     deallocate(rad_Radiance, rad_Wavelength, rad_PixelQualityFlags)
+    deallocate(rad_TerrainHeight)
     deallocate(temp_rad, temp_wav)
 
   end subroutine read_rad_tio
@@ -721,7 +728,7 @@ contains
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
-     use m_vars, only: fFillValue, option_scdfullfilter
+     use m_vars, only: fFillValue, dFillValue, option_scdfullfilter
 
      implicit none
 
@@ -747,7 +754,7 @@ contains
      if (errstat /= 0) return
 
      fspecial = fFillValue
-     dspecial = -9999.d0
+     dspecial = dFillValue !-9999.d0
 
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)
@@ -876,7 +883,7 @@ contains
      scd_relerr = nasa_scduncertainty / nasa_SlantColumnAmountO2O2
      ! assign huge positive value for negative scd or uncertainty
      where (nasa_scduncertainty < 0.) 
-           scd_relerr = 9999. !large positive value
+           scd_relerr = 9999. !make it a large positive value
      endwhere
      where (nasa_SlantColumnAmountO2O2 < 0.)
            scd_relerr = 9999.
@@ -1095,7 +1102,7 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
-         rad_TerrainHeight, out_TerrainHeight, rad_SnowIceFraction,&
+         out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm, &
          out_ProcessingQualityFlags, rad_GroundPixelQualityFlags
 ! the following arrays are very large, thus move them out
@@ -1125,7 +1132,6 @@ contains
          rad_SolarAzimuthAngle(nxtrack, ntimes), &
          rad_ViewingAzimuthAngle(nxtrack, ntimes), &
          out_TerrainHeight(nxtrack, ntimes), &
-         rad_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
          rad_GroundPixelQualityFlags(nxtrack, ntimes), &
          rad_440nm(nxtrack, ntimes), &
@@ -1154,7 +1160,6 @@ contains
     rad_ViewingAzimuthAngle = fspecial
     rad_SnowIceFraction = fspecial
     rad_GroundPixelQualityFlags = -1
-    rad_TerrainHeight = 0 ! integer from L1B
     out_TerrainHeight = fspecial
     rad_440nm = fspecial
     rad_466nm = fspecial

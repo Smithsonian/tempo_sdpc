@@ -291,7 +291,7 @@ program OMCDO2N
   else 
      read(buf,*,iostat=status) option_apply_radshift
   endif
-  write(*,*) 'option_apply_solshift=',option_apply_solshift
+  write(*,*) 'option_apply_radshift=',option_apply_radshift
 
   status=GetConfigString("W","Input Files TEMPOdiaglog_dir",buf)
   if(status .ne. 0) then

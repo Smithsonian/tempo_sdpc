@@ -27,7 +27,6 @@ subroutine cal_ecf(ecfocp_iternum)
 
 !  real::temp_raa
 
-  integer(kind=4)::ierr
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
 
