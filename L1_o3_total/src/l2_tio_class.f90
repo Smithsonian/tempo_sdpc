@@ -29,7 +29,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    type (tiof_attlist_type) :: att_coord, att_qflag
     integer, dimension(2) :: dimids_xtrack_step
 
     if (errstat < 0) return
@@ -84,13 +84,27 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
+    call tiof_attlist_append (att_qflag, errstat, "coordinates", &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
+                              //' '//trim(o3t_var_latitude))
+    call tiof_attlist_append (att_qflag, errstat, "flag_meanings", &
+                              att_text = "good_sample glint_contamination SZA>84 360_residual>threshold "//&
+                              "residual_at_unused_ozone_wavelenth>4sigma SOI>4sigma "//&
+                              "non-convergence abs(residual)>16.0(fatal) row_anomaly_error "// &
+                              "missing_TEMPO_cloud_pressure geolocation_error SZA>88 missing_input_radiance "//&
+                              "error_input_radiance warning_input_radiance missing_input_irradiance "//&
+                              "error_input_irradiance warning_input_irradiance")
+    call tiof_attlist_append (att_qflag, errstat, "flag_values", &
+                              att_i4 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768])
+
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_quality_flag, &
-                              nf90_ushort, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step, &
                               comment = "quality flags", &
                               valid_range = [0.0_8, 65534.0_8], &
-                              attlist=att_coord)
+                              attlist=att_qflag)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_o3_below_cloud, &
@@ -124,6 +138,7 @@ contains
 
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_qflag)
 
   end subroutine
 
@@ -134,7 +149,7 @@ contains
     integer, intent(inout) :: errstat
 
     type (tiof_varlist_type) :: varlist
-    type (tiof_attlist_type) :: att_coord
+    type (tiof_attlist_type) :: att_coord, att_gqflag, att_aqflag
     integer, dimension(2) :: dimids_xtrack_step
     integer, dimension(3) :: dimids_layer_xtrack_step, dimids_wavel_xtrack_step
     integer, dimension(3) :: dimsizes_layer_xtrack_step, dimsizes_wavel_xtrack_step
@@ -166,13 +181,24 @@ contains
                               //' '//trim(o3t_var_longitude) &
                               //' '//trim(o3t_var_latitude))
 
+    call tiof_attlist_append (att_gqflag, errstat, "coordinates", &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
+                              //' '//trim(o3t_var_latitude))
+    call tiof_attlist_append (att_gqflag, errstat, "flag_meanings", &
+                              att_text = "shallow_ocean land shallow_inland_water shoreline intermittent_water "//&
+                                         "deep_inland_water continental_shelf_ocean deep_ocean land_water_error "//&
+                                         "sun_glint_possibility solar_eclipse_possibility goelocation_error ")
+    call tiof_attlist_append (att_gqflag, errstat, "flag_values", &
+                              att_i4 = [0, 1, 2, 3, 4, 5, 6, 7, 15, 16, 32, 64])
+
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_geoflg, &
-                              nf90_ushort, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step, &
                               comment = "ground pixel quality flag", &
                               valid_range = [0.0_8, 65534.0_8], &
-                              attlist=att_coord)
+                              attlist=att_gqflag)
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_lut_wavelength, &
@@ -203,13 +229,22 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
+    call tiof_attlist_append (att_aqflag, errstat, "coordinates", &
+                              att_text = trim(o3t_var_time) &
+                              //' '//trim(o3t_var_longitude) &
+                              //' '//trim(o3t_var_latitude))
+    call tiof_attlist_append (att_aqflag, errstat, "flag_meanings", &
+                              att_text = "skipped standard adjusted_for_profile_shape based_on_C-pair(331_and_360 nm)")
+    call tiof_attlist_append (att_aqflag, errstat, "flag_values", &
+                              att_i4 = [0, 1, 2, 3, 10])
+
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_algorithm_flags, &
-                              nf90_ubyte, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step, &
                               comment = "algorithm flags", &
                               valid_range = [0.0_8, 13.0_8], &
-                              attlist=att_coord)
+                              attlist=att_aqflag)
 
     chunksizes(1) = dimsizes_layer_xtrack_step(1)            ! layer dimension
     chunksizes(2) = min(dimsizes_layer_xtrack_step(2), 128)  ! xtrack dimension
@@ -228,7 +263,7 @@ contains
 
     call tiof_varlist_append (varlist, errstat, &
                               o3t_var_radbpix_flag_accepted, &
-                              nf90_ushort, &
+                              nf90_int, &
                               dimids = dimids_xtrack_step, &
                               comment = "radiance bad pixel flag accepted", &
                               valid_range = [0.0_8, 65534.0_8], &
@@ -274,7 +309,7 @@ contains
                               dimids = dimids_wavel_xtrack_step, &
                               comment = "measured N-value", &
                               valid_range = [0.0_8, 600.0_8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_float*100.0, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes)
@@ -407,6 +442,9 @@ contains
 
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
+    call tiof_attlist_free (att_gqflag)
+    call tiof_attlist_free (att_aqflag)
+
   end subroutine
 
   subroutine append_geolocation_vars (obj, dimlist, have_omi_data, errstat)
@@ -449,8 +487,8 @@ contains
                               standard_name = "time", &
                               comment = "exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
-                              valid_range = [-5.0e9_8, 1.e10_8], &
-                              fillvalue = fill_double, &
+                              valid_range = [0.0_8, 1.0e10_8], &
+                              fillvalue = fill_float, &
                               attlist=att_time)
 
     call tiof_attlist_append (att_latbnd, errstat, "bounds", &
@@ -525,7 +563,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               comment = "viewing zenith angle at pixel center", &
                               units = "degrees", &
-                              valid_range = [0.0_8, 88.0_8], &
+                              valid_range = [0.0_8, 180.0_8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
@@ -1042,7 +1080,7 @@ contains
     call tiof_put1d_ui2 (obj, o3t_var_radbpix_flag_accepted, [iline,ix-1], [1, 1], &
                          [radbadpixflgs], errstat)
     call tiof_put1d_r4 (obj, o3t_var_nvalue, [iline,ix-1,0], [1,1,nwavel], &
-                        100.0*xnvalm(1:nwavel), errstat)
+                        100*xnvalm(1:nwavel), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &

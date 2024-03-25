@@ -815,6 +815,9 @@ PROGRAM O3T_mainNVAdj
          (/ ( adjustDEG(180.0+sazimuth(iX)-vazimuth(iX)), iX =1,nXtrack_rad ) /)
 
     DO iX = 1, nXtrack_rad
+      if ( (phiArray(iX) .lt. -180) .or. (phiArray(iX) .gt. 180) .or. (phiArray(iX) .eq. 0.0) ) then
+          phiArray(iX) = -1.0E30_4
+      endif
       !Need lat,lon sanity check here and below for TEMPO data
       if (latitude(iX).gt.latmin .and. latitude(iX).lt.latmax .and. &
            longitude(iX).gt.lonmin .and. longitude(iX).lt.lonmax) then
@@ -822,7 +825,7 @@ PROGRAM O3T_mainNVAdj
         status = OMI_pixGetSnowIce( latitude(iX), longitude(iX), &
              year, month, day, snowIceArray(iX) )
       else
-        ptArray(iX)=0.0
+        ptArray(iX)=-1.0E30_4
         snowIceArray(iX)=0.0
       endif
     ENDDO
