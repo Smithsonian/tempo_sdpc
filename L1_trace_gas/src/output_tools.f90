@@ -243,6 +243,7 @@ contains
                               long_name = "scattering weights", &
                               comment = "vertical profile of scattering weights", &
                               valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
@@ -254,6 +255,7 @@ contains
                               long_name = "vertical profile of "//trim(target_molecule % name)//" partial column", &
                               units = "molecules/cm^2", &
                               valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
@@ -264,6 +266,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               long_name = "surface albedo", &
                               valid_range = [0.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_temperature_profile, &
@@ -273,6 +276,7 @@ contains
                               units = "K", &
                               valid_min = 0.0_r8, &
                               valid_max = 400.0_r8, &
+                              fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
