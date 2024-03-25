@@ -33,7 +33,7 @@ module output_tools
 
   ! using fill values from the original code simplifies diffing output files
   real (kind=8), private, parameter :: &
-    fill_short = -30000, &
+    fill_short = -9999, &
     fill_float = -1.0e30, &
     fill_double = -1.0e30_r8
 
@@ -307,7 +307,7 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" air mass factor diagnostic flag ", &
-                              fillvalue = -1.0_r8, &
+                              fillvalue = fill_short, &
                               attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_eff_cld_frac, &
@@ -910,6 +910,7 @@ contains
                               nf90_int, &
                               dimids = dimids_xtrack_step, &
                               long_name = "ground pixel quality flag", &
+                              fillvalue = fill_short, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_surface_pressure, &
