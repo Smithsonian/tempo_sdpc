@@ -10,8 +10,18 @@ module m_vars
 ! REVISION HISTORY: 
 !
 !  04/23/15 Yang original fortran 90
-!  2021 Wang adaption to TEMPO
+!
+!  2021 Wang/O'Sullivan adaption to TEMPO
+!       add TEMPO read & write
+!       remove OMI specifics
+!       add GEOS-CF
+!       add GLER
+!       switch to TEMPO LUTs
+! 
 !  2023 Wang modification for TEMPO
+!       add O2O2 temperature correction
+!       add ECFOCP iteration
+!       add TEMPO IRR & RAD wavelength shift
 !
 ! reference: 
 !  Vasilkov et al., (2018). A cloud algorithm base on the O2-O2 477nm
@@ -155,7 +165,7 @@ module m_vars
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 
    ! if dT < dt_threshold, then stop iteration
-   real, parameter :: dt_threshold = 1.0 !K 
+   real, parameter :: dt_threshold = 0.5 !K 
 
 !-------------------------
 ! vertical column density
