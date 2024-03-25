@@ -743,7 +743,7 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "radiance fit convergence flag", &
-                              valid_range = [-10.0_r8, 12344.0_r8], &
+                              valid_range = [-2.0_r8, 1.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_convergence_flag)
 
