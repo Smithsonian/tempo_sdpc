@@ -910,7 +910,7 @@ contains
                               nf90_int, &
                               dimids = dimids_xtrack_step, &
                               long_name = "ground pixel quality flag", &
-                              fillvalue = fill_short, &
+                              valid_range = [0.0_r8, 16777215.0_r8], &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_surface_pressure, &
