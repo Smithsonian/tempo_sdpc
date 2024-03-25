@@ -765,6 +765,7 @@ contains
                               standard_name = "time", &
                               long_name = "radiance exposure start time", &
                               units = "seconds since "//trim(epoch_buf), &
+                              valid_range = [0.0_r8, 1.0e10_r8], &
                               fillvalue = fill_double, &
                               attlist=att_time)
 
