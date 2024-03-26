@@ -663,9 +663,14 @@ contains
           endif
         endif
       endif
-    else if ((land_water_flag == 0) .or. ((land_water_flag > 1) .and. (land_water_flag <= 7))) then
+    else if (land_water_flag == 0 &
+         .or. (land_water_flag > 1 .and. land_water_flag <= 7) &
+         .or. land_water_flag == 15) then
       ! Ocean, inland water, shoreline, etc.
       ! Force the wind speed coordinate to be on the tabulated grid
+      ! FIXME (CRN): Fill value of 15 also has to be treated as ocean due to
+      ! lack of MODIS tiles over deep ocean. Should be updated if MODIS
+      ! land cover product is updated.
       nw = size (glt % ocean % dims(1) % x)
       wmax = glt % ocean % dims(1) % x(nw)
       wmin = glt % ocean % dims(1) % x(1)
