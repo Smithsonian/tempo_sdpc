@@ -890,11 +890,33 @@ contains
     integer :: err
 
     if (errstat /= 0) return
-
     err = c_make_forecast_path (ttime, file, len(file))
     if (err /= 0) then
       call tell_error (tell_runtime_error, "make_forecast_path: failed", errstat)
       return
+    endif
+
+  end subroutine
+
+  subroutine append_unique_basename (s, path)
+    implicit none
+    character (len=*), intent(inout) :: s
+    character (len=*), intent(in) :: path
+    integer :: i, k, m
+    character (len=62), parameter :: set = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    i = index(path, '/', .true.)
+    i = i + 1
+    m = scan(path, set, .true.)
+
+    ! Don't add duplicates
+    k = index (s, trim(path(i:)))
+    if (k /= 0) return
+
+    if (len_trim(adjustl(s)) == 0) then
+      s = path(i:m)
+    else
+      s = trim(adjustl(s)) // ';' // path(i:m)
     endif
 
   end subroutine
@@ -909,13 +931,15 @@ contains
   !> @param[in] single_layer  [optional] Use single_layer=.true. to
   !>                          read a variable with only a single Z layer,
   !>                          such as U2M, V2M, or PHIS
-  subroutine clim_val_init (cst, cpt, name, errstat, single_layer)
+  !> @param[inout] clim_source [optional] A priori files used
+  subroutine clim_val_init (cst, cpt, name, errstat, single_layer, clim_source)
     implicit none
     type (clim_val_type), intent(out) :: cst
     type (clim_pres_type), intent(in) :: cpt
     character (len=*), intent(in) :: name
     integer, intent(inout) :: errstat
     logical, intent(in), optional :: single_layer
+    character (len=*), intent(inout), optional :: clim_source
 
     type (clim_type) :: ct_month0, ct_month1
     integer :: i, nhours, err
@@ -966,6 +990,9 @@ contains
         call make_forecast_path (timet, file_month0, errstat)
         if (errstat /= 0) return
         call read_climatology (cpt, file_month0, name, cst % clim(i), errstat)
+        if (present(clim_source)) then
+          call append_unique_basename (clim_source, file_month0)
+        endif
       enddo
 
     else
@@ -985,6 +1012,10 @@ contains
         call read_climatology (cpt, file_month0, name, ct_month0, errstat)
         call read_climatology (cpt, file_month1, name, ct_month1, errstat)
         if (errstat /= 0) return
+        if (present(clim_source)) then
+          call append_unique_basename (clim_source, file_month0)
+          call append_unique_basename (clim_source, file_month1)
+        endif
 
         cst % clim(i) % values(:,:,:) = &
           (wt0 * ct_month0 % values(:,:,:) + (1.0 - wt0) * ct_month1 % values(:,:,:))
