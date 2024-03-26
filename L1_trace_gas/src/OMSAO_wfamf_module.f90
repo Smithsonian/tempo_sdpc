@@ -168,6 +168,7 @@ CONTAINS
     logical :: yn_write_cloud_variables
     character (len=256) :: cloud_file
     character (len=32) :: apriori_source
+    character (len=1024) :: clim_source
 
     ! bitwise like amf calculation flags
     integer (kind=i2), dimension (1:nx,0:nt-1), target :: amfdiag
@@ -199,6 +200,7 @@ CONTAINS
        tropospheric_amf = r8_missval
     ENDIF
     apriori_source = ''
+    clim_source = ''
 
     ! -----------------------------------------
     ! If amf_wvl < 0.0 then the slant column is
@@ -284,7 +286,7 @@ CONTAINS
        call tell_log (1, 'amf_calculation: read gas profile')
        CALL get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
             idx_ozo_pro, phis, psurf, tsurf, wind_speed, &
-            lat, lon, time, nt, nx, apriori_source, errstat, amfdiag)
+            lat, lon, time, nt, nx, apriori_source, clim_source, errstat, amfdiag)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, 'reading gas profile', errstat)
           return
@@ -295,7 +297,7 @@ CONTAINS
        ! ---------------------------------
        IF (do_write) then
           call tell_log (1, 'amf_calculation: write gas profile to L2 file')
-          call write_gas_profile (profiles, nx, nt, CmETA, apriori_source, errstat)
+          call write_gas_profile (profiles, nx, nt, CmETA, apriori_source, clim_source, errstat)
           if (errstat /= 0) return
        endif
 
@@ -948,7 +950,7 @@ CONTAINS
   subroutine get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
                         idx_ozo_pro, phis, psurf, tsurf, &
                         wind_speed, lat, lon, time, nt, nx, &
-                        apriori_source, errstat, amfdiag)
+                        apriori_source, clim_source, errstat, amfdiag)
     use clim_module
     use omsao_indices_module, only: sao_molecule_names
     use ctrlvars, only: yn_gems
@@ -963,7 +965,7 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
-    character (len=*), intent(inout) :: apriori_source
+    character (len=*), intent(inout) :: apriori_source, clim_source
     integer (kind=i4), intent (inout) :: errstat
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
@@ -1046,7 +1048,7 @@ CONTAINS
       clim_db_molecule_name = 'HNO2  ' ! nitrous acid
     endif
 
-    call clim_val_init (cvt, cpt, trim(clim_db_molecule_name), errstat)
+    call clim_val_init (cvt, cpt, trim(clim_db_molecule_name), errstat, clim_source = clim_source)
     if (errstat /= 0) then
        call tell_error ( tell_io_read_error, "libclim_model: initializing "//trim(clim_db_molecule_name), errstat)
        return
