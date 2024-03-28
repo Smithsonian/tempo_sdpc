@@ -34,13 +34,15 @@ def get_product_table_names (cur):
     table_names.sort(key=lambda x:x.split('_')[-1], reverse=True)
     return table_names
 
-def table_files_matching_status (cur, table_name, asdc_status, limit=0):
+def table_files_matching_status (cur, table_name, asdc_status, limit=0, order='asc'):
+
+    qual = "order by istart {}".format(order)
+
     if limit > 0:
-        nc_query  = "select path from {table_name} where asdc_status == {asdc_status} order by path limit {limit}".format(**locals())
-        met_query = "select path from {table_name} where asdc_status_met == {asdc_status} order by path limit {limit}".format(**locals())
-    else:
-        nc_query  = "select path from {table_name} where asdc_status == {asdc_status} order by path".format(**locals())
-        met_query = "select path from {table_name} where asdc_status_met == {asdc_status} order by path".format(**locals())
+        qual += " limit {}".format(limit)
+
+    nc_query  = "select path from {table_name} where asdc_status == {asdc_status} {qual}".format(**locals())
+    met_query = "select path from {table_name} where asdc_status_met == {asdc_status} {qual}".format(**locals())
 
     cur.execute (nc_query)
     nc_paths = [item for t in cur.fetchall() for item in t]
@@ -270,6 +272,8 @@ def main():
                         help="List files matching status: {}".format(Asdc_Status))
     parser.add_argument('--limit', metavar='LIMIT', default=0, type=int,
                         help="Maximum number of query results to list from each database table")
+    parser.add_argument('--order', default='asc',
+                        help="File path sort order (asc | desc)")
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
@@ -299,7 +303,7 @@ def main():
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])
     elif args.list:
-        print_files_matching_status (Asdc_Status[args.list], limit=args.limit)
+        print_files_matching_status (Asdc_Status[args.list], limit=args.limit, order=args.order)
     elif args.set:
         set_file_status (args.set[0], args.set[1], args.stat)
     elif args.pans:

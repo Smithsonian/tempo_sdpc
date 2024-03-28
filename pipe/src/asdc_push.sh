@@ -48,7 +48,7 @@ do_asdc_upload()
   exclude_list="$SDPC_PIPE_DIR/etc/asdc_exclude.csv"
 
   # make list of new data product files
-  asdc_track_uploads.py --limit $SDPC_ASDC_LIMIT --list new > $file_list
+  asdc_track_uploads.py --limit $SDPC_ASDC_LIMIT --order desc --list new > $file_list
 
   # apply the upload filter
   if test -f "$exclude_list" ; then
