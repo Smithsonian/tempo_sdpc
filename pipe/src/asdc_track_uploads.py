@@ -218,16 +218,15 @@ def process_longpan(cur, longpan_file):
     return num_bad
 
 def process_longpan_files (longpan_file_list):
-    with connect_database("rw") as conn:
-        cur = conn.cursor()
-        for longpan_file in longpan_file_list:
-            try:
-                num_bad = process_longpan (cur, longpan_file)
-                if num_bad > 0:
-                    print ('{} has {} bad files'.format(longpan_file, num_bad))
-            except BaseException as e:
-                print('An exception occurred: {}'.format(e))
-                print ("Error processing file: {}".format(longpan_file))
+    for longpan_file in longpan_file_list:
+        try:
+            with connect_database("rw") as conn:
+                num_bad = process_longpan (conn.cursor(), longpan_file)
+            if num_bad > 0:
+                print ('{} has {} bad files'.format(longpan_file, num_bad))
+        except BaseException as e:
+            print('An exception occurred: {}'.format(e))
+            print ("Error processing file: {}".format(longpan_file))
 
 def set_file_status (status, file_list, update_stat):
     with open(file_list, "r") as fp:
