@@ -168,6 +168,9 @@ program OMCDO2N
     call exit(-1)
   endif
   run_mode = trim(buf)
+  if (run_mode .ne. 'production') then
+      run_mode = 'developement'
+  endif
   write(*,*)'run_mode=',trim(run_mode)
 
   status=GetConfigString("W","Runtime Parameters APPShortName",buf)

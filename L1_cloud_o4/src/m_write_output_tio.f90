@@ -23,13 +23,12 @@ module m_write_output_tio
        fill_float = fFillValue, &
        fill_double = dFillValue
 
-  real (kind=8), parameter :: &
-      ! SCD_MainDataQualityFlag fill
-       mdqf_fill = -30000.d0, & 
-      ! processing_quality_flag fill
-       pflag_fill = -30000.d0 !-2147483648.d0 
-      ! ground_pix_quality_flag fill
-      ! gflag_fill = -2147483647.d0 
+  ! SCD_MainDataQualityFlag fill
+  real (kind=8), parameter :: mdqf_fill = fill_short !-9999.d0
+  ! processing_quality_flag fill
+  real (kind=8), parameter :: pflag_fill = fill_short !-9999.d0 
+  ! ground_pix_quality_flag fill
+  real (kind=8), parameter :: gflag_fill = fill_short !-2147483647.d0 
 
 contains
 
@@ -829,15 +828,15 @@ contains
                               attlist=pqf_attrs)
     else
       ! this will execute
-      ! call tiof_attlist_append(pqf_attrs, errstat, "flag_masks", &
-      !                    att_i4 = flag_masks16)
+       call tiof_attlist_append(pqf_attrs, errstat, "flag_masks", &
+                          att_i4 = flag_masks16)
        call tiof_varlist_append (varlist, errstat, &
                               "processing_quality_flag", &
                               nf90_short, &
                            dimids = dimids_xtrack_step,  &
              long_name = "bitwise processing quality flag", &
              comment = "bits00-bit15 are all used, _FillValue & valid_range should be ignored", &
-            valid_range = [0.0_r8, 32767.0_r8], & 
+            valid_range = [-32767.0_r8, 32767.0_r8], & 
             fillvalue = pflag_fill, & !fill_short, & 
                               attlist=pqf_attrs)
     endif
@@ -1318,7 +1317,7 @@ contains
                               comment = "number of ECF iteration", &
                               units = "none", &
                               valid_range = [0._r8, 100.0_r8], &
-                              fillvalue = -999.0_r8, &
+                              fillvalue = fill_short, & !-999.0_r8, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1330,7 +1329,7 @@ contains
                              comment = "number of OCP iteration", &
                              units = "none", &
                              valid_range = [0._r8, 100.0_r8], &
-                             fillvalue = -999.0_r8, &
+                             fillvalue = fill_short, & !-999.0_r8, &
                              deflate_level = deflate_level, &
                              shuffle = shuffle, &
                              attlist = att_support)
