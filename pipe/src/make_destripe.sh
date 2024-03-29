@@ -101,7 +101,7 @@ make_destripe()
       first_basename="$(basename $first_path)"
       this_scan_id="scan_id in (select scan_id from HCHO_L2 where filename = \"$first_basename\")"
       sql="select path from HCHO_L2 where asdc_status = 100 and $this_scan_id order by istart"
-      needs_destripe=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE "$sql")
+      needs_destripe=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE "$sql")
 
       if test -n "$needs_destripe" ; then
          apply_log="$destripe_dir/destripe.log"

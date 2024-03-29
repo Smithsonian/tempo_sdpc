@@ -116,10 +116,10 @@ if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
       if ! test -f $radref_file ; then
          while true ; do
              # First, check if the RADREF_L1 table exists:
-             have_radref=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "select count(*) from sqlite_master where type='table' and name='RADREF_L1';")
+             have_radref=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE "select count(*) from sqlite_master where type='table' and name='RADREF_L1';")
              if test "$have_radref" -ne 0 ; then
                 # Ok, the table exists, so we can look for the file:
-                radref_path=$(sqlite3 -cmd ".timeout 5000" $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
+                radref_path=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE "select path from RADREF_L1 where filename=\"$radref_file\";")
                 if test -n "$radref_path" ; then
                    sed -i -e "s,radref_file=$radref_file,radref_file=$radref_path," $tar_file_notice
                    break

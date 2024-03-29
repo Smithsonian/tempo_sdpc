@@ -66,8 +66,8 @@ make_radref()
    # match up.
    first_cloud_path=$(echo $l2_cloud_paths | cut -d' ' -f1)
    first_cloud_basename="$(basename $first_cloud_path)"
-   scan_id=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE "select scan_id from CLDO4_L2 where filename = \"$first_cloud_basename\"")
-   rad_files=$(sqlite3 -cmd ".timeout 2000" $SDPC_ARCHIVE_DBFILE_L1 "select path from RAD_L1 where scan_id = $scan_id order by istart")
+   scan_id=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE "select scan_id from CLDO4_L2 where filename = \"$first_cloud_basename\"")
+   rad_files=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE_L1 "select path from RAD_L1 where scan_id = $scan_id order by istart")
 
    # Get the start/end time for each granule
    tbeg_lis=""
