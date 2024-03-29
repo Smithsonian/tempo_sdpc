@@ -16,9 +16,15 @@ process_tar_file()
 {
    tar_notice_path="$1"
 
+   radref_file=""
    . $(realpath $tar_notice_path)
+
    path=$(select_radref.py --thisscan $rad_filename)
    if test -f $path ; then
+      # make sure radref_file is defined before we push this for processing
+      if test -z "$radref_file" ; then
+         printf "radref_file=\"$path\"\n" >> $tar_notice_path
+      fi
       /bin/mv $tar_notice_path $SDPC_PIPE_DIR/stage/granules/level2_input
    fi
 }
