@@ -1878,7 +1878,11 @@ CONTAINS
           ! Scattering Weights, linear interpolation on surface pressure
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_srf) THEN
-                Sca_1D(ilay) = 0.0
+                delta1 = Sca_1D(ilay-2) - Sca_1D(ilay-1)
+                Sca_1D(ilay) = Sca_1D(ilay-1) - (delta1 * &
+                    (LOG(lut_pre_lay(ilay-1))-LOG(lut_pre_lay(ilay))) / &
+                    (LOG(lut_pre_lay(ilay-2))-LOG(lut_pre_lay(ilay-1))) )
+                IF (Sca_1D(ilay) .LT. 0) Sca_1D(ilay) = 0.0
                 cycle
              ENDIF
              IF (nsrf .EQ. 2 .AND. Sca_2D(1,ilay) .LE. 0 .AND. Sca_2D(2,ilay) .GT. 0) THEN
@@ -1927,8 +1931,12 @@ CONTAINS
           ! Cloudy scattering weights linear interpolation on cloud pressure
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_ctp) THEN
-                Sca_1D_cloud(ilay) = 0.0
-                cycle
+                delta1 = Sca_1D(ilay-2) - Sca_1D(ilay-1)
+                Sca_1D(ilay) = Sca_1D(ilay-1) - (delta1 * &
+                    (LOG(lut_pre_lay(ilay-1))-LOG(lut_pre_lay(ilay))) / &
+                    (LOG(lut_pre_lay(ilay-2))-LOG(lut_pre_lay(ilay-1))) )
+                IF (Sca_1D(ilay) .LT. 0) Sca_1D(ilay) = 0.0
+              cycle
              ENDIF
              IF (nctp .EQ. 2 .AND. Sca_2D_cloud(1,ilay) .LE. 0 .AND. Sca_2D_cloud(2,ilay) .GT. 0) THEN
                 delta1=(Sca_2D_cloud(2,ilay-2)-Sca_2D_cloud(2,ilay-1)) / &
