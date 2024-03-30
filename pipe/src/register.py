@@ -209,7 +209,7 @@ def connect_database (db_path):
     connection is established.
     """
     db_exists = os.path.isfile (db_path)
-    conn = sqlite3.connect (db_path)
+    conn = sqlite3.connect (db_path, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
 
     # When creating a new database file, use journal_mode=WAL.

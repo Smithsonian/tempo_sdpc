@@ -244,7 +244,7 @@ def table_files_matching_trend_status (cur, table_name, trend_status):
     return nc_paths
 
 def connect_database (db_file_path, mode):
-    conn = sqlite3.connect ("file:{}?mode={}".format(db_file_path, mode), uri=True)
+    conn = sqlite3.connect ("file:{}?mode={}".format(db_file_path, mode, timeout=20.0), uri=True)
     conn.execute ("pragma foreign_keys=on")
     return conn
 

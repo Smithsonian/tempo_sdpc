@@ -21,7 +21,7 @@ class Tokenizer:
         return self.regex.split(s)
 
 def connect_database (mode):
-    conn = sqlite3.connect ("file:{}?mode={}".format(DB_Path, mode), uri=True)
+    conn = sqlite3.connect ("file:{}?mode={}".format(DB_Path, mode), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn
