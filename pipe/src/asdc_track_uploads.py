@@ -11,6 +11,7 @@ import argparse
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 DryRun = False
 DB_Path = None
+TraceSQL = False
 
 class Tokenizer:
     def __init__ (self):
@@ -23,7 +24,8 @@ class Tokenizer:
 def connect_database (mode):
     conn = sqlite3.connect ("file:{}?mode={}".format(DB_Path, mode), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
-    #conn.set_trace_callback(print)
+    if TraceSQL:
+        conn.set_trace_callback(print)
     return conn
 
 def get_product_table_names (cur):
@@ -66,63 +68,60 @@ def files_matching_status (cur, asdc_status, **kwargs):
 
     return paths
 
-def table_name_for_file (filename):
-    tok = filename.split('_')
+def table_name_for_file (path_or_basename):
+    basename = os.path.basename (path_or_basename)
+    ext_split = os.path.splitext (basename)
+    if '.tar' == ext_split[1]:
+        return "RAW"
+    tok = basename.split('_')
     return '{}_{}'.format(tok[1], tok[2])
 
-def table_name_for_file_raw (filename):
-    return "RAW"
-
-def set_file_stats (cur, table_name, file_basename, st):
-    size  = st.st_size
-    mtime = int(st.st_mtime)
-    sql = "update {table_name} set mtime={mtime},size={size} where filename=\"{file_basename}\"".format (**locals())
-    if DryRun:
-        print(sql)
+def product_file_path (nc_or_met_file_path):
+    ext_split = os.path.splitext (nc_or_met_file_path)
+    if '.met' == ext_split[1]:
+        return ext_split[0]
     else:
-        cur.execute(sql)
+        return nc_or_met_file_path
 
-def update_file_status (cur, filename, asdc_status, status_time, update_stat=False, disposition=None):
+def update_file_status (cur, table_name, filename, asdc_status, status_time, update_stat=False, disposition=None):
+    fields = {}
+
     file_basename = os.path.basename (filename)
     ext_split = os.path.splitext(file_basename)
     if '.nc' == ext_split[1]:
-        status_var_name = 'asdc_status'
-        table_name = table_name_for_file (file_basename)
+        fields["asdc_status"] = asdc_status
     elif '.met' == ext_split[1]:
-        status_var_name = 'asdc_status_met'
+        fields["asdc_status_met"] = asdc_status
         file_basename = os.path.basename(ext_split[0])
-        table_name = table_name_for_file (file_basename)
     elif '.tar' == ext_split[1]:
-        status_var_name = 'asdc_status'
-        table_name = table_name_for_file_raw (file_basename)
+        fields["asdc_status"] = asdc_status
     else:
         print ('*** update_file_status: unsupported extension: {}'.format(file_basename))
         return
 
     if update_stat:
-        set_file_stats (cur, table_name, file_basename, os.stat(filename))
+        path = product_file_path (filename)
+        if os.path.isfile (path):
+            st = os.stat(path)
+            fields["mtime"] = int(st.st_mtime)
+            fields["size"] = st.st_size
 
     if asdc_status == Asdc_Status["uploaded"]:
-        status_time_var = "asdc_upload_time"
+        fields["asdc_upload_time"] = status_time
     elif asdc_status == Asdc_Status["problem"] or asdc_status == Asdc_Status["accepted"]:
-        status_time_var = "asdc_ingest_time"
-    else:
-        status_time_var = None
+        fields["asdc_ingest_time"] = status_time
 
     if disposition is not None:
-        disposition_str = ",asdc_disposition=\"{}\"".format(disposition)
-    else:
-        disposition_str = ""
+        fields["asdc_disposition"] = disposition
 
-    if status_time_var is None:
-        sql = "update {table_name} set {status_var_name}={asdc_status}{disposition_str} where filename=\"{file_basename}\"".format(**locals())
-    else:
-        sql = "update {table_name} set {status_var_name}={asdc_status},{status_time_var}={status_time}{disposition_str} where filename=\"{file_basename}\"".format(**locals())
+    set_named_fields = ",".join([k + "=:" + k for k in fields.keys()])
+
+    sql = "update {table_name} set {set_named_fields} where filename=\"{file_basename}\"".format (**locals())
 
     if DryRun:
         print(sql)
     else:
-        cur.execute (sql)
+        cur.execute (sql, fields)
 
 def count_files_matching_status (asdc_status):
     with connect_database("ro") as conn:
@@ -213,7 +212,8 @@ def process_longpan(cur, longpan_file):
             else:
                 asdc_status = Asdc_Status["problem"]
                 num_bad += 1
-            update_file_status (cur, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
+            table_name = table_name_for_file (entry["basename"])
+            update_file_status (cur, table_name, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
 
     return num_bad
 
@@ -233,10 +233,22 @@ def set_file_status (status, file_list, update_stat):
         files = fp.readlines()
     files = [f.strip() for f in files]
     status_time = int(time.time())
-    with connect_database("rw") as conn:
-        cur = conn.cursor()
-        for f in files:
-            update_file_status (cur, f, Asdc_Status[status], status_time, update_stat=update_stat)
+
+    # To streamline transactions and minimize the duration each connection is held open,
+    # we process the files by table, starting a new database connection for each table.
+
+    table_lists = {}
+    for f in files:
+        table_name = table_name_for_file (f)
+        if table_name in table_lists.keys():
+            table_lists[table_name].append(f)
+        else:
+            table_lists[table_name] = [f]
+
+    for table_name in table_lists.keys():
+        with connect_database("rw") as conn:
+            for f in table_lists[table_name]:
+                update_file_status (conn.cursor(), table_name, f, Asdc_Status[status], status_time, update_stat=update_stat)
 
 def print_query (cur, sql):
     cur.execute (sql)
@@ -285,10 +297,15 @@ def main():
                         help="Update file size, mtime")
     parser.add_argument('--dryrun', action='store_true',
                         help="Show actions, but don't modify the database")
+    parser.add_argument('--trace', action='store_true',
+                        help="Trace SQL statements")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
+
+    global TraceSQL
+    TraceSQL = args.trace
 
     global DryRun
     DryRun = args.dryrun
