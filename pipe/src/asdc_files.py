@@ -17,6 +17,7 @@ import argparse
 from netCDF4 import Dataset
 
 DryRun = False
+TraceSQL = False
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -99,11 +100,14 @@ class Table_Type:
         'begin' \
         '  update {table_name} set asdc_status_time=current_timestamp where filename = old.filename; ' \
         'end;'.format (**locals())
+        self.create_index_cmd = \
+        "create unique index if not exists filename_index_{table_name} on {table_name}(filename);".format (**locals())
 
     def create(self, cur):
         """Create an empty table"""
         cur.execute (self.create_cmd)
         cur.execute (self.create_trigger_cmd)
+        cur.execute (self.create_index_cmd)
 
     def new_entry(self, cur, names, values):
         """Insert a table entry"""
@@ -175,7 +179,8 @@ def connect_database (db_path):
     """
     conn = sqlite3.connect (db_path)
     conn.execute("pragma foreign_keys=on")
-    #conn.set_trace_callback(print)
+    if TraceSQL:
+        conn.set_trace_callback(print)
     return conn
 
 def files_matching_status1 (cur, table_name, asdc_status, limit=0):
@@ -187,13 +192,12 @@ def files_matching_status1 (cur, table_name, asdc_status, limit=0):
     paths = [item for t in cur.fetchall() for item in t]
     return sorted (paths)
 
-def update_file_status (cur, filename, table_name, asdc_status):
-    basename = os.path.basename(filename)
-    sql = "update {} set asdc_status={} where filename=\"{}\"".format(table_name, asdc_status, basename)
+def update_file_status (conn, table_name, params):
+    sql = "update {} set asdc_status=:asdc_status where filename=:filename".format(table_name)
     if DryRun:
         print(sql)
     else:
-        cur.execute (sql)
+        conn.executemany (sql, params)
 
 def query_file_status (cur, filename, table_name, missing):
     basename = os.path.basename(filename)
@@ -248,7 +252,7 @@ def longpan_entry (thefile, parse):
     entry["time_stamp"] = tok[1]
     return entry
 
-def process_longpan(cur, table_name, longpan_file, status_dict):
+def process_longpan(db_path, table_name, longpan_file, status_dict):
     """
     A LONGPAN file has a 2-line header:
         MESSAGE_TYPE = LONGPAN;
@@ -264,6 +268,8 @@ def process_longpan(cur, table_name, longpan_file, status_dict):
     """
     parse = Tokenizer()
     num_bad = 0
+
+    params = []
     with open (longpan_file, "r") as thefile:
         num_files = longpan_header (thefile, parse)
         if num_files < 0:
@@ -274,10 +280,14 @@ def process_longpan(cur, table_name, longpan_file, status_dict):
             if entry == None:
                 break
             if entry["disposition"] == "SUCCESSFUL":
-                update_file_status (cur, entry["basename"], table_name, status_dict["accepted"])
+                asdc_status = status_dict["accepted"]
             else:
-                update_file_status (cur, entry["basename"], table_name, status_dict["problem"])
+                asdc_status = status_dict["problem"]
                 num_bad += 1
+            params.append({"asdc_status":asdc_status, "filename":entry["basename"]})
+
+    with connect_database(db_path) as conn:
+        update_file_status (conn, table_name, params)
 
     return num_bad
 
@@ -304,10 +314,12 @@ class Db_File_Type:
         with open(file_list, "r") as fp:
             files = fp.readlines()
         files = [f.strip() for f in files]
+        asdc_status = self.status_dict[status]
+        params = []
+        for f in files:
+            params.append({"asdc_status":asdc_status, "filename":os.path.basename(f)})
         with connect_database(self.db_path) as conn:
-            cur = conn.cursor()
-            for f in files:
-                update_file_status (cur, f, self.table_name, self.status_dict[status])
+            update_file_status (conn, self.table_name, params)
 
     def print_file_status (self, filenames):
         with connect_database (self.db_path) as conn:
@@ -317,15 +329,13 @@ class Db_File_Type:
                 print(asdc_status)
 
     def process_longpan_files (self, longpan_file_list):
-        with connect_database(self.db_path) as conn:
-            cur = conn.cursor()
-            for longpan_file in longpan_file_list:
-                try:
-                    num_bad = process_longpan (cur, self.table_name, longpan_file, self.status_dict)
-                    if num_bad > 0:
-                        print ('{} has {} bad files'.format(longpan_file, num_bad))
-                except:
-                    print ("Error processing file: {}".format(longpan_file))
+        for longpan_file in longpan_file_list:
+            try:
+                num_bad = process_longpan (self.db_path, self.table_name, longpan_file, self.status_dict)
+                if num_bad > 0:
+                    print ('{} has {} bad files'.format(longpan_file, num_bad))
+            except:
+                print ("Error processing file: {}".format(longpan_file))
 
 def main():
     status_dict = {"unknown": -3, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3}
@@ -343,6 +353,8 @@ def main():
                         help="Set status of specified files")
     parser.add_argument('--dryrun', action='store_true',
                         help="Show actions, but don't modify the database")
+    parser.add_argument('--trace', action='store_true',
+                        help="Trace SQL transactions")
     parser.add_argument('--add', metavar='FILE', default=None, nargs="*",
                         help="Add new files to the database")
     parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
@@ -357,6 +369,9 @@ def main():
     if args.dbfile == None:
         eprint ('*** Error: DBFILE is not set')
         sys.exit(1)
+
+    global TraceSQL
+    TraceSQL = args.trace
 
     global DryRun
     DryRun = args.dryrun

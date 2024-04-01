@@ -53,10 +53,13 @@ class Table_Type:
         self.field_defs = fields
         field_list = ','.join('{} {}'.format (k,fields[k]) for k in fields.keys())
         self.create_cmd = "CREATE TABLE IF NOT EXISTS {table_name} ({field_list}, {quals});".format (**locals())
+        self.create_filename_index_cmd = \
+        "create unique index if not exists filename_index_{table_name} on {table_name}(filename)".format(**locals())
 
     def create(self, cur):
         """Create an empty table"""
         cur.execute (self.create_cmd)
+        cur.execute (self.create_filename_index_cmd)
 
     def new_entry(self, cur, names, values):
         """Insert a table entry"""
