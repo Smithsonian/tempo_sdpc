@@ -103,7 +103,7 @@ CONTAINS
   SUBROUTINE amf_calculation (            &
       pge_idx, nt, nx, lat, lon, sza, vza, saa, vaa, time,  &
       snow, glint, land, xtrange,    &
-      saocol, saodco, saoamf, terrain_height,&
+      saocol, saodco, saoamf, amfdiag, terrain_height,&
       do_write, errstat                                )
 
     ! =================================================================
@@ -142,6 +142,8 @@ CONTAINS
     ! -----------------------------
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: saocol, saodco
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT), target :: saoamf
+    ! bitwise like amf calculation flags
+    INTEGER (KIND=i2), DIMENSION (1:nx,0:nt-1), INTENT (INOUT), target :: amfdiag
     INTEGER (KIND=i4),                          INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -169,9 +171,6 @@ CONTAINS
     character (len=256) :: cloud_file
     character (len=32) :: apriori_source
     character (len=1024) :: clim_source
-
-    ! bitwise like amf calculation flags
-    integer (kind=i2), dimension (1:nx,0:nt-1), target :: amfdiag
 
     if (errstat /= 0) return
     locerrstat  = pge_errstat_ok

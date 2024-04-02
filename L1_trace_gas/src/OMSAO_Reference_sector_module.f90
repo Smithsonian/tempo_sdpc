@@ -378,7 +378,7 @@ CONTAINS
     !REAL    (KIND=r4), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_latitude, mem_longitude, mem_sza, mem_vza, &
     !  mem_height
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_fit_flag, mem_xtrflg
-    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint, mem_land_water
+    INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: mem_snow, mem_glint, mem_land_water, mem_amfdiag
     !INTEGER (KIND=i2), DIMENSION (rpt_rr%nxtrack,0:rpt_rr%ntimes-1) :: refmqf
     LOGICAL,           DIMENSION (0:rpt_rr%ntimes-1)              :: yn_szoom_rs, common_range_ok
     INTEGER (KIND=i1), DIMENSION (0:rpt_rr%ntimes-1)              :: binfac_rs
@@ -573,14 +573,14 @@ CONTAINS
       pge_idx, nTimesRadRR, nXtrackRadRR, rt%latitude, rt%longitude, &
       rt%sza, rt%vza, rt%saa, rt%vaa, rt%time, mem_snow, mem_glint, &
       mem_land_water, omi_xtrpix_range_rr, rt%column_amount, &
-      rt%column_uncertainty, mem_amf, rt%height, yn_write, locerrstat )
+      rt%column_uncertainty, mem_amf, mem_amfdiag, rt%height, yn_write, locerrstat )
 
     ! --------------------------------------------------------
     ! Compute average fitting statistics and main quality flag
     ! --------------------------------------------------------
     CALL compute_fitting_statistics ( &
       nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
-      rt%column_amount, rt%column_uncertainty, rt%rms,          &
+      rt%column_amount, rt%column_uncertainty, rt%rms, mem_amfdiag, &
       rt%fit_flag, ref_stats, locerrstat )
 
     ! ------------------------------------------------

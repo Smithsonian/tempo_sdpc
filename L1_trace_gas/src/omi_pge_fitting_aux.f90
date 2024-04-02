@@ -44,7 +44,6 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: l1b_channel
     USE OMSAO_he5_module,        ONLY: swath_base_name, pge_swath_name
-    !USE OMSAO_errstat_module,    ONLY: pge_errstat_ok
     USE OMSAO_omidata_module,    ONLY: omi_radiance_swathname, omi_irradiance_swathname
     USE OMSAO_indices_module,    ONLY: sao_molecule_names
 
@@ -60,16 +59,7 @@ CONTAINS
     ! ----------------
     INTEGER (KIND=i4), INTENT (inout) :: errstat
 
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=26), PARAMETER :: modulename = 'omi_set_fitting_parameters'
-
     if (errstat /= 0) return
-    ! --------------------------
-    ! Initialize OUTPUT variable
-    ! --------------------------
-    !errstat = pge_errstat_ok
 
     ! ---------------------------------------------------------------------
     ! Name of solar, earthshine, and L2 swaths (normally obtained from PCF)
@@ -94,28 +84,16 @@ CONTAINS
   END SUBROUTINE omi_set_fitting_parameters
 
   SUBROUTINE compute_fitting_statistics ( &
-      ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, &
+      ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, amfdiag, &
                                          fit_stats, errstat )
 
-    !USE OMSAO_precision_module,  ONLY: i2, i4, r4, r8
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
     use optimizer_interface_module, only: &
       opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
       opt_convergence_good
-    USE metadata_tools,  ONLY:  set_automatic_quality_flag !, QAPercentMissingData, QAPercentOutofBoundsData
-    !USE OMSAO_he5_module,       ONLY:  &
-    !  NrOfInputSamples, NrofGoodOutputSamples, NrofSuspectOutputSamples,        &
-    !  NrofBadOutputSamples, NrofConvergedSamples, NrofFailedConvergenceSamples, &
-    !  NrofExceededIterationsSamples, NrofOutofBoundsSamples, NrofMissingSamples, &
-    !  NrofGoodInputSamples, NrofSuspectOutputSamples, NrofBadOutputSamples,      &
-    !  NrofConvergedSamples, NrofFailedConvergenceSamples, &
-    !  PercentGoodOutputSamples, PercentSuspectOutputSamples, &
-    !  PercentBadOutputSamples, &
-    !  AbsolutePercentMissingSamples
-    !USE OMSAO_errstat_module,   ONLY: pge_errstat_ok !, vb_lev_screen
-    USE OMSAO_variables_module, ONLY: max_good_col !, verb_thresh_lev
-    !USE he5_output_tools, ONLY: he5_write_fitting_statistics
+    USE metadata_tools,  ONLY:  set_automatic_quality_flag
+    USE OMSAO_variables_module, ONLY: max_good_col
 
     IMPLICIT NONE
 
@@ -125,12 +103,11 @@ CONTAINS
     INTEGER (KIND=i4), INTENT (IN) :: ntimes, nxtrack
     INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
     REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms
-    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf
+    INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf, amfdiag
 
     ! ----------------
     ! Output variables
     ! ----------------
-    !INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (OUT) :: saomqf
     type (fitting_statistics_type), intent(inout) :: fit_stats
 
     ! -----------------
@@ -141,8 +118,7 @@ CONTAINS
     ! ----------------
     ! Local variables
     ! ----------------
-    INTEGER (KIND=i4) :: ix, it, spix, epix ! locerrstat, 
-    !REAL    (KIND=r4) :: PercentOutofBoundsSamples
+    INTEGER (KIND=i4) :: ix, it, spix, epix
     REAL    (KIND=r8) :: col_avg, rms_avg, dcol_avg
     REAL    (KIND=r8) :: col2sig, col3sig
     integer (kind=i4) :: num_col, &
@@ -152,7 +128,6 @@ CONTAINS
     character (len=256) :: out_string
 
     if (errstat /= 0) return
-    !locerrstat = pge_errstat_ok
 
     ! ---------------------------------------------------------
     ! The total number of input samples is simply the number of
@@ -297,26 +272,21 @@ CONTAINS
       REAL(num_missing, KIND=r4) / &
       MAX ( 1.0_4, REAL(fit_stats % num_input, KIND=r4) )
 
-    !QAPercentMissingData     = NINT ( fit_stats % absolute_percent_missing, KIND=i4 )
-    !QAPercentOutofBoundsData = NINT ( fit_stats % percent_out_of_bounds,    KIND=i4 )
-
     ! ------------------------------------------------------------------------
     ! With the above information we can easily determine the Automatic QA Flag
     ! ------------------------------------------------------------------------
     CALL set_automatic_quality_flag (fit_stats % percent_good_output)
 
-    !IF ( verb_thresh_lev >= vb_lev_screen ) THEN
-      WRITE (out_string, '(A, 3(1PE15.5))')'Col-DCol-RMS: ', col_avg, dcol_avg, rms_avg
-      call tell_log (0, out_string)
+    WRITE (out_string, '(A, 3(1PE15.5))')'Col-DCol-RMS: ', col_avg, dcol_avg, rms_avg
+    call tell_log (0, out_string)
 
-      WRITE (out_string, '(A, I7,A,I7,A,F7.1,A)')'Statistics:   ', &
-        MAX(num_good_output,0), ' of ', MAX(num_good_input,0), ' converged - ', &
-        MAX(fit_stats % percent_good_output, 0.0), '%'
-      call tell_log (0, out_string)
+    WRITE (out_string, '(A, I7,A,I7,A,F7.1,A)')'Statistics:   ', &
+      MAX(num_good_output,0), ' of ', MAX(num_good_input,0), ' converged - ', &
+      MAX(fit_stats % percent_good_output, 0.0), '%'
+    call tell_log (0, out_string)
 
-      WRITE (out_string, '(A, i10)') 'num_col =', num_col
-      call tell_log (0, out_string)
-    !END IF
+    WRITE (out_string, '(A, i10)') 'num_col =', num_col
+    call tell_log (0, out_string)
 
     fit_stats % col_avg  = col_avg
     fit_stats % dcol_avg = dcol_avg

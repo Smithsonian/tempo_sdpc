@@ -24,7 +24,6 @@ SUBROUTINE omi_pge_postprocess ( &
   USE OMSAO_precision_module
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
-  !USE OMSAO_errstat_module
   use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output, &
        yn_gems
   USE OMSAO_indices_module, ONLY: pge_hcho_idx
@@ -39,7 +38,6 @@ SUBROUTINE omi_pge_postprocess ( &
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
   USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
   use m_read_gems, only: gems_read_ice_glint, gems_read_geofields
-  !use datafields, only: lat_field, lon_field, sza_field, thgt_field, vza_field, time_field
   IMPLICIT NONE
 
   ! ---------------
@@ -65,7 +63,7 @@ SUBROUTINE omi_pge_postprocess ( &
   REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1) :: lat, lon, sza, vza, &
        saa, vaa, thg
   REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: saocol, saodco, saorms, saoamf
-  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf !, saomqf
+  INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: saofcf, amfdiag
   INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1) :: glint_flg, snow_ice_flg, land_water_flg
   LOGICAL                                             :: do_write
   logical :: corners_copied
@@ -80,17 +78,11 @@ SUBROUTINE omi_pge_postprocess ( &
   ! -------------------------
   ! Initialize error variable
   ! -------------------------
-  locerrstat = 0 ! pge_errstat_ok
+  locerrstat = 0
 
   ! ----------------------------------------
   ! Read geolocation fields (Lat/Lon/SZA/VZA
   ! ----------------------------------------
-!  CALL  saopge_geofield_read ( ntimes, nxtrack, lat_field,  lat, locerrstat )
-!  CALL  saopge_geofield_read ( ntimes, nxtrack, lon_field,  lon, locerrstat )
-!  CALL  saopge_geofield_read ( ntimes, nxtrack, sza_field,  sza, locerrstat )
-!  CALL  saopge_geofield_read ( ntimes, nxtrack, vza_field,  vza, locerrstat )
-!  CALL  saopge_geofield_read ( ntimes, nxtrack, thgt_field, thg, locerrstat )
-!  CALL  saopge_geofieldtime_read (ntimes, time_field, time, locerrstat )
   if (.not. yn_gems) then !TEMPO
     call read_geofields (l1b_rad_filename, ntimes, nxtrack, lat, lon, &
          sza, vza, saa, vaa, thg, time, errstat)
@@ -118,8 +110,6 @@ SUBROUTINE omi_pge_postprocess ( &
     if (errstat /= 0) return
   endif
 
-!  CALL saopge_columninfo_read ( ntimes, nxtrack, saocol, saodco, saorms, &
-!    saoamf, saofcf, locerrstat )
   call read_column_results (ntimes, nxtrack, saocol, saodco, saorms, &
        saoamf, saofcf, errstat)
   if (errstat /= 0) return
@@ -144,7 +134,7 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL amf_calculation (                             &
     pge_idx, ntimes, nxtrack, lat, lon, sza, vza, saa, vaa, time,  &
     snow_ice_flg, glint_flg, land_water_flg, xtrange,       &
-    saocol, saodco, saoamf, thg, do_write, &
+    saocol, saodco, saoamf, amfdiag, thg, do_write, &
     errstat              )
   if (errstat /= 0) return
 
@@ -159,21 +149,20 @@ SUBROUTINE omi_pge_postprocess ( &
   endif
   call tell_log (1, 'omi_pge_postprocess:  calling compute_fitting_statistics')
   CALL compute_fitting_statistics ( ntimes, nxtrack, xtrange, &
-    saocol, saodco, saorms, saofcf, fit_stats, errstat) ! locerrstat )
+    saocol, saodco, saorms, saofcf, amfdiag, fit_stats, errstat)
   if (errstat /= 0) return
   if (yn_do_he5_output) then
     CALL he5_write_fitting_statistics ( &
       pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
       fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
   endif
-  !errstat = max(locerrstat, errstat)
   ! ---------------------------------------
   ! Apply cross-track destriping correction
   ! ---------------------------------------
   call tell_log (1, 'omi_pge_postprocess:  calling xtrack_destriping')
   CALL xtrack_destriping (ntimes, nxtrack, do_process_line, xtrange, &
-    lat, saocol, & !saodco, saoamf, saofcf,
-    fit_stats % quality_flag, errstat) ! locerrstat )
+    lat, saocol, &
+    fit_stats % quality_flag, errstat)
 
   ! ---------------------------------------------------------------
   ! Apply Reference Sector Correction; Only for HCHO retrieval !gga
@@ -181,9 +170,9 @@ SUBROUTINE omi_pge_postprocess ( &
   IF ((yn_refseccor) .AND. ( pge_idx == pge_hcho_idx ) .AND.  &
     (yn_radiance_reference)) THEN
     call tell_log (1, 'omi_pge_postprocess:  calling Reference_Sector_correction')
-    CALL Reference_Sector_correction (ntimes, nxtrack, & !xtrange, lat,
+    CALL Reference_Sector_correction (ntimes, nxtrack, &
       saocol, saodco, saoamf, fit_stats % quality_flag, pge_idx, n_max_rspec, &
-      errstat) ! locerrstat)
+      errstat)
   ENDIF
 
   ! Deallocate AMF variables
