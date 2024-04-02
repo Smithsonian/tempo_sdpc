@@ -225,12 +225,12 @@ contains
                               //' '//trim(tg_var_longitude) &
                               //' '//trim(tg_var_latitude))
     call tiof_attlist_append (att_amf_diag, errstat, "flag_meanings", &
-                              att_text = "geometric_AMF glint snow_correction "// &
-                              "no_cloud_pressure adjusted_surface_pressure "// &
+                              att_text = "good_AMF no_AMF glint "// &
+                              "climatological_cloud_pressure adjusted_surface_pressure "// &
                               "adjusted_cloud_pressure no_albedo no_cloud_fraction "// &
-                              "no_gas_profile no_scattering_weights AMF_disabled")
+                              "no_gas_profile no_scattering_weights no_geolocation_information")
     call tiof_attlist_append (att_amf_diag, errstat, "flag_masks", &
-                              att_i4 = [1, 2, 4, 8, 16, 32, 2048, 4096, 8192, 16384, 32768])
+                              att_i4 = [1, 2, 4, 8, 16, 32, 1024, 2048, 4096, 8192, 16384])
     ! append amf variables
     chunksizes(1) = dimsizes_levels_xtrack_step(1)            ! level dimension
     chunksizes(2) = min(dimsizes_levels_xtrack_step(2), 128)  ! xtrack dimension
@@ -307,7 +307,8 @@ contains
                               nf90_short, &
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" air mass factor diagnostic flag ", &
-                              fillvalue = fill_short, &
+                              comment = "bitwise air mass factor calculation flag", &
+                              fillvalue = real(0,kind=8), &
                               attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_eff_cld_frac, &

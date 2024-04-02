@@ -6,7 +6,8 @@ MODULE OMSAO_wfamf_module
   ! and calculate them
   ! ====================================================================
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
-  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, i4_missval, r4_missval, r8_missval, dobson_units
+  USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval_l1, i4_missval, &
+      r4_missval, r8_missval, dobson_units
   use tell_module
   use tio_module
   use ctrlvars, only: yn_gems
@@ -49,9 +50,9 @@ MODULE OMSAO_wfamf_module
   ! ------------------------------
   ! amfdiag bit meaning parameters
   ! ------------------------------
-  integer(kind=i2), parameter :: yn_amf_geo=0, yn_glint=1, yn_snow=2, &
-       yn_cld_cli=3, yn_adj_srf_pre=4, yn_adj_cld_pre=5, yn_albedo=11, yn_cld=12, &
-       yn_gas_cli=13, yn_sca=14, yn_amf_cor=15
+  integer(kind=i2), parameter :: yn_good=0, yn_amf=1, yn_glint=2, &
+       yn_cld_cli=3, yn_adj_srf_pre=4, yn_adj_cld_pre=5, yn_albedo=10, yn_cld=11, &
+       yn_gas_cli=12, yn_sca=13, yn_geo=14
 
   ! ------------------------------
   ! Vlidort lookup table variables
@@ -150,7 +151,7 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER (KIND=i4)                                :: locerrstat
-    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: amfgeo, tropospheric_amf, &
+    REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: tropospheric_amf, &
          stratospheric_amf
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     real    (kind=r8), dimension (1:nx,0:nt-1)       :: crfrc
@@ -189,7 +190,6 @@ CONTAINS
     ptemperature = r8_missval
     scattw       = r8_missval
     saoamf       = r8_missval
-    amfgeo       = r8_missval
     crfrc        = r8_missval
     amfdiag      = 0
     surface_pressure = r4_missval
@@ -208,27 +208,13 @@ CONTAINS
     ! -----------------------------------------
     IF (amf_wvl .LT. 0.0) THEN
        saoamf = 1.0_r8
-       amfdiag=ibset(amfdiag,yn_amf_cor)
+       amfdiag=ibset(amfdiag,yn_amf)
     ELSE
-
        ! -----------------
        ! Geolocation check
        ! -----------------
        call tell_log (1, 'amf_calculation: check geolocation information')
        call check_geolocation ( nt, nx, lat, lon, sza, vza, terrain_height, amfdiag )
-
-       ! -------------------------
-       ! Compute the geometric AMF
-       ! -------------------------
-       call tell_log (1, 'amf_calculation: compute geometric amf')
-       CALL compute_geometric_amf ( nt, nx, sza, vza, amfgeo, amfdiag )
-
-       ! -------------------------------------------------------
-       ! Initialize molecular AMF with geometric AMF. Subsequent
-       ! subroutines will replace any entries where the true
-       ! molecular AMF can be computed.
-       ! -------------------------------------------------------
-       saoamf = amfgeo
 
        ! ------------------------------------------------------------------
        ! Read VLIDORT look up table. Variables are declared at module level
@@ -244,7 +230,7 @@ CONTAINS
        endif
 
        ! ---------------------------
-       ! Set amfdiag bit 3 for glint
+       ! Set amfdiag bit for glint
        ! ---------------------------
        where (glint(1:nx,0:nt-1) /= 0)
          amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_glint)
@@ -313,7 +299,7 @@ CONTAINS
        else
          ! --------------------------------------------------------------
          ! Read and interpolate albedo database. If no albedo information
-         ! set amfdiag bit 2.
+         ! set amfdiag bit yn_albedo.
          ! ------------------------------------------------------------
          call read_albedo ( nt, nx, lat, lon, amfdiag, albedo, errstat)
          if (errstat /= 0) then
@@ -379,7 +365,7 @@ CONTAINS
     ! --------------------------
     ! Apply the air mass factors
     ! --------------------------
-    WHERE ( saoamf > 0.0_r8 .AND. saocol > r8_missval .AND. saodco > r8_missval )
+    WHERE ( saoamf > 0.0_r8 .AND. saocol > r8_missval .AND. saodco > r8_missval .AND. btest(amfdiag,yn_good) )
       saocol = saocol / saoamf
       saodco = saodco / saoamf
     END WHERE
@@ -398,7 +384,6 @@ CONTAINS
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_molecule_stratospheric => stratospheric_amf
       amf_corr % amf_molecule_tropospheric => tropospheric_amf
-      amf_corr % amf_geometric => amfgeo
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
@@ -423,14 +408,12 @@ CONTAINS
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon, terrain_height
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: sza, vza
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
-    real (kind=r4), parameter :: terrain_height_missval=-32737.0
+    real (kind=r4), parameter :: terrain_height_missval=real(i2_missval_l1,kind=4)
 
     ! Check that a complete set of geolocation information is available to
     ! complete the AMF calculation. SZA and VZA have to be between 0 and 90
     ! and latitude and longitude have to be not equal to r4_missval
-    ! Pixels without complete geolocation information get amfdiag bit 0 set
-    ! FIXME, some pixels have no terrain height information. Those are given
-    ! the value -32767. Will be good to know
+    ! Pixels without complete geolocation information get amfdiag bit yn_geo set
     where ( &
          sza(1:nx,0:nt-1) == r4_missval .or. &
          sza(1:nx,0:nt-1) < 0.0_r4 .or. &
@@ -441,38 +424,9 @@ CONTAINS
          lat(1:nx,0:nt-1) == r4_missval .or. &
          lon(1:nx,0:nt-1) == r4_missval .or. &
          terrain_height(1:nx,0:nt-1) == terrain_height_missval )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_amf_cor)
+       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_geo)
     end where
   end subroutine check_geolocation
-
-  subroutine compute_geometric_amf ( nt, nx, sza, vza, amfgeo, amfdiag )
-    use OMSAO_parameters_module, only: deg2rad
-
-    IMPLICIT NONE
-
-    ! ---------------
-    ! Input variables
-    ! ---------------
-    integer (kind=i4),                         intent (IN) :: nx, nt
-    real    (kind=r4), dimension (nx,0:nt-1),  intent (IN) :: sza, vza
-
-    ! ----------------
-    ! Output variables
-    ! ----------------
-    real (kind=r8), dimension (1:nx,0:nt-1), intent (OUT) :: amfgeo
-    integer (kind=i2), dimension (1:nx,0:nt-1), intent (OUT) :: amfdiag
-
-    ! ---------------------------------------------------
-    ! Compute geometric AMF and set diagnostic flag bit 1
-    ! ---------------------------------------------------
-    where (.not. btest(amfdiag(1:nx,0:nt-1),yn_amf_cor))
-       amfgeo(1:nx,0:nt-1) = &
-            1.0_r8 / cos ( real(sza(1:nx,0:nt-1),KIND=r8)*deg2rad ) + &
-            1.0_r8 / cos ( real(vza(1:nx,0:nt-1),KIND=r8)*deg2rad )
-       amfdiag(1:nx,0:nt-1) = ibset(amfdiag(1:nx,0:nt-1),yn_amf_geo)
-    end where
-    return
-  end subroutine compute_geometric_amf
 
   subroutine get_gler_albedo (nt, nx, lat, lon, time, land, wind_speed, snow, &
                               amfdiag, albedo, errstat)
@@ -510,10 +464,7 @@ CONTAINS
       do ix = 1, nx
 
         ! Skip this pixel if geolocation information is not available
-        if (btest(amfdiag(ix,it),yn_amf_cor)) then
-          amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_gas_cli)
-          cycle
-        end if
+        if (btest(amfdiag(ix,it),yn_geo)) cycle
 
         if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
           snow_ice_fraction = real(snow(ix,it),kind=r4)/100.0_r4
@@ -523,14 +474,16 @@ CONTAINS
 
         call gler_albedo (glt, lon(ix,it), lat(ix,it), land(ix,it), wind_speed(ix,it), &
                           snow_ice_fraction, alb, errstat)
-        albedo(ix,it) = real(alb, kind=r8)
-
         if (errstat /= 0) then
           write (*,*)'gler_albedo failed: ix=',ix,'it=',it, &
             'lon=',lon(ix,it),'lat=',lat(ix,it)
+          amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_albedo)
           errstat = 0
           call tell_set_error (0)
+          cycle
         endif
+        albedo(ix,it) = real(alb, kind=r8)
+
       enddo
     enddo
 
@@ -871,7 +824,6 @@ CONTAINS
           else if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
              frc = real(snow(ix,it),kind=r8)/100.0_r8
              albedo(ix,it) = (1.0_r8-frc) * albedo (ix,it) + frc * amf_alb_sno
-             amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_snow)
           end if
        end do
     end do
@@ -930,7 +882,7 @@ CONTAINS
     do ix=1,nx
        do it=0,nt-1
           ! Skip this pixel if time or geolocation information is not available
-          if (time(it) == r8_missval .or. btest(amfdiag(ix,it),yn_amf_cor)) cycle
+          if (time(it) == r8_missval .or. btest(amfdiag(ix,it),yn_geo)) cycle
           if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
              call tio_f_taix_time_to_utc_caldate (time(it)-tai93_offset, year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
@@ -1083,10 +1035,7 @@ CONTAINS
 
        do ixtrack = 1, nx
           ! Skip this pixel if geolocation information is not available
-          if (btest(amfdiag(ixtrack,itimes),yn_amf_cor)) then
-             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
-             cycle
-          end if
+          if (btest(amfdiag(ixtrack,itimes),yn_geo)) cycle
 
           lon_f = fudge_lon(ixtrack,itimes)
           lat_f = fudge_lat(ixtrack,itimes)
@@ -1554,12 +1503,17 @@ CONTAINS
        ! Loop over xtrack positions
        ! --------------------------
        DO ixtrack = 1, nx
+          ! If we are outside the xtrange no AMF calculation
+          if ( ixtrack < xtrange(itime,1) .or. ixtrack > xtrange(itime,2) ) then
+             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_amf)
+             cycle
+          endif
+
           ! Only calculate scattering weights if we have geolocation,
           ! albedo, and cloud information.
-          if ( btest(amfdiag(ixtrack,itime),yn_amf_cor) .or. &
+          if ( btest(amfdiag(ixtrack,itime),yn_geo) .or. &
                btest(amfdiag(ixtrack,itime),yn_albedo) .or. &
-               btest(amfdiag(ixtrack,itime),yn_cld) .or. &
-               ixtrack < xtrange(itime,1) .or. ixtrack > xtrange(itime,2) ) then
+               btest(amfdiag(ixtrack,itime),yn_cld)) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
              cycle
           end if
@@ -1605,7 +1559,7 @@ CONTAINS
              local_ctp = local_srf
              l2ctp(ixtrack,itime) = local_ctp
           end if
-          ! Make sure surface and local
+          ! Make sure surface and cloud local
           ! pressures are within LUT limits
           if ( local_srf > maxval(lut_srf) ) then
              local_srf = maxval(lut_srf)
@@ -1624,7 +1578,7 @@ CONTAINS
              l2ctp(ixtrack,itime) = local_ctp
           end if
 
-          ! Assign surface pressure values.
+          ! Assign adjusted surface pressure values.
           surface_pressure(ixtrack,itime) = real(local_srf,kind=r4)
 
           ! -----------------------------------------------
@@ -2139,9 +2093,20 @@ CONTAINS
         ! We can only calculate AMFs if we have both,
         ! scattering weights and gas profiles
         ! -------------------------------------------
-        IF ( btest(amfdiag(ixtrack,itimes),yn_gas_cli) .or. btest(amfdiag(ixtrack,itimes),yn_sca) ) cycle
+        IF ( btest(amfdiag(ixtrack,itimes),yn_gas_cli) .or. btest(amfdiag(ixtrack,itimes),yn_sca) ) THEN
+           amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_amf)
+           cycle
+        ENDIF
 
-        
+        ! --------------------------------------------------------------
+        ! Reset diagnostic flag to fill value for pixels with yn_amf bit
+        ! which will only occur if outside xtrange
+        ! --------------------------------------------------------------
+        IF (btest(amfdiag(ixtrack,itimes),yn_amf)) THEN
+           amfdiag(ixtrack,itimes) = 0
+           cycle
+        ENDIF
+
         ! ------------------------------------------------------------------------
         ! Initialize alpha to 1, which implies no alpha correction
         ! In the future the control file can provide the three parameters
@@ -2242,10 +2207,10 @@ CONTAINS
              profiles(1:CmETA,ixtrack,itimes) * alpha(1:CmETA))     / &
              SUM(profiles(1:CmETA,ixtrack,itimes))
 
-        ! --------------------------------------------------------------------
-        ! Unset amfdiag pixel 1 to indicate molecular instead of geometric amf
-        ! --------------------------------------------------------------------
-        amfdiag(ixtrack,itimes) = ibclr(amfdiag(ixtrack,itimes),yn_amf_geo)
+        ! -----------------------------
+        ! Set quality flag for good AMF
+        ! -----------------------------
+        amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes), yn_good)
 
       END DO ! Finish xtrack pixel loop
     END DO ! Finish
