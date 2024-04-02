@@ -735,7 +735,7 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "radiance fit RMS residual", &
-                              valid_range = [0.0_r8, 0.01_r8], &
+                              valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_double, &
                               attlist=att_coord)
     call tiof_varlist_append (varlist_qa, errstat, &
