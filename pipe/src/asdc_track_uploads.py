@@ -252,19 +252,19 @@ def set_file_status (status, file_list, update_stat):
 
 def print_query (cur, sql):
     cur.execute (sql)
-    while True:
-        row = cur.fetchone()
-        if row is None:
-            break
+    for row in cur:
         print(','.join(map(str,row)))
 
-def print_report (asdc_status_name, ymd):
+def print_report (asdc_status_name, ymd, limit=0):
     asdc_status = Asdc_Status[asdc_status_name]
     if ymd:
         times="datetime(asdc_upload_time,\"unixepoch\"),datetime(asdc_ingest_time,\"unixepoch\")"
     else:
         times="asdc_upload_time,asdc_ingest_time"
     other_columns="asdc_disposition,path"
+    limit_qual = ""
+    if limit > 0:
+        limit_qual = "limit {}".format(limit)
     print ("#{times},{other_columns}".format(**locals()))
     with connect_database("ro") as conn:
         cur = conn.cursor()
@@ -272,7 +272,7 @@ def print_report (asdc_status_name, ymd):
         for tbl in table_names:
             if tbl == "RAD_L1a":
                 continue
-            sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} or asdc_status_met = {asdc_status} order by asdc_upload_time".format (**locals())
+            sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} or asdc_status_met = {asdc_status} order by asdc_upload_time {limit_qual}".format (**locals())
             print_query (cur, sql)
 
 def main():
@@ -325,7 +325,7 @@ def main():
     elif args.pans:
         process_longpan_files(args.pans)
     elif args.report:
-        print_report (args.report, args.ymd)
+        print_report (args.report, args.ymd, limit=args.limit)
 
 if __name__ == "__main__":
     main()
