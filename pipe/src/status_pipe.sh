@@ -39,6 +39,19 @@ separator()
   printf "\n"
 }
 
+report_dir_count()
+{
+   objtype="$1"
+   label="$2"
+   dir="$3"
+   dirpath=$(eval "printf $dir")   # dir may contain environment variables that we want to preserve
+   num=0
+   if test -d $dirpath ; then
+      num=$(find $dirpath -mindepth 1 -maxdepth 1 -type $objtype | wc -l)
+   fi
+   printf "\t%4d:\t%s\t%s\n" "$num" "$label" "$dir"
+}
+
 service_check()
 {
   echo "Errors/warnings in service log files updated since $utc_beg:"
@@ -64,6 +77,11 @@ service_check()
          printf "\tNONE:\t$d\n"
       fi
   done
+
+  printf "\nFile problems:\n"
+  report_dir_count f "bad frames" '$SDPC_PIPE_DIR/stage/level0/spool/.bad'
+  report_dir_count f "INR failed" '$SDPC_PIPE_DIR/stage/granules/inr_input/problem/'
+  report_dir_count l "bad products" '$SDPC_ARCHIVE_DIR/registry/failed'
 }
 
 cluster_check()
