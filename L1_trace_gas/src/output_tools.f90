@@ -308,6 +308,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               long_name = trim(target_molecule % name)//" air mass factor diagnostic flag ", &
                               comment = "bitwise air mass factor calculation flag", &
+                              valid_range = [1.0_r8, 32767.0_r8], &
                               fillvalue = real(0,kind=8), &
                               attlist = att_amf_diag)
     call tiof_varlist_append (varlist, errstat, &
