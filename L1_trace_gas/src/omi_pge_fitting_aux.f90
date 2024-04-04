@@ -84,16 +84,19 @@ CONTAINS
   END SUBROUTINE omi_set_fitting_parameters
 
   SUBROUTINE compute_fitting_statistics ( &
-      ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, amfdiag, &
-                                         fit_stats, errstat )
+      ntimes, nxtrack, xtrange, saocol, saodco, saorms, saofcf, saoamf, amfdiag, &
+      sza, vza, fit_stats, errstat )
 
     USE OMSAO_parameters_module, ONLY: &
-      i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad
+      i2_missval, r8_missval, main_qa_good, main_qa_suspect, main_qa_bad, &
+      yn_amf, deg2rad
     use optimizer_interface_module, only: &
       opt_convergence_failed, opt_convergence_maxiter_exceeded, opt_convergence_suspect, &
       opt_convergence_good
     USE metadata_tools,  ONLY:  set_automatic_quality_flag
-    USE OMSAO_variables_module, ONLY: max_good_col
+    USE OMSAO_variables_module, ONLY: mdqf_max_good_col, mdqf_min_good_col, &
+      mdqf_stddev_sus, mdqf_stddev_bad, mdqf_sza_sus, mdqf_sza_bad, &
+      mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min
 
     IMPLICIT NONE
 
@@ -102,8 +105,9 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4), INTENT (IN) :: ntimes, nxtrack
     INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),     INTENT (IN) :: xtrange
-    REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms
+    REAL    (KIND=r8), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saocol, saodco, saorms, saoamf
     INTEGER (KIND=i2), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: saofcf, amfdiag
+    REAL    (KIND=r4), DIMENSION (nxtrack,0:ntimes-1), INTENT (IN) :: sza, vza
 
     ! ----------------
     ! Output variables
@@ -120,7 +124,7 @@ CONTAINS
     ! ----------------
     INTEGER (KIND=i4) :: ix, it, spix, epix
     REAL    (KIND=r8) :: col_avg, rms_avg, dcol_avg
-    REAL    (KIND=r8) :: col2sig, col3sig
+    REAL    (KIND=r8) :: colsig_sus, colsig_bad, amfgeo
     integer (kind=i4) :: num_col, &
       num_good_input, num_good_output, num_missing, num_suspect_output, &
       num_bad_output, num_converged, num_failed_convergence, num_exceeded_iterations, &
@@ -159,49 +163,75 @@ CONTAINS
       spix = xtrange(it,1) ; epix = xtrange(it,2)
       DO ix = spix, epix
 
-        col2sig = saocol(ix,it)+2.0_r8*saodco(ix,it)
-        col3sig = saocol(ix,it)+3.0_r8*saodco(ix,it)
+        ! Calculate SCD uncertainty limit for filtering
+        colsig_sus = (saocol(ix,it) + mdqf_stddev_sus * saodco(ix,it)) * saoamf(ix,it)
+        colsig_bad = (saocol(ix,it) + mdqf_stddev_bad * saodco(ix,it)) * saoamf(ix,it)
+
+        ! Calculate geometric AMF for filtering
+        amfgeo = &
+            1.0_r8 / cos ( real(sza(ix,it),KIND=r8)*deg2rad ) + &
+            1.0_r8 / cos ( real(vza(ix,it),KIND=r8)*deg2rad )
+
+        ! If negative inputs for SZA or geometric AMF limits are given in control file,
+        ! set these to very large numbers so that the flag does not use them 
+        ! as constraints. If mdqf_amf_min is negative, it will already be
+        ! ignored.  
+        IF (mdqf_amfgeo_sus < 0) mdqf_amfgeo_sus = 1.0e30
+        IF (mdqf_amfgeo_bad < 0) mdqf_amfgeo_bad = 1.0e30
+        IF (mdqf_sza_sus < 0)    mdqf_sza_sus    = 1.0e30
+        IF (mdqf_sza_bad < 0)    mdqf_sza_bad    = 1.0e30
 
         ! ------------------------------------------------------
-        ! The Good: Columns are postive within two sigma fitting
+        ! The Good: Columns are postive within a defined sigma fitting
         !           uncertainty and the fitting has converged.
         !           For this "sweet spot" we compute the average
         !           fitting statistics.
         ! ------------------------------------------------------
-        IF ((saofcf(ix,it)    == opt_convergence_good) .AND. &
-            (saocol(ix,it)      >  r8_missval        ) .AND. &
-            (ABS(saocol(ix,it)) <= max_good_col      ) .AND. &
-            (col2sig            >= 0.0_r8            ) ) THEN
 
-          fit_stats % quality_flag(ix,it) = main_qa_good
+        IF (saofcf(ix,it) == opt_convergence_good) THEN
 
-          num_good_input = num_good_input + 1
           num_converged = num_converged + 1
-          num_good_output = num_good_output + 1
 
-          col_avg  = col_avg  + saocol(ix,it)
-          dcol_avg = dcol_avg + saodco(ix,it)
-          rms_avg  = rms_avg  + saorms(ix,it)
-          num_col  = num_col + 1
+          IF((saocol(ix,it) >= mdqf_min_good_col   ) .AND. &
+             (saocol(ix,it) <= mdqf_max_good_col   ) .AND. &            
+             (colsig_sus    >= 0.0_r8              ) .AND. &
+             (sza(ix,it)    <= mdqf_sza_sus        ) .AND. &
+             (amfgeo        <= mdqf_amfgeo_sus     ) .AND. &
+             (saoamf(ix,it) >= mdqf_amf_min        ) )  THEN
+ 
+            fit_stats % quality_flag(ix,it) = main_qa_good
 
-          CYCLE
+            num_good_input = num_good_input + 1
+            num_good_output = num_good_output + 1
+
+            col_avg  = col_avg  + saocol(ix,it)
+            dcol_avg = dcol_avg + saodco(ix,it)
+            rms_avg  = rms_avg  + saorms(ix,it)
+            num_col  = num_col + 1
+
+            CYCLE
+          END IF
         END IF
 
         ! ----------------------------------------------------------
         ! The Bad: Fitting hasn't converged or columns are negative
-        !          within three sigma fitting uncertainty. Note that
+        !          within a defined sigma fitting uncertainty. Note that
         !          pixels can count towards both the number of out-
         !          of bounds and the failed convergence samples.
         ! ----------------------------------------------------------
         IF ((saofcf(ix,it) > i2_missval .AND. saofcf(ix,it) < 0_i2) .OR. &
-            (saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8    ) ) THEN
+            (saocol(ix,it) > r8_missval .AND. colsig_bad < 0.0_r8 ) .OR. &
+            (btest(amfdiag(ix,it),yn_amf)                         ) .OR. &
+            (sza(ix,it) > mdqf_sza_bad                            ) .OR. &
+            (amfgeo > mdqf_amfgeo_bad                             ) ) THEN
 
           fit_stats % quality_flag(ix,it) = main_qa_bad
 
           num_good_input = num_good_input + 1
           num_bad_output = num_bad_output + 1
 
-          IF (saocol(ix,it) > r8_missval .AND. col3sig < 0.0_r8 ) &
+          IF (saocol(ix,it) > r8_missval .AND. (colsig_bad < 0.0_r8 .OR. &
+             sza(ix,it) > mdqf_sza_bad .OR. amfgeo > mdqf_amfgeo_bad)) &
             num_out_of_bounds = num_out_of_bounds + 1
           IF (saofcf(ix,it) == opt_convergence_failed .or. saofcf(ix,it) == opt_convergence_maxiter_exceeded ) &
             num_failed_convergence = num_failed_convergence  + 1
@@ -216,9 +246,13 @@ CONTAINS
         ! ----------------------------------------------------------
         IF (saocol(ix,it) > r8_missval ) THEN
 
-          IF ((saofcf(ix,it) == opt_convergence_suspect) .OR. &
-              (col2sig <  0.0_r8 .AND. col3sig >= 0.0_r8) .OR. &
-              (ABS(saocol(ix,it)) > max_good_col        ) ) THEN
+          IF ((saofcf(ix,it) == opt_convergence_suspect       ) .OR. &
+              (colsig_sus < 0.0_r8 .AND. colsig_bad >= 0.0_r8 ) .OR. &
+              (saocol(ix,it) > mdqf_max_good_col              ) .OR. &
+              (saocol(ix,it) < mdqf_min_good_col              ) .OR. &
+              (sza(ix,it) > mdqf_sza_sus .AND. sza(ix,it) <= mdqf_sza_bad) .OR. &   
+              (amfgeo > mdqf_amfgeo_sus .AND. amfgeo <= mdqf_amfgeo_bad  ) .OR. &
+              (saoamf(ix,it) <  mdqf_amf_min                  ) ) THEN
 
             fit_stats % quality_flag(ix,it) = main_qa_suspect
 
@@ -281,8 +315,14 @@ CONTAINS
     call tell_log (0, out_string)
 
     WRITE (out_string, '(A, I7,A,I7,A,F7.1,A)')'Statistics:   ', &
-      MAX(num_good_output,0), ' of ', MAX(num_good_input,0), ' converged - ', &
+      MAX(num_good_output,0), ' of ', MAX(num_good_input,0), ' converged and in bounds - ', &
       MAX(fit_stats % percent_good_output, 0.0), '%'
+    call tell_log (0, out_string)
+
+    WRITE (out_string, '(A, I7,A,I7,A,F7.1,A)')'Statistics:   ', &
+      MAX(num_converged,0), ' of ', MAX(num_good_input,0), ' converged - ', &
+      MAX(100_r4 * REAL(num_converged, KIND=r4) / &
+      MAX ( 1.0_r4, REAL(num_good_input,  KIND=r4) ), 0.0), '%'
     call tell_log (0, out_string)
 
     WRITE (out_string, '(A, i10)') 'num_col =', num_col

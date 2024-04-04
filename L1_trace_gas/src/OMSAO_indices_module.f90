@@ -443,7 +443,7 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=26), PARAMETER :: genline_str     = 'General fitting parameters'
   CHARACTER (LEN=24), PARAMETER :: iofline_str     = 'Input/output data files'
   CHARACTER (LEN=18), PARAMETER :: molline_str     = 'Molecule(s) to fit'
-  CHARACTER (LEN=26), PARAMETER :: maxgoodcol_str  = 'Maximum Good Column Amount'
+  CHARACTER (LEN=29), PARAMETER :: mdqfline_str    = 'Main data quality flag limits'
   CHARACTER (LEN=22), PARAMETER :: nrmline_str     = 'Spectrum normalization'
   CHARACTER (LEN=37), PARAMETER :: o3amf_str       = 'Correct O3 AMF Wavelength Dependence?'
   CHARACTER (LEN=24), PARAMETER :: amf_str         = 'AMF calculation settings'

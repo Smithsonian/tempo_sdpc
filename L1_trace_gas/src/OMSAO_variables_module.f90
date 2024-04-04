@@ -203,9 +203,11 @@ MODULE OMSAO_variables_module
   INTEGER (KIND=I4) :: max_itnum_sol, max_itnum_rad
 
   ! ------------------------------------
-  ! Maximum good column amount
+  ! Main data quality flag limits
   ! ------------------------------------
-  REAL (KIND=r8) :: max_good_col
+  REAL (KIND=r8) :: mdqf_min_good_col, mdqf_max_good_col, &
+      mdqf_stddev_sus, mdqf_stddev_bad, mdqf_sza_sus, mdqf_sza_bad,   &
+      mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min
 
   ! ---------------------
   ! L1B and L2 file names

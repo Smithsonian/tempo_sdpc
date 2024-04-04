@@ -65,7 +65,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     genline_str, socline_str, racline_str, rrsline_str, procline_str,                   &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
-    destriping_str, nrmline_str, comline_str, o3amf_str, maxgoodcol_str,   &
+    destriping_str, nrmline_str, comline_str, o3amf_str, mdqfline_str,   &
     comm_idx, procmode_diag, amf_str, I0_str,            &
     newshift_str, refseccor_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
@@ -80,7 +80,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     have_undersampling,                                                &
     ctrl_n_fitres_loop, ctrl_fitres_range, l1b_channel, &
     common_fitpos, common_fitvar, common_latrange, &
-    max_good_col, &
+    mdqf_min_good_col, mdqf_max_good_col, mdqf_stddev_sus, mdqf_stddev_bad, &
+    mdqf_sza_sus, mdqf_sza_bad, mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min, &
     radref_latrange, target_npol
   USE OMSAO_destriping_module, ONLY: &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
@@ -606,17 +607,21 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Position cursor to read maximum good column amount
   ! ---------------------------------------------------------------------------
   REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, maxgoodcol_str, tmpchar, file_read_stat )
+  CALL skip_to_filemark ( fit_ctrl_unit, mdqfline_str, tmpchar, file_read_stat )
   if (file_read_stat /= 0) then
     call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(maxgoodcol_str), errstat)
+                     trim(mdqfline_str), errstat)
     return
   endif
   !CALL error_check ( &
   !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//maxgoodcol_str, vb_lev_default, pge_error_status )
+  !  modulename//f_sep//mdqfline_str, vb_lev_default, pge_error_status )
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) max_good_col
+  READ (fit_ctrl_unit, *) mdqf_min_good_col, mdqf_max_good_col
+  READ (fit_ctrl_unit, *) mdqf_stddev_sus, mdqf_stddev_bad
+  READ (fit_ctrl_unit, *) mdqf_sza_sus, mdqf_sza_bad 
+  READ (fit_ctrl_unit, *) mdqf_amfgeo_sus, mdqf_amfgeo_bad  
+  READ (fit_ctrl_unit, *) mdqf_amf_min
 
   ! ---------------------------------------------------------------------------
   ! Position cursor to read destriping parameters:
@@ -708,7 +713,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   ! Unless we come up with a reason against it, the maximum good column
   ! also applies to the destriping procedure.
   ! -------------------------------------------------------------------
-  ctr_maxcol = max_good_col
+  ctr_maxcol = mdqf_max_good_col
 
   ! -------------------------------------------------------------------------
   ! Determine minimum and maximum wavelength in selected read/fitting windows

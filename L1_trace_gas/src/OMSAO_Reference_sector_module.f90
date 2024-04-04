@@ -580,8 +580,8 @@ CONTAINS
     ! --------------------------------------------------------
     CALL compute_fitting_statistics ( &
       nTimesRadRR, nXtrackRadRR, omi_xtrpix_range_rr,     &
-      rt%column_amount, rt%column_uncertainty, rt%rms, mem_amfdiag, &
-      rt%fit_flag, ref_stats, locerrstat )
+      rt%column_amount, rt%column_uncertainty, rt%rms, rt%fit_flag, mem_amf, &
+      mem_amfdiag, rt%sza, rt%vza, ref_stats, locerrstat )
 
     ! ------------------------------------------------
     ! Apply the background correction to Slant columns

@@ -36,7 +36,7 @@ SUBROUTINE omi_pge_postprocess ( &
     copy_pixel_corners, copy_metadata, copy_gpqf_attributes
   USE omi_read_l1b_data, ONLY: omi_read_glint_ice_land_flags
   USE omi_pge_fitting_aux, ONLY: compute_fitting_statistics, fitting_statistics_type
-  USE OMSAO_variables_module, ONLY: max_good_col, l1b_rad_filename
+  USE OMSAO_variables_module, ONLY: mdqf_max_good_col, l1b_rad_filename
   use m_read_gems, only: gems_read_ice_glint, gems_read_geofields
   IMPLICIT NONE
 
@@ -149,11 +149,11 @@ SUBROUTINE omi_pge_postprocess ( &
   endif
   call tell_log (1, 'omi_pge_postprocess:  calling compute_fitting_statistics')
   CALL compute_fitting_statistics ( ntimes, nxtrack, xtrange, &
-    saocol, saodco, saorms, saofcf, amfdiag, fit_stats, errstat)
+    saocol, saodco, saorms, saofcf, saoamf, amfdiag, sza, vza, fit_stats, errstat)
   if (errstat /= 0) return
   if (yn_do_he5_output) then
     CALL he5_write_fitting_statistics ( &
-      pge_idx, max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
+      pge_idx, mdqf_max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
       fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
   endif
   ! ---------------------------------------
