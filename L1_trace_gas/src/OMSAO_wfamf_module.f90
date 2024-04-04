@@ -7,7 +7,10 @@ MODULE OMSAO_wfamf_module
   ! ====================================================================
   USE OMSAO_precision_module, ONLY: i2, i4, r8, C_LONG, r4
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval_l1, i4_missval, &
-      r4_missval, r8_missval, dobson_units
+      r4_missval, r8_missval, dobson_units, &
+      ! amfdiag bit wise flags
+      yn_good, yn_amf, yn_glint, yn_cld_cli, yn_adj_srf_pre, yn_adj_cld_pre, &
+      yn_albedo, yn_cld, yn_gas_cli, yn_sca, yn_geo
   use tell_module
   use tio_module
   use ctrlvars, only: yn_gems
@@ -46,13 +49,6 @@ MODULE OMSAO_wfamf_module
   ! =============================
   REAL(KIND=r8), public :: amf_wvl, amf_alb_lnd, amf_alb_sno, amf_alb_cld
   logical, public :: yn_gler
-
-  ! ------------------------------
-  ! amfdiag bit meaning parameters
-  ! ------------------------------
-  integer(kind=i2), parameter :: yn_good=0, yn_amf=1, yn_glint=2, &
-       yn_cld_cli=3, yn_adj_srf_pre=4, yn_adj_cld_pre=5, yn_albedo=10, yn_cld=11, &
-       yn_gas_cli=12, yn_sca=13, yn_geo=14
 
   ! ------------------------------
   ! Vlidort lookup table variables
@@ -208,7 +204,7 @@ CONTAINS
     ! -----------------------------------------
     IF (amf_wvl .LT. 0.0) THEN
        saoamf = 1.0_r8
-       amfdiag=ibset(amfdiag,yn_amf)
+       amfdiag=ibset(amfdiag,yn_good)
     ELSE
        ! -----------------
        ! Geolocation check
@@ -368,6 +364,9 @@ CONTAINS
     WHERE ( saoamf > 0.0_r8 .AND. saocol > r8_missval .AND. saodco > r8_missval .AND. btest(amfdiag,yn_good) )
       saocol = saocol / saoamf
       saodco = saodco / saoamf
+    ELSEWHERE
+      saocol = r8_missval
+      saodco = r8_missval
     END WHERE
 
     ! -----------------------------------------------
@@ -464,7 +463,10 @@ CONTAINS
       do ix = 1, nx
 
         ! Skip this pixel if geolocation information is not available
-        if (btest(amfdiag(ix,it),yn_geo)) cycle
+        if (btest(amfdiag(ix,it),yn_geo)) then
+           amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_albedo)
+           cycle
+        endif
 
         if (snow(ix,it) > NISE_snowfree .and. snow(ix,it) < NISE_permice) then
           snow_ice_fraction = real(snow(ix,it),kind=r4)/100.0_r4
@@ -882,7 +884,10 @@ CONTAINS
     do ix=1,nx
        do it=0,nt-1
           ! Skip this pixel if time or geolocation information is not available
-          if (time(it) == r8_missval .or. btest(amfdiag(ix,it),yn_geo)) cycle
+          if (time(it) == r8_missval .or. btest(amfdiag(ix,it),yn_geo)) then
+             amfdiag(ix,it) = ibset(amfdiag(ix,it),yn_cld)
+             cycle
+          endif
           if ( btest(amfdiag(ix,it),yn_cld_cli) ) then
              call tio_f_taix_time_to_utc_caldate (time(it)-tai93_offset, year, month, day, hour)
              call clim_cloud (cct, month, day, lon(ix,it), lat(ix,it), pressure, errstat)
@@ -1035,7 +1040,10 @@ CONTAINS
 
        do ixtrack = 1, nx
           ! Skip this pixel if geolocation information is not available
-          if (btest(amfdiag(ixtrack,itimes),yn_geo)) cycle
+          if (btest(amfdiag(ixtrack,itimes),yn_geo)) then
+             amfdiag(ixtrack,itimes) = ibset(amfdiag(ixtrack,itimes),yn_gas_cli)
+             cycle
+          endif
 
           lon_f = fudge_lon(ixtrack,itimes)
           lat_f = fudge_lat(ixtrack,itimes)

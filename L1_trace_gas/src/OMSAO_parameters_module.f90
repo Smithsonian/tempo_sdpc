@@ -233,7 +233,6 @@ MODULE OMSAO_parameters_module
   ! Maximum data/swath dimensions
   ! ---------------------------------
   ! These are initialized to omi values
-
   INTEGER (KIND=i4), PARAMETER :: &
     NXTRACK_MAX = omi_nxtrack_max, NWAVEL_MAX = omi_nwavel_max, &
     nwavelcoef_max = omi_nwavelcoef_max
@@ -244,5 +243,12 @@ MODULE OMSAO_parameters_module
   ! be optimal.
   ! For TEMPO (nxtrack_max=2048), nlines_max<=10 keeps the run-time
   ! memory requirement below ~2GB.
+
+  ! ------------------------------
+  ! amfdiag bit meaning parameters
+  ! ------------------------------
+  INTEGER(KIND=i2), parameter :: yn_good=0, yn_amf=1, yn_glint=2, &
+       yn_cld_cli=3, yn_adj_srf_pre=4, yn_adj_cld_pre=5, yn_albedo=10, yn_cld=11, &
+       yn_gas_cli=12, yn_sca=13, yn_geo=14
 
 END MODULE OMSAO_parameters_module
