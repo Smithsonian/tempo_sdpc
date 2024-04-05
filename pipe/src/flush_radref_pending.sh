@@ -12,6 +12,8 @@ usage_message()
    exit 0
 }
 
+radref_search=$(config_setting radref.search)
+
 process_tar_file()
 {
    tar_notice_path="$1"
@@ -19,7 +21,11 @@ process_tar_file()
    radref_file=""
    . $(realpath $tar_notice_path)
 
-   path=$(select_radref.py --thisscan $rad_filename)
+   if test $radref_search -ne 0 ; then
+      path=$(select_radref.py $rad_filename)
+   else
+      path=$(select_radref.py --thisscan $rad_filename)
+   fi
    if test -f $path ; then
       # make sure radref_file is defined before we push this for processing
       if test -z "$radref_file" ; then
