@@ -2,7 +2,7 @@
 
 exit_usage()
 {
-   echo "Usage: $(basename $0) [options] {up|down|stop|cont} SERVICE"
+   echo "Usage: $(basename $0) [options] {up|down|stop|cont|enable|disable} SERVICE"
    echo "   Options:"
    echo "   --help              Print this listing"
    echo "   --dir SERVICE_DIR   Pipeline service directory path"
@@ -74,7 +74,8 @@ main ()
   fi
 
   _action="$1"
-  _service_dir="$_scan_dir/$2"
+  _service="$2"
+  _service_dir="$_scan_dir/$_service"
 
   check_dir "$_service_dir"
 
@@ -94,6 +95,30 @@ main ()
       cont)
         s6-svc -c $_service_dir
       ;;
+
+      enable)
+        case "$_service" in
+           level*)
+              s6-svc -1 $_service_dir
+           ;;
+
+           *)
+              echo "$_service: unsupported action: $_action"
+           ;;
+        esac
+        ;;
+
+      disable)
+        case "$_service" in
+           level*)
+              s6-svc -2 $_service_dir
+           ;;
+
+           *)
+              echo "$_service: unsupported action: $_action"
+           ;;
+        esac
+        ;;
 
       *)
         echo "Unknown action: $_action"

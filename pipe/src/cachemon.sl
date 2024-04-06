@@ -18,6 +18,7 @@ if (Num_Cpus < 1)
    throw ApplicationError, "Invalid number of cpus: _SC_NPROCESSORS_ONLN = $Num_Cpus"$;
 }
 
+private variable Monitor_State;
 private variable Sigterm_Received;
 private variable Verbose = 0;
 
@@ -250,6 +251,52 @@ private define catch_sigterm ()
    sigprocmask (SIG_UNBLOCK, SIGTERM);
 }
 
+private define sigusr1_handler (sig);
+private define sigusr1_handler (sig)
+{
+   Monitor_State = 1;
+   signal (SIGUSR1, &sigusr1_handler);
+}
+private define catch_sigusr1 ()
+{
+   sigprocmask (SIG_BLOCK, SIGUSR1);
+   signal (SIGUSR1, &sigusr1_handler);
+   sigprocmask (SIG_UNBLOCK, SIGUSR1);
+}
+
+private define sigusr2_handler (sig);
+private define sigusr2_handler (sig)
+{
+   Monitor_State = 0;
+   signal (SIGUSR2, &sigusr2_handler);
+}
+private define catch_sigusr2 ()
+{
+   sigprocmask (SIG_BLOCK, SIGUSR2);
+   signal (SIGUSR2, &sigusr2_handler);
+   sigprocmask (SIG_UNBLOCK, SIGUSR2);
+}
+
+private variable Monitor_Last_State;
+private define monitoring_enabled ()
+{
+   if (Monitor_State != Monitor_Last_State)
+     {
+        variable msg = sprintf ("Caught signal: monitor state = %s", Monitor_State ? "ENABLE" : "DISABLE");
+        write_log (LOG_INFO, 0, msg);
+        Monitor_Last_State = Monitor_State;
+     }
+
+   return Monitor_State;
+}
+private define init_monitor_enable_switch ()
+{
+   Monitor_State = 1; % non-zero means ENABLE
+   Monitor_Last_State = Monitor_State;
+   catch_sigusr1();
+   catch_sigusr2();
+}
+
 private define wait_for_processes_to_exit ()
 {
    if (Num_Running == 0)
@@ -476,12 +523,17 @@ define slsh_main()
    catch_sigterm();
    catch_sigchild();
 
+   init_monitor_enable_switch();
+
    write_log (LOG_INFO, 0, "started");
 
    while (Sigterm_Received == 0)
      {
-        if (-1 == dir.monitor (p.order))
-          break;
+        if (monitoring_enabled())
+          {
+             if (-1 == dir.monitor (p.order))
+               break;
+          }
         dir.wait();
      }
 
