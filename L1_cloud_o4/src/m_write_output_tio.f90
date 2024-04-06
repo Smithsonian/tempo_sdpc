@@ -28,7 +28,7 @@ module m_write_output_tio
   ! processing_quality_flag fill
   real (kind=8), parameter :: pflag_fill = fill_short !-9999.d0 
   ! ground_pix_quality_flag fill
-  real (kind=8), parameter :: gflag_fill = fill_short !-2147483647.d0 
+  real (kind=8), parameter :: gflag_fill = fill_short 
 
 contains
 
@@ -837,7 +837,7 @@ contains
              long_name = "bitwise processing quality flag", &
              comment = "bits00-bit15 are all used, _FillValue & valid_range should be ignored", &
             valid_range = [-32767.0_r8, 32767.0_r8], & 
-            fillvalue = pflag_fill, & !fill_short, & 
+            fillvalue = pflag_fill, & 
                               attlist=pqf_attrs)
     endif
 
@@ -961,7 +961,7 @@ contains
                               shuffle = shuffle, &
                               attlist=att_support)
 
-     ! 440nm GLER is not used, not tested, do not use
+     ! 440nm GLER is not used in calculation
      call tiof_varlist_append (varlist, errstat, &
                               name440, &
                               nf90_float, &
@@ -1317,7 +1317,7 @@ contains
                               comment = "number of ECF iteration", &
                               units = "none", &
                               valid_range = [0._r8, 100.0_r8], &
-                              fillvalue = fill_short, & !-999.0_r8, &
+                              fillvalue = fill_short, & 
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_support)
@@ -1329,7 +1329,7 @@ contains
                              comment = "number of OCP iteration", &
                              units = "none", &
                              valid_range = [0._r8, 100.0_r8], &
-                             fillvalue = fill_short, & !-999.0_r8, &
+                             fillvalue = fill_short, & 
                              deflate_level = deflate_level, &
                              shuffle = shuffle, &
                              attlist = att_support)
@@ -1367,7 +1367,7 @@ contains
      use m_vars, only: out_SlantColumnAmountO2O2, nasa_SlantColumnAmountO2O2,&
                out_ReflectanceFactor, &
                out_O2O2CloudTemperature, out_TerrainPressure,&
-              ! out_SurfaceReflectivity440, &
+               out_SurfaceReflectivity440, &
                out_SurfaceReflectivity466,&
                out_SurfaceLER440, out_SurfaceLER466, out_TerrainHeight,&
                out_SceneLer440, out_SceneLER466, out_ScenePressure,&
@@ -1411,8 +1411,8 @@ contains
     call tiof_put2d_r4 (tio_l2obj, name466, [0,0], &
          [nstep, nxtrack], out_SurfaceReflectivity466, errstat)
 
-    !call tiof_put2d_r4 (tio_l2obj, name440, [0,0], &
-    !     [nstep, nxtrack], out_SurfaceReflectivity440, errstat)
+    call tiof_put2d_r4 (tio_l2obj, name440, [0,0], &
+         [nstep, nxtrack], out_SurfaceReflectivity440, errstat)
 
     if ((name_option_SceneAlbedoAtTerrain.eq.'both').or. &
         (name_option_SceneAlbedoAtTerrain.eq.'yes')) then

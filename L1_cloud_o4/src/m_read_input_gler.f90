@@ -16,7 +16,7 @@ contains
 
    implicit none
    integer, intent(inout) :: errstat
-   type (gler_type) :: glt
+   type (gler_type) :: glt, glt440
    logical :: clip_opt ! wether to limit gler to [0.,1.] range
    real(kind=8) :: thistime
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
@@ -116,19 +116,15 @@ contains
 
    !------------------------------
    ! calculate GLER for 440nm
-   ! 440nm was unavailable during initial development, thus
+   ! 440nm was unavailable during initial development, activated apr2024
    ! 440nm is currently not used in calculation, only transfer to output
    !------------------------------
-
-   write(*,*) '   GLER is not implemented for 440nm'
 
    iwavelen = 440
    allocate(BRDF_SurfaceReflectivity440(nx,nt), stat=errstat)
    BRDF_SurfaceReflectivity440 = fspecial
 
-   go to 888 ! reference gler table issue for 440 nm, skip for now
-   
-   call gler_open(glt, iwavelen, errstat) ! config_file='clim_config.ini')
+   call gler_open(glt440, iwavelen, errstat) ! config_file='clim_config.ini')
    if (errstat /= 0) then
      call tell_error (tell_io_error, 'gler_open failed for 440', errstat)
      return
@@ -136,7 +132,7 @@ contains
 
    ! use the starting time of swath in gler_interp_time
    thistime = rad_time(1)
-   call gler_interp_time(glt, thistime, errstat)
+   call gler_interp_time(glt440, thistime, errstat)
    if (errstat /= 0) then
      call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
      return
@@ -192,7 +188,7 @@ contains
     enddo
    endif
 
-   call gler_close(glt)
+   call gler_close(glt440)
    write(*,*) '   GLER440 n_NAN=',nana
 
    !-------------------------------
