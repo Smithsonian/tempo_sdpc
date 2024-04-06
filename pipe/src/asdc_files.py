@@ -14,7 +14,6 @@ import re
 import os, sys
 import sqlite3
 import argparse
-from netCDF4 import Dataset
 
 DryRun = False
 TraceSQL = False
