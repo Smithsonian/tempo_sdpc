@@ -245,14 +245,22 @@ eoi    0         0          0
 end_of_input
 
 # -------------------------------------------------------------
-# Here we set the maximum column amount up to which a fitted
-# column value is assigned a QA flag of "good". Anything beyond
-# this is considered "suspect". The value is used for both
-# positive and negative fitted columns, i.e., it is used to
-# constrain the absolute value of the fitting result.
-# -------------------------------------------------------------
-Maximum Good Column Amount
-1.0E+44
+#   Constraints used to determine main quality flags. Values
+#   outside these limits will be flagged as "suspect" or "bad".
+#   To consider the VZA and SZA in combination, use the geometric AMF
+#   as the filter. The following variables are required:
+#   Good column amount [minimum, maximum]
+#   Number of standard deviations for SCD [suspect, bad]
+#   SZA limit [suspect, bad] (Set to negative to ignore)
+#   Geometric AMF limit [suspect, bad] (Set to negative to ignore)
+#   Minimum total AMF for "good" VCD (Set to negative to ignore)
+#  -------------------------------------------------------------
+  Main data quality flag limits
+  0.0E+00 +1.0E+44
+  2.0     3.0
+  -80.0   89.0
+  -6.0    -8.0
+  -1.0
 
 # ----------------------------------------------------------------
 # The next block controls the cross-track smoothing procedure.
