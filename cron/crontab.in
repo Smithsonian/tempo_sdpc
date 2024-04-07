@@ -11,8 +11,9 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 # IMS snow cover: daily
 15	11	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh IMS >> var/log/ims.log 2>&1
 
-# IERS bulletin A: updates released weekly, on Thursdays, usually by 20:00Z
-15	0	* * fri cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh IERS >> var/log/iers.log 2>&1
+# IERS bulletin A: Updates released weekly, on Thursdays, usually by 20:00Z.
+#                  Download week-old bulletin to reduce possibility of trouble from new release.
+15	0	* * wed cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh IERS >> var/log/iers.log 2>&1
 
 # GOES data: Mode 6 updates every 10 min
 5-59/10 *	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh GOES >> var/log/goes.log 2>&1
