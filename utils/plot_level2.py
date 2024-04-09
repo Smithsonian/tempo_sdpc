@@ -97,9 +97,11 @@ def plot_var_map (ax, vm, var_config, cmap):
 def main():
     parser = argparse.ArgumentParser(description='plot science data')
     parser.add_argument('--outfile', help="path to output file")
+    parser.add_argument('--geogrp', default='geolocation', help="group containing lon,lat bounds")
     parser.add_argument('--varpath', help="path to variable in file")
     parser.add_argument('--varmin', help="min plot value", type=float)
     parser.add_argument('--varmax', help="max plot value", type=float)
+    parser.add_argument('--bitmask', help="Bit mask", default=None, type=int)
     parser.add_argument('--layer', help="", default=None, type=int)
     parser.add_argument('--label', help="", default=None)
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
@@ -117,7 +119,7 @@ def main():
     filenames = args.filenames
     filenames.sort()
 
-    var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax)
+    var_config = Var_Map_Config (args.varpath, args.varmin, args.varmax, geogrp=args.geogrp)
 
     fig = plt.figure()
     ax = plt.subplot (1,1,1, projection=ccrs.Miller())
@@ -136,6 +138,9 @@ def main():
     for f in filenames:
         print('reading {}'.format(f))
         vm = read_var (f, var_config, args.layer)
+        if args.bitmask is not None:
+            mask = np.uint32(args.bitmask)
+            vm.var = np.bitwise_and (vm.var, mask)
         cs = plot_var_map (ax, vm, var_config, cmap)
 
     sm = plt.cm.ScalarMappable (norm=cs.norm, cmap=cmap)
