@@ -44,13 +44,6 @@ contains
   call tio_f_taix_time_to_utc_caldate(t_beg, year(1),month(1),day(1),hour_beg)
   call tio_f_taix_time_to_utc_caldate(t_end, year(2),month(2),day(2),hour_end)
 
-  ! the following is removed per JCH recommendation
-  !if ((day(1) /= day(2)) .OR. (month(1) /= month(2))  &
-  !    .OR. (year(1) /= year(2))) then
-  !   call tell_error(tell_runtime_error,"time error",errstat)
-  !   return
-  !endif
-
   thisyear = year(1)
   thismonth = month(1)
   thisday = day(1)
@@ -262,7 +255,6 @@ contains
       ! l2_TerrainPressure is topography adjusted surface pressure
       ! can use geos_Pressure as an approximation, 
       ! when forecast or climatology is used for TEMPO
-      ! it is better to adjust when reanalysis meteorology is used
       ! calculation should use l2_TerrainPressure 
       !  l2_TerrainPressure(ix, it) = psurf
       pixel_height = real(out_TerrainHeight(ix,it),kind=4) ! meters
@@ -273,10 +265,6 @@ contains
          ! tt,qq from TOA to BOA, thus, level closet to surface is nz
          model_tsurf = tt(nz)
          model_qsurf = qq(nz)
-         ! adjust_surface_pressure is used in L1_trace_gas, assumes dry air
-         ! adj_pressure has the same unit as psurf
-         !call adjust_surface_pressure(pixel_height,model_height, &
-         !     psurf,model_tsurf,adj_pressure,errstat)
          ! psfc_topo_adjust considers humidity
          call psfc_topo_adjust(pixel_height,model_height,psurf, &
             model_tsurf,model_qsurf,adj_pressure,errstat)
@@ -342,6 +330,8 @@ contains
   ! z1 & z1 in meters, Tv in K
   ! Tv = T * (1 + 0.608*q) ! Wikipedia
   ! q = specific humidity in unit of [g H2O/ g dry air] = [kg/kg]
+  ! This subroutine considers actual influence of humidity on lapse rate
+  ! while adjust_surface_pressure assume US standard air fixed gama=-6.5K/km
 
   real(kind=4),intent(in):: pixel_height,model_height,model_pressure
   real(kind=4),intent(in):: model_temperature, model_q
@@ -362,9 +352,10 @@ contains
 
 !!!!!!!!!!!!
 ! borrow adjust_surface_pressure from L1_trace_gas/OMSAO_wramf_module
-! this keeps consistency with trace gas AMF calculation, but for dry air
 ! slight modification is made for model_heigt to physical height (m)
 !        instead of the original geopotential height (m^2/s^2)
+! this keeps consistency with trace gas AMF but for US stnadard air
+! this is currently not used 
 !!!!!!!!!!!!
 
   subroutine adjust_surface_pressure (pixel_height, model_height, &

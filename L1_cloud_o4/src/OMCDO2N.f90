@@ -168,6 +168,9 @@ program OMCDO2N
     call exit(-1)
   endif
   run_mode = trim(buf)
+  ! production mode should be accurately spelled
+  ! anything else will be understood as development mode
+  ! trace gas has diagnostic/production, diagnostic works as development
   if (run_mode .ne. 'production') then
       run_mode = 'developement'
   endif
