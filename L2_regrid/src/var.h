@@ -80,6 +80,7 @@ extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
  *                      as it appears in the netCDF input files.
  * @param[in] want_qa  Logical flag, non-zero indicates that
  *                     QA statistics should be gathered.
+ * @param[in] tol     Tolerance used to regrid quality flags.
  * @param[in] files     An array of input file names.
  * @param[in] num_files  The number of input files.
  * @return 0 on success, -1 on error
@@ -89,8 +90,8 @@ extern int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
  */
 extern int Var_apply_regrid (const Pixel_Regrid_Type *r,
                              Var_Value_Buffer_Type *vb,
-                             int value_type, const char *var_path,
-                             int want_qa, char **files, int num_files);
+                             int value_type, const char *var_path, int want_qa,
+                             double tol, char **files, int num_files);
 
 #if 0
 {

@@ -50,6 +50,7 @@ struct Var_Value_Buffer_Type
    Value_Ptr_Type dest_values;
    Fill_Value_Type fill_value;
    Pixel_Regrid_Stats_Type *regrid_stats;
+   double tol;                  /* tolerance value [0,1] used to regrid quality flags */
    int value_type;
    int *src_mask;
    int num_dims, dimlens[TIO_MAX_VAR_DIMS];
@@ -722,7 +723,7 @@ static int regrid_by_averaging (const Pixel_Regrid_Type *r, Var_Value_Buffer_Typ
 }
 
 static int regrid_bytes (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                         Value_Ptr_Type *src_values, Value_Ptr_Type *dest_values)
+                         Value_Ptr_Type *src_values, double tol, Value_Ptr_Type *dest_values)
 {
    int i;
 
@@ -731,7 +732,7 @@ static int regrid_bytes (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
         copy_from_strided_src_int (vb, i, src_values);
         if (0 != Pixel_regrid_bytes (r, vb->src_mask, vb->value_type,
                                      &vb->fill_value.uc,
-                                     src_values->uc, dest_values->uc))
+                                     src_values->uc, tol, dest_values->uc))
           {
              tell_verror (TELL_APPLICATION_ERROR, "%s: Pixel_regrid_bytes failed i=%d",
                           __func__, i);
@@ -744,7 +745,7 @@ static int regrid_bytes (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
 }
 
 int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
-                      int value_type, const char *var_path, int want_qa,
+                      int value_type, const char *var_path, int want_qa, double tol,
                       char **files, int num_files)
 {
    Value_Ptr_Type src_values, dest_values;
@@ -792,7 +793,7 @@ int Var_apply_regrid (const Pixel_Regrid_Type *r, Var_Value_Buffer_Type *vb,
      }
    else
      {
-        status = regrid_bytes (r, vb, &src_values, &dest_values);
+        status = regrid_bytes (r, vb, &src_values, tol, &dest_values);
      }
 
    if (allocated_workspace)

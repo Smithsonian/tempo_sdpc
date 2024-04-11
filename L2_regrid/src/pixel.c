@@ -966,39 +966,127 @@ return_status:
    return status;
 }
 
+#define __PIXEL_GBS_TYPEDEF(typestr, type) \
+typedef struct \
+{ \
+   double tol; \
+   type good, bad, suspect; \
+} \
+Pixel_GBS_Type_##typestr;
+
+__PIXEL_GBS_TYPEDEF(uint64, unsigned long long)
+__PIXEL_GBS_TYPEDEF(uint,   unsigned int)
+__PIXEL_GBS_TYPEDEF(ushort, unsigned short)
+__PIXEL_GBS_TYPEDEF(ubyte,  unsigned char)
+__PIXEL_GBS_TYPEDEF(int64, long long)
+__PIXEL_GBS_TYPEDEF(int,   int)
+__PIXEL_GBS_TYPEDEF(short, short)
+__PIXEL_GBS_TYPEDEF(byte,  char)
+
+#define CLASSIFY_OVERLAPS(typestr,type) \
+static int classify_overlaps_##typestr (const Pixel_Overlap_Type *o, const int *src_mask, \
+                                        const type *fill_value, const type *src, \
+                                        const Pixel_GBS_Type_##typestr *gbs, type *dest) \
+{ \
+   double a_good, a_bad, a_suspect, a_other, a_sum; \
+   int j, k, num_classified; \
+ \
+   a_good = 0.0; \
+   a_bad = 0.0; \
+   a_suspect = 0.0; \
+   a_other = 0.0; \
+   a_sum = 0.0; \
+   num_classified = 0; \
+ \
+   for (j = 0; j < o->num_overlaps; j++) \
+     { \
+        k = o->src_index[j]; \
+        if ((src_mask == NULL) \
+            || ((src_mask != NULL) && (src_mask[k] == 0))) \
+          { \
+             double area_j = o->area[j]; \
+             type src_k = src[k]; \
+ \
+             if (*fill_value == src_k) \
+               continue; \
+ \
+             a_sum += area_j; \
+             num_classified++; \
+ \
+             if (src_k == gbs->good) \
+               { \
+                  a_good += area_j; \
+               } \
+             else if (src_k == gbs->bad) \
+               { \
+                  a_bad += area_j; \
+               } \
+             else if (src_k == gbs->suspect) \
+               { \
+                  a_suspect += area_j; \
+               } \
+             else a_other += area_j; \
+          } \
+     } \
+ \
+   if (num_classified == 0) \
+     { \
+        *dest = *fill_value; \
+        return 0; \
+     } \
+ \
+   a_good /= a_sum; \
+   a_bad /= a_sum; \
+   a_suspect /= a_sum; \
+   a_other /= a_sum; \
+ \
+   if (a_good >= (1.0 - gbs->tol)) /* must work for tol=0 */ \
+     *dest = gbs->good; \
+   else if (a_bad > gbs->tol) \
+     *dest = gbs->bad; \
+   else \
+     *dest = gbs->suspect; \
+ \
+   return 0; \
+}
+
+CLASSIFY_OVERLAPS(uint64, unsigned long long)
+CLASSIFY_OVERLAPS(uint,   unsigned int)
+CLASSIFY_OVERLAPS(ushort, unsigned short)
+CLASSIFY_OVERLAPS(ubyte,  unsigned char)
+CLASSIFY_OVERLAPS(int64, long long)
+CLASSIFY_OVERLAPS(int,   int)
+CLASSIFY_OVERLAPS(short, short)
+CLASSIFY_OVERLAPS(byte,  char)
+
 #define REGRID_BYTES(typestr, type) \
 static int regrid_bytes_##typestr (const Pixel_Regrid_Type *r, const int *src_mask, \
-                                   const type *fill_value, const type *src, type *dest) \
+                                   const type *fill_value, const type *src, const Pixel_GBS_Type_int *g, \
+                                   type *dest) \
 { \
-   type or_all; \
+   Pixel_GBS_Type_##typestr gbs = {0}; \
    int i; \
  \
    /* Quick return if source and destination grids don't overlap. */ \
    if (r->overlap == NULL) \
      return 0; \
  \
+   gbs.tol = g->tol; \
+   gbs.good = g->good; \
+   gbs.bad = g->bad; \
+   gbs.suspect = g->suspect; \
+ \
    for (i = 0; i < r->num_dest_pixels; i++) \
      { \
         Pixel_Overlap_Type *o = r->overlap[i]; \
-        int j; \
  \
         dest[i] = *fill_value; \
  \
-        if (o == NULL) \
-          continue; \
- \
-        or_all = (type) 0; \
- \
-        for (j = 0; j < o->num_overlaps; j++) \
+        if (o != NULL) \
           { \
-             int k = o->src_index[j]; \
-             if ((src_mask == NULL) \
-                 || ((src_mask != NULL) && (src_mask[k] == 0))) \
-               { \
-                  or_all |= src[k]; \
-               } \
+             if (0 != classify_overlaps_##typestr (o, src_mask, fill_value, src, &gbs, &dest[i])) \
+               return -1; \
           } \
-        dest[i] = or_all; \
      } \
  \
    return 0; \
@@ -1015,26 +1103,41 @@ REGRID_BYTES(byte,  char)
 
 int Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
                         int value_type, const void *fill_value,
-                        const void *src, void *dest)
+                        const void *src, double tol, void *dest)
 {
+   /* At the moment, this regridding method is used only for one case,
+    * main_data_quality_flag in trace-gas products.
+    * This case has type 'short', with values as shown below.
+    * If any other quality flag definition needs to work, then this code
+    * will need to be modified.  We'll defer further generalization until
+    * we have some information on what sort of generalization is useful.
+    */
+   Pixel_GBS_Type_int gbs =
+     {
+        .tol = tol,
+        .good = 0,
+        .suspect = 1,
+        .bad = 2
+     };
+
    switch (value_type)
      {
       case VALUE_IS_UINT64:
-        return regrid_bytes_uint64 (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_uint64 (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_UINT:
-        return regrid_bytes_uint   (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_uint   (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_USHORT:
-        return regrid_bytes_ushort (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_ushort (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_UBYTE:
-        return regrid_bytes_ubyte  (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_ubyte  (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_INT64:
-        return regrid_bytes_int64 (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_int64 (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_INT:
-        return regrid_bytes_int   (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_int   (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_SHORT:
-        return regrid_bytes_short (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_short (r, src_mask, fill_value, src, &gbs, dest);
       case VALUE_IS_BYTE:
-        return regrid_bytes_byte  (r, src_mask, fill_value, src, dest);
+        return regrid_bytes_byte  (r, src_mask, fill_value, src, &gbs, dest);
      }
 
    return -1;

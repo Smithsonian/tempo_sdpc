@@ -268,7 +268,7 @@ extern void Pixel_free_regrid_stats (Pixel_Regrid_Stats_Type *rs);
 extern Pixel_Regrid_Stats_Type *
 Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel);
 
-/** Perform regridding of bitfield values using the pixel overlap
+/** Perform regridding of quality flag values using the pixel overlap
  *  structure computed by Pixel_find_overlaps.
  *
  * @param[in]  r      Pixel_Regrid_Type structure allocated
@@ -280,12 +280,13 @@ Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel);
  *                    Non-zero elements indicate that the
  *                    corresponding variable value should not
  *                    be used.
- * @param[in]  value_type  Data type of the input bitfield
+ * @param[in]  value_type  Data type of the input quality flag
  * @param[in]  fill_value  Value used to initialize each pixel
  *                    in the destination array.
- * @param[in]  src    Array of bitfield values with one element
+ * @param[in]  src    Array of quality flag values with one element
  *                    per pixel in the input spatial grid.
- * @param[out] dest   Array of regridded bitfield values, with
+ * @param[in] tol     Tolerance value used to decide regridded result
+ * @param[out] dest   Array of regridded quality flag values, with
  *                    one element per pixel in the destination
  *                    spatial grid.
  * @return 0 on success, -1 on failure.
@@ -296,7 +297,7 @@ Pixel_alloc_regrid_stats (int num_pixels, int num_values_per_pixel);
 extern int
 Pixel_regrid_bytes (const Pixel_Regrid_Type *r, const int *src_mask,
                     int value_type, const void *fill_value,
-                    const void *src, void *dest);
+                    const void *src, double tol, void *dest);
 
 extern int
 Pixel_regrid_from_mesh (const Pixel_Regrid_Type *r, const int *mesh_mask,

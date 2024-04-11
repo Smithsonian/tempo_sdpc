@@ -48,6 +48,7 @@ static int type##_bitfield_test (const Pixel_Regrid_Type *r, int num_src, int nu
    typestr *a = NULL, *src, *dest; \
    typestr fill_value = NC_FILL_##fillsym; \
    int i, num = num_src + num_dest; \
+   double tol = 0.1; \
  \
    if (NULL == (a = (typestr *)MALLOC (num * sizeof(*a)))) \
      return -1; \
@@ -64,7 +65,7 @@ static int type##_bitfield_test (const Pixel_Regrid_Type *r, int num_src, int nu
      } \
  \
    if (-1 == Pixel_regrid_bytes (r, src_mask, VALUE_IS_##fillsym, &fill_value, \
-                                 src, dest)) \
+                                 src, tol, dest)) \
      { \
         FREE(a); \
         return -1; \

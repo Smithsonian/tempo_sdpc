@@ -52,6 +52,8 @@ struct Product_Type
 
    int __num_files;
    char **__filenames;
+
+   double tol;
 };
 
 static void usage (void)
@@ -445,11 +447,18 @@ static int init_product_type (const config_setting_t *setting,
 
         bitfield_status = config_setting_lookup_int (s, "bitfield_type", &bitfield_type);
         if (bitfield_status != CONFIG_TRUE)
-          prod->value_types[i] = VALUE_IS_DOUBLE;
-        else if (-1 == set_value_type (bitfield_type, &prod->value_types[i]))
           {
-             free_product_type(prod);
-             return -1;
+             prod->value_types[i] = VALUE_IS_DOUBLE;
+          }
+        else
+          {
+             if (-1 == set_value_type (bitfield_type, &prod->value_types[i]))
+               {
+                  free_product_type(prod);
+                  return -1;
+               }
+             if (CONFIG_TRUE != config_setting_lookup_float (s, "tol", &prod->tol))
+               prod->tol = 0.1;
           }
 
         if ((NULL == (prod->in_var_names[i] = malloc_strcpy (in_name)))
@@ -859,7 +868,7 @@ static int make_l3_product (const Product_Type *prod,
         int want_qa = (prod->var_qa_labels[i] != NULL);
         int apply_regrid_status =
           Var_apply_regrid (r, vb, prod->value_types[i],
-                            prod->in_var_names[i], want_qa,
+                            prod->in_var_names[i], want_qa, prod->tol,
                             prod->input_files, prod->num_input_files);
         if (apply_regrid_status != 0)
           {
