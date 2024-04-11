@@ -17,8 +17,8 @@ subroutine cal_ecf(ecfocp_iternum)
 ! input
   integer, intent(in):: ecfocp_iternum
 
-  real:: rad466,rad440
-  real(kind=4):: rout_ecf,rout_crf440,rout_crf466
+  real:: rad466,rad440,rad477
+  real(kind=4):: rout_ecf,rout_crf440,rout_crf466,rout_crf477
   integer::ialb, isza, ivza, iraa, ipsfc
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
   integer::ialb2,isza2,ivza2,iraa2,ipsfc2
@@ -148,10 +148,11 @@ subroutine cal_ecf(ecfocp_iternum)
       rout_ecf =fspecial
       rout_crf440 =fspecial
       rout_crf466 =fspecial
+      rout_crf477 =fspecial
 
       psfc0=fspecial
-      alb0=fspecial
-      alb440=fspecial
+      alb0=fspecial ! 466nm
+      alb440=fspecial ! 440nm
 
       ! get local location and angles
       lat0=rad_Latitude(ix,it)
@@ -223,10 +224,12 @@ subroutine cal_ecf(ecfocp_iternum)
       ! get local radiances
       rad466=rad_466nm(ix,it)
       rad440=rad_440nm(ix,it)
+      rad477=rad_477nm(ix,it)
 
       ! ------------------------
       ! calculate cloud fraction
       ! ------------------------
+      ! 466nm
       ! bit12 is for skipped ecf
       if ((rad466 .gt. 0.).and.(irr_out_irradiance_466nm(ix) .gt. 0.)) then
       ! earthsunfactor2 = (irr_EarthSunDist/rad_EathSunDist)**2 defined above
@@ -242,6 +245,7 @@ subroutine cal_ecf(ecfocp_iternum)
          go to 990
       endif
 
+      ! 440nm
       ! bit7 was set in m_read_input_tio, set again here
       if ((rad440 .gt. 0.).and.(irr_out_irradiance_440nm(ix) .gt. 0.)) then
          rad_of_irr440(ix,it)=rad440/(irr_out_irradiance_440nm(ix)*earthsunfactor2)
@@ -250,6 +254,15 @@ subroutine cal_ecf(ecfocp_iternum)
          ! bit7 was set in m_read_input_tio, thus a safeguard below
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
          ! 440 is not used for ECF, do not skip calculation
+      endif
+
+      ! 477nm
+      if ((rad477 .gt. 0.).and.(irr_out_irradiance_477nm(ix) .gt. 0.)) then
+         rad_of_irr477(ix,it)=rad477/(irr_out_irradiance_477nm(ix)*earthsunfactor2)
+      else
+         rad_of_irr477(ix,it) = fspecial
+         ! no bit in processing quality flag for 477nm 
+         ! 477 is not used for ECF, do not skip calculation
       endif
 
       !----------------
@@ -476,7 +489,7 @@ subroutine cal_ecf(ecfocp_iternum)
       ! safeguard
       ! -----------------
       ! entries in lut_rad_clr are always >0.
-      ! the following is not necessary
+      ! the following is a safeguard
       if((r11111 .lt. 0.0) .or. (r11112 .lt. 0.0)) then
         cal_rad_clr(ix,it)= fspecial
         go to 897
@@ -527,11 +540,13 @@ subroutine cal_ecf(ecfocp_iternum)
       ! for cloud albedo rationale, refer to Stammes et al. [2008]
       ! the linear (1) ecf (2) ocp process is also inherited from OMCDO2N
       !
-      ! As cal_rad_cld depends on pcld, it makes sense to do iteration
-      ! after pcloud is derived 
-      ! However, first pass uses pcld=700hPa as a start
-      ! The error associated with the pcld assumption for ecf
-      ! is not huge (<5% for alb=0.05), as cal_rad_cld >> cal_rad_clr
+      ! As cal_rad_cld depends on pcld, it makes sense to do ECFOCP iteration
+      ! with first pass uses pcld=700hPa as a start
+      ! However, TOA rad for overcast is insensitive to pcld 
+      ! error associated with the pcld assumption for ecf
+      ! is quite small, as cal_rad_cld >> cal_rad_clr
+      ! thus, in most cases, iteration is not required
+      ! Nonetheless, some geometries still trigger a few iterations
       !--------------------------------
       ialb= LUTrad_cloud_albid ! ALB(18)=0.8 in LUT
  
@@ -606,11 +621,11 @@ subroutine cal_ecf(ecfocp_iternum)
       !--------------------------------
       ! 440nm radiance at 700 hPa: cloudy sky
       ! in LUT_4400_RAD.h5, ALB(18)=0.8, Psfc(18)=701hPa
-      ! pcld=701hPa is an assumption used in ecf calculation
-      ! future implementation will use iteraction with pcld
+      ! pcld=701hPa is an used in 1st pass of ecf calculation
       !--------------------------------
       ! use the same ialb & ipsfc as 466 above 
-      ! 440nm is not fully implemented yet
+      ! 440nm does not affect ECF
+      ! cal_rad_cld440 is used for crf440
 
       r111=lut_rad_clr440(ialb,isza1,ivza1,iraa1,ipsfc)
       r112=lut_rad_clr440(ialb,isza1,ivza1,iraa2,ipsfc)
@@ -628,6 +643,32 @@ subroutine cal_ecf(ecfocp_iternum)
       r2=(wvza2*r21+wvza1*r22)/(wvza1+wvza2)
 
       cal_rad_cld440(ix,it)=(wsza2*r1+wsza1*r2)/(wsza1+wsza2)
+
+      !--------------------------------
+      ! 477nm radiance at 700 hPa: cloudy sky
+      ! in LUT_4770_CLEAR.h5, ALB(18)=0.8, Psfc(18)=701hPa
+      ! pcld=701hPa is an used in 1st pass of ecf calculation
+      !--------------------------------
+      ! use the same ialb & ipsfc as 466 above 
+      ! 477nm does not affect ECF
+      ! cal_rad_cld477 is used for crf477
+
+      r111=lut_rad_ler(ialb,isza1,ivza1,iraa1,ipsfc)
+      r112=lut_rad_ler(ialb,isza1,ivza1,iraa2,ipsfc)
+      r121=lut_rad_ler(ialb,isza1,ivza2,iraa1,ipsfc)
+      r122=lut_rad_ler(ialb,isza1,ivza2,iraa2,ipsfc)
+      r211=lut_rad_ler(ialb,isza2,ivza1,iraa1,ipsfc)
+      r212=lut_rad_ler(ialb,isza2,ivza1,iraa2,ipsfc)
+      r221=lut_rad_ler(ialb,isza2,ivza2,iraa1,ipsfc)
+      r222=lut_rad_ler(ialb,isza2,ivza2,iraa2,ipsfc)
+      r11=(wraa2*r111+wraa1*r112)/(wraa1+wraa2)
+      r12=(wraa2*r121+wraa1*r122)/(wraa1+wraa2)
+      r21=(wraa2*r211+wraa1*r212)/(wraa1+wraa2)
+      r22=(wraa2*r221+wraa1*r222)/(wraa1+wraa2)
+      r1=(wvza2*r11+wvza1*r12)/(wvza1+wvza2)
+      r2=(wvza2*r21+wvza1*r22)/(wvza1+wvza2)
+
+      cal_rad_cld477(ix,it)=(wsza2*r1+wsza1*r2)/(wsza1+wsza2)
 
       !-----------------------------------
       !calculate effective cloud fraction ecf and cloud radiance fraction crf
@@ -656,14 +697,25 @@ subroutine cal_ecf(ecfocp_iternum)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
 
+      ! calculate cloud raiance fraction at 477
+      if ((cal_rad_cld477(ix,it) .gt. 0.) .and. (rad_of_irr477(ix,it).gt. 0.)) then
+         rout_crf477=rout_ecf*cal_rad_cld477(ix,it)/rad_of_irr477(ix,it)
+      else
+        rout_crf440 = fspecial
+        out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
+      endif
+
       ! assign non-clipped ecf & crf to array
       ! due to assumption of Acld=0.8 (some pcld=701hPa) and IPA
       ! ecf and crf can be negative or above 1.0 within a reasonable range 
       out_EffectiveCloudFractionNotClipped(ix,it)= rout_ecf
       out_CloudRadianceFractionNotClipped440(ix,it)= rout_crf440
       out_CloudRadianceFractionNotClipped466(ix,it)= rout_crf466
+      out_CloudRadianceFractionNotClipped477(ix,it)= rout_crf477
 
+      !------------------------------------------
       ! clip ecf & crf to [0.0, 1.0]
+      ! ecf_lowclip & ecf_highclip are used for both ECF and CRF
       ! added logic to differentiate skipped or bad calculation
       ! out_ProcessingQualityFlag bit 9 for out-of-range,clipped (WARNING)
       !     these are set to 0.0 or 1.0, and may still be usable    
@@ -697,10 +749,18 @@ subroutine cal_ecf(ecfocp_iternum)
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
 
+      if ((rout_crf477 .lt. 0.).and.(rout_crf477 .ge. ecf_lowclip)) rout_crf477=0.
+      if ((rout_crf477 .gt. 1.).and.(rout_crf477 .le. ecf_highclip)) rout_crf477=1.
+      if ((rout_crf477 .lt. ecf_lowclip) .or. (rout_crf477 .gt. ecf_highclip)) then
+        rout_crf477=fspecial
+        ! no bit in processing quality flag for crf477
+      endif
+
       ! assign clipped ecf & crf to array
       out_EffectiveCloudFraction(ix,it)=rout_ecf
       out_CloudRadianceFraction440(ix,it)=rout_crf440
       out_CloudRadianceFraction466(ix,it)=rout_crf466
+      out_CloudRadianceFraction477(ix,it)=rout_crf477
 
       ! out_ReflectanceFactor is equivalent to observed Lambertian reflectance at 466
       if(rad_of_irr466(ix,it) .gt. 0.0) then
@@ -727,6 +787,7 @@ subroutine cal_ecf(ecfocp_iternum)
          out_EffectiveCloudFractionNotClipped(ix,it) = fspecial
          out_CloudRadianceFractionNotClipped440(ix,it) = fspecial
          out_CloudRadianceFractionNotClipped466(ix,it) = fspecial
+         out_CloudRadianceFractionNotClipped477(ix,it) = fspecial
       endif   
 
  3455  continue ! skip to here when ecf does not need re-calculation
@@ -748,12 +809,13 @@ end subroutine cal_ecf
 subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
 !**********************
 !222222222222222222222222
-   use m_vars, only: cal_rad_clr, cal_rad_cld, cal_rad_cld440, &
-       rad_of_irr440, rad_of_irr466, out_ReflectanceFactor,&
+   use m_vars, only: cal_rad_clr, cal_rad_cld, cal_rad_cld440, cal_rad_cld477,&
+       rad_of_irr440, rad_of_irr466, rad_of_irr477, out_ReflectanceFactor,&
        out_SurfaceReflectivity466,out_SurfaceReflectivity440,&
        out_EffectiveCloudFraction,out_EffectiveCloudFractionNotClipped,&
        out_CloudRadianceFraction440, out_CloudRadianceFractionNotClipped440,&
        out_CloudRadianceFraction466, out_CloudRadianceFractionNotClipped466,&
+       out_CloudRadianceFraction477, out_CloudRadianceFractionNotClipped477,&
        lut_pcld_indarr, LUT_pcld_700hPa, ecf_niter,ocp_niter
    use m_vars, only: prev_ecf, prev_ecf_notclipped
 
@@ -766,9 +828,11 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   allocate(cal_rad_clr(nx,nt),stat=ierr)
   allocate(cal_rad_cld(nx,nt),stat=ierr)
   allocate(cal_rad_cld440(nx,nt),stat=ierr)
+  allocate(cal_rad_cld477(nx,nt),stat=ierr)
 
   allocate(rad_of_irr440(nx,nt),stat=ierr)
   allocate(rad_of_irr466(nx,nt),stat=ierr)
+  allocate(rad_of_irr477(nx,nt),stat=ierr)
 
   allocate(out_SurfaceReflectivity466(nx,nt),stat=ierr)
   allocate(out_SurfaceReflectivity440(nx,nt),stat=ierr)
@@ -776,8 +840,10 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   cal_rad_clr=fspecial
   cal_rad_cld=fspecial
   cal_rad_cld440=fspecial
+  cal_rad_cld477=fspecial
   rad_of_irr440=fspecial
   rad_of_irr466=fspecial
+  rad_of_irr477=fspecial
 
   out_SurfaceReflectivity466=fspecial
   out_SurfaceReflectivity440=fspecial
@@ -788,6 +854,8 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   allocate(out_CloudRadianceFractionNotClipped440(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFraction466(nx,nt),stat=ierr)
   allocate(out_CloudRadianceFractionNotClipped466(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFraction477(nx,nt),stat=ierr)
+  allocate(out_CloudRadianceFractionNotClipped477(nx,nt),stat=ierr)
   allocate(out_ReflectanceFactor(nx,nt),stat=ierr)
 
   out_EffectiveCloudFraction=fspecial
@@ -796,6 +864,8 @@ subroutine allocate_ecf_arrays(nx,nt,fspecial,ierr)
   out_CloudRadianceFractionNotClipped440=fspecial
   out_CloudRadianceFraction466=fspecial
   out_CloudRadianceFractionNotClipped466=fspecial
+  out_CloudRadianceFraction477=fspecial
+  out_CloudRadianceFractionNotClipped477=fspecial
   out_ReflectanceFactor=fspecial
 
   allocate(prev_ecf(nx,nt),stat=ierr)

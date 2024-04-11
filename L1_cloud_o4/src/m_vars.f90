@@ -438,7 +438,8 @@ integer:: ilun_gmi_tmp = 4003
   ! moved the following into modules 
   !real::alb0,sza0,vza0,raa0,psfc0 ! input values
 
-  real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld,cal_rad_cld440
+  real(kind=4),dimension(:,:),pointer::cal_rad_clr,cal_rad_cld
+  real(kind=4),dimension(:,:),pointer::cal_rad_cld440,cal_rad_cld477
   real(kind=8),dimension(npsfc)::cal_amf_clr
   real(kind=8),dimension(npcld)::cal_amf_cld
   real(kind=8),dimension(npcld)::cal_ler_amf
@@ -487,7 +488,8 @@ integer:: ilun_gmi_tmp = 4003
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped440
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction466
   real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped466
-
+  real(kind=4),dimension(:,:),pointer::out_CloudRadianceFraction477
+  real(kind=4),dimension(:,:),pointer::out_CloudRadianceFractionNotClipped477
   real(kind=4),dimension(:,:),pointer::out_CloudPressure
   real(kind=4),dimension(:,:),pointer::out_CloudPressureNotClipped
 
