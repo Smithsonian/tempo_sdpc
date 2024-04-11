@@ -425,7 +425,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
         gr->vert_strat[i] = nan_value;
         gr->slant_uncert[i] = nan_value;
 
-        if ((gr->data_quality_flag[i] != 0)
+        if (((gr->data_quality_flag[i] < 0) || (gr->data_quality_flag[i] > 1))
             || isnan(gr->amf_strat[i])
             || isnan(gr->slant_column[i])
             || isnan(tropopause_pressure[i])
