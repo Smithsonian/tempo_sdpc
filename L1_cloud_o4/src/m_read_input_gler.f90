@@ -153,7 +153,7 @@ contains
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
-         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
+         call gler_albedo(glt440, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
                 thisalb = fspecial
@@ -163,9 +163,9 @@ contains
       enddo
     enddo
    else
-    wind_speed = 0.
+    wind_speed = 5.
     write(*,*)'note:  GMI climatology does not contain wind_speed'
-    write(*,*)' GLER is thus calculated with wind_speed=0.'
+    write(*,*)' GLER is thus calculated with wind_speed=5.'
     nana = 0
     do it = 1, nt
       do ix = 1, nx
@@ -177,7 +177,7 @@ contains
          thissnowice = rad_SnowIceFraction(ix,it)
          if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
-         call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
+         call gler_albedo(glt440, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
          if (isnan(thisalb)) then ! test NAN
               thisalb = fspecial
