@@ -940,10 +940,12 @@ int scan_vars_pack (const Scan_Type *st, Scan_Vars_Type *sv)
    num_pixels = sv->num_steps * sv->num_xtrack;
    dqf = sv->data_quality_flag;
 
-   /* FIXME: this seems crude -- change it? */
+   /* Set data quality flag to 1 for fill and bad (original value 2) pixels */
+   /* and zero for "good" (value 0) and "suspect" (original value 1) */
+   /* so that bad pixels are not output in file. */
    for (i = 0; i < num_pixels; i++)
      {
-        dqf[i] = (dqf[i] < 0) ? 1 : 0;
+        dqf[i] = ((dqf[i] < 0) || (dqf[i] > 1)) ? 1 : 0;
      }
 
    return 0;
