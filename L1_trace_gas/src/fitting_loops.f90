@@ -696,9 +696,9 @@ CONTAINS
       ! On occasion, the fit returns an exit value of 0 or 1 
       ! (suspicious or good) but a fitting uncertainty of zero. 
       ! In these cases, the SCD fit is almost always unphysical. 
-      ! If this happens, force the fit convergence flag to "suspect".
+      ! If this happens, force the fit convergence flag to "failed".
       IF ( (ABS(dfitcol) < 1e-15) .AND. (radfit_exval > -1) ) THEN
-         omi_fitconv_flag (ipix,iloop) = INT (0, KIND=i2)
+         omi_fitconv_flag (ipix,iloop) = INT (-2, KIND=i2)
       END IF
 
       ! CCM assign fit residual
