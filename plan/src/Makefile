@@ -79,11 +79,13 @@ install-executables:
 	$(INSTALL_PROGRAM) $(srcdir)/plot_mirrorx.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/plot_szamap.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/mkplan.sh $(bindir)/
+	$(INSTALL_PROGRAM) $(srcdir)/mkreport.sh $(bindir)/
 
 install-share:
 	mkdir -p $(sharedir)
 	$(INSTALL_DATA) $(srcdir)/plan.cfg $(sharedir)
 	$(INSTALL_DATA) $(srcdir)/plan_sched.sh.example $(sharedir)
+	$(INSTALL_DATA) $(srcdir)/report_points.csv $(sharedir)
 
 install:	install-executables install-share
 

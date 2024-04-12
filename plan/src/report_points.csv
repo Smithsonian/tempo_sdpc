@@ -1,0 +1,30 @@
+#
+# For reporting purposes, the (lon,lat) points listed below are used to
+# compute the daily time interval when TEMPO has a "measurement opportunity".
+# Points with is_start=0|1 define a nominal scan start|end boundary.
+# The "measurement opportunity" is the daily time interval
+# when SZA<max_sza anywhere on or between these two curves.
+#
+longitude,latitude,is_start
+:max_sza=70.0,0.0,0
+-139.920000,48.660000,0
+-136.620000,46.300000,0
+-134.080000,44.120000,0
+-131.620000,41.620000,0
+-129.040000,38.460000,0
+-127.140000,35.660000,0
+-125.320000,32.460000,0
+-123.660000,28.920000,0
+-122.380000,25.600000,0
+-121.180000,21.760000,0
+-120.160000,17.580000,0
+-65.220000,17.460000,1
+-64.080000,22.400000,1
+-63.100000,25.820000,1
+-61.780000,29.620000,1
+-60.480000,32.740000,1
+-59.020000,35.720000,1
+-57.160000,38.920000,1
+-55.000000,42.020000,1
+-52.880000,44.580000,1
+-50.000000,47.480000,1

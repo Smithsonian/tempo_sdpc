@@ -95,6 +95,7 @@ static void usage (void)
    fprintf (stderr, "   -H | --hour [HOUR[;delta]]   HOUR=UTC hour to start scanning, with optional delta [hours] adjustment\n");
    fprintf (stderr, "                                When HOUR=0, program will choose nearest safe start hour based on SZA\n");
    fprintf (stderr, "   -n | --ndays N           N=number of days to plan [default=14]\n");
+   fprintf (stderr, "   -p | --points FILE       File of (lon,lat) points to use in report generation\n");
    fprintf (stderr, "   -s | --scan METHOD       METHOD = std | opt1 | split-METHOD-NAME[-k] [default=std]\n");
    fprintf (stderr, "                                e.g. split-opt1-CA, where CA is a setting in the config file.\n");
    fprintf (stderr, "                                     The optional '-k' extension means use a CBM that does k scans.\n");
@@ -745,6 +746,117 @@ static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom,
      }
 
    return 0;
+}
+
+static int write_reporting_intervals (Solar_Geom_Type *solar_geom, const char *points_file,
+                                      const Cal_Date_Type *t0, int num_days)
+{
+   IOCLib_String_Table_Type *st = NULL;
+   IOCLib_KV_Table_Type *kv = NULL;
+   const char *column_names[] = {"longitude", "latitude", "is_start"};
+   unsigned int i, num_columns = sizeof(column_names) / sizeof(*column_names);
+   double unix_epoch_jd = get_unix_epoch_jd();
+   double max_sza, jd_utc0, jd_utc1, jd_utc;
+   double nan_value = nan("");
+   int return_status = -1;
+
+   if (NULL == (st = ioclib_csv_read_string_table (points_file, column_names, num_columns)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading report points from: %s", __func__, points_file);
+        return -1;
+     }
+
+   if (NULL == (kv = ioclib_extract_csv_metadata (st)))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: extracting metadata from: %s", __func__, points_file);
+        goto free_and_return;
+     }
+
+   if (0 != ioclib_kv_table_get_double (kv, "max_sza", &max_sza))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading max_sza keyword from: %s", __func__, points_file);
+        goto free_and_return;
+     }
+
+   jd_utc0 = novas_julian_date (t0->year, t0->month, t0->day, t0->hour);
+   jd_utc1 = jd_utc0 + num_days;
+
+   timestamp_created (stdout);
+   if ((fprintf (stdout, "duration_hr,beg_timet,beg_UTC,end_timet,end_UTC\n") < 0)
+       || (fprintf (stdout, ":max_sza=%0.3f,,,,\n", max_sza) < 0)
+       || (fprintf (stdout, ":points_file=%s,,,,\n", points_file) < 0))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: fprintf failed", __func__);
+        goto free_and_return;
+     }
+
+   for (jd_utc = jd_utc0; jd_utc < jd_utc1; jd_utc += 1.0)
+     {
+        char beg_buf[32];
+        char end_buf[32];
+        double tbeg_utc, tend_utc;
+        double jd_utc_sza, jd_utc_start, jd_utc_stop;
+
+        /* initialization */
+        jd_utc_start = jd_utc + 1.0;
+        jd_utc_stop = jd_utc;
+
+        /* Among the (lon,lat) points, find:
+         * the earliest start time when SZA decreases below max_sza,
+         * and the latest end time when SZA increases above max_sza
+         */
+        for (i = 0; i < st->num_rows; i++)
+          {
+             double lon_i, lat_i;
+             int is_start_i, status;
+
+             if (*st->data[0][i] == ':')
+               continue;
+
+             if ((0 != ioclib_string_to_double (st->data[0][i], &lon_i))
+                 ||(0 != ioclib_string_to_double (st->data[1][i], &lat_i))
+                 ||(0 != ioclib_string_to_int (st->data[2][i], &is_start_i)))
+               goto free_and_return;
+
+             jd_utc_sza = nan_value;
+
+             /* We're only writing a report, so if a point fails to converge,
+              * just ignore it and try the next one */
+             tell_push_queue();
+             status = scan_sza_time (solar_geom, max_sza, jd_utc, lon_i, lat_i, is_start_i, &jd_utc_sza);
+             tell_pop_queue(1);
+             if (status != 0) continue;
+
+             if (is_start_i)
+               {
+                  if (jd_utc_sza < jd_utc_start) jd_utc_start = jd_utc_sza;
+               }
+             else
+               {
+                  if (jd_utc_sza > jd_utc_stop) jd_utc_stop = jd_utc_sza;
+               }
+          }
+
+        if (0 != mkjdtimestr (jd_utc_start, beg_buf, sizeof(beg_buf)))
+          return -1;
+        if (0 != mkjdtimestr (jd_utc_stop, end_buf, sizeof(end_buf)))
+          return -1;
+
+        tbeg_utc = (jd_utc_start - unix_epoch_jd) * SEC_PER_DAY;
+        tend_utc = (jd_utc_stop - unix_epoch_jd) * SEC_PER_DAY;
+
+        (void) fprintf (stdout, "%0.3f,%0.3f,\"%s\",%0.3f,\"%s\"\n",
+                        (tend_utc-tbeg_utc) / 3600.0,
+                        tbeg_utc, beg_buf,
+                        tend_utc, end_buf);
+     }
+
+   return_status = 0;
+free_and_return:
+   ioclib_free_string_table (st);
+   ioclib_kv_table_free (kv);
+
+   return return_status;
 }
 
 static int write_safe_limits (const Scan_Type *scan, Solar_Geom_Type *solar_geom,
@@ -1711,6 +1823,7 @@ int main (int argc, char **argv)
    const char *sza_check_string = NULL;
    const char *optional_output_string = NULL;
    const char *stats_file = NULL;
+   const char *report_points_file = NULL;
    static struct option long_options[] =
      {
         {"help",         no_argument,       0, 'h'},
@@ -1725,6 +1838,7 @@ int main (int argc, char **argv)
         {"type",         required_argument, 0, 't'},
         {"output",       required_argument, 0, 'o'},
         {"daily",        required_argument, 0, 'D'},
+        {"points",       required_argument, 0, 'p'},
         {"irr",          required_argument, 0, 'i'},
         {"Irr",          required_argument, 0, 'I'},
         {"angle",        required_argument, 0, 'a'},
@@ -1773,7 +1887,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hH:NvS::Z:M:a:c:d:e:i:I:m:n:o:s:t:T:D:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hH:NvS::Z:M:a:c:d:e:i:I:m:n:o:p:s:t:T:D:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1901,6 +2015,9 @@ int main (int argc, char **argv)
            case 'D':
              stats_file = optarg;
              break;
+           case 'p':
+             report_points_file = optarg;
+             break;
            case 's':
              scan_method = optarg;
              break;
@@ -2004,6 +2121,13 @@ int main (int argc, char **argv)
    if ((0 != ephem_open (&cfg, &eph))
        || (NULL == (solar_geom = solar_geom_init (&cfg))))
      goto return_status;
+
+   if (report_points_file)
+     {
+        if (0 == write_reporting_intervals (solar_geom, report_points_file, &t0, num_plan_days))
+          status = EXIT_SUCCESS;
+        goto return_status;
+     }
 
    if (scan_tailoring_file)
      {

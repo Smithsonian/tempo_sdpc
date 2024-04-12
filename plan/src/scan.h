@@ -186,4 +186,8 @@ extern int scan_limit_times (const Scan_Type *st, double jd_utc,
  */
 extern int scan_irradiance_time (Solar_Geom_Type *sgt, double irr_sun_angle, int after_midnight,
                                  double jd_utc, double *jd_utc_irr);
+
+extern int scan_sza_time (Solar_Geom_Type *sgt, double max_sza, double jd_utc,
+                          double lon, double lat, int is_start, double *jd_utc_sza);
+
 #endif

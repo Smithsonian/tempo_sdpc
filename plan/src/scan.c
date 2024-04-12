@@ -688,9 +688,9 @@ static int read_params (config_t *cfg, Scan_Type *st)
 
 typedef struct
 {
-   const Scan_Type *st;
    Solar_Geom_Type *sgt;
    Surface_Point_Type pt;
+   double max_sza;
 }
 SZA_Bisect_Type;
 
@@ -699,7 +699,6 @@ static int dsza_vs_time (double jd_utc, double *dsza, void *v)
    SZA_Bisect_Type *b = (SZA_Bisect_Type *)v;
    Surface_Point_Type *pt = &b->pt;
    Solar_Geom_Type *sgt = b->sgt;
-   const Scan_Type *st = b->st;
    double sza;
 
    if (0 != sgt->sgt_solar_zenith_angle (sgt, jd_utc, pt->lon, pt->lat, &sza))
@@ -709,7 +708,7 @@ static int dsza_vs_time (double jd_utc, double *dsza, void *v)
         return -1;
      }
 
-   *dsza = sza - st->max_sza;
+   *dsza = sza - b->max_sza;
 
    return 0;
 }
@@ -815,6 +814,39 @@ static double ceil_sec (double t_days)
    return ceil (t_days * SEC_PER_DAY) / SEC_PER_DAY;
 }
 
+int scan_sza_time (Solar_Geom_Type *sgt, double max_sza, double jd_utc,
+                   double lon, double lat, int is_start, double *jd_utc_sza)
+{
+   SZA_Bisect_Type b = {0};
+   double jd_utc1, jd_utc2;
+
+   /* Assume jd_utc = local midnight (beginning of 24 hour period to examine)
+    *                 in the satellite time-zone */
+   if (is_start)
+     {
+        jd_utc1 = jd_utc;
+        jd_utc2 = jd_utc + 0.5;
+     }
+   else
+     {
+        jd_utc1 = jd_utc + 0.5;
+        jd_utc2 = jd_utc + 1.0;
+     }
+
+   b.max_sza = max_sza;
+   b.sgt = sgt;
+   b.pt.lon = lon;
+   b.pt.lat = lat;
+
+   if (0 != bisection (dsza_vs_time, jd_utc1, jd_utc2, &b, jd_utc_sza))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: bisection failed", __func__);
+        return -1;
+     }
+
+   return 0;
+}
+
 int scan_limit_times (const Scan_Type *st, double jd_utc,
                       Solar_Geom_Type *sgt,
                       Scan_Limit_Times_Type *slt)
@@ -830,7 +862,7 @@ int scan_limit_times (const Scan_Type *st, double jd_utc,
    jd_utc1 = jd_utc + 0.5;
    jd_utc2 = jd_utc1 + 0.5;
 
-   b.st = st;
+   b.max_sza = st->max_sza;
    b.sgt = sgt;
 
    /* Earliest morning time when SZA=max(SZA) at eastern point */
