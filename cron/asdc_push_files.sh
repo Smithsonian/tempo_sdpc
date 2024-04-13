@@ -9,6 +9,8 @@
 set -e
 set -u
 
+tstamp_fmt="+%Y%m%d%H%M%SZ"
+
 if test $# -ne 2 ; then
     echo "Usage: $0 USER@HOST:dirpath <dbfile-path>"
     exit 0
@@ -64,7 +66,7 @@ do_asdc_upload()
 dbfile_name=$(basename $dbfile)
 
 num=$(asdc_files.py --dbfile $dbfile --num new)
-echo "$dbfile_name push status: new: $num"
+echo "$(date -u $tstamp_fmt): $dbfile_name push status: new: $num"
 if test x"$num" = x0 ; then
    exit 0
 fi
@@ -77,4 +79,4 @@ do_asdc_upload $upload_dir_path
 num=$(asdc_files.py --dbfile $dbfile --num new)
 num_pending=$(asdc_files.py --dbfile $dbfile --num pending)
 num_uploaded=$(asdc_files.py --dbfile $dbfile --num uploaded)
-echo "$dbfile_name push status: new:$num  pending:$num_pending  uploaded:$num_uploaded"
+echo "$(date -u $tstamp_fmt): $dbfile_name push status: new:$num  pending:$num_pending  uploaded:$num_uploaded"

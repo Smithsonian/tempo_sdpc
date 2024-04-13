@@ -2,6 +2,8 @@
 
 set -u
 
+tstamp_fmt="+%Y%m%d%H%M%SZ"
+
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
@@ -22,7 +24,6 @@ fi
 
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
-tstamp=$(date -u +%Y%m%d%H%M%SZ)
 tbeg=$(date +%s)
 
 _task=$1
@@ -86,7 +87,7 @@ esac
 exit_status="$?"
 tend=$(date +%s)
 tdelta=$((tend-tbeg))
-msg="${tstamp}: crontab.sh $_task: exit status ${exit_status}: $tdelta seconds"
+msg="$(date -u +%Y%m%d%H%M%SZ): crontab.sh $_task: exit status ${exit_status}: $tdelta seconds"
 printf "${msg}\n"
 
 if test x"$exit_status" != x0 ; then

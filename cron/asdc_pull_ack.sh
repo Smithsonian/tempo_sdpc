@@ -6,6 +6,8 @@
 set -e
 set -u
 
+tstamp_fmt="+%Y%m%d%H%M%SZ"
+
 if test $# -ne 3 ; then
     echo "Usage: $0 USER@HOST:dirpath <dbfile-path> <pan-prefix>"
     exit 0
@@ -89,7 +91,7 @@ dbfile_name=$(basename $dbfile)
 
 num=$(asdc_files.py --dbfile $dbfile --num uploaded)
 if test x"$num" = x0 ; then
-   echo "$dbfile_name pull status: uploaded:$num"
+   echo "$(date -u $tstamp_fmt): $dbfile_name pull status: uploaded:$num"
    exit 0
 fi
 
@@ -100,4 +102,4 @@ do_asdc_download $download_dir_path
 num_uploaded=$(asdc_files.py --dbfile $dbfile --num uploaded)
 num_accepted=$(asdc_files.py --dbfile $dbfile --num accepted)
 num_problem=$(asdc_files.py --dbfile $dbfile --num problem)
-echo "$dbfile_name pull status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
+echo "$(date -u $tstamp_fmt): $dbfile_name pull status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
