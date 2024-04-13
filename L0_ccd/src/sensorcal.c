@@ -184,7 +184,7 @@ static int read_wavelength_grid_irr (Calibration_Type *cal, const char *irr_file
 {
    TIO_Var_Info_Type info_uv, info_vis;
    size_t num_waves_uv, num_waves_vis, num_xpos_uv, num_xpos_vis, len_uv, len_vis, len;
-   float *wave_uv, *wave_vis;
+   float *wave_uv = NULL, *wave_vis = NULL;
    int grp_uv, grp_vis, start[3], count[3], ix, iw;
    int ncid, status = -1;
 
