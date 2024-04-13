@@ -189,7 +189,7 @@ install_execs:
 	done
 
 install_supervision_tree:
-	/bin/cp -r ../etc/services $(DEST_ETC_FILES_INSTALL_DIR)
+	tar cf $(prefix)/services.tar -C .. services
 
 install_etcfiles:
 	@for X in $(ETC_FILES); \

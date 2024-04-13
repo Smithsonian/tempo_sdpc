@@ -158,7 +158,7 @@ inr_mkdirs.sh
 inr_config.sh
 
 /bin/cp -r $SDPC_ROOT/etc $SDPC_PIPE_DIR
-/bin/mv $SDPC_PIPE_DIR/etc/services $SDPC_PIPE_DIR
+tar -C $SDPC_PIPE_DIR -xf $SDPC_ROOT/services.tar
 
 echo "Configuring services for $context context:"
 service_default_up "$list_up"
