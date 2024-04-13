@@ -48,18 +48,24 @@ def find_gaps (files, dt):
 
     gap_indices = np.argwhere (deltas > dt)
     if len(gap_indices) == 0:
-        return
+        return;
 
-    # print a CSV format line for each gap detected
+    t1 = []
+    t2 = []
+    dt = []
     for k in gap_indices:
         i = k[0]
-        t1 = sorted_times[i]
-        t2 = sorted_times[i+1]
-        print("{},{},{}".format(utc_time_string(t1), utc_time_string(t2), deltas[i]))
+        t1.append(sorted_times[i])
+        t2.append(sorted_times[i+1])
+        dt.append(deltas[i])
+
+    gaps = {"beg":t1, "end":t2, "delta": dt};
+
+    return gaps
 
 def main():
     default_delta = 1800.0
-    parser = argparse.ArgumentParser(description='Find gaps in GOES CMI archive time coverage')
+    parser = argparse.ArgumentParser(description='Find gaps in GOES CMI archive daily time coverage')
     parser.add_argument('--delta', type=float, default=default_delta,
                         help="Minimum coverage gap [sec, default={}]".format (default_delta))
     parser.add_argument('dirs', help="Directory list", nargs=argparse.REMAINDER)
@@ -68,11 +74,17 @@ def main():
         sys.exit(0)
     args = parser.parse_args()
 
-    files = []
     for dir in args.dirs:
-        files += glob.glob(os.path.join (dir, "OR_ABI-L2-CMIPF-*.nc"))
-
-    find_gaps (files, args.delta)
+        files = glob.glob(os.path.join (dir, "OR_ABI-L2-CMIPF-*.nc"))
+        gaps = find_gaps (files, args.delta)
+        if gaps is not None:
+            t1 = [utc_time_string(s) for s in gaps["beg"]]
+            t2 = [utc_time_string(s) for s in gaps["end"]]
+            dt = gaps["delta"]
+            n = len(dt)
+            print("gap: {}".format(dir))
+            for i in range(n):
+                print("{},{},{}".format(t1[i], t2[i], dt[i]))
 
 if __name__ == "__main__":
     main()
