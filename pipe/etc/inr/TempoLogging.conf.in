@@ -36,7 +36,7 @@
 --store
 * GLOBAL:
    FORMAT               =  "%datetime %level %msg"
-   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/%datetime{%Y%M%d}_store.log"
+   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/store.log"
    ENABLED              =  false
    TO_FILE              =  false
    TO_STANDARD_OUTPUT   =  false
@@ -64,7 +64,7 @@
 --processing
 * GLOBAL:
    FORMAT               =  "%datetime %level %msg"
-   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/%datetime{%Y%M%d}_processing.log"
+   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/processing.log"
    ENABLED              =  false
    TO_FILE              =  false
    TO_STANDARD_OUTPUT   =  false
@@ -92,7 +92,7 @@
 --external
 * GLOBAL:
    FORMAT               =  "%datetime %level %msg"
-   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/%datetime{%Y%M%d}_external.log"
+   FILENAME             =  "@INR_PROCESSING_ROOT@/logs/external.log"
    ENABLED              =  false
    TO_FILE              =  false
    TO_STANDARD_OUTPUT   =  false
