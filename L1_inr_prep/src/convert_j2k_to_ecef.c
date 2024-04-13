@@ -234,10 +234,10 @@ int convert_j2k_to_ecef (char *iers_bulletin, const char *file)
    if (0 != j2k_open (&j2k, v->t[0], iers_bulletin))
      goto return_status;
 
-   if (0 != convert_vec_j2k_to_ecef (grp, &j2k, v, "satellite_X", "satellite_Y", "satellite_Z"))
+   if (0 != convert_vec_j2k_to_ecef (grp, &j2k, v, TEMPO_VAR_SAT_X, TEMPO_VAR_SAT_Y, TEMPO_VAR_SAT_Z))
      goto return_status;
 
-   if (0 != convert_vec_j2k_to_ecef (grp, &j2k, v, "satellite_velocity_X", "satellite_velocity_Y", "satellite_velocity_Z"))
+   if (0 != convert_vec_j2k_to_ecef (grp, &j2k, v, TEMPO_VAR_SAT_VX, TEMPO_VAR_SAT_VY, TEMPO_VAR_SAT_VZ))
      goto return_status;
 
    status = 0;

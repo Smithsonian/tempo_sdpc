@@ -700,10 +700,10 @@ static int add_orbital_velocity_vector (int grp)
    start = 0;
    count = time_dimlen;
 
-   if ((0 != TIO_get_var_section (grp, "satellite_X", &start, &count, NC_DOUBLE, vec.x))
-       || (0 != TIO_get_var_section (grp, "satellite_Y", &start, &count, NC_DOUBLE, vec.y))
-       || (0 != TIO_get_var_section (grp, "satellite_velocity_X", &start, &count, NC_DOUBLE, vec.vx))
-       || (0 != TIO_get_var_section (grp, "satellite_velocity_Y", &start, &count, NC_DOUBLE, vec.vy)))
+   if ((0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_X, &start, &count, NC_DOUBLE, vec.x))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_Y, &start, &count, NC_DOUBLE, vec.y))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_VX, &start, &count, NC_DOUBLE, vec.vx))
+       || (0 != TIO_get_var_section (grp, TEMPO_VAR_SAT_VY, &start, &count, NC_DOUBLE, vec.vy)))
      goto return_status;
 
    for (i = 0; i < time_dimlen; i++)
@@ -711,8 +711,8 @@ static int add_orbital_velocity_vector (int grp)
         __add_orbital_velocity_vector (vec.x[i], vec.y[i], &vec.vx[i], &vec.vy[i]);
      }
 
-   if ((0 != TIO_put_var_section (grp, "satellite_velocity_X", &start, &count, NC_DOUBLE, vec.vx))
-       || (0 != TIO_put_var_section (grp, "satellite_velocity_Y", &start, &count, NC_DOUBLE, vec.vy)))
+   if ((0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VX, &start, &count, NC_DOUBLE, vec.vx))
+       || (0 != TIO_put_var_section (grp, TEMPO_VAR_SAT_VY, &start, &count, NC_DOUBLE, vec.vy)))
      goto return_status;
 
    status = 0;
