@@ -386,7 +386,7 @@ close_and_return:
 static int read_radcal_coeffs (Calibration_Type *cal, const char *file,
                               const char *trend_file)
 {
-   size_t num_waves, num_xpos, len, i;
+   size_t num_waves, num_xpos, len, p, s;
    int start[2], count[2];
    int ncid, dimid, status = -1;
    int count_invalid;
@@ -425,13 +425,23 @@ static int read_radcal_coeffs (Calibration_Type *cal, const char *file,
      }
 
    count_invalid = 0;
-   for (i = 0; i < len; i++)
+   for (p = 0; p < num_waves; p++)
      {
-        if (cal->radcal_coeffs[i] < 0.0)
+        float *coeffs = cal->radcal_coeffs + p * num_xpos;
+
+        for (s = 0; s < num_xpos; s++)
           {
-             count_invalid++;
-             cal->radcal_coeffs[i] = 0.0;
+             if (coeffs[s] < 0.0)
+               {
+                  count_invalid++;
+                  coeffs[s] = 0.0;
+               }
           }
+        /* Revise the radiometric calibration coefficients
+         * in the region of the spatial anomaly (burr).
+         */
+        coeffs[1027] = (coeffs[1025] + coeffs[1029]) / 2;
+        coeffs[1026] = (coeffs[1024] + coeffs[1028]) / 2;
      }
    if (count_invalid)
      {
