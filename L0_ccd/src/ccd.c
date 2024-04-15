@@ -1300,12 +1300,27 @@ static int gain_corr_Tfpa (const Gain_Param_Type *gpt, float fpa_temp, float *co
         return 0;
      }
 
-   if (0 != interpolate_gain_vs_Tfpa (gpt, fpa_temp, &gain_T))
-     return -1;
+   if (gpt->num_gain_tfpe_coeff == 4)
+     {
+        if (0 != interpolate_gain_vs_Tfpa (gpt, fpa_temp, &gain_T))
+          return -1;
 
-   *corr = gain_T / gpt->gain_at_Tref_fpa;
+        *corr = gain_T / gpt->gain_at_Tref_fpa;
 
-   return 0;
+        return 0;
+     }
+   else if (gpt->num_gain_tfpe_coeff == 1)
+     {
+        *corr = 1.0;
+        return 0;
+     }
+   else
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: got %d coefficients describing gain dependence on FPE temperature (expected 4 or 1)",
+                     __func__, gpt->num_gain_tfpe_coeff);
+        return -1;
+     }
 }
 
 static int gain_corr_Tfpe (const Gain_Param_Type *gpt, float fpe_temp, float *corr)
