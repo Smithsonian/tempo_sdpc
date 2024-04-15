@@ -3,7 +3,8 @@
 import sys, os
 import csv
 import numpy as np
-import datetime as dt
+import time
+from datetime import datetime, timedelta
 from dateutil import tz, parser
 import re
 
@@ -19,6 +20,14 @@ matplotlib.rcParams['hatch.linewidth'] = 0.2
 # Axis label numbers are still serif font.  Why?
 plt.rc('text', usetex=True)
 #plt.rc('text.latex', preamble=r'\usepackage{lmodern}\renewcommand*\familydefault{\sfdefault}\usepackage[T1]{fontenc}')
+
+def toffset_from_timestamp (tstamp):
+    # help strptime by replacing the trailing 'Z' with a timezone specification
+    tstamp = tstamp.strip('Z') + '+0000'
+    obj = datetime.strptime(tstamp, '%Y-%m-%dT%H:%M:%S.%f%z') - timedelta(hours=6)
+    tt = obj.time()
+    toffset = tt.second + 60 * (tt.minute + 60 * tt.hour)
+    return toffset
 
 def read_plan (filename):
     with open (filename) as csv_file:
@@ -47,8 +56,10 @@ def read_plan (filename):
                 plan_id = m.group(1)
                 break
 
+    toff = [toffset_from_timestamp(s) for s in np.asarray(timestamp)]
+
     plan = {'label':np.asarray(label),
-            'time':np.asarray(time),
+            'time':np.asarray(toff),
             'duration':np.asarray(duration),
             'mirror_x':np.asarray(mirror_x),
             'num_steps':np.asarray(num_steps),
@@ -65,7 +76,6 @@ def plot_scan(ax, plan, step_size, indices):
     ns = plan['num_steps'][indices]
     nrs = plan['repeat'][indices]
 
-    t0s = t0s - t0s[0]
     xf = xs - step_size * ns
 
     ax.set_xlabel (r'$\delta t$ [hour]')
