@@ -19,6 +19,7 @@
 #define DARK_PRIVATE_DATA \
    Image_Type *dc_image; \
    float ref_fpa_temp; \
+   float fpa_temp; \
    float dc_coeffs[NUM_QUAD]; \
    float mean_sdc[NUM_QUAD];
 #include "dark.h"
@@ -76,7 +77,7 @@ static int drk_image_Tfpa_adj (const Dark_Type *drk, float fpa_temp, Image_Type 
    float delta_invt, fac[NUM_QUAD];
    int i;
 
-   delta_invt = 1.0/fpa_temp - 1.0/drk->ref_fpa_temp;
+   delta_invt = 1000.0/(fpa_temp + 273.15) - 1000.0/(drk->fpa_temp + 273.15);
 
    for (i = 0; i < NUM_QUAD; i++)
      {
@@ -136,6 +137,9 @@ static int drk_open (Dark_Type *drk, const char *path)
    if (0 != TIO_get_var_section (ncid, "mean_sdc", start, count, TIO_FLOAT, drk->mean_sdc))
      goto close_and_return;
 
+   if (0 != TIO_get_var_section (ncid, "fpa_temp", start, count, TIO_FLOAT, &drk->fpa_temp))
+     goto close_and_return;
+
    if (0 != TIO_inq_var (ncid, "image", &info))
      goto close_and_return;
 
@@ -159,7 +163,7 @@ close_and_return:
 static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
 {
    int start[2], count[2], ncid, dimid, status = -1;
-   size_t num_bands, num_coeffs;
+   size_t num_quads, num_coeffs;
    float coeffs[4];
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
@@ -169,14 +173,14 @@ static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
         return -1;
      }
 
-   if ((0 != TIO_inq_dim (ncid, "band", &dimid, &num_bands))
+   if ((0 != TIO_inq_dim (ncid, "quad", &dimid, &num_quads))
        || (0 != TIO_inq_dim (ncid, "n_DC_Tfpa_coeff", &dimid, &num_coeffs)))
      goto return_status;
 
-   if ((num_bands != 2) || (num_coeffs != 2))
+   if ((num_quads != 4) || (num_coeffs != 2))
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: unexpected array dimensions: band=%ld, n_DC_Tfpa_coeff=%ld",
-                     __func__, num_bands, num_coeffs);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: unexpected array dimensions: quad=%ld, n_DC_Tfpa_coeff=%ld",
+                     __func__, num_quads, num_coeffs);
         goto return_status;
      }
 
@@ -188,7 +192,7 @@ static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
 
    start[0] = 0;
    start[1] = 0;
-   count[0] = 2;
+   count[0] = 4;
    count[1] = 2;
 
    if (0 != TIO_get_var_section (ncid, "DC_Tfpa_coeffs", start, count, TIO_FLOAT, coeffs))
@@ -198,14 +202,11 @@ static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
     * correction:  a0 * exp(a1 * 1/T) for each of the two CCDs.
     * However, we will use the measured dark as the norm, so we use only the a1
     * coefficients from the file to apply the T-dependent part of the scaling.
-    * Also, per-quadrant coefficients will be provided in the next iteration
-    * of the calibration file, so we prepare for that by defining dc_coeffs[]
-    * as an array of length 4.
     */
    drk->dc_coeffs[0] = coeffs[1];
-   drk->dc_coeffs[1] = coeffs[1];
-   drk->dc_coeffs[2] = coeffs[3];
-   drk->dc_coeffs[3] = coeffs[3];
+   drk->dc_coeffs[1] = coeffs[3];
+   drk->dc_coeffs[2] = coeffs[5];
+   drk->dc_coeffs[3] = coeffs[7];
 
    status = 0;
 return_status:

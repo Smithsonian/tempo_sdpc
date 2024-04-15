@@ -416,9 +416,10 @@ static int compute_current_and_trim (CCD_Type *ccd,
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *aimg = NULL;
+   float fpa_temp, fpe_temp, fpa_sum, fpe_sum;
    double smear_fraction;
-   double exposure_time_per_frame;
-   int i;
+   double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period;
+   int i, j, k, n_sample, n_fpa, n_fpe;
 
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
@@ -456,11 +457,79 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
 
-   if ((0 != instr->instr_fpa_temp (instr, exprec->start_time, &xr->fpa_temp))
-       || (0 != instr->instr_fpe_temp (instr, exprec->start_time, &xr->fpe_temp)))
+   fpa_sum = 0.0;
+   fpe_sum = 0.0;
+   n_fpa = 0;
+   n_fpe = 0;
+
+   /* FIXME: The timing patterns below have been implemented on an empirical basis.
+    * The nominal integration mode seems to work reasonably, but there are rooms
+    * for improvement for the other modes.
+    * It should be revisited once we gain a precise understanding of
+    * how it works for different integration modes.
+    */
+
+   double secs_per_clock      = 8.2987551867219914e-08;
+   double frame_transfer_time =  100416 * secs_per_clock;
+   double full_flush_time     =  199104 * secs_per_clock;
+   double storage_read_time   = 1204992 * secs_per_clock;
+
+   switch (exprec->ccd_int_type)
      {
-        return -1;
+      case 3:
+      /* DARK_INT */
+      case 1:
+      /* SHORT_INT */
+        integration_period = exposure_time_per_frame;
+        coadd_period = full_flush_time + integration_period + frame_transfer_time + storage_read_time;
+        exposure_time_offset = exprec->start_time - coadd_period;
+        n_sample = 1;
+        break;
+      case 0:
+      /* NOMINAL */
+        integration_period = exposure_time_per_frame;
+        coadd_period = integration_period + frame_transfer_time;
+        exposure_time_offset = exprec->start_time;
+        n_sample = 1;
+        break;
+      case 2:
+      /* LONG_INT */
+        integration_period = exposure_time_per_frame - storage_read_time;
+        coadd_period = frame_transfer_time + storage_read_time + integration_period;
+        exposure_time_offset = exprec->start_time;
+        n_sample = 30;
+        break;
      }
+   if (exprec->num_coadds == 1)
+     {
+        exposure_time_offset -= exposure_time_per_frame;
+     }
+   sampling_period = integration_period / (n_sample + 1);
+
+   for (j = 0; j < exprec->num_coadds; j++)
+     for (k = 1; k < (n_sample+1); k++)
+       {
+         if (0 != instr->instr_fpa_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &fpa_temp))
+           {
+               return -1;
+           }
+         else
+           {
+               fpa_sum += fpa_temp;
+               n_fpa += 1;
+           }
+         if (0 != instr->instr_fpe_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &fpe_temp))
+           {
+               return -1;
+           }
+         else
+           {
+               fpe_sum += fpe_temp;
+               n_fpe += 1;
+           }
+       }
+   xr->fpa_temp = fpa_sum / n_fpa;
+   xr->fpe_temp = fpe_sum / n_fpe;
 
    /* convert DN to electrons */
    if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))
