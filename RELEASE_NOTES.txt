@@ -1,3 +1,21 @@
+TEMPO_SDPC_v4.4.0   2024 May
+============================
+  * libtio:
+    - Avoid generating self-intersecting bounding polygons.
+  * L1_inr_prep:
+    - Use predicted ephemeris only when no ephemeris telemetry is available.
+  * L2_regrid:
+    - Preserve discrete states of quality flags in trace gas products
+  * Improve sqlite query performance to reduce likelihood database contention.
+  * ASDC uploads prioritize newest data products above any reprocessed
+    data products.
+  * Use string data type for coremetadata attribute to fix HDF5 format
+    non-compliance issue.
+  * Support enable/disable options for selected pipeline services to
+    improve control over pipeline processing flow.
+  * Support generating monthly reporting statistics on TEMPO radiance
+    measurement opportunities.
+
 TEMPO_SDPC_v4.3.0   2024 Feb
 ============================
   * Add sdpc_version attribute to standard product labeling
