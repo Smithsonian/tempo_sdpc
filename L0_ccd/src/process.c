@@ -434,6 +434,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
      return -1;
 
+   if (EXPREC_TYPE_IS_DARK(exprec->exposure_type))
+     {
+        if (0 != ccd->ccd_compute_readnoise (ccd, exprec->num_coadds, exprec->img))
+          return -1;
+     }
+
    if (0 != ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
 

@@ -16,12 +16,20 @@ typedef struct CCD_Type CCD_Type;
  *
  * The functions that perform corrections are intended to be called
  * in the following order:
+ *   -# ccd_active_image_dims
+ *   -# ccd_apply_pixel_quality_flags
  *   -# ccd_correct_coadd
- *   -# ccd_decide_phase_change
+ *   -# ccd_configure_using_octant_phase
+ *   -# ccd_compute_readnoise
  *   -# ccd_correct_offset
  *   -# ccd_correct_nonlinearity
+ *   -# ccd_correct_crosstalk
  *   -# ccd_correct_gain
+ *   -# ccd_mean_storage_region_dark
+ *   -# ccd_update_noisesq
  *   -# ccd_correct_smear
+ *   -# ccd_copy_active_pixels
+ *   -# ccd_correct_prnu
  */
 struct CCD_Type
 {
@@ -58,6 +66,20 @@ struct CCD_Type
 
    int (*ccd_configure_using_octant_phase)(CCD_Type *, const Image_Type *);
    int (*ccd_correct_crosstalk)(const CCD_Type *, Image_Type *);
+
+   /** Read-out noise estimation
+    * @param ccd         A non-null pointer to the CCD_Type object
+    * @param num_coadds  Number of co-added frames
+    * @param img         A non-null pointer to an Image_Type object
+    * @return 0 on success, non-zero on error
+    *
+    * Read-out noise can be estimated using standard deviations of the offset values.
+    * We perform this estimation only using dark measurements for trending purposes.
+    * For noise estimation, we use center columns in the trailing areas.
+    * The position and number of columns are determined in the configuration file.
+    * We use 100 rows (indices 450 to 549) from each quadrant.
+    */
+   int (*ccd_compute_readnoise)(CCD_Type *, unsigned int, const Image_Type *);
 
    /** Offset correction
     * @param ccd         A non-null pointer to the CCD_Type object

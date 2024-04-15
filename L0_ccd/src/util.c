@@ -331,6 +331,7 @@ struct Trend_Record_Type
    float eoffsets[NUM_OCTANTS];
    int phase_change[NUM_QUAD];
    float gain[NUM_OCTANTS];
+   float readnoise[NUM_OCTANTS];
    float fpe_temp;
    float fpa_temp;
    int num_dg_rows;
@@ -479,6 +480,12 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
         {"units", "C"},
         {NULL, NULL}
      };
+   const Text_Attr_Type readnoise_attrs[] =
+     {
+        {"long_name", "read-out noise"},
+        {"units", "electrons"},
+        {NULL, NULL}
+     };
    const Text_Attr_Type num_dg_rows_attrs[] =
      {
         {"long_name", "number of rows offset from readout for storage region dark sum"},
@@ -615,6 +622,11 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
        || (0 != define_text_attrs (tft->ncid, varid, fpe_temp_attrs)))
      goto return_status;
 
+   if ((0 != TIO_def_var (tft->ncid, "readout_noise", NC_FLOAT, 2, dimid_time_oct, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
+       || (0 != define_text_attrs (tft->ncid, varid, readnoise_attrs)))
+     goto return_status;
+
    if ((0 != TIO_def_var (tft->ncid, "num_dg_rows", NC_INT, 1, &dimid_time, &varid))
        || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, num_dg_rows_attrs)))
@@ -721,6 +733,7 @@ static void trend_collect_clear_record (Trend_Record_Type *tr)
      {
         tr->eoffsets[i] = TIO_FILL_FLOAT;
         tr->gain[i] = TIO_FILL_FLOAT;
+        tr->readnoise[i] = TIO_FILL_FLOAT;
      }
    for (i = 0; i < NUM_QUAD; i++)
      {
@@ -780,7 +793,8 @@ int trend_collect_write_record (const Trend_Record_Type *tr)
 
    count[1] = NUM_OCTANTS;
    if ((0 != TIO_put_var_section (ncid, "eoffsets", start, count, TIO_FLOAT, tr->eoffsets))
-       || (0 != TIO_put_var_section (ncid, "gain", start, count, TIO_FLOAT, tr->gain)))
+       || (0 != TIO_put_var_section (ncid, "gain", start, count, TIO_FLOAT, tr->gain))
+       || (0 != TIO_put_var_section (ncid, "readout_noise", start, count, TIO_FLOAT, tr->readnoise)))
      return -1;
 
    count[1] = NUM_QUAD;
@@ -869,6 +883,21 @@ int trend_collect_gain (float fpa_temp, float fpe_temp, const float *gain)
    tr->fpa_temp = fpa_temp;
    tr->fpe_temp = fpe_temp;
    memcpy ((char *)tr->gain, (char *)gain, NUM_OCTANTS * sizeof(float));
+
+   return 0;
+}
+
+/* Read-out noise, by octant => readnoise[8] */
+int trend_collect_readnoise (const float *readnoise)
+{
+   Trend_Record_Type *tr = Active_Record;
+
+   if (!Have_Trend_File)
+     return 0;
+   if (tr == NULL)
+     return -1;
+
+   memcpy ((char*)tr->readnoise, (char *)readnoise, NUM_OCTANTS * sizeof(float));
 
    return 0;
 }

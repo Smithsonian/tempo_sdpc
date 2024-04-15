@@ -90,8 +90,9 @@ PRNU_Type;
 
 typedef struct
 {
-   float cte;                 /* [dimensionless] */
-   float readnoise_sq;        /* [e-] */
+   float cte;                            /* [dimensionless] */
+   float readnoise_sq;                   /* [e-^2] */
+   float onboard_readnoise[NUM_OCTANTS]; /* [DN] */
    PRNU_Type prnu;
 }
 Response_Info_Type;
@@ -912,6 +913,107 @@ static int clt_correct_coadd (const CCD_Linearity_Type *clt, unsigned int num_co
    return perform_coadd_correction (obj, num_coadds, clt->saturation_fudge_factor, img);
 }
 
+static void compute_stddev (float *samples, int nb, int ne, float *stddev)
+{
+   float sum, dev, sum_sqdev, mean;
+   int n, count;
+
+   sum = 0.0;
+   count = 0;
+   for (n = nb; n < ne; n++)
+     {
+        if (samples[n] == IMAGE_PIXEL_FILL_VALUE)
+          continue;
+        sum += samples[n];
+        count += 1;
+     }
+   mean = sum / count;
+
+   sum_sqdev = 0.0;
+   for (n = nb; n < ne; n++)
+     {
+        if (samples[n] == IMAGE_PIXEL_FILL_VALUE)
+          continue;
+        dev = samples[n] - mean;
+        sum_sqdev += dev * dev;
+     }
+   *stddev = sqrt (sum_sqdev / (count-1.0));
+}
+
+static int compute_readnoise (const Image_Subset_Type *oct,
+                              const Image_Type *img,
+                              int num_skip, int num_selected,
+                              float *readnoise)
+{
+   int s, sb, se, p, pb, pe, n;
+   float eoffsets [100 * num_selected / 2];
+
+   if ((oct == NULL) || (img == NULL))
+     return -1;
+
+   if (oct->row_step > 0)
+     {/* C, D*/
+        pb = oct->row_end - 549;
+        pe = oct->row_end - 449;
+     }
+   else
+     {/* A, B */
+        pb = oct->row_beg + 450;
+        pe = oct->row_beg + 550;
+     }
+
+   if (oct->col_step > 0)
+     {/* B, C */
+        sb = (oct->col_beg
+              + num_skip
+              - 1);
+     }
+   else
+     {/* A, D */
+        sb = (oct->col_end
+              - num_skip
+              - (num_selected - 2));
+     }
+   se = sb + num_selected;
+
+   n = 0;
+   for (p = pb; p < pe; p += 1)
+     {
+        Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
+        for (s = sb; s < se; s += 2)
+          {
+             eoffsets[n] = oct_pixels[s];
+             n++;
+          }
+     }
+
+   if (n != (100 * num_selected / 2))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: got %d points to estimate read-out noise", __func__, n);
+        return -1;
+     }
+   compute_stddev(eoffsets, 0, (100 * num_selected / 2), readnoise);
+
+   return 0;
+}
+
+static int ccd_compute_readnoise (CCD_Type *ccd, unsigned int num_coadds, const Image_Type *img)
+{
+   const CCD_Object_Type *obj = &ccd->obj;
+   Response_Info_Type *rit = &ccd->resp_info;
+   int i;
+
+   for (i = 0; i < NUM_OCTANTS; i++)
+     {
+        float oct_readnoise;
+        if (-1 == compute_readnoise (&obj->oct[i], img, ccd->offset_num_skip, ccd->offset_num_selected, &oct_readnoise))
+          return -1;
+        rit->onboard_readnoise[i] = oct_readnoise * sqrt(num_coadds);
+     }
+
+   return 0;
+}
+
 static int correct_offset_oct (float mean_eoffset, const Image_Subset_Type *oct,
                                Image_Type *img)
 {
@@ -1295,6 +1397,7 @@ static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
 {
    const CCD_Object_Type *obj = &ccd->obj;
    float gain[NUM_OCTANTS];
+   float readnoise_current[NUM_OCTANTS];
    int i;
 
    for (i = 0; i < NUM_OCTANTS; i++)
@@ -1311,9 +1414,15 @@ static int ccd_correct_gain (const CCD_Type *ccd, Image_Type *img,
 
         if (-1 == correct_gain_oct (&obj->oct[i], img, gain[i], saturation_threshold_gate))
           return -1;
+
+        const Response_Info_Type *rit = &ccd->resp_info;
+        readnoise_current[i] = rit->onboard_readnoise[i] * gain[i];
      }
 
    if (0 != trend_collect_gain (fpa_temp, fpe_temp, gain))
+     return -1;
+
+   if (0 != trend_collect_readnoise (readnoise_current))
      return -1;
 
    return 0;
@@ -1900,6 +2009,7 @@ static CCD_Type *ccd_create (void)
    ccd->ccd_delete = ccd_delete;
    ccd->ccd_correct_coadd = ccd_correct_coadd;
    ccd->ccd_configure_using_octant_phase = ccd_configure_using_octant_phase;
+   ccd->ccd_compute_readnoise = ccd_compute_readnoise;
    ccd->ccd_correct_offset = ccd_correct_offset;
    ccd->ccd_correct_nonlinearity = ccd_correct_nonlinearity;
    ccd->ccd_correct_crosstalk = ccd_correct_crosstalk;
