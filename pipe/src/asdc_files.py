@@ -12,6 +12,8 @@ from __future__ import print_function
 
 import re
 import os, sys
+import time
+from datetime import datetime, timezone
 import sqlite3
 import argparse
 
@@ -21,6 +23,19 @@ TraceSQL = False
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+def abi_start_time (base):
+    # parse filename to get timestamp to whole seconds precision
+    filename_regex = 'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
+    fields = re.search (filename_regex, base)
+    if fields is None:
+        eprint ("*** Error: regex mismatch: {}".format(base))
+        return None
+    # help strptime by adding a timezone specification
+    tstamp = fields.group(1)+'+0000'
+    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S%z')
+    timet = time.mktime(tstamp_obj.timetuple())
+    return int(timet)
 
 class Tokenizer:
     def __init__ (self):
@@ -65,7 +80,19 @@ def ims_entry (path):
     fields["yday"] = daytag % 1000
     return fields
 
+def abi_fields ():
+    fields = {}
+    fields["tstart"] = "integer not null"
+    return fields
+
+def abi_entry (path):
+    basename = os.path.basename(path)
+    fields = {}
+    fields["tstart"] = abi_start_time (basename)
+    return fields
+
 Filetype_Dict["ims"] = File_Type("ims\d{7,7}_1km_v\d.\d.nc", ims_fields, ims_entry)
+Filetype_Dict["abi"] = File_Type('OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s\d{13}\d_', abi_fields, abi_entry)
 
 def classify_filename (path, *args, **kwargs):
     basename = os.path.basename(path)
