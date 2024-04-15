@@ -543,17 +543,28 @@ int map_lookup_##name (Map_Type *map, unsigned int num, \
         Tile_Type *tile; \
         unsigned int col, row; \
         int k; \
+        double lat_temp; \
  \
-        if ((k = map->find_tile (map, lon[i], lat[i])) < 0) \
+        lat_temp = lat[i]; \
+        if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
           { \
-             values[i] = missing_value; \
-             num_off_tiles++; \
-             continue; \
+             lat_temp = lat[i]+0.01; \
+             if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
+               { \
+                  lat_temp = lat[i]-0.01; \
+                  if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
+                    { \
+                       lat_temp = lat[i]; \
+                       values[i] = missing_value; \
+                       num_off_tiles++; \
+                       continue; \
+                    } \
+               } \
           } \
  \
         tile = &map->tiles[k]; \
  \
-        if (0 != lonlat_to_image (tile, &col, &row, lon[i], lat[i])) \
+        if (0 != lonlat_to_image (tile, &col, &row, lon[i], lat_temp)) \
           { \
              values[i] = missing_value; \
              num_not_found++; \
