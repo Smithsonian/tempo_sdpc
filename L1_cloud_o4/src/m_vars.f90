@@ -157,10 +157,13 @@ module m_vars
 ! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
 ! coefs are derived using ops3_4p3_livetest 20240216 with
-! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
    real, parameter:: TrefO4 = 223. 
-   real, parameter:: a263 = 1.0043, b263 = 0.0066
-   real, parameter:: a293 = 1.0219, b293 = 0.1117
+! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
+!   real, parameter:: a263 = 1.0043, b263 = 0.0066
+!   real, parameter:: a293 = 1.0219, b293 = 0.1117
+! O2O2_template_may2024.pcf & control.O2O2_may2024.in
+   real, parameter:: a263 = 1.049, b263 = 0.010
+   real, parameter:: a293 = 1.103, b293 = 0.017 
 
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 

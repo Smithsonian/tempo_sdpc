@@ -177,9 +177,11 @@ Radiance calibration parameters
 bl0    0.001     -1.0e+30    1.0e+30
 bl1    0.001     -1.0e+30    1.0e+30
 bl2    0.0001    -1.0e+30    1.0e+30
+bl3    1.0E-05   -1.0e+30    1.0e+30
 sc0    1.0        1.0        1.0    
 sc1    0.001     -1.0e+30    1.0e+30
 sc2    5.0E-05   -1.0e+30    1.0e+30
+sc3    -1.0E-05   -1.0e+30    1.0e+30
 sin    0.095     -1.0e+30    1.0e+30
 hwe    -1.0      -1.0       -1.0     # Gaussian HW@1/e
 asy    -1.0      -1.0       -1.0     # Gaussian asymmetry
@@ -218,7 +220,10 @@ Radiance fitting parameters
 ring
 ad1    0.02     -1.0e+30    1.0e+30
 eoi    0         0          0
-o3_t2
+o3_t1
+lbe    1.0e-3   -1.0e+30    1.0e+30
+eoi    0         0          0
+o3_t3
 lbe    1.0e-3   -1.0e+30    1.0e+30
 eoi    0         0          0
 no2_t2
@@ -255,12 +260,12 @@ end_of_input
 #   Geometric AMF limit [suspect, bad] (Set to negative to ignore)
 #   Minimum total AMF for "good" VCD (Set to negative to ignore)
 #  -------------------------------------------------------------
-  Main data quality flag limits
-  0.0E+00 +1.0E+44
-  2.0     3.0
-  -80.0   89.0
-  -6.0    -8.0
-  -1.0
+Main data quality flag limits
+ 0.0E+00 +1.0E+44
+ 2.0     3.0
+ -80.0   89.0
+ -6.0    -8.0
+ -1.0
 
 # ----------------------------------------------------------------
 # The next block controls the cross-track smoothing procedure.
