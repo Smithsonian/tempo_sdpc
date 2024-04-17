@@ -7,12 +7,13 @@ import os, sys
 import numpy as np
 import argparse
 import pathlib
-from netCDF4 import Dataset
-from shutil import copyfile
 
-import sqlite3
 import signal
 from threading import Event
+
+import sqlite3
+from netCDF4 import Dataset
+from shutil import copyfile
 
 Subgroup_Record_Var = 'mean_time'
 Xtrack_Sample_Offset = 25
@@ -225,12 +226,10 @@ def collect_trend_params (path, args_dir, arch_dir):
 
 def process_file_list (path_list, args_dir, arch_dir):
     processed_files = []
-    if len(path_list) == 0:
-        return processed_files
     for path in path_list:
         status = collect_trend_params (path, args_dir, arch_dir)
         if status == 0:
-            processed_files = processed_files + [path]
+            processed_files.append(path)
     return processed_files
 
 def table_files_matching_trend_status (cur, table_name, trend_status):
@@ -248,26 +247,21 @@ def connect_database (db_file_path, mode):
     conn.execute ("pragma foreign_keys=on")
     return conn
 
-def unprocessed_files (db_file_path, table_names):
-    paths = []
+def unprocessed_files (db_file_path, table_name):
     with connect_database (db_file_path, "ro") as conn:
-        for tbl in table_names:
-            paths = paths + table_files_matching_trend_status (conn.cursor(), tbl, 0)
+        paths = table_files_matching_trend_status (conn.cursor(), table_name, 0)
     return paths
 
 def table_name_for_file (filename):
     tok = filename.split('_')
     return '{}_{}'.format(tok[1], tok[2])
 
-def mark_as_processed (db_file_path, path_list):
+def mark_as_processed (db_file_path, path_list, table_name):
     if len(path_list) == 0:
         return
+    basenames = [os.path.basename(p) for p in path_list]
     with connect_database (db_file_path, "rw") as conn:
-        for path in path_list:
-            basename = os.path.basename (path)
-            table_name = table_name_for_file (basename)
-            cur = conn.cursor()
-            cur.execute ("update {} set trend_status=1 where filename=\"{}\"".format(table_name, basename))
+        conn.executemany ("update {} set trend_status=1 where filename=?".format(table_name), zip(basenames))
 
 class Signal_Catcher:
 
@@ -304,10 +298,12 @@ def run_as_service (args_dir, arch_dir):
 
     logprint ("Started", flush=True)
     while not sig.caught():
-        filenames = unprocessed_files (db_file_path, table_names)
-        processed_files = process_file_list (filenames, args_dir, arch_dir)
-        mark_as_processed (db_file_path, processed_files)
-        sig.wait(60)
+        for tbl in table_names:
+            filenames = unprocessed_files (db_file_path, tbl)
+            if len(filenames) > 0:
+                processed_files = process_file_list (filenames, args_dir, arch_dir)
+                mark_as_processed (db_file_path, processed_files, tbl)
+        sig.wait(300)
 
     eprint ("Exiting: caught signal = {}".format(sig.signum))
     return 0
