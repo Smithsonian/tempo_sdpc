@@ -1645,11 +1645,11 @@ contains
 
    subroutine final_check_output_vars
 
-    use m_vars, only: rad_Latitude,rad_Longitude,rad_SolarZenithAngle!,&
-                     !out_TerrainHeight, &
-                     !out_TerrainPressure, l2_TerrainPressure, &
-                     !out_SurfaceReflectivity466
-    !use m_vars, only: out_SurfaceLER466, out_SurfaceLER440
+    use m_vars, only: rad_Latitude,rad_Longitude,rad_SolarZenithAngle,&
+                     out_TerrainHeight, &
+                     out_TerrainPressure, l2_TerrainPressure, &
+                     out_SurfaceReflectivity466
+    use m_vars, only: out_SurfaceLER466, out_SurfaceLER440
     use m_vars, only: out_EffectiveCloudFraction,out_CloudRadianceFraction466,&
                      out_CloudRadianceFraction440, out_CloudPressure,&
                      out_SceneLER466, out_ScenePressure
@@ -1658,32 +1658,42 @@ contains
  
     implicit none
     integer:: ix, it, nx, nt
-    real(kind=4) :: thislat, thissza
+    real(kind=4) :: thislat, thissza, thislon
 
     nx = rad_nXtrack
     nt = rad_NumTimes
     write(*,*)'final check:',nx,nt
- 
+
+    ! lon-lat 
     do it = 1, nt
        do ix = 1, nx
           thislat = abs(rad_Latitude(ix,it))
-          if (thislat .gt. 90.) then
+          thislon = rad_Longitude(ix,it)
+          if ((thislat .gt. 90.) .or. (thislon .lt. -360.)) then
              rad_Latitude(ix,it) = fFillValue
              rad_Longitude(ix,it) = fFillValue
+             out_TerrainHeight(ix, it) = fFillValue
+             out_TerrainPressure(ix, it) = fFillValue
+             l2_TerrainPressure(ix, it) = fFillValue
+             out_SurfaceReflectivity466(ix, it) = fFillValue
+             out_SurfaceLER466(ix, it) = fFillValue
+             out_SurfaceLER440(ix, it) = fFillValue
           endif
         enddo
      enddo
 
+     ! LUT max SZA
      do it = 1, nt
         do ix = 1, nx
            thissza = rad_SolarZenithAngle(ix,it)
            if ((thissza .lt. 0.) .or. (thissza .gt. 89.)) then 
-           !  out_TerrainHeight(ix, it) = fFillValue
-           !  out_TerrainPressure(ix, it) = fFillValue
-           !  l2_TerrainPressure(ix, it) = fFillValue
-           !  out_SurfaceReflectivity466(ix, it) = fFillValue
-           !  out_SurfaceLER466(ix, it) = fFillValue
-           !  out_SurfaceLER440(ix, it) = fFillValue
+             out_TerrainHeight(ix, it) = fFillValue
+             out_TerrainPressure(ix, it) = fFillValue
+             l2_TerrainPressure(ix, it) = fFillValue
+             out_SurfaceReflectivity466(ix, it) = fFillValue
+             out_SurfaceLER466(ix, it) = fFillValue
+             out_SurfaceLER440(ix, it) = fFillValue
+
              out_EffectiveCloudFraction(ix, it) = fFillValue
              out_CloudRadianceFraction466(ix, it) = fFillValue
              out_CloudRadianceFraction440(ix, it) = fFillValue
