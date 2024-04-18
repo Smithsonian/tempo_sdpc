@@ -19,6 +19,7 @@
 
 #define OUTPUT_PRIVATE_DATA \
    char *file; \
+   const char *product_type; \
    int exposure_type; \
    int have_dims; \
    int num_recs; \
@@ -130,7 +131,7 @@ define_tio_bands (const Output_Type *out,
    tio_bands[1].num_channels = out->num_waves;
 }
 
-typedef int TIO_Template_Method (int, size_t, int, TIO_Scan_Group_Type *);
+typedef int TIO_Template_Method (int, const char *, size_t, int, TIO_Scan_Group_Type *);
 
 static int
 create_file_of_type (Output_Type *out, int ncid, int num_recs,
@@ -140,7 +141,7 @@ create_file_of_type (Output_Type *out, int ncid, int num_recs,
 
    define_tio_bands (out, tio_bands);
 
-   if (0 != (*tmpl_method) (ncid, num_recs, NUM_BANDS, tio_bands))
+   if (0 != (*tmpl_method) (ncid, out->product_type, num_recs, NUM_BANDS, tio_bands))
      {
         tell_verror (TELL_IO_WRITE_ERROR, "%s: creating %s",
                      __func__, out->file);
@@ -161,18 +162,18 @@ static int create_irr_file (Output_Type *out)
    switch (out->exposure_type)
      {
       case EXPREC_TYPE_IRR_REF:
-        return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_ref_irradiance_template);
+        return create_file_of_type (out, out->ncid, out->num_recs, TIO_l1_irradiance_template);
 
       case EXPREC_TYPE_IRR_WRK:
         /* The irradiance file used for processing has a single frame at the
          * top level to store the average irradiance.  The individual frames
          * are stored in the /frames group, which has the same uv/vis band structure
          */
-        if (0 != create_file_of_type (out, out->ncid, 1, TIO_l1_wrk_irradiance_template))
+        if (0 != create_file_of_type (out, out->ncid, 1, TIO_l1_irradiance_template))
           return -1;
         if (0 != TIO_def_grp (out->ncid, "frames", &out->ncid_irr_frames))
           return -1;
-        return create_file_of_type (out, out->ncid_irr_frames, out->num_recs, TIO_l1_wrk_irradiance_template);
+        return create_file_of_type (out, out->ncid_irr_frames, out->num_recs, TIO_l1_irradiance_template);
 
       default:
         /* No other Level 1 irradiance types are expected.
@@ -743,13 +744,25 @@ Output_Type *output_alloc (config_t *cfg, int exposure_type)
         return NULL;
 
       case EXPREC_TYPE_RAD:
-      case EXPREC_TYPE_RAD_TWI:
+        out->product_type = TEMPO_PROD_TYPE_RAD;
         out->out_create = create_rad_file;
         out->out_write_rec = write_rad_rec;
         break;
 
-      case EXPREC_TYPE_IRR_WRK: /* drop */
+      case EXPREC_TYPE_RAD_TWI:
+        out->product_type = TEMPO_PROD_TYPE_RAD_TWI;
+        out->out_create = create_rad_file;
+        out->out_write_rec = write_rad_rec;
+        break;
+
+      case EXPREC_TYPE_IRR_WRK:
+        out->product_type = TEMPO_PROD_TYPE_IRR;
+        out->out_create = create_irr_file;
+        out->out_write_rec = write_irr_rec;
+        break;
+
       case EXPREC_TYPE_IRR_REF:
+        out->product_type = TEMPO_PROD_TYPE_IRR_REF;
         out->out_create = create_irr_file;
         out->out_write_rec = write_irr_rec;
         break;
