@@ -914,7 +914,7 @@ static int test_l1_radiance (const char *file, int ntracks, int nxtrack, int ny)
    if (-1 == test_def_grp (ncid))
         goto cleanup;
 
-   if (-1 == TIO_l1_radiance_template (ncid, ntracks, num_sgrps, sgrps))
+   if (-1 == TIO_l1_radiance_template (ncid, TEMPO_PROD_TYPE_RAD, ntracks, num_sgrps, sgrps))
      {
         fprintf (stderr, "*** failed creating L1 radiance template in %s\n", file);
         goto cleanup;
@@ -1220,7 +1220,7 @@ static int test_l1_irradiance (const char *file, int ntracks, int nxtrack, int n
    if (-1 == TIO_create (file, NC_NETCDF4, &ncid))
      goto cleanup;
 
-   if (-1 == TIO_l1_wrk_irradiance_template (ncid, ntracks, num_sgrps, sgrps))
+   if (-1 == TIO_l1_irradiance_template (ncid, TEMPO_PROD_TYPE_IRR, ntracks, num_sgrps, sgrps))
      {
         fprintf (stderr, "*** failed creating L1 irradiance template in %s\n", file);
         goto cleanup;

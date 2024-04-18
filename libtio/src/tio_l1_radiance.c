@@ -198,7 +198,7 @@ static int define_radiance_granule_global_ident (int grp)
    return _pTIO_write_granule_ident (grp, &gid);
 }
 
-static int define_global_attrs (int grp)
+static int define_global_attrs (int grp, const char *product_type)
 {
    static _pText_Attr_Type text_attrs[] =
      {
@@ -222,7 +222,7 @@ static int define_global_attrs (int grp)
    if (0 != define_radiance_granule_global_ident (grp))
      return -1;
 
-   if (0 != TIO_label_product (grp, TEMPO_PROD_TYPE_RAD, 1, 0))
+   if (0 != TIO_label_product (grp, product_type, 1, 0))
      return -1;
 
    return 0;
@@ -1790,8 +1790,8 @@ static int define_inr_input_group (int parent_grp, const char *grp_name,
    return 0;
 }
 
-int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
-                              TIO_Scan_Group_Type *sgrps)
+int TIO_l1_radiance_template (int ncid, const char *product_type, size_t num_steps,
+                              int num_sgrps, TIO_Scan_Group_Type *sgrps)
 {
    _pDim_Table_Type dim_table;
    int i;
@@ -1813,7 +1813,7 @@ int TIO_l1_radiance_template (int ncid, size_t num_steps, int num_sgrps,
    dim_table.time_bias.len = NC_UNLIMITED;
    dim_table.time_sma.len = NC_UNLIMITED;
 
-   if ((-1 == define_global_attrs (ncid))
+   if ((-1 == define_global_attrs (ncid, product_type))
        || (-1 == define_global_dims (ncid, &dim_table))
        || (-1 == define_global_vars (ncid, &dim_table)))
      {

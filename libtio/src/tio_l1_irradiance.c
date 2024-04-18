@@ -366,9 +366,8 @@ static int define_irradiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
    return 0;
 }
 
-static int l1_irradiance_template_of_type (int ncid, size_t num_steps, int num_sgrps,
-                                           const char *product_type,
-                                           TIO_Scan_Group_Type *sgrps)
+int TIO_l1_irradiance_template (int ncid, const char *product_type, size_t num_steps,
+                                int num_sgrps, TIO_Scan_Group_Type *sgrps)
 {
    _pDim_Table_Type dim_table;
    int i;
@@ -401,18 +400,4 @@ static int l1_irradiance_template_of_type (int ncid, size_t num_steps, int num_s
      }
 
    return 0;
-}
-
-int TIO_l1_wrk_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
-                                    TIO_Scan_Group_Type *sgrps)
-{
-   return l1_irradiance_template_of_type (ncid, num_steps, num_sgrps,
-                                          TEMPO_PROD_TYPE_IRR, sgrps);
-}
-
-int TIO_l1_ref_irradiance_template (int ncid, size_t num_steps, int num_sgrps,
-                                    TIO_Scan_Group_Type *sgrps)
-{
-   return l1_irradiance_template_of_type (ncid, num_steps, num_sgrps,
-                                          TEMPO_PROD_TYPE_IRR_REF, sgrps);
 }
