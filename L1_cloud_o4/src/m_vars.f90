@@ -379,7 +379,7 @@ integer:: ilun_gmi_tmp = 4003
 ! option 9: option_clip_pcld
 ! whether to clip pcld within [lut_pcld[1], psfc0]
 !-----------------------------------------
- character(len=255):: option_clip_pcld='no'
+ character(len=255):: option_clip_pcld='yes' !'no'
 
 ! ===== end of input options =====
 !------------
