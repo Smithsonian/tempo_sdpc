@@ -523,13 +523,15 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
            ELSE IF (j >= rnind(1, 4) .AND. j <= rnind(nsub, maxoth) ) THEN
               sa(i, i) = 5.0E-5   
            ELSE IF (j >= isind(1, 1) .AND. j <= isind(nsub, 1)) THEN
-              sa(i, i) = 1.0E-4 
+              sa(i, i) = 1.0E-4
            ELSE IF (j >= isind(2, 1) .AND. j <= isind(nsub, maxoth)) THEN
-              sa(i, i) = 1.0E-4 
+              sa(i, i) = 1.0E-4
            ELSE IF (j >= irind(1, 1) .AND. j <= irind(nsub, 1)) THEN
-              sa(i, i) = 1.0E-3  !10.0
+              !sa(i, i) = 1.0E-4  !10.0
+              sa(i, i) = 1.0E+4
            ELSE IF (j >= irind(2, 1) .AND. j <= irind(nsub, maxoth)) THEN
-              sa(i, i) = 1.0E-3 !2.0
+              !sa(i, i) = 1.0E-3 !2.0
+              sa(i, i) = 1.0E+4
            ELSE IF (j >= dcind(1, 1) .AND. j <= dcind(nsub, 1) ) THEN
               sa(i, i) = 0.05**2.0
            ELSE IF (j >= dcind(2, 1) .AND. j <= dcind(nsub, maxoth)) THEN

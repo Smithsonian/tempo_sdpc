@@ -311,7 +311,7 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
   ! Internal Scattering in Radiance
   corrected_rad = currspec(1:ns)
   IF ( nir > 0 ) THEN
-   IF (which_inr == 0 ) THEN 
+   IF (which_inr == 0 ) THEN
      IF (do_subfit) THEN
         fidx = 1
         DO i = 1, numwin
@@ -349,7 +349,7 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
                 + fitvar_rad(irind(1, j)) * tempsum(fidx:lidx) * del(fidx:lidx) ** (j-1)
         ENDDO
      ENDIF
-   ELSE IF (which_inr == 1) THEN 
+   ELSE IF (which_inr == 1) THEN
      IF (do_subfit) THEN
         fidx = 1
         DO i = 1, numwin
@@ -359,12 +359,14 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
            del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
 
            IF (irfind(i, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) - &
-                fitvar_rad(irind(i, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
-
+!                fitvar_rad(irind(i, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
+                fitvar_rad(irind(i, 1)) / div_rad * database(rsl_idx, refidx(fidx:lidx))
            DO j = 2, nir
               IF (irfind(i, j) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) -  &
-                   fitvar_rad(irind(i, j)) * del(fidx:lidx) ** (j-1 ) / div_rad &
-                   / database(rsl_idx, refidx(fidx:lidx))   
+!                   fitvar_rad(irind(i, j)) * del(fidx:lidx) ** (j-1 ) / div_rad &
+!                   / database(rsl_idx, refidx(fidx:lidx))   
+                   fitvar_rad(irind(i, j)) * del(fidx:lidx) ** (j-1 ) / div_rad  &
+                    * database(rsl_idx, refidx(fidx:lidx))  
            ENDDO
 
            fidx = lidx + 1
@@ -380,11 +382,14 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
         del(fidx:lidx) = fitwavs(fidx:lidx) - wavg
         
         IF (irfind(1, 1) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) - &
-             fitvar_rad(irind(1, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
+!             fitvar_rad(irind(1, 1)) / div_rad / database(rsl_idx, refidx(fidx:lidx))
+             fitvar_rad(irind(1, 1)) / div_rad * database(rsl_idx, refidx(fidx:lidx))
         DO j = 2, nir
            IF (irfind(1, j) > 0) corrected_rad(fidx:lidx) = corrected_rad(fidx:lidx) -  &
+!                fitvar_rad(irind(1, j)) * del(fidx:lidx) ** (j-1)  / div_rad &
+!                / database(rsl_idx, refidx(fidx:lidx))   
                 fitvar_rad(irind(1, j)) * del(fidx:lidx) ** (j-1)  / div_rad &
-                / database(rsl_idx, refidx(fidx:lidx))   
+                * database(rsl_idx, refidx(fidx:lidx))  
         ENDDO
      ENDIF
    ENDIF

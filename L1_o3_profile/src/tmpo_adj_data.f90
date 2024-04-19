@@ -5,7 +5,7 @@ MODULE tmpo_adj_data
   ring=>tmpo_ring, refl=>tmpo_refl, rad=>tmpo_rad, irrad=>tmpo_irrad,&
   cali=>tmpo_cali, geo1=>tmpo_geo1, geo2=>tmpo_geo2
   IMPLICIT NONE
-  PUBLIC  adj_solar_data, adj_earthshine_data     
+  PUBLIC  adj_solar_data, adj_earthshine_data
   PRIVATE adj_rad_sig, load_comres
 
 CONTAINS
@@ -44,12 +44,7 @@ CONTAINS
     ELSE
       curr_sol_spec(sig_idx, 1:n_irrad_wvl) = normweight
     ENDIF
-    nsolpix(1:numwin) = irrad%npix(1:numwin, currpix) 
-
-    IF (which_inr ==1) THEN 
-     IF (allocated(curr_radresponse_spec)) deallocate(curr_radresponse_spec)
-     allocate (curr_radresponse_spec(2,n_irrad_wvl))
-    ENDIF
+    nsolpix(1:numwin) = irrad%npix(1:numwin, currpix)
 
     ! Solar Spectrum for Ring Calculation
     nsol_ring = ring%nsol(currpix)
@@ -100,7 +95,7 @@ CONTAINS
          n_irrad_wvl, nsolpix, actspec_rad, database, band_selectors, &
          mask_fitvar_rad, radnhtrunc, refnhextra, curr_rad_spec_ori, &
          GranuleYear, GranuleMonth, GranuleDay,GranuleJDay, currline, &
-         glb_fitvar, glb_exitval, glb_initval, have_common
+         glb_fitvar, glb_exitval, glb_initval, have_common, nswath, tabdir, curr_radresponse_spec
     !USE OMSAO_omicloud_module, ONLY: OMIL2_clouds 
     USE ozprof_data_module, ONLY: div_rad, div_sun, rad_posr, rad_specr, &
          nsaa_spike, saa_flag, the_cfrac, the_ctp, the_cld_flg, which_cld, &
@@ -133,7 +128,7 @@ CONTAINS
     ! ================= 
     INTEGER :: fidx, lidx, i, j, west_idx, south_idx, idxoff, &
          nhtrunc, ntrunc, ntrunc1, errstat, ch, &
-         is, idum, iw
+         is, idum, iw, iix
     REAL (KIND=dp)              :: finit
     REAL (KIND=dp), DIMENSION (n_max_fitpars) :: fitvar
     LOGICAL                     :: redo_database
@@ -145,6 +140,15 @@ CONTAINS
       REAL (KIND=dp), DIMENSION(:,:), POINTER   :: xwavs
     END TYPE soft_group
     TYPE (soft_group), SAVE :: soft
+
+    ! local variables
+    CHARACTER (LEN=100) :: radresponse_fname
+    TYPE resp_group
+      INTEGER, DIMENSION (mswath) ::  nw, nx
+      REAL (KIND=dp), DIMENSION(:,:,:), POINTER :: resp, wvl
+    END TYPE resp_group
+    TYPE (resp_group), SAVE :: resp
+
     LOGICAL, SAVE   :: first = .TRUE.
     CHARACTER (LEN=255)      :: msg !! Kai
 
@@ -257,33 +261,68 @@ CONTAINS
         the_ctp = 0.0
       ENDIF
     ENDIF
+
+    IF (first) THEN
     !-----------------------------------------------------------------------
     ! load soft calibration spectra
     !-----------------------------------------------------------------------
-    IF (first .AND. biascorr) THEN
-      allocate(soft%xwcorr(mswath, nxtrack_max, max_fit_pts))
-      allocate(soft%xwavs(mswath, max_fit_pts))
+      IF (biascorr) THEN
+        allocate(soft%xwcorr(mswath, nxtrack_max, max_fit_pts))
+        allocate(soft%xwavs(mswath, max_fit_pts))
 
-      WRITE(msg, *) TRIM(ADJUSTL(biasfname))//',which_biascorr=',which_biascorr
-      errstat = OMI_SMF_setmsg (OMI_W_GENERAL, TRIM(msg), modulename, 0)
-      IF ( which_biascorr == 7) THEN
-        OPEN(UNIT=calunit, FILE=TRIM(ADJUSTL(biasfname)), STATUS='OLD', IOSTAT=errstat)
+        WRITE(msg, *) TRIM(ADJUSTL(biasfname))//',which_biascorr=',which_biascorr
+        errstat = OMI_SMF_setmsg (OMI_W_GENERAL, TRIM(msg), 'read bias', 0)
+        IF ( which_biascorr == 7) THEN
+          OPEN(UNIT=calunit, FILE=TRIM(ADJUSTL(biasfname)), STATUS='OLD', IOSTAT=errstat)
+          IF ( errstat /= pge_errstat_ok ) THEN
+            errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
+                 TRIM(ADJUSTL(biasfname)), modulename, 0)
+            pge_error_status = pge_errstat_error
+            RETURN
+          ENDIF
+          soft%xwcorr = 1.0 ! Initialize to one
+          DO is = 1, mswath
+            READ (calunit, *) soft%nxcorr(is), soft%nxwav(is)
+            DO iw = 1, soft%nxwav(is)
+              READ (calunit, *) soft%xwavs(is, iw), soft%xwcorr(is, 1:soft%nxcorr(is), iw)
+            ENDDO
+          ENDDO
+          CLOSE(UNIT=calunit) 
+        ENDIF
+      ENDIF
+    !-----------------------------------------------------------------------
+    ! load radcal coef calibration spectra
+    !-----------------------------------------------------------------------
+      IF (which_inr == 1) THEN
+        allocate(resp%resp(mswath, max_fit_pts, nxtrack_max))
+        allocate(resp%wvl(mswath, max_fit_pts, nxtrack_max))
+
+        radresponse_fname = ADJUSTL(TRIM(tabdir)) // 'refdb/TEMPO_xtrack_V01_opf_all_xtrack.dat'
+        WRITE(msg, *) 'which_inr=', radresponse_fname
+        OPEN(UNIT=calunit, FILE=TRIM(ADJUSTL(radresponse_fname)), STATUS='OLD', IOSTAT=errstat)
         IF ( errstat /= pge_errstat_ok ) THEN
           errstat = OMI_SMF_setmsg (omsao_e_open_fitctrl_file, &
-               TRIM(ADJUSTL(biasfname)), modulename, 0)
+               TRIM(ADJUSTL(radresponse_fname)), 'read response', 0)
           pge_error_status = pge_errstat_error
           RETURN
         ENDIF
-        soft%xwcorr = 1.0 ! Initialize to one
-        DO is = 1, mswath
-          READ (calunit, *) soft%nxcorr(is), soft%nxwav(is)
-          DO iw = 1, soft%nxwav(is)
-            READ (calunit, *) soft%xwavs(is, iw), soft%xwcorr(is, 1:soft%nxcorr(is), iw)
+
+        ! header
+        DO i = 1, 8
+          READ(calunit, *)
+        ENDDO
+        ! read all the data
+        DO is = 1, nswath
+          READ(calunit, *) resp%nx(is), resp%nw(is)
+          DO i = 1, resp%nx(is)
+            READ(calunit, *)
+            DO j = 1, resp%nw(is)
+              READ(calunit, *) resp%wvl(is, j, i), resp%resp(is, j, i)
+            ENDDO
           ENDDO
         ENDDO
-        CLOSE(UNIT=calunit) 
+        CLOSE(calunit)
       ENDIF
-
       first = .FALSE.
     ENDIF
 
@@ -495,6 +534,14 @@ CONTAINS
       ! Spline data bases, compute undersampling spectrum, and prepare
       ! reference spectra for fitting.
       ! --------------------------------------------------------------
+
+    IF (which_inr == 1) THEN
+      IF (allocated(curr_radresponse_spec)) deallocate(curr_radresponse_spec)
+      allocate (curr_radresponse_spec(2,max_fit_pts))
+      curr_radresponse_spec(1, 1:max_fit_pts) = resp%wvl(1, 1:max_fit_pts, currpix)
+      curr_radresponse_spec(2, 1:max_fit_pts) = resp%resp(1, 1:max_fit_pts, currpix)
+    ENDIF
+
       CALL prepare_databases ( n_rad_wvl, curr_rad_spec(wvl_idx,1:n_rad_wvl), pge_error_status )
       IF ( pge_error_status >= pge_errstat_error ) THEN 
            redo_database = .TRUE.
