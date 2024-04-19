@@ -12,7 +12,7 @@ TMPO
 
 *debug
 scnwrt calwrt calscn rtmdbg
-F      F      F       F
+F      F      F      F
 
 *Reduce spectral resolution
 F      ; T: Reduce spectral resolution; F: Original
@@ -30,7 +30,7 @@ T   4                  # Coadd across track, # of observations to be coadded (1-
 F   3                  # Coadd along track,  # of observations to be coadded (1-~129)
 F                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
 1   F  F               # # of bands, spectral coadd? wavelength calibration before coadd?
-1  300.0 340.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
+1  293.0 350.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate;320-355
 2  540.0 650.0  2  2
 # If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
 # Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
@@ -39,7 +39,7 @@ F                      # Filter spectral pixels around Mg and Mg-II (280 and 285
 
 *General fitting parameters
  F F F F      # use backup, use solar composite, median/pc0, all orbits / first 7 orbits
- 0            # 0: Sym Gauss 1: Asym Gauss 2. Voigt 3: Tirangle (sym) 4. Super gauss(sym) 5: Super gauss(asym) 6. preflight (TMPO/OMI)
+ 4            # 0: Sym Gauss 1: Asym Gauss 2. Voigt 3: Tirangle (sym) 4. Super gauss(sym) 5: Super gauss(asym) 6. preflight (TMPO/OMI)
  0.001         # Slit truncation limit
  F F F F  F   # variable slit, wavelength calibration, second iter for sol wavcal, smooth cali, slit_rad
  31 10 T      # slit fit pts, slit step points, on-line slit fit (21, 5)
@@ -85,12 +85,12 @@ eoi  0 0 0  # end of input
  F            # renormalize radiance spectrum?
  F            # weight radiance spectrum?
  8            # maximum number of iterations for fitting (<0: default)
- 100          # frequency of radiance wavelength calibration
+ 150          # frequency of radiance wavelength calibration
  88.0         # maximum solar zenith angle to process
  0.0          # "Top of Atmosphere" height [km]
  +0.1         # "phase" of undersampling spectrum
 bl0   0 0 0 -1.56  -1.0E+99   1.0E+99
-bl1   0 0 0 -1.56  -1.0E+99   1.0E+99
+bL1   0 0 0 -1.56  -1.0E+99   1.0E+99
 bl2   0 0 0 1.590E-8   -1.0E+99   1.0E+99
 bl3   0 0 0 -5.56E-6   -1.0E+99   1.0E+99
 sc0   1.0 1.0 1.0 -1.0E+99 1.0E+99
