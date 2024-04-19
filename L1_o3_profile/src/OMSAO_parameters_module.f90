@@ -43,7 +43,7 @@ MODULE OMSAO_parameters_module
   ! Maximum numbers for layers in retrievals and in radiative transfer calculation
   ! -----------------------------------------------------------------------------
   !INTEGER, PARAMETER        :: maxlay = 66, mflay = 100 
-  INTEGER, PARAMETER        :: maxlay = 30, mflay = 65
+  INTEGER, PARAMETER        :: maxlay = 30, mflay = 67 !junsung (JAN 2024)
   REAL (KIND=dp), PARAMETER :: lcurve_tol = 1.0D-8, smallval = 1.0E-10_dp
 
   ! -----------------------------------------------
