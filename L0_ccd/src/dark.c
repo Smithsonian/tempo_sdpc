@@ -164,7 +164,7 @@ static int read_Tfpa_coeffs (Dark_Type *drk, const char *path)
 {
    int start[2], count[2], ncid, dimid, status = -1;
    size_t num_quads, num_coeffs;
-   float coeffs[4];
+   float coeffs[8];
 
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      {

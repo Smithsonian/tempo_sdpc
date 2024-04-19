@@ -419,7 +419,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
    float fpa_temp, fpe_temp, spec_temp, tele_temp, bench_temp, fpa_sum, fpe_sum, spec_sum, tele_sum, bench_sum;
    double smear_fraction;
    double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period;
-   int i, j, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
+   int i, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
+   unsigned int j;
 
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
@@ -506,6 +507,9 @@ static int compute_current_and_trim (CCD_Type *ccd,
         exposure_time_offset = exprec->start_time;
         n_sample = 30;
         break;
+      default:
+        tell_verror (TELL_RUNTIME_ERROR, "%s: invalid ccd_int_type=%d", __func__, exprec->ccd_int_type);
+        return -1;
      }
    if (exprec->num_coadds == 1)
      {

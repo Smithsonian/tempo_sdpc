@@ -927,7 +927,16 @@ static void compute_stddev (float *samples, int nb, int ne, float *stddev)
         sum += samples[n];
         count += 1;
      }
-   mean = sum / count;
+   if (count > 0)
+     {
+        mean = sum / count;
+     }
+   else
+     {
+        mean = IMAGE_PIXEL_FILL_VALUE;
+        *stddev = 0.0;
+        return;
+     }
 
    sum_sqdev = 0.0;
    for (n = nb; n < ne; n++)
