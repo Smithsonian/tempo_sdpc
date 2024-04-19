@@ -692,8 +692,8 @@ contains
     have_undersampling = .FALSE. 
  
     ! By default, set having common mode to FALSE
-    have_common = .FALSE.
-
+!    have_common = .FALSE.
+    have_common = .TRUE.
     ! -------------------------------------------------------------
     ! Now keep reading spectrum blocks until EOF. This, obviously,
     ! has to be the last READ action performed from the input file.
@@ -717,6 +717,7 @@ contains
         pge_error_status = pge_errstat_error
         RETURN
       END IF
+
       CALL check_for_endofinput ( TRIM(ADJUSTL(tmpchar)), yn_eoi )
       IF ( yn_eoi ) EXIT getpars
 
@@ -774,7 +775,6 @@ contains
           ENDIF
         END IF
       END DO
-        
       ! read shift parameter
       READ (fit_ctrl_unit, *) idxchar1, vartmp, lotmp, uptmp
       IF ( lotmp > vartmp .OR. uptmp < vartmp ) THEN
@@ -838,7 +838,6 @@ contains
         rmask_fitvar_rad(i) = n_fitvar_rad
       END IF
     END DO
-
     ! ------------------------------------
     ! Now the reference spectra parameters
     ! ------------------------------------
@@ -897,7 +896,6 @@ contains
         ntsh = ntsh + 1
       END IF
     END DO
-
     !  ! --------------------------------------
     !  ! Position cursor to read AMF table file
     !  ! --------------------------------------
@@ -947,7 +945,6 @@ contains
            modulename, 0)
     END IF
 
-
     ! -----------------------------------------------
     ! Position cursor to read molecule name(s) to fit
     ! -----------------------------------------------
@@ -980,7 +977,6 @@ contains
 
 
     l1l2_files = TRIM(ADJUSTL(tabdir)) // '../control/L1L2_fnames.inp'
-
     IF (.NOT. rw_l1l2_pcf ) THEN
       OPEN(UNIT=l1l2inp_unit, FILE=TRIM(ADJUSTL(l1l2_files)), STATUS='OLD', &
            IOSTAT=errstat)
@@ -1178,7 +1174,6 @@ contains
     swavcal_fname = TRIM(ADJUSTL(outdir))// 'swavcal_'//TRIM(ADJUSTL(sol_identifier))// '.'//sn
     rslit_fname   = TRIM(ADJUSTL(outdir))// 'rslit_'// TRIM(ADJUSTL(rad_identifier)) // '.'//sn
     wavcal_fname  = TRIM(ADJUSTL(outdir))//'wavcal_'// TRIM(ADJUSTL(rad_identifier)) //'.'//sn
-
     ! ----------------------------------------------
     ! Position cursor to read HDF output flags (CRN)
     ! ----------------------------------------------
@@ -1235,7 +1230,6 @@ contains
        WRITE(*,*) 'setlect_lonlat should be false'
        STOP 1
     ENDIF
-
     ! check for boundaries
     IF (linelim(1) /= -9999) linenum_lim =  linelim
     IF (pixlim(1)  /= -9999) pixnum_lim  =  pixlim
@@ -1279,7 +1273,6 @@ contains
      ELSE
        nxbin = 1
      ENDIF
-
      IF( coadd_uv2 ) THEN
        WRITE(msg, '(A,2I5,2I3)') 'Processing UV1 Line sample ranges=', &
            linenum_lim(1:2),pixnum_lim(1:2)
@@ -1310,7 +1303,6 @@ contains
          ! print * , nint(0.4), ceiling(0.4), int(0.4)
          ! print * , nint(0.6), ceiling(0.6), int(0.6)
     ENDIF
-    
     ! Could start from any positions, adjust line positions if necessary
     IF (do_ybin .AND. nybin > 1)  THEN
       IF( linenum_lim(1) <= nybin ) THEN
@@ -1365,7 +1357,6 @@ contains
         l2_filename = TRIM(ADJUSTL(l2_filename)) // '-' //TRIM(ADJUSTL(ybinchar))
       ENDIF
       !ENDIF
-
       IF (l2_hdf_flag == 4) THEN
         l2_filename=TRIM(ADJUSTL(L2_filename))//'.nc'
       ELSE IF (l2_hdf_flag == 3) THEN
