@@ -27,6 +27,9 @@ struct TP_Type
 
 #define INSTR_PRIVATE_DATA \
    TP_Type adc_temp0_derived; \
+   TP_Type adc_temp5_derived; \
+   TP_Type adc_temp8_derived; \
+   TP_Type adc_temp16_derived; \
    TP_Type fpe_temp1;
 #include "instr.h"
 
@@ -71,7 +74,6 @@ static int instr_fpa_temp (const Instr_Type *instr, double timestamp, float *fpa
         tell_vwarn (0, "%s: FPA temperature lookup failed", __func__);
      }
    *fpa_temp = (float) value;
-   tell_vlog (TELL_MSGTYPE_INFO, 2, "FPA temp lookup: time: %0.3f => FPA temp: %0.2f C", timestamp, *fpa_temp);
 
    return 0;
 }
@@ -85,7 +87,45 @@ static int instr_fpe_temp (const Instr_Type *instr, double timestamp, float *fpe
         tell_vwarn (0, "%s: FPE temperature lookup failed", __func__);
      }
    *fpe_temp = (float) value;
-   tell_vlog (TELL_MSGTYPE_INFO, 2, "FPE temp lookup: time: %0.3f => FPE temp: %.2f C", timestamp, *fpe_temp);
+
+   return 0;
+}
+
+static int instr_spec_temp (const Instr_Type *instr, double timestamp, float *spec_temp)
+{
+   double value;
+
+   if (0 != lookup_value (&instr->adc_temp5_derived, timestamp, &value))
+     {
+        tell_vwarn (0, "%s: Spectrometer temperature lookup failed", __func__);
+     }
+   *spec_temp = (float) value;
+
+   return 0;
+}
+
+static int instr_tele_temp (const Instr_Type *instr, double timestamp, float *tele_temp)
+{
+   double value;
+
+   if (0 != lookup_value (&instr->adc_temp8_derived, timestamp, &value))
+     {
+        tell_vwarn (0, "%s: Telescope temperature lookup failed", __func__);
+     }
+   *tele_temp = (float) value;
+
+   return 0;
+}
+
+static int instr_bench_temp (const Instr_Type *instr, double timestamp, float *bench_temp)
+{
+   double value;
+
+   if (0 != lookup_value (&instr->adc_temp16_derived, timestamp, &value))
+     {
+        tell_vwarn (0, "%s: Optical bench temperature lookup failed", __func__);
+     }
+   *bench_temp = (float) value;
 
    return 0;
 }
@@ -128,6 +168,9 @@ static void free_instr (Instr_Type *instr)
      return;
    free_tp (&instr->adc_temp0_derived);
    free_tp (&instr->fpe_temp1);
+   free_tp (&instr->adc_temp5_derived);
+   free_tp (&instr->adc_temp8_derived);
+   free_tp (&instr->adc_temp16_derived);
    FREE(instr);
 }
 
@@ -145,6 +188,9 @@ static Instr_Type *new_instr_type (void)
    instr->instr_delete = free_instr;
    instr->instr_fpa_temp = instr_fpa_temp;
    instr->instr_fpe_temp = instr_fpe_temp;
+   instr->instr_spec_temp = instr_spec_temp;
+   instr->instr_tele_temp = instr_tele_temp;
+   instr->instr_bench_temp = instr_bench_temp;
 
    return instr;
 }
@@ -270,6 +316,12 @@ static int read_instr1 (Instr_Type *instr, const char *file)
     * Regarding units, ADC_TEMP0 is actually in Ohms, so for a Celsius temperature,
     * we use ADC_TEMP0_DERIVED, which is provided by the IOC.  FPE_TEMP1 is already
     * in Celsius so we use that directly.
+    *
+    * [April 18, 2024]
+    * Three variables were added for trending purposes:
+    * adc_temp5_derived, adc_temp8_derived, and adc_temp16_derived.
+    * They represent temperatures of Spectrometer -X, Telescope T4, and
+    * TEL -X-Y (bench heater set points, according to Xiong), respectively.
     */
 
    if ((status = read_telemetry_point (&instr->adc_temp0_derived, ncid, "adc_tlm", "adc_temp0_derived")) < 0)
@@ -280,6 +332,27 @@ static int read_instr1 (Instr_Type *instr, const char *file)
      }
 
    if ((status = read_telemetry_point (&instr->fpe_temp1, ncid, "fpe_analog_tlm2", "fpe_temp1")) < 0)
+     goto return_error;
+   if (status == 0)
+     {
+        found_values++;
+     }
+
+   if ((status = read_telemetry_point (&instr->adc_temp5_derived, ncid, "adc_tlm", "adc_temp5_derived")) < 0)
+     goto return_error;
+   if (status == 0)
+     {
+        found_values++;
+     }
+
+   if ((status = read_telemetry_point (&instr->adc_temp8_derived, ncid, "adc_tlm", "adc_temp8_derived")) < 0)
+     goto return_error;
+   if (status == 0)
+     {
+        found_values++;
+     }
+
+   if ((status = read_telemetry_point (&instr->adc_temp16_derived, ncid, "adc_tlm", "adc_temp16_derived")) < 0)
      goto return_error;
    if (status == 0)
      {
@@ -716,7 +789,10 @@ Instr_Type *instr_open (const char *file, const char *glob_basename,
      }
 
    if ((0 != apply_filters (&instr->adc_temp0_derived))
-       || (0 != apply_filters (&instr->fpe_temp1)))
+       || (0 != apply_filters (&instr->fpe_temp1))
+       || (0 != apply_filters (&instr->adc_temp5_derived))
+       || (0 != apply_filters (&instr->adc_temp8_derived))
+       || (0 != apply_filters (&instr->adc_temp16_derived)))
      {
         free_instr (instr);
         return NULL;

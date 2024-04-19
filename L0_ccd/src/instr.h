@@ -29,6 +29,27 @@ struct Instr_Type
     */
    int (*instr_fpe_temp)(const Instr_Type *, double, float *);
 
+   /** Look up the instrument spectrometer temperature at a specific time
+    * @param instr   non-NULL pointer to an Instr_Type object
+    * @param time    time stamp value in seconds elapsed since the TEMPO epoch
+    * @param spec_temp  Pointer to a float scalar that will receive the value of ADC_TEMP5
+    */
+   int (*instr_spec_temp)(const Instr_Type *, double, float *);
+
+   /** Look up the instrument telescope temperature at a specific time
+    * @param instr   non-NULL pointer to an Instr_Type object
+    * @param time    time stamp value in seconds elapsed since the TEMPO epoch
+    * @param tele_temp  Pointer to a float scalar that will receive the value of ADC_TEMP8
+    */
+   int (*instr_tele_temp)(const Instr_Type *, double, float *);
+
+   /** Look up the instrument optical bench (TEL -X-Y) temperature at a specific time
+    * @param instr   non-NULL pointer to an Instr_Type object
+    * @param time    time stamp value in seconds elapsed since the TEMPO epoch
+    * @param bench_temp  Pointer to a float scalar that will receive the value of ADC_TEMP16
+    */
+   int (*instr_bench_temp)(const Instr_Type *, double, float *);
+
 #ifdef INSTR_PRIVATE_DATA
    INSTR_PRIVATE_DATA
 #endif

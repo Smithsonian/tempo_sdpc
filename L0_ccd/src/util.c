@@ -332,6 +332,9 @@ struct Trend_Record_Type
    int phase_change[NUM_QUAD];
    float gain[NUM_OCTANTS];
    float readnoise[NUM_OCTANTS];
+   float spec_temp;
+   float tele_temp;
+   float bench_temp;
    float fpe_temp;
    float fpa_temp;
    int num_dg_rows;
@@ -460,6 +463,24 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
      {
         {"long_name", "quadrant parity phase change"},
         {"comment", "0:quadrant even/odd column ADC configured as in FPS testing, 1: the ADC configuration is swapped"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type spec_temp_attrs[] =
+     {
+        {"long_name", "spectrometer -X temperature"},
+        {"units", "C"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type tele_temp_attrs[] =
+     {
+        {"long_name", "telescope T4 temperature"},
+        {"units", "C"},
+        {NULL, NULL}
+     };
+   const Text_Attr_Type bench_temp_attrs[] =
+     {
+        {"long_name", "optical bench (TEL -X-Y) temperature"},
+        {"units", "C"},
         {NULL, NULL}
      };
    const Text_Attr_Type gain_attrs[] =
@@ -609,6 +630,19 @@ Trend_File_Type *trend_collect_open (const char *trend_file, int exposure_type)
        || (0 != define_text_attrs (tft->ncid, varid, phase_change_attrs)))
      goto return_status;
 
+   if ((0 != TIO_def_var (tft->ncid, "spec_temp", NC_FLOAT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
+       || (0 != define_text_attrs (tft->ncid, varid, spec_temp_attrs)))
+     goto return_status;
+   if ((0 != TIO_def_var (tft->ncid, "tele_temp", NC_FLOAT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
+       || (0 != define_text_attrs (tft->ncid, varid, tele_temp_attrs)))
+     goto return_status;
+   if ((0 != TIO_def_var (tft->ncid, "bench_temp", NC_FLOAT, 1, &dimid_time, &varid))
+       || (0 != enable_var_deflation (tft->ncid, varid))
+       || (0 != define_text_attrs (tft->ncid, varid, bench_temp_attrs)))
+     goto return_status;
+
    if ((0 != TIO_def_var (tft->ncid, "gain", NC_FLOAT, 2, dimid_time_oct, &varid))
        || (0 != enable_var_deflation (tft->ncid, varid))
        || (0 != define_text_attrs (tft->ncid, varid, gain_attrs)))
@@ -721,6 +755,9 @@ static void trend_collect_clear_record (Trend_Record_Type *tr)
 
    tr->exposure_type = TIO_FILL_INT;
    tr->start_time = TIO_FILL_FLOAT;
+   tr->spec_temp = TIO_FILL_FLOAT;
+   tr->tele_temp = TIO_FILL_FLOAT;
+   tr->bench_temp = TIO_FILL_FLOAT;
    tr->fpa_temp = TIO_FILL_FLOAT;
    tr->fpe_temp = TIO_FILL_FLOAT;
    tr->num_dg_rows = TIO_FILL_INT;
@@ -785,6 +822,9 @@ int trend_collect_write_record (const Trend_Record_Type *tr)
    count[1] = 0;
 
    if ((0 != TIO_put_var_section (ncid, TEMPO_VAR_TIME, start, count, TIO_DOUBLE, &tr->start_time))
+       || (0 != TIO_put_var_section (ncid, "spec_temp", start, count, TIO_FLOAT, &tr->spec_temp))
+       || (0 != TIO_put_var_section (ncid, "tele_temp", start, count, TIO_FLOAT, &tr->tele_temp))
+       || (0 != TIO_put_var_section (ncid, "bench_temp", start, count, TIO_FLOAT, &tr->bench_temp))
        || (0 != TIO_put_var_section (ncid, "fpa_temp", start, count, TIO_FLOAT, &tr->fpa_temp))
        || (0 != TIO_put_var_section (ncid, "fpe_temp", start, count, TIO_FLOAT, &tr->fpe_temp))
        || (0 != TIO_put_var_section (ncid, "num_dg_rows", start, count, TIO_INT, &tr->num_dg_rows))
@@ -868,6 +908,23 @@ int trend_collect_eoffsets (const float *eoffsets, const int *phase_change)
    memcpy ((char *)tr->phase_change, (char *)phase_change, NUM_QUAD * sizeof(int));
 
    return 0;
+}
+
+/* Spectrometer, telescope, and optical bench temperatures */
+int trend_collect_temp (float spec_temp, float tele_temp, float bench_temp)
+{
+  Trend_Record_Type *tr = Active_Record;
+
+  if (!Have_Trend_File)
+    return 0;
+  if (tr == NULL)
+    return -1;
+
+  tr->spec_temp = spec_temp;
+  tr->tele_temp = tele_temp;
+  tr->bench_temp = bench_temp;
+
+  return 0;
 }
 
 /* Gain, by octant => gain[8] */

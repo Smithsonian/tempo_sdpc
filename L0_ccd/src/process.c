@@ -416,10 +416,10 @@ static int compute_current_and_trim (CCD_Type *ccd,
 {
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *aimg = NULL;
-   float fpa_temp, fpe_temp, fpa_sum, fpe_sum;
+   float fpa_temp, fpe_temp, spec_temp, tele_temp, bench_temp, fpa_sum, fpe_sum, spec_sum, tele_sum, bench_sum;
    double smear_fraction;
    double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period;
-   int i, j, k, n_sample, n_fpa, n_fpe;
+   int i, j, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
 
    if (-1 == ccd->ccd_correct_coadd (ccd, exprec->num_coadds, exprec->img))
      return -1;
@@ -457,10 +457,17 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
 
-   fpa_sum = 0.0;
-   fpe_sum = 0.0;
-   n_fpa = 0;
-   n_fpe = 0;
+   fpa_sum   = 0.0;
+   fpe_sum   = 0.0;
+   spec_sum  = 0.0;
+   tele_sum  = 0.0;
+   bench_sum = 0.0;
+
+   n_fpa   = 0;
+   n_fpe   = 0;
+   n_spec  = 0;
+   n_tele  = 0;
+   n_bench = 0;
 
    /* FIXME: The timing patterns below have been implemented on an empirical basis.
     * The nominal integration mode seems to work reasonably, but there are rooms
@@ -527,9 +534,51 @@ static int compute_current_and_trim (CCD_Type *ccd,
                fpe_sum += fpe_temp;
                n_fpe += 1;
            }
+         if (0 != instr->instr_spec_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &spec_temp))
+           {
+               return -1;
+           }
+         else
+           {
+               spec_sum += spec_temp;
+               n_spec += 1;
+           }
+         if (0 != instr->instr_tele_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &tele_temp))
+           {
+               return -1;
+           }
+         else
+           {
+               tele_sum += tele_temp;
+               n_tele += 1;
+           }
+         if (0 != instr->instr_bench_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &bench_temp))
+           {
+               return -1;
+           }
+         else
+           {
+               bench_sum += bench_temp;
+               n_bench += 1;
+           }
        }
    xr->fpa_temp = fpa_sum / n_fpa;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "FPA temp lookup: time: %0.3f => FPA temp: %0.2f C", exprec->start_time, xr->fpa_temp);
+
    xr->fpe_temp = fpe_sum / n_fpe;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "FPE temp lookup: time: %0.3f => FPE temp: %.2f C", exprec->start_time, xr->fpe_temp);
+
+   spec_temp = spec_sum / n_spec;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "Spectrometer temp lookup: time %0.3f => Spectrometer temp: %0.2f C", exprec->start_time, spec_temp);
+
+   tele_temp = tele_sum / n_tele;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "Telescope temp lookup: time %0.3f => Telescope temp: %0.2f C", exprec->start_time, tele_temp);
+
+   bench_temp = bench_sum / n_bench;
+   tell_vlog (TELL_MSGTYPE_INFO, 2, "Bench temp lookup: time %0.3f => Bench temp: %0.2f C", exprec->start_time, bench_temp);
+
+   if (0 != trend_collect_temp (spec_temp, tele_temp, bench_temp))
+     return -1;
 
    /* convert DN to electrons */
    if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))

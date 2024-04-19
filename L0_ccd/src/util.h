@@ -36,6 +36,7 @@ extern int trend_collect_write_record (const Trend_Record_Type *tr);
 
 extern int trend_collect_time (double start_time, int index);
 extern int trend_collect_eoffsets (const float *eoffsets, const int *phase_change);
+extern int trend_collect_temp (float spec_temp, float tele_temp, float bench_temp);
 extern int trend_collect_gain (float fpa_temp, float fpe_temp, const float *gain);
 extern int trend_collect_readnoise (const float *readnoise);
 extern int trend_collect_sdc (int num_dg_rows, int num_tg_rows, const float *sdc);
