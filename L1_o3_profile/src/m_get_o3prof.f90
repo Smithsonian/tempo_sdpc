@@ -13,6 +13,7 @@ MODULE m_get_o3prof
   USE NETCDF
   USE m_ezspline_interpolation, ONLY: bspline
   USE m_utilities, ONLY:reverse, get_monfrac, get_latfrac, get_gridfrac
+  USE m_get_met_tempo, ONLY: get_met_tempo, thismet
 
   !USE m_get_m2prof, ONLY:m2du, get_m2prof
   IMPLICIT NONE
@@ -102,11 +103,11 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
   !============================
   ! local variables
   !============================
-  INTEGER :: i, errstat, mnorstd, fidx, lidx, tmpntp
-  REAL (KIND=dp) :: tmp
+  INTEGER :: i, errstat, mnorstd, fidx, lidx, tmpntp, j
+  REAL (KIND=dp) :: tmp, tmp1, ozabove, ozbelow
   REAL (KIND=dp), DIMENSION(:), allocatable :: oztmp
   REAL (KIND=dp), DIMENSION(:), allocatable :: mipasp, mipaso3 !(nmipas)
-  REAL (KIND=dp), DIMENSION(0:nref)    :: ozref, refp
+  REAL (KIND=dp), DIMENSION(0:nref)    :: ozref, refp!, ozref0
   REAL (KIND=DP), DIMENSION(:), allocatable :: pv8, v8oz !(0:nv8)
   REAL (KIND=dp), DIMENSION(0:numk)    :: umkoz, umkpg
   CHARACTER(10), PARAMETER :: modulename='get_o3prof'
@@ -155,20 +156,71 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
      !print * , ozprof(1:nmpref-1), sum(ozprof(1:nmpref-1))
      !CALL GET_MLprof(ozref(1:nmpref-1), 1) 
      !print * , ozprof(1:nmpref-1), sum(ozprof(1:nmpref-1))
-  ELSE IF (which_clima == 13) THEN 
-     allocate(oztmp(nmpref-1))
-     tmp = exp((log(pst) + log(p0))*0.5)
-     tmpntp = MINVAL(MINLOC(refp(0:nmpref-1), MASK=(refp(0:nmpref-1) >  tmp)))-1
-     CALL GET_tempoprof(tmpntp,refp(0:tmpntp),oztmp(1:tmpntp),1)
-     ozref(1:tmpntp) = oztmp(1:tmpntp)
-     CALL GET_TBPROF (oztmp(1:nmpref-1), 1)
-     ozref(tmpntp) = ozref(tmpntp)*0.5 + oztmp(tmpntp)*0.5
-     ozref(tmpntp+1:nmpref-1) = oztmp(tmpntp+1:nmpref-1)
+  ELSE IF (which_clima > 12 .AND. which_clima < 19) THEN
+     allocate(oztmp(0:nref))
+     CALL GET_tempoprof(nref,refp(0:nref),oztmp(1:nref),1)
+     !ozref0 = ozref
+     IF (which_clima == 13) THEN  ! Use full GEOS-CF
+        ozref(1:nref) = oztmp(1:nref)
+     ELSE
+        CALL GET_TBPROF(ozref(1:nmpref-1), 1)
+        !ozref0 = ozref
+
+        IF (which_clima == 14) THEN ! Use GEOS-CF up to pbl (2 km above surface)
+           tmp = thismet%ppbl2
+        ELSE IF (which_clima == 15) THEN ! Use GEOS-CF up to mid free troposphere
+           tmp = EXP((LOG(thismet%ppbl2) + LOG(thismet%ptrop))/2.0)
+        ELSE IF (which_clima == 16) THEN ! Use GEOS-CF up to tropopause
+           tmp = thismet%ptrop
+        ELSE IF (which_clima == 17) THEN ! Use GEOS-CF up to lower strat. (add 5 km)
+           tmp = p0 * 10.0_dp ** (-(-16.0_dp * LOG10(thismet%ptrop/p0) + 5.0_dp) / 16.0_dp)
+        ELSE IF (which_clima == 18) THEN ! Use GEOS-CF except for UT/LS
+           tmp = EXP((LOG(thismet%ppbl2) + LOG(thismet%ptrop))/2.0) ! mid ft
+           tmp1 = p0 * 10.0_dp ** (-(-16.0_dp * LOG10(thismet%ptrop/p0) + 5.0_dp) / 16.0_dp) !lt
+        ENDIF
+
+        DO i = 1, nref
+           IF (tmp > refp(i)) EXIT
+        ENDDO
+        ! Get o3 within layer i above tmp (p < tmp) and below tmp (p > tmp)
+        ! Assumed well mixed layer (delta_P proportional to delta_O3)
+        ozabove = ozref(i) * (tmp - refp(i)) / (refp(i-1) - refp(i)) ! Use TB
+        IF (tmp < refp(i-1)) THEN ! Use GEOS-CF 
+           ozbelow = oztmp(i) * (refp(i-1) - tmp) / (refp(i-1) - refp(i))
+           ozref(i) = ozabove + ozbelow
+           IF (i > 1) ozref(1:i-1) = oztmp(1:i-1)
+        ELSE
+           ozref(i) = ozabove
+           IF (i > 1) ozref(1:i-1) = oztmp(1:i-1)
+        ENDIF
+        !ozref(i+1:nref) = ozref(i+1:nref) if which_clima < 18
+        IF (which_clima == 18) THEN
+           DO j = 1, nref
+              IF (tmp1 > refp(j)) EXIT
+           ENDDO
+           ozref(j+1:nref) = oztmp(j+1:nref) ! Use GEOS-CF
+           ozabove = oztmp(j) * (tmp1 - refp(j)) / (refp(j-1) - refp(j)) ! Use GEOS-CF
+           IF (tmp < refp(j-1)) THEN ! Use TB
+              ozbelow = ozref(j) * (refp(j-1) - tmp) / (refp(j-1) - refp(j))
+              ozref(j) = ozabove + ozbelow
+              !IF (j > 1) ozref(i+1:j-1) = ozref(i+1:j-1)
+           ELSE
+              ozref(j) = ozabove
+              !IF (j > 1) ozref(i+1:j-1) = ozref(i+1:j-1)
+           ENDIF
+        ENDIF
+     ENDIF
+     !print * , thismet%psurf, thismet%ppbl2, thismet%ptrop, umkp(ntp)
+     !print *, 'tmp = ', tmp, 'tmp1 = ', tmp1
+     !DO i = 1, nref
+     !   WRITE(*, '(I8, 4F8.3)') i, refp(i), ozref0(i), oztmp(i), ozref(i)
+     !ENDDO
+     !WRITE(*, '(8X,8X, 3F8.3)') SUM(ozref0(1:nref)), SUM(oztmp(1:nref)),SUM(ozref(1:nref))
      deallocate(oztmp)
-  ELSE 
+  ELSE
      CALL GET_MLprof(ozref(1:nmpref-1), 1)
   ENDIF
- 
+
   DO i = 1, nref
      ozref(i) = ozref(i-1) + ozref(i)
   ENDDO
@@ -333,9 +385,10 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
      tmp = exp((log(pst) + log(p0))*0.5)
      tmpntp = MAXVAL(MAXLOC(pres(0:nref), MASK=(pres(0:nref) <  tmp)))+1
      CALL GET_TBPROF (astd(1:nref), 2)
-     CALL GET_tempoprof(nref-tmpntp+1,pres(tmpntp-1:nref),oztmp(tmpntp:nref),2)
-     astd(tmpntp) = astd(tmpntp)*0.5 + oztmp(tmpntp)*0.5
-     astd(tmpntp+1:nref) = oztmp(tmpntp+1:nref)
+     !xl: The following is incorrect as we do not have GEOS-CF apiori error
+     !CALL GET_tempoprof(nref-tmpntp+1,pres(tmpntp-1:nref),oztmp(tmpntp:nref),2)
+     !astd(tmpntp) = astd(tmpntp)*0.5 + oztmp(tmpntp)*0.5
+     !astd(tmpntp+1:nref) = oztmp(tmpntp+1:nref)
      deallocate(oztmp, ozavg)
   ELSE 
      call get_mlprof (astd(1:nref),2) 
@@ -2047,7 +2100,7 @@ SUBROUTINE get_v8prof(toz, oz)
   ! module name
   ! ======================
    character (len=13), parameter :: modulename = 'get_tempoprof'
-   
+ 
    errstat=0
    IF (do_geoloc_init) THEN  
    !--------------------------------------
@@ -2092,7 +2145,7 @@ SUBROUTINE get_v8prof(toz, oz)
   hour_f = real(hour, kind=r4)
 
   nl = nl0 ! number of level
-  allocate (pres(nl))
+  allocate (pres(nl+1)) !xl: change to nl + 1 to get pressure edge
   call clim_pres (cpt, hour_f, lon_f, lat_f, pres, errstat)
    
   if (errstat /= 0) then
@@ -2111,7 +2164,7 @@ SUBROUTINE get_v8prof(toz, oz)
   end if
 
   ! Compute partial columns
-  nl  = nl -1 ! number of layer
+  !nl  = nl -1 ! number of layer ! xl: no need to -1
   allocate (partial_column(nl))
   call clim_partial_column (pres, vmr, partial_column, errstat)
   if (errstat /= 0) then
@@ -2134,7 +2187,7 @@ SUBROUTINE get_v8prof(toz, oz)
   IF (ps(0) < ps(1)) THEN
      is_reord = .true.
      pstmp(0:nref) =(/(ps(i), i = nref,0,-1)/)
-   ENDIF
+  ENDIF
   CALL bspline_partial_column (nl, pres(1:nl+1)*1.D0, partial_column(1:nl)*1.D0, &
        nref, pstmp(0:nref), ozprof(1:nref), errstat)
   if (errstat /= 0) then
@@ -2207,15 +2260,18 @@ SUBROUTINE get_v8prof(toz, oz)
   IF (errstat /= 0 ) THEN 
       WRITE(*,*) modulename//'errors in bspline' ;stop 1
   ENDIF
+  !xl: change psg[1,2] to ps[1,2] for a well mixing layer assumption 
   DO i = fidx-1, 1, -1
-     tmp = (cum2(i+1)-cum2(i+2))/(psg2(i+1) - psg2(i+2))
-     cum2(i) = cum2(i+1) + tmp*(psg2(i) - psg2(i+1))
-  !   print * ,'(a)', i , tmp, cum2(i:i+2), ps2(i:i+2)
+     !tmp = (cum2(i+1)-cum2(i+2))/(ps2(i+1) - ps2(i+2))
+     !xl, more accurate extrapolation, calculate once
+     IF (i == fidx - 1) tmp = -cum2(i+1) / (ps1(1) - ps2(i+1))
+     cum2(i) = cum2(i+1) + tmp*(ps2(i) - ps2(i+1))
+     !print * ,'(a)', i , tmp, cum2(i:i+2), ps2(i:i+2)
   ENDDO
   DO i = lidx+1, nl2+1
-     tmp = (cum2(i-1)-cum2(i-2))/(psg2(i-1) - psg2(i-2))
-     cum2(i) = cum2(i-1) + tmp*(psg2(i) - psg2(i-1))
-  !   print * , '(b)',i , cum2(i+1), cum2(i), ps2(i+1), ps2(i)
+     IF (i == lidx + 1) tmp = (cum2(i-1)-cum2(i-2))/(ps2(i-1) - ps2(i-2)) !xl, calculate once
+     cum2(i) = cum2(i-1) + tmp*(ps2(i) - ps2(i-1))
+     !print * , '(b)',i , cum2(i+1), cum2(i), ps2(i+1), ps2(i)
   ENDDO
   prof2(1:nl2) = cum2(2:nl2+1) - cum2(1:nl2)
   deallocate(psg1, cum1, psg2, cum2)

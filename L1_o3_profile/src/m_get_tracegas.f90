@@ -386,6 +386,7 @@ MODULE m_get_tracegas
        ! Approximation: the layer-averaged profile is used as level (bottom) profile
        ntp = MINVAL(MAXLOC(geosalt(1:ngalt), MASK=(gprof > 0 .AND. geosalt(1:ngalt) < alts(latin(i), 1))))
 
+       IF (ntp == 0) ntp =1 
        tempalt(0:ntp)          = geosalt(0:ntp)
        tempalt(ntp+1:ntp+nalt) = alts(latin(i), :)
        IF (tempalt(0) > zs(0)) tempalt(0) = zs(0)

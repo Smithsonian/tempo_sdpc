@@ -209,11 +209,17 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
       WRITE(www_lun, *) modulename, ' No such meteorology '
       pge_error_status = pge_errstat_error; RETURN
   ENDIF
-  IF (which_clima > 13 .OR. which_clima <= 0) THEN
+  ! add more which_clima to setting for GEOS-CF+TB
+  !IF (which_clima > 13 .OR. which_clima <= 0) THEN
+  IF (which_clima > 18 .OR. which_clima <= 0) THEN
      WRITE(www_lun, *) modulename, ' No such ozone profile climatology!!!'
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
-  IF (which_aperr > 13 .OR. which_aperr <= 0 .OR.  &
+  IF (which_clima > 12 .AND. which_clima < 19 .AND. which_atm /= 3) THEN
+     WRITE(www_lun, *) modulename, ' Has to use GEOS-CF met. for which_clima: 13-18!!!'
+     pge_error_status = pge_errstat_error; RETURN
+  ENDIF
+  IF (which_aperr > 10 .OR. which_aperr <= 0 .OR.  &
       which_aperr == 4 .or. which_aperr == 5) THEN
      WRITE(www_lun, *) modulename, ' No such ozone profile a priori error!!!'
      pge_error_status = pge_errstat_error; RETURN
@@ -222,7 +228,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
      WRITE(www_lun, *) modulename, ' No such total ozone field!!!'
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
-  IF ( which_toz == 0) THEN 
+  IF ( which_toz == 0) THEN
      IF (which_clima == 1 ) THEN
         WRITE(www_lun, *) modulename, ' Total ozone is needed to use this climatology!!!'
         pge_error_status = pge_errstat_error; RETURN
@@ -890,14 +896,12 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
      WRITE(www_lun, *) modulename, ' : Increase maxgrp in OMSAO_indices...!!!'
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
-   
   k = wfcidx + maxwfc + maxcldaer - 1 
   IF (do_subfit) THEN
      ntotp = numwin * maxoth; np = numwin
   ELSE
      ntotp = maxoth; np = 1
   ENDIF
-
   DO i = 1, nothgrp        ! for each group of parameters
      nord = 0; tmpind = 0; tmpfind = 0; tmpwins = 0
      DO j = 1, maxoth   ! for each order of parameters
@@ -976,7 +980,6 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         ENDIF
 
      END DO
-
      ! If lower order, then no higher orders
      DO j = 1, maxoth-1
         DO iw = 1, np
@@ -988,7 +991,6 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
            ENDIF
         ENDDO
      ENDDO
-
      ntemp = n_fitvar_rad; idx = tmpind(1, 1) - 1
      DO j = 1, ntotp
         IF (lo_radbnd(idx + j) < up_radbnd(idx + j)) THEN
@@ -1025,7 +1027,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         ncm = nord; cmwins = tmpwins; cmind = tmpind; cmfind = tmpfind
      ENDIF  
   ENDDO
- 
+print*, nos, nsl, nsh, nrn, ndc, nis, nir, np1, np2, np3, ncm
   IF (np1 + np2 + np3 /= 0 ) THEN  
     IF (which_slit == 0 ) THEN   ! gaussian
         npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]

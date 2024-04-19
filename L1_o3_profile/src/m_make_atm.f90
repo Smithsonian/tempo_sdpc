@@ -56,7 +56,7 @@ contains
          presgrid_fname, adjust_trop_layer, fixed_ptrop, ntp0, pst0, nsfc, &
          nfsfc, use_tropopause, scaled_aod, scale_aod, ngksec, &
          do_simu, radcalwrt, which_toz, so2zind, so2vprofn1p1, &
-         so2valts, trpz, define_2km_layer
+         so2valts, trpz, define_2km_layer, zpbl2, ppbl2, npbl2, zpbl, ppbl
     USE OMSAO_errstat_module
     USE m_ezspline_interpolation, only: bspline, interpol
     USE m_utilities, ONLY: reverse
@@ -160,21 +160,19 @@ contains
       enddo
       nlecm = i
       pold(0:nlecm) = g5_ps(0:nlecm) 
-      told (1:nlecm) = g5_ts(1:nlecm)
-      pold (nlecm+1 : nlecm + 7) = (/1.0,0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
-      told (nlecm+1 : nlecm + 7) = (/271.3,269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
+      told(1:nlecm) = g5_ts(1:nlecm)
+      pold(nlecm+1 : nlecm + 7) = (/1.0,0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
+      told(nlecm+1 : nlecm + 7) = (/271.3,269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
       nold = nlecm + 7
-    ELSE IF (which_atm == 3) THEN ! TEMPO 
+    ELSE IF (which_atm == 3) THEN ! TEMPO       
       CALL get_met_tempo(errstat)
       spres = tempo%psurf  
       tpres = tempo%ptrop
       !the_surfalt is taken from l1b
       nlecm = tempo%np
-      pold(0:nlecm)  = tempo%ps(0:nlecm) 
-      told (0:nlecm) = tempo%ts(0:nlecm)
-      pold (nlecm+1 : nlecm + 7) = (/1.0,0.70, 0.35, 0.25, 0.175, 0.125,0.0874604/)
-      told (nlecm+1 : nlecm + 7) = (/271.3,269.3, 256.8, 249.7, 242.5, 235.9, 229.1/)
-      nold = nlecm + 7
+      pold(0:nlecm) = tempo%ps(0:nlecm)
+      told(0:nlecm) = tempo%ts(0:nlecm)
+      nold = tempo%np
     ENDIF
 
     IF (nold > mflay) THEN 
@@ -186,30 +184,33 @@ contains
     ENDIF
 
     pold(nold) = p0 * 2.0D0 ** (-13.5D0)  ! TOP
+
+    ! Changed below lines because number of layers of profile are changed (JAN junsung)
     ! Use TOMS V8 temperature climatology for 0.70, 0.35 mb 
-    CALL GET_V8TEMP(v8temp)
-    told(nlecm+1) = v8temp(10); told(nlecm + 2) = v8temp(11)
+    IF (which_atm /= 3) THEN
+      CALL GET_V8TEMP(v8temp)
+      told(nlecm+1) = v8temp(10); told(nlecm+2) = v8temp(11)
     ! Use MIPAS Temperature cimatology for the upper 4 layers)
-    CALL GET_MIPASIG2T(mipasp, mipast)
-    mipasp = LOG(mipasp); ptemp = LOG(pold(nlecm+3:nlecm+6))
-    CALL BSPLINE(mipasp, mipast, nmipas, ptemp, told(nlecm+3:nlecm+6), 4, errstat)
-    IF (errstat < 0) THEN
-      WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
-      errstat = pge_errstat_error; RETURN
+      CALL GET_MIPASIG2T(mipasp, mipast)
+      mipasp = LOG(mipasp); ptemp = LOG(pold(nlecm+3:nlecm+6))
+      CALL BSPLINE(mipasp, mipast, nmipas, ptemp, told(nlecm+3:nlecm+6), 4, errstat)
+      IF (errstat < 0) THEN
+        WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
+        errstat = pge_errstat_error; RETURN
+      ENDIF
     ENDIF
 
     ! xliu (12/05/2006): Change from 7 K / 90 mb to 5.65 K / 100 mb (~6.5 K / km)
     !told(0) = told(1) + (pold(0) - pold(1)) / 100.0 * 5.65
     ! xliu (08/17/2008): Use extrapolation
     IF (use_input_spres) THEN
-      IF (which_atm /= 2 ) THEN 
+      IF (which_atm < 2 ) THEN 
          IF (spres > pold(0) ) pold(0) = spres
       ELSE
          pold(0) = spres
       ENDIF
       IF (sfct /=0 ) told(0) = sfct      
     ENDIF
-    
     IF (told(0) == 0.0) THEN
       told(0) = told(1) + (told(1)-told(2))/(LOG(pold(1))-LOG(pold(2))) * (LOG(pold(0))-LOG(pold(1)))
     ENDIF
@@ -219,9 +220,9 @@ contains
     !       surface pressure and surface altitude). Also use surface temperature  from met. data.
     pold(0:nold) = LOG(pold(0:nold)); zold(0) = 0 ; halfdz = 0.0 ; ntemp = 0
     IF (use_input_spres) THEN
-      IF (spres == pold(0)) THEN
+      IF (LOG(spres) == pold(0)) THEN !xl: add LOG to spres
          zold(0) = the_surfalt
-         ntemp = 0 
+         ntemp = 0
       ELSE
         !CALL BSPLINE(pold, told, nold+1, LOG(spres), tmp, 1, errstat)
         !IF (errstat < 0) THEN
@@ -236,11 +237,12 @@ contains
         !dlgp = pold(0) - LOG(spres)
         !accr = (rearth / (rearth + the_surfalt/2.))**2
         !zold(0) = the_surfalt - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+
         DO i = 1, nold
              IF (pold(i) <= LOG(spres) ) EXIT
         ENDDO
         ntemp = i -1
-        mt = (told(ntemp) + told(0))/ 2.0
+        mt = (told(ntemp) + told(ntemp+1))/ 2.0 !xl, replace told(0) with told(ntemp+1) 
         dlgp = pold(ntemp) - LOG(spres)
         halfdz = - (dlgp/2.30259)*8.0 ! Approximate delta z using zs = -16.*alog10(ps/p0)
         accr = (rearth / (rearth + the_surfalt + halfdz))**2
@@ -250,7 +252,7 @@ contains
            dlgp = pold(i) - pold(i+1)
            halfdz = -(dlgp/2.30259) * 8.0 ! Approximate delta z using zs=-16. *alog10(Ps/P0)
            accr = (rearth / (rearth + zold(i+1) + halfdz))**2
-           zold(i) = the_surfalt - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+           zold(i) = zold(i+1) - boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp !xl:change the_surfalt to zold(i+1)
         ENDDO
       ENDIF
     ENDIF
@@ -267,6 +269,7 @@ contains
       halfdz = - (dlgp/2.30259)*8.0 ! Approximate delta z using zs = -16.*alog10(ps/p0)
       accr=(rearth / (rearth + zold(i-1) + halfdz))**2
       zold(i)=zold(i-1)-boltz/(xmair/avo)/(accgrav*accr)*mt*dlgp
+
     ENDDO
 
     IF ( first1 ) THEN
@@ -342,7 +345,6 @@ contains
         ENDDO
       ENDIF
     ENDIF
-
     ! Find the level of tropopause
     ! ntp = 3 means there are three layers below tropopause
     IF (.NOT. use_tropopause .AND. .NOT. fixed_ptrop) THEN
@@ -355,6 +357,7 @@ contains
     ENDIF
 
     i2km = 0
+
     IF (define_2km_layer) THEN ! if uv/vis mode
        z2km = the_surfalt + 2.0
        DO i = 1, nold 
@@ -376,6 +379,10 @@ contains
        i2km = i
        umkp(i) = LOG(p2km)
        umkz(i) = z2km
+       !-added by junsung for using planetary boundary layer infromation (JAN 2024)
+       zpbl2 = umkz(i)
+       ppbl2 = p2km
+       npbl2 = i
     ENDIF
 
     IF (adjust_trop_layer) THEN
@@ -559,6 +566,8 @@ contains
       ENDIF
     ENDDO
     nfsfc = nup2p(nsfc)
+    nftp = nup2p(ntp) - nfsfc ! xl: tropopause level on fine grids
+
     ! ================================ Get T, P, Z, aerosols ============================== 
     ! Interpolate temperature and altitude to FINE grids
     CALL BSPLINE(pold, told, nold+1, fps(0:np), fts(0:np), np+1, errstat)
@@ -566,14 +575,12 @@ contains
       WRITE(www_lun, *) modulename, ': BSPLINE error, errstat = ', errstat
       errstat = pge_errstat_error; RETURN
     ENDIF
- 
     CALL INTERPOL(pold, zold, nold+1, fps(0:np), fzs(0:np), np+1, errstat)
     IF (errstat < 0) THEN
       WRITE(www_lun, *) modulename, ': INTERPOL error, errstat = ', errstat
       errstat = pge_errstat_error; RETURN
     ENDIF
     fzs(nsfc) = the_surfalt
-      
     ! Calculate air column density and altitude grid 
     ! Assuming hydrostatic and Z (MAX(1atm,spres)) = 0.0 km
     !IF (spres > p0) THEN
@@ -604,18 +611,38 @@ contains
     ! convert back to mbar for pressures
     umkp = EXP(umkp); fps(0:np) = EXP(fps(0:np))
     atmosprof(1, 0:numk) = umkp; atmosprof(2,0:numk) = umkz; atmosprof(3, 0:numk)=umkt
+    IF (which_atm == 3) THEN
+       tempo%ztrop = trpz
+       tempo%zpbl2 = zpbl2
+       tempo%ppbl2 = ppbl2
+       !zpbl = tempo%zpbl
+       !DO i = 1, nold 
+       !   IF (zold(i) >= zpbl) THEN
+       !      ppbl = pold(i) + (pold(i-1) - pold(i)) *  (zold(i) - zpbl) / (zold(i) - zold(i-1))
+       !      ppbl = EXP(ppbl); EXIT
+       !   ENDIF
+       !ENDDO
+    ENDIF
    ! DO i = 0, np 
    !  WRITE(*,'(i3, f8.2, f8.2, f8.2, e15.5)') i, fzs(i), fps(i), fts(i), frhos(i)
    ! ENDDO 
+
   ! ======================== get ozprof and other tracegases===================================
   
     ! Need to normalize ozone profile (Strat. and trop.) or tropospheric ozone profile with input total ozone
+
     IF (which_toz /= 0 .AND. which_clima /= 1 .and. toz > 200 ) norm_o3p=.true.
     ozprof(1:numk) = 0.0
-    oznref (0:np) = 0.0
-    CALL get_o3prof (numk, umkp(0:numk),umkz(0:numk), ntp, norm_o3p, toz, ozprof(1:numk))
-    CALL get_o3prof ( np,  fps(0:np), fzs(0:np), ntp, norm_o3p, toz, oznref(1:np))
-  
+    oznref(0:np) = 0.0
+    CALL get_o3prof ( np,  fps(0:np), fzs(0:np), nftp, norm_o3p, toz, oznref(1:np)) !xl, change ntp to nftp
+    !CALL get_o3prof (numk, umkp(0:numk),umkz(0:numk), ntp, norm_o3p, toz, ozprof(1:numk))
+    !print *, ozprof(1:numk)
+    DO i = 1, numk
+       ozprof(i) = SUM(oznref(nup2p(i - 1) + 1:nup2p(i)))
+    ENDDO
+    !print *, ozprof(1:numk)
+    !print *, SUM(ozprof(1:numk)), SUM(oznref(1:np))
+
     ! Loading minor trace gas profile
     IF (do_tracewf .OR. first) THEN
       DO i = 1, ngas
@@ -874,7 +901,6 @@ contains
     indarr = (/((i), i=0, numk)/)
     nup2p(0:numk) = MAXVAL(nup2p(0:numk)) - nup2p(numk - indarr) 
     ntp = numk - ntp; nsfc = numk - nsfc 
-    
     IF (do_debug) then
      DO i = 0, numk
        write(*,'(i4, 10f8.2)') i, atmosprof(1:3,i), ozprof(i)
@@ -882,7 +908,7 @@ contains
      print * , 'do_debug'//ADJUSTL(TRIM(modulename)) ; stop 1
     ENDIF
     RETURN
-  
+
   END SUBROUTINE MAKE_ATM
 
 

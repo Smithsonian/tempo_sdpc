@@ -187,7 +187,14 @@ MODULE ozprof_data_module
   ! ---------------------------------------------
   ! Variables for surface and tropopause pressure
   ! ---------------------------------------------
-  REAL (KIND=dp) :: ps0, pst, pst0, trpz 
+  REAL (KIND=dp) :: ps0, pst, pst0, trpz
+
+  ! ---------------------------------------------
+  ! Variables for pbl height and pressure
+  ! zpbl2, ppbl2 means height/pressure at 2 km above surface
+  ! ---------------------------------------------
+  REAL (KIND=dp) :: zpbl, ppbl, zpbl2, ppbl2
+  INTEGER        :: npbl2    ! pbl layer for 2 km 
 
   ! Number of group of auxiliar parameters
   INTEGER                             :: nothgrp  
