@@ -950,6 +950,15 @@ contains
 
     call tiof_varlist_lookup (varlist, varname, var_fixup, errstat)
 
+
+    !jspark modified start
+    if (.not.associated(var_fixup)) then
+        call tell_error (tell_runtime_error, "variable "//trim(varname)//" not found", errstat)
+    return
+    endif
+    !jspark modified end
+
+
     ! CF conventions allow standard attributes for packed data:
     ! scale_factor, add_offset.
     ! After the packed values are read in, they are to unpacked using
@@ -1458,10 +1467,13 @@ contains
 
     ! Customizing attributes via the attlist option of tiof_varlist_append
     ! becomes inconvenient, so we add additional variable attributes as follows:
-    call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_avg_kernel, &
-                                         1.0/pack_factor, 0.0d0, errstat)
-    call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_noise_matrix, &
-                                         1.0/pack_factor, 0.0d0, errstat)
+    
+    !start modified by junsung (DEC 2023)
+    !call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_avg_kernel, &
+    !                                     1.0/pack_factor, 0.0d0, errstat)
+    !call add_attributes_for_packed_data (obj, varlist, o3p_var_o3_noise_matrix, &
+    !                                     1.0/pack_factor, 0.0d0, errstat)
+    !end modified by junsung (DEC 2023)
 
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_coord)
@@ -1998,16 +2010,20 @@ contains
 
     tmp_coord_var(1:nlayer) = real(sqrt(atmosprof(1,0:nlayer-1) &
                                         * atmosprof(1,1:nlayer)), kind=4)
+!    tmp_coord_var(1:nlayer) = real(atmosprof(1,1:nlayer), kind=4) ! for pressure test, modified by junsung (DEC 2023)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
          [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
 
     tmp_coord_var(1:nlayer) = real(0.5*(atmosprof(2,0:nlayer-1) &
                                         + atmosprof(2,1:nlayer)), kind=4)
+
+!    tmp_coord_var(1:nlayer) = real(atmosprof(2,1:nlayer), kind=4) ! for pressure test, modified by junsung (DEC 2023)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
          [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
 
     tmp_coord_var(1:nlayer) = real(0.5*(atmosprof(3,0:nlayer-1) &
                                         + atmosprof(3,1:nlayer)), kind=4)
+!    tmp_coord_var(1:nlayer) = real(atmosprof(3,1:nlayer), kind=4) ! for pressure test, modified by junsung (DEC 2023)
     call tiof_put1d_r4 (obj, o3p_var_profile_temp, [iline, ipix, 0], &
          [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
 

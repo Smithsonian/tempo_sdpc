@@ -161,6 +161,7 @@ SUBROUTINE get_hres_radcal_waves(errstat)
         lidx = nhresp - 1
      ELSE
         lidx = MINVAL(MAXLOC(hreswav(1:nhresp), MASK=(hreswav(1:nhresp) < radc_lambnd(i+1))))
+     IF (lidx == 0) CYCLE
      ENDIF
      hsamprate = hres_samprate
      IF ( fidx >= widx_hvis ) hsamprate = hres_vis_samprate

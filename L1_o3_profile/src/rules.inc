@@ -446,6 +446,7 @@ $(ODIR)/m_get_toz.o: $(SDIR)/m_get_toz.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_get_toz.f90 -o $(ODIR)/m_get_toz.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_get_o3prof.o: $(SDIR)/m_get_o3prof.f90 \
   $(ODIR)/m_ezspline_interpolation.o \
+  $(ODIR)/m_get_met_tempo.o \
   $(ODIR)/m_utilities.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_parameters_module.o \

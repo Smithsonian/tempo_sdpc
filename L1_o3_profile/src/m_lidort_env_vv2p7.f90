@@ -904,7 +904,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
               VLIDORT_Out%Status%TS_STATUS_CALCULATION .eq. VLIDORT_SERIOUS ) then
               print * ,  VLIDORT_Out%Status%TS_STATUS_INPUTCHECK , &
               VLIDORT_Out%Status%TS_STATUS_CALCULATION 
-          WRITE(*,*)'VLIDORT calculation abort, PROFILEWF calculation',lamda,iw; STOP 1
+          WRITE(*,*)'VLIDORT calculation abort, PROFILEWF calculation',lamda,iw!; STOP 1 
         ENDIF
         CALL cpu_time(e2)
         e_vlidort = e_vlidort + e2 - e1
