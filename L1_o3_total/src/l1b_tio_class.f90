@@ -302,42 +302,42 @@ contains
     call tiof_get2d_r4 (this % ft, o3t_var_longitude, [0,0], [ns,nx], &
                         rg % lon(1:nx,1:ns), errstat)
     Where ( ABS(rg % lon) .gt. 180.0 )
-        rg % lon = -1.0E30_8
+        rg % lon = -1.0E30
     endwhere
     call tiof_get2d_r4 (this % ft, o3t_var_latitude, [0,0], [ns,nx], &
                         rg % lat(1:nx,1:ns), errstat)
     Where ( ABS(rg % lat) .gt. 90.0 )
-        rg % lat = -1.0E30_8
+        rg % lat = -1.0E30
     endwhere
     call tiof_get3d_r4 (this % ft, o3t_var_longitude_bounds, [0,0,0], [ns,nx,4], &
                         rg % lon_bounds(1:4,1:nx,1:ns), errstat)
     Where ( ABS(rg % lon_bounds) .gt. 180.0 )
-        rg % lon_bounds = -1.0E30_8
+        rg % lon_bounds = -1.0E30
     endwhere
     call tiof_get3d_r4 (this % ft, o3t_var_latitude_bounds, [0,0,0], [ns,nx,4], &
                         rg % lat_bounds(1:4,1:nx,1:ns), errstat)
     Where ( ABS(rg % lat_bounds) .gt. 90.0 )
-        rg % lat_bounds = -1.0E30_8
+        rg % lat_bounds = -1.0E30
     endwhere
     call tiof_get2d_r4 (this % ft, o3t_var_sa_angle, [0,0], [ns,nx], &
                         rg % saz(1:nx,1:ns), errstat)
     Where ( (rg % saz .lt. -180 ) .or. (rg % saz .gt. 180) )
-        rg % saz = -1.0E30_8
+        rg % saz = -1.0E30
     endwhere
     call tiof_get2d_r4 (this % ft, o3t_var_sz_angle, [0,0], [ns,nx], &
                         rg % sza(1:nx,1:ns), errstat)
     Where ( (rg % sza .gt. 180) )
-        rg % sza = -1.0E30_8
+        rg % sza = -1.0E30
     endwhere
     call tiof_get2d_r4 (this % ft, o3t_var_va_angle, [0,0], [ns,nx], &
                         rg % vaz(1:nx,1:ns), errstat)
     Where ( (rg % vaz .lt. -180 ) .or. (rg % vaz .gt. 180) )
-        rg % vaz = -1.0E30_8
+        rg % vaz = -1.0E30
     endwhere
     call tiof_get2d_r4 (this % ft, o3t_var_vz_angle, [0,0], [ns,nx], &
                         rg % vza(1:nx,1:ns), errstat)
     Where ( (rg % vza .gt. 180) )
-        rg % vza = -1.0E30_8
+        rg % vza = -1.0E30
     endwhere
 
     call tiof_get2d_i2 (this % ft, o3t_var_terrain_height, [0,0], [ns,nx], &
