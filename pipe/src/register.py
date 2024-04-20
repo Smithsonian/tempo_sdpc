@@ -16,7 +16,7 @@ from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 import dateutil.parser as dp
 
-Radiance_Files = ["RAD_L1a", "RAD_L1"]
+Radiance_Files = ["RAD_L1a", "RAD_L1", "RADT_L1a", "RADT_L1"]
 Radiance_Products = ["CLDRR", "CLDO4", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
 Radiance_Derived_Files = [s + "_L2" for s in Radiance_Products] \
                        + [s + "_L3" for s in Radiance_Products]
@@ -380,7 +380,7 @@ def process_file (db_path, filename, nc):
     # of each Level 2 product type to expect from each scan.
     # That number of Level 2 products then triggers end-of-scan processing
     # for each Level 2 product type e.g. by L2_split and L2_regrid
-    if product_name == 'RAD_L1' and attr["inr_status"] != "2":
+    if product_name in ['RAD_L1', 'RADT_L1'] and attr["inr_status"] != "2":
         product_name = product_name + 'a'
 
     final_basename = remove_dot_prefix (basename)
