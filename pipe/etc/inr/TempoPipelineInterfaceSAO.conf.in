@@ -38,7 +38,7 @@ statusReportTime=0
 # The nominal amount of time each granule covers, in seconds
 granuleTime=360
 # The regular expression for filename to determine whether a file is a granule
-filenameRegex=^TEMPO_RAD_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})(\.\w+)??\.nc$
+filenameRegex=^TEMPO_RAD[T]?_L1_V(\d{2})_(\d{8})T(\d{6})Z_S(\d{3})G(\d{2})(\.\w+)??\.nc$
 # The regular expression for GOES reference imagery
 referenceRegex=^OR_ABI-(L\w{1,2})-(\w{4,})-(M\d)(C\d{2})_(G\d{2})_s(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})_e(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})_c(\d{4})(\d{3})(\d{2})(\d{2})(\d{2,3})\.nc$
 
@@ -594,8 +594,10 @@ filename=@INR_REFDATA_DIR@/GNA.txt
 [CloudMask]
 
 # Saturation and intensity thresholds in a Hue-Saturation-Intensity (HSI) color space
-saturation=0.22
+saturation=0.4
 intensity=0.32
+# The gamma to correct RGB reflectance values
+gamma=1.8
 # Solar zenith angle limit in degrees (if larger, no classification)
 sza_max=80
 # Red band construction: min and max wavelengths in nm
@@ -630,11 +632,44 @@ num_hours_per_period=24
 # Number of roll, pitch, and yaw states to use in model fitting each granule
 #samples_per_granule=1
 samples_per_granule=4
+# The mode to calculate scan tailoring. Default to 1.
+# mode=1 if Fourier coefficients are to be calculated.
+# mode=2 if Fourier coefficients are provided
+mode=2
 # Order of the Fourier model for each attitude state
-# TODO item is to adjust in orbit
 fourier_terms_roll=4
 fourier_terms_pitch=4
 fourier_terms_yaw=4
+# Coefficients for roll. The size is 2 * fourier_terms_roll + 1.
+fourier_coeff_roll_0 = 0.0
+fourier_coeff_roll_1 = 0.0
+fourier_coeff_roll_2 = 0.0
+fourier_coeff_roll_3 = 0.0
+fourier_coeff_roll_4 = 0.0
+fourier_coeff_roll_5 = 0.0
+fourier_coeff_roll_6 = 0.0
+fourier_coeff_roll_7 = 0.0
+fourier_coeff_roll_8 = 0.0
+# Coefficients for pitch. The size is 2 * fourier_terms_pitch + 1.
+fourier_coeff_pitch_0 = 0.0
+fourier_coeff_pitch_1 = 0.0
+fourier_coeff_pitch_2 = 0.0
+fourier_coeff_pitch_3 = 0.0
+fourier_coeff_pitch_4 = 0.0
+fourier_coeff_pitch_5 = 0.0
+fourier_coeff_pitch_6 = 0.0
+fourier_coeff_pitch_7 = 0.0
+fourier_coeff_pitch_8 = 0.0
+# Coefficients for yaw. The size is 2 * fourier_terms_yaw + 1.
+fourier_coeff_yaw_0 = 0.0
+fourier_coeff_yaw_1 = 0.0
+fourier_coeff_yaw_2 = 0.0
+fourier_coeff_yaw_3 = 0.0
+fourier_coeff_yaw_4 = 0.0
+fourier_coeff_yaw_5 = 0.0
+fourier_coeff_yaw_6 = 0.0
+fourier_coeff_yaw_7 = 0.0
+fourier_coeff_yaw_8 = 0.0
 # The threshold of fitting R squared to calculate scan tailoring coefficients. Default to 0.7
 minRsquared=0.6
 

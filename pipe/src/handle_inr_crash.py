@@ -100,7 +100,8 @@ def main ():
     run (["sdpcsrv.sh", "down", "inr"], check=True)
 
     # Replace INR config file to force a cold restart
-    replace_inr_config_file (sdpc_pipe_dir)
+    # [obsolete as of INR SW r3.0.0]
+    # replace_inr_config_file (sdpc_pipe_dir)
 
     # Until granules from the next scan arrive,
     # redirect granules from failed scan into problem subdirectory

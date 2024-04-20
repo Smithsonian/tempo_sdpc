@@ -49,5 +49,6 @@ sed -e s,@INR_PROCESSING_ROOT@,$inr_run_dir,g \
    $INR_CONFIG_SRCDIR/${PIPELINE_CONF_FILE}.in > $INR_CONFIG_TARGET_DIR/$PIPELINE_CONF_FILE
 
 # Create a backup copy of the original config file to facilitate cold restart
-/bin/cp $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE} \
-        $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE}.cold_start
+# [obsolete as of INR SW r3.0.0]
+#/bin/cp $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE} \
+#        $INR_CONFIG_TARGET_DIR/${PIPELINE_CONF_FILE}.cold_start
