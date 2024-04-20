@@ -35,12 +35,18 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
+def basename_timestamp_field (path):
+    regex = 'TEMPO_RAD[T]?_L1_V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}'
+    return re.search (regex, os.path.basename(path)).group(1)
+
 def sorted_granule_list (dir, globexpr):
-    return sorted (glob.glob(os.path.join (dir, globexpr)))
+    path_list = glob.glob(os.path.join (dir, globexpr))
+    path_list.sort (key = basename_timestamp_field)
+    return path_list
 
 def redirect_failed_scan_granules (inr_input_dir, problem_dir):
     # Get a list of granules in the INR input cache
-    inr_input_files = sorted_granule_list (inr_input_dir, "TEMPO_RAD_L1*.nc")
+    inr_input_files = sorted_granule_list (inr_input_dir, "TEMPO_RAD*_L1*.nc")
     if len(inr_input_files) == 0:
         return -1
 
@@ -55,7 +61,7 @@ def redirect_failed_scan_granules (inr_input_dir, problem_dir):
     # Move all granules from the problem scan into the problem directory
     # until a granule from a different scan is detected.
     while not sig.caught():
-        granules = sorted_granule_list (inr_input_dir, "TEMPO_RAD_L1*S???G??.nc")
+        granules = sorted_granule_list (inr_input_dir, "TEMPO_RAD*_L1*S???G??.nc")
         if len(granules) > 0:
             for path in granules:
                 fname = os.path.basename (path)

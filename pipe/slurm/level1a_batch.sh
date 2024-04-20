@@ -181,14 +181,10 @@ case "${granule_basename}" in
   # run radiance wavelength calibration post-INR, so as not to delay INR
   run_inr_prep $output_file
 
-  # RADT will not be delivered to INR input cache
-  if test x"$rad_type" = x"RAD" ; then
-     rad_tmpfile=$inr_input_cache/.${output_file}
-     /bin/cp $output_file $rad_tmpfile
-     /bin/mv $rad_tmpfile $inr_input_cache/$output_file
-  elif test x"$rad_type" = x"RADT" ; then
-     fixup_radl1_inputfiles.py $output_file
-  fi
+  # Both RAD and RADT are delivered to the INR input cache
+  rad_tmpfile=$inr_input_cache/.${output_file}
+  /bin/cp $output_file $rad_tmpfile
+  /bin/mv $rad_tmpfile $inr_input_cache/$output_file
   ;;
 
   * )

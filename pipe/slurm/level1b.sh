@@ -17,6 +17,7 @@ set -e
 set -u
 
 # Note that the radiance file name be "hidden" (may begin with a ".").
+# Also, "radiance" file may be either TEMPO_RAD_L1 or TEMPO_RADT_L1
 
 if test $# -ne 2 ; then
   echo "Usage: $0 <rad-path> <l1_run_dir>"

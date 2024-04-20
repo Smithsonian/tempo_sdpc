@@ -10,13 +10,13 @@
 #    command line:
 #          $1 = radiance file basename
 #          $2 = file defining these variables:
-#                rad_file = geolocated radiance file path
+#                rad_file = geolocated radiance file path (or RADT_L1)
 #                irr_file = irradiance file path
 #                snow_file = path to NSIDC snow and ice cover data file
 #
 # 2. The first task is to finish processing of the geolocated radiance file
 #    by doing the following:
-#       - run L1_inr_post
+#       - run L1_inr_post  [only step done for RADT]
 #       - perform wavelength calibration
 #       - perform polarization correction
 #    The finished L1 radiance file is then stored in the archive.
@@ -74,6 +74,17 @@ if test $# -ne 2 ; then
 fi
 rad_file="$1"
 file_list_file="$2"
+
+# Set a flag to indicate this is RADT_L1
+is_radt_l1=0
+case "$rad_file" in
+ *_RADT_* )
+     is_radt_l1=1
+     ;;
+
+ * )
+     ;;
+esac
 
 # file_list_file should define the following symbols:
 #    rad_path
@@ -250,12 +261,12 @@ run_inr_post()
 
    # This batch script must specify ntasks >= 2x
    # the number of wavecal tasks specified here
-   if test $SDPC_RADIANCE_WAVECAL -ne 0 ; then
+   if test $SDPC_RADIANCE_WAVECAL -ne 0 -a $is_radt_l1 -eq 0 ; then
       wavecal.sh $radiance_file $SDPC_RADIANCE_WAVECAL_NTASKS
    fi
 
    # polarization correction
-   if test $SDPC_RADIANCE_POLCORR -ne 0 ; then
+   if test $SDPC_RADIANCE_POLCORR -ne 0 -a $is_radt_l1 -eq 0 ; then
 
       # Intentionally avoid TEMPO prefix for diagnostic output files,
       # so those files won't be treated as data products.
@@ -542,13 +553,11 @@ if test $SDPC_RADIANCE_POSTINR -ne 0 ; then
    run_inr_post ${rad_basename}.nc
 fi
 
-/bin/cp $irr_file ${irr_basename}.nc
-(run_cloud_o4)
-#(run_cloud_rr)
-
-# delete one cloud product, and use the other for retrievals
-#/bin/rm -f "${cld_rr_basename}.nc"
-create_file_listing  "$cld_o4_basename"
+if test $is_radt_l1 -eq 0 ; then
+   /bin/cp $irr_file ${irr_basename}.nc
+   (run_cloud_o4)
+   create_file_listing  "$cld_o4_basename"
+fi
 
 catch()
 {
@@ -558,12 +567,13 @@ catch()
 }
 trap 'catch $? $LINENO' EXIT
 
-tar_granule_dir_to_dest "$l1_out_dir"
-
 # To facilitate generation of level 2 products, put a tar notice file
 # in $l2_incoming. Using a notice file instead of the tar
 # file itself minimizes data movement and should improve efficiency.
 
-notify_granule_ready "$l2_incoming"
+if test $is_radt_l1 != 0 ; then
+   tar_granule_dir_to_dest "$l1_out_dir"
+   notify_granule_ready "$l2_incoming"
+fi
 
 perform_cleanup
