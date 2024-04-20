@@ -771,7 +771,48 @@ static int write_object_angles (int grp, const Angles_Type *at, const char **var
    return 0;
 }
 
-static int set_object_angles (Granule_Type *gt)
+static int is_twilight_granule (Granule_Type *gt, int *is_radt)
+{
+#define MAX_PRODUCT_TYPE_LEN 16
+   char product_type[MAX_PRODUCT_TYPE_LEN];
+   size_t len;
+   int xtype;
+
+   *is_radt = 0;
+
+   if ((NC_NOERR != nc_inq_att (gt->ncid, NC_GLOBAL, "product_type", &xtype, &len))
+       && (len >= MAX_PRODUCT_TYPE_LEN))
+     return 0;
+
+   if (0 != TIO_get_att (gt->ncid, NC_GLOBAL, "product_type", NC_CHAR, product_type))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: reading global attribute: product_type", __func__);
+        return -1;
+     }
+
+   if (0 != strcmp (product_type, TEMPO_PROD_TYPE_RAD_TWI))
+     return 0;
+
+   *is_radt = 1;
+   return 0;
+}
+
+static int set_exposure_time_valid_max (Granule_Type *gt, float valid_max_exposure_time)
+{
+   int varid;
+
+   if ((0 != tio_inq_varid (gt->ncid, TEMPO_VAR_EXPOSURE_TIME, &varid))
+       || (0 != TIO_put_att (gt->ncid, varid, "valid_max", NC_FLOAT, 1, &valid_max_exposure_time)))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: setting %s variable attribute: valid_max=%f",
+                     __func__, TEMPO_VAR_EXPOSURE_TIME, valid_max_exposure_time);
+        return -1;
+     }
+
+   return 0;
+}
+
+static int set_object_angles (Granule_Type *gt, int is_radt)
 {
    const char *sun_angle_names[] = {TEMPO_VAR_SZ_ANGLE, TEMPO_VAR_SA_ANGLE};
    const char *sat_angle_names[] = {TEMPO_VAR_VZ_ANGLE, TEMPO_VAR_VA_ANGLE};
@@ -800,6 +841,18 @@ static int set_object_angles (Granule_Type *gt)
           return -1;
         if (0 != write_object_angles (geoloc->group, gt->sat_angles[i], sat_angle_names))
           return -1;
+
+        if (is_radt)
+          {
+             float valid_max_sza = 180.0;
+             if ((0 != tio_inq_varid (geoloc->group, TEMPO_VAR_SZ_ANGLE, &varid_sza))
+                 || (0 != TIO_put_att (geoloc->group, varid_sza, "valid_max", NC_FLOAT, 1, &valid_max_sza)))
+               {
+                  tell_verror (TELL_RUNTIME_ERROR, "%s: setting %s variable attribute: valid_max=%f",
+                               __func__, TEMPO_VAR_SZ_ANGLE, valid_max_sza);
+                  return -1;
+               }
+          }
      }
 
    return 0;
@@ -845,6 +898,8 @@ static Granule_Type *new_granule_type (void)
    gt->gt_set_object_angles = set_object_angles;
    gt->gt_set_ground_pixel_flags = set_ground_pixel_flags;
    gt->gt_set_earth_sun_distance = set_earth_sun_distance;
+   gt->gt_is_twilight_granule = is_twilight_granule;
+   gt->gt_set_exposure_time_valid_max = set_exposure_time_valid_max;
 
    return gt;
 }

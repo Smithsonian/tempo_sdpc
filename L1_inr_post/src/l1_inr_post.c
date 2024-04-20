@@ -130,13 +130,25 @@ return_status:
 
 static int process_inputs (Granule_Type *gt, config_t *cfg, const char *snow_file)
 {
+   int is_radt = 0;
+
    if (0 != set_snow_ice_fraction (gt, snow_file))
      return -1;
 
    if (0 != set_elevation (gt, cfg))
      return -1;
 
-   if (0 != gt->gt_set_object_angles (gt))
+   if (0 != gt->gt_is_twilight_granule (gt, &is_radt))
+     return -1;
+
+   if (is_radt)
+     {
+        float valid_max_exposure_time = 300.0;
+        if (0 != gt->gt_set_exposure_time_valid_max (gt, valid_max_exposure_time))
+          return -1;
+     }
+
+   if (0 != gt->gt_set_object_angles (gt, is_radt))
      return -1;
 
    if (0 != gt->gt_set_earth_sun_distance (gt))

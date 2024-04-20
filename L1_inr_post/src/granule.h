@@ -35,9 +35,10 @@ struct Granule_Type
     * @return 0 on success, -1 on error
     */
 
-   int (*gt_set_object_angles)(Granule_Type *);
+   int (*gt_set_object_angles)(Granule_Type *, int);
    /**<  Set solar and satellite viewing angles
     * @param[in]  gt  pointer to Granule_Type object from granule_open
+    * @param[in]  is_radt  integer, non-zero if this is a RADT product
     * @return 0 on success, -1 on error
     */
 
@@ -63,6 +64,9 @@ struct Granule_Type
     * by INR processing to define an Earth-Sun distance global variable
     * in the output NetCDF file.
     */
+
+   int (*gt_is_twilight_granule) (Granule_Type *, int *);
+   int (*gt_set_exposure_time_valid_max) (Granule_Type *gt, float);
 
 #ifdef GRANULE_PRIVATE_DATA
    GRANULE_PRIVATE_DATA
