@@ -12,9 +12,9 @@ Input Files:
   TEMPOL1IRR_fnm:
     - @irradiance_file@
   TEMPOdiaglog_dir:
-    - replace_with_tempo_diaglog_dir/
+    - ./
   TEMPOdiaglog_fnm:
-    - replace_with_tempo_diaglog_fnm
+    - diaglog_O2O2.nc
   OMGLER:
     - Not_used_for_TEMPO
   Kleipool_dir:

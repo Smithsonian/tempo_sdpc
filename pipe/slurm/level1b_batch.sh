@@ -425,6 +425,11 @@ derive_o2o2_slant_column()
   srun --ntasks=1 --output=log_${molecule}.txt \
      L1_trace_gas -tempo -wrt_odl
 
+  diagnostic_file="${out_basename}_diag.nc"
+  if test -f $diagnostic_file ; then
+     tg_diag_filter.py --output diaglog_${molecule}.nc log_${molecule}.txt $diagnostic_file
+  fi
+
   # SDPTK MET routines litter the directory with temporary files
   find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 }
@@ -571,7 +576,7 @@ trap 'catch $? $LINENO' EXIT
 # in $l2_incoming. Using a notice file instead of the tar
 # file itself minimizes data movement and should improve efficiency.
 
-if test $is_radt_l1 != 0 ; then
+if test $is_radt_l1 -eq 0 ; then
    tar_granule_dir_to_dest "$l1_out_dir"
    notify_granule_ready "$l2_incoming"
 fi
