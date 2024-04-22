@@ -229,6 +229,16 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
+    call tiof_varlist_append (varlist, errstat, &
+                              o3t_var_terrain_height, &
+                              nf90_short, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "terrain height", &
+                              units = "m", &
+                              valid_range = [-200.0_8, 10000.0_8], &
+                              fillvalue = fill_short, &
+                              attlist=att_coord)
+
     call tiof_attlist_append (att_aqflag, errstat, "coordinates", &
                               att_text = trim(o3t_var_time) &
                               //' '//trim(o3t_var_longitude) &
@@ -585,16 +595,6 @@ contains
                               fillvalue = fill_float, &
                               attlist=att_coord)
 
-    call tiof_varlist_append (varlist, errstat, &
-                              o3t_var_terrain_height, &
-                              nf90_short, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "terrain height", &
-                              units = "m", &
-                              valid_range = [-200.0_8, 10000.0_8], &
-                              fillvalue = fill_short, &
-                              attlist=att_coord)
-
     if (have_omi_data) then
       call tiof_varlist_append (varlist, errstat, &
                               o3t_var_xtrack_qf, &
@@ -910,8 +910,6 @@ contains
                         vazimuth(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_relaz_angle, [iline,0], [1, nxtrack], &
                         phiArray(1:nxtrack), errstat)
-    call tiof_put1d_i2 (obj, o3t_var_terrain_height, [iline,0], [1, nxtrack], &
-                        height(1:nxtrack), errstat)
     if (have_omi_data) then
       call tiof_put1d_ui1 (obj, o3t_var_xtrack_qf, [iline,0], [1, nxtrack], &
                          anomflg(1:nxtrack), errstat)
@@ -932,6 +930,8 @@ contains
                         pcArray(1:nxtrack), errstat)
     call tiof_put1d_r4 (obj, o3t_var_terrain_pressure, [iline,0], [1, nxtrack], &
                         ptArray(1:nxtrack), errstat)
+    call tiof_put1d_i2 (obj, o3t_var_terrain_height, [iline,0], [1, nxtrack], &
+                        height(1:nxtrack), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
