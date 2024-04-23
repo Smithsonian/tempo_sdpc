@@ -49,7 +49,7 @@ MODULE m_get_initial_albedo
     ! ===============
     INTEGER, PARAMETER :: nw = 45, midin = 23    ! 45 * 0.05 nm ~ 2.25 nm
     REAL (KIND=dp), DIMENSION(nw) :: wave_arr, rad_arr, irrad_arr, weight
-    INTEGER                       :: i, errstat, naw
+    INTEGER                       :: i, errstat, naw, errstat_alb
     REAL (KIND=dp)                :: wav_interval
 
     ! ------------------------------
@@ -134,9 +134,12 @@ MODULE m_get_initial_albedo
 
     IF (noalb) RETURN
 
-    albedo = calc_albedo(measref, ps0, the_sza_atm, the_vza_atm, the_aza_atm)
-    !WRITE(www_lun, '(A, d12.4)') ' The initial albedo is: ', albedo
-
+    albedo = calc_albedo(measref, ps0, the_sza_atm, the_vza_atm, the_aza_atm, errstat)
+    IF (errstat /= 0) THEN
+      WRITE(www_lun, *) modulename, ' : error with reading alb tbl file!!!'
+      pge_error_status = errstat
+      RETURN
+    END IF
     IF (albedo <= -0.1 .OR. albedo >= 1.2) THEN
       WRITE(www_lun, *) modulename, ' : Surface albedo out of bounds!!!'
       pge_error_status = pge_errstat_error
@@ -153,16 +156,21 @@ MODULE m_get_initial_albedo
   !  using a reflectance look-up table calculated using TOMRAD
   ! ==============================================================
 
-  FUNCTION calc_albedo(refl, spres, sza, vza, aza) RESULT (albedo)
+  FUNCTION calc_albedo(refl, spres, sza, vza, aza, errstat) RESULT (albedo)
 
     USE OMSAO_precision_module
     USE OMSAO_parameters_module, ONLY : deg2rad
     USE OMSAO_variables_module, ONLY  : refdbdir, atmos_unit
     USE ozprof_data_module,      ONLY : alb_tbl_fname
-
+    USE tell_module
 
 
     IMPLICIT NONE
+
+    !===========================
+    ! input/output 
+    !===========================
+    INTEGER, INTENT(OUT) :: errstat
 
     ! =================
     ! Input variables
@@ -177,7 +185,7 @@ MODULE m_get_initial_albedo
     ! =================
     ! local variables
     ! =================
-    INTEGER, PARAMETER :: mp = 12, msza = 13, mvza = 7 !look-up table dimension
+    INTEGER, PARAMETER :: mp = 12, msza = 13, mvza = 14 !look-up table dimension
     INTEGER                         :: i, j, k, pin, szain, vzain
     INTEGER, SAVE                   ::  nsza, nvza, np
     REAL (KIND=dp), SAVE, DIMENSION(msza) :: sza_arr
@@ -187,12 +195,15 @@ MODULE m_get_initial_albedo
     REAL (KIND=dp) :: q1, q2, the_i0, the_i1, the_i2, the_t, isurf, sza1, &
          vza1, aza1, spres1, pfrac, sfrac, vfrac, the_sb
     LOGICAL, SAVE  :: first = .TRUE.
-
+   
     IF (first) THEN
       allocate (rad0(mp, msza, mvza), rad1(mp, msza, mvza), &
                 rad2(mp, msza, mvza), t(mp, msza, mvza))
-      alb_tbl_fname = TRIM(ADJUSTL(refdbdir)) // 'toms_370nm_refl_new.dat'
-      OPEN (UNIT=atmos_unit, file = alb_tbl_fname, status = 'old')
+      alb_tbl_fname = TRIM(ADJUSTL(refdbdir)) // 'toms_347nm_refl_tempo.dat'
+      OPEN (UNIT=atmos_unit, file = alb_tbl_fname, status = 'old', iostat=errstat)
+      IF (errstat /= 0) THEN
+        RETURN 
+      ENDIF
       READ (atmos_unit, *) np, nsza, nvza
       READ (atmos_unit, *) parr(1:np)
       READ (atmos_unit, *) sza_arr(1:nsza)
