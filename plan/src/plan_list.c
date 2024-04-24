@@ -314,7 +314,7 @@ static int jd_to_tai (double tstamp_jd, double *tstamp_tai)
    return tio_time_utc_to_taix (tstamp_utc, tstamp_tai);
 }
 
-int plan_stats_write (const Plan_Stats_Type *stats, const char *filename)
+int plan_stats_write (const Plan_Stats_Type *stats, double min_sun_angle, const char *filename)
 {
    FILE *fp = NULL;
    const Plan_Stats_Type *p;
@@ -328,11 +328,11 @@ int plan_stats_write (const Plan_Stats_Type *stats, const char *filename)
         double beg;
         double end;
      }
-   safe, sza, scan;
+   safe, sza, scan, delta;
    time_t epoch;
    time_t now_tt = time(NULL);
    char epoch_str[32];
-   int status = -1;
+   int num, status = -1;
 
    epoch = tio_time_taix_epoch_timet();
    if (0 != TIO_mktimestamp_str (0.0, 1, epoch_str, sizeof(epoch_str)))
@@ -353,6 +353,9 @@ int plan_stats_write (const Plan_Stats_Type *stats, const char *filename)
    if (p->radiance_scan_first_start == 0.0)
      p = p->next;
 
+   num = 0;
+   delta.beg = 0.0;
+   delta.end = 0.0;
    for ( ; p != NULL; p = p->next)
      {
         short year, month, day;
@@ -372,7 +375,16 @@ int plan_stats_write (const Plan_Stats_Type *stats, const char *filename)
                      year, month, day,
                      scan.beg, scan.end, sza.beg, sza.end, safe.beg, safe.end)<0)
           goto close_and_return;
+
+        delta.beg += scan.beg - safe.beg;
+        delta.end += safe.end - scan.end;
+        num++;
      }
+
+   delta.beg /= num;
+   delta.end /= num;
+   fprintf (stderr, "Mean safety margin [min]:  morning:%0.1f, evening:%0.1f  [min_sun_angle=%0.1f deg]\n",
+            delta.beg/60.0, delta.end/60.0, min_sun_angle);
 
    status = 0;
 close_and_return:

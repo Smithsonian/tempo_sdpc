@@ -2194,7 +2194,7 @@ int main (int argc, char **argv)
 
    if (stats_file)
      {
-        if (0 != plan_stats_write (&stats, stats_file))
+        if (0 != plan_stats_write (&stats, scan->st_min_sun_angle (scan), stats_file))
           goto return_status;
      }
 

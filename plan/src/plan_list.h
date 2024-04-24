@@ -84,6 +84,6 @@ extern int plan_stats_set_scan_times (Plan_Stats_Type *stats, const Plan_List_Ty
 */
 extern int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head);
 
-extern int plan_stats_write (const Plan_Stats_Type *stats, const char *filename);
+extern int plan_stats_write (const Plan_Stats_Type *stats, double min_sun_angle, const char *filename);
 
 #endif
