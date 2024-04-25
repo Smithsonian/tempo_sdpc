@@ -23,6 +23,7 @@ module m_o3p_params
   character (len=64), dimension(:), allocatable :: gas_names
   ! (nnongas)
   character (len=64), dimension(:), allocatable :: nongas_names, nongas_units
+  integer, parameter :: param_strlen=4, param_unit_strlen=20  ! for name strings in output file
   ! (nxtrack, nstep)
   integer (kind=2), dimension(:,:), allocatable :: geoflg
   real (kind=4), dimension(:,:), allocatable :: lat, lon, aza, sza, vza

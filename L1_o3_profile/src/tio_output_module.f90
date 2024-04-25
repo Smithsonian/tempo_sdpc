@@ -52,6 +52,7 @@ contains
        last_line, ngas, nlayer, nfitvar, nwindow, &
        num_param, num_wav_max, step_indices, errstat)
 
+    use m_o3p_params, only: param_strlen, param_unit_strlen
     implicit none
     character (len=*), intent(in) :: filename
     integer (kind=4), intent(in) :: first_pix, last_pix, first_line, &
@@ -130,6 +131,9 @@ contains
     call tiof_dimlist_append(dimlist, o3p_dim_fitvar, nfitvar, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_param, num_param, errstat)
     call tiof_dimlist_append(dimlist, o3p_dim_windows, nwindow, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_param_strlen, param_strlen, errstat)
+    call tiof_dimlist_append(dimlist, o3p_dim_param_unit_strlen, &
+                             param_unit_strlen, errstat)
     !dimensions for optional variables
     if (ozwrtcovar) then
       call tiof_dimlist_append(dimlist, o3p_dim_elms, num_elms, errstat)
@@ -1001,6 +1005,7 @@ contains
     type (tiof_attlist_type) :: att_coord, att_coord_layer
     type (tiof_attlist_type) :: att_coord_layer_pres_bnds, att_coord_layer_alt_bnds
     integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(2) :: dimids_plen_names, dimids_ulen_names
     integer, dimension(3) :: dimids_layer_xtrack_step, &
          dimids_param_xtrack_step, dimids_gas_xtrack_step, &
          dimids_elms_xtrack_step, &
@@ -1046,6 +1051,14 @@ contains
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_gas, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_gas_xtrack_step, &
+                              errstat)
+      call tiof_dimlist_lookup (dimlist, &
+                              [o3p_dim_param_strlen, o3p_dim_gas], &
+                              dimids_plen_names, &
+                              errstat)
+      call tiof_dimlist_lookup (dimlist, &
+                              [o3p_dim_param_unit_strlen, o3p_dim_param], &
+                              dimids_ulen_names, &
                               errstat)
     endif
     if (ozwrtcovar) then
@@ -1287,8 +1300,8 @@ contains
       ! We will write them as a separate array of strings
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_names, &
-                              nf90_string, &
-                              dimids = [dimids_gas_xtrack_step(1)], &
+                              nf90_char, &
+                              dimids = dimids_plen_names, &
                               comment = "names of other fitted gases")
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_other_gas_apriori, &
@@ -1321,13 +1334,13 @@ contains
       ! Units also need their own array of strings
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_names, &
-                              nf90_string, &
-                              dimids = [dimids_param_xtrack_step(1)], &
+                              nf90_char, &
+                              dimids = [dimids_plen_names(1),dimids_ulen_names(2)], &
                               comment = "names of non-gas fitted parameters")
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_units, &
-                              nf90_string, &
-                              dimids = [dimids_param_xtrack_step(1)], &
+                              nf90_char, &
+                              dimids = dimids_ulen_names, &
                               comment = "units of non-gas fitted parameters")
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_nongas_param_apriori, &
@@ -1850,6 +1863,7 @@ contains
          atmosprof, the_ctp, the_cfrac, the_cod, the_cld_flg, ozinfo, ntp, &
          eff_alb, thealbidx, glintprob, avg_kernel, covar, ncovar, contri, &
          weight_function, tropaod, tropsca, num_iter
+    use m_o3p_params, only: param_strlen, param_unit_strlen
     use ISO_C_BINDING, only: c_null_char
 
     implicit none
@@ -1872,6 +1886,8 @@ contains
     integer (kind=2), dimension (:), allocatable :: ncorrl_1d
     character (len = 4), dimension(nfitvar)  :: varnames_nNum
     character (len = 20), dimension(nfitvar) :: units
+    character (len=param_strlen) :: charbuf_param_strlen
+    character (len=param_unit_strlen) :: charbuf_param_unit_strlen
     real (kind=8)  :: avgres
     integer (kind=4) :: i, j, fidx, lidx, ii, irow, jcol, nn
     integer (kind=4) :: num_elms, num_aeros_wavl
@@ -2069,11 +2085,10 @@ contains
       if (first) then
 ! FIXME
 ! see non-gas param names below
-!        call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, ngas, &
-!             varnames_nNum(fgasidxs(fgaspos(1:ngas))), errstat)
         do i=1,ngas
-          call tiof_put1d_string (obj, o3p_var_other_gas_names, i-1, 1, &
-               [varnames_nNum(fgasidxs(fgaspos(i)))//c_null_char], errstat)
+          charbuf_param_strlen=varnames_nNum(fgasidxs(fgaspos(i)))
+          call tiof_put1d_text (obj, o3p_var_other_gas_names, i-1, 1, &
+               [adjustl(charbuf_param_strlen)], errstat)
         enddo
       endif
     endif
@@ -2089,10 +2104,12 @@ contains
          kind=4), errstat)
       if (first) then
         do i = 1, num_param
-          call tiof_put1d_string (obj, o3p_var_nongas_param_names, i-1, &
-               1, [varnames_nNum(fothvarpos(i))//c_null_char], errstat)
-          call tiof_put1d_string (obj, o3p_var_nongas_param_units, i-1, &
-               1, [units(fothvarpos(i))//c_null_char], errstat)
+          charbuf_param_strlen = varnames_nNum(fothvarpos(i))
+          call tiof_put1d_text (obj, o3p_var_nongas_param_names, i-1, &
+               1, [adjustl(charbuf_param_strlen)], errstat)
+          charbuf_param_unit_strlen = units(fothvarpos(i))
+          call tiof_put1d_text (obj, o3p_var_nongas_param_units, i-1, &
+               1, [adjustl(charbuf_param_unit_strlen)], errstat)
         enddo
       endif
     endif
@@ -2662,6 +2679,7 @@ contains
          ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
          ozwrtvar, gaswrt, aerosol, do_lambcld
     use OMSAO_variables_module, only: reduce_resolution
+    use m_o3p_params, only: param_strlen, param_unit_strlen
     use ISO_C_BINDING, only: c_null_char
 
     implicit none
@@ -2670,7 +2688,9 @@ contains
          ngas, nnongas, nlayer, nfitvars, &
          nfitwins, nmax_wavs, nnoise_elems, naeros_wavs
     integer, intent(inout) ::errstat
-    integer :: nstep, nxtrack
+    integer :: i, nstep, nxtrack
+    character (len=param_strlen) :: charbuf_param_strlen
+    character (len=param_unit_strlen) :: charbuf_param_unit_strlen
 
     type (tiof_file_type), pointer :: obj
 
@@ -2795,12 +2815,11 @@ contains
       call tiof_put3d_r4 (obj, o3p_var_other_gas_apriori_err, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, ngas], &
                           gas_apriori_err(1:ngas,1:nxtrack,1:nstep), errstat)
-      call tiof_put1d_string (obj, o3p_var_other_gas_names, 0, ngas, &
-             gas_names, errstat)
-!        do i=1,ngas
-!          call tiof_put1d_string (obj, o3p_var_other_gas_names, i-1, 1, &
-!               [varnames_nNum(fgasidxs(fgaspos(i)))//c_null_char], errstat)
-!        enddo
+      do i=1,ngas
+        charbuf_param_strlen = gas_names(i)
+        call tiof_put1d_text (obj, o3p_var_other_gas_names, i-1, 1, &
+                              [adjustl(charbuf_param_strlen)], errstat)
+      enddo
     endif
     ! Non-gas fitted parameters
     if (nnongas > 0 .and. ozwrtvar) then
@@ -2810,16 +2829,14 @@ contains
       call tiof_put3d_r4 (obj, o3p_var_nongas_param_apriori_err, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, nnongas], &
          nongas_apriori_err(1:nnongas,1:nxtrack,1:nstep), errstat)
-      call tiof_put1d_string (obj, o3p_var_nongas_param_names, 0, &
-           nnongas, nongas_names, errstat)
-      call tiof_put1d_string (obj, o3p_var_nongas_param_units, 0, &
-           nnongas, nongas_units, errstat)
-!        do i = 1, nnongas
-!          call tiof_put1d_string (obj, o3p_var_nongas_param_names, i-1, &
-!               1, [varnames_nNum(fothvarpos(i))//c_null_char], errstat)
-!          call tiof_put1d_string (obj, o3p_var_nongas_param_units, i-1, &
-!               1, [units(fothvarpos(i))//c_null_char], errstat)
-!        enddo
+      do i=1,nnongas
+        charbuf_param_strlen = nongas_names(i)
+        call tiof_put1d_text (obj, o3p_var_nongas_param_names, i-1, &
+                              1, [adjustl(nongas_names(i))], errstat)
+        charbuf_param_unit_strlen = nongas_units(i)
+        call tiof_put1d_text (obj, o3p_var_nongas_param_units, i-1, &
+                              1, [adjustl(nongas_units(i))], errstat)
+      enddo
     endif
     !averaging kernels
     if (ozwrtavgk) then

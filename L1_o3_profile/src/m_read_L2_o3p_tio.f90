@@ -374,7 +374,7 @@ contains
          gas_apriori, gas_apriori_err, nongas_apriori, nongas_apriori_err, &
          correl_mtrx, contrib_mtrx, aeros_opt_thick, aeros_scatter_thick, &
          avg_kernel, noise_mtrx, n_fit_wvl, n_window_wvl, gas_names, &
-         nongas_names, nongas_units
+         nongas_names, nongas_units, param_strlen, param_unit_strlen
 
     implicit none
 
@@ -386,7 +386,10 @@ contains
     !output variables
     integer (kind=4), intent(inout) :: errstat
 
+    character (len=param_strlen), dimension(1) :: charbuf_param_strlen
+    character (len=param_unit_strlen), dimension(1) :: charbuf_param_unit_strlen
     type(tiof_file_type) :: tio_l2obj
+    integer :: i
 
     if (errstat /= 0) return
 
@@ -460,8 +463,12 @@ contains
            [0, 0, 0], [nstep, nxtrack, ngas], &
            gas_apriori_err(:, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
-      call tiof_get1d_string (tio_l2obj, o3p_var_other_gas_names, 0, &
-           ngas, gas_names, errstat)
+      do i=1,ngas
+        charbuf_param_strlen = ' '
+        call tiof_get1d_text (tio_l2obj, o3p_var_other_gas_names, i-1, &
+                              1, charbuf_param_strlen, errstat)
+        gas_names(i) = charbuf_param_strlen(1)
+      enddo
     endif
     ! Optional products - nongas
     if (ozwrtvar .and. nnongas > 0) then
@@ -473,10 +480,16 @@ contains
            [0, 0, 0], [nstep, nxtrack, nnongas], &
            nongas_apriori_err(:, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
-      call tiof_get1d_string (tio_l2obj, o3p_var_nongas_param_names, 0, &
-           nnongas, nongas_names, errstat)
-      call tiof_get1d_string (tio_l2obj, o3p_var_nongas_param_units, 0, &
-           nnongas, nongas_units, errstat)
+      do i=1,nnongas
+        charbuf_param_strlen = ' '
+        call tiof_get1d_text (tio_l2obj, o3p_var_nongas_param_names, i-1, &
+                              1, charbuf_param_strlen, errstat)
+        nongas_names(i) = charbuf_param_strlen(1)
+        charbuf_param_unit_strlen = ' '
+        call tiof_get1d_text (tio_l2obj, o3p_var_nongas_param_units, i-1, &
+                              1, charbuf_param_unit_strlen, errstat)
+        nongas_units(i) = charbuf_param_unit_strlen(1)
+      enddo
     endif
     ! Optional - averaging kernels
     if (ozwrtavgk .and. nlayer > 0) then
