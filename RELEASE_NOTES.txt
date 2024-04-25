@@ -15,6 +15,9 @@ TEMPO_SDPC_v4.4.0   2024 May
     improve control over pipeline processing flow.
   * Support generating monthly reporting statistics on TEMPO radiance
     measurement opportunities.
+  * Update OTS libraries:
+      - ioclib: 1.0.0 to 2.1.1
+      - iocsdpc: 0.6.0 to 0.7.1
 
 TEMPO_SDPC_v4.3.0   2024 Feb
 ============================
