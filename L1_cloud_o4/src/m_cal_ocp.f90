@@ -762,9 +762,7 @@ subroutine cal_ocp(ecfocp_iternum)
           y0=amfvcd_int(ipm0)
           y1=amfvcd_int(ipm1)
           y2=amfvcd_int(ipm2)
-        endif
-
-        if(option_psfc_clear.eq.1) then
+        else ! option_psfc_clear=1
         ! use pclr=pcld, ipm0=npsfc
           y0=amfvcd_ext(ipm0)
           y1=amfvcd_ext(ipm1)
