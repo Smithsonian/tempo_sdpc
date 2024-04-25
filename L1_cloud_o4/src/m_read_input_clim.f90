@@ -338,7 +338,7 @@ contains
   real(kind=4), intent(out):: adj_pressure
   integer(kind=4),intent(inout):: errstat
   
-  real(kind=4):: Rdovg = 287.058 / 9.80665
+  real(kind=4):: Rdovg = 287.052874 / 9.80665
   
   real(kind=4):: virtual_temperature, abc
 
