@@ -194,10 +194,10 @@ return_status:
  *   0 to stop processing so that ioclib_process_dir returns 0;
  *  -1 to stop processing so that ioclib_process_dir returns -1.
  */
-static int file_cbfun (int dirfd, const char *dirpath, const char *file, void *cd)
+static int file_cbfun (int dirfd, const char *dirpath, const char *file, unsigned int idx, void *cd)
 {
    int status;
-   (void) dirfd;
+   (void) dirfd; (void) idx;
    status = process_logfile ((const Filter_Type *)cd, dirpath, file);
    return (status == 0) ? 1 : status;
 }
