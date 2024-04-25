@@ -1667,9 +1667,10 @@ contains
     ! lon-lat 
     do it = 1, nt
        do ix = 1, nx
-          thislat = abs(rad_Latitude(ix,it))
+          thislat = rad_Latitude(ix,it)
           thislon = rad_Longitude(ix,it)
-          if ((thislat .gt. 90.) .or. (thislon .lt. -360.)) then
+          if (isnan(thislat) .or. isnan(thislon) .or. &
+             (thislat .lt. -90.) .or. (thislon .lt. -360.)) then
              rad_Latitude(ix,it) = fFillValue
              rad_Longitude(ix,it) = fFillValue
              out_TerrainHeight(ix, it) = fFillValue
@@ -1686,7 +1687,8 @@ contains
      do it = 1, nt
         do ix = 1, nx
            thissza = rad_SolarZenithAngle(ix,it)
-           if ((thissza .lt. 0.) .or. (thissza .gt. 89.)) then 
+           if (isnan(thissza) .or. (thissza .lt. 0.) .or. &
+              (thissza .gt. 89.)) then 
              out_TerrainHeight(ix, it) = fFillValue
              out_TerrainPressure(ix, it) = fFillValue
              l2_TerrainPressure(ix, it) = fFillValue
