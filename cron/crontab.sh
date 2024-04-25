@@ -7,10 +7,17 @@ tstamp_fmt="+%Y%m%d%H%M%SZ"
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
+: "${SDPC_LOCKDIR:?SDPC_LOCKDIR not set}"
+
+exit_status()
+{
+   status="$1"
+   printf "$2"
+   exit $status
+}
 
 if ! test -d "$SDPC_ANCILLARY_ROOT" ; then
-   printf "*** Error: cannot access directory: $SDPC_ANCILLARY_ROOT"
-   exit 1
+   exit_status 1 "*** Error: cannot access directory: $SDPC_ANCILLARY_ROOT"
 fi
 
 cd $SDPC_ANCILLARY_ROOT
@@ -18,8 +25,11 @@ cd $SDPC_ANCILLARY_ROOT
 if test -f "etc/crontab.conf" ; then
    . etc/crontab.conf
 else
-   printf "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
-   exit 1
+   exit_status 1 "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
+fi
+
+if ! test -d $SDPC_LOCKDIR ; then
+   mkdir -p $SDPC_LOCKDIR || exit_status 1 "*** Error: failed creating directory: $SDPC_LOCKDIR"
 fi
 
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
@@ -41,7 +51,7 @@ case $_task in
 
    GOES )
    test x"$state_goes" = xon || exit 0
-   pull_goes.sh $pda_service_account
+   flock -n $SDPC_LOCKDIR/goes_cron.lock pull_goes.sh $pda_service_account
    ;;
 
    GEOSCF )

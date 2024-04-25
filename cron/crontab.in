@@ -3,6 +3,7 @@ MAILTO=jhouck@cfa.harvard.edu
 SDPC_ANCILLARY_ROOT=@ANCILLARY_DATA_DIR@
 SDPC_ROOT=@prefix@
 SDPC_OTS_ROOT=@OTS_ROOT@
+SDPC_LOCKDIR=@SDPC_LOCKDIR@
 #
 # fields: min,hr,day_of_month,month,day_of_week
 
@@ -22,7 +23,7 @@ SDPC_OTS_ROOT=@OTS_ROOT@
 7	4	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh GEOSCF >> var/log/geoscf.log 2>&1
 
 # Ancillary data to ASDC:
-7	3,21	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GOES >> var/log/asdc_goes.log 2>&1
+10	3,21	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GOES >> var/log/asdc_goes.log 2>&1
 7	1,23	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
 7	2	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_IMS >> var/log/asdc_ims.log 2>&1
 
