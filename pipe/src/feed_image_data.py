@@ -248,7 +248,7 @@ def main():
     parser.add_argument('--dbfile', metavar='DBFILE',
                         help="Path to sqlite database containing source files")
     parser.add_argument('--csvfile', metavar='CSVFILE',
-                        help="Path to CSV file containing source file list")
+                        help="Path to CSV file containing source file list (overrides dbfile)")
     parser.add_argument('--wait', default=None, type=float,
                         help="Time interval [sec] between files")
     parser.add_argument('--level1', action='store_true',
@@ -281,10 +281,10 @@ def main():
     DryRun = args.dryrun
 
     file_dict = None
-    if args.dbfile is not None:
-        file_dict = query_files_in_time_range (args.dbfile, args.level1, args.start, args.end)
-    elif args.csvfile is not None:
+    if args.csvfile is not None:
         file_dict = read_csv_file_list (args.csvfile)
+    elif args.dbfile is not None:
+        file_dict = query_files_in_time_range (args.dbfile, args.level1, args.start, args.end)
 
     if file_dict is None:
         eprint ('*** Error: No source files to deliver: dbfile={} csvfile={}'.format(args.dbfile, args.csvfile))
