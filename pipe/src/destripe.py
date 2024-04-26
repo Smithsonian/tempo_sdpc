@@ -58,16 +58,18 @@ def correct_background (dst, scd, bgrcor):
     corrected_product = dst.product_type
     try:
         grp = dst['support_data']
+        # Make it a 2D variable to support ASDC concatenation services
         if 'background_correction' not in grp.variables:
-            dst_bgr = grp.createVariable('background_correction',np.float32,('xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
+            dst_bgr = grp.createVariable('background_correction',np.float32,('mirror_step','xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
             dst_bgr.long_name = 'background correction'.format(corrected_product)
-            dst_bgr.comment = 'xtrack dependent {} slant column background correcton'.format(corrected_product)
+            dst_bgr.comment = 'xtrack dependent {} slant column background correction'.format(corrected_product)
+            dst_bgr.coordinates = 'time longitude latitude'
             dst_bgr.units = units
         else:
             dst_bgr = grp['background_correction']
         add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
         dst.history = '{}{}'.format(dst.history,add_history)
-        dst_bgr[:] = bgrcor
+        dst_bgr[:] = np.repeat(bgrcor[np.newaxis,:],scd.shape[0],axis=0)
         # leave L2 file's fitted_slant_column unchanged
         return (scd + bgrcor)
     except Exception as e:
