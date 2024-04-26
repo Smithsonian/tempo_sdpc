@@ -645,6 +645,7 @@ SLANG_INC_DIR
 SLANG_LIB_DIR
 SLANG_INC
 SLANG_LIB
+SDPC_LOCKDIR
 LEAP_SECONDS_LIST
 GEOTIFF_INC
 GEOTIFF_LIB
@@ -771,6 +772,7 @@ with_geotiff
 with_leapsec
 enable_imgcomp
 with_sc_timezone
+with_lockdir
 with_slang
 with_slanglib
 with_slanginc
@@ -1424,6 +1426,7 @@ Optional Packages:
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
   --with-leapsec=FILE     Use this leap second file
   --with-sc-timezone=HH   Set the host spacecraft time zone (integer hours relative to UTC)
+  --with-lockdir=FILE     Put lock files in this directory
   --with-slang=DIR      Use DIR/lib and DIR/include for slang
   --with-slanglib=DIR   slang library in DIR
   --with-slanginc=DIR   slang include files in DIR
@@ -2973,6 +2976,21 @@ _ACEOF
 
    echo "Setting spacecraft time zone to $jh_with_timezone"
 fi
+
+
+# Check whether --with-lockdir was given.
+if test "${with_lockdir+set}" = set; then :
+  withval=$with_lockdir; jh_with_lockdir=$withval
+else
+  jh_with_lockdir=no
+fi
+
+if test "x$jh_with_lockdir" = "xno"; then
+   SDPC_LOCKDIR="/scratch/temposdpc"
+else
+   SDPC_LOCKDIR="$jh_with_lockdir"
+fi
+
 
 
   if test "X$jd_prefix" = "X"
@@ -6054,6 +6072,7 @@ echo "  Reference data: $REFDATA_DIR"
 echo "  Ancillary data: $ANCILLARY_DATA_DIR"
 echo "   Pipeline home: $PIPE_HOME"
 echo "    Archive home: $ARCHIVE_HOME"
+echo " Cron lock files: $SDPC_LOCKDIR"
 echo ""
 if test "x$jh_with_timezone" != "xno"; then
    echo "   SPACECRAFT_TIMEZONE: $jh_with_timezone"

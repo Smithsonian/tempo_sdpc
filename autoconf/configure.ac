@@ -310,6 +310,17 @@ if test "x$jh_with_timezone" != "xno"; then
    echo "Setting spacecraft time zone to $jh_with_timezone"
 fi
 
+AC_ARG_WITH(lockdir,
+  [  --with-lockdir[=FILE]     Put lock files in this directory],
+  [jh_with_lockdir=$withval],
+  [jh_with_lockdir=no])
+if test "x$jh_with_lockdir" = "xno"; then
+   SDPC_LOCKDIR="/scratch/temposdpc"
+else
+   SDPC_LOCKDIR="$jh_with_lockdir"
+fi
+AC_SUBST(SDPC_LOCKDIR)
+
 JD_WITH_LIBRARY(slang)
 JD_SLANG_MODULE_INSTALL_DIR
 INSTALL_MODULE="\$(INSTALL_DATA)"
@@ -356,6 +367,7 @@ echo "  Reference data: $REFDATA_DIR"
 echo "  Ancillary data: $ANCILLARY_DATA_DIR"
 echo "   Pipeline home: $PIPE_HOME"
 echo "    Archive home: $ARCHIVE_HOME"
+echo " Cron lock files: $SDPC_LOCKDIR"
 echo ""
 if test "x$jh_with_timezone" != "xno"; then
    echo "   SPACECRAFT_TIMEZONE: $jh_with_timezone"
