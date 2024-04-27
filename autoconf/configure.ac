@@ -315,7 +315,7 @@ AC_ARG_WITH(lockdir,
   [jh_with_lockdir=$withval],
   [jh_with_lockdir=no])
 if test "x$jh_with_lockdir" = "xno"; then
-   SDPC_LOCKDIR="/scratch/temposdpc"
+   SDPC_LOCKDIR='/scratch/$LOGNAME/lock'
 else
    SDPC_LOCKDIR="$jh_with_lockdir"
 fi

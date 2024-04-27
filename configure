@@ -2986,7 +2986,7 @@ else
 fi
 
 if test "x$jh_with_lockdir" = "xno"; then
-   SDPC_LOCKDIR="/scratch/temposdpc"
+   SDPC_LOCKDIR='/scratch/$LOGNAME/lock'
 else
    SDPC_LOCKDIR="$jh_with_lockdir"
 fi
