@@ -75,7 +75,7 @@ fetch_forecast_for_date()
 	set log:file/xfer ""
 	set xfer:use-temp-file yes
 	set xfer:temp-file-name *.lftp
-	mget -c -P 4 -O $incoming_dir $source_url/$fcst_regex
+	mget -c -O $incoming_dir $source_url/$fcst_regex
 	quit
 	EOF
 
