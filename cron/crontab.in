@@ -27,6 +27,9 @@ SDPC_LOCKDIR=@SDPC_LOCKDIR@
 7	1,23	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_GEOSCF >> var/log/asdc_geoscf.log 2>&1
 7	2	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh ASDC_IMS >> var/log/asdc_ims.log 2>&1
 
+# sqlite backup:
+52	0	* * * cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh BACKUP >> var/log/backup.log 2>&1
+
 # cleanup
 @weekly		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && /usr/sbin/logrotate -s var/log/logstate etc/logrotate.conf
 @daily		cd $SDPC_ANCILLARY_ROOT && mkdir -p var/log && bin/crontab.sh CLEANUP >> var/log/cleanup.log 2>&1

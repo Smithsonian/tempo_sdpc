@@ -9,11 +9,21 @@ tstamp_fmt="+%Y%m%d%H%M%SZ"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
 : "${SDPC_LOCKDIR:?SDPC_LOCKDIR not set}"
 
+cmieast_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
+cmiwest_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
+geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
+ims_sqlite="$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
+
+sqlite_backup_dir="$SDPC_ANCILLARY_ROOT/var/backup"
+num_backups=10
+
+lockfile_goes="$SDPC_LOCKDIR/goes_cron.lock"
+lockfile_geoscf="$SDPC_LOCKDIR/geoscf_cron.lock"
+
 exit_status()
 {
-   status="$1"
    printf "$2"
-   exit $status
+   exit $1
 }
 
 if ! test -d "$SDPC_ANCILLARY_ROOT" ; then
@@ -30,7 +40,40 @@ fi
 
 if ! test -d $SDPC_LOCKDIR ; then
    mkdir -p $SDPC_LOCKDIR || exit_status 1 "*** Error: failed creating directory: $SDPC_LOCKDIR"
+   chmod 700 $SDPC_LOCKDIR
 fi
+
+if ! test -d $sqlite_backup_dir ; then
+   mkdir -p $sqlite_backup_dir || exit_status 1 "*** Error: failed creating directory: $sqlite_backup_dir"
+fi
+
+rotate_backups()
+{
+   name="$1"
+
+   indices=$(seq $(($num_backups-1)) -1 1)
+
+   for n in $indices ; do
+      this="${name}.${n}"
+      next="${name}.$(($n+1))"
+      if test -f $this ; then
+         /bin/mv $this $next
+      fi
+   done
+
+   if test -f $name ; then
+      /bin/mv $name ${name}.1
+   fi
+}
+
+sqlite_backup()
+{
+   dbpath="$1"
+   bn=$(basename $dbpath)
+   backup_path="$sqlite_backup_dir/$bn"
+   rotate_backups $backup_path
+   sqlite3 -cmd ".timeout 20000" $dbpath ".backup $backup_path"
+}
 
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
@@ -51,18 +94,16 @@ case $_task in
 
    GOES )
    test x"$state_goes" = xon || exit 0
-   flock -n $SDPC_LOCKDIR/goes_cron.lock pull_goes.sh $pda_service_account
+   flock -E 16 -n $lockfile_goes pull_goes.sh $pda_service_account
    ;;
 
    GEOSCF )
    test x"$state_geoscf" = xon || exit 0
-   pull_geoscf.sh $geoscf_source_url
+   flock -E 16 -n $lockfile_geoscf pull_geoscf.sh $geoscf_source_url
    ;;
 
    ASDC_GOES )
    test x"$state_asdc_goes" = xon || exit 0
-   cmieast_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
-   cmiwest_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
    asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
    asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
    asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
@@ -71,14 +112,12 @@ case $_task in
 
    ASDC_GEOSCF )
    test x"$state_asdc_geoscf" = xon || exit 0
-   geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
    asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
    asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
    ;;
 
    ASDC_IMS )
    test x"$state_asdc_ims" = xon || exit 0
-   ims_sqlite="$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
    asdc_pull_ack.sh $asdc_dropbox $ims_sqlite IMS
    asdc_push_files.sh $asdc_dropbox $ims_sqlite
    ;;
@@ -86,6 +125,13 @@ case $_task in
    CLEANUP )
    test -f bin/cleanup.sh || exit 0
    bin/cleanup.sh
+   ;;
+
+   BACKUP )
+   sqlite_backup $cmieast_sqlite
+   sqlite_backup $cmiwest_sqlite
+   sqlite_backup $geoscf_sqlite
+   sqlite_backup $ims_sqlite
    ;;
 
    * )
