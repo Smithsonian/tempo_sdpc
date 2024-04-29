@@ -519,6 +519,12 @@ int map_add_tile (Map_Type *map, int i, const char *file)
    return status;
 }
 
+/* (April 29, 2024)
+ * +/-0.02-degree latitude margins were added to avoid dashed lines of
+ * fill-values in the 'ground_pixel_quality_flag' variables.
+ * This serves as a temporary solution.
+ * We will need to replace/update MODIS data eventually.
+ */
 #define MAP_LOOKUP_TYPE(type,name,NAME,union_field,missing_value) \
 int map_lookup_##name (Map_Type *map, unsigned int num, \
                        const Map_Coord_Type *lon, const Map_Coord_Type *lat, \
@@ -541,37 +547,39 @@ int map_lookup_##name (Map_Type *map, unsigned int num, \
    for (i = 0; i < num; i++) \
      { \
         Tile_Type *tile; \
-        unsigned int col, row; \
-        int k; \
-        double lat_temp; \
+        unsigned int col, row, off_tiles, not_found; \
+        int j, k; \
+        double lat_temp, shift[] = {0.00, 0.01, -0.01, 0.02, -0.02}; \
  \
-        lat_temp = lat[i]; \
-        if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
+        for (j = 0; j < 5; j++) \
           { \
-             lat_temp = lat[i]+0.01; \
+             off_tiles = 0; \
+             not_found = 0; \
+ \
+             lat_temp = lat[i] + shift[j]; \
              if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
                { \
-                  lat_temp = lat[i]-0.01; \
-                  if ((k = map->find_tile (map, lon[i], lat_temp)) < 0) \
-                    { \
-                       lat_temp = lat[i]; \
-                       values[i] = missing_value; \
-                       num_off_tiles++; \
-                       continue; \
-                    } \
+                  values[i] = missing_value; \
+                  off_tiles++; \
+                  continue; \
                } \
+ \
+             tile = &map->tiles[k]; \
+ \
+             if (0 != lonlat_to_image (tile, &col, &row, lon[i], lat_temp)) \
+               { \
+                  values[i] = missing_value; \
+                  not_found++; \
+                  continue; \
+               } \
+ \
+             values[i] = tile->pixels.union_field[col + row * tile->num_cols]; \
+ \
+             if (values[i] != missing_value) \
+               break; \
           } \
- \
-        tile = &map->tiles[k]; \
- \
-        if (0 != lonlat_to_image (tile, &col, &row, lon[i], lat_temp)) \
-          { \
-             values[i] = missing_value; \
-             num_not_found++; \
-             continue; \
-          } \
- \
-        values[i] = tile->pixels.union_field[col + row * tile->num_cols]; \
+        num_off_tiles += off_tiles; \
+        num_not_found += not_found; \
      } \
  \
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: num_not_found=%d num_off_tiles=%d", \
