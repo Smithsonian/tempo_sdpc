@@ -362,11 +362,16 @@ static int perform_merge (int ncid_target, const char *file)
         float *param_slab_i = wavecal_params + i * len_slab;
 
         // added by WHou
+        /* niter = -1 means without RAD_wavecal due to the setting of sza_max */
+        int *niter_slab_i = niter + i * xtrack_dimlen_src;
         int *opt_status_slab_i = opt_status + i * xtrack_dimlen_src;
 
         for (int j = 0; j < xtrack_dimlen_src; j++)
           {
-             if ((opt_status_slab_i[j] > 3) || (opt_status_slab_i[j] < 1))
+             /* if opt_status > 3 or < 1, refilling is required 
+              * if niter = -1, no refilling is required
+              */
+             if (((opt_status_slab_i[j] > 3) || (opt_status_slab_i[j] < 1)) && (niter_slab_i[j] > 0))
                {
                   int j1 = find_nearest_non_fail_index(opt_status_slab_i, xtrack_dimlen_src, j);
                   size_t k;
