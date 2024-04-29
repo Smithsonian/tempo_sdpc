@@ -28,6 +28,12 @@ DryRun = False
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+def connect_database (dbfile):
+    conn = sqlite3.connect ("file:{}?mode=ro".format(dbfile), uri=True, timeout=20.0)
+    conn.execute("pragma foreign_keys=on")
+    #conn.set_trace_callback(print)
+    return conn
+
 def time_filter (beg, end):
     if beg is None and end is None:
         where = ""
@@ -39,48 +45,48 @@ def time_filter (beg, end):
         where= "where {beg} <= time_coverage_start_since_epoch and time_coverage_end_since_epoch < {end}".format (**locals())
     return where
 
-def level1_query (c, beg, end):
-    where = time_filter (beg, end)
-    sql = "select time_coverage_start_since_epoch,path from 'RAD_L1' {where} order by time_coverage_start_since_epoch".format (**locals())
-    return sql
-
-def level0_tables(c):
-    image_types = ['DRK', 'DRKL', 'IRR', 'IRRL', 'IRRR', 'RAD', 'RADT']
-    tables = [s + '_L0' for s in image_types]
-    c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    rows = c.fetchall()
+def tables_in_db (dbfile, want_tables):
+    with connect_database(dbfile) as conn:
+        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        existing_tables = cur.fetchall()
     result = []
-    for r in rows:
-        if r[0] in tables:
-            result.append (r[0])
+    for t in existing_tables:
+        if t[0] in want_tables:
+            result.append (t[0])
     if len(result) == 0:
         result = None
     return result
 
-def level0_query (c, beg, end):
-    tables = level0_tables (c)
-    if tables is None:
-        return None
+def tables_union_query (tables, beg, end):
     where = time_filter (beg, end)
     sql_parts = []
     for tbl in tables:
         sql = "select time_coverage_start_since_epoch,path from '{tbl}' {where}".format (**locals())
         sql_parts.append (sql)
-    sql = " union ".join(sql_parts)
+    if len(sql_parts) > 1:
+        sql = " union ".join(sql_parts)
     return sql + ' order by time_coverage_start_since_epoch'
 
-def select_files (c, want_level1, beg, end):
+def select_files (dbfile, want_level1, beg, end):
 
     if want_level1:
-        sql = level1_query (c, beg, end)
+        tables = ["RAD_L1"]
     else:
-        sql = level0_query (c, beg, end)
+        image_types = ['DRK', 'DRKL', 'IRR', 'IRRL', 'IRRR', 'RAD', 'RADT']
+        tables = [s + '_L0' for s in image_types]
 
+    tables = tables_in_db (dbfile, tables)
+    if tables is None:
+        return None
+
+    sql = tables_union_query (tables, beg, end)
     if sql is None:
         return None
 
-    c.execute(sql)
-    rows = c.fetchall()
+    with connect_database (dbfile) as conn:
+        cur = conn.execute(sql)
+        rows = cur.fetchall()
+
     tstart = []
     path = []
     for r in rows:
@@ -177,20 +183,6 @@ def read_csv_file_list (csvpath):
     indices = np.argsort(tstart)
     return {"tstart":tstart[indices], "path":path[indices]}
 
-def query_files_in_time_range (dbfile, level1_select, start, end):
-    """
-    For back-compatibility sqlite has foreign keys turned off by default,
-    and foreign_keys=off is ALWAYS stored in the database, regardless of
-    the runtime setting when the database was created.  For this reason,
-    we apparently need to turn it on explicitly, each time the database
-    connection is established.
-    """
-    with sqlite3.connect (dbfile) as conn:
-        conn.execute("pragma foreign_keys=on")
-        #conn.set_trace_callback(print)
-        file_dict = select_files (conn.cursor(), level1_select, start, end)
-    return file_dict
-
 class TrackDB:
 
     dbfile = None
@@ -284,7 +276,7 @@ def main():
     if args.csvfile is not None:
         file_dict = read_csv_file_list (args.csvfile)
     elif args.dbfile is not None:
-        file_dict = query_files_in_time_range (args.dbfile, args.level1, args.start, args.end)
+        file_dict = select_files (args.dbfile, args.level1, args.start, args.end)
 
     if file_dict is None:
         eprint ('*** Error: No source files to deliver: dbfile={} csvfile={}'.format(args.dbfile, args.csvfile))
