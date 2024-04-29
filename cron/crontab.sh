@@ -69,8 +69,7 @@ rotate_backups()
 sqlite_backup()
 {
    dbpath="$1"
-   bn=$(basename $dbpath)
-   backup_path="$sqlite_backup_dir/$bn"
+   backup_path="$sqlite_backup_dir/$(basename $dbpath)"
    rotate_backups $backup_path
    sqlite3 -cmd ".timeout 20000" $dbpath ".backup $backup_path"
 }
@@ -99,21 +98,29 @@ case $_task in
 
    GEOSCF )
    test x"$state_geoscf" = xon || exit 0
-   flock -E 16 -n $lockfile_geoscf pull_geoscf.sh $geoscf_source_url
+   flock -E 17 -n $lockfile_geoscf pull_geoscf.sh $geoscf_source_url
    ;;
 
    ASDC_GOES )
    test x"$state_asdc_goes" = xon || exit 0
-   asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
-   asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
-   asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
-   asdc_push_files.sh $asdc_dropbox $cmiwest_sqlite
+   ( flock -E 18 -n 9
+     if test "$?" -eq 0 ; then
+        asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
+        asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
+        asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
+        asdc_push_files.sh $asdc_dropbox $cmiwest_sqlite
+     fi
+   ) 9> $lockfile_goes
    ;;
 
    ASDC_GEOSCF )
    test x"$state_asdc_geoscf" = xon || exit 0
-   asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
-   asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
+   ( flock -E 19 -n 9
+     if test "$?" -eq 0 ; then
+        asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
+        asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
+     fi
+   ) 9> $lockfile_geoscf
    ;;
 
    ASDC_IMS )

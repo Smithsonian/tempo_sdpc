@@ -23,6 +23,7 @@ compress
 @ANCILLARY_DATA_DIR@/var/log/cleanup.log
 @ANCILLARY_DATA_DIR@/var/log/asdc_goes.log
 {
+        size 5M
         missingok
         notifempty
         delaycompress
