@@ -989,12 +989,21 @@ static int define_radiance_group (int parent_grp, TIO_Scan_Group_Type *sg,
           {
              {"comment", "INR quality flag"},
              {"coordinates", "time longitude latitude"},
+             {"flag_meanings", "nominal off_earth bad"},
              _pTEXT_ATTRS_END
           };
+        const int flag_values[] = {0, 1, 2};
+        size_t len = sizeof(flag_values)/sizeof(flag_values[0]);
         dims[0] = dim_table->step.id;
         dims[1] = dim_table->xtrack.id;
         if (-1 == _pTIO_define_var_with_text_attrs (grp, TEMPO_VAR_INRQF, NC_INT, 2, dims, inrqf_attrs, &varid))
           return -1;
+        if (NC_NOERR != nc_put_att_int (grp, varid, "flag_values", NC_INT, len, flag_values))
+          {
+             tell_verror (TELL_IO_WRITE_ERROR, "%s: defining %s flag_values attribute",
+                          __func__, TEMPO_VAR_INRQF);
+             return -1;
+          }
         if (-1 == _pTIO_put_fillvalue_attr (grp, varid, NC_INT))
           return -1;
      }
