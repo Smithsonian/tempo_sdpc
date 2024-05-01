@@ -614,12 +614,13 @@ static int set_ground_pixel_flags (Granule_Type *gt,
         for (j = 0; j < num_pixels; j++)
           {
              unsigned int flags = ground_flags[j];
+             unsigned int inrqf = (inr_quality_flag[j] == 0) ? 0 : 1;
 
              BITMASK_CLEAR(flags, BITMASK_GPQF_BITS_USED);
 
              BITMASK_SET(flags,   lc_typeqc[j] >> 4);
              BITMASK_SET(flags, illum_flags[j] << 4);
-             BITMASK_SET(flags, (inr_quality_flag[j] & 0x01) << 6);
+             BITMASK_SET(flags,          inrqf << 6);
              BITMASK_SET(flags,    lc_type1[j] << 16);
 
              ground_flags[j] = flags;
