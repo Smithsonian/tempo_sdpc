@@ -576,9 +576,12 @@ trap 'catch $? $LINENO' EXIT
 # in $l2_incoming. Using a notice file instead of the tar
 # file itself minimizes data movement and should improve efficiency.
 
+tar_granule_dir_to_dest "$l1_out_dir"
+
 if test $is_radt_l1 -eq 0 ; then
-   tar_granule_dir_to_dest "$l1_out_dir"
    notify_granule_ready "$l2_incoming"
+else
+   /bin/rm -f "$l1_out_dir/${rad_basename}.tar"
 fi
 
 perform_cleanup
