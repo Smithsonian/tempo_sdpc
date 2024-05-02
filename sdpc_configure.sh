@@ -12,7 +12,7 @@ refdata_dir="$soft_home/refdata"
 ancdata_dir="$archive_home/ancillary"
 
 install_root="$soft_home/install/$build_arch"
-inrroot="$install_root/inr_r3.0.1"
+inrroot="$install_root/inr_r3.0.2"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 
