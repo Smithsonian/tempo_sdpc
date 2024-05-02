@@ -83,7 +83,7 @@ main ()
   s0=$(date --date $yyyy_mm_dd1 +%s)
   s1=$(date --date $yyyy_mm_dd2 +%s)
   # shell only does integer arithmetic
-  num_days=$((($s1 - $s0 + 43200)/86400))
+  num_days=$((1 + ($s1 - $s0 + 43200)/86400))
 
   report_file="tempo_report_${yyyy_mm_dd1}_to_${yyyy_mm_dd2}.csv"
   tailor_file="tempo_tailor_${yyyy_mm_dd1}_to_${yyyy_mm_dd2}.csv"
