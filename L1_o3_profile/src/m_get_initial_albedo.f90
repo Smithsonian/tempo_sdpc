@@ -336,7 +336,7 @@ MODULE m_get_initial_albedo
   o3shi(1) = 0.0  ; waves(1) = pos_alb
   
   num_iter = 0
-  IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
+  IF (scnwrt) WRITE(*, '(A21,4d14.5,I5)') '  Rs, Rc, Fc, Tc, #: ', albedo, lambcld_refl, cfrac, ctau, num_iter
 
   initalb = albedo
   DO 
@@ -414,8 +414,8 @@ MODULE m_get_initial_albedo
         delta_alb = (measref - simrad(1)) / albwf(1)
         albedo = albedo + delta_alb
      ENDIF
-     !print * , measref, simrad(1), albwf(1), cfracwf(1), albedo, cfrac
-     !IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
+
+     IF (scnwrt) WRITE(*, '(A21,4d14.5,I5)') '  Rs, Rc, Fc, Tc, #: ', albedo, lambcld_refl, cfrac, ctau, num_iter
 
      IF (cfrac < 0.00 .OR. albedo < 0.00 .OR. cfrac > 1.0D0 .OR. albedo > 1.0D0) THEN
         IF (cfrac < 0.0)        THEN
@@ -443,7 +443,7 @@ MODULE m_get_initial_albedo
      albedo = initalb
   ENDIF
 
-  IF (scnwrt) WRITE(*, '(A20,4d14.5)') '  Rs, Rc, Fc, Tc: ', albedo, lambcld_refl, cfrac, ctau
+  IF (scnwrt) WRITE(*, '(A21,4d14.5,I5)') '  Rs, Rc, Fc, Tc, #: ', albedo, lambcld_refl, cfrac, ctau, num_iter
   RETURN
   END SUBROUTINE adj_albcfrac
 
