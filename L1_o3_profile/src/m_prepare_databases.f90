@@ -14,7 +14,7 @@ module m_prepare_databases
          solwinfit,nslit, nslit_rad, nslit_sol, slitwav, &
          slitwav_sol, slitwav_rad, slitfit, solslitfit, radslitfit, &
          i0sav, refidx_sav,refsol_idx, n_refwvl, refwvl, n_refwvl_sav, refwvl_sav, & ! output
-         database, database_shiwf, database_save, curr_radresponse_spec ! output
+         database, database_shiwf, database_save, curr_radresponse_spec, n_rad_resp ! output
 
     USE OMSAO_indices_module,   ONLY: max_rs_idx, solar_idx, shift_offset, &
          hwe_idx, hwr_idx, hwl_idx, asy_idx, spk_idx, &
@@ -403,9 +403,9 @@ contains
         IF (.NOT. allocated(curr_radresponse_spec)) THEN 
            WRITE(*,*) 'curr_radresponse_spec is not allocated'; stop 1
         ENDIF
-        CALL interpolation (n_irrad_wvl, curr_radresponse_spec(wvl_idx,1:n_irrad_wvl),        &
-        curr_radresponse_spec(spc_idx,1:n_irrad_wvl), n_radpts,curr_rad_wvl(1:n_radpts), &
-        database(rsl_idx, 1:n_radpts), errstat )
+        CALL interpolation (n_rad_resp, curr_radresponse_spec(wvl_idx,1:n_rad_resp),        &
+             curr_radresponse_spec(spc_idx,1:n_rad_resp), n_radpts, curr_rad_wvl(1:n_radpts), &
+             database(rsl_idx, 1:n_radpts), errstat )
         deallocate(curr_radresponse_spec) 
     ENDIF 
     ! Save to database
