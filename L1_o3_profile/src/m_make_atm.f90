@@ -1054,9 +1054,11 @@ contains
       IF (gasidxs(i) == so2v_idx) so2idx = i
     ENDDO
 
-    mgasprof(so2idx, 1:nfsfc-1) = gprofs(1:nfsfc-1, 0)  * du2mol
-    so2vprofn1p1(1:nfsfc, 1)    = gprofs(1:nfsfc-1, -1) * du2mol
-    so2vprofn1p1(1:nfsfc, 2)    = gprofs(1:nfsfc-1, 1)  * du2mol
+    IF (so2idx > 0) THEN
+       mgasprof(so2idx, 1:nfsfc-1) = gprofs(1:nfsfc-1, 0)  * du2mol
+       so2vprofn1p1(1:nfsfc, 1)    = gprofs(1:nfsfc-1, -1) * du2mol
+       so2vprofn1p1(1:nfsfc, 2)    = gprofs(1:nfsfc-1, 1)  * du2mol
+    ENDIF
 
     RETURN 
 
