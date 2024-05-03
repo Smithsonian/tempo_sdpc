@@ -839,7 +839,7 @@ module tmpo_read_l1b_data
           fidx = lidx + 1
           tmpo_rad%npix(iw, ix, iloop) = nsub - tmpo_rad%npix(iw, ix, iloop)
           ! processing this pixel
-          IF (tmpo_rad%npix(iw, ix, iloop) <= tmpo_irrad%npix(iw, ix) * 0.80 ) THEN
+          IF (tmpo_rad%npix(iw, ix, iloop) <= tmpo_irrad%npix(iw, ix) * 0.60 ) THEN
             WRITE(*, '(3I5, A, 2I5, F8.2)') ix, iloop,iw, ': Too fewer #of rad=',  &
             tmpo_rad%npix(iw, ix, iloop),tmpo_irrad%npix(iw, ix), tmpo_geo%sza(ix, iloop+iline)
             tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
@@ -888,7 +888,8 @@ module tmpo_read_l1b_data
               !print * , tmpo_refl%solwavl(1:nrefl, ix), tmpo_refl%winpix(ix, :)
              !print * ,rad_spec(tmpo_refl%winpix(ix,1):tmpo_refl%winpix(ix, 2), ix, iloop)
              !print * , flgmsks(tmpo_refl%winpix(ix,1):tmpo_refl%winpix(ix, 2))
-             tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
+             tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_warning
+             nrefl = 0
         ENDIF
 
         !if (nsub > 0) then
