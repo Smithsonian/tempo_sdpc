@@ -401,7 +401,8 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
      IF (np3 > 0)  fitvar_rad_init (p3ind(i, 1:maxoth)) = 0.0D0
   ENDDO
 
-  fitvar_rad_init(irind(1:numwin, 1))  = -1.0E-5    ! non zero
+  !fitvar_rad_init(irind(1:numwin, 1))  = -1.0E-5    ! non zero
+  fitvar_rad_init(irind(1:numwin, 1))  = 1.0    ! non zero
 
   IF (do_subfit) THEN
      nsub = numwin
@@ -528,10 +529,10 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
               sa(i, i) = 1.0E-4
            ELSE IF (j >= irind(1, 1) .AND. j <= irind(nsub, 1)) THEN
               !sa(i, i) = 1.0E-4  !10.0
-              sa(i, i) = 1.0E+4
+              sa(i, i) = 1.0E+5 
            ELSE IF (j >= irind(2, 1) .AND. j <= irind(nsub, maxoth)) THEN
               !sa(i, i) = 1.0E-3 !2.0
-              sa(i, i) = 1.0E+4
+              sa(i, i) = 1.0E+3
            ELSE IF (j >= dcind(1, 1) .AND. j <= dcind(nsub, 1) ) THEN
               sa(i, i) = 0.05**2.0
            ELSE IF (j >= dcind(2, 1) .AND. j <= dcind(nsub, maxoth)) THEN
