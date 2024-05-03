@@ -57,7 +57,9 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE)
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) other_execs
+
+other_execs:	$(objdir)/append_ecef_ephemeris
 
 $(objdir):
 	-mkdir -p $(objdir)
@@ -79,6 +81,7 @@ install-executables:
 	mkdir -p $(bindir)
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/append_ecef_ephemeris $(bindir)/
 
 install:	install-executables
 
@@ -98,6 +101,13 @@ distclean: clean
 j2k_to_ecef:	convert_j2k_to_ecef.c
 	$(COMPILE_CMD) -o $@ convert_j2k_to_ecef.c \
 	     -D__TEST__ $(CONVERT_INCS) $(CONVERT_LIBS) -lm
+
+$(objdir)/append_ecef_ephemeris:	$(objdir)/append_ecef_ephemeris.o
+	$(COMPILE_CMD) -o $@ $(objdir)/append_ecef_ephemeris.o \
+	$(CONVERT_INCS) $(CONVERT_LIBS) -lm
+
+$(objdir)/append_ecef_ephemeris.o:	$(srcdir)/append_ecef_ephemeris.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(CONVERT_INCS) $(srcdir)/append_ecef_ephemeris.c
 
 $(objdir)/$(THIS_MODULE):	$(OBJS)
 	$(COMPILE_CMD) -o $(objdir)/$(THIS_MODULE) $(OBJS) \
