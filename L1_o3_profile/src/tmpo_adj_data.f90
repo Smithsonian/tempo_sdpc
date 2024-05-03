@@ -19,7 +19,7 @@ CONTAINS
          use_meas_sig, numwin, nsol_ring, sol_spec_ring, nsolpix, &
          yn_varyslit, slit_rad, solwinfit, nslit, slitwav, slitfit, &
          sring_fidx, sring_lidx,  currpix, which_slit, curr_radresponse_spec, &
-         instrument_sidx
+         instrument_sidx, n_rad_resp
     USE ozprof_data_module,      ONLY: div_sun, sun_posr, sun_specr, nrefl,which_inr
     USE OMSAO_errstat_module 
     
@@ -377,7 +377,7 @@ CONTAINS
 
     IF ( biascorr ) THEN
 
-      IF ( which_biascorr == 7 ) THEN
+      IF ( which_biascorr == 7 .AND. nrefl > 0) THEN
         IF ( soft%xwavs(mswath, soft%nxwav(mswath)) < rad_posr(1) ) THEN
           rad_specr(1:nrefl) = rad_specr(1:nrefl) / soft%xwcorr(mswath, currpix, soft%nxwav(mswath))       
         ELSE
@@ -390,6 +390,7 @@ CONTAINS
             fidx = lidx
             lidx = idum
           ENDIF
+          
           rad_specr(1:nrefl) = rad_specr(1:nrefl) / &
                (SUM(soft%xwcorr(mswath, currpix, fidx:lidx)) / (lidx - fidx + 1))
         ENDIF
@@ -537,10 +538,19 @@ CONTAINS
 
     IF (which_inr == 1) THEN
       IF (allocated(curr_radresponse_spec)) deallocate(curr_radresponse_spec)
-      allocate (curr_radresponse_spec(2,max_fit_pts))
-      curr_radresponse_spec(1, 1:max_fit_pts) = resp%wvl(1, 1:max_fit_pts, currpix)
-      curr_radresponse_spec(2, 1:max_fit_pts) = resp%resp(1, 1:max_fit_pts, currpix)
-    ENDIF
+      !allocate (curr_radresponse_spec(2,max_fit_pts))
+      !curr_radresponse_spec(1, 1:max_fit_pts) = resp%wvl(1, 1:max_fit_pts, currpix)
+      !curr_radresponse_spec(2, 1:max_fit_pts) = resp%resp(1, 1:max_fit_pts, currpix)
+      n_rad_resp = SUM(resp%nw(1:nswath))
+      allocate (curr_radresponse_spec(2,n_rad_resp))
+      fidx = 1
+      DO is = 1, nswath
+         lidx = fidx + resp%nw(is) - 1
+         curr_radresponse_spec(1, fidx:lidx) = resp%wvl(1, 1:resp%nw(is), currpix)
+         curr_radresponse_spec(2, fidx:lidx) = resp%resp(1, 1:resp%nw(is), currpix)
+         fidx = lidx + 1
+      ENDDO
+     ENDIF
 
       CALL prepare_databases ( n_rad_wvl, curr_rad_spec(wvl_idx,1:n_rad_wvl), pge_error_status )
       IF ( pge_error_status >= pge_errstat_error ) THEN 
@@ -658,9 +668,9 @@ CONTAINS
     !REAL (KIND=dp), DIMENSION(maxwin) :: floor_noise =  &
     !     (/0.004, 0.002, 0.001, 0.001, 0.001/)
     REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
-         (/0.004, 0.004, 0.002,0.002/)
+         (/0.01, 0.004, 0.002, 0.002/)
     REAL (KIND=dp), DIMENSION(0:nreg) :: reg_waves = &
-         (/260.0, 300.0, 310.0, 380.,800./)
+         (/260.0, 300.0, 310.0, 380., 800./)
 
     ! I/F
     normrad = radspec(spc_idx,:) / solspec(spc_idx,:) * (div_rad / div_sun) 
@@ -712,7 +722,6 @@ CONTAINS
     !   WRITE(92, '(6D15.6)') radspec(1, i), radspec(2, i)*div_rad, solspec(2, i)*div_sun, &
     !        radspec(3, i)/radspec(2, i), solspec(3,i)/solspec(2,i), sig(i)
     !ENDDO
-    !STOP
 
     radspec(sig_idx, :) = sig
 
