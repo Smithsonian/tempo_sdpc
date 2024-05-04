@@ -10,6 +10,7 @@ import pathlib
 
 import signal
 from threading import Event
+import subprocess
 
 import sqlite3
 from netCDF4 import Dataset
@@ -180,6 +181,15 @@ def make_samedir_backup (path):
         eprint ("*** Error making file backup: {}".format(path))
         return -1
 
+def hk_append_vars (hk_file, target_trend_file):
+    obj = subprocess.run (["select_iers.py", hk_file], encoding='ascii', stdout=subprocess.PIPE)
+    if obj.stdout is None:
+        eprint ("*** Error selecting IERS bulletin A for: {}".format(hk_file))
+        return -1
+    iers_bulletin = obj.stdout.strip()
+    obj = subprocess.run (["append_ecef_ephemeris", "-i", iers_bulletin, "-o", target_trend_file, hk_file])
+    return obj.returncode
+
 def drk_append_vars (drk_file, target_trend_file):
     in_trend_file = os.path.join (os.path.dirname(drk_file), 'trend_params.nc')
     return append_file_vars (in_trend_file, target_trend_file)
@@ -197,6 +207,7 @@ def rad_append_vars (rad_file, target_trend_file):
     return append_file_vars (in_trend_file, target_trend_file)
 
 Method_Dict = {
+'HK':hk_append_vars,
 'DRK':drk_append_vars,
 'IRR':irr_append_vars,
 'RAD':rad_append_vars
@@ -292,7 +303,7 @@ def run_as_service (args_dir, arch_dir):
     if not os.path.isfile (db_file_path):
         return 0
 
-    table_names = ["DRK_L1", "IRR_L1", "RAD_L1"]
+    table_names = ["HK_L0", "DRK_L1", "IRR_L1", "RAD_L1"]
 
     sig = Signal_Catcher()
 
