@@ -1,0 +1,135 @@
+#! /usr/bin/env python3
+
+import sys
+import csv
+import numpy as np
+import re
+import time
+import argparse
+
+from netCDF4 import Dataset
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+from matplotlib import gridspec
+
+import matplotlib.ticker as ticker
+import matplotlib.dates as dates
+
+plt.rc('text', usetex=True)
+
+def read_dop_ephem (path):
+    eph = {}
+    with Dataset (path, "r") as nc:
+        grp = nc.groups['ephemeris']
+        eph["t"] = grp['dop_time'][:]
+        eph["x"] = grp['dop_x'][:]
+        eph["y"] = grp['dop_y'][:]
+        eph["z"] = grp['dop_z'][:]
+        eph["vx"] = grp['dop_vx'][:]
+        eph["vy"] = grp['dop_vy'][:]
+        eph["vz"] = grp['dop_vz'][:]
+    return eph
+
+def read_gpsr_ephem (path):
+    eph = {}
+    with Dataset (path, "r") as nc:
+        grp = nc.groups['ephemeris']
+        eph["t"] = grp['gpsr_time'][:]
+        eph["x"] = grp['gpsr_x'][:]
+        eph["y"] = grp['gpsr_y'][:]
+        eph["z"] = grp['gpsr_z'][:]
+        eph["vx"] = grp['gpsr_vx'][:]
+        eph["vy"] = grp['gpsr_vy'][:]
+        eph["vz"] = grp['gpsr_vz'][:]
+        eph["mth"] = grp['gpsr_navsoln_mth'][:]
+    return eph
+
+def main():
+    parser = argparse.ArgumentParser(description='plot ECEF ephemeris comparison')
+    parser.add_argument('--outfile', help="path to output PDF file")
+    parser.add_argument('filename', help="path to netcdf4/HDF5 ephemeris data file")
+    if len(sys.argv)==1:
+        parser.print_usage(sys.stderr)
+        sys.exit(0)
+
+    args = parser.parse_args()
+    eph_file = args.filename
+    outfile = args.outfile
+
+    dop = read_dop_ephem (eph_file)
+    gps = read_gpsr_ephem (eph_file)
+
+    # hack to convert tempo timestamp to timet
+    delta_taix_timet = 315964782.0;
+    tt_dop = np.asarray(dop["t"]) + delta_taix_timet
+    tt_gps = np.asarray(gps["t"]) + delta_taix_timet
+
+    lw_std = 0.25
+
+    with PdfPages (outfile) as pp:
+        #fig, (xax,yax,zax,dlt) = plt.subplots (4, sharex=True, constrained_layout=True)
+        #fig.set_size_inches (9, 6.5)
+
+        fig = plt.figure(figsize=(9, 6.5))
+
+        gs = gridspec.GridSpec(4, 1, wspace=0.0, hspace=0.0, top=0.95, bottom=0.15, left=0.17, right=0.845)
+        xax = plt.subplot(gs[0])
+        yax = plt.subplot(gs[1], sharex=xax)
+        zax = plt.subplot(gs[2], sharex=xax)
+        dlt = plt.subplot(gs[3], sharex=xax)
+
+        xax.tick_params(axis="x", direction='in', length=4, labelbottom=False)
+        yax.tick_params(axis="x", direction='in', length=4, labelbottom=False)
+        yax.ticklabel_format(axis="y", style='plain', useOffset=False)
+        zax.tick_params(axis="x", direction='in', length=4, labelbottom=False)
+        dlt.tick_params(axis="x", direction='in', length=4)
+
+        plt.xlim (tt_gps[0], tt_gps[-1])
+        xax.plot (tt_gps, gps["x"], color='k', lw=lw_std, label='GPSR')
+        yax.plot (tt_gps, gps["y"], color='k', lw=lw_std)
+        zax.plot (tt_gps, gps["z"], color='k', lw=lw_std)
+
+        xax.plot (tt_dop, dop["x"], color='r', lw=lw_std, label='DOP')
+        yax.plot (tt_dop, dop["y"], color='r', lw=lw_std)
+        zax.plot (tt_dop, dop["z"], color='r', lw=lw_std)
+
+        gps_x = np.interp (tt_dop, tt_gps, gps["x"])
+        gps_y = np.interp (tt_dop, tt_gps, gps["y"])
+        gps_z = np.interp (tt_dop, tt_gps, gps["z"])
+        delta = np.hypot (gps_x-dop["x"], gps_y-dop["y"], gps_z-dop["z"])
+        dlt.plot (tt_dop, delta, color='k', lw=lw_std*2)
+
+        # Convert seconds-since-epoch numbers into struct_time objects and then to
+        # strings (you can use time.localtime() instead of time.gmtime() to get the
+        # time in your local timezone)
+        formatter = ticker.FuncFormatter(lambda x, pos: time.strftime('%m-%dT%H:%MZ', time.gmtime(x)))
+        time_span = tt_dop[-1] - tt_dop[0]
+        if time_span > 86400.0:
+            round_interval = 6*3600
+        elif time_span > 3600.0:
+            round_interval = 300
+        else:
+            round_interval = 1
+        tick_span = round_interval * int ((time_span/5)/round_interval)
+        locator = ticker.MultipleLocator(tick_span)
+        dlt.xaxis.set_major_formatter(formatter)
+        dlt.xaxis.set_major_locator(locator)
+        plt.xticks(rotation=30, ha='right')
+
+        #xax.set_title ('GPS vs Predicted Ephemeris 2023-08-27,28')
+        xax.set_ylabel ('X [km]')
+        yax.set_ylabel ('Y [km]')
+        zax.set_ylabel ('Z [km]')
+        dlt.set_ylabel ('$\Delta$ [km]')
+        dlt.set_xlabel ('UTC time')
+        #zax.set_xlabel ('time since epoch [sec]')
+
+        xax.legend(loc='upper right')
+
+        pp.savefig()
+
+main()
