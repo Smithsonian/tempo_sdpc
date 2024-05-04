@@ -16,6 +16,7 @@ TEMPO_SDPC_v4.4.0   2024 May
     improve control over pipeline processing flow.
   * Support generating monthly reporting statistics on TEMPO radiance
     measurement opportunities.
+  * Support trending GPSR vs DOP ephemerides
   * Cron system improvements:
       - Adjust scheduling and use file locking to avoid conflicts
         between cron tasks.
