@@ -21,6 +21,14 @@ import matplotlib.dates as dates
 
 plt.rc('text', usetex=True)
 
+def time_sort_ephem (eph):
+    t = np.asarray (eph["t"])
+    i = np.argsort (t)
+    for key, value in eph.items():
+        v = np.asarray(value)
+        eph[key] = v[i]
+    return eph
+
 def read_dop_ephem (path):
     eph = {}
     with Dataset (path, "r") as nc:
@@ -32,7 +40,7 @@ def read_dop_ephem (path):
         eph["vx"] = grp['dop_vx'][:]
         eph["vy"] = grp['dop_vy'][:]
         eph["vz"] = grp['dop_vz'][:]
-    return eph
+    return time_sort_ephem(eph)
 
 def read_gpsr_ephem (path):
     eph = {}
@@ -46,11 +54,25 @@ def read_gpsr_ephem (path):
         eph["vy"] = grp['gpsr_vy'][:]
         eph["vz"] = grp['gpsr_vz'][:]
         eph["mth"] = grp['gpsr_navsoln_mth'][:]
-    return eph
+    return time_sort_ephem (eph)
+
+def time_select_ephem (eph, start, end):
+    if start is None:
+        start = -np.Inf
+    if end is None:
+        end = np.Inf
+    t = eph["t"]
+    k = np.nonzero (np.logical_and(start <= t, t <= end))[0]
+    for key, value in eph.items():
+        eph[key] = value[k]
 
 def main():
     parser = argparse.ArgumentParser(description='plot ECEF ephemeris comparison')
     parser.add_argument('--outfile', help="path to output PDF file")
+    parser.add_argument('--start', type=float, default=None,
+                        help="start time [sec since TEMPO epoch]")
+    parser.add_argument('--end', type=float, default=None,
+                        help="end time [sec since TEMPO epoch]")
     parser.add_argument('filename', help="path to netcdf4/HDF5 ephemeris data file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
@@ -63,10 +85,13 @@ def main():
     dop = read_dop_ephem (eph_file)
     gps = read_gpsr_ephem (eph_file)
 
+    time_select_ephem (dop, args.start, args.end)
+    time_select_ephem (gps, args.start, args.end)
+
     # hack to convert tempo timestamp to timet
     delta_taix_timet = 315964782.0;
-    tt_dop = np.asarray(dop["t"]) + delta_taix_timet
-    tt_gps = np.asarray(gps["t"]) + delta_taix_timet
+    tt_dop = dop["t"] + delta_taix_timet
+    tt_gps = gps["t"] + delta_taix_timet
 
     lw_std = 0.25
 

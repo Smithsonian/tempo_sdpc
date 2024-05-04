@@ -10,7 +10,7 @@ all:
 SCRIPT_FILES = plot_iru.py plot_smc.py plot_image.py plot_hk.py \
                plot_level2.py plot_level3.py sdpc_panoply.sh sdpc_logview.sh \
                check_time_series.py plot_trend.py asdc_upload_report.py \
-               asdc_latency_report.py bounding_polygon_sync.py plot_ecef.py \
+               asdc_latency_report.py bounding_polygon_sync.py plot_ephemeris.py \
                production_report.py update_leapsec_file.sh goes_gap_search.py
 
 SCRIPT_FILES_INSTALL_DIR = $(prefix)/bin
