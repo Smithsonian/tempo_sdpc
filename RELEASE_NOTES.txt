@@ -32,6 +32,7 @@ TEMPO_SDPC_v4.4.0   2024 May
      o3_profile/data:
        - refdb/toms_347nm_refl_tempo.dat
        - refdb/TEMPO_xtrack_V01_opf_all_xtrack.dat
+       - refdb/TEMPO_xtrack_V01_opf_coadded.dat
        - SoftCal/TEMPO_xtrack_v316G07_new.dat
      gler:
        - ???nm/modis_land_v4_d???.nc
