@@ -129,8 +129,8 @@ F F 1                  ; use_albspc, use_albeofs (1 peter, 2 chris)
 1                      ; N of parameters for scaling albedo/EOFs in each window
 2                      ; number of additional albedo termns, polY;7
 1ba0     0.11 -1.0 1.0  280.0 370.0             ; 0th albdeo for ch 3
-1ba1     0.0  -1.0 1.0  280.0 370.0
-1ba2     0.0  -1.0 1.0  280.0 370.0
+1ba1     0.0 -1.0 1.0  280.0 370.0
+1ba2     0.0 -1.0 1.0  280.0 370.0
 1ba3     0.0  -1.0 1.0  280.0 370.0
 2ba0     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
 2ba1     0.0  -1.0 1.0  500.0 700.0             ; 1st albdeo for ch 3
@@ -181,7 +181,7 @@ so2z  1.0 0.0 30.0
 ; If first channel and last channel are both < 0, then it means all channels
 *otherp
 1      ; which_offset 0 : mean fitting biases 1: radiance response
-11
+10
 ozs0   0 -1.0E+99 1.0E+99 1 2           ; 0th shift parameter for o3
 ozs1   0 0 0 1 2                        ; 1st shift parameter for o3
 ozs2   0 0 0 2 2                        ; 2nd shift parameter for o3
@@ -206,7 +206,7 @@ ins0   0 0 0 1 1 1.0E-4 -1.0 1.0  1 2      ; straylight/dark current in irradian
 ins1   0 0 0 1 1 1.0E-6 -1.0 1.0  1 2
 ins2   0 0 0 1 1 1.0E-7 -1.0 1.0  1 2
 ins3   0 0 0 1 1 1.0E-8 -1.0 1.0  1 2
-inr0   1E2 -1 1 1 2          ; straylight/dark current in radiance
+inr0   1E2 -1E4 1E4 1 2                    ; straylight/dark current in radiance
 inr1   0 0 0 1 1 -1.0E+99 1.0E+99  1 2
 inr2   0 0 0 1 1 1.0E-6 -1.0 1.0  1 2
 inr3   0 0 0 1 1 1.0E-7 -1.0 1.0  1 2
@@ -214,11 +214,11 @@ pw0    0 -1.0E+99 1.0E+99  1 4
 pw1    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pw2    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pw3    0 0 0 1 4  1.0E+00 1.0E+99  1 4
-pk0    0 0 0 1 1 -1.0E+99 1.0E+99  1 4
+pk0    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pk1    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pk2    0 0 0 1 4 -1.0E+00 1.0E+99  1 4
 pk3    0 0 0 1 4  1.0E+00 1.0E+99  1 4
-pa0    0 0 0 1 1 -1.0E+99 1.0E+99  1 4
+pa0    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pa1    0 0 0 1 4 -1.0E+99 1.0E+99  1 4
 pa2    0 0 0 1 4 -1.0E+00 1.0E+99  1 4
 pa3    0 0 0 1 4 1.0E+00 1.0E+99  1 4

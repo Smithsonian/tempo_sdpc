@@ -30,7 +30,7 @@ T   4                  # Coadd across track, # of observations to be coadded (1-
 F   3                  # Coadd along track,  # of observations to be coadded (1-~129)
 F                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
 1   F  F               # # of bands, spectral coadd? wavelength calibration before coadd?
-1  293.0 350.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate;320-355
+1  293.0 340.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate;320-355
 2  540.0 650.0  2  2
 # If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
 # Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
@@ -46,7 +46,7 @@ F                      # Filter spectral pixels around Mg and Mg-II (280 and 285
  21 6  T      # wavcal fit pts, wavcal step points, on-line wavcal cal (15, 3)
  F            # SMOOTH spectra?
  F            # DOAS fitting?
- T F F F      # Use measurement error, correct_merr, xbin_decerr, ybin_decerr
+ T F T F      # Use measurement error, correct_merr, xbin_decerr, ybin_decerr
  -5 -5        # First + last OMI scan lines  (- values for "all")
  43 44        # First + last OMI cross track pixels (- values for "all")
  1.0E-06      # pseudo rank tolerance constant  (TOL = SQRT(mach. prec.))
@@ -86,7 +86,7 @@ eoi  0 0 0  # end of input
  F            # weight radiance spectrum?
  8            # maximum number of iterations for fitting (<0: default)
  150          # frequency of radiance wavelength calibration
- 88.0         # maximum solar zenith angle to process
+ 89.9         # maximum solar zenith angle to process
  0.0          # "Top of Atmosphere" height [km]
  +0.1         # "phase" of undersampling spectrum
 bl0   0 0 0 -1.56  -1.0E+99   1.0E+99
