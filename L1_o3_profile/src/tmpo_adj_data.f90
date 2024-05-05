@@ -297,7 +297,7 @@ CONTAINS
         allocate(resp%resp(mswath, max_fit_pts, nxtrack_max))
         allocate(resp%wvl(mswath, max_fit_pts, nxtrack_max))
 
-        radresponse_fname = ADJUSTL(TRIM(tabdir)) // 'refdb/TEMPO_xtrack_V01_opf_all_xtrack.dat'
+        radresponse_fname = ADJUSTL(TRIM(tabdir)) // 'refdb/TEMPO_xtrack_V01_opf_coadded.dat'
         WRITE(msg, *) 'which_inr=', radresponse_fname
         OPEN(UNIT=calunit, FILE=TRIM(ADJUSTL(radresponse_fname)), STATUS='OLD', IOSTAT=errstat)
         IF ( errstat /= pge_errstat_ok ) THEN
