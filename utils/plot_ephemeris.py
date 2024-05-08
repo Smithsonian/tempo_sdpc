@@ -21,9 +21,16 @@ import matplotlib.dates as dates
 
 plt.rc('text', usetex=True)
 
-def time_sort_ephem (eph):
+def append_fields (a, b):
+    if len(a.keys()) == 0:
+        return b
+    for key, value in a.items():
+        a[key] = np.concatenate ((value, b[key]))
+    return a
+
+def sort_unique_ephem (eph):
     t = np.asarray (eph["t"])
-    i = np.argsort (t)
+    _t, i = np.unique (t, return_index=True)
     for key, value in eph.items():
         v = np.asarray(value)
         eph[key] = v[i]
@@ -40,7 +47,7 @@ def read_dop_ephem (path):
         eph["vx"] = grp['dop_vx'][:]
         eph["vy"] = grp['dop_vy'][:]
         eph["vz"] = grp['dop_vz'][:]
-    return time_sort_ephem(eph)
+    return eph
 
 def read_gpsr_ephem (path):
     eph = {}
@@ -54,7 +61,7 @@ def read_gpsr_ephem (path):
         eph["vy"] = grp['gpsr_vy'][:]
         eph["vz"] = grp['gpsr_vz'][:]
         eph["mth"] = grp['gpsr_navsoln_mth'][:]
-    return time_sort_ephem (eph)
+    return eph
 
 def time_select_ephem (eph, start, end):
     if start is None:
@@ -73,17 +80,23 @@ def main():
                         help="start time [sec since TEMPO epoch]")
     parser.add_argument('--end', type=float, default=None,
                         help="end time [sec since TEMPO epoch]")
-    parser.add_argument('filename', help="path to netcdf4/HDF5 ephemeris data file")
+    parser.add_argument('files', nargs=argparse.REMAINDER,
+                        help="path to netcdf4/HDF5 ephemeris data file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
 
     args = parser.parse_args()
-    eph_file = args.filename
     outfile = args.outfile
 
-    dop = read_dop_ephem (eph_file)
-    gps = read_gpsr_ephem (eph_file)
+    dop = {}
+    gps = {}
+    for eph_file in args.files:
+        dop = append_fields (dop, read_dop_ephem (eph_file))
+        gps = append_fields (gps, read_gpsr_ephem (eph_file))
+
+    dop = sort_unique_ephem (dop)
+    gps = sort_unique_ephem (gps)
 
     time_select_ephem (dop, args.start, args.end)
     time_select_ephem (gps, args.start, args.end)
@@ -96,9 +109,6 @@ def main():
     lw_std = 0.25
 
     with PdfPages (outfile) as pp:
-        #fig, (xax,yax,zax,dlt) = plt.subplots (4, sharex=True, constrained_layout=True)
-        #fig.set_size_inches (9, 6.5)
-
         fig = plt.figure(figsize=(9, 6.5))
 
         gs = gridspec.GridSpec(4, 1, wspace=0.0, hspace=0.0, top=0.95, bottom=0.15, left=0.17, right=0.845)
@@ -145,13 +155,11 @@ def main():
         dlt.xaxis.set_major_locator(locator)
         plt.xticks(rotation=30, ha='right')
 
-        #xax.set_title ('GPS vs Predicted Ephemeris 2023-08-27,28')
         xax.set_ylabel ('X [km]')
         yax.set_ylabel ('Y [km]')
         zax.set_ylabel ('Z [km]')
         dlt.set_ylabel ('$\Delta$ [km]')
         dlt.set_xlabel ('UTC time')
-        #zax.set_xlabel ('time since epoch [sec]')
 
         xax.legend(loc='upper right')
 
