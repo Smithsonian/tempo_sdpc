@@ -15,7 +15,7 @@ geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
 ims_sqlite="$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
 
 sqlite_backup_dir="$SDPC_ANCILLARY_ROOT/var/backup"
-num_backups=10
+num_backups=9
 
 lockfile_goes="$SDPC_LOCKDIR/goes_cron.lock"
 lockfile_geoscf="$SDPC_LOCKDIR/geoscf_cron.lock"
