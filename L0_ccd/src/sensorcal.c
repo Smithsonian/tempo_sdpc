@@ -2265,6 +2265,9 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char
    cal->cal_apply_diffuser_polcorr = cal_apply_diffuser_polcorr;
    cal->cal_nominal_wavelength_grid = cal_nominal_wavelength_grid;
 
+   /* disable GSL error handler - handle GSL errors locally */
+   gsl_set_error_handler_off();
+
    if (irr_file != NULL)
      {
         if (NULL == (irr_path = expand_string (irr_file)))
