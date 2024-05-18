@@ -360,9 +360,21 @@ static int process_file (int dest_ncid, J2K_Type *j2k, char *iers_bulletin, cons
      }
    dest;
    int ncid, grp, dimid;
-   int have_dop, have_gpsr;
+   int group_exists, have_dop, have_gpsr;
    size_t dimlen;
    int status = -1;
+
+   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
+     return -1;
+
+   tell_push_queue();
+   group_exists = (0 == TIO_inq_grp (ncid, "anc_gps", &grp));
+   tell_pop_queue (1);
+   if (0 == group_exists)
+     {
+        (void) TIO_close(ncid);
+        return 0;
+     }
 
    if (0 != TIO_inq_grp (dest_ncid, "ephemeris", &dest.grp))
      goto return_status;
@@ -370,12 +382,6 @@ static int process_file (int dest_ncid, J2K_Type *j2k, char *iers_bulletin, cons
    if (0 != TIO_inq_dim (dest.grp, "time", &dimid, &dimlen))
      return -1;
    dest.start = dimlen;
-
-   if (0 != TIO_open (file, NC_NOWRITE, &ncid))
-     return -1;
-
-   if (0 != TIO_inq_grp (ncid, "anc_gps", &grp))
-     goto return_status;
 
    if ((have_dop = read_ephem (grp, dop_n.time_var, NULL, dop_n.pos_vars, dop_n.vel_vars,
                                &dop.pos, &dop.vel)) < 0)
