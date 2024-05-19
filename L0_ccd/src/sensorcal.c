@@ -470,6 +470,7 @@ close_and_return:
 static int cal_apply_radcal_coeffs (const Calibration_Type *cal, Image_Type *img)
 {
    Image_Pixel_Type *pixels = img->pixels;
+   Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags;
    float *radcal_coeffs = cal->radcal_coeffs;
    size_t i, n;
 
@@ -490,6 +491,12 @@ static int cal_apply_radcal_coeffs (const Calibration_Type *cal, Image_Type *img
         if (pixels[i] != IMAGE_PIXEL_FILL_VALUE)
           {
              pixels[i] *= radcal_coeffs[i];
+          }
+        /* check every final pixel value */
+        if (0 == isfinite(pixels[i]))
+          {
+             pixels[i] = IMAGE_PIXEL_FILL_VALUE;
+             pqf[i] |= IMAGE_PQF_PROCESSING_ERROR;
           }
      }
 
@@ -1369,6 +1376,7 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
 {
    gsl_interp *lin = NULL;
    size_t i, g, b;
+   int interp_ok;
    int status = -1;
 
    /* Use the good pixels to define a function, then linearly
@@ -1398,22 +1406,32 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
    h->num_good = g;
    h->num_bad = b;
 
+   interp_ok = 1;
    if ((NULL == (lin = gsl_interp_alloc (gsl_interp_linear, h->num_good)))
        || (0 != gsl_interp_init (lin, h->good_idx, h->good, h->num_good)))
      {
-        tell_verror (TELL_RUNTIME_ERROR, "%s: gsl_interp_linear initialization failed", __func__);
-        goto return_status;
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: gsl_interp_linear initialization failed", __func__);
+        interp_ok = 0;
+        /* goto return_status; */
      }
 
    for (b = 0; b < h->num_bad; b++)
      {
         double x = h->bad_idx[b];
-        double val = gsl_interp_eval (lin, h->good_idx, h->good, x, h->acc);
-        pix[(size_t)x] = (float) val;
+        float val;
+        if (interp_ok)
+          {
+             val = (float) gsl_interp_eval (lin, h->good_idx, h->good, x, h->acc);
+          }
+        else
+          {
+             val = 0.0;
+          }
+        pix[(size_t)x] = val;
      }
 
    status = 0;
-return_status:
+/* return_status: */
 
    gsl_interp_free (lin);
 
