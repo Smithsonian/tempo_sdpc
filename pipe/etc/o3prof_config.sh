@@ -4,6 +4,6 @@
 o3p_scan_select="none"
 
 # computer cluster load management
-o3p_num_hosts=6
-o3p_ntasks_per_host=10
+o3p_num_hosts=4
+o3p_ntasks_per_host=16
 o3p_partition="part2"
