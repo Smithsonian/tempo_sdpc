@@ -1,7 +1,7 @@
 title                 : TEMPO Level 1 twilight radiance measurement
 collection_shortname  : TEMPO_RADT_L1
 collection_version    : 1
-keywords              : MULTIDISCIPLINARY SCIENCES >CITY LIGHTS, MULTIDISCIPLINARY SCIENCES >NIGHTTIME RADIANCE
+keywords              : EARTH SCIENCE>SPECTRAL/ENGINEERING>VISIBLE WAVELENGTHS>VISIBLE RADIANCE, EARTH SCIENCE>SPECTRAL/ENGINEERING>ULTRAVIOLET WAVELENGTHS>ULTRAVIOLET RADIANCE
 
 summary: >-
   Level 1 twilight radiance files provide radiance measured during
