@@ -161,7 +161,7 @@ def main():
         dlt.set_ylabel ('$\Delta$ [km]')
         dlt.set_xlabel ('UTC time')
 
-        xax.legend(loc='upper right')
+        xax.legend(loc='best')
 
         pp.savefig()
 
