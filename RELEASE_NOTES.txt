@@ -1,5 +1,14 @@
-TEMPO_SDPC_v4.4.0   2024 May
-============================
+TEMPO_SDPC_v4.4.1   2024 May 24
+===============================
+  * Fix missing data interpolation failure in stray light correction
+  * replace '$LOGNAME' with 'temposdpc' in crontab
+  * remove time limit on L0_ccd slurm process
+  * change O3PROF parallelization scheme nodes/blocks from 6/10 to 4/16
+  * ephemeris trending should skip HK files with no anc_gps group
+  * adjust legend placement in ephemeris plot
+
+TEMPO_SDPC_v4.4.0   2024 May 10
+===============================
   * Add support for geolocation and ASDC upload of RADT_L1 product.
   * libtio:
     - Avoid generating self-intersecting bounding polygons.
