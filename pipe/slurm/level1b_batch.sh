@@ -428,6 +428,7 @@ derive_o2o2_slant_column()
   diagnostic_file="${out_basename}_diag.nc"
   if test -f $diagnostic_file ; then
      tg_diag_filter.py --output diaglog_${molecule}.nc log_${molecule}.txt $diagnostic_file
+     /bin/rm -f $diagnostic_file
   fi
 
   # SDPTK MET routines litter the directory with temporary files
