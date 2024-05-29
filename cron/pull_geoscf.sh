@@ -57,10 +57,11 @@ export -f reorder_dims
 fetch_forecast_for_date()
 {
   date_opt="$1"
-  hours="$2"
 
   fcst_day="$(date -u $date_opt +%Y%m%d)"
-  fcst_regex="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}_${hours}.nc4"
+  fcst_root="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}"
+  fcst_regex="${fcst_root}_??00z.nc4"
+  fcst_fmt="${fcst_root}_%sz.nc4"
 
   # After reformatting, the files will be moved
   # to their final location:
@@ -70,14 +71,20 @@ fetch_forecast_for_date()
      mkdir -p $target_dir
   fi
 
-  # Download using lftp:
-  lftp <<- EOF
+  tmpscript=$(mktemp)
+  cat <<- EOF > $tmpscript
 	set log:file/xfer ""
 	set xfer:use-temp-file yes
 	set xfer:temp-file-name *.lftp
-	mget -c -O $incoming_dir $source_url/$fcst_regex
-	quit
 	EOF
+  HOURS="$(seq -w 0000 100 2300)"
+  for h in $HOURS ; do
+      printf "get -c -O $incoming_dir $source_url/$fcst_fmt\n" $h >> $tmpscript
+  done
+  echo quit >> $tmpscript
+
+  # Download using lftp:
+  lftp -f $tmpscript && /bin/rm $tmpscript
 
   # reorder file variable dimensions
   find $incoming_dir -name $fcst_regex | parallel --will-cite --max-procs 12 reorder_dims {}
@@ -92,6 +99,5 @@ fetch_forecast_for_date()
   done
 }
 
-fetch_forecast_for_date "$today_opt" "??00z"
-fetch_forecast_for_date "$tomorrow_opt" "??00z"
-
+fetch_forecast_for_date "$today_opt"
+fetch_forecast_for_date "$tomorrow_opt"
