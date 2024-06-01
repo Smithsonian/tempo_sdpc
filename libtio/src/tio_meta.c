@@ -918,6 +918,48 @@ static inline float merge_coordinates (float corner1, float corner2, float cente
    return (corner2 == fill_value) ? corner1 : 0.5 * (corner1 + corner2);
 }
 
+static int flag_nonmonotonic_columns (const float *lon2d, const int *inrqf, int num_steps, int num_xtrack, int x,
+                                      float *delta_lon, int *exclude_column)
+{
+   float lon_a, lon_b, lon_first, lon_last, delta;
+   int s;
+
+   memset ((char *)delta_lon, 0, num_steps * sizeof(float));
+
+   for (s = 0; s < num_steps; s++)
+     {
+        if ((inrqf + s * num_xtrack)[x] == 0)
+          break;
+     }
+   if (s == num_steps)
+     return 0;
+
+   lon_a = (lon2d + s * num_xtrack)[x];
+   s++;
+   lon_b = lon_a;
+   lon_first = lon_a;
+
+   for (  ; s < num_steps; s++)
+     {
+        if ((inrqf + s * num_xtrack)[x] == 0)
+          {
+             lon_b = (lon2d + s * num_xtrack)[x];
+             delta_lon[s] = lon_b - lon_a;
+             lon_a = lon_b;
+          }
+     }
+   lon_last = lon_b;
+
+   delta = lon_last - lon_first;
+
+   for (s = 0; s < num_steps; s++)
+     {
+        if (delta_lon[s] * delta < 0) exclude_column[s] = 1;
+     }
+
+   return 0;
+}
+
 static int intersect_lines (const double *seg1, const double *seg2,
                             double *x, double *y, double rtol)
 {
@@ -1050,8 +1092,8 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    TIO_Var_Info_Type info;
    double *tmp_lon = NULL, *tmp_lat = NULL;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
-   float *lon2d_bnds=NULL, *lat2d_bnds=NULL;
-   int *inrqf=NULL, *indices=NULL;
+   float *lon2d_bnds=NULL, *lat2d_bnds=NULL, *delta_lon=NULL;
+   int *inrqf=NULL, *indices=NULL, *exclude_column=NULL;
    int *bx1=NULL, *bx2=NULL, *bs1=NULL, *bs2=NULL, *bdry=NULL, *side=NULL;
    int start[3], count[3];
    int num_steps, num_xtrack, num_pixels, max_num_boundary;
@@ -1081,7 +1123,9 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
        || (NULL == (lat2d = (float *)TIO_MALLOC (num_pixels * sizeof(float))))
        || (NULL == (vza2d = (float *)TIO_MALLOC (num_pixels * sizeof(float))))
        || (NULL == (side = (int *)TIO_MALLOC (max_num_boundary * sizeof(int))))
-       || (NULL == (indices = (int *)TIO_MALLOC (2 * max_num_boundary * sizeof(int)))) )
+       || (NULL == (indices = (int *)TIO_MALLOC (2 * max_num_boundary * sizeof(int))))
+       || (NULL == (exclude_column = (int *)TIO_MALLOC (num_steps * sizeof(int))))
+       || (NULL == (delta_lon = (float *)TIO_MALLOC (num_steps * sizeof(int)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         goto return_status;
@@ -1124,6 +1168,21 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
         if ((0 != TIO_get_var_section (grp, TEMPO_VAR_LONGITUDE_BOUNDS, start, count, TIO_FLOAT, lon2d_bnds))
             || (0 != TIO_get_var_section (grp, TEMPO_VAR_LATITUDE_BOUNDS, start, count, TIO_FLOAT, lat2d_bnds)))
           goto return_status;
+     }
+
+   /* Make sure the longitude grid is monotonic in the step dimension.
+    * Exclude any column with a non-monotonic longitude change
+    */
+   memset ((char *)exclude_column, 0, num_steps * sizeof(int));
+   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.2*num_xtrack, delta_lon, exclude_column);
+   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.8*num_xtrack, delta_lon, exclude_column);
+   for (s = 0; s < num_steps; s++)
+     {
+        int *inrqf_step = inrqf + s * num_xtrack;
+        for (x = 0; x < num_xtrack; x++)
+          {
+             if (exclude_column[s]) inrqf_step[x] = 1;
+          }
      }
 
    /* Points with valid (lon,lat) coordinates have inrqf == 0.
@@ -1367,6 +1426,8 @@ return_status:
    TIO_FREE(indices);
    TIO_FREE(side);
    TIO_FREE(tmp_lon);
+   TIO_FREE(exclude_column);
+   TIO_FREE(delta_lon);
 
    if (status)
      {
