@@ -680,6 +680,9 @@ static int correct_byrow_mean_serial_trailing_oct (const CCD_Type *ccd,
      }
    se_trail = sb_trail + num_selected;
 
+   memset ((char *)mean_trail_p, 0, (obj->num_parallel/2) * sizeof(double));
+   memset ((char *)smoothed_trail_p, 0, (obj->num_parallel/2) * sizeof(double));
+
    for (p = pb; p < pe; p += 1)
      {
         Image_Pixel_Type *oct_pixels = img->pixels + p * img->num_cols;
