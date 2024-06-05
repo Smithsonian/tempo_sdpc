@@ -27,7 +27,7 @@ percentile: 90
 # Kernel size of median filter
 kernel: 250
 # Correction file attributes
-processing_version: 1
+processing_version: @SDPC_DSTR_VERSION@
 output_filename: @DESTRIPE_FILE_PATH@
 title: TEMPO destriping and background corrections for HCHO
 # Switch to save diagnostic info to files

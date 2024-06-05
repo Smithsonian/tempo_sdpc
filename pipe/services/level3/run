@@ -14,4 +14,7 @@ if ! test -f "$dbfile_level1" ; then
 fi
 export SDPC_ARCHIVE_DBFILE_L1="$dbfile_level1"
 
+export SDPC_RADREF_VERSION="$SDPC_PROCESSING_VERSION"
+export SDPC_DSTR_VERSION="$SDPC_PROCESSING_VERSION"
+
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level3.cfg"

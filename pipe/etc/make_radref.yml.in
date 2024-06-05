@@ -16,5 +16,5 @@ nsigma: 1.0
 xtstep: 150
 # RADREF file attributes
 output_file: @RADREF_PATH@
-processing_version: 1
+processing_version: @SDPC_RADREF_VERSION@
 title: TEMPO mean radiance reference

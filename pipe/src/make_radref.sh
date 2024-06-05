@@ -112,6 +112,7 @@ make_radref()
    sed -e s,'@RADIANCE_FILE_PATHS@',"$rad_yaml_list", \
        -e s,'@CLOUD_FILE_PATHS@',"$l2_yaml_list", \
        -e s,'@RADREF_PATH@',"$radref_path", \
+       -e s,'@SDPC_RADREF_VERSION@',"$SDPC_RADREF_VERSION", \
        $SDPC_ROOT/etc/make_radref.yml.in > $config_file
 
    # Generate the radiance reference file

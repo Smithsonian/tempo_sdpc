@@ -74,6 +74,7 @@ make_destripe()
    # edit the control file template
    sed -e s,'@LEVEL2_PRODUCT_PATHS@',"$l2_yaml_list", \
        -e s,'@DESTRIPE_FILE_PATH@',"$destripe_path", \
+       -e s,'@SDPC_DSTR_VERSION@',"$SDPC_DSTR_VERSION", \
        $SDPC_ROOT/etc/make_destripe.yml.in > $config_file
 
    # Generate the destriping correction file
