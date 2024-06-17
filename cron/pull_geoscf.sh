@@ -76,6 +76,7 @@ fetch_forecast_for_date()
 	set log:file/xfer ""
 	set xfer:use-temp-file yes
 	set xfer:temp-file-name *.lftp
+	set ssl:verify-certificate no
 	EOF
   HOURS="$(seq -w 0000 100 2300)"
   for h in $HOURS ; do
