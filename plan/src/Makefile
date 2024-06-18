@@ -50,7 +50,7 @@ OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 # Rules
 # --------------------------------------------------------------------------
 
-all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/mirror_angles
+all:	 $(objdir) $(objdir)/$(THIS_MODULE) $(objdir)/mirror_angles $(objdir)/mirrorx_map
 
 tests:	$(objdir)/solar_test
 
@@ -76,6 +76,7 @@ install-executables:
 	@echo installing executables in $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/$(THIS_MODULE) $(bindir)/
 	$(INSTALL_PROGRAM) $(objdir)/mirror_angles $(bindir)/
+	$(INSTALL_PROGRAM) $(objdir)/mirrorx_map $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/plot_mirrorx.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/plot_szamap.py $(bindir)/
 	$(INSTALL_PROGRAM) $(srcdir)/mkplan.sh $(bindir)/
@@ -101,6 +102,10 @@ distclean: clean
 # --------------------------------------------------------------------------
 # Object Rules
 # --------------------------------------------------------------------------
+
+$(objdir)/mirrorx_map:	$(srcdir)/mirrorx_map.c $(objdir)/compute_scan_angles.o
+	$(COMPILE_CMD) -o $(objdir)/mirrorx_map $(srcdir)/mirrorx_map.c $(objdir)/compute_scan_angles.o \
+	    -I$(TIO_INC) -I$(INR_INC) -I$(LIBCONFIG_INC) $(TIO_LIBPATHS) $(INR_LIBPATHS) $(LIBCONFIG_LIBPATHS) -ltio -lconfig -lm
 
 $(objdir)/mirror_angles:	$(srcdir)/mirror_angles.c $(objdir)/compute_scan_angles.o
 	$(COMPILE_CMD) -o $(objdir)/mirror_angles $(srcdir)/mirror_angles.c $(objdir)/compute_scan_angles.o \
