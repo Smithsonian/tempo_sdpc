@@ -125,11 +125,15 @@ def copy_selected_wavecal_params (src, dst, dst_time_var_name):
     num_select = len(xtrack)
     src_var = src.variables['wavecal_params']
     # prep to define the wavecal_params variable
-    dst.createDimension ('xtrack', num_select)
-    dst.createDimension ('wavecal_par', len(src.dimensions['wavecal_par']))
-    dst.createVariable ('xtrack', "i4", ('xtrack',))
+    if not 'xtrack' in dst.dimensions:
+        dst.createDimension ('xtrack', num_select)
+    if not 'wavecal_par' in dst.dimensions:
+        dst.createDimension ('wavecal_par', len(src.dimensions['wavecal_par']))
+    if not 'xtrack' in dst.variables:
+        dst.createVariable ('xtrack', "i4", ('xtrack',))
     dst['xtrack'][:] = xtrack[:]
-    dst.createVariable ('wavecal_params', src_var.datatype, (dst_time_var_name, 'xtrack', 'wavecal_par',), zlib=True, complevel=Deflate_Level)
+    if not 'wavecal_params' in dst.variables:
+        dst.createVariable ('wavecal_params', src_var.datatype, (dst_time_var_name, 'xtrack', 'wavecal_par',), zlib=True, complevel=Deflate_Level)
     dst['wavecal_params'].setncatts(src_var.__dict__)
     selected = src_var[:,:,:]
     dst['wavecal_params'][:,:,:] = selected[:,xtrack,:]
@@ -143,8 +147,10 @@ def irr_copy_vars (irr_file, in_trend_file):
         dst_time_var_name = Subgroup_Record_Var
         for band in band_names:
             dst_grp = ensure_group_exists (band, nc)
-            dst_grp.createDimension (dst_time_var_name, None)
-            dst_grp.createVariable (dst_time_var_name, src_time_var.datatype, (dst_time_var_name,), zlib=True, complevel=Deflate_Level)
+            if not dst_time_var_name in dst_grp.dimensions:
+                dst_grp.createDimension (dst_time_var_name, None)
+            if not dst_time_var_name in dst_grp.variables:
+                dst_grp.createVariable (dst_time_var_name, src_time_var.datatype, (dst_time_var_name,), zlib=True, complevel=Deflate_Level)
             dst_grp[dst_time_var_name].setncatts(src_time_var.__dict__)
             dst_grp[dst_time_var_name][0] = src_time_var[0]
             copy_selected_wavecal_params (irr.groups[band], dst_grp, dst_time_var_name)
@@ -160,8 +166,14 @@ def rad_copy_inr_mirror_xy (rad_file, in_trend_file):
         mirror_y = y_var[:]
         datatype = x_var.datatype
     with Dataset(in_trend_file, 'r+') as nc:
-        x_var = nc.createVariable ('mirror_x', datatype, ('time',), zlib=True, complevel=Deflate_Level)
-        y_var = nc.createVariable ('mirror_y', datatype, ('time',), zlib=True, complevel=Deflate_Level)
+        if not 'mirror_x' in nc.variables:
+            x_var = nc.createVariable ('mirror_x', datatype, ('time',), zlib=True, complevel=Deflate_Level)
+        else:
+            x_var = nc.variables['mirror_x']
+        if not 'mirror_y' in nc.variables:
+            y_var = nc.createVariable ('mirror_y', datatype, ('time',), zlib=True, complevel=Deflate_Level)
+        else:
+            y_var = nc.variables['mirror_y']
         x_var[:] = mirror_x[:]
         y_var[:] = mirror_y[:]
 
@@ -230,18 +242,23 @@ def collect_trend_params (path, args_dir, arch_dir):
     trend_file = os.path.join (trend_dir, trend_file_basename)
     status = update_trend_file (product_type, path, trend_file)
     if status != 0:
-        eprint ('*** Error processing file: {}'.format(path))
+        eprint ('*** Error updating trend file {} entry for {}'.format(trend_file, path))
     else:
         logprint ('{} update from: {}'.format(product_type, os.path.basename(path)), flush=True)
     return status
 
 def process_file_list (path_list, args_dir, arch_dir):
     processed_files = []
+    failed_files = []
     for path in path_list:
-        status = collect_trend_params (path, args_dir, arch_dir)
-        if status == 0:
-            processed_files.append(path)
-    return processed_files
+        try:
+            status = collect_trend_params (path, args_dir, arch_dir)
+            if status == 0:
+                processed_files.append(path)
+        except RuntimeError:
+            eprint ('*** Error processing file: {}'.format(path))
+            failed_files.append(path)
+    return processed_files, failed_files
 
 def table_files_matching_trend_status (cur, table_name, trend_status):
     # verify table existence before attempting a query
@@ -267,12 +284,16 @@ def table_name_for_file (filename):
     tok = filename.split('_')
     return '{}_{}'.format(tok[1], tok[2])
 
-def mark_as_processed (db_file_path, path_list, table_name):
+def set_trend_status (db_file_path, path_list, table_name, value):
     if len(path_list) == 0:
         return
     basenames = [os.path.basename(p) for p in path_list]
     with connect_database (db_file_path, "rw") as conn:
-        conn.executemany ("update {} set trend_status=1 where filename=?".format(table_name), zip(basenames))
+        conn.executemany ("update {} set trend_status={} where filename=?".format(table_name, value), zip(basenames))
+
+def mark_as_processed (db_file_path, success_list, fail_list, table_name):
+    set_trend_status (db_file_path, success_list, table_name, 1)
+    set_trend_status (db_file_path, fail_list, table_name, -1)
 
 class Signal_Catcher:
 
@@ -312,8 +333,8 @@ def run_as_service (args_dir, arch_dir):
         for tbl in table_names:
             filenames = unprocessed_files (db_file_path, tbl)
             if len(filenames) > 0:
-                processed_files = process_file_list (filenames, args_dir, arch_dir)
-                mark_as_processed (db_file_path, processed_files, tbl)
+                processed_files, failed_files = process_file_list (filenames, args_dir, arch_dir)
+                mark_as_processed (db_file_path, processed_files, failed_files, tbl)
         sig.wait(300)
 
     eprint ("Exiting: caught signal = {}".format(sig.signum))
