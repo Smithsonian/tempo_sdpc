@@ -26,7 +26,7 @@ process_tar_file()
    else
       path=$(select_radref.py --thisscan $rad_filename)
    fi
-   if test -f $path ; then
+   if test -n "$path" && test -f "$path" ; then
       # make sure radref_file is defined before we push this for processing
       if test -z "$radref_file" ; then
          printf "radref_file=\"$path\"\n" >> $tar_notice_path
