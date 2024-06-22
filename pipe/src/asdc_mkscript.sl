@@ -290,6 +290,20 @@ TOTAL_FILE_COUNT = $num_files
      throw IOError, "closing $filename"$;
 }
 
+define print_mput (fp, ary)
+{
+   () = fprintf (fp, "mput -P 4 \\\n");
+   () = fprintf (fp, "%s\n", strjoin (ary, " \\\n"));
+}
+
+define print_script_entry (fp, ary)
+{
+   variable has_met = array_map (Int_Type, &is_substr, ary, ".nc.met");
+   variable i, j = where (has_met, &i);
+   if (length(i) > 0) print_mput (fp, ary[i]);
+   if (length(j) > 0) print_mput (fp, ary[j]);
+}
+
 define write_lftp_script (dest, types, type_list, pdr_files, script_file)
 {
    variable fp = fopen (script_file, "w");
@@ -331,8 +345,7 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
           {
              variable ary = list_to_array (lst);
              % To avoid long lines, continue lines with a trailing '\\n'
-             () = fprintf (fp, "mput -P 4 \\\n");
-             () = fprintf (fp, "%s\n", strjoin (ary, " \\\n"));
+             print_script_entry (fp, ary);
              () = fprintf (fp, "put %s\n", pdr_files[i]);
           }
      }
