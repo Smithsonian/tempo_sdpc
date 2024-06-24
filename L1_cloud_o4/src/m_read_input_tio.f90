@@ -755,6 +755,7 @@ contains
 
      fspecial = fFillValue
      dspecial = dFillValue !-9999.d0
+     errstat1 = 0
 
      !Open file, get dimensions
      call open_tio (l2_file, tio_l2obj, errstat)

@@ -846,6 +846,7 @@ contains
     call tiof_pop_group (tio_l2obj, errstat)
     call tiof_varlist_free (varlist)
     call tiof_attlist_free (att_product)
+    call tiof_attlist_free (pqf_attrs)
 
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "write_product_struct: failed", &

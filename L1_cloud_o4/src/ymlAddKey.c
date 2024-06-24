@@ -48,7 +48,7 @@ int ymlAddKey(int LDx, int nry, yTB tbl[], int lvl, char* stk[], int max)
 
         Info(LDx, "OK considering <%s>", itm);
 
-        if ( itm == '\0' ) { break; }		/* end of parts list		*/
+        if ( itm == NULL ) { break; }		/* end of parts list		*/
 
         size_t len = strlen(itm);		/* size of item on stk		*/
         size_t end = ptr + len;			/* projected end after copy	*/
@@ -73,7 +73,7 @@ int ymlAddKey(int LDx, int nry, yTB tbl[], int lvl, char* stk[], int max)
 
     /*--------------------------------------------------------------------------*/
 
-    if ( tbl[cfx].stk[0] == '\0' )		/* no key; value part of array	*/
+    if ( tbl[cfx].stk[0] == NULL )		/* no key; value part of array	*/
     {
         strcpy(&buf[ptr], tbl[cfx-1].key);	/* use previous value's key	*/
     }
