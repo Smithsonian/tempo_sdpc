@@ -12,7 +12,7 @@ contains
        windspeed2m ,name_option_TemperaturePressure,&
        rad_SnowIceFraction, rad_GroundPixelQualityFlags
 
-   use m_vars,only: itdebug, ixdebug, run_mode 
+   use m_vars,only: itdebug, ixdebug, run_mode
 
    implicit none
    integer, intent(inout) :: errstat
@@ -29,7 +29,7 @@ contains
    fspecial = -999. ! make it negative
    clip_opt = .TRUE.
    write(*,*) '   GLER clip_opt=',clip_opt
- 
+
    nx = rad_nXtrack
    nt = rad_NumTimes
 
@@ -78,6 +78,12 @@ contains
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
          call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
+         if (errstat /= 0) then
+           errstat = 0
+           call tell_set_error (0)
+           write (*,*)'gler_albedo failed: lon=',thislon,'lat=',thislat
+           thisalb = fspecial
+         endif
          if (isnan(thisalb)) then ! test NAN
                 thisalb = fspecial
                 nana = nana + 1
@@ -102,10 +108,16 @@ contains
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
          call gler_albedo(glt, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
+         if (errstat /= 0) then
+           errstat = 0
+           call tell_set_error (0)
+           write (*,*)'gler_albedo failed: lon=',thislon,'lat=',thislat
+           thisalb = fspecial
+         endif
          if (isnan(thisalb)) then ! test NAN
               thisalb = fspecial
               nana = nana + 1
-         endif 
+         endif
          BRDF_SurfaceReflectivity466(ix,it) = thisalb
       enddo
     enddo
@@ -155,6 +167,12 @@ contains
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
          call gler_albedo(glt440, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
+         if (errstat /= 0) then
+           errstat = 0
+           call tell_set_error (0)
+           write (*,*)'gler_albedo failed: lon=',thislon,'lat=',thislat
+           thisalb = fspecial
+         endif
          if (isnan(thisalb)) then ! test NAN
                 thisalb = fspecial
                 nana = nana + 1
@@ -179,10 +197,16 @@ contains
          thislandwater = int(ibits(rad_GroundPixelQualityFlags(ix,it), 0, 4), kind=2)
          call gler_albedo(glt440, thislon, thislat, thislandwater, wind_speed, &
                 thissnowice, thisalb, errstat, clip_opt)
+         if (errstat /= 0) then
+           errstat = 0
+           call tell_set_error (0)
+           write (*,*)'gler_albedo failed: lon=',thislon,'lat=',thislat
+           thisalb = fspecial
+         endif
          if (isnan(thisalb)) then ! test NAN
               thisalb = fspecial
               nana = nana + 1
-         endif 
+         endif
          BRDF_SurfaceReflectivity440(ix,it) = thisalb
       enddo
     enddo
