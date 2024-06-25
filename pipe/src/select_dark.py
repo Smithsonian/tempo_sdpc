@@ -43,19 +43,17 @@ def select_matching_dark (c, window_hours, keys):
 
     subst = {'dtx':dtx, 'tx':tx, 'beg':tx-t_ok, 'end':tx+t_ok}
 
-    cmd = "select path from \
-    (      select path, min({dt_name}) as dt from 'DRK_L1' where {dt_name} >= :dtx and {t_name} > :beg and {t_name} < :end \
-    union  select path, max({dt_name}) as dt from 'DRK_L1' where {dt_name} < :dtx  and {t_name} > :beg and {t_name} < :end) \
-    order by abs(:dtx-dt);".format (**locals())
-
+    cmd = "select path from DRK_L1 where istart between :beg and :end order by abs({dt_name}-:dtx),abs(istart-:tx) limit 1".format(**locals())
     c.execute(cmd, subst)
-    rows = c.fetchall()
-    rows = [r for r in rows if None not in r]
 
-    return rows
+    rows = c.fetchone()
+    if len(rows) > 0:
+        return rows[0]
+    else:
+        return ""
 
 def main():
-    parser = argparse.ArgumentParser(description='Select the appropriate Level 0 dark file')
+    parser = argparse.ArgumentParser(description='Select the appropriate Level 1 dark file')
     parser.add_argument ('--window', metavar='HOURS', default=36.0, type=float,
                          help="Acceptable time offset in hours")
     parser.add_argument ('level0_file', help="Path to Level 0 file needing dark correction")
@@ -82,10 +80,9 @@ def main():
         conn.execute("pragma foreign_keys=on")
         #conn.set_trace_callback(print)
         c = conn.cursor()
-        darks = select_matching_dark (c, args.window, level0_keys)
+        path = select_matching_dark (c, args.window, level0_keys)
 
-    best_match = darks[0]
-    print(best_match[0])
+    print(path)
 
 if __name__ == "__main__":
     main()
