@@ -1,3 +1,19 @@
+TEMPO_SDPC_v4.4.2   2024 Jun
+===============================
+  * L1_cloud_o4: handle error return from call to gler_albedo (required
+    to reprocess data with maximum scan range)
+  * L0_ccd: fix uninitialized memory read that occurred in offset correction
+    of RADT_L1 file with missing rows.
+  * pull_geoscf.sh: Enable downloading from THREDDS server when primary
+    GEOS-CF data portal is unavailable
+     - replace glob expression with explicit loop over filenames
+     - turn off SSL certificate verification
+  * bounding polygons: filter non-monotonic longitudes before constructing 
+    bounding polygon metadata (required for ASDC ingest of RADT_L1 files 
+    with missing data).
+  * Increment product version number assigned to radiance reference files
+    (required to avoid radref filename conflicts in V03 reprocessing).
+
 TEMPO_SDPC_v4.4.1   2024 May 24
 ===============================
   * Fix missing data interpolation failure in stray light correction
