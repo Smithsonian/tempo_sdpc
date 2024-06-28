@@ -16,7 +16,7 @@ inrroot="$install_root/inr_r3.0.2"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 
-prefix="$install_root/sdpc/v4p4"
+prefix="$install_root/sdpc/v4p4p2"
 
 ./configure --prefix=$prefix \
             --with-compilers=$compilers \
