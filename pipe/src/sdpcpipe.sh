@@ -32,6 +32,16 @@ do_start()
 
 : "${SDPC_PIPE_NAME:?SDPC_PIPE_NAME not set}"
 
+  # Sometimes we don't need a provisioned ssh-agent, but it's
+  # extremely annoying when we need one and don't have it.
+  ssh-add -l > /dev/null 2>&1
+  ssh_add_status="$?"
+  if test "$ssh_add_status" -eq 2 ; then
+     echo "WARNING: could not a open connection to ssh-agent"
+  elif test "$ssh_add_status" -eq 1 ; then
+     echo "WARNING: ssh-agent contains no identities"
+  fi
+
   # SDPC_PIPE_ID is used to ensure singleton dependencies in this
   # pipeline don't affect other pipelines.
   # As a secondary application, it is also used to ensure the uniqueness
