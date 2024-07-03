@@ -25,6 +25,7 @@ lftp $source_url <<- EOF
    set xfer:use-temp-file yes
    set xfer:temp-file-name *.lftp
    set mirror:require-source true
+   set ssl:verify-certificate no
    cd $source_dir
    mirror -c --newer-than=now-3days $subdir $target_dir
    quit
