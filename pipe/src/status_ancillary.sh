@@ -22,8 +22,8 @@ where $filter strftime('%s',timestamp) - $when_timet > 0 \
 group by date(timestamp),asdc_status"
 
    if test -f $sqlite_file ; then
-      newest_timet_duration=$(sqlite3 -separator , $sqlite_file "$sql_newest")
-      result=$(sqlite3 -header $sqlite_file "$sql")
+      newest_timet_duration=$(sqlite3 -readonly -cmd ".timeout 20000" -separator , $sqlite_file "$sql_newest")
+      result=$(sqlite3 -readonly -cmd ".timeout 20000" -header $sqlite_file "$sql")
    else
       result="*** NOT FOUND ***"
       newest_timet_duration=""

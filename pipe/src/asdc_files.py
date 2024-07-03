@@ -203,7 +203,7 @@ def connect_database (db_path):
     we apparently need to turn it on explicitly, each time the database
     connection is established.
     """
-    conn = sqlite3.connect (db_path)
+    conn = sqlite3.connect (db_path, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
     if TraceSQL:
         conn.set_trace_callback(print)
