@@ -495,6 +495,14 @@ contains
                               valid_range = [-10.0_r8, 12344.0_r8], &
                               fillvalue = fill_short, &
                               attlist=att_convergence_flag)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_solcal_shift, &
+                              nf90_double, &
+                              dimids = dimid_xtrack,  &
+                              units = 'nm', &
+                              long_name = "solar wavelength calibration shift", &
+                              valid_range = [-10.0_r8, 10.0_r8], &
+                              fillvalue = fill_float)
 
     call tiof_varlist_append (varlist, errstat, &
                               tg_var_radcal_wavelengths, &
@@ -1354,6 +1362,8 @@ contains
       obj_diag => diagnostic_output_file
       call tiof_put1d_i2 (obj_diag, tg_var_solcal_convergence_flag, [0], [nxtrack], &
                           result_vars % solcal_convergence_flag (1:nxtrack), errstat)
+      call tiof_put1d_r8 (obj_diag, tg_var_solcal_shift, [0], [nxtrack], &
+                          result_vars % solcal_shift (1:nxtrack), errstat)
       call tiof_put1d_i2 (obj_diag, tg_var_radcal_convergence_flag, [0], [nxtrack], &
                           result_vars % radcal_convergence_flag (1:nxtrack), errstat)
       if (errstat /= 0) then

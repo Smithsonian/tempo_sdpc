@@ -48,6 +48,7 @@ MODULE OMSAO_omidata_module
     integer(kind=i2), dimension(:,:), pointer :: fit_convergence_flag => null()
     integer (kind=i2), dimension(:,:), pointer :: fit_iteration_count => null()
     integer (kind=i2), dimension(:), pointer :: solcal_convergence_flag => null()
+    real (kind=r8), dimension(:), pointer :: solcal_shift => null()
     integer (kind=i2), dimension(:), pointer :: radcal_convergence_flag => null()
     integer (kind=i2), dimension(:), pointer :: radref_convergence_flag => null()
     real (kind=r8), dimension(:), pointer :: radref_column_amount => null()
@@ -229,9 +230,9 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r8), DIMENSION (:,:), allocatable                    :: omi_database_wvl
   !JCH -> unused: REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
-    omi_solcal_chisq, omi_radcal_chisq, omi_radref_chisq, &
-    omi_radref_col,   omi_radref_dcol,  omi_radref_rms,   &
-    omi_radref_xtrcol
+    omi_solcal_chisq, omi_solcal_shift, omi_radcal_chisq, &
+    omi_radref_chisq, omi_radref_col,   omi_radref_dcol,  &
+    omi_radref_rms, omi_radref_xtrcol
   REAL    (KIND=r8), DIMENSION (2,nxtrack_max,0:nlines_max-1)        :: omi_wavwin_rad, omi_fitwin_rad
   REAL    (KIND=r8), DIMENSION (2,nxtrack_max)                       :: omi_wavwin_sol, omi_fitwin_sol
 
@@ -345,6 +346,7 @@ contains
     result_vars % fit_convergence_flag => omi_fitconv_flag
     result_vars % fit_iteration_count => omi_itnum_flag
     result_vars % solcal_convergence_flag => omi_solcal_xflag
+    result_vars % solcal_shift => omi_solcal_shift
     result_vars % radcal_convergence_flag => omi_radcal_xflag
     result_vars % radref_convergence_flag => omi_radref_xflag
     result_vars % radref_column_amount => omi_radref_col
