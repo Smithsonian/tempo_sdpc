@@ -113,9 +113,9 @@ CONTAINS
     USE OMSAO_errstat_module, only: pge_errstat_ok!, pge_errstat_error
     use OMSAO_indices_module, only: voc_omicld_idx
     use OMSAO_omidata_module, only : amf_correction_type
-    use output_tools, only : write_albedo, write_gas_profile, &
-      write_scattering_weights, write_amf_correction, &
-      write_temperature_profile
+    use output_tools, only : write_albedo, write_wind_speed, &
+      write_gas_profile, write_scattering_weights, &
+      write_amf_correction, write_temperature_profile
     USE OMSAO_variables_module,  ONLY: voc_amf_filenames
     use output_tools, only: read_cloud_params
     use ctrlvars, only : yn_stratrop, yn_gems
@@ -148,15 +148,16 @@ CONTAINS
     ! ---------------
     INTEGER (KIND=i4)                                :: locerrstat
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: tropospheric_amf, &
-         stratospheric_amf
+         stratospheric_amf, saoamf_clear, tropospheric_amf_clear, &
+         stratospheric_amf_clear
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1), target :: l2cfr, l2ctp
     real    (kind=r8), dimension (1:nx,0:nt-1)       :: crfrc
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1)       :: albedo
-    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: profiles, scattw, ptemperature
+    REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: profiles, scattw, scattw_clear, ptemperature
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: idx_ozo_pro
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: wind_speed, phis, psurf, tsurf
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: phis, psurf, tsurf, wind_speed
 
     real    (kind=r4), dimension (:), allocatable, target :: eta_a, eta_b
     integer :: nz
@@ -182,10 +183,12 @@ CONTAINS
     phis         = r4_missval ! Not output
     psurf        = r4_missval ! Not output
     tsurf        = r4_missval ! Not output
-    wind_speed   = 0.0
+    wind_speed   = r4_missval
     ptemperature = r8_missval
     scattw       = r8_missval
+    scattw_clear = r8_missval
     saoamf       = r8_missval
+    saoamf_clear = r8_missval
     crfrc        = r8_missval
     amfdiag      = 0
     surface_pressure = r4_missval
@@ -193,6 +196,8 @@ CONTAINS
        tropopause_pressure = r4_missval
        stratospheric_amf = r8_missval
        tropospheric_amf = r8_missval
+       stratospheric_amf_clear = r8_missval
+       tropospheric_amf_clear = r8_missval
     ENDIF
     apriori_source = ''
     clim_source = ''
@@ -319,6 +324,15 @@ CONTAINS
          if (errstat /= 0) return
        endif
 
+       ! -------------------------------------------
+       ! Write the wind_speed to the output file he5
+       ! -------------------------------------------
+       IF (do_write) then
+        call tell_log (1, 'amf_calculation: write wind speed to L2 file')
+        call write_wind_speed (wind_speed, nx, nt, errstat)
+        if (errstat /= 0) return
+      endif
+
        ! --------------------------------------------------------
        ! Compute Scattering weights in the look up table grid but
        ! with the correct albedo. amfdiag is used to skip pixel
@@ -327,14 +341,16 @@ CONTAINS
        CALL compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
             terrain_height, surface_pressure, wgh_ozo_pro, idx_ozo_pro, &
             phis, psurf, tsurf, &
-            lat, lon, xtrange, amfdiag, scattw, crfrc)
+            lat, lon, xtrange, amfdiag, scattw, scattw_clear, crfrc)
 
        ! --------------------------------------------------------------
        ! Work out the AMF using the scattering weights and the profiles
        ! --------------------------------------------------------------
        call tell_log (1, 'amf_calculation: compute amfs')
        CALL compute_amf (cpt,  nt, nx, time, CmETA, profiles, &
-                         scattw, saoamf, stratospheric_amf, tropospheric_amf, &
+                         scattw, scattw_clear, &
+                         saoamf, stratospheric_amf, tropospheric_amf, &
+                         saoamf_clear, stratospheric_amf_clear, tropospheric_amf_clear, &
                          surface_pressure, tropopause_pressure, ptemperature, &
                          lat, lon, amfdiag, locerrstat)
 
@@ -343,7 +359,7 @@ CONTAINS
        ! ----------------------------------------------------
        IF (do_write) then
           call tell_log (1, 'amf_calculation: write scattering weights to L2 file')
-          call write_scattering_weights (scattw, nx, nt, CmETA, errstat)
+          call write_scattering_weights (scattw, scattw_clear, nx, nt, CmETA, errstat)
           if (errstat /= 0) then
              call tell_error (tell_io_read_error, 'writting scattering weights to L2 file', errstat)
              return
@@ -383,6 +399,9 @@ CONTAINS
       amf_corr % amf_molecule_specific => saoamf
       amf_corr % amf_molecule_stratospheric => stratospheric_amf
       amf_corr % amf_molecule_tropospheric => tropospheric_amf
+      amf_corr % amf_molecule_specific_clear_sky => saoamf_clear
+      amf_corr % amf_molecule_stratospheric_clear_sky => stratospheric_amf_clear
+      amf_corr % amf_molecule_tropospheric_clear_sky => tropospheric_amf_clear
       amf_corr % diagnostic_flag => amfdiag
       amf_corr % cloud_fraction => l2cfr
       amf_corr % cloud_pressure => l2ctp
@@ -1432,7 +1451,7 @@ CONTAINS
   SUBROUTINE compute_scatt (cpt, nt, nx, time, albedo, sza, vza, saa, vaa, l2ctp, l2cfr, &
                             terrain_height, surface_pressure, wgh_ozo_pro, idx_ozo_pro, &
                             phis, psurf, tsurf, &
-                            lat, lon, xtrange, amfdiag, scattw, crfrc)
+                            lat, lon, xtrange, amfdiag, scattw, scattw_clear, crfrc)
 
     USE OMSAO_linterpolation_module, ONLY: lininterpol, GetNode
     USE ezspline_interpolation, ONLY: ezspline_2d_interpolation
@@ -1457,7 +1476,7 @@ CONTAINS
     ! ------------------
     ! Modified variables
     ! ------------------
-    REAL (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1), INTENT (INOUT) :: scattw
+    REAL (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1), INTENT (INOUT) :: scattw, scattw_clear
     REAL (KIND=r8), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: l2ctp
     REAL (KIND=r4), DIMENSION (1:nx,0:nt-1), INTENT (INOUT) :: surface_pressure
     real (kind=r8), dimension (1:nx,0:nt-1), intent(inout) :: crfrc
@@ -1483,8 +1502,8 @@ CONTAINS
     ! Interpolation variables
     INTEGER (KIND=i4), DIMENSION(2) :: idx_sza, idx_vza, idx_alb, idx_cld_alb, idx_srf, idx_ctp
     REAL (KIND=r8) :: Radiance_cld, Radiance_clr, delta1, delta2, delta3
-    REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: Sca_1D, Sca_1D_cloud
-    REAL (KIND=r8), DIMENSION(:,:), ALLOCATABLE :: Sca_2D, Sca_2D_cloud
+    REAL (KIND=r8), DIMENSION(:), ALLOCATABLE :: Sca_1D, Sca_1D_cloud, Sca_1D_clear
+    REAL (KIND=r8), DIMENSION(:,:), ALLOCATABLE :: Sca_2D_clear, Sca_2D_cloud
     REAL (KIND=r8), DIMENSION(:,:,:), ALLOCATABLE :: Rad_3D_clear, Rad_3D_cloud
     REAL (KIND=r8), DIMENSION(:,:,:,:,:), ALLOCATABLE :: Sca_5D_clear, Sca_5D_cloud
     REAL (KIND=r8) :: local_alb, local_sza, local_vza, local_srf, local_ctp, &
@@ -1532,6 +1551,7 @@ CONTAINS
           ! initialized to 0.0 to work out the average
           ! ----------------------------------------------
           scattw(:,ixtrack,itime) = 0.0_r8
+          scattw_clear(:,ixtrack,itime) = 0.0_r8
 
           ! -----------------------------------
           ! Fill up local values for this pixel
@@ -1709,7 +1729,8 @@ CONTAINS
           ! -----------------------------------------------
           ALLOCATE(Sca_1D(lay_dim(1)), &
                Sca_1D_cloud(lay_dim(1)), &
-               Sca_2D(nsrf,lay_dim(1)), &
+               Sca_1D_clear(lay_dim(1)), &
+               Sca_2D_clear(nsrf,lay_dim(1)), &
                Sca_2D_cloud(nctp,lay_dim(1)), &
                Rad_3D_clear(nsrf,nvza,nsza), &
                Rad_3D_cloud(nctp,nvza,nsza), &
@@ -1721,8 +1742,9 @@ CONTAINS
              return
           endif
           Rad_3D_clear = 0.0; Rad_3D_cloud = 0.0
-          Sca_1D = 0.0; Sca_1D_cloud = 0.0; Sca_2D = 0.0; Sca_2D_cloud = 0.0
-          Sca_5D_clear = 0.0; Sca_5D_cloud = 0.
+          Sca_1D = 0.0; Sca_1D_cloud = 0.0; Sca_1D_clear = 0.0
+          Sca_2D_clear = 0.0; Sca_2D_cloud = 0.0
+          Sca_5D_clear = 0.0; Sca_5D_cloud = 0.0
 
           ! -------------------------------------------------------------
           ! First compute back from the parametrization on RAA and albedo
@@ -1804,10 +1826,10 @@ CONTAINS
              goto 999
           END IF
           Radiance_cld = linInterpol(nctp,nvza,nsza, &
-               REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
+               REAL(lut_srf(idx_ctp(1):idx_ctp(2)),KIND=8), &
                REAL(SIN(lut_vza(idx_vza(1):idx_vza(2))*d2r),KIND=8), &
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
-               Rad_3D_cloud, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
+               Rad_3D_cloud, local_ctp, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
             write(logmsg, '(a55,i4,i4)') &
@@ -1820,7 +1842,7 @@ CONTAINS
           ! Scattering Weights linear interpolation on alb, vza, sza
           DO isrf = 1, nsrf
              DO ilay = 1, INT(lay_dim(1),KIND=4)
-                Sca_2D(isrf,ilay) = linInterpol(nalb,nvza,nsza, &
+                Sca_2D_clear(isrf,ilay) = linInterpol(nalb,nvza,nsza, &
                      REAL(lut_alb(idx_alb(1):idx_alb(2)),KIND=8), &
                      REAL(SIN(lut_vza(idx_vza(1):idx_vza(2))*d2r),KIND=8), &
                      REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
@@ -1829,7 +1851,7 @@ CONTAINS
                 IF ( status /= 0 ) THEN
                    amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                    write(logmsg, '(a55,i4,i4)') &
-                        "compute_scatt: Sca_2D interpol failed at ", &
+                        "compute_scatt: Sca_2D_clear interpol failed at ", &
                         ixtrack,itime
                    call tell_log (1,logmsg)
                    goto 999
@@ -1839,31 +1861,31 @@ CONTAINS
           ! Scattering Weights, linear interpolation on surface pressure
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_srf) THEN
-                delta1 = Sca_1D(ilay-2) - Sca_1D(ilay-1)
-                Sca_1D(ilay) = Sca_1D(ilay-1) - (delta1 * &
+                delta1 = Sca_1D_clear(ilay-2) - Sca_1D_clear(ilay-1)
+                Sca_1D_clear(ilay) = Sca_1D_clear(ilay-1) - (delta1 * &
                     (LOG(lut_pre_lay(ilay-1))-LOG(lut_pre_lay(ilay))) / &
                     (LOG(lut_pre_lay(ilay-2))-LOG(lut_pre_lay(ilay-1))) )
-                IF (Sca_1D(ilay) .LT. 0) Sca_1D(ilay) = 0.0
+                IF (Sca_1D_clear(ilay) .LT. 0) Sca_1D_clear(ilay) = 0.0
                 cycle
              ENDIF
-             IF (nsrf .EQ. 2 .AND. Sca_2D(1,ilay) .LE. 0 .AND. Sca_2D(2,ilay) .GT. 0) THEN
-                delta1=(Sca_2D(2,ilay-2)-Sca_2D(2,ilay-1)) / &
+             IF (nsrf .EQ. 2 .AND. Sca_2D_clear(1,ilay) .LE. 0 .AND. Sca_2D_clear(2,ilay) .GT. 0) THEN
+                delta1=(Sca_2D_clear(2,ilay-2)-Sca_2D_clear(2,ilay-1)) / &
                      (LOG(lut_pre_lay(ilay-2)) - LOG(lut_pre_lay(ilay-1)))
-                delta2=(Sca_1D(ilay-2)-Sca_1D(ilay-1)) / &
+                delta2=(Sca_1D_clear(ilay-2)-Sca_1D_clear(ilay-1)) / &
                      (LOG(lut_pre_lay(ilay-2)) - LOG(lut_pre_lay(ilay-1)))
-                delta3=(Sca_2D(2,ilay-1)-Sca_2D(2,ilay)) / &
+                delta3=(Sca_2D_clear(2,ilay-1)-Sca_2D_clear(2,ilay)) / &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
-                Sca_1D(ilay) = &
-                     Sca_1d(ilay-1) - delta3*delta2/delta1 * &
+                Sca_1D_clear(ilay) = &
+                     Sca_1D_clear(ilay-1) - delta3*delta2/delta1 * &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
                 cycle
              END IF
-             Sca_1D(ilay) = linInterpol(nsrf, REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
-                  Sca_2D(1:nsrf,ilay), REAL(local_srf,KIND=8), status=status)
+             Sca_1D_clear(ilay) = linInterpol(nsrf, REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
+                  Sca_2D_clear(1:nsrf,ilay), REAL(local_srf,KIND=8), status=status)
              IF ( status /= 0 ) THEN
                amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
                write(logmsg, '(a55,i4,i4)') &
-                    "compute_scatt: Sca_1D interpol failed at ", &
+                    "compute_scatt: Sca_1D_clear interpol failed at ", &
                     ixtrack,itime
                call tell_log (1,logmsg)
                goto 999
@@ -1892,11 +1914,7 @@ CONTAINS
           ! Cloudy scattering weights linear interpolation on cloud pressure
           DO ilay = 1, INT(lay_dim(1),KIND=4)
              IF (REAL(lut_pre_lay(ilay),KIND=8) .GT. local_ctp) THEN
-                delta1 = Sca_1D(ilay-2) - Sca_1D(ilay-1)
-                Sca_1D(ilay) = Sca_1D(ilay-1) - (delta1 * &
-                    (LOG(lut_pre_lay(ilay-1))-LOG(lut_pre_lay(ilay))) / &
-                    (LOG(lut_pre_lay(ilay-2))-LOG(lut_pre_lay(ilay-1))) )
-                IF (Sca_1D(ilay) .LT. 0) Sca_1D(ilay) = 0.0
+                Sca_1D_cloud(ilay) = 0.0
               cycle
              ENDIF
              IF (nctp .EQ. 2 .AND. Sca_2D_cloud(1,ilay) .LE. 0 .AND. Sca_2D_cloud(2,ilay) .GT. 0) THEN
@@ -1907,7 +1925,7 @@ CONTAINS
                 delta3=(Sca_2D_cloud(2,ilay-1)-Sca_2D_cloud(2,ilay)) / &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
                 Sca_1D_cloud(ilay) = &
-                     Sca_1d_cloud(ilay-1) - delta3*delta2/delta1 * &
+                     Sca_1D_cloud(ilay-1) - delta3*delta2/delta1 * &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
                 cycle
              END IF
@@ -1936,16 +1954,16 @@ CONTAINS
           !             Ir = Cfr * Icl + (1 - Cfr) * Icr (Total pixel radiance)
           !
           ! Now the scattering weights become w = crf * scatt_cloud + (1 - crf) * scatt_clear
-          !  We add the scattweights calculated in the previous wavelengths.
           ! --------------------------------------------------------------------------------
           DO ilay = 1, INT(lay_dim(1),KIND=4)
-             Sca_1D(ilay) = ( Sca_1D_cloud(ilay) * local_cfr + Sca_1D(ilay) * (1.0 - local_cfr) )
+             Sca_1D(ilay) = ( Sca_1D_cloud(ilay) * local_cfr + Sca_1D_clear(ilay) * (1.0 - local_cfr) )
              IF (Sca_1D(ilay) .LT. 0.0) Sca_1D(ilay) = 0.0
+             IF (Sca_1D_clear(ilay) .LT. 0.0) Sca_1D_clear(ilay) = 0.0
           END DO
 
-          ! --------------------------------------------------------------
-          ! Interpolate Sca_1D from lut_pre_lay grid to the one defined by
-          ! local_srf, eta_a and eta_b
+          ! ----------------------------------------------------------------
+          ! Interpolate Sca_1D and Sca_1D_clear from lut_pre_lay grid to the
+          ! one defined by local_srf, eta_a and eta_b
           ! --------------------------------------------------------------
           DO ilay = 1, CmETA
              out_pre_lay = (( real(eta_a(ilay),kind=r8) + &
@@ -1955,12 +1973,18 @@ CONTAINS
              IF (out_pre_lay > MAXVAL(lut_pre_lay)) THEN
               scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
                 REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, REAL(LOG(MAXVAL(lut_pre_lay)), KIND=r8), status=status)
+              scattw_clear(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D_clear, REAL(LOG(MAXVAL(lut_pre_lay)), KIND=r8), status=status)
              ELSE IF (out_pre_lay < MINVAL(lut_pre_lay)) THEN
               scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
                 REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, REAL(LOG(MINVAL(lut_pre_lay)), KIND=r8), status=status)
+              scattw_clear(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D_clear, REAL(LOG(MINVAL(lut_pre_lay)), KIND=r8), status=status)
              ELSE
               scattw(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
                 REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D, LOG(out_pre_lay), status=status)
+              scattw_clear(ilay,ixtrack,itime) = linInterpol( (INT(lay_dim(1),KIND=i4)), &
+                REAL(LOG(lut_pre_lay),KIND=r8), Sca_1D_clear, LOG(out_pre_lay), status=status)
              ENDIF
              IF ( status /= 0 ) THEN
                amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
@@ -1975,8 +1999,8 @@ CONTAINS
  999      continue
           if (allocated(Sca_1D)) then
             DEALLOCATE(Rad_3D_clear, Rad_3D_cloud, Sca_5D_clear, &
-                 Sca_5D_cloud, Sca_2D, Sca_2D_cloud, &
-                 Sca_1D, Sca_1D_cloud, STAT=locerrstat)
+                 Sca_5D_cloud, Sca_2D_clear, Sca_2D_cloud, &
+                 Sca_1D, Sca_1D_cloud, Sca_1D_clear, STAT=locerrstat)
             if (locerrstat /= 0) then
               call tell_error (tell_malloc_error, "compute_scatt:  de-allocate failed", &
                    status)
@@ -1988,6 +2012,9 @@ CONTAINS
           WHERE ( scattw(1:CmETA,ixtrack,itime) < 0.0_r8 )
              scattw(1:CmETA,ixtrack,itime) = 0.0_r8
           END WHERE
+          WHERE ( scattw_clear(1:CmETA,ixtrack,itime) < 0.0_r8 )
+             scattw_clear(1:CmETA,ixtrack,itime) = 0.0_r8
+          END WHERE
 
        END DO ! End loop xtrack
 
@@ -1996,8 +2023,11 @@ CONTAINS
   END SUBROUTINE COMPUTE_SCATT
 
   SUBROUTINE compute_amf (cpt, nt, nx, time, CmETA, profiles, &
-      scattw, saoamf, stratospheric_amf, tropospheric_amf, surface_pressure, &
-      tropopause_pressure, ptemperature, lat, lon, amfdiag, errstat)
+      scattw, scattw_clear, &
+      saoamf, stratospheric_amf, tropospheric_amf, &
+      saoamf_clear, stratospheric_amf_clear, tropospheric_amf_clear, &
+      surface_pressure, tropopause_pressure, ptemperature, lat, lon, &
+      amfdiag, errstat)
 
     use, intrinsic :: iso_c_binding, only: c_ptr, c_null_char, c_null_ptr, c_associated
     use ctrlvars, only: yn_stratrop, yn_gems
@@ -2012,7 +2042,7 @@ CONTAINS
     type (clim_pres_type), intent(in) :: cpt
     INTEGER (KIND=i4), INTENT(IN) :: nt, nx, CmETA
     REAL    (KIND=r8), DIMENSION (0:nt-1),      INTENT (IN) :: time
-    REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(IN) :: profiles, scattw
+    REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(IN) :: profiles, scattw, scattw_clear
     INTEGER (KIND=i2), DIMENSION(1:nx,0:nt-1), INTENT(out) :: amfdiag
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(IN) :: surface_pressure
     real (kind=r4), dimension(1:nx,0:nt-1), intent(in) :: lat, lon
@@ -2022,6 +2052,8 @@ CONTAINS
     ! -----------------------------
     REAL (KIND=r8), DIMENSION(CmETA,1:nx,0:nt-1), INTENT(INOUT) :: ptemperature
     REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: saoamf, stratospheric_amf, tropospheric_amf
+    REAL (KIND=r8), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: saoamf_clear, stratospheric_amf_clear, &
+        tropospheric_amf_clear
     REAL (KIND=r4), DIMENSION(1:nx,0:nt-1), INTENT(INOUT) :: tropopause_pressure
     INTEGER (KIND=i4), INTENT(INOUT) :: errstat
 
@@ -2194,15 +2226,23 @@ CONTAINS
              alpha_quad*((temperature_profile-alpha_temperature)**2.0_r8)
            if (SUM(profiles(1:tropopause_idx,ixtrack,itimes)).eq.0) then
              tropospheric_amf(ixtrack,itimes) = 0.0d0
+             tropospheric_amf_clear(ixtrack,itimes) = 0.0d0
            else
              tropospheric_amf(ixtrack,itimes) = SUM(scattw(1:tropopause_idx,ixtrack, itimes) * &
+                  profiles(1:tropopause_idx,ixtrack,itimes) * alpha(1:tropopause_idx))     / &
+                  SUM(profiles(1:tropopause_idx,ixtrack,itimes))
+             tropospheric_amf_clear(ixtrack,itimes) = SUM(scattw_clear(1:tropopause_idx,ixtrack, itimes) * &
                   profiles(1:tropopause_idx,ixtrack,itimes) * alpha(1:tropopause_idx))     / &
                   SUM(profiles(1:tropopause_idx,ixtrack,itimes))
            endif
            if (SUM(profiles(tropopause_idx+1:CmETA,ixtrack,itimes)).eq.0) then
              stratospheric_amf(ixtrack,itimes) = 0.0d0
+             stratospheric_amf_clear(ixtrack,itimes) = 0.0d0
            else
              stratospheric_amf(ixtrack,itimes) = SUM(scattw(tropopause_idx+1:CmETA,ixtrack, itimes) * &
+                  profiles(tropopause_idx+1:CmETA,ixtrack,itimes) * alpha(tropopause_idx+1:CmETA) ) / &
+                  SUM(profiles(tropopause_idx+1:CmETA,ixtrack,itimes))
+             stratospheric_amf_clear(ixtrack,itimes) = SUM(scattw_clear(tropopause_idx+1:CmETA,ixtrack, itimes) * &
                   profiles(tropopause_idx+1:CmETA,ixtrack,itimes) * alpha(tropopause_idx+1:CmETA) ) / &
                   SUM(profiles(tropopause_idx+1:CmETA,ixtrack,itimes))
            endif
@@ -2214,6 +2254,9 @@ CONTAINS
         saoamf(ixtrack,itimes) = SUM(scattw(1:CmETA,ixtrack, itimes) * &
              profiles(1:CmETA,ixtrack,itimes) * alpha(1:CmETA))     / &
              SUM(profiles(1:CmETA,ixtrack,itimes))
+        saoamf_clear(ixtrack,itimes) = SUM(scattw_clear(1:CmETA,ixtrack, itimes) * &
+            profiles(1:CmETA,ixtrack,itimes) * alpha(1:CmETA))     / &
+            SUM(profiles(1:CmETA,ixtrack,itimes))
 
         ! -----------------------------
         ! Set quality flag for good AMF

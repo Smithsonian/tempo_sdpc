@@ -20,7 +20,7 @@ module output_tools
 
   public create_output_file, close_output_file, write_wavcal_output, &
     write_radfit_output, write_fitting_statistics, write_common_mode, &
-    write_albedo, write_gas_profile, write_scattering_weights, &
+    write_albedo, write_wind_speed, write_gas_profile, write_scattering_weights, &
     write_amf_correction, write_temperature_profile, write_refspec_database, &
     write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
@@ -45,7 +45,7 @@ module output_tools
   type (molname_type) :: target_molecule
 
   ! These file variable names are different for NO2:
-  character (len=tg_max_name_len) :: var_amf, var_amf_error
+  character (len=tg_max_name_len) :: var_amf, var_amf_error, var_amf_clear_sky
   character (len=tg_max_name_len) :: var_vertical_column, var_vertical_column_error
 
 contains
@@ -249,6 +249,18 @@ contains
                               chunksizes = chunksizes, &
                               attlist = att_coord)
     call tiof_varlist_append (varlist, errstat, &
+                              tg_var_amf_scattering_weights_clear_sky, &
+                              nf90_float, &
+                              dimids = dimids_levels_xtrack_step,  &
+                              long_name = "clear sky scattering weights", &
+                              comment = "vertical profile of scattering weights assuming 0 cloud fraction", &
+                              valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              chunksizes = chunksizes, &
+                              attlist = att_coord)
+    call tiof_varlist_append (varlist, errstat, &
                               tg_var_amf_gas_profile, &
                               nf90_float, &
                               dimids = dimids_levels_xtrack_step,  &
@@ -292,6 +304,18 @@ contains
                               valid_min = 0.0_r8, &
                               fillvalue = fill_float, &
                               attlist = att_coord)
+
+    call tiof_varlist_append (varlist, errstat, &
+                              var_amf_clear_sky, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = trim(target_molecule % name)//" clear sky air mass factor", &
+                              comment = "total "//trim(target_molecule % name)//" air mass factor (AMF) "// &
+                              "calculated from surface to top of atmosphere assuming 0 cloud fraction", &
+                              valid_min = 0.0_r8, &
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
+
     if (.false.) then
     call tiof_varlist_append (varlist, errstat, &
                               var_amf_error, &
@@ -339,6 +363,17 @@ contains
                               valid_range = [0.0_r8, 1200.0_r8], &
                               fillvalue = fill_float, &
                               attlist = att_coord)
+    call tiof_varlist_append (varlist, errstat, &
+                              tg_var_amf_wind_speed, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "wind speed", &
+                              comment = "2-meter wind speed derived calculating the Euclidian distance "// &
+                                        " of the Eastward and Nortward components", &
+                              units = "m s-1", &
+                              valid_range = [0.0_r8, 150.0_r8], &
+                              fillvalue = fill_float, &
+                              attlist = att_coord)
     IF (yn_stratrop) THEN
        call tiof_varlist_append (varlist, errstat, &
                                  tg_var_amf_troposphere, &
@@ -353,6 +388,23 @@ contains
                                  nf90_float, &
                                  dimids = dimids_xtrack_step,  &
                                  long_name = trim(target_molecule % name)//" stratospheric air mass factor", &
+                                 valid_min = 0.0_r8, &
+                                 fillvalue = fill_float, &
+                                 attlist = att_coord)
+        
+       call tiof_varlist_append (varlist, errstat, &
+                                 tg_var_amf_troposphere_clear_sky, &
+                                 nf90_float, &
+                                 dimids = dimids_xtrack_step,  &
+                                 long_name = trim(target_molecule % name)//" clear sky tropospheric air mass factor", &
+                                 valid_min = 0.0_r8, &
+                                 fillvalue = fill_float, &
+                                 attlist = att_coord)
+       call tiof_varlist_append (varlist, errstat, &
+                                 tg_var_amf_stratosphere_clear_sky, &
+                                 nf90_float, &
+                                 dimids = dimids_xtrack_step,  &
+                                 long_name = trim(target_molecule % name)//" clear sky stratospheric air mass factor", &
                                  valid_min = 0.0_r8, &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
@@ -676,14 +728,16 @@ contains
       ! in post-processing. For this reason, selected NO2 file variable names have
       ! the word "total". These columns go to support data group.
       varlist_tmp = varlist_supp
-      var_amf       = trim(tg_var_amf)//"_total"
+      var_amf           = trim(tg_var_amf)//"_total"
+      var_amf_clear_sky = "amf_total_clear_sky"
       !var_amf_error = trim(tg_var_amf)//"_total_uncertainty"
       var_vertical_column       = trim(tg_var_vertical_column)//"_total"
       var_vertical_column_error = trim(tg_var_vertical_column)//"_total_uncertainty"
     else
       ! For all other molecules, the vertical column goes to the "product" group.
       varlist_tmp = varlist
-      var_amf       =      tg_var_amf
+      var_amf           = tg_var_amf
+      var_amf_clear_sky = tg_var_amf_clear_sky
       !var_amf_error = trim(tg_var_amf)//"_uncertainty"
       var_vertical_column       =      tg_var_vertical_column
       var_vertical_column_error = trim(tg_var_vertical_column)//"_uncertainty"
@@ -1409,6 +1463,34 @@ contains
     endif
   end subroutine write_albedo
 
+  !> Write AMF wind speed to Level 2 product file
+  !! @param[in] wind_speed Wind speed used in AMF calculation
+  !! @param[in] nxtrack  Number of cross-track pixels
+  !! @param[in] ntimes  Number of scans
+  !! @param[inout] errstat  Error status variable
+  subroutine write_wind_speed (wind_speed, nxtrack, ntimes, errstat)
+    implicit none
+
+    integer, intent(in) :: nxtrack, ntimes
+    real (kind=r4), dimension (1:nxtrack, 0:ntimes-1), intent(in) :: wind_speed
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: obj
+
+    if (errstat /= 0) return
+
+    obj => primary_output_file
+
+    call tiof_push_group (obj, tg_grp_support_data, errstat)
+    call tiof_put2d_r4 (obj, tg_var_amf_wind_speed, [0,0], [ntimes,nxtrack], &
+                        wind_speed (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_pop_group (obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "in write_wind_speed", errstat)
+      return
+    endif
+  end subroutine write_wind_speed
+
   !> Write AMF vertical gas profile climatology to Level 2 product file
   !! @param[in] gas_profile  Column density vertical profile climatology for each pixel
   !!                     [molecules/cm^2].
@@ -1453,15 +1535,16 @@ contains
 
   !> Write AMF scattering weights to Level 2 product file
   !! @param[in] scattw Scattering weights
+  !! @param[in] scattw_clear Clear sky scattering weights
   !! @param nxtrack  Number of cross-track pixels
   !! @param ntimes  Number of scans
   !! @param nlevels  Number of altitudes in vertical profile climatology
   !! @param errstat  Error status variable
-  subroutine write_scattering_weights (scattw, nxtrack, ntimes, nlevels, errstat)
+  subroutine write_scattering_weights (scattw, scattw_clear, nxtrack, ntimes, nlevels, errstat)
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes, nlevels
-    real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: scattw
+    real (kind=r8), dimension (1:nlevels, 1:nxtrack, 0:ntimes-1), intent(in) :: scattw, scattw_clear
     integer, intent(inout) :: errstat
 
     type (tiof_file_type), pointer :: obj
@@ -1474,6 +1557,9 @@ contains
     call tiof_put3d_r4 (obj, tg_var_amf_scattering_weights, [0,0,0], &
          [ntimes,nxtrack,nlevels], &
          real(scattw (1:nlevels,1:nxtrack, 0:ntimes-1), kind=4), errstat)
+    call tiof_put3d_r4 (obj, tg_var_amf_scattering_weights_clear_sky, [0,0,0], &
+         [ntimes,nxtrack,nlevels], &
+         real(scattw_clear (1:nlevels,1:nxtrack, 0:ntimes-1), kind=4), errstat)
     call tiof_pop_group (obj, errstat)
     if (errstat /= 0) then
       call tell_error (tell_io_write_error, "in write_scattering_weights", errstat)
@@ -1545,12 +1631,18 @@ contains
                         amf_corr % diagnostic_flag (1:nxtrack, 0:ntimes-1), errstat)
     call tiof_put2d_r8 (obj, var_amf, [0,0], [ntimes,nxtrack], &
                         amf_corr % amf_molecule_specific (1:nxtrack, 0:ntimes-1), errstat)
+    call tiof_put2d_r8 (obj, var_amf_clear_sky, [0,0], [ntimes,nxtrack], &
+                        amf_corr % amf_molecule_specific_clear_sky (1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_stratrop) then
        call tiof_put2d_r8 (obj, tg_var_amf_stratosphere, [0,0], [ntimes,nxtrack], &
                            amf_corr % amf_molecule_stratospheric (1:nxtrack, 0:ntimes-1), errstat)
        call tiof_put2d_r8 (obj, tg_var_amf_troposphere, [0,0], [ntimes,nxtrack], &
                            amf_corr % amf_molecule_tropospheric (1:nxtrack, 0:ntimes-1), errstat)
+       call tiof_put2d_r8 (obj, tg_var_amf_stratosphere_clear_sky, [0,0], [ntimes,nxtrack], &
+                           amf_corr % amf_molecule_stratospheric_clear_sky (1:nxtrack, 0:ntimes-1), errstat)
+       call tiof_put2d_r8 (obj, tg_var_amf_troposphere_clear_sky, [0,0], [ntimes,nxtrack], &
+                           amf_corr % amf_molecule_tropospheric_clear_sky (1:nxtrack, 0:ntimes-1), errstat)
     end if
 
     if (yn_write_cloud_variables) then
