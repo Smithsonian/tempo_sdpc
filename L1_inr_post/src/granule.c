@@ -98,7 +98,7 @@ Geoid_Data_Type;
 
 static __inline__ int invalid_lonlat (double lon, double lat)
 {
-   return ((fabs(lon) > 360.0) || (fabs(lat) > 90.0));
+   return ((0 == isfinite(lon)) || (0 == isfinite(lat)) || (fabs(lon) > 360.0) || (fabs(lat) > 90.0));
 }
 static __inline__ int invalid_point (double x, double y)
 {
