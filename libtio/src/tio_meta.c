@@ -1392,8 +1392,8 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
         /* If necessary, close the polygon */
         if ((tmp_lon[num_kept-1] != tmp_lon[0]) || (tmp_lat[num_kept-1] != tmp_lat[0]))
           {
-             tmp_lon[num_kept] = (double) lon[0];
-             tmp_lat[num_kept] = (double) lat[0];
+             tmp_lon[num_kept] = (double) tmp_lon[0];
+             tmp_lat[num_kept] = (double) tmp_lat[0];
              num_kept++;
           }
 
