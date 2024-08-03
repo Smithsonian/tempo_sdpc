@@ -524,6 +524,7 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    IOCSDPC_Common_Header_Type chdr;
    IOCSDPC_TPSec_Type *s;
    IOCSDPC_TPSec_Row_Type **row_list = NULL;
+   unsigned int i, nrows;
    int fd;
 
    (void) pmt; (void) client_data;
@@ -537,10 +538,10 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    if (NULL == (s = iocsdpc_tpsec_fdopen_read (file, fd, &chdr)))
      goto return_error;
 
-   if (s->num_rows > 0)
-     {
-        unsigned int i, nrows = s->num_rows;
+   nrows = s->num_rows;
 
+   if (nrows > 0)
+     {
         if (NULL == (row_list = alloc_tpsec_row_list (nrows)))
           goto return_error;
 
@@ -572,7 +573,7 @@ static int process_tpsec_file (Process_Method_Type *pmt, const TPInfo_Type *tpin
    iocsdpc_tpsec_close (s);
    ioclib_fd_close (fd);
 
-   if (s->num_rows > 0)
+   if (nrows > 0)
      {
         return tio_sync (pmt->ncid);
      }
