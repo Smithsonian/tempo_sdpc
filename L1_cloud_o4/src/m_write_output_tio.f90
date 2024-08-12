@@ -925,6 +925,7 @@ contains
     type (tiof_varlist_type) :: varlist
     type (tiof_attlist_type) :: att_support
     integer, dimension(2) :: dimids_xtrack_step
+    integer, dimension(1) :: dimids_xtrack
     character(len=255) :: name466, name440
     integer, parameter :: deflate_level = 1
     logical, parameter :: shuffle = .true.
@@ -938,6 +939,7 @@ contains
     ! Define dimid arrays associated with common data field shapes.
     dimids_xtrack_step(1) = dimid_xtrack
     dimids_xtrack_step(2) = dimid_step
+    dimids_xtrack(1) = dimid_xtrack
 
     ! Product Fields with optional attributes
     call tiof_attlist_append (att_support, errstat, "coordinates", &
@@ -1053,6 +1055,33 @@ contains
                               attlist=att_support)
     endif
 
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "RadShift", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "radiance wavelength shift", &
+                              units = "nm", &
+                              valid_range = [-1.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                             "IrrShift", &
+                             nf90_float, &
+                             dimids = dimids_xtrack, &
+                             long_name = "irradiance wavelength shift", &
+                             units = "nm", &
+                             valid_range = [-1.0_r8, 1.0_r8], &
+                             fillvalue = fill_float, &
+                             deflate_level = deflate_level, &
+                             shuffle = shuffle, &
+                             attlist=att_support)
+    
+
+    !-------------
     if (run_mode .EQ. 'production') then
 
     call tiof_varlist_append (varlist, errstat, &
@@ -1382,7 +1411,7 @@ contains
                rad_of_irr466, cal_rad_clr, cal_rad_cld, &
                ecf_niter, ocp_niter
 
-     use m_vars, only: scd_mdqfl, run_mode
+     use m_vars, only: scd_mdqfl, run_mode, rad_waveshift, irr_waveshift
 
      implicit none
 
@@ -1438,6 +1467,12 @@ contains
     call tiof_put2d_r4 (tio_l2obj, "ScenePressure", [0,0], &
          [nstep, nxtrack], out_ScenePressure, errstat)
     endif
+
+    call tiof_put2d_r4 (tio_l2obj, "RadShift", [0,0], &
+         [nstep, nxtrack], rad_waveshift, errstat)
+
+    call tiof_put1d_r4 (tio_l2obj, "IrrShift", [0,0], &
+         [nxtrack], irr_waveshift, errstat)
 
     if (run_mode .EQ. 'production') then
 

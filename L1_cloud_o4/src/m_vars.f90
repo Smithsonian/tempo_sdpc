@@ -39,6 +39,9 @@ module m_vars
    ! number of bytes used in processing_quality_flag
    ! integer, parameter:: pflag_nbyte=4 
    integer, parameter:: pflag_nbyte=2
+   ! max number of pixels in north-south and east-west for each granule
+   integer, parameter:: max_ns_pixels=2048
+   integer, parameter:: max_ew_pixels=250
 !----------------
 ! L1B irradiance
 !----------------
@@ -193,14 +196,6 @@ module m_vars
 !-----------
 ! input LUN
 !-----------
-! for reading LUTs , not used
-!character(len=6)::lun_lut_amf_clear='477000'
-!character(len=6)::lun_lut_amf_cloud='477001'
-!character(len=6)::lun_lut_amf_ler6d='477010'
-!integer::ilun_lut_amf_clear=477000
-!integer::ilun_lut_amf_cloud=477001
-!integer::ilun_lut_amf_ler6d=477010
-
 
 ! for reading month dependent GMI files
 character(len=6),dimension(12):: &
@@ -258,7 +253,7 @@ integer:: ilun_gmi_tmp = 4003
   integer :: lun_debug_shift=109
   integer :: lun_debug_pflags=119
 
-! GMI as a backup and testing only, TEMPO usually uses GEOS-CF
+! GMI as a backup for testing only, TEMPO usually uses GEOS-CF
 ! change gmi variables to allocatable
 !   so that they won't be allocated if not needed
   integer,parameter::gmi_np=72,gmi_nx=288,gmi_ny=181
@@ -508,13 +503,23 @@ integer:: ilun_gmi_tmp = 4003
   real(kind=4),dimension(:,:),pointer::out_O2O2TerrainTemperature
 
   real, parameter ::fFillValue= -1.e30 !-1.2676506E30
-  real(kind=8), parameter ::dFillValue= -1.d30 !-1.2676506d30 ! needs large negative 
+  real(kind=8), parameter ::dFillValue= -1.d30 ! needs large negative 
   integer, parameter ::iFillValue= -9999 !-32767
+  real(kind=4), parameter ::negative999 = -999.
 
 !-------------
 ! scd filtering and destriping
 !-------------
   integer :: option_scdfullfilter = 0
+  ! o2o2 normalization factor
+  real(kind=8), parameter:: o2o2_norm = 1.0d43
+  ! max o2o2 scd in unit of 1.e43 molec2 cm-5 to be considered valid
+  real, parameter:: max_o2o2_scd = 8.0 
+  ! max o2o2 fitting uncertainty in 1.e43 to be considered valid
+  real, parameter:: max_o2o2_uncertainty = 1.0
+  ! max relative scd error (fitting_uncertainty/fitted_scd) to be valid
+  real, parameter:: max_o2o2_relerr = 0.3 
+
   integer :: option_destripe_scd = 0
   character(len=255)::name_desfac_dir='./'
   character(len=255)::name_desfac_fnm='test_desfac.txt'
@@ -530,7 +535,7 @@ type gmeta
   character(len=255)::author_name='TEMPO STM'
   character(len= 3)::DayNightFlag='Day' 
   character(len= 12)::platformShortName='Intelsat 40e'
-  character(len=12)::omiwindow='VIS' 
+  character(len=12)::omiwindow='UV' 
   character(len=19)::ProcessingCenter='SAO'
   character(len= 1)::ProcessingLevel='2'
   character(len= 9)::InstrumentName='TEMPO'

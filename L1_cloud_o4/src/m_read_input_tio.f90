@@ -209,12 +209,15 @@ contains
   subroutine read_irr_tio (l1_file, swathname, errstat)
 
     use m_vars, only: irr_out_irradiance_440nm, irr_out_irradiance_466nm, &
-         irr_out_irradiance_477nm, irr_EarthSunDist, w440, w466, w477, &
-         irr_NumTimes, irr_nXtrack, irr_nWavel
+         irr_out_irradiance_477nm, irr_EarthSunDist, w440, w466, w477
+
+    use m_vars, only: irr_NumTimes, irr_nXtrack, irr_nWavel
 
     use m_vars, only: rad_NumTimes, rad_nXtrack, out_ProcessingQualityFlags
 
     use m_vars, only: irr_waveshift, option_apply_solshift
+
+    use m_vars, only: negative999
 
     use m_vars, only: ixdebug, run_mode, lun_debug_irr
 
@@ -230,6 +233,7 @@ contains
     real (kind=4), dimension(:), allocatable :: tmpwvl
     integer (kind=2), dimension(:,:,:), allocatable :: tio_pqf
     real (kind=4) :: thisirr440, thisirr466, thisirr477
+
     character(len=80) :: logmsg
     integer (kind=4) :: lerr
 
@@ -246,14 +250,16 @@ contains
     irr_NumTimes = ntimes
     irr_nXtrack = nxtrack
     irr_nWavel = nwavel
-    write(*,*)'read_irr_tio: ntimes,nxtrack,nwavel=',ntimes,nxtrack,nwavel
+    write(*,*)'irr: ntimes,nxtrack,nwavel=',irr_NumTimes,&
+         irr_nXtrack,irr_nWavel
 
+    ! sanity check, OMCDO2N reads RAD before IRR
     if (irr_nXtrack .NE. rad_nXtrack) then
          write(*,*) 'irr_nXtrack and rad_nXtrack differ'
          errstat = -1
     endif
 
-    allocate ( irr_out_irradiance_440nm(nxtrack), &
+    allocate (irr_out_irradiance_440nm(nxtrack), &
          irr_out_irradiance_466nm(nxtrack), &
          irr_out_irradiance_477nm(nxtrack), stat=errstat)
     if (errstat /= 0) then
@@ -261,10 +267,11 @@ contains
            errstat)
       return
     endif
+
     ! initialize 
-    irr_out_irradiance_440nm = -9999. 
-    irr_out_irradiance_466nm = -9999. 
-    irr_out_irradiance_477nm = -9999. 
+    irr_out_irradiance_440nm = negative999
+    irr_out_irradiance_466nm = negative999
+    irr_out_irradiance_477nm = negative999
 
     allocate (tio_irr(nwavel, nxtrack, 1), &
               tio_wvl(nwavel, nxtrack, 1), &
@@ -313,9 +320,10 @@ contains
      
     do ix = 1, nxtrack ! loop over pixels
       ! lerr is local error for each case, donot affect global errstat
-      thisirr440 = -999.
+      ! failed interpol will have negative999 returned
+      thisirr440 = negative999 
       call quick_lin_interpol (tio_wvl(:,ix,1), w440, tio_irr(:,ix,1), &
-           thisirr440, tio_pqf(:,ix,1),nwavel, lerr)
+           thisirr440, tio_pqf(:,ix,1),nwavel, negative999, lerr)
       ! 440nm does not affect ecf
       if (lerr /= 0) then
         write (logmsg,'(A,I4)') "440nm irr interpol failed for cross-track ",ix
@@ -324,18 +332,18 @@ contains
       if (thisirr440 .GT. 0.) then
           irr_out_irradiance_440nm(ix) = thisirr440
       else
-          irr_out_irradiance_440nm(ix) = -999.
+          irr_out_irradiance_440nm(ix) = negative999
           do it = 1, rad_NumTimes
              out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
           end do 
       endif
 
-      thisirr466 = -999.
+      thisirr466 = negative999
       call quick_lin_interpol (tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-           thisirr466, tio_pqf(:,ix,1),nwavel,lerr)
+           thisirr466, tio_pqf(:,ix,1),nwavel,negative999,lerr)
       ! the following is for testing
       !call quick_irr_interpol(tio_wvl(:,ix,1), w466, tio_irr(:,ix,1), &
-      !      thisirr466, tio_pqf(:,ix,1), lerr)
+      !      thisirr466, tio_pqf(:,ix,1), negative999,lerr)
       if (lerr /= 0) then
         write (logmsg,'(A,I4)') "466nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -343,17 +351,16 @@ contains
       if (thisirr466 .GT. 0.) then
            irr_out_irradiance_466nm(ix) = thisirr466
       else
-           irr_out_irradiance_466nm(ix) = -999.
+           irr_out_irradiance_466nm(ix) = negative999
            do it = 1, rad_NumTimes
               out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it), 8)
            end do
       endif
 
-      ! irr_out_irradiance_477nm is for diagnostic only
-      ! thus, out_ProcessingQualityFlags are not affected by it
-      thisirr477 = -999.
+      ! irr_out_irradiance_477nm does not affect out_ProcessingQualityFlags
+      thisirr477 = negative999
       call quick_lin_interpol (tio_wvl(:,ix,1), w477, tio_irr(:,ix,1), &
-           thisirr477, tio_pqf(:,ix,1),nwavel,lerr)
+           thisirr477, tio_pqf(:,ix,1),nwavel,negative999,lerr)
       if (lerr /= 0) then
         write (logmsg,'(A,I4)') "477nm interpol failed for cross-track ",ix
         call tell_log (1, logmsg)
@@ -361,7 +368,7 @@ contains
       if (thisirr477 .GT. 0.) then
            irr_out_irradiance_477nm(ix) = thisirr477
       else
-           irr_out_irradiance_477nm(ix) = -999.
+           irr_out_irradiance_477nm(ix) = negative999
       endif
       
     enddo ! end of ix loop
@@ -400,7 +407,6 @@ contains
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
          out_TerrainHeight, scddes_hour,&
          rad_GroundPixelQualityFlags, &
-         !rad_PixelQualityFlags, &
          out_ProcessingQualityFlags, &
          w440, w466, w477, fFillValue,&
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
@@ -409,6 +415,8 @@ contains
     use m_vars, only: rad_waveshift, option_apply_radshift
 
     use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_rad
+
+    use m_vars, only: negative999, dFillValue
 
     !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
     implicit none
@@ -426,9 +434,7 @@ contains
     real(kind=4) :: rad466, rad477, rad440
     real(kind=4) :: ww1, ww2, www, yy1, yy2
     real(kind=4) :: min_rad, delta_w
-    
-    real (kind=8), parameter :: r8_missval=-1.0d+30
-
+  
     ! moved rad_Radiance, rad_Wavelength from m_vars.f90 here
     ! local variables save memory as they are deallocated after use
     real(kind=4), dimension(:,:,:), allocatable:: rad_Radiance
@@ -456,7 +462,8 @@ contains
     rad_NumTimes = ntimes
     rad_nXtrack = nxtrack
     rad_nWavel = nwavel
-    write(*,*) 'read_rad_tio:ntimes,nxtrack,nwavel=',ntimes,nxtrack,nwavel
+    write(*,*) 'read_rad_tio:ntimes,nxtrack,nwavel=',&
+          rad_NumTimes,rad_nXtrack,rad_nWavel
 
     !allocate m_vars arrays
     call allocate_rad_vars (ntimes, nxtrack, errstat)
@@ -478,7 +485,7 @@ contains
     call tiof_get_r4 (tio_l1obj, "earth_sun_distance", rad_EarthSunDist, &
          errstat)
     call tiof_get1d_r8 (tio_l1obj, "time", [0], [ntimes], rad_Time, errstat, &
-         replace_fill=r8_missval)
+         replace_fill=dFillValue)
     call tiof_push_group (tio_l1obj, swathname, errstat)
     call tiof_get2d_r4 (tio_l1obj, "longitude", [0,0], [ntimes, nxtrack], &
          rad_Longitude, errstat)
@@ -576,7 +583,7 @@ contains
               btest(temp_radflags,9) .or. & !smear_corr_error
          !     btest(temp_radflags,11) .or. &  !nonlinear_range
               btest(temp_radflags,10)) then  !straylight_corr_error
-          temp_rad(iw)=-9999.
+          temp_rad(iw)=negative999 
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
          end if
@@ -590,10 +597,13 @@ contains
             enddo
         endif
 
+      ! interpolation could be done using function call, however,
+      ! explicit code is faster as this is done for each pixel
       ! ----------------------------
       ! calculate radiance at 466 nm
       ! ----------------------------
       ! find the wavelength index nearest 466 nm
+      rad466=negative999 
       iw1=-9
       iw2=-9
       do iw=1,nw
@@ -624,7 +634,7 @@ contains
            rad466=yy1
         endif
       else
-        rad466=-999.
+        rad466=negative999 
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
       endif
 
@@ -632,6 +642,7 @@ contains
       ! ----------------------------
       ! calculate radiance at 477 nm
       ! ----------------------------
+      rad477=negative999 
       iw1=-9
       iw2=-9
       do iw=1,nw
@@ -662,13 +673,14 @@ contains
       else
         ! rad477 is not actually used for calculation, only a diagnostic
         ! thus did not assign ProcessingQualityFlag for it
-        rad477=-999.
+        rad477=negative999 
       endif
       rad_477nm(ix,it) = rad477
 
       ! ----------------------------
       ! calculate radiance at 440 nm
       ! ----------------------------
+      rad440=negative999 
       iw1=-9
       iw2=-9
       do iw=1,nw
@@ -697,7 +709,7 @@ contains
            rad440=yy1
         endif
       else
-        rad440=-999.
+        rad440=negative999 
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),7)
       endif
       rad_440nm(ix,it) = rad440
@@ -728,6 +740,8 @@ contains
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
+     use m_vars, only: max_o2o2_scd, max_o2o2_uncertainty, max_o2o2_relerr
+     use m_vars, only: o2o2_norm
      use m_vars, only: fFillValue, dFillValue, option_scdfullfilter
 
      implicit none
@@ -744,8 +758,6 @@ contains
      real (kind=4), allocatable, dimension(:,:) :: scd_relerr
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
      real (kind=8):: dspecial
-     ! normalization factor for o2o2 
-     real (kind=8), parameter :: norm = 1.0d43
 
      real(kind=4):: tmp_raa, temp_raa, fspecial
 
@@ -777,7 +789,9 @@ contains
           return
      endif
 
-     ! Open product group to read main_data_quality_flag
+     ! read main_data_quality_flag or SCD_MainDataQualityFlags, 
+     ! errstat1 suggest which one to read
+     ! try product group to read main_data_quality_flag
      call tiof_push_group(tio_l2obj, "product", errstat)
 
      call tiof_get2d_i2(tio_l2obj,"main_data_quality_flag", [0,0], [ntimes, nxtrack],&
@@ -787,7 +801,7 @@ contains
           write(*,*)'-->no main_data_quality_flag found in product group'
           ! get out of product group
           call tiof_pop_group (tio_l2obj, errstat)
-          ! open support_data group to read SCD_MainDataQualityFlags
+          ! try support_data group to read SCD_MainDataQualityFlags
           call tiof_push_group(tio_l2obj, "support_data", errstat) 
           call tiof_get2d_i2(tio_l2obj,"SCD_MainDataQualityFlags",[0,0], &
                    [ntimes,nxtrack],scd_mdqfl, errstat)
@@ -826,43 +840,49 @@ contains
           call tell_error (tell_runtime_error, "read_cldo4_tio: fitted_slant_column failed", errstat)
           return
      endif
-     ! normalize scd by norm
-     tmp_dbl = tmp_dbl/norm
-     ! set values outside 0 to 10 to dspecial (a negative value)
-     ! set mdqfl ne 0 to dspecial
+
+     ! normalize scd 
+     tmp_dbl = tmp_dbl/o2o2_norm
+
+     ! filter out unphysical values
      ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
      ! for o2o2, suspicious scds are extremely large, they should not be used
-     !  any scd<0. will be skipped for ocp and pscene calculation,
-     where ((tmp_dbl < 0.) .or. (tmp_dbl > 10.) .or. &
+     ! any scd<0. will be skipped for ocp and pscene calculation,
+     where ((tmp_dbl < 0.) .or. (tmp_dbl > max_o2o2_scd) .or. &
             (scd_mdqfl .ne. 0)) 
-           tmp_dbl = dspecial
+           tmp_dbl = dspecial ! negative value
      end where
 
      ! assign nasa_SlantColumnAmountO2O2 
-     ! nasa_SlantColumnAmountO2O2 has been normalized by norm
-     ! nasa_SlantColumnAmountO2O2 = real(tmp_dbl,kind=4)
-     ! de-stripe fitted slant column along it
+     ! de-stripe scd, nasa_SlantColumnAmountO2O2 is real (kind=4)
      call destripe_o2o2scd(tmp_dbl,nXtrack,nTimes,nasa_SlantColumnAmountO2O2)
 
+    ! set filtered out scd to fFillValue for output
+    where (nasa_SlantColumnAmountO2O2 < 0.)
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
+
+     ! ------
      ! read fitted SCD uncertainty
-     !if (run_mode .NE. 'production') then
-         call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
+     call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
               [ntimes, nxtrack], tmp_dbl, errstat)
-         if (errstat /=0) then
-             call tell_error(tell_runtime_error,"read_cldo4_tio: failed scduncertainty", errstat)
-             return
-         endif
-         ! normalize scd uncertainty and assign nasa_scduncertainty
-         tmp_dbl = tmp_dbl/norm
-         where((tmp_dbl < 0.).or.(tmp_dbl > 10.).or.(scd_mdqfl .ne. 0))
-               tmp_dbl = dspecial
-         endwhere
-         ! nasa_scduncertainty has been normalized by norm
-         nasa_scduncertainty = real(tmp_dbl,kind=4)
-         where(tmp_dbl < 0.)
-               nasa_scduncertainty = fFillValue
-         endwhere
-     !endif ! run_mode
+     if (errstat /=0) then
+         call tell_error(tell_runtime_error,"read_cldo4_tio: failed scduncertainty", errstat)
+         return
+     endif
+     ! normalize scd uncertainty and assign nasa_scduncertainty
+     ! filter out large uncertainty, use max_o2o2_scd below to be permissive
+     tmp_dbl = tmp_dbl/o2o2_norm
+     where((tmp_dbl < 0.).or.(tmp_dbl > max_o2o2_scd).or. &
+           (scd_mdqfl .ne. 0))
+           tmp_dbl = dspecial
+     endwhere
+
+     ! assign nasa_scduncertainty 
+     nasa_scduncertainty = real(tmp_dbl,kind=4)
+     where(tmp_dbl < 0.)
+           nasa_scduncertainty = fFillValue
+     endwhere
 
      ! deallocate tmp_dbl array
      deallocate(tmp_dbl)
@@ -874,6 +894,10 @@ contains
           return
      endif
 
+    !-------------
+    ! stricter filtering according to relative & abs uncertainty
+    if (option_scdfullfilter .eq. 1) then
+
      ! calculate relative scd error
      allocate(scd_relerr(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
@@ -881,38 +905,36 @@ contains
           return
      endif
 
+     ! nasa_scduncertainty & nasa_SlantColumnAmountO2O2 are both normalized
      scd_relerr = nasa_scduncertainty / nasa_SlantColumnAmountO2O2
-     ! assign huge positive value for negative scd or uncertainty
+     ! assign huge positive value for negative scd or scduncertainty
+     ! so that they will be filtered out 
      where (nasa_scduncertainty < 0.) 
-           scd_relerr = 9999. !make it a large positive value
+           scd_relerr = 9999. !make it a large POSITIVE value
      endwhere
      where (nasa_SlantColumnAmountO2O2 < 0.)
            scd_relerr = 9999.
      endwhere
+    ! bad scd or bad scduncertainty will satisfy the following
+    ! and therefore be filtered out
+    where (scd_relerr > max_o2o2_relerr)
+          nasa_SlantColumnAmountO2O2 = fFillValue
+    endwhere
 
-    ! filter nasa_SlantColumnO2O2
-    ! fFillValue is a large negative value, will be skiped for ocp & pscene
-    where (scd_mdqfl /= 0)
-          nasa_SlantColumnAmountO2O2 = fFillValue
-    endwhere 
-    where (nasa_SlantColumnAmountO2O2 > 8.0) ! unphysical
+    ! filter out large abs uncertainty
+    where (nasa_scduncertainty > max_o2o2_uncertainty)
           nasa_SlantColumnAmountO2O2 = fFillValue
     endwhere
-    ! stricter scd filtering
-    if (option_scdfullfilter .eq. 1) then
-    where (scd_relerr > 0.3)
-          nasa_SlantColumnAmountO2O2 = fFillValue
-    endwhere
-    where (nasa_scduncertainty > 1.) !normalized by normcol
-          nasa_SlantColumnAmountO2O2 = fFillValue
-    endwhere
-    endif
 
+    ! scd_relerr no longer needed
     deallocate(scd_relerr)
 
-    !------
+    endif ! option_scdfullfilter
+
+    !-------------------------------------------------
     ! now read rad_RelativeAzimuthAngle here
-    ! open geolocation group to read angle
+    ! open geolocation group to read raa
+    ! other angles are read from L1B file
     call tiof_push_group(tio_l2obj,"geolocation", errstat)
 
     call tiof_get2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
@@ -980,14 +1002,16 @@ contains
   !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
   subroutine quick_irr_interpol (w_array, w_target, irr_array, irr_out, &
-       q_array, errstat)
-  ! alternative to quick_lin_interpol 
+       q_array, badout, errstat)
+  ! alternative to quick_lin_interpol, not used  
     implicit none
 
     !input variables
     real (kind=4), dimension(:), intent(in) :: w_array, irr_array
     integer (kind=2), dimension(:), intent(in) :: q_array
     real (kind=4), intent(in) :: w_target
+    real (kind=4) :: badout ! value for bad output
+
     !output variables
     real (kind=4), intent(out) :: irr_out
     integer (kind=4), intent(out) :: errstat ! change inout to out
@@ -1003,14 +1027,13 @@ contains
     if (iw2(1) >= iw1(1)) then
       yy1=irr_array(iw1(1))
       yy2=irr_array(iw2(1))
-      !write(*,*)'quick_irr_interpol:',q_array(iw1(1)),q_array(iw2(1)),yy1,yy2
       if ((yy1 .GT. 0.) .and. (yy2 .GT. 0.) .and. &
          (q_array(iw1(1)) .EQ. 0) .and. (q_array(iw2(1)) .EQ. 0)) then 
          ww1=w_target-w_array(iw1(1))
          ww2=w_array(iw2(1))-w_target
          irr_out=(ww1*yy2+ww2*yy1)/(ww1+ww2)
       else
-         irr_out = -9999.
+         irr_out = badout !-9999.
       endif
     else
       errstat = -1
@@ -1030,13 +1053,15 @@ contains
   !
   !-----------------------------------------------------------------------
   subroutine quick_lin_interpol (w_array, w_target, irr_array, irr_out, &
-       q_array, nw, errstat)
+       q_array, nw, badout, errstat)
     implicit none
 
     !input variables
     real (kind=4), dimension(:), intent(in) :: w_array, irr_array
     integer (kind=2), dimension(:), intent(in) :: q_array
     real (kind=4), intent(in) :: w_target
+    real (kind=4) :: badout ! value for bad output
+
     !output variables
     real (kind=4), intent(out) :: irr_out
     integer (kind=4), intent(in) :: nw
@@ -1048,7 +1073,7 @@ contains
 
     ! initial
     min_val = 0.
-    irr_out = -9999.
+    irr_out = badout !-9999.
 
     errstat = 0 ! initialize 
     
@@ -1080,10 +1105,10 @@ contains
       if (www .gt. 0.) then
          irr_out=(ww1*yy2+ww2*yy1)/www
       else
-         irr_out=-9999.
+         irr_out=badout !-9999.
       endif
     else
-      irr_out = -9999.
+      irr_out = badout !-9999.
       errstat = -1
     endif
 
@@ -1251,7 +1276,6 @@ end subroutine read_cldo4_dims
      out_RelativeAzimuthAngle = fFillValue
 
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
-     
 
      if (errstat /= 0) then
        call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed at scd_msqfl", &
@@ -1290,6 +1314,7 @@ end subroutine read_cldo4_dims
 
    use m_vars, only: rad_waveshift, irr_waveshift
    use m_vars, only: maxradshift,  maxirrshift
+   use m_vars, only: max_ns_pixels, max_ew_pixels
    use m_vars, only: option_apply_solshift, option_apply_radshift
    use m_vars, only: lun_debug_shift, ixdebug, itdebug, run_mode
    use netcdf, only: nf90_nowrite
@@ -1300,14 +1325,17 @@ end subroutine read_cldo4_dims
 
    !local variables
    integer(kind=4) :: ix, nx, nt
-   integer(kind=4) :: errhere
+   integer(kind=4) :: errhere, err1
+   integer(kind=2),dimension(:,:), allocatable:: local_mdqfl 
+
    type (tiof_file_type) :: diaglog_obj
 
    errhere = 0
+   err1 = 0 ! for loca_mdqfl
    
-   ! initial nx,nt large enough, they will be replaced below if successful
-   nx = 2050
-   nt = 500 
+   ! initial nx,nt large enough, they will be replaced if successful
+   nx = max_ns_pixels
+   nt = max_ew_pixels 
 
    call tiof_open(trim(diaglogfnm),diaglog_obj,nf90_nowrite,errhere)
    if (errhere /= 0) then
@@ -1317,17 +1345,20 @@ end subroutine read_cldo4_dims
       ! force option_apply_XXXshift to 0
       option_apply_solshift = 0
       option_apply_radshift = 0
-      ! allocate & initialize to 0 wavelength shift 
-      write(*,*) 'diaglog: fake nx,nt=',nx,nt
+      ! allocate & initialize to 0 wavelength shift
+      write(*,*) '      diaglog: fake nx,nt=',nx,nt
       call allocate_diaglog_vars(nt,nx,errstat)
       ! if allocation fails, errstat tells the calling program 
       return
    else 
       call tiof_inq_dimlen(diaglog_obj, "xtrack", nx, errhere)
       call tiof_inq_dimlen(diaglog_obj, "mirror_step", nt, errhere)
-      write(*,*) 'diaglog: nx,nt=',nx,nt
+      write(*,*) '      diaglog: nx,nt=',nx,nt
       ! allocate & initialize to 0 wavelength shift 
       call allocate_diaglog_vars(nt,nx,errstat)
+
+      allocate(local_mdqfl(nx,nt),stat=errstat)
+      local_mdqfl = 0
 
       ! read wavelength shift 
       call tiof_get2d_r4(diaglog_obj,"radshi", [0,0], [nt,nx], &
@@ -1336,13 +1367,29 @@ end subroutine read_cldo4_dims
       call tiof_get1d_r4(diaglog_obj,"solshi", [0], [nx], &
         irr_waveshift, errhere)
 
+      call tiof_get2d_i2(diaglog_obj,"mdqfl",[0,0], [nt,nx], &
+        local_mdqfl, err1)
+
       call tiof_close(diaglog_obj, errhere)
+
       if (errhere /=0) then
           rad_waveshift = 0.
           irr_waveshift = 0.
-          write(*,*) "read_diag_nvars: failed to read data, assume all 0s"
+          write(*,*) "warning: read_diag_nvars failed to read, assume 0 shifts"
           return
-      endif
+      else 
+          if (err1 /=0) then !diaglog does not contain mdqfl
+             write(*,*) "warning: rad_diag_nvars assume local_mdqfl=0 for radshi"
+          else !diaglog contains mdqfl from fitting
+             ! do not use radshi for failed or suspect fitting
+             write(*,*) "read_diag_nvars: set rad_waveshift=0 for bad/suspect fit"
+             where (local_mdqfl /= 0) ! bad or suspect fit
+                 rad_waveshift = 0.
+             endwhere
+             ! local_mdqfl no longer needed
+             deallocate(local_mdqfl)
+          endif ! err1
+      endif !errhere
    endif
 
    ! set large shift to zero
@@ -1353,7 +1400,7 @@ end subroutine read_cldo4_dims
        irr_waveshift = 0.
    endwhere
 
-   ! option for wavelength shift_
+   ! option for wavelength shift
    write(*,*) 'option_apply_solshift=',option_apply_solshift
    if (option_apply_solshift == 0) then
        irr_waveshift = 0.
