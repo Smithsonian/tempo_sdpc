@@ -42,7 +42,7 @@ subroutine cal_ecf(ecfocp_iternum)
 ! add local variable
   real::lat0, lon0
   real:: alb440
-  real:: kleipool466, kleipool440
+  real:: kleipool466, kleipool440, kleipool477
   real:: thisecf, thatecf, ecf_change, thisscd
 
   real::r11111,r11112,r11121,r11122,r11211,r11212,r11221,r11222,r12111,r12112,r12121,r12122,r12211,r12212,r12221,r12222
@@ -299,7 +299,10 @@ subroutine cal_ecf(ecfocp_iternum)
       ! get actual alb0 & alb440
       !--------------------------
       if(name_option_SurfaceReflectivity.eq.'Kleipool') then ! testing
-        call get_kleipool_lonlat(lon0, lat0, kleipool466, kleipool440)
+        kleipool466 = fspecial
+        kleipool440 = fspecial
+        kleipool477 = fspecial
+        call get_kleipool_lonlat(lon0, lat0, kleipool466, kleipool440, kleipool477)
         alb0 = kleipool466
         alb440 = kleipool440
       endif

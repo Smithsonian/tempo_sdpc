@@ -10,16 +10,20 @@ use m_vars, only: gmi_np
 contains
 
 !11111111111111111111111111111111111111111111111111
-subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp,ierr)
+subroutine read_GMI_TMP(gmonth,name_gmi_dir,ierr)
 !11111111111111111111111111111111111111111111111111
 
   use m_vars, only: ilun_gmi_psfc, ilun_gmi_tmp
   
   implicit none
-      
-  character(len=255), intent(in)::name_gmi_psfc
-  character(len=255), intent(in)::name_gmi_tmp
+     
+  integer, intent(in):: gmonth 
+  character(len=255), intent(in):: name_gmi_dir
   integer(kind=4), intent(inout):: ierr
+
+  character(len=255)::name_gmi_psfc
+  character(len=255)::name_gmi_tmp 
+  character(len=2):: gmonthstr
 
   character(len=255)::head
   integer(kind=4)::ix,iy,ip
@@ -51,6 +55,24 @@ subroutine read_GMI_TMP(name_gmi_psfc,name_gmi_tmp,ierr)
              0.000000,0.000000,0.000000,0.000000,0.000000,0.000000, &
              0.000000,0.000000,0.000000,0.000000,0.000000,0.000000, &
              0.000000,0.000000,0.000000,0.000000,0.000000,0.000000/)
+
+!-------------
+! filename for gmi climatology
+!-------------
+    if (gmonth < 10) then
+       write(gmonthstr,'(I1)') gmonth
+       name_gmi_psfc = trim(name_gmi_dir)//'GMI_Psfc_0'//trim(gmonthstr)//'.txt'
+       name_gmi_tmp = trim(name_gmi_dir)//'GMI_TMP_0'//trim(gmonthstr)//'.txt'
+    else
+       write(gmonthstr,'(I2)') gmonth
+       name_gmi_psfc = trim(name_gmi_dir)//'GMI_Psfc_'//trim(gmonthstr)//'.txt'
+       name_gmi_tmp = trim(name_gmi_dir)//'GMI_TMP_'//trim(gmonthstr)//'.txt'
+    endif
+
+    write(*,*) ' read GMI climatology for psfc & temperature from: '
+    write(*,*) '   '//trim(name_gmi_psfc)
+    write(*,*) '   '//trim(name_gmi_tmp)
+
 !-------------
 ! allocate GMI variables
 !-------------

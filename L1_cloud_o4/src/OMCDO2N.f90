@@ -36,8 +36,6 @@ program OMCDO2N
   integer::status
 
   character(len=255)::filename, l1radfnm
-  character(len=255)::name_gmi_psfc
-  character(len=255)::name_gmi_tmp
   character(len=255)::name_kleipool_rsfc
   character(len=255)::diaglogfnm
 
@@ -321,7 +319,7 @@ program OMCDO2N
   !===========================================
   ! 0. get global attributes from TEMPO L1 RAD to gmetadata
   !===========================================
-  ! gmetadata is needed for climatology
+  ! gmetadata is needed for GMI climatology
   l1radfnm = trim(adjustl(name_rad_dir))//trim(adjustl(name_rad_file))
   call get_tio_l1rad_glbattr(l1radfnm,errstat)
   if (errstat < 0) then
@@ -394,15 +392,7 @@ program OMCDO2N
 
   if(name_option_TemperaturePressure.eq.'GMI') then
     status=GetConfigString("E","Input Files GMI_dir",name_gmi_dir)
-    status=GetConfigString("E","Input Files "//lun_gmi_psfc(gmonth),buf)
-    name_gmi_psfc=trim(name_gmi_dir)//trim(buf)
-
-    status=GetConfigString("E","Input Files "//lun_gmi_tmp(gmonth),buf)
-    name_gmi_tmp=trim(name_gmi_dir)//trim(buf)
-
-    write(*,*)'   name_gmi_psfc=',trim(name_gmi_psfc)
-    write(*,*)'   name_gmi_tmp=',trim(name_gmi_tmp)
-    call read_GMI_TMP(name_gmi_psfc,name_gmi_tmp, errstat)
+    call read_GMI_TMP(gmonth,name_gmi_dir,errstat)
     call tell_log(0, "Read GMI T/P & GMI Ps for month ")
   endif
 
@@ -444,7 +434,7 @@ program OMCDO2N
       call exit(-1)
     endif
     if (name_option_TemperaturePressure .eq. 'GMI') then
-        write(*,*)'   WARNING: wind speed = 0 for GMI+BRDF combo.'
+        write(*,*)'   WARNING: windspeed=5 for GMI+BRDF combo.'
     endif
     flush (output_unit)
     call tell_log(0,'Read BRDF Rsfc from GLER')

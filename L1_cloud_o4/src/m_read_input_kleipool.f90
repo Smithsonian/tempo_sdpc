@@ -10,8 +10,10 @@ contains
 
     use hdfeos4_parameters
     use he5_swreader
-    use m_vars, only: kleipool_lon, kleipool_lat, kleipool_SurfaceReflectivity466
+    use m_vars, only: kleipool_lon, kleipool_lat
+    use m_vars, only: kleipool_SurfaceReflectivity466
     use m_vars, only: kleipool_SurfaceReflectivity440
+    use m_vars, only: kleipool_SurfaceReflectivity477
     use m_vars, only: kleipool_nx, kleipool_ny
 
     implicit none
@@ -67,10 +69,9 @@ contains
     allocate(kleipool_lat(nx), stat=ierr)
     allocate(kleipool_SurfaceReflectivity466(nx,ny), stat=ierr)
     allocate(kleipool_SurfaceReflectivity440(nx,ny), stat=ierr)
-    ! comment out 477 which is not used 
-    !allocate(kleipool_SurfaceReflectivity477(nx,ny), stat=ierr)
+    allocate(kleipool_SurfaceReflectivity477(nx,ny), stat=ierr)
     if (ierr .ne. 0) then
-       write(*,*) 'error allocating kleipool arrays.'
+       write(*,*) '   Error allocating kleipool arrays.'
        return
     endif
 
@@ -80,7 +81,7 @@ contains
     !-----------------------
     gdfid=he5_gdopen(filename,HE5F_ACC_RDONLY)
     gdid=he5_gdattach(gdfid,'EarthSurfaceReflectanceClimatology')
-    if (gdfid < 0 .or. gdid < 0) print *, "read_Kleipool_Rsfc fail"
+    if (gdfid < 0 .or. gdid < 0) write(*,*) "   read_Kleipool_Rsfc failed"
 
     !----------
     ! Array(nx)
@@ -113,7 +114,10 @@ contains
     start4(4)=0
     stride4(4)=1
     edge4(4)=n12
+
+    ! allocate temporary array
     allocate(rtemp(nx,ny,nw,n12),stat=ierr)
+
     status=he5_gdrdfld(gdid,"MonthlySurfaceReflectance",start4,stride4,edge4,rtemp)
 
     !-------
@@ -136,29 +140,34 @@ contains
         if(r471 .gt. 1.0) r471=1.0
         if(r463 .gt. 1.0) r463=1.0
         if(r440 .gt. 1.0) r440=1.0
-        ! commented 477 out
-        ! kleipool_SurfaceReflectivity477(ix,iy)=r477
+        kleipool_SurfaceReflectivity477(ix,iy)=r477
         kleipool_SurfaceReflectivity440(ix,iy)=r440
-        r466=(r463*5.+r471*3.)/8.
+        r466=(r463*5.+r471*3.)/8. ! interpolate to 466
         kleipool_SurfaceReflectivity466(ix,iy)=r466
       end do
     end do
+
+  ! deallocate rtemp for memory
+  deallocate(rtemp)
 
   !111111111111111111111111111111111
   end subroutine read_Kleipool_Rsfc
   !111111111111111111111111111111111
 
   !222222222222222222222222222222222
-  subroutine get_kleipool_lonlat(lon0,lat0,rsfc466out,rsfc440out)
+  subroutine get_kleipool_lonlat(lon0,lat0,rsfc466out,&
+             rsfc440out,rsfc477out)
   !222222222222222222222222222222222
   ! get Kleipool rsfc at TEMPO pixel (ix,it)
+
   use m_vars, only: kleipool_SurfaceReflectivity466,kleipool_lon
   use m_vars, only: kleipool_SurfaceReflectivity440,kleipool_lat
+  use m_vars, only: kleipool_SUrfaceReflectivity477
   use m_vars, only: kleipool_nx, kleipool_ny
  
   implicit none
   real, intent(in):: lon0, lat0
-  real, intent(out):: rsfc466out, rsfc440out
+  real, intent(out):: rsfc466out, rsfc440out, rsfc477out
 
   real:: kle_wx1,kle_wx2,kle_wy1,kle_wy2
   real:: rsfc11,rsfc12,rsfc21,rsfc22,rsfc1,rsfc2
@@ -204,53 +213,17 @@ contains
   rsfc2 = (kle_wy2*rsfc21+kle_wx1*rsfc22)/(kle_wy1+kle_wy2)
   rsfc440out =(kle_wx2*rsfc1+kle_wx1*rsfc2)/(kle_wx1+kle_wx2)
   
+  rsfc11 = kleipool_SurfaceReflectivity477(kle_ix1,kle_iy1)
+  rsfc12 = kleipool_SurfaceReflectivity477(kle_ix1,kle_iy2)
+  rsfc21 = kleipool_SurfaceReflectivity477(kle_ix2,kle_iy1)
+  rsfc22 = kleipool_SurfaceReflectivity477(kle_ix2,kle_iy2)
+  rsfc1 = (kle_wy2*rsfc11+kle_wy1*rsfc12)/(kle_wy1+kle_wy2)
+  rsfc2 = (kle_wy2*rsfc21+kle_wx1*rsfc22)/(kle_wy1+kle_wy2)
+  rsfc477out =(kle_wx2*rsfc1+kle_wx1*rsfc2)/(kle_wx1+kle_wx2)
+
   !2222222222222222222222222
   end subroutine get_kleipool_lonlat
   !2222222222222222222222222
-
-  !4444444444444444444444444
-  subroutine read_BRDF_Rsfc
-  !4444444444444444444444444
-
-    ! DESCRIPTION: This program reads BRDF Rsfc data in txt form
-
-    use m_vars, only: BRDF_SurfaceReflectivity466,rad_NumTimes,rad_nXtrack
-    use m_vars, only: name_brdf_dir, name_brdf_file
-
-    implicit none
-
-    integer(kind=4)::ix,it,ierr
-    integer(kind=4)::nx,nt
-    character(len=255)::filename
-
-    nt = rad_NumTimes
-    nx = rad_nXtrack
-
-    ! 440 was used in cal_ocp to assign out_SurfaceReflectivity
-    ! in theory it should be allocated and assigned here
-    ! but it is not actually used in calculation
-    if (.not. allocated(BRDF_SurfaceReflectivity466)) then
-       allocate(BRDF_SurfaceReflectivity466(nx,nt),stat=ierr)
-    endif
-
-    filename=trim(name_brdf_dir)//trim(name_brdf_file)
-
-    open(unit=94,file=filename,status='old',action='read',iostat=ierr)
-    if (ierr /= 0) print *, "read_BRDF_Rsfc fail"
-
-    do it=1,nt
-      do ix=1,nx
-        read(94,114) BRDF_SurfaceReflectivity466(ix,it)
-        if(BRDF_SurfaceReflectivity466(ix,it) .gt. 1.0) BRDF_SurfaceReflectivity466(ix,it)=1.0
-      end do
-    end do
-    close(unit=94)
-
-114 format(f12.4)
-
-  !44444444444444444444444444444
-  end subroutine read_BRDF_Rsfc
-  !44444444444444444444444444444
 
 !***********************
 end module m_read_input_kleipool
