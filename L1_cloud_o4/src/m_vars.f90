@@ -54,7 +54,7 @@ module m_vars
   integer(kind=4)::irr_nXtrack
   integer(kind=4)::irr_nWavel
   integer(kind=4)::irr_nWavelCoef
-  real::irr_EarthSunDist 
+  real(kind=4)::irr_EarthSunDist 
   real(kind=4),dimension(:),pointer::irr_out_irradiance_440nm
   real(kind=4),dimension(:),pointer::irr_out_irradiance_466nm
   real(kind=4),dimension(:),pointer::irr_out_irradiance_477nm
@@ -78,7 +78,7 @@ module m_vars
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
   integer(kind=4)::rad_nWavel
-  real::rad_EarthSunDist
+  real(kind=4)::rad_EarthSunDist
 
 ! read in and transfer to out_TerrainHeight
 ! move rad_TerrainHeight to m_read_input_tio
@@ -526,6 +526,21 @@ integer:: ilun_gmi_tmp = 4003
   integer:: lun_desfac_fnm=177
 
   real(kind=4),dimension(:),allocatable:: scddes_hour
+
+!-------------
+! Perturbations
+!-------------
+  logical :: PerturbAlb466=.False.
+  ! perturbation polynomial coeffs for alb466 [0,1st,2nd,3rd]order
+  integer(kind=4) :: nord_Alb466pert = 3 ! 3rd order polynomial has 4 coeffs
+  real,parameter,dimension(4) :: Alb466PertCoef = (/0.0,1.05,0.0,0.0/)
+
+  logical :: PerturbRadOfIrr466 = .False.
+  ! perturbation polynomial coeff for rad466/irr466 [0,1,2,3]order
+  integer(kind=4) :: nord_RoI466pert = 3 ! 3rd order polynomial has 4 coeffs
+  !real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.95,0.0,0.0/)
+  ! the following is from HCH: y = (1.-(-271.98*x+23.62)/100.)*x
+  real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.7638,2.7198,0.0/)
 
 !-------------
 ! gmeta 

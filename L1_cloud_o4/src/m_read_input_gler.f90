@@ -12,7 +12,9 @@ contains
        windspeed2m ,name_option_TemperaturePressure,&
        rad_SnowIceFraction, rad_GroundPixelQualityFlags
 
-   use m_vars,only: itdebug, ixdebug, run_mode
+   use m_vars,only: itdebug, ixdebug, run_mode, negative999
+
+   use m_vars,only: PerturbAlb466, nord_Alb466pert, Alb466PertCoef
 
    implicit none
    integer, intent(inout) :: errstat
@@ -20,23 +22,24 @@ contains
    logical :: clip_opt ! wether to limit gler to [0.,1.] range
    real(kind=8) :: thistime
    real(kind=4) :: thislon, thislat, thisalb, wind_speed, thissnowice
-   integer :: iwavelen, ix, it, nx, nt, nana
+   real(kind=4) :: xalb, yalb
+   integer :: iwavelen, ix, it, nx, nt, nana, iord
    real(kind=4) :: fspecial
    integer(kind=2) :: thislandwater
    real (kind=8), parameter :: r8_missval=-1.0d+30
 
    if (errstat /= 0) return
 
-   fspecial = -999. ! make it negative
+   fspecial = negative999 ! make it negative
    clip_opt = .TRUE.
    write(*,*) '   GLER clip_opt=',clip_opt
 
    nx = rad_nXtrack
    nt = rad_NumTimes
 
-   ! wind_speed set to zero for all options but 'GEOS5'
+   ! wind_speed set to 5m/s for all options but GEOS5
    ! GMI climatology does not have surface wind speed
-   wind_speed = 0.
+   wind_speed = 5.
 
    !allocate m_vars arrays and initialize
    allocate(BRDF_SurfaceReflectivity466(nx,nt), stat=errstat)
@@ -128,6 +131,31 @@ contains
    call gler_close(glt)
    write(*,*) '   GLER 466nm n_NAN=',nana
 
+   ! alb466 perturbation
+   if (PerturbAlb466) then
+      write(*,*) '   Apply Alb466PertCoef to alb466'
+      do it = 1, nt
+         do ix = 1, nx
+            xalb = BRDF_SurfaceReflectivity466(ix,it)
+
+          if ((xalb .ge. 0.) .and. (xalb .le. 1.)) then 
+            yalb = 0.
+            do iord = 0, nord_Alb466Pert
+               ! fortran index from 1
+               yalb = yalb + Alb466PertCoef(iord+1)*(xalb**iord)
+            enddo ! iord
+            ! clip out of range yalb
+            if (yalb .gt. 1.) yalb = 1.0
+            if (yalb .lt. 0.) yalb = 0.0
+          else
+               yalb = fspecial
+          endif
+
+           BRDF_SurfaceReflectivity466(ix,it) = yalb
+         enddo ! ix
+      enddo ! it
+   endif  ! PerturbAlb466
+     
    !------------------------------
    ! calculate GLER for 440nm
    ! 440nm was unavailable during initial development, activated apr2024

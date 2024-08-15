@@ -17,7 +17,11 @@ subroutine cal_ecf(ecfocp_iternum)
 ! input
   integer, intent(in):: ecfocp_iternum
 
-  real:: rad466,rad440,rad477
+  real(kind=4):: rad466,rad440,rad477
+  real(kind=4):: irr466,irr440,irr477
+
+  real:: xradofirr466, yradofirr466
+
   real(kind=4):: rout_ecf,rout_crf440,rout_crf466,rout_crf477
   integer::ialb, isza, ivza, iraa, ipsfc
   integer::ialb1,isza1,ivza1,iraa1,ipsfc1
@@ -30,9 +34,12 @@ subroutine cal_ecf(ecfocp_iternum)
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
 
+! perturbation polynomial
+  integer(kind=4):: iord, iord1
+
   real:: gmi_psfc
 
-  real:: earthsunfactor2
+  real(kind=4):: earthsunfactor2
  
   integer(kind=4):: pflag00, pflag01
 
@@ -225,6 +232,9 @@ subroutine cal_ecf(ecfocp_iternum)
       rad466=rad_466nm(ix,it)
       rad440=rad_440nm(ix,it)
       rad477=rad_477nm(ix,it)
+      irr466=irr_out_irradiance_466nm(ix)
+      irr440=irr_out_irradiance_440nm(ix)
+      irr477=irr_out_irradiance_477nm(ix)
 
       ! ------------------------
       ! calculate cloud fraction
@@ -235,7 +245,24 @@ subroutine cal_ecf(ecfocp_iternum)
       ! earthsunfactor2 = (irr_EarthSunDist/rad_EathSunDist)**2 defined above
       ! calculate the irr expected at time of rad observation
       ! as earthsunfactor is very close to one for TEMPO,this is not important
-         rad_of_irr466(ix,it)=rad466/(irr_out_irradiance_466nm(ix)*earthsunfactor2)
+         xradofirr466=rad466/(irr_out_irradiance_466nm(ix)*earthsunfactor2)
+         if (PerturbRadOfIrr466) then
+            yradofirr466 = 0.
+            do iord = 0, nord_RoI466pert
+              !fortran index starts from 1
+              iord1 = iord + 1
+               yradofirr466=yradofirr466+&
+                         RoI466PertCoef(iord1)*(xradofirr466**iord)
+            enddo
+            ! avoid unphysical values from perturbation
+            if (yradofirr466 .gt. 0.) then
+               rad_of_irr466(ix,it) = yradofirr466
+            else
+               rad_of_irr466(ix,it) = xradofirr466
+            endif ! yradofirr466
+         else ! PerturbRadOfIrr466
+            rad_of_irr466(ix,it)=xradofirr466
+         endif !PerturbRadOfIrr466
       else
          rad_of_irr466(ix,it) = fspecial
          ! bit8 was set in m_read_input_tio, set again here 
@@ -243,7 +270,7 @@ subroutine cal_ecf(ecfocp_iternum)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),8)
          out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12) 
          go to 990
-      endif
+      endif 
 
       ! 440nm
       ! bit7 was set in m_read_input_tio, set again here

@@ -6,10 +6,11 @@ program OMCDO2N
   use hdfeos4_parameters
   use he5_swreader
   use m_vars
-  use m_read_input_kleipool
+  use m_read_input_kleipool, only: read_Kleipool_Rsfc
   use m_read_GMI, only: read_GMI_TMP
-  use m_read_lut
-  use m_read_hdf5
+  use m_read_lut, only: read_lut_rad, read_lut_rad440, &
+              read_lut_amf_clr, read_lut_amf_cld, read_lut_amf_ler
+  !use m_read_hdf5
   use tell_module
   use tio_module
   use m_read_input_tio, only: read_rad_tio, read_irr_tio, read_cldo4_tio, &
@@ -61,7 +62,7 @@ program OMCDO2N
 
   call tell_log(0, 'Starting L1_cloud_o4')
   ! ----------------------------------------
-  ! READ IN INPUT FILENAMES from control.txt
+  ! READ IN INPUT control FILE
   ! ----------------------------------------
 
   buf(:) = ' '
@@ -175,7 +176,7 @@ program OMCDO2N
   write(*,*)'run_mode=',trim(run_mode)
 
   status=GetConfigString("W","Runtime Parameters APPShortName",buf)
-  if(status .NE. 0) then
+  if(status .ne. 0) then
     write(*,*)"no APPShortName from control file, use default"
    ! default to  m_vars 
   else
@@ -183,7 +184,7 @@ program OMCDO2N
   endif
 
   status=GetConfigString("W","Runtime Parameters APPVersion",buf)
-  if(status .NE. 0) then
+  if(status .ne. 0) then
     write(*,*) "no APPVersion from control file, use default"
   else
      gmetadata%appversion=trim(buf)
@@ -196,12 +197,12 @@ program OMCDO2N
      gmetadata%author_name=trim(buf)
   endif
 
-   status=GetConfigString("W","Runtime Parameters AuthorAffiliation",buf)
-   if (status .NE. 0) then
-      write(*,*)"no AuthorAffiliation from control file, use default"
-   else
-      gmetadata%author_affiliation=trim(buf)
-   endif
+  status=GetConfigString("W","Runtime Parameters AuthorAffiliation",buf)
+  if (status .NE. 0) then
+     write(*,*)"no AuthorAffiliation from control file, use default"
+  else
+     gmetadata%author_affiliation=trim(buf)
+  endif
 
   status=GetConfigString("W","Runtime Parameters ProcessingCenter",buf)
   if(status .NE. 0) then
@@ -228,7 +229,8 @@ program OMCDO2N
   if (status .NE. 0) then
      write(*,*) "No ixdebug, use default instead"
   else
-     read(buf,*,iostat=status) ixdebug
+     read(buf,*,iostat=errhere) ixdebug
+     if (errhere .ne. 0) ixdebug = -1
   endif
   write(*,*) 'ixdebug=',ixdebug
 
@@ -236,7 +238,8 @@ program OMCDO2N
   if (status .NE. 0) then
      write(*,*) "No itdebug, use default instead"
   else 
-     read(buf,*,iostat=status) itdebug
+     read(buf,*,iostat=errhere) itdebug
+     if (errhere .ne. 0) itdebug=-1
   endif
   write(*,*) 'itdebug=',itdebug
   
@@ -244,7 +247,8 @@ program OMCDO2N
   if (status .NE. 0) then 
      write(*,*) "No ecfocp_maxiter in control file, use default instead"
   else
-     read(buf,*,iostat=status) ecfocp_maxiter
+     read(buf,*,iostat=errhere) ecfocp_maxiter
+     if (errhere .ne. 0) ecfocp_maxiter = 1
   endif
   write(*,*) 'ecfocp_maxiter=',ecfocp_maxiter
 
@@ -252,7 +256,8 @@ program OMCDO2N
   if (status .NE. 0) then
      write(*,*) "use default option_scdfullfilter"
   else
-     read(buf,*,iostat=status) option_scdfullfilter
+     read(buf,*,iostat=errhere) option_scdfullfilter
+     if (errhere .ne. 0) option_scdfullfilter = 1
   endif
   write(*,*) 'option_scdfulltiler=',option_scdfullfilter
 
@@ -260,20 +265,21 @@ program OMCDO2N
   if (status .NE. 0) then
      write(*,*) "use default option_destripe_scd"
   else 
-     read(buf,*,iostat=status) option_destripe_scd
+     read(buf,*,iostat=errhere) option_destripe_scd
+     if (errhere .ne. 0) option_destripe_scd = 0
   endif
   write(*,*) 'option_destripe_scd=',option_destripe_scd
 
   if (option_destripe_scd .eq. 1) then
-    status=GetConfigString("W","Input Files desfac_dir",buf)
-    if(status .ne. 0) then
+    errhere=GetConfigString("W","Input Files desfac_dir",buf)
+    if(errhere .ne. 0) then
       write(*,*) 'No desfac_dir in control file, use default'
     else
        name_desfac_dir=trim(buf)
     endif
 
-    status=GetConfigString("W","Input Files desfac_fnm",buf)
-    if(status .ne. 0) then
+    errhere=GetConfigString("W","Input Files desfac_fnm",buf)
+    if(errhere .ne. 0) then
        write(*,*) 'No desfac_fnm in control file, usedefault'
     else
        name_desfac_fnm=trim(buf)
@@ -282,10 +288,11 @@ program OMCDO2N
   endif
 
   status=GetConfigString("W","Runtime Parameters option_apply_solshift",buf)
-  if (status .NE. 0) then
+  if (status .ne. 0) then
      write(*,*) "use default option_apply_solshift"
   else 
-     read(buf,*,iostat=status) option_apply_solshift
+     read(buf,*,iostat=errhere) option_apply_solshift
+     if (errhere .ne. 0) option_apply_solshift = 0
   endif
   write(*,*) 'option_apply_solshift=',option_apply_solshift
 
@@ -293,7 +300,8 @@ program OMCDO2N
   if (status .NE. 0) then
      write(*,*) "use default option_apply_radshift"
   else 
-     read(buf,*,iostat=status) option_apply_radshift
+     read(buf,*,iostat=errhere) option_apply_radshift
+     if (errhere .ne. 0) option_apply_radshift = 0
   endif
   write(*,*) 'option_apply_radshift=',option_apply_radshift
 
@@ -307,11 +315,41 @@ program OMCDO2N
 
   status=GetConfigString("W","Input Files TEMPOdiaglog_fnm",buf)
   if(status .ne. 0) then
-       write(*,*) 'No TEMPOdiaglog_fnm in control file, use default'
+      write(*,*) 'No TEMPOdiaglog_fnm in control file, use default'
   else
        name_diaglog_fnm=trim(buf)
   endif
   write(*,*) 'TEMPOdiaglog file: ',trim(name_diaglog_dir)//trim(name_diaglog_fnm)
+
+  status=GetConfigString("W","Perturbations Perturb_Alb466",buf)
+  if (status .ne. 0) then
+     write(*,*) 'No perturbation for Alb466.'
+     PerturbAlb466 = .False.
+  else
+     if (trim(buf) .eq. 'N') then
+        PerturbAlb466 = .False.
+     else
+        PerturbAlb466 = .True.
+     endif
+  endif
+  write(*,*) '     PerturbAlb466=',PerturbAlb466
+  if (PerturbAlb466) &
+     write(*,*) '     perturbation polynomial coefs:',Alb466PertCoef
+       
+  status=GetConfigString("W","Perturbations Perturb_RadOfIrr466",buf)
+  if (status .ne. 0) then
+     write(*,*) 'No perturbation for Rad466/Irr466'
+     PerturbRadOfIrr466 = .False.
+  else
+     if (trim(buf) .eq. 'N') then
+        PerturbRadOfIrr466 = .False.
+     else
+        PerturbRadOfIrr466 = .True.
+     endif
+  endif
+  write(*,*) '     PerturbRadOrIrr466=',PerturbRadOfIrr466
+  if (PerturbRadOfIrr466) &
+     write(*,*) '     perturbation polynomial coefs:',RoI466PertCoef
 
   flush (output_unit)
   call tell_log(0,'Read control file')
