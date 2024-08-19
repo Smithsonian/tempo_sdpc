@@ -197,13 +197,6 @@ module m_vars
 ! input LUN
 !-----------
 
-! for reading month dependent GMI files
-character(len=6),dimension(12):: &
-  lun_gmi_psfc=(/'400201','400202','400203','400204','400205','400206', &
-                 '400207','400208','400209','400210','400211','400212'/)
-character(len=6),dimension(12):: &
-  lun_gmi_tmp=(/'400301','400302','400303','400304','400305','400306', &
-                '400307','400308','400309','400310','400311','400312'/)
 integer:: ilun_gmi_psfc = 4002
 integer:: ilun_gmi_tmp = 4003
 
@@ -448,7 +441,6 @@ integer:: ilun_gmi_tmp = 4003
 !---------------
   character(len=255)::name_out_dir='./'
   character(len=255)::name_out_ncdf='empty'
-!  character(len=255)::name_out_txt='OMCDO2N.out'
   real(kind=8),   dimension(:),    pointer::out_Time
 !  real(kind=4),   dimension(:,:),  pointer::out_Longitude ! not used
 !  real(kind=4),   dimension(:,:),  pointer::out_Latitude ! not used
@@ -533,7 +525,7 @@ integer:: ilun_gmi_tmp = 4003
   logical :: PerturbAlb466=.False.
   ! perturbation polynomial coeffs for alb466 [0,1st,2nd,3rd]order
   integer(kind=4) :: nord_Alb466pert = 3 ! 3rd order polynomial has 4 coeffs
-  real,parameter,dimension(4) :: Alb466PertCoef = (/0.0,1.05,0.0,0.0/)
+  real,parameter,dimension(4) :: Alb466PertCoef = (/0.02,1.0,0.0,0.0/)
 
   logical :: PerturbRadOfIrr466 = .False.
   ! perturbation polynomial coeff for rad466/irr466 [0,1,2,3]order

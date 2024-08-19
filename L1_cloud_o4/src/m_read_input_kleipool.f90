@@ -15,6 +15,7 @@ contains
     use m_vars, only: kleipool_SurfaceReflectivity440
     use m_vars, only: kleipool_SurfaceReflectivity477
     use m_vars, only: kleipool_nx, kleipool_ny
+    use m_vars, only: PerturbAlb466, nord_Alb466pert, Alb466PertCoef
 
     implicit none
 
@@ -44,11 +45,12 @@ contains
 
     character(len=255), intent(in)::filename
     integer (kind=4), intent(in)::m12
-    integer::ix,iy
+    integer::ix,iy,iord
     integer::nx,ny,nw,n12
     integer(kind=4)::gdfid,gdid,status
     integer(kind=2),dimension(:,:,:,:),pointer::rtemp
     real(kind=4)::r440,r463,r466,r471,r477
+    real(kind=4)::xalb,yalb
 
     integer(kind=8)::start1,stride1,edge1
     !integer(kind=8),dimension(2)::start2,stride2,edge2
@@ -127,7 +129,7 @@ contains
     status=he5_gdclose(gdfid)
 
     !----------------------------------
-    ! interpolate LER for the month i12
+    ! LER for the month 
     !    w15=440 w18=463 w19=471 w20=477
     !----------------------------------
     do ix=1,nx
@@ -150,6 +152,29 @@ contains
   ! deallocate rtemp for memory
   deallocate(rtemp)
 
+  ! Perturb r466
+  if (PerturbAlb466) then
+     write(*,*) '   Apply Alb466PertCoef to Kleipool 466'
+     do ix = 1, nx
+        do iy = 1, ny
+           xalb = kleipool_SurfaceReflectivity466(ix,iy)
+           if ((xalb .ge. 0.) .and. (xalb .le. 1.)) then
+              yalb = 0. 
+              do iord = 0, nord_Alb466Pert
+                 yalb = yalb + Alb466PertCoef(iord+1)*(xalb**iord)
+              enddo
+              if (yalb .gt. 1.) yalb = 1.0
+              if (yalb .lt. 0.) yalb = 0.0
+           else if (xalb .lt. 0.) then
+              yalb = 0.0 
+           else
+              yalb = 1.0
+           endif
+           kleipool_SurfaceReflectivity466(ix,iy) = yalb
+         enddo !iy
+      enddo !ix
+   endif
+         
   !111111111111111111111111111111111
   end subroutine read_Kleipool_Rsfc
   !111111111111111111111111111111111
