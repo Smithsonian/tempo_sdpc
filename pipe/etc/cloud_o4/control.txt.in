@@ -66,3 +66,7 @@ Runtime Parameters:
     option_scdfullfilter: 1
     option_apply_solshift: 1
     option_apply_radshift: 1
+
+Perturbations:
+    Perturb_Alb466: N
+    Perturb_RadOfIrr466: N
