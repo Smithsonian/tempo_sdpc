@@ -80,9 +80,9 @@ fetch_forecast_for_date()
 	EOF
   HOURS="$(seq -w 0000 100 2300)"
   for h in $HOURS ; do
-      printf "get -c -O $incoming_dir $source_url/$fcst_fmt\n" $h >> $tmpscript
+      printf "repeat --until-ok -d 5 -c 5 get -c -O $incoming_dir $source_url/$fcst_fmt\n" $h >> $tmpscript
   done
-  echo quit >> $tmpscript
+  echo exit >> $tmpscript
 
   # Download using lftp:
   lftp -f $tmpscript && /bin/rm $tmpscript
