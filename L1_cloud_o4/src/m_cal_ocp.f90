@@ -4,7 +4,7 @@ module m_cal_ocp
 contains
 !1111111111111111111
 !******************
-subroutine cal_ocp(ecfocp_iternum)
+subroutine cal_ocp(ecfocp_iternum, errstat)
 !******************
 !11111111111111111111
   ! -----------------------------
@@ -47,11 +47,13 @@ subroutine cal_ocp(ecfocp_iternum)
   use m_read_GMI
   use m_read_hdf5
   use m_scd_adjust
+  use tell_module
 
   implicit none
 
-  ! input variable
+  ! input/output variable
   integer, intent(in):: ecfocp_iternum
+  integer, intent(inout):: errstat
 
   !local variable moved from m_vars
   real:: alb0, sza0, vza0, raa0, psfc0
@@ -71,7 +73,6 @@ subroutine cal_ocp(ecfocp_iternum)
   integer::ipsfc0,ipm0,ipm1,ipm2
   integer(kind=4)::iflag
 
-  integer(kind=4)::ierr
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix, iternum
 
@@ -119,10 +120,15 @@ subroutine cal_ocp(ecfocp_iternum)
   maxpress = 1200 !hPa, make it larger than max(psfc) 
 
   ! allocate and initialize local array
-  allocate(tt(nlayers),stat=ierr)
-  allocate(qq(nlayers),stat=ierr)
-  allocate(pp(nlayers+1),stat=ierr)
-  allocate(ppdry(nlayers+1),stat=ierr)
+  allocate(tt(nlayers),stat=errstat)
+  allocate(qq(nlayers),stat=errstat)
+  allocate(pp(nlayers+1),stat=errstat)
+  allocate(ppdry(nlayers+1),stat=errstat)
+  if (errstat /= 0) then
+     call tell_error(tell_malloc_error, "cal_ocp: allocate failed",errstat)
+     return
+  endif
+
   tt = fFillValue9
   pp = fFillValue9
   ppdry = fFillValue9

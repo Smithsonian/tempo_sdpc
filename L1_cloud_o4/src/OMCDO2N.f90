@@ -160,6 +160,8 @@ program OMCDO2N
   ! -------------------------------------------
   ! READ RUNTIME PARAMETERS from control.txt
   ! -------------------------------------------
+
+  !------ run_mode ------
   status=GetConfigString("E","Runtime Parameters RunMode",buf)
   if(status <0) then
     errstat = status
@@ -175,10 +177,10 @@ program OMCDO2N
   endif
   write(*,*)'run_mode=',trim(run_mode)
 
+  ! ------ gmeta ------
   status=GetConfigString("W","Runtime Parameters APPShortName",buf)
   if(status .ne. 0) then
     write(*,*)"no APPShortName from control file, use default"
-   ! default to  m_vars 
   else
      gmetadata%appshortname=trim(buf)
   endif
@@ -225,6 +227,7 @@ program OMCDO2N
      gmetadata%omi_collection=trim(buf)
   endif
 
+  !------ debug ------
   status=GetConfigString("W","Runtime Parameters ixdebug",buf)
   if (status .NE. 0) then
      write(*,*) "No ixdebug, use default instead"
@@ -242,7 +245,8 @@ program OMCDO2N
      if (errhere .ne. 0) itdebug=-1
   endif
   write(*,*) 'itdebug=',itdebug
-  
+ 
+  !------ iteration ------- 
   status=GetConfigString("W","Runtime Parameters ecfocp_maxiter",buf)
   if (status .NE. 0) then 
      write(*,*) "No ecfocp_maxiter in control file, use default instead"
@@ -251,6 +255,8 @@ program OMCDO2N
      if (errhere .ne. 0) ecfocp_maxiter = 1
   endif
   write(*,*) 'ecfocp_maxiter=',ecfocp_maxiter
+
+  !------ filter ------
 
   status=GetConfigString("W","Runtime Parameters option_scdfullfilter",buf)
   if (status .NE. 0) then
@@ -261,6 +267,7 @@ program OMCDO2N
   endif
   write(*,*) 'option_scdfulltiler=',option_scdfullfilter
 
+  !------ destriping ------
   status=GetConfigString("W","Runtime Parameters option_destripe_scd",buf)
   if (status .NE. 0) then
      write(*,*) "use default option_destripe_scd"
@@ -287,6 +294,7 @@ program OMCDO2N
     write(*,*) 'desfac_filename=',trim(name_desfac_dir),trim(name_desfac_fnm)
   endif
 
+  !------ wavelength shift ------
   status=GetConfigString("W","Runtime Parameters option_apply_solshift",buf)
   if (status .ne. 0) then
      write(*,*) "use default option_apply_solshift"
@@ -321,6 +329,9 @@ program OMCDO2N
   endif
   write(*,*) 'TEMPOdiaglog file: ',trim(name_diaglog_dir)//trim(name_diaglog_fnm)
 
+  !-------perturbation-----------
+
+  !------ alb466 ------
   status=GetConfigString("W","Perturbations Perturb_Alb466",buf)
   if (status .ne. 0) then
      write(*,*) 'No perturbation for Alb466.'
@@ -335,7 +346,8 @@ program OMCDO2N
   write(*,*) '     PerturbAlb466=',PerturbAlb466
   if (PerturbAlb466) &
      write(*,*) '     perturbation polynomial coefs:',Alb466PertCoef
-       
+
+  !------ rad_of_irr466 ------       
   status=GetConfigString("W","Perturbations Perturb_RadOfIrr466",buf)
   if (status .ne. 0) then
      write(*,*) 'No perturbation for Rad466/Irr466'
@@ -351,6 +363,22 @@ program OMCDO2N
   if (PerturbRadOfIrr466) &
      write(*,*) '     perturbation polynomial coefs:',RoI466PertCoef
 
+  !------ o4scd ------
+  status=GetConfigString("W","Perturbations Perturb_O4SCD",buf)
+  if (status .ne. 0) then
+     write(*,*) 'No perturbation for O4SCD'
+     PerturbO4SCD = .False.
+  else
+     if (trim(buf) .eq. 'N') then
+        PerturbO4SCD = .False.
+     else
+        PerturbO4SCD = .True.
+     endif
+  endif
+  write(*,*) '     PerturbO4SCD=',PerturbO4SCD
+  if (PerturbO4SCD) &
+     write(*,*) '     perturbation factor:',O4SCDPertFactor
+
   flush (output_unit)
   call tell_log(0,'Read control file')
 
@@ -365,6 +393,10 @@ program OMCDO2N
           "Error getting time_coverage_start from TEMPO L1 RAD" ,errstat)
      call exit(-1)
   endif
+
+  !-----------------------------
+  ! 1. read rad / irr / scd
+  !-----------------------------
 
   !=============================
   ! 1.0 read wavelength shift from diaglog file
@@ -534,27 +566,24 @@ program OMCDO2N
   call tell_log(0,'Allocate ECFOCP arrays')
 
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ! ecf-ocp iteration
+  ! 7. ecf-ocp iteration
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   do iter_ecfocp = 1, ecfocp_maxiter
      write(*,*) '--------ECFOCP iteration#',iter_ecfocp
      !================================
-     ! 6. calculate ECF at 466 nm
+     ! 7.1 calculate ECF at 466 nm
      !================================
      call cal_ecf(iter_ecfocp)
      flush (output_unit)
      call tell_log(0,'   Calculated effective cloud fraction')
 
      !===============================
-     ! 7. calculate OCP using ECF
+     ! 7.2 calculate OCP using ECF
      !===============================
-     call cal_ocp(iter_ecfocp)
+     call cal_ocp(iter_ecfocp, errstat)
      flush (output_unit)
      call tell_log(0,'   Calculated cloud pressure')
   enddo 
-  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ! end of ecf-ocp iteration
-  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    
   !=============================
   ! 8. calculate Scene Pressure

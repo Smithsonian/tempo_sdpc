@@ -159,14 +159,23 @@ module m_vars
 ! O4 SCD temperature correction coefficients 
 ! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
-! coefs are derived using ops3_4p3_livetest 20240216 with
    real, parameter:: TrefO4 = 223. 
-! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in  
+! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in (obsolete) 
 !   real, parameter:: a263 = 1.0043, b263 = 0.0066
 !   real, parameter:: a293 = 1.0219, b293 = 0.1117
-! O2O2_template_may2024.pcf & control.O2O2_may2024.in
+! coefs for sdpcv4.4 are derived using ops3_4p3_livetest 20240216 with
+!   O2O2_template_may2024.pcf & control.O2O2_may2024.in
+! IDL>derive_tempo_tpcorrect,dir1,dir2,coeffs
    real, parameter:: a263 = 1.049, b263 = 0.010
    real, parameter:: a293 = 1.103, b293 = 0.017 
+! Sep 2024: test with sdpcv4.4 using 20240509 S007 gives similar coeffs 
+!  real, parameter:: a263 = 1.0528, b263 = 0.00051
+!  real, parameter:: a293 = 1.1091, b263 = 0.00089
+! Sep 2024: test with sdpcv4.4 using 20231111 S007 gives similar coeffs
+!  real, parameter:: a263 = 1.05118, b263 = 0.000901
+!  real, parameter:: a293 = 1.10656, b263 = 0.001545
+! Tests above shows that the Tpcorrect coeffs are stable at 5% and 10%
+! could pursue time dependent correction using previous day coeffs if needed
 
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 
@@ -506,7 +515,7 @@ integer:: ilun_gmi_tmp = 4003
   ! o2o2 normalization factor
   real(kind=8), parameter:: o2o2_norm = 1.0d43
   ! max o2o2 scd in unit of 1.e43 molec2 cm-5 to be considered valid
-  real, parameter:: max_o2o2_scd = 8.0 
+  real(kind=8), parameter:: max_o2o2_scd = 8.0d0 
   ! max o2o2 fitting uncertainty in 1.e43 to be considered valid
   real, parameter:: max_o2o2_uncertainty = 1.0
   ! max relative scd error (fitting_uncertainty/fitted_scd) to be valid
@@ -533,6 +542,10 @@ integer:: ilun_gmi_tmp = 4003
   !real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.95,0.0,0.0/)
   ! the following is from HCH: y = (1.-(-271.98*x+23.62)/100.)*x
   real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.7638,2.7198,0.0/)
+
+  logical :: PerturbO4SCD = .False.
+  ! multiplicative factor
+  real(kind=8),parameter :: O4SCDPertFactor = 1.05d0
 
 !-------------
 ! gmeta 

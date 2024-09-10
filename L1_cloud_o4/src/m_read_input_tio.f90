@@ -307,6 +307,12 @@ contains
     if (option_apply_solshift == 1) then
        write(*,*) 'applying solar wavelength shift'
        allocate (tmpwvl(nwavel),stat=errstat) 
+       if (errstat /= 0) then
+          call tell_error(tell_malloc_error,"read_irr_tio: allocate failed", &
+               errstat)
+          return
+       endif
+
        do ix = 1, nxtrack
           tmpwvl(:) = tio_wvl(:,ix,1) - irr_waveshift(ix)
           tio_wvl(:,ix,1) = tmpwvl(:)
@@ -526,7 +532,7 @@ contains
          [ntimes,nxtrack,nwavel], rad_Wavelength, errstat)
 
     if (errstat /= 0) then
-      call tell_error (tell_io_read_error, "read_rad_tio: failed", errstat)
+      call tell_error (tell_io_read_error, "read_rad_tio: read failed", errstat)
       return
     endif
 
@@ -537,6 +543,10 @@ contains
    ! rad_Wavelength, radRadiance, rad_PixelQualityFlags can be deallocated
 
     allocate(temp_wav(nwavel), temp_rad(nwavel), stat = errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_malloc_error,"read_rad_tio: allocate failed",errstat)
+      return
+    endif
 
    ! apply rad wavelength shift
    if (option_apply_radshift .eq. 1) then 
@@ -743,6 +753,7 @@ contains
      use m_vars, only: max_o2o2_scd, max_o2o2_uncertainty, max_o2o2_relerr
      use m_vars, only: o2o2_norm
      use m_vars, only: fFillValue, dFillValue, option_scdfullfilter
+     use m_vars, only: PerturbO4SCD, O4SCDPertFactor
 
      implicit none
 
@@ -844,11 +855,17 @@ contains
      ! normalize scd 
      tmp_dbl = tmp_dbl/o2o2_norm
 
+     ! perturb scd if requested
+     if (PerturbO4SCD) then
+        ! non-physical tmp_dbl will be filtered out next
+        tmp_dbl = tmp_dbl * O4SCDPertFactor
+     endif
+
      ! filter out unphysical values
      ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
      ! for o2o2, suspicious scds are extremely large, they should not be used
      ! any scd<0. will be skipped for ocp and pscene calculation,
-     where ((tmp_dbl < 0.) .or. (tmp_dbl > max_o2o2_scd) .or. &
+     where ((tmp_dbl < 0.d0) .or. (tmp_dbl > max_o2o2_scd) .or. &
             (scd_mdqfl .ne. 0)) 
            tmp_dbl = dspecial ! negative value
      end where
@@ -913,7 +930,7 @@ contains
            scd_relerr = 9999. !make it a large POSITIVE value
      endwhere
      where (nasa_SlantColumnAmountO2O2 < 0.)
-           scd_relerr = 9999.
+           scd_relerr = 9999. ! will be filtered out next
      endwhere
     ! bad scd or bad scduncertainty will satisfy the following
     ! and therefore be filtered out
@@ -1504,6 +1521,7 @@ end subroutine read_cldo4_dims
    enddo 
    else
        write(*,*) '     scd is not destriped.'
+       ! convert double to real
        arrout = real(arrin,kind=4)
    endif
 
