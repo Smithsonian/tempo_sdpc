@@ -547,6 +547,10 @@ integer:: ilun_gmi_tmp = 4003
   ! multiplicative factor
   real(kind=8),parameter :: O4SCDPertFactor = 1.05d0
 
+  logical :: PerturbECF = .False.
+  ! linear perturbation coeffs for ECF [0,1st] 
+  real(kind=4),parameter,dimension(2):: ECFPertCoef = (/0.05, 1.0/)
+
 !-------------
 ! gmeta 
 !-------------

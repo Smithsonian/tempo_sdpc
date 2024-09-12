@@ -291,7 +291,8 @@ subroutine cal_ocp(ecfocp_iternum, errstat)
       ! original OMCDO2N uses crf466
       cal_crf=out_CloudRadianceFraction466(ix,it)
       ! Vasilkov et al. [2021] Explicit aerosol correction uses crf477
-      ! which makes more sense  
+      ! cal_ecf is only used for filtering
+      ! cal_crf is used to calculate OCP
 
       ! skip ocp if cal_ecf or cal_crf are bad or ZERO
       ! when ecf//crf=0, there is no need to calculate ocp, remain fill value

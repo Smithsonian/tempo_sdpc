@@ -29,12 +29,10 @@ subroutine cal_ecf(ecfocp_iternum)
   real::   walb1,wsza1,wvza1,wraa1,wpsfc1
   real::   walb2,wsza2,wvza2,wraa2,wpsfc2
 
-!  real::temp_raa
-
   integer(kind=4)::nt,nx
   integer(kind=4)::it,ix
 
-! perturbation polynomial
+! perturbation polynomial order counter for rad_of_irr466
   integer(kind=4):: iord, iord1
 
   real:: gmi_psfc
@@ -709,6 +707,11 @@ subroutine cal_ecf(ecfocp_iternum)
       else
          rout_ecf = fspecial
         out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),12)
+      endif
+
+      ! perturb ecf if requested 
+      if ((PerturbECF) .and. (rout_ecf .ge. 0.)) then 
+          rout_ecf = ECFPertCoef(1) + ECFPertCoef(2) * rout_ecf
       endif
 
       ! calculate cloud radiance fraction at 466

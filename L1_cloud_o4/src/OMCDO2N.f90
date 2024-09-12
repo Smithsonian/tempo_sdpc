@@ -379,6 +379,25 @@ program OMCDO2N
   if (PerturbO4SCD) &
      write(*,*) '     perturbation factor:',O4SCDPertFactor
 
+  !------ ECF --------
+  status=GetConfigString("W","Perturbations Perturb_ECF",buf)
+  if (status .ne. 0) then
+     write(*,*) 'No perturbation for ECF'
+     PerturbECF = .False.
+  else
+     if (trim(buf) .eq. 'N') then
+         PerturbECF = .False.
+     else
+         PerturbECF = .True.
+     endif
+  endif
+  write(*,*) '     PerturbECF=',PerturbECF
+  if (PerturbECF) then
+     write(*,*) '      perturbation coeffs:',ECFPertCoef 
+     write(*,*) '          force ECFOCP iteration to once for this option.'
+     ecfocp_maxiter = 1 
+  endif
+
   flush (output_unit)
   call tell_log(0,'Read control file')
 
