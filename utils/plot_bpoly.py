@@ -34,13 +34,16 @@ def read_bpoly (filename):
 
 def main():
     parser = argparse.ArgumentParser(description='plot geospatial bounding polygon')
-    parser.add_argument('--outfile', help="path to output file")
+    parser.add_argument('--outfile', help="path to output file", default=None)
     parser.add_argument('files', nargs=argparse.REMAINDER)
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
 
     args = parser.parse_args()
+
+    if args.outfile is None:
+        matplotlib.use('TkAgg')
 
     fig = plt.figure()
     ax = plt.subplot (1,1,1, projection=ccrs.Miller())
@@ -56,10 +59,12 @@ def main():
 
     for path in args.files:
         (lons, lats) = read_bpoly (path)
-        ax.plot (lons, lats, lw=0.5, transform=ccrs.PlateCarree())
+        ax.plot (lons, lats, lw=0.5, marker="o", markersize=2, transform=ccrs.PlateCarree())
 
-    #plt.show()
-    plt.savefig(args.outfile, dpi=300, bbox_inches="tight")
+    if args.outfile is None:
+        plt.show()
+    else:
+        plt.savefig(args.outfile, dpi=300, bbox_inches="tight")
 
 if __name__ == '__main__':
     main()

@@ -136,6 +136,7 @@ def main():
         gps_y = np.interp (tt_dop, tt_gps, gps["y"])
         gps_z = np.interp (tt_dop, tt_gps, gps["z"])
         delta = np.hypot (gps_x-dop["x"], gps_y-dop["y"], gps_z-dop["z"])
+        dlt.set_ylim (0, 20.0)
         dlt.plot (tt_dop, delta, color='k', lw=lw_std*2)
 
         # Convert seconds-since-epoch numbers into struct_time objects and then to
