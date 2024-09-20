@@ -919,10 +919,10 @@ static inline float merge_coordinates (float corner1, float corner2, float cente
 }
 
 static int flag_nonmonotonic_columns (const float *lon2d, const int *inrqf, int num_steps, int num_xtrack, int x,
-                                      float *delta_lon, int *exclude_column)
+                                      int increasing_eastward, float *delta_lon, int *exclude_column)
 {
-   float lon_a, lon_b, lon_first, lon_last, delta;
-   int s;
+   float lon_a, lon_b;
+   int s, sign;
 
    memset ((char *)delta_lon, 0, num_steps * sizeof(float));
 
@@ -937,7 +937,6 @@ static int flag_nonmonotonic_columns (const float *lon2d, const int *inrqf, int 
    lon_a = (lon2d + s * num_xtrack)[x];
    s++;
    lon_b = lon_a;
-   lon_first = lon_a;
 
    for (  ; s < num_steps; s++)
      {
@@ -948,13 +947,12 @@ static int flag_nonmonotonic_columns (const float *lon2d, const int *inrqf, int 
              lon_a = lon_b;
           }
      }
-   lon_last = lon_b;
 
-   delta = lon_last - lon_first;
+   sign = increasing_eastward ? -1 : +1;
 
    for (s = 0; s < num_steps; s++)
      {
-        if (delta_lon[s] * delta < 0) exclude_column[s] = 1;
+        if (delta_lon[s] * sign < 0) exclude_column[s] = 1;
      }
 
    return 0;
@@ -1099,7 +1097,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    int num_steps, num_xtrack, num_pixels, max_num_boundary;
    int s, x, i, n, x_first_ok, x_last_ok, s_first_ok, s_last_ok;
    int varid, no_fill, lon_bounds_status, num_kept, polygon_type;
-   int status = -1;
+   int status = -1, increasing_eastward=1;
    float fill_value = TIO_FILL_FLOAT;
    float band_km = Douglas_Peucker_Band_Width_Km;
    float vza_max_deg = Bounding_Polygon_Max_VZA_Deg;
@@ -1174,8 +1172,8 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
     * Exclude any column with a non-monotonic longitude change
     */
    memset ((char *)exclude_column, 0, num_steps * sizeof(int));
-   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.2*num_xtrack, delta_lon, exclude_column);
-   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.8*num_xtrack, delta_lon, exclude_column);
+   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.2*num_xtrack, increasing_eastward, delta_lon, exclude_column);
+   flag_nonmonotonic_columns (lon2d, inrqf, num_steps, num_xtrack, 0.8*num_xtrack, increasing_eastward, delta_lon, exclude_column);
    for (s = 0; s < num_steps; s++)
      {
         int *inrqf_step = inrqf + s * num_xtrack;
