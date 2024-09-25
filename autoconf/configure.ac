@@ -249,6 +249,20 @@ fi
 AC_SUBST(TELL_LIB)
 AC_SUBST(TELL_INC)
 
+AC_ARG_WITH(iocsdpc,
+  [  --with-iocsdpc[=DIR]      Use iocsdpc library installed in DIR (default:$prefix)],
+  [jh_with_iocsdpc=$withval],
+  [jh_with_iocsdpc=no])
+if test "x$jh_with_iocsdpc" = "xno"; then
+   IOCSDPC_LIB="\$(OTS_ROOT)/lib"
+   IOCSDPC_INC="\$(OTS_ROOT)/include"
+else
+   IOCSDPC_LIB="$jh_with_iocsdpc/lib"
+   IOCSDPC_INC="$jh_with_iocsdpc/include"
+fi
+AC_SUBST(IOCSDPC_LIB)
+AC_SUBST(IOCSDPC_INC)
+
 AC_ARG_WITH(tiff,
   [  --with-tiff[=DIR]         Use tiff library installed in DIR (default:$prefix)],
   [jh_with_tiff=$withval],

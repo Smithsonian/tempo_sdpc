@@ -651,6 +651,8 @@ GEOTIFF_INC
 GEOTIFF_LIB
 TIFF_INC
 TIFF_LIB
+IOCSDPC_INC
+IOCSDPC_LIB
 TELL_INC
 TELL_LIB
 INROTS_EXTRA_LIBS
@@ -767,6 +769,7 @@ with_s6root
 with_inrroot
 with_inrots
 with_tell
+with_iocsdpc
 with_tiff
 with_geotiff
 with_leapsec
@@ -1422,6 +1425,7 @@ Optional Packages:
   --with-inrroot=DIR       Use INR software installed in DIR
   --with-inrots=DIR       Use INR OTS software installed in DIR
   --with-tell=DIR         Use tell library installed in DIR (default:$prefix)
+  --with-iocsdpc=DIR      Use iocsdpc library installed in DIR (default:$prefix)
   --with-tiff=DIR         Use tiff library installed in DIR (default:$prefix)
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
   --with-leapsec=FILE     Use this leap second file
@@ -2888,6 +2892,24 @@ if test "x$jh_with_tell" = "xno"; then
 else
    TELL_LIB="$jh_with_tell/lib"
    TELL_INC="$jh_with_tell/include"
+fi
+
+
+
+
+# Check whether --with-iocsdpc was given.
+if test "${with_iocsdpc+set}" = set; then :
+  withval=$with_iocsdpc; jh_with_iocsdpc=$withval
+else
+  jh_with_iocsdpc=no
+fi
+
+if test "x$jh_with_iocsdpc" = "xno"; then
+   IOCSDPC_LIB="\$(OTS_ROOT)/lib"
+   IOCSDPC_INC="\$(OTS_ROOT)/include"
+else
+   IOCSDPC_LIB="$jh_with_iocsdpc/lib"
+   IOCSDPC_INC="$jh_with_iocsdpc/include"
 fi
 
 
