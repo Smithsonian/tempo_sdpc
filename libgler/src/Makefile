@@ -16,7 +16,7 @@ NDINTERP_LIBPATHS = -L$(config_dir)/libndinterp/src/$(archobjs)
 NDINTERP_INC     = $(config_dir)/libndinterp/src
 
 IOCSDPC_INC = $(prefix)/include
-IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -lcsv
+IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -lcsv
 
 GLER_LIBPATHS    = -L$(elfdir)
 
