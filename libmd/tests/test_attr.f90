@@ -74,8 +74,8 @@ program test_attr
   ! set up lat, lon arrays
   do n=1,nstep
     do m=1,nxtrack
-      lat(m,n)=-10+(m-1)
-      lon(m,n)=-10+(2*n-2)
+      lat(m,n)=10-(m-1)
+      lon(m,n)=10-(2*n-2)
       vza(m,n)=0.0
       inrqf(m,n) = 0
     enddo
