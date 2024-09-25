@@ -6,6 +6,7 @@
 #include <libconfig.h>
 #include <netcdf.h>
 #include <tell.h>
+#include <iocsdpc.h>
 #include <tio.h>
 #include <tio_template.h>
 
@@ -15,6 +16,7 @@
 #define GRANULE_TYPE_PRIVATE_DATA \
    int *pixel_buffer; \
    int exposure_type; \
+   int content_version; \
    int ncid; \
    int num_exprecs; \
    int num_rows; \
@@ -219,6 +221,23 @@ granule_read_exprec_by_index (const Granule_Type *g, int ith,
         goto error_return;
      }
 
+   /* When content_version=0, tweak image_start_time to correct the issue documented in redmine #204
+    *                         (image timestamp in telemetry is actually the time when the FSW
+    *                          receives the first co-add, and not the integration start time).
+    * When content_version>0, the IOC has already corrected image_start_time.
+    */
+   if ((g->content_version == 0) && (exprec->num_coadds > 0))
+     {
+        double integration_time_per_coadd = exprec->exposure_time / exprec->num_coadds;
+        if (0 != iocsdpc_tweak_image_time_per_redmine_204 (exprec->ccd_int_type, integration_time_per_coadd,
+                                                           &exprec->start_time))
+          {
+             tell_verror (TELL_RUNTIME_ERROR, "%s: iocsdpc_tweak_image_time_per_redmine_204 failed processing exposure record %d",
+                          __func__, ith);
+             goto error_return;
+          }
+     }
+
    if (0 != TIO_get_var_section (g->ncid, "image", start, count, TIO_INT,
                                  g->pixel_buffer))
      {
@@ -358,6 +377,7 @@ Granule_Type *granule_open (const char *file)
 {
    Granule_Type *g;
    char exprec_type[TIO_MAX_SHORT_NAME_LEN];
+   int attid;
    size_t img_size;
 
    tell_vlog (TELL_MSGTYPE_INFO, 1, "%s: starting", __func__);
@@ -378,6 +398,14 @@ Granule_Type *granule_open (const char *file)
    img_size = g->num_rows * g->num_cols * sizeof(int);
    if (NULL == (g->pixel_buffer = (int *) MALLOC (img_size)))
      goto error_return;
+
+   /* content_version attribute isn't always present. */
+   if (NC_NOERR == nc_inq_attid (g->ncid, NC_GLOBAL, "content_version", &attid))
+     {
+        if (0 != TIO_get_att (g->ncid, NC_GLOBAL, "content_version", NC_INT, &g->content_version))
+          goto error_return;
+     }
+   else g->content_version = 0;
 
    memset ((char *)exprec_type, 0, sizeof(exprec_type));
    if (0 != TIO_get_att (g->ncid, NC_GLOBAL, "exprec_type", NC_CHAR, exprec_type))

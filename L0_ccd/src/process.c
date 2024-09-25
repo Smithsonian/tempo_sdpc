@@ -10,6 +10,7 @@
 #include <libconfig.h>
 #include <libnovas.h>
 #include <tell.h>
+#include <iocsdpc.h>
 #include <tio.h>
 #include <tio_template.h>
 
@@ -417,7 +418,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *aimg = NULL;
    float fpa_temp, fpe_temp, spec_temp, tele_temp, bench_temp, fpa_sum, fpe_sum, spec_sum, tele_sum, bench_sum;
-   double smear_fraction;
+   double smear_fraction, redmine204_shift;
    double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period;
    int i, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
    unsigned int j;
@@ -475,12 +476,18 @@ static int compute_current_and_trim (CCD_Type *ccd,
     * for improvement for the other modes.
     * It should be revisited once we gain a precise understanding of
     * how it works for different integration modes.
+    *
+    * September 25, 2024: Code revised to un-tweak image time.
+    * This is a temporary solution. New dark correction is expected in Version 4.
     */
 
    double secs_per_clock      = 8.2987551867219914e-08;
    double frame_transfer_time =  100416 * secs_per_clock;
    double full_flush_time     =  199104 * secs_per_clock;
    double storage_read_time   = 1204992 * secs_per_clock;
+
+   redmine204_shift = 0.0;
+   (void) iocsdpc_tweak_image_time_per_redmine_204 (exprec->ccd_int_type, exposure_time_per_frame, &redmine204_shift);
 
    switch (exprec->ccd_int_type)
      {
@@ -490,21 +497,21 @@ static int compute_current_and_trim (CCD_Type *ccd,
       /* SHORT_INT */
         integration_period = exposure_time_per_frame;
         coadd_period = full_flush_time + integration_period + frame_transfer_time + storage_read_time;
-        exposure_time_offset = exprec->start_time - coadd_period;
+        exposure_time_offset = (exprec->start_time - redmine204_shift) - coadd_period;
         n_sample = 1;
         break;
       case 0:
       /* NOMINAL */
         integration_period = exposure_time_per_frame;
         coadd_period = integration_period + frame_transfer_time;
-        exposure_time_offset = exprec->start_time;
+        exposure_time_offset = (exprec->start_time - redmine204_shift);
         n_sample = 1;
         break;
       case 2:
       /* LONG_INT */
         integration_period = exposure_time_per_frame - storage_read_time;
         coadd_period = frame_transfer_time + storage_read_time + integration_period;
-        exposure_time_offset = exprec->start_time;
+        exposure_time_offset = (exprec->start_time - redmine204_shift);
         n_sample = 30;
         break;
       default:
