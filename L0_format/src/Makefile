@@ -20,18 +20,17 @@ INSTALL_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib
 LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 LIBCSV_LIBPATHS =# -Wl,-rpath=$(LIBCSV_LIB) -L$(LIBCSV_LIB)
 
-IOCSDPC_INC = $(prefix)/include
-IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc
+IOCSDPC_LIBPATHS = -Wl,-rpath=$(IOCSDPC_LIB) -L$(IOCSDPC_LIB) -lioclib -liocsdpc
 
 EXTRA_INCS =#
 EXTRA_LIBS =#
 
-INCS = -I$(TIO_INC) -I$(IOCSDPC_INC) $(LIBCSV_INC) \
+INCS = -I$(IOCSDPC_INC) -I$(TIO_INC) $(LIBCSV_INC) \
        -I$(TELL_INC) -I$(LIBCONFIG_INC) -I$(NETCDF_INC) -I$(config_dir)/include
-LIBS = $(TIO_LIBPATHS) -ltio \
+LIBS = $(IOCSDPC_LIBPATHS) $(TIO_LIBPATHS) -ltio \
        $(LIBCONFIG_LIBPATHS) -lconfig \
        $(LIBCSV_LIBPATHS) -lcsv \
-       $(NETCDF_LIBPATHS) -lnetcdf $(IOCSDPC_LIBPATHS) \
+       $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
        $(RPATH) $(INSTALL_LIBPATHS)
 

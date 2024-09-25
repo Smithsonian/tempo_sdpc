@@ -18,18 +18,17 @@ LIBCONFIG_LIBPATHS = -Wl,-rpath=$(LIBCONFIG_LIB) -L$(LIBCONFIG_LIB)
 
 SLNOVAS_LIBPATHS = -Wl,-rpath=$(SLNOVAS_LIB) -L$(SLNOVAS_LIB) -llibnovas
 
-IOCSDPC_INC = $(prefix)/include
-IOCSDPC_LIBPATHS = -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lioclib -liocsdpc -lcsv
+IOCSDPC_LIBPATHS = -Wl,-rpath=$(IOCSDPC_LIB) -L$(IOCSDPC_LIB) -lioclib -liocsdpc -lcsv
 
 EXTRA_INCS =#
 EXTRA_LIBS = $(GSL_LIBPATHS) $(SLNOVAS_LIBPATHS) #
 
-INCS = -I$(TIO_INC) -I$(IOCSDPC_INC) -I$(TELL_INC) \
+INCS = -I$(IOCSDPC_INC) -I$(TIO_INC) -I$(TELL_INC) \
         -I$(LIBCONFIG_INC) -I$(NETCDF_INC) -I$(SLNOVAS_INC) \
         -I$(config_dir)/include
-LIBS = $(TIO_LIBPATHS) -ltio -lmpfit \
+LIBS = $(IOCSDPC_LIBPATHS) $(TIO_LIBPATHS) -ltio -lmpfit \
        $(LIBCONFIG_LIBPATHS) -lconfig \
-       $(NETCDF_LIBPATHS) -lnetcdf $(IOCSDPC_LIBPATHS) \
+       $(NETCDF_LIBPATHS) -lnetcdf \
        $(TELL_LIBPATHS) -ltell \
        $(RPATH) $(INSTALL_LIBPATHS)
 
