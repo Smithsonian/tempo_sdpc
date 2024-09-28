@@ -5,7 +5,7 @@ module m_read_input_tio
 
   public open_tio, close_tio, read_irr_tio, read_rad_tio
   private read_rad_dims, quick_lin_interpol, allocate_rad_vars
-  private quick_irr_interpol
+  private quick_irr_interpol, allocate_cldo4_vars
 
 contains
 
@@ -411,18 +411,21 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle, & 
+         out_RelativeAzimuthAngle, rad_RelativeAzimuthAngle, &
          out_TerrainHeight, scddes_hour,&
          rad_GroundPixelQualityFlags, &
          out_ProcessingQualityFlags, &
-         w440, w466, w477, fFillValue,&
+         w440, w466, w477, &
          rad_440nm,rad_466nm,rad_477nm, rad_EarthSunDist, &
          rad_NumTimes, rad_nXtrack, rad_nWavel, rad_SnowIceFraction
 
     use m_vars, only: rad_waveshift, option_apply_radshift
 
+    use m_vars, only: option_calc_raa
+
     use m_vars, only: ixdebug, itdebug, run_mode, lun_debug_rad
 
-    use m_vars, only: negative999, dFillValue
+    use m_vars, only: negative999, dFillValue, fFillValue
 
     !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
     implicit none
@@ -449,6 +452,7 @@ contains
     integer(kind=2), dimension(:,:), allocatable:: rad_TerrainHeight
 
     real(kind=4), dimension(:), allocatable:: temp_wav, temp_rad
+    real(kind=4):: temp_raa
     integer(kind=2) :: temp_radflags
 
     ! only execute if there is no previous error
@@ -501,8 +505,9 @@ contains
          [ntimes, nxtrack], rad_SolarZenithAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_zenith_angle", [0,0], &
          [ntimes, nxtrack], rad_ViewingZenithAngle, errstat)
-   ! what needed is relative azimuth angle read in by read_cldo4_tio
+   ! what needed is relative azimuth angle can be read in by read_cldo4_tio
    ! SAA and VAA are read as original code uses them to calculate RAA
+   ! now as an option to calculate RAA or use those from read_cldo4_tio
     call tiof_get2d_r4 (tio_l1obj, "solar_azimuth_angle", [0,0], &
          [ntimes, nxtrack], rad_SolarAzimuthAngle, errstat)
     call tiof_get2d_r4 (tio_l1obj, "viewing_azimuth_angle", [0,0], &
@@ -550,7 +555,7 @@ contains
 
    ! apply rad wavelength shift
    if (option_apply_radshift .eq. 1) then 
-      write(*,*) 'applying rad wavelength shift'
+      write(*,*) '   applying rad wavelength shift'
       do it = 1, ntimes
          do ix = 1, nxtrack
             temp_wav(:) = rad_Wavelength(:,ix,it)-rad_waveshift(ix,it)
@@ -558,6 +563,46 @@ contains
          enddo
       enddo 
       ! rad_Wavelength now agrees with solar reference used in fitting
+   endif
+
+   ! calculate RAA if requested, otherwise use those from read_cldo4_tio
+   if (option_calc_raa .eq. 1) then
+      write(*,*) '   calculate RAA from SAA & VAA'
+      ! RAA = SAA - VAA + PI, why +PI?
+      ! xliu: this is related to the definition of SAA and VAA
+      !       RAA of forward scattering=0, backward scattering=180
+      ! also see Eun-Su Yrange slide for explanation
+      do it = 1, ntimes
+         do ix = 1, nxtrack
+            if ((rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. &
+                (rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. &
+                (rad_SolarAzimuthAngle(ix,it) .le. 360.)) then
+               temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
+               ! ensure tem_raa is within [0., 360) range
+               do while (temp_raa .lt. 0.0) 
+                  temp_raa = temp_raa + 360.
+               enddo
+               do while (temp_raa .ge. 360.)
+                  temp_raa = temp_raa - 360.
+               enddo
+               ! assign rad_RelativeAzimuthAngle using calculated value
+               ! Note, L1_trace_gas is in [-180,180) range
+               !       L1_cloud_o4 is in [0.,360) range
+               ! this is only for output in development mode
+               ! otherwise output will be fill value
+               rad_RelativeAzimuthAngle(ix,it) = temp_raa               
+
+               ! adjust temp_raa to [0., 180.] range using symmetry 
+               ! to be consistent with LUT RAA range
+               if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
+               ! assign out_RelativeAzimuthAngle which is used for calculation 
+               out_RelativeAzimuthAngle(ix,it) = temp_raa
+            else
+               ! large negative raa will be skipped in cal_ecf
+               out_RelativeAzimuthAngle(ix,it) = fFillValue
+            endif
+         enddo
+      enddo 
    endif
 
    ! debug
@@ -754,6 +799,7 @@ contains
      use m_vars, only: o2o2_norm
      use m_vars, only: fFillValue, dFillValue, option_scdfullfilter
      use m_vars, only: PerturbO4SCD, O4SCDPertFactor
+     use m_vars, only: option_calc_raa
 
      implicit none
 
@@ -949,8 +995,10 @@ contains
     endif ! option_scdfullfilter
 
     !-------------------------------------------------
-    ! now read rad_RelativeAzimuthAngle here
-    ! open geolocation group to read raa
+    ! read rad_RelativeAzimuthAngle 
+    ! in development mode, it is written to geolocation group
+    ! in production mode, geolocation group is inherited from fitting
+    ! open geolocation group to read raa 
     ! other angles are read from L1B file
     call tiof_push_group(tio_l2obj,"geolocation", errstat)
 
@@ -959,6 +1007,42 @@ contains
 
     call tiof_pop_group(tio_l2obj, errstat)
 
+    ! if option_calc_raa is 0, 
+    ! rad_RelativeAzimuthAngle -> out_RelativeAzimuthAngle 
+    ! so that RAA is within [0.,180] range for valid pixels
+    ! to be consistent with LUT RAA range
+    ! use out_RelativeAzimuthAngle for calculation 
+    !     rad_RelativeAzimuthAngle is for output only 
+    if (option_calc_raa .eq. 0) then ! use RAA in L2 file, do not calc
+       do it = 1, ntimes
+         do ix = 1, nxtrack
+            tmp_raa = rad_RelativeAzimuthAngle(ix,it)
+            ! bad tmp_raa should be a large negative fill value
+            if ((tmp_raa .lt. -360.)) then
+                out_RelativeAzimuthAngle(ix,it) = fspecial
+            else
+               ! correct to [0., 360.) range first
+                temp_raa = tmp_raa
+                do while(temp_raa .lt. 0.)
+                   temp_raa = temp_raa + 360.
+                end do
+                do while(temp_raa .ge. 360.)
+                   temp_raa = temp_raa - 360.
+                end do
+             
+                ! change to LUT RAA range of [0.,180.], using symmetry w.r.t. 0
+                ! temp_raa = temp_raa - 360 leads to a negative value within [-180,0)
+                ! negative and positive raa have the same effect, temp_raa=360-temp_raa
+                if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
+   
+                ! assign out_RelativeAzimuthAngle 
+                out_RelativeAzimuthAngle(ix,it) = temp_raa
+            endif
+         end do
+       end do
+    endif ! option_calc_raa
+
+     ! read fit_rms_residual in development mode 
      if (run_mode .NE. 'production') then
         ! open qa_statistics group to read fit_rms_residual
         call tiof_push_group(tio_l2obj, "qa_statistics", errstat)
@@ -978,33 +1062,6 @@ contains
        return
      endif
  
-    ! rad_RelativeAzimuthAngle -> out_RelativeAzimuthAngle 
-    ! so that RAA is within [0.,180) range for valid pixels
-    ! to be consistent with LUT RAA range
-    do it = 1, ntimes
-      do ix = 1, nxtrack
-         tmp_raa = rad_RelativeAzimuthAngle(ix,it)
-         ! bad tmp_raa should be a large negative fill value
-         if ((tmp_raa .lt. -360.)) then
-             out_RelativeAzimuthAngle(ix,it) = fspecial
-         else
-             ! correct to [0., 360.) range first
-             temp_raa = tmp_raa
-             do while(temp_raa .lt. 0.)
-                temp_raa = temp_raa + 360.
-             end do
-             do while(temp_raa .ge. 360.)
-                temp_raa = temp_raa - 360.
-             end do
-             
-             ! change to LUT RAA range of [0.,180.], using symmetry w.r.t. 0
-             if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
-    
-             out_RelativeAzimuthAngle(ix,it) = temp_raa
-         endif
-      end do
-    end do
-    
    end subroutine read_cldo4_tio
 
   !> Use simple linear interpolation to find irrad at target wavelength
@@ -1145,6 +1202,7 @@ contains
     use m_vars, only: rad_Time, rad_Latitude, rad_Longitude, &
          rad_SolarZenithAngle, rad_ViewingZenithAngle, &
          rad_ViewingAzimuthAngle, rad_SolarAzimuthAngle,&
+         rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle,&
          out_TerrainHeight, rad_SnowIceFraction,&
          rad_440nm, rad_466nm, rad_477nm, &
          out_ProcessingQualityFlags, rad_GroundPixelQualityFlags
@@ -1154,7 +1212,6 @@ contains
 
     use m_vars, only: fFillValue, prev_processingflags
          
-
     implicit none
 
     !input variables
@@ -1174,6 +1231,8 @@ contains
          rad_ViewingZenithAngle(nxtrack, ntimes), &
          rad_SolarAzimuthAngle(nxtrack, ntimes), &
          rad_ViewingAzimuthAngle(nxtrack, ntimes), &
+         rad_RelativeAzimuthAngle(nxtrack, ntimes), &
+         out_RelativeAzimuthAngle(nxtrack, ntimes), &
          out_TerrainHeight(nxtrack, ntimes), &
          rad_SnowIceFraction(nxtrack, ntimes), &
          rad_GroundPixelQualityFlags(nxtrack, ntimes), &
@@ -1201,6 +1260,8 @@ contains
     rad_ViewingZenithAngle = fspecial
     rad_SolarAzimuthAngle = fspecial
     rad_ViewingAzimuthAngle = fspecial
+    rad_RelativeAzimuthAngle = fspecial
+    out_RelativeAzimuthAngle = fspecial
     rad_SnowIceFraction = fspecial
     rad_GroundPixelQualityFlags = -1
     out_TerrainHeight = fspecial
@@ -1266,8 +1327,7 @@ end subroutine read_cldo4_dims
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
            scd_mdqfl, fFillValue,&
-           nasa_scdrms, nasa_scduncertainty,&
-           rad_RelativeAzimuthAngle,out_RelativeAzimuthAngle
+           nasa_scdrms, nasa_scduncertainty
 
      implicit none
 
@@ -1286,12 +1346,6 @@ end subroutine read_cldo4_dims
           stat = errstat)
      l2_TerrainPressure = fFillValue
  
-     allocate (rad_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
-     rad_RelativeAzimuthAngle = fFillValue
-
-     allocate (out_RelativeAzimuthAngle(nxtrack, ntimes),stat=errstat)
-     out_RelativeAzimuthAngle = fFillValue
-
      allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
 
      if (errstat /= 0) then

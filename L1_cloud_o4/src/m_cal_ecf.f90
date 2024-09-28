@@ -196,6 +196,7 @@ subroutine cal_ecf(ecfocp_iternum)
 ! out_RelativeAzimuthAngle is now taken care of within m_read_input_tio
 !      invalid raa is set to a large negative value there
 ! the following is no longer needed, kept here as a clarification for RAA definition
+! if requested (option_calc_raa=1), raa will be calculated in read_rad_tio
 !      if((rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. (rad_SolarAzimuthAngle(ix,it) .le. 360.) .and. &
 !           (rad_ViewingAzimuthAngle(ix,it) .ge. -360.) .and. (rad_ViewingAzimuthAngle(ix,it) .le. 360.)) then
 !      ! RAA = SAA - VAA + PI, Why +PI?

@@ -19,9 +19,13 @@ module m_vars
 !       switch to TEMPO LUTs
 ! 
 !  2023 Wang modification for TEMPO
+!       add development/production mode
 !       add O2O2 temperature correction
 !       add ECFOCP iteration
+! 
+!  2024 Wang modification for TEMPO
 !       add TEMPO IRR & RAD wavelength shift
+!       add perturbation options
 !
 ! reference: 
 !  Vasilkov et al., (2018). A cloud algorithm base on the O2-O2 477nm
@@ -160,9 +164,6 @@ module m_vars
 ! y(T2) = a * y(T1) + b; T1 = 223K, T2=263, 293K (Finkenzeller)
 !------------------------
    real, parameter:: TrefO4 = 223. 
-! O2O2_template_feb2024.pcf & control.O2O2_feb2024.in (obsolete) 
-!   real, parameter:: a263 = 1.0043, b263 = 0.0066
-!   real, parameter:: a293 = 1.0219, b293 = 0.1117
 ! coefs for sdpcv4.4 are derived using ops3_4p3_livetest 20240216 with
 !   O2O2_template_may2024.pcf & control.O2O2_may2024.in
 ! IDL>derive_tempo_tpcorrect,dir1,dir2,coeffs
@@ -527,6 +528,13 @@ integer:: ilun_gmi_tmp = 4003
   integer:: lun_desfac_fnm=177
 
   real(kind=4),dimension(:),allocatable:: scddes_hour
+
+!-----------
+! calculate raa  
+! option_calc_raa=1: calculate from saa & vaa internally
+!                =0: use raa from l2 fitting output
+!-----------
+  integer :: option_calc_raa = 1 
 
 !-------------
 ! Perturbations
