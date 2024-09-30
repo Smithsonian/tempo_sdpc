@@ -11,6 +11,7 @@ module m_write_output_tio
        copy_pixel_corners
   private write_product_struct, write_product_data
   private write_support_struct, write_support_data
+  private write_qa_struct, write_qa_data
 
   public update_output_file_tio
   public create_output_file_tio
@@ -138,7 +139,7 @@ contains
     use netcdf, only: nf90_global, nf90_put_att
     use m_vars, only: name_option_TemperaturePressure,name_option_SurfaceReflectivity, &
            name_option_MinECF,name_option_SnowIce,name_option_SceneAlbedoAtTerrain,&
-           option_clip_pcld, ecfocp_maxiter,&
+           option_clip_pcld, option_calc_raa,ecfocp_maxiter,&
            option_scdfullfilter, option_destripe_scd, &
            option_apply_solshift, option_apply_radshift
     
@@ -196,11 +197,14 @@ contains
         'option_apply_solshift',option_apply_solshift)
     errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
         'option_apply_radshift',option_apply_radshift)
+    errstat=nf90_put_att(tio_l2obj%fileid, nf90_global, &
+        'option_calc_raa',option_calc_raa)
 
     ! Create default groups
     call tiof_def_group (tio_l2obj, "product", errstat)
     call tiof_def_group (tio_l2obj, "geolocation", errstat)
     call tiof_def_group (tio_l2obj, "support_data", errstat)
+    call tiof_def_group (tio_l2obj, "qa_statistics", errstat)
     if (errstat < 0) then
       call tell_error (tell_io_write_error, &
            "create_output_file_tio: failed to define groups", &
@@ -287,6 +291,24 @@ contains
        call tell_error (tell_io_write_error, &
             "create_output_file: filed to write support data", &
             errstat)
+       return
+    endif
+
+    ! qa_statistics variable definitions
+    call write_qa_struct(tio_l2obj, dimids_xtrack_step(1), &
+               dimids_xtrack_step(2), errstat)
+    if (errstat /= 0) then
+       call tell_error (tell_io_write_error, &
+            "creat_output_file: failed to write qa structures", &
+            errstat)
+       return
+    endif
+
+    ! qa_statistics data
+    call write_qa_data(tio_l2obj, nstep, nxtrack, errstat)
+    if (errstat /= 0) then
+       call tell_error (tell_io_write_error, &
+           "create_output_file: filed to write qa data", errstat)
        return
     endif
 
@@ -547,6 +569,115 @@ contains
 
   end subroutine write_geo_struct
 
+  !> Create the structure for the qa data in L2 netCDF file
+  !-----------------------------------------------------------------------
+  !
+  !> @param[in] tio_l2obj   file object to be written into
+  !> @param[in] dimlist     list of dimension parameters
+  !> @param     errstat     error tracking code, non-zero indicates problem
+  !
+  !> @author HWang   Sep 2024
+  ! qa_statistics is inherited in production and written in development
+  !-----------------------------------------------------------------------
+  subroutine write_qa_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
+
+    implicit none
+
+    !input variables
+    type (tiof_file_type), intent(inout) :: tio_l2obj
+    integer, intent(in) :: dimid_xtrack, dimid_step
+    !output variables
+    integer, intent(inout) :: errstat
+    !local variables
+    type (tiof_varlist_type) :: varlist
+    type (tiof_attlist_type) :: att_qa
+    integer, dimension(2) :: dimids_xtrack_step
+    integer, parameter :: deflate_level = 1
+    logical, parameter :: shuffle = .true.
+
+    !define r8 kind for use in setting parameter valid ranges
+    integer, parameter :: r8 = kind(1.0d0)
+
+    if (errstat /= 0) return
+
+    dimids_xtrack_step(1) = dimid_xtrack
+    dimids_xtrack_step(2) = dimid_step
+
+    ! Geolocation Fields with optional attribute lists
+    call tiof_attlist_append (att_qa, errstat, "qa_statistics", &
+                              att_text = "time longitude latitude")
+
+    call tiof_varlist_append (varlist, errstat, &
+                              "fit_rms_residual", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              standard_name = "fit_rms_residual", &
+                              long_name = "fitting rms", &
+                              units = "", &
+                              valid_range = [0.0_r8, 100.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
+    call tiof_varlist_append (varlist, errstat, &
+                              "fit_convergence_flag", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "fit congergence flag", &
+                     comment="failed=-2,maxiter_exceeded=-1,suspect=0,good=1",&
+                              units = "", &
+                              valid_range = [-10000._r8, 2.0_r8], &
+                              fillvalue = fill_short, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle)
+
+    call tiof_push_group (tio_l2obj, "qa_statistics", errstat)
+    call tiof_def_vars (tio_l2obj, varlist, errstat)
+    call tiof_pop_group (tio_l2obj, errstat)
+    call tiof_varlist_free (varlist)
+    call tiof_attlist_free (att_qa)
+
+    if (errstat /= 0) then
+      call tell_error (tell_io_write_error, "write_qa_struct: failed", &
+           errstat)
+      return
+    endif
+
+  end subroutine write_qa_struct
+
+! HW write qa_statistics data 
+  subroutine write_qa_data(tio_l2obj, nstep, nxtrack, errstat)
+     use m_vars, only: fit_convergence_flag, nasa_scdrms
+
+    implicit none
+
+    !input variables
+    integer, intent(in) :: nxtrack, nstep
+    !output variables
+    integer, intent(inout) :: errstat
+
+    type (tiof_file_type), pointer :: tio_l2obj
+
+    if (errstat /= 0) return
+
+    tio_l2obj => primary_output_file
+
+    call tiof_push_group (tio_l2obj, "qa_statistics", errstat)
+
+    call tiof_put2d_r4 (tio_l2obj, "fit_rms_residual", [0,0], &
+         [nstep, nxtrack], nasa_scdrms, errstat)
+
+    call tiof_put2d_i2 (tio_l2obj, "fit_convergence_flag", [0,0], &
+         [nstep, nxtrack], fit_convergence_flag, errstat)
+
+    call tiof_pop_group (tio_l2obj, errstat)
+
+    if (errstat /= 0) then
+       call tell_error (tell_io_write_error,"write_qa_data:failed",errstat)
+       return
+    endif
+
+   end subroutine write_qa_data
+
   !> Write geolocation data into L2 netCDF file
   !-----------------------------------------------------------------------
   !
@@ -613,7 +744,7 @@ contains
 
   end subroutine write_geo_data
 
-  !> Write geolocation data into L2 netCDF file
+  !> Write geolocation pixel corner data into L2 netCDF file
   !-----------------------------------------------------------------------
   !
   !> @param[in]  l1_file    Radiance input filename
@@ -691,7 +822,7 @@ contains
   end subroutine copy_pixel_corners
 
 !-------------------------------
-!  added
+! HW added product struct 
 !-------------------------------
 
    subroutine write_product_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
@@ -1242,18 +1373,6 @@ contains
                               attlist=att_support)
 
     call tiof_varlist_append (varlist, errstat, &
-                              "fit_rms_residual", &
-                              nf90_float, &
-                              dimids = dimids_xtrack_step,  &
-                          long_name = "fitted reference O2-O2 SCD uncertainty" , &
-                              units = "unitless", &
-                              valid_range = [0.0_r8, 20.0_r8], &
-                              fillvalue = fill_float, &
-                              deflate_level = deflate_level, &
-                              shuffle = shuffle, &
-                              attlist=att_support)
-
-    call tiof_varlist_append (varlist, errstat, &
                               "surface_pressure", &
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
@@ -1529,9 +1648,6 @@ contains
 
     call tiof_put2d_r4 (tio_l2obj, "fitted_slant_column_uncertainty", [0,0], &
          [nstep, nxtrack], nasa_scduncertainty, errstat)
-
-    call tiof_put2d_r4 (tio_l2obj, "fit_rms_residual", [0,0], &
-         [nstep, nxtrack], nasa_scdrms, errstat)
 
     call tiof_put2d_r4 (tio_l2obj, "O2O2CloudTemperature", [0,0], &
          [nstep, nxtrack], out_O2O2CloudTemperature, errstat)

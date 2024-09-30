@@ -794,12 +794,14 @@ contains
      use m_vars, only: nasa_SlantColumnAmountO2O2,fFillValue
      use m_vars, only: nasa_NumTimes, nasa_nXtrack, run_mode
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
+     use m_vars, only: fit_convergence_flag
      use m_vars, only: rad_RelativeAzimuthAngle, out_RelativeAzimuthAngle
+     use m_vars, only: rad_SolarZenithAngle
      use m_vars, only: max_o2o2_scd, max_o2o2_uncertainty, max_o2o2_relerr
-     use m_vars, only: o2o2_norm
-     use m_vars, only: fFillValue, dFillValue, option_scdfullfilter
+     use m_vars, only: o2o2_norm, max_SZA_mdqfl
+     use m_vars, only: fFillValue, dFillValue, iFillValue
+     use m_vars, only: option_scdfullfilter, option_calc_raa
      use m_vars, only: PerturbO4SCD, O4SCDPertFactor
-     use m_vars, only: option_calc_raa
 
      implicit none
 
@@ -817,13 +819,14 @@ contains
      real (kind=8):: dspecial
 
      real(kind=4):: tmp_raa, temp_raa, fspecial
+     real(kind=4):: thissza, thisscd, thisunc
 
-     integer :: errstat1 
+     integer :: errstat1 ! local error 
 
      if (errstat /= 0) return
 
      fspecial = fFillValue
-     dspecial = dFillValue !-9999.d0
+     dspecial = dFillValue 
      errstat1 = 0
 
      !Open file, get dimensions
@@ -846,6 +849,81 @@ contains
           return
      endif
 
+    !-------------------------------------------------
+    ! read rad_RelativeAzimuthAngle from geolocation group, if requested
+    ! in development mode, it is written to geolocation group
+    ! in production mode, geolocation group is inherited from fitting
+    ! open geolocation group to read raa 
+    ! other angles are read from L1B file
+
+    if (option_calc_raa .eq. 0) then ! use RAA in L2 file, do not calc
+    call tiof_push_group(tio_l2obj,"geolocation", errstat)
+
+    call tiof_get2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
+         [ntimes, nxtrack], rad_RelativeAzimuthAngle, errstat)
+
+    call tiof_pop_group(tio_l2obj, errstat)
+
+    ! rad_RelativeAzimuthAngle -> out_RelativeAzimuthAngle 
+    ! so that RAA is within [0.,180] range for LUT 
+    ! rad_RelativeAzimuthAngle is for output in development mode only 
+    ! use out_RelativeAzimuthAngle for calculation 
+       do it = 1, ntimes
+         do ix = 1, nxtrack
+            tmp_raa = rad_RelativeAzimuthAngle(ix,it)
+            ! bad tmp_raa should be a large negative fill value
+            if ((tmp_raa .lt. -360.)) then
+                out_RelativeAzimuthAngle(ix,it) = fspecial
+            else
+               ! correct to [0., 360.) range first
+                temp_raa = tmp_raa
+                do while(temp_raa .lt. 0.)
+                   temp_raa = temp_raa + 360.
+                end do
+                do while(temp_raa .ge. 360.)
+                   temp_raa = temp_raa - 360.
+                end do
+             
+                ! change to LUT RAA range of [0.,180.], using symmetry w.r.t. 0
+                ! temp_raa = temp_raa - 360 leads to a negative value within [-180,0)
+                ! negative and positive raa have the same effect, temp_raa=360-temp_raa
+                if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
+   
+                ! assign out_RelativeAzimuthAngle 
+                out_RelativeAzimuthAngle(ix,it) = temp_raa
+            endif
+         end do
+       end do
+    endif ! option_calc_raa
+
+     !------
+     ! read qa_statistics variables
+     call tiof_push_group(tio_l2obj, "qa_statistics", errstat)
+
+     ! read fit_convergence_flag
+     call tiof_get2d_i2(tio_l2obj, "fit_convergence_flag", [0,0], &
+          [ntimes, nXtrack], fit_convergence_flag, errstat)
+     if (errstat /= 0) then 
+          call tell_error(tell_runtime_error,&
+               "read_cldo4_tio: failed fit_convergence_flag", errstat) 
+          return
+     endif
+
+     ! read fit_rms_residual 
+     call tiof_get2d_r4(tio_l2obj, "fit_rms_residual", [0,0], &
+          [ntimes, nXtrack], nasa_scdrms, errstat)
+     if (errstat /= 0) then 
+          call tell_error(tell_runtime_error,&
+               "read_cldo4_tio: failed scdrms", errstat) 
+          return
+     endif
+
+     call tiof_pop_group(tio_l2obj, errstat)
+
+     !------
+     ! as main_data_quality_flag will be assigned within cldo4 
+     ! read block is no longer needed (Sep 2024), can skip
+     ! however, read it here does not hurt during testing, 
      ! read main_data_quality_flag or SCD_MainDataQualityFlags, 
      ! errstat1 suggest which one to read
      ! try product group to read main_data_quality_flag
@@ -875,7 +953,8 @@ contains
         call tiof_pop_group (tio_l2obj, errstat)
      endif
 
-     ! allocate tmp_dbl array 
+     !------
+     ! allocate tmp_dbl array for scd and scd_uncertainty
      allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
           call tell_error (tell_runtime_error, &
@@ -886,10 +965,12 @@ contains
      ! open support_data group to read SCD
      call tiof_push_group (tio_l2obj,"support_data", errstat)
      if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "read_cldo4_tio: pushing support_data group failed", errstat)
+          call tell_error (tell_io_read_error, &
+              "read_cldo4_tio: pushing support_data group failed", errstat)
           return
      endif
 
+     !------
      ! read fitted_slant_column
      call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
            tmp_dbl, errstat)
@@ -907,12 +988,11 @@ contains
         tmp_dbl = tmp_dbl * O4SCDPertFactor
      endif
 
-     ! filter out unphysical values
+     ! filter out unphysical scds
      ! note: mdqfl=0 (normal), mdqfl=1 (suspicious), mdqfl=2 (bad) 
      ! for o2o2, suspicious scds are extremely large, they should not be used
      ! any scd<0. will be skipped for ocp and pscene calculation,
-     where ((tmp_dbl < 0.d0) .or. (tmp_dbl > max_o2o2_scd) .or. &
-            (scd_mdqfl .ne. 0)) 
+     where ((tmp_dbl < 0.d0) .or. (tmp_dbl > max_o2o2_scd)) 
            tmp_dbl = dspecial ! negative value
      end where
 
@@ -930,18 +1010,18 @@ contains
      call tiof_get2d_r8(tio_l2obj, "fitted_slant_column_uncertainty",[0,0],&
               [ntimes, nxtrack], tmp_dbl, errstat)
      if (errstat /=0) then
-         call tell_error(tell_runtime_error,"read_cldo4_tio: failed scduncertainty", errstat)
+         call tell_error(tell_runtime_error, &
+              "read_cldo4_tio: failed scduncertainty", errstat)
          return
      endif
      ! normalize scd uncertainty and assign nasa_scduncertainty
      ! filter out large uncertainty, use max_o2o2_scd below to be permissive
      tmp_dbl = tmp_dbl/o2o2_norm
-     where((tmp_dbl < 0.).or.(tmp_dbl > max_o2o2_scd).or. &
-           (scd_mdqfl .ne. 0))
+     where((tmp_dbl < 0.).or.(tmp_dbl > max_o2o2_uncertainty))
            tmp_dbl = dspecial
      endwhere
 
-     ! assign nasa_scduncertainty 
+     ! assign nasa_scduncertainty, from double to real 
      nasa_scduncertainty = real(tmp_dbl,kind=4)
      where(tmp_dbl < 0.)
            nasa_scduncertainty = fFillValue
@@ -953,12 +1033,50 @@ contains
      ! Get out of support_data group
      call tiof_pop_group(tio_l2obj, errstat)
      if (errstat /= 0) then
-          call tell_error (tell_io_read_error, "read_cldo4_tio: surport_data failed", errstat)
+          call tell_error (tell_io_read_error, &
+              "read_cldo4_tio: surport_data failed", errstat)
           return
      endif
 
+     !------
+
+     ! Close level2 file
+     call close_tio (tio_l2obj, errstat)
+
+     if (errstat /= 0) then
+       call tell_error (tell_io_read_error, &
+            "read_cldo4_tio: failed close", errstat)
+       return
+     endif
+ 
     !-------------
-    ! stricter filtering according to relative & abs uncertainty
+    ! determine scd_mdqfl 0: normal, 2: bad  
+    ! nasa_SlantColumnAmount & nasa_scduncertainty are normalized here
+    ! out-of-range data are already set to fFillValue (negative)
+    do it = 1, ntimes
+       do ix = 1, nXtrack
+          thisscd = nasa_SlantColumnAmountO2O2(ix,it)
+          thisunc = nasa_scduncertainty(ix,it)
+          thissza = rad_SolarZenithAngle(ix,it)
+          if (thissza .LT. max_SZA_mdqfl) then
+             if ((thisscd .GT. 0.) .AND. (thisunc .GT. 0.)) then
+               scd_mdqfl(ix,it) = 0 ! normal
+             else
+               scd_mdqfl(ix,it) = 2 ! bad
+             endif
+          else
+             scd_mdqfl(ix,it) = iFillValue ! fill 
+          endif
+
+          ! filter scd using scd_mdqfl
+          if (scd_mdqfl(ix,it) .NE. 0) then 
+             nasa_SlantColumnAmountO2O2(ix,it) = fFillValue
+          endif 
+       enddo
+    enddo         
+
+    !-----------------------------------------------------
+    ! stricter filtering according to relative uncertainty
     if (option_scdfullfilter .eq. 1) then
 
      ! calculate relative scd error
@@ -979,13 +1097,8 @@ contains
            scd_relerr = 9999. ! will be filtered out next
      endwhere
     ! bad scd or bad scduncertainty will satisfy the following
-    ! and therefore be filtered out
+    ! and therefore be filtered out during ecf calculation
     where (scd_relerr > max_o2o2_relerr)
-          nasa_SlantColumnAmountO2O2 = fFillValue
-    endwhere
-
-    ! filter out large abs uncertainty
-    where (nasa_scduncertainty > max_o2o2_uncertainty)
           nasa_SlantColumnAmountO2O2 = fFillValue
     endwhere
 
@@ -994,76 +1107,9 @@ contains
 
     endif ! option_scdfullfilter
 
-    !-------------------------------------------------
-    ! read rad_RelativeAzimuthAngle 
-    ! in development mode, it is written to geolocation group
-    ! in production mode, geolocation group is inherited from fitting
-    ! open geolocation group to read raa 
-    ! other angles are read from L1B file
-    call tiof_push_group(tio_l2obj,"geolocation", errstat)
-
-    call tiof_get2d_r4 (tio_l2obj, "relative_azimuth_angle", [0,0], &
-         [ntimes, nxtrack], rad_RelativeAzimuthAngle, errstat)
-
-    call tiof_pop_group(tio_l2obj, errstat)
-
-    ! if option_calc_raa is 0, 
-    ! rad_RelativeAzimuthAngle -> out_RelativeAzimuthAngle 
-    ! so that RAA is within [0.,180] range for valid pixels
-    ! to be consistent with LUT RAA range
-    ! use out_RelativeAzimuthAngle for calculation 
-    !     rad_RelativeAzimuthAngle is for output only 
-    if (option_calc_raa .eq. 0) then ! use RAA in L2 file, do not calc
-       do it = 1, ntimes
-         do ix = 1, nxtrack
-            tmp_raa = rad_RelativeAzimuthAngle(ix,it)
-            ! bad tmp_raa should be a large negative fill value
-            if ((tmp_raa .lt. -360.)) then
-                out_RelativeAzimuthAngle(ix,it) = fspecial
-            else
-               ! correct to [0., 360.) range first
-                temp_raa = tmp_raa
-                do while(temp_raa .lt. 0.)
-                   temp_raa = temp_raa + 360.
-                end do
-                do while(temp_raa .ge. 360.)
-                   temp_raa = temp_raa - 360.
-                end do
-             
-                ! change to LUT RAA range of [0.,180.], using symmetry w.r.t. 0
-                ! temp_raa = temp_raa - 360 leads to a negative value within [-180,0)
-                ! negative and positive raa have the same effect, temp_raa=360-temp_raa
-                if (temp_raa .gt. 180.) temp_raa = 360.-temp_raa
-   
-                ! assign out_RelativeAzimuthAngle 
-                out_RelativeAzimuthAngle(ix,it) = temp_raa
-            endif
-         end do
-       end do
-    endif ! option_calc_raa
-
-     ! read fit_rms_residual in development mode 
-     if (run_mode .NE. 'production') then
-        ! open qa_statistics group to read fit_rms_residual
-        call tiof_push_group(tio_l2obj, "qa_statistics", errstat)
-        call tiof_get2d_r4(tio_l2obj, "fit_rms_residual", [0,0], [ntimes, nXtrack], &
-              nasa_scdrms, errstat)
-         if (errstat /= 0) then 
-              call tell_error(tell_runtime_error,"read_cldo4_tio: failed scdrms", errstat) 
-              return
-         endif
-     endif ! run_mode
-
-     ! Close level 2 file
-     call close_tio (tio_l2obj, errstat)
-
-     if (errstat /= 0) then
-       call tell_error (tell_io_read_error, "read_cldo4_tio: failed", errstat)
-       return
-     endif
- 
    end subroutine read_cldo4_tio
 
+  !-----------------------------------------------------------------------
   !> Use simple linear interpolation to find irrad at target wavelength
   !-----------------------------------------------------------------------
   !
@@ -1326,8 +1372,10 @@ end subroutine read_cldo4_dims
   subroutine allocate_cldo4_vars (ntimes, nxtrack, errstat)
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
-           scd_mdqfl, fFillValue,&
+           scd_mdqfl, fit_convergence_flag, &
            nasa_scdrms, nasa_scduncertainty
+
+     use m_vars, only: fFillValue, iFillValue
 
      implicit none
 
@@ -1339,27 +1387,26 @@ end subroutine read_cldo4_dims
      if (errstat /= 0) return
 
      allocate (nasa_SlantColumnAmountO2O2(nxtrack, ntimes), &
-          stat = errstat)
-     nasa_SlantColumnAmountO2O2 = fFillValue
-
-     allocate (l2_TerrainPressure(nxtrack, ntimes), &
-          stat = errstat)
-     l2_TerrainPressure = fFillValue
- 
-     allocate (scd_mdqfl(nxtrack, ntimes), stat=errstat)
+          l2_TerrainPressure(nxtrack, ntimes), &
+          scd_mdqfl(nxtrack, ntimes), &
+          fit_convergence_flag(nxtrack, ntimes), &
+          nasa_scdrms(nxtrack, ntimes), &
+          nasa_scduncertainty(nxtrack, ntimes), &
+          stat=errstat)
 
      if (errstat /= 0) then
-       call tell_error (tell_malloc_error, "allocated_cldo4_vars: failed at scd_msqfl", &
-            errstat)
+       call tell_error (tell_malloc_error, &
+            "allocated_cldo4_vars: failed at scd_msqfl", errstat)
        return
      endif
 
-     !if (run_mode .NE. 'production') then
-         allocate (nasa_scdrms(nxtrack, ntimes),stat=errstat)
-         nasa_scdrms = fFillValue
-         allocate (nasa_scduncertainty(nxtrack, ntimes),stat=errstat)
-         nasa_scduncertainty = fFillValue
-     !endif
+      ! initialize allocated variables
+      nasa_SlantColumnAmountO2O2 = fFillValue
+      l2_TerrainPressure = fFillValue
+      nasa_scdrms = fFillValue
+      nasa_scduncertainty = fFillValue
+      scd_mdqfl = iFillValue
+      fit_convergence_flag = iFillValue
 
    end subroutine allocate_cldo4_vars
 

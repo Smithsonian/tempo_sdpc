@@ -398,7 +398,8 @@ integer:: ilun_gmi_tmp = 4003
   real(kind=4),dimension(:,:),allocatable::nasa_scdrms
   ! adds l2_TerrainPressure 
   real(kind=4),dimension(:,:),pointer::l2_TerrainPressure
-  integer(kind=2), dimension(:,:),  pointer::scd_mdqfl
+  integer(kind=2), dimension(:,:), pointer::scd_mdqfl
+  integer(kind=2), dimension(:,:), pointer:: fit_convergence_flag
 
 !----------------
 ! input tracegas diagnostic & log file
@@ -512,6 +513,9 @@ integer:: ilun_gmi_tmp = 4003
 !-------------
 ! scd filtering and destriping
 !-------------
+  ! mdqfl is undefined beyond max_SZA_mdqfl
+  real(kind=4):: max_SZA_mdqfl = 89.0
+  ! option to filter SCD using relative uncertainty
   integer :: option_scdfullfilter = 0
   ! o2o2 normalization factor
   real(kind=8), parameter:: o2o2_norm = 1.0d43
