@@ -786,6 +786,8 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
    return status;
 }
 
+static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ctrl);
+
 static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
                                           const TPInfo_Type *tpinfo, Control_Type *ctrl,
                                           char **file_list, size_t num_files)
@@ -799,17 +801,7 @@ static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
         if (caught_signal())
           break;
 
-        if (0 == process_file (tbl, tpinfo, ctrl, file))
-          {
-             /* If processing involved a rename, then deletion
-              * will be handled elsewhere. */
-             if (ioclib_isfile (file, NULL))
-               {
-                  if (0 != ioclib_unlink (file))
-                    return -1;
-               }
-          }
-        else
+        if (0 != process_file (tbl, tpinfo, ctrl, file))
           {
              tell_vinfo (0, "%s: bad file: %s", __func__, file);
              if (0 != ioclib_rename_to_bad_file (file))
@@ -818,7 +810,19 @@ static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
                                __func__, file ? file : "(null)");
                   return -1;
                }
+             continue;
           }
+
+        /* If processing involved a rename, then deletion
+         * will be handled elsewhere. */
+        if (ioclib_isfile (file, NULL))
+          {
+             if (0 != ioclib_unlink (file))
+               return -1;
+          }
+
+        if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
+          return -1;
      }
 
    return 0;
@@ -882,6 +886,14 @@ static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ct
 {
    Process_Method_Type *pmt = Exprec_Process_Method;
    double last_erec_cached_timestamp, age_secs;
+
+   /* If exposure records are cached, but there's a gap in telemetry since we've seen one,
+    * that likely indicates that it's time to flush the cache and close that file.
+    * This is an important mechanism for triggering DRK processing soon after DRK records
+    * stop arriving, but a similar situation can arrive for other exposure record types.
+    * It's important to check after every successfully processed file
+    * to ensure that we catch a telemetry gap between any two files.
+    */
 
    /* If we're not processing exposure records, there's nothing more to do here */
    if (pmt == NULL)
@@ -1049,14 +1061,6 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
           goto return_status;
 
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
-
-        /* If exposure records are cached, but when haven't seen one in a while, that likely
-         * indicates that it's time to flush the cache and close that granule file.
-         * This is an important mechanism for triggering IRR processing soon after IRR records
-         * stop arriving, but a similar situation can arrive for other exposure record types.
-         */
-        if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
-          goto return_status;
      }
 
    if (caught_signal())
@@ -1118,6 +1122,9 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
                }
 
              (void) process_file (tbl, tpinfo, ctrl, path);
+
+             if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
+               goto return_status;
 
              if ((ctrl->stop_time > 0) && (Last_Packet_Time > ctrl->stop_time))
                {
