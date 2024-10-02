@@ -1,3 +1,10 @@
+TEMPO_SDPC_v4.4.3   2024 Oct
+===============================
+  * Apply image start time correction per redmine #204.
+    - Update OTS iocsdpc library from v0.7.1 to v0.8.0
+    - L0_format: store iocsdpc content_version attribute in L0 files
+    - L0_ccd: call iocsdpc_tweak_image_time_per_redmine_204 as needed
+
 TEMPO_SDPC_v4.4.2   2024 Jun
 ===============================
   * L1_cloud_o4: handle error return from call to gler_albedo (required
@@ -8,8 +15,8 @@ TEMPO_SDPC_v4.4.2   2024 Jun
     GEOS-CF data portal is unavailable
      - replace glob expression with explicit loop over filenames
      - turn off SSL certificate verification
-  * bounding polygons: filter non-monotonic longitudes before constructing 
-    bounding polygon metadata (required for ASDC ingest of RADT_L1 files 
+  * bounding polygons: filter non-monotonic longitudes before constructing
+    bounding polygon metadata (required for ASDC ingest of RADT_L1 files
     with missing data).
   * Increment product version number assigned to radiance reference files
     (required to avoid radref filename conflicts in V03 reprocessing).
