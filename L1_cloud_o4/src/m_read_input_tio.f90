@@ -921,39 +921,6 @@ contains
      call tiof_pop_group(tio_l2obj, errstat)
 
      !------
-     ! as main_data_quality_flag will be assigned within cldo4 
-     ! read block is no longer needed (Sep 2024), can skip
-     ! however, read it here does not hurt during testing, 
-     ! read main_data_quality_flag or SCD_MainDataQualityFlags, 
-     ! errstat1 suggest which one to read
-     ! try product group to read main_data_quality_flag
-     call tiof_push_group(tio_l2obj, "product", errstat)
-
-     call tiof_get2d_i2(tio_l2obj,"main_data_quality_flag", [0,0], [ntimes, nxtrack],&
-            scd_mdqfl, errstat1)
-
-     if (errstat1 /=0) then
-          write(*,*)'-->no main_data_quality_flag found in product group'
-          ! get out of product group
-          call tiof_pop_group (tio_l2obj, errstat)
-          ! try support_data group to read SCD_MainDataQualityFlags
-          call tiof_push_group(tio_l2obj, "support_data", errstat) 
-          call tiof_get2d_i2(tio_l2obj,"SCD_MainDataQualityFlags",[0,0], &
-                   [ntimes,nxtrack],scd_mdqfl, errstat)
-         if (errstat /=0) then
-          call tell_error(tell_runtime_error, "read_cldo4_tio: scd_mdqfl fail",errstat)
-          return
-         endif  
-         write(*,*)' -->SCD_MainDataQualityFlags read from support_data group'
-         ! get out of support_data group
-         call tiof_pop_group(tio_l2obj, errstat) 
-     else
-        write(*,*)'-->main_data_quality_flag read from product group.'
-        ! scd_mdqfl read, get out of product group
-        call tiof_pop_group (tio_l2obj, errstat)
-     endif
-
-     !------
      ! allocate tmp_dbl array for scd and scd_uncertainty
      allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
@@ -1023,7 +990,7 @@ contains
 
      ! assign nasa_scduncertainty, from double to real 
      nasa_scduncertainty = real(tmp_dbl,kind=4)
-     where(tmp_dbl < 0.)
+     where((nasa_scduncertainty < 0.).or. (nasa_SlantColumnAmountO2O2 < 0.))
            nasa_scduncertainty = fFillValue
      endwhere
 
@@ -1053,6 +1020,8 @@ contains
     ! determine scd_mdqfl 0: normal, 2: bad  
     ! nasa_SlantColumnAmount & nasa_scduncertainty are normalized here
     ! out-of-range data are already set to fFillValue (negative)
+    ! cldo4 currently does not assign 1: suspicious 
+    write (*,*) '      determine SCD_MainDataQualityFlags'
     do it = 1, ntimes
        do ix = 1, nXtrack
           thisscd = nasa_SlantColumnAmountO2O2(ix,it)
@@ -1064,7 +1033,7 @@ contains
              else
                scd_mdqfl(ix,it) = 2 ! bad
              endif
-          else
+          else ! sza > max_SZA_mdqfl has fill value
              scd_mdqfl(ix,it) = iFillValue ! fill 
           endif
 
@@ -1374,7 +1343,7 @@ end subroutine read_cldo4_dims
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
            scd_mdqfl, fit_convergence_flag, &
            nasa_scdrms, nasa_scduncertainty
-
+ 
      use m_vars, only: fFillValue, iFillValue
 
      implicit none

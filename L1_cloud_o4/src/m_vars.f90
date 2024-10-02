@@ -77,7 +77,7 @@ module m_vars
   real(kind=4),   dimension(:,:),  pointer::rad_SolarAzimuthAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingZenithAngle
   real(kind=4),   dimension(:,:),  pointer::rad_ViewingAzimuthAngle
-  real(kind=4),   dimension(:,:),  pointer::rad_RelativeAzimuthAngle
+  real(kind=4),   dimension(:,:),  allocatable::rad_RelativeAzimuthAngle
 
   integer(kind=4)::rad_NumTimes
   integer(kind=4)::rad_nXtrack
@@ -457,7 +457,7 @@ integer:: ilun_gmi_tmp = 4003
 !  real(kind=4),   dimension(:,:),  pointer::out_Latitude ! not used
 !  real(kind=4),   dimension(:,:),  pointer::out_SolarZenithAngle ! not used
 !  real(kind=4),   dimension(:,:),  pointer::out_ViewingZenithAngle ! not used
-  real(kind=4),   dimension(:,:),  pointer::out_RelativeAzimuthAngle
+  real(kind=4),   dimension(:,:),  allocatable::out_RelativeAzimuthAngle
 !  integer(kind=2),dimension(:,:),  pointer::out_GroundPixelQualityFlags
 ! 2- or 4-byte out_ProcessingQualityFlags determined by pflag_nbyte 
 !  only bit00-15 are currently used
@@ -561,7 +561,7 @@ integer:: ilun_gmi_tmp = 4003
 
   logical :: PerturbECF = .False.
   ! linear perturbation coeffs for ECF [0,1st] 
-  real(kind=4),parameter,dimension(2):: ECFPertCoef = (/0.05, 1.0/)
+  real(kind=4),parameter,dimension(2):: ECFPertCoef = (/0.01, 1.0/)
 
 !-------------
 ! gmeta 

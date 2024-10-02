@@ -1593,12 +1593,13 @@ contains
     call tiof_put1d_r4 (tio_l2obj, "IrrShift", [0,0], &
          [nxtrack], irr_waveshift, errstat)
 
+    !-----------------------------------
     if (run_mode .EQ. 'production') then
 
     call tiof_put2d_r4 (tio_l2obj, "SurfacePressure", [0,0], &
          [nstep, nxtrack], l2_TerrainPressure, errstat)
 
-    else
+    else !------------------------------
     call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
          [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
 
@@ -1673,7 +1674,7 @@ contains
     call tiof_put2d_i4 (tio_l2obj, "ocp_niter", [0,0], &
          [nstep, nxtrack], ocp_niter, errstat)
 
-    endif
+    endif !-----------------------run_mode
 
     call tiof_put2d_i2 (tio_l2obj,"SCD_MainDataQualityFlags", [0,0], &
          [nstep, nxtrack], scd_mdqfl, errstat)
