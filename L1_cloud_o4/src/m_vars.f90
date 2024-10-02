@@ -538,7 +538,7 @@ integer:: ilun_gmi_tmp = 4003
 ! option_calc_raa=1: calculate from saa & vaa internally
 !                =0: use raa from l2 fitting output
 !-----------
-  integer :: option_calc_raa = 1 
+  integer :: option_calc_raa = 1
 
 !-------------
 ! Perturbations

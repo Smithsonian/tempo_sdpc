@@ -265,7 +265,7 @@ program OMCDO2N
      read(buf,*,iostat=errhere) option_scdfullfilter
      if (errhere .ne. 0) option_scdfullfilter = 1
   endif
-  write(*,*) 'option_scdfulltiler=',option_scdfullfilter
+  write(*,*) 'option_scdfullfilter=',option_scdfullfilter
 
   !------ destriping ------
   status=GetConfigString("W","Runtime Parameters option_destripe_scd",buf)
@@ -417,8 +417,20 @@ program OMCDO2N
   ! 1. read rad / irr / scd
   !-----------------------------
 
+  ! --------------------
+  ! 1.0 read TEMPO O4 SCD from intermediate L2 file
+  ! --------------------
+  filename = trim(adjustl(name_nasa_dir))//trim(adjustl(name_nasa_file))
+  call read_cldo4_tio(filename,errstat)
+  if (errstat /= 0) then
+    call tell_error (tell_runtime_error, 'read_cldo4_tio failed', errstat)
+    call exit(-1);
+  endif
+  flush (output_unit)
+  call tell_log(0, 'Read O4 SCD '//filename)
+
   !=============================
-  ! 1.0 read wavelength shift from diaglog file
+  ! 1.1 read wavelength shift from diaglog file
   !=============================
   ! irr_waveshift & rad_waveshift are used in m_read_input_tio.f90
   ! they need to be initilized regardless of option_apply_XXXshift
@@ -433,7 +445,7 @@ program OMCDO2N
   endif
 
   !==============================
-  ! 1.1 read inputs from radiance file 
+  ! 1.2 read inputs from radiance file 
   !==============================
   ! read rad for 440nm and 466nm
   ! also read lat/lon needed for GEOS-CF T-P
@@ -446,9 +458,9 @@ program OMCDO2N
   flush (output_unit)
   call tell_log(0,'Read RAD '//l1radfnm)
 
-  !============================================
-  ! 1.2 read inputs from irradiance 
-  !============================================
+  !================================
+  ! 1.3 read inputs from irradiance 
+  !================================
   ! Ewan tested read_irr_tio, appears to work 
   filename = trim(adjustl(name_irr_dir))//trim(adjustl(name_irr_file))
   call read_irr_tio(filename,swathname,errstat)
@@ -458,18 +470,6 @@ program OMCDO2N
   endif
   flush (output_unit)
   call tell_log(0,'Read IRR '//filename)
-
-  ! --------------------
-  ! 1.3 read TEMPO O4 SCD from intermediate L2 file
-  ! --------------------
-  filename = trim(adjustl(name_nasa_dir))//trim(adjustl(name_nasa_file))
-  call read_cldo4_tio(filename,errstat)
-  if (errstat /= 0) then
-    call tell_error (tell_runtime_error, 'read_cldo4_tio failed', errstat)
-    call exit(-1);
-  endif
-  flush (output_unit)
-  call tell_log(0, 'Read O4 SCD '//filename)
 
   ! ---------------------
   ! 2. read T/P/Psfc 
