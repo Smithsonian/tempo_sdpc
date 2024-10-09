@@ -1334,7 +1334,9 @@ int write_attr_global_timestamp (int ncid, const char *tstamp_name,
 
 int write_std_global_metadata (int ncid, const IOCSDPC_Common_Header_Type *chdr)
 {
-   (void) chdr;
+   int chdr_content_version = (chdr != NULL) ? chdr->content_version : 0;
+   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "content_version", NC_INT, 1, &chdr_content_version))
+     return -1;
    return tio_write_epoch_timestamp (ncid, NC_GLOBAL);
 }
 

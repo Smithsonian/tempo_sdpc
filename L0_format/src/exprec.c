@@ -202,7 +202,6 @@ static int define_outfile_vars (Process_Method_Type *pmt,
    int varid_readout_time, varid_frame_transfer_time;
    int varid_num_rows_missing, varid_num_rows_badcrc, varid_last_cbm_id;
    int varid_exprec, len;
-   int chdr_content_version = erec->common_header.content_version;
    unsigned int nth, value;
    int dimids_exprec[3];
    size_t chunksizes[3];
@@ -211,9 +210,6 @@ static int define_outfile_vars (Process_Method_Type *pmt,
    len = strlen(pmt->exprec_type_string)+1;
    if (-1 == TIO_put_att (ncid, NC_GLOBAL, "exprec_type",
                           NC_CHAR, len, pmt->exprec_type_string))
-     return -1;
-
-   if (-1 == TIO_put_att (ncid, NC_GLOBAL, "content_version", NC_INT, 1, &chdr_content_version))
      return -1;
 
    if (0 != TIO_label_product (ncid, pmt->product_type, 0, pmt->processing_version))
