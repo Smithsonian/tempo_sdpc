@@ -787,12 +787,15 @@ int current_write_mean_dark_current (int ncid)
           }
      }
 
-   for (j = 0; j < 4; j++)
+   if (num_active_frames > 0)
      {
-        avg_dtr.num_hot_pixels[j] /= num_active_frames;
-        avg_dtr.num_cold_pixels[j] /= num_active_frames;
-        avg_dtr.mean_dark_current[j] /= num_active_frames;
-        avg_sdc[j] /= num_active_frames;
+        for (j = 0; j < 4; j++)
+          {
+             avg_dtr.num_hot_pixels[j] /= num_active_frames;
+             avg_dtr.num_cold_pixels[j] /= num_active_frames;
+             avg_dtr.mean_dark_current[j] /= num_active_frames;
+             avg_sdc[j] /= num_active_frames;
+          }
      }
 
    start[0] = 0;

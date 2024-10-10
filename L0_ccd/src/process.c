@@ -39,6 +39,7 @@ typedef struct
    int saturated_neighbor_hw_parallel;
    double bpix_update_thresh;
    int bpix_update_num_exprecs_needed;
+   double exposure_time_per_dark_int_frame;
 }
 Process_Control_Type;
 
@@ -297,6 +298,10 @@ static int get_control_params (config_t *cfg, Process_Control_Type *pct)
 {
    config_setting_t *s, *sub;
 
+   /* This parameter is optional */
+   (void) config_lookup_float (cfg, "calibration.exposure_time_per_dark_int_frame",
+                               &pct->exposure_time_per_dark_int_frame);
+
    if (NULL == (s = config_lookup (cfg, "pixel_quality_flag_params")))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
@@ -429,7 +434,23 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if ((exposure_time_per_frame <= 0.0) || (0 == isfinite (exposure_time_per_frame)))
      {
-        tell_vwarn (0, "%s: exposure time per frame = %f", __func__, exposure_time_per_frame);
+        tell_vwarn (0, "%s: exposure time per frame = %f  (ccd_int_type=%d)", __func__,
+                    exposure_time_per_frame, exprec->ccd_int_type);
+        if (exprec->ccd_int_type == 3)
+          {
+             /* DARK_INT mode:
+              * Because of a FSW bug, we always have FPE_DARK_LINES=0 in telemetry,
+              * so DARK_INT exposure records always have exposure_time=0, which is wrong.
+              * As a workaround, we assign a default exposure_time value to enable
+              * trending.  The default value can be changed by setting the parameter
+              *     calibration.exposure_time_per_dark_int_frame
+              * in the config file.
+              */
+             double etpdif = pct->exposure_time_per_dark_int_frame;
+             exposure_time_per_frame = (etpdif > 0.0) ? etpdif : 0.071988;  /* sec */
+             tell_vwarn (0, "%s: assuming exposure time per frame = %f  (ccd_int_type=%d)", __func__,
+                         exposure_time_per_frame, exprec->ccd_int_type);
+          }
      }
 
    if (0) (void) image_write_raw (exprec->img, "coadd");
@@ -640,12 +661,15 @@ static int compute_current_and_trim (CCD_Type *ccd,
      }
 
    /* Compute pixel current: electrons/sec */
-   image_scale (exprec->img, 1.0/exposure_time_per_frame);
-   if (xr->img_err)
+   if (exposure_time_per_frame > 0.0)
      {
-        image_scale (xr->img_err, 1.0/exprec->num_coadds);
-        image_sqrt (xr->img_err);
-        image_scale (xr->img_err, 1.0/exposure_time_per_frame);
+        image_scale (exprec->img, 1.0/exposure_time_per_frame);
+        if (xr->img_err)
+          {
+             image_scale (xr->img_err, 1.0/exprec->num_coadds);
+             image_sqrt (xr->img_err);
+             image_scale (xr->img_err, 1.0/exposure_time_per_frame);
+          }
      }
    for (i = 0; i < 4; i++)
      {
