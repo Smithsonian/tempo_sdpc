@@ -1390,7 +1390,7 @@ end subroutine read_cldo4_dims
    subroutine read_diaglog_vars(diaglogfnm,errstat)
 
    use m_vars, only: rad_waveshift, irr_waveshift
-   use m_vars, only: maxradshift,  maxirrshift
+   use m_vars, only: maxradshift,  maxirrshift, scd_mdqfl
    use m_vars, only: max_ns_pixels, max_ew_pixels
    use m_vars, only: option_apply_solshift, option_apply_radshift
    use m_vars, only: lun_debug_shift, ixdebug, itdebug, run_mode
@@ -1403,7 +1403,6 @@ end subroutine read_cldo4_dims
    !local variables
    integer(kind=4) :: ix, nx, nt
    integer(kind=4) :: errhere, err1
-   integer(kind=2),dimension(:,:), allocatable:: local_mdqfl 
 
    type (tiof_file_type) :: diaglog_obj
 
@@ -1427,47 +1426,35 @@ end subroutine read_cldo4_dims
       call allocate_diaglog_vars(nt,nx,errstat)
       ! if allocation fails, errstat tells the calling program 
       return
-   else 
-      call tiof_inq_dimlen(diaglog_obj, "xtrack", nx, errhere)
-      call tiof_inq_dimlen(diaglog_obj, "mirror_step", nt, errhere)
+   else ! errhere == 0 
+      call tiof_inq_dimlen(diaglog_obj, "xtrack", nx, err1)
+      call tiof_inq_dimlen(diaglog_obj, "mirror_step", nt, err1)
       write(*,*) '      diaglog: nx,nt=',nx,nt
       ! allocate & initialize to 0 wavelength shift 
       call allocate_diaglog_vars(nt,nx,errstat)
 
-      allocate(local_mdqfl(nx,nt),stat=errstat)
-      local_mdqfl = 0
-
       ! read wavelength shift 
       call tiof_get2d_r4(diaglog_obj,"radshi", [0,0], [nt,nx], &
-        rad_waveshift, errhere)
+        rad_waveshift, err1)
 
       call tiof_get1d_r4(diaglog_obj,"solshi", [0], [nx], &
-        irr_waveshift, errhere)
+        irr_waveshift, err1)
 
-      call tiof_get2d_i2(diaglog_obj,"mdqfl",[0,0], [nt,nx], &
-        local_mdqfl, err1)
+      call tiof_close(diaglog_obj, err1)
 
-      call tiof_close(diaglog_obj, errhere)
-
-      if (errhere /=0) then
+      if (err1 /=0) then
           rad_waveshift = 0.
           irr_waveshift = 0.
           write(*,*) "warning: read_diag_nvars failed to read, assume 0 shifts"
           return
-      else 
-          if (err1 /=0) then !diaglog does not contain mdqfl
-             write(*,*) "warning: rad_diag_nvars assume local_mdqfl=0 for radshi"
-          else !diaglog contains mdqfl from fitting
-             ! do not use radshi for failed or suspect fitting
-             write(*,*) "read_diag_nvars: set rad_waveshift=0 for bad/suspect fit"
-             where (local_mdqfl /= 0) ! bad or suspect fit
-                 rad_waveshift = 0.
-             endwhere
-             ! local_mdqfl no longer needed
-             deallocate(local_mdqfl)
-          endif ! err1
-      endif !errhere
-   endif
+      else ! err1 == 0
+          ! do not use radshi for failed or suspect fitting
+          write(*,*) "read_diag_nvars: set rad_waveshift=0 for bad/suspect fit"
+          where (scd_mdqfl /= 0) ! bad or suspect fit
+              rad_waveshift = 0.
+          endwhere
+      endif ! err1
+   endif !errhere
 
    ! set large shift to zero
    where ((rad_waveshift > maxradshift).or.(rad_waveshift < -maxradshift)) 
