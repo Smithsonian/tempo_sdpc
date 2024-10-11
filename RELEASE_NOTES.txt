@@ -4,6 +4,12 @@ TEMPO_SDPC_v4.4.3   2024 Oct
     - Update OTS iocsdpc library from v0.7.1 to v0.8.0
     - L0_format: store iocsdpc content_version attribute in L0 files
     - L0_ccd: call iocsdpc_tweak_image_time_per_redmine_204 as needed
+  * L0_ccd: fix issues in handling of storage region dark frames
+    - Avoid integer division by zero when granule contains no active
+      region darks
+    - Use fixed default exposure time for DARK_INT frames.
+      Set calibration.exposure_time_per_dark_int_frame to override
+  * L1_cloud_o4: avoid missing data when computing GLER interpolation time
 
 TEMPO_SDPC_v4.4.2   2024 Jun
 ===============================
