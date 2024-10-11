@@ -23,6 +23,7 @@ contains
    integer :: iwavelen, ix, it, nx, nt, nana
    real(kind=4) :: fspecial
    integer(kind=2) :: thislandwater
+   real (kind=8), parameter :: r8_missval=-1.0d+30
 
    if (errstat /= 0) return
 
@@ -53,8 +54,9 @@ contains
      return
    endif
 
-   !use the starting time of swath in gler_interp_time
-   thistime = rad_time(1)
+   !use the midpoint valid time of swath in gler_interp_time
+   thistime = 0.5 * (minval (rad_time, rad_time /= r8_missval) &
+                  + maxval(rad_time, rad_time /= r8_missval))
    call gler_interp_time(glt, thistime, errstat)
    if (errstat /= 0) then
      call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
@@ -142,8 +144,9 @@ contains
      return
    endif
 
-   ! use the starting time of swath in gler_interp_time
-   thistime = rad_time(1)
+   !use the midpoint valid time of swath in gler_interp_time
+   thistime = 0.5 * (minval (rad_time, rad_time /= r8_missval) &
+                  + maxval(rad_time, rad_time /= r8_missval))
    call gler_interp_time(glt440, thistime, errstat)
    if (errstat /= 0) then
      call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
