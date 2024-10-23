@@ -15,13 +15,15 @@ Asdc_Status_Lookup = {value: key for key, value in Asdc_Status.items()}
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def connect_database ():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
+def connect_database (db_file_path):
 
-    conn = sqlite3.connect (db_file_path)
+    if db_file_path is None:
+        db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+        if db_file_path == None:
+            eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+            sys.exit(1)
+
+    conn = sqlite3.connect ("file:{}?mode=ro".format(db_file_path), uri=True)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn
@@ -44,7 +46,7 @@ def level1_rad_stats (cur, tbeg, tend):
     stats = {}
     # time elapsed between creation of RAD_L0 and completion of RAD_L1
     sql = 'select avg(RAD_L1.mtime-RAD_L0.mtime) from '\
-          'RAD_L1 inner join RAD_L0 on RAD_L0.istart = RAD_L1.istart' \
+          'RAD_L1 inner join RAD_L0 on RAD_L0.istart = RAD_L1.istart ' \
           'where RAD_L0.mtime > {tbeg} and RAD_L0.mtime < {tend}'.format(**locals())
     cur.execute (sql)
     stats["mean_elapsed_sec"] = cur.fetchone()[0]
@@ -63,14 +65,15 @@ def level2_stats (cur, table_name, tbeg, tend):
     stats["mean_elapsed_sec"] = mean_elapsed_sec
     return stats
 
-def print_latencies (tbeg, tend):
+def print_latencies (dbfile, tbeg, tend):
     print ("#")
-    print (f"#   SDPC_PIPE_NAME: {os.environ['SDPC_PIPE_NAME']}")
+    if 'SDPC_PIPE_NAME' in os.environ:
+        print (f"#   SDPC_PIPE_NAME: {os.environ['SDPC_PIPE_NAME']}")
     if tbeg > 0:
         print("# Start time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tbeg))))
     print("#   End time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tend))))
     print ("#")
-    with connect_database() as conn:
+    with connect_database(dbfile) as conn:
         cur = conn.cursor()
         print ("#       Product        mean")
         print ("#         table  production")
@@ -85,13 +88,15 @@ def print_latencies (tbeg, tend):
 
 def main():
     parser = argparse.ArgumentParser(description='Summarize production latencies')
+    parser.add_argument('--dbfile', default=None,
+                        help="Sqlite database file path")
     parser.add_argument('--start', default=None,
                         help="Start time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
     parser.add_argument('--end', default=None,
                         help="End time, ISO format e.g. YYYY-MM-DDThh:mm:ss[Z]")
-    # if len(sys.argv)==1:
-    #     parser.print_usage(sys.stderr)
-    #     sys.exit(0)
+    if len(sys.argv)==1:
+        parser.print_usage(sys.stderr)
+        sys.exit(0)
     args = parser.parse_args()
 
     if args.start is None:
@@ -104,7 +109,7 @@ def main():
     else:
         tend = int(dateutil.parser.isoparse(args.end).timestamp())
 
-    print_latencies (tbeg, tend)
+    print_latencies (args.dbfile, tbeg, tend)
 
 if __name__ == "__main__":
     main()
