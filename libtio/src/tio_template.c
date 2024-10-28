@@ -115,6 +115,17 @@ static int read_granule_ident_indices (int ncid, _pTIO_Granule_Ident_Type *gid)
 
 int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid)
 {
+   int status;
+   size_t len_nrt;
+   nc_type type_nrt;
+
+   if ((NC_NOERR == (status = nc_inq_att (ncid, NC_GLOBAL, "near_real_time", &type_nrt, &len_nrt)))
+       && (type_nrt == NC_INT) && (len_nrt == 1))
+     {
+        if (-1 == TIO_get_att (ncid, NC_GLOBAL, "near_real_time", NC_INT, &gid->is_nrt))
+          return -1;
+     }
+
    memset (gid->tstart_str, 0, MAX_ISOTIME_LEN);
    if (-1 == TIO_get_att (ncid, NC_GLOBAL, "time_coverage_start", NC_CHAR, gid->tstart_str))
      return -1;
@@ -314,6 +325,12 @@ static int write_granule_ident_times (int ncid, const _pTIO_Granule_Ident_Type *
 
 int _pTIO_write_granule_ident (int ncid, const _pTIO_Granule_Ident_Type *gid)
 {
+   if (gid->is_nrt != 0)
+     {
+        if (-1 == TIO_put_att (ncid, NC_GLOBAL, "near_real_time", NC_INT, 1, &gid->is_nrt))
+          return -1;
+     }
+
    if (0 != write_granule_ident_indices (ncid, gid->scan_num, gid->granule_num))
      return -1;
 
@@ -364,34 +381,53 @@ int _pTIO_parse_timestr (const char *timestr, struct tm *ptm)
    return 0;
 }
 
-int __tio_filename_string_indexed (char *buf, int bufsize,
-                                   double tstart, const char *label, int level, int version,
-                                   int scan_num, int granule_num)
+static int _pTIO_filename_string_indexed (char *buf, int bufsize,
+                                          double tstart, const char *label, int level, int version,
+                                          int scan_num, int granule_num, int is_nrt)
 {
    char timestr[MAX_ISOTIME_LEN];
+   const char *fmt;
 
    if (0 != TIO_mktimestamp_str (tstart, 0, timestr, sizeof(timestr)))
      return -1;
 
    /* TEMPO_<label>_Ld_Vdd_<time>_SdddGdd.nc */
-   return snprintf (buf, bufsize,
-                    "TEMPO_%s_L%d_V%02d_%s_S%03dG%02d.nc",
+   fmt = (is_nrt == 0) ? "TEMPO_%s_L%d_V%02d_%s_S%03dG%02d.nc"
+                       : "TEMPO_%s_L%d_NRT_V%02d_%s_S%03dG%02d.nc";
+
+   return snprintf (buf, bufsize, fmt,
                     label, level, version, timestr,
                     scan_num, granule_num);
 }
 
-int __tio_filename_string (char *buf, int bufsize,
-                           double tstart, const char *label, int level, int version)
+static int _pTIO_filename_string (char *buf, int bufsize,
+                                  double tstart, const char *label, int level, int version, int is_nrt)
 {
    char timestr[MAX_ISOTIME_LEN];
+   const char *fmt;
 
    if (0 != TIO_mktimestamp_str (tstart, 0, timestr, sizeof(timestr)))
      return -1;
 
    /* TEMPO_<label>_Ld_Vdd_<time>.nc */
-   return snprintf (buf, bufsize,
-                    "TEMPO_%s_L%d_V%02d_%s.nc",
+   fmt = (is_nrt == 0) ? "TEMPO_%s_L%d_V%02d_%s.nc"
+                       : "TEMPO_%s_L%d_NRT_V%02d_%s.nc";
+
+   return snprintf (buf, bufsize, fmt,
                     label, level, version, timestr);
+}
+
+int __tio_filename_string_indexed (char *buf, int bufsize,
+                                   double tstart, const char *label, int level, int version,
+                                   int scan_num, int granule_num)
+{
+   return _pTIO_filename_string_indexed (buf, bufsize, tstart, label, level, version, scan_num, granule_num, 0);
+}
+
+int __tio_filename_string (char *buf, int bufsize,
+                           double tstart, const char *label, int level, int version)
+{
+   return _pTIO_filename_string (buf, bufsize, tstart, label, level, version, 0);
 }
 
 static int
@@ -407,12 +443,12 @@ _pTIO_filename_from_granule_ident (const _pTIO_Granule_Ident_Type *gid,
 
    if (meaningful_granule_indices)
      {
-        n = __tio_filename_string_indexed (buf, bufsize, gid->tstart, label, level, version,
-                                           gid->scan_num, gid->granule_num);
+        n = _pTIO_filename_string_indexed (buf, bufsize, gid->tstart, label, level, version,
+                                           gid->scan_num, gid->granule_num, gid->is_nrt);
      }
    else
      {
-        n = __tio_filename_string (buf, bufsize, gid->tstart, label, level, version);
+        n = _pTIO_filename_string (buf, bufsize, gid->tstart, label, level, version, gid->is_nrt);
      }
 
    if (n >= bufsize)

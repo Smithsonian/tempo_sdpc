@@ -133,6 +133,7 @@ struct _pTIO_Granule_Ident_Type
    char tend_str[MAX_ISOTIME_LEN];     /**< end time, UTC, ISO 8601 time string */
    double tstart;  /**< start time, TAI seconds since TEMPO epoch */
    double tend;    /**< end time, TAI seconds since TEMPO epoch */
+   int is_nrt;     /** non-zero means data product is near-real-time */
 };
 
 extern int _pTIO_read_granule_ident (int ncid, _pTIO_Granule_Ident_Type *gid);
