@@ -51,6 +51,9 @@ export SDPC_ARCHIVE_DIR="${archive_home}/${SDPC_USER}/${SDPC_PIPE_NAME}"
 # SDPC_ARCHIVE_DBFILE = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
 export SDPC_ARCHIVE_DBFILE="/scratch/${SDPC_USER}/${SDPC_PIPE_NAME}/archived_products.sqlite"
 
+# SDPC_ARCHIVE_DBFILE_NRT = absolute path to sqlite file on a local disk (NOT NFS MOUNTED!!)
+export SDPC_ARCHIVE_DBFILE_NRT="/scratch/${SDPC_USER}/${SDPC_PIPE_NAME}/archived_products_nrt.sqlite"
+
 #-----------------
 #  Pipeline paths:
 #-----------------
