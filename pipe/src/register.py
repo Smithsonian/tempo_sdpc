@@ -9,6 +9,7 @@ import os, sys
 import signal
 import time
 from threading import Event
+import re
 
 import sqlite3
 import argparse
@@ -363,12 +364,48 @@ def insert_product_entry (conn, product_name, keys):
 
     return status
 
+class Basename_Parser_Class:
+    # This regex should match any TEMPO data product, including NRT products.
+    product_parse_regex = "TEMPO_(?P<product_name>\w*_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}T\d{6}Z_?(?:|S\d{3}|S\d{3}G\d{2}).nc"
+
+    # This regex should match the RADREF and DSTRHCHO files:
+    # Example:   TEMPO_RADREF_L1_V01_20231015_S123456789_E123456789_S001.nc
+    # Example: TEMPO_DSTRHCHO_L2_V01_20231015_S123456789_E123456789_S001.nc
+    corr_file_parse_regex = "TEMPO_(?P<table_name>\w*_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}_S(?P<tstart>\d{9})_E(?P<tend>\d{9})_S\d{3}.nc"
+
+    def __init__(self):
+        self.product_parser = re.compile (self.product_parse_regex)
+        self.corr_file_parser = re.compile (self.corr_file_parse_regex)
+
+    def product_basename (self, basename):
+        m = re.match (self.product_parser, basename)
+        if m is None:
+            return None
+        return {"product_name":m.group("product_name"),
+                "versionid":int(m.group("version")),
+                "nrt":len(m.group("nrt")) > 0}
+
+    def corr_file_basename (self, basename):
+        m = re.match (self.corr_file_parser, basename)
+        if m is None:
+            return None
+        return {"table_name":m.group("table_name"),
+                "tstart":int(m.group("tstart")),
+                "tend":int(m.group("tend"))}
+
+Basename_Parser = Basename_Parser_Class()
+
 def process_file (db_path, filename, nc):
 
     basename = os.path.basename (filename)
-    tok = basename.split('_')
-    product_name = '{}_{}'.format(tok[1], tok[2])
-    versionid = int(tok[3].strip('V'))
+
+    fields = Basename_Parser.product_basename (basename)
+    if fields is None:
+        eprint ("ERROR: unsupported product filename: {}".format(basename))
+        return -1
+
+    product_name = fields["product_name"]
+    versionid = fields["versionid"]
 
     attr = nc.__dict__
 
@@ -495,10 +532,14 @@ def process_file_corr (db_path, filename, nc):
 
     # Example:   TEMPO_RADREF_L1_V01_YYYYMMDD_S123456789_E123456789_S001.nc
     # Example: TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S123456789_E123456789_S001.nc
-    tok = basename.split('_')
-    table_name = "_".join ([tok[1], tok[2]])
-    tstart = int(tok[5].strip('S'))
-    tend = int(tok[6].strip('E'))
+    fields = Basename_Parser.corr_file_basename (basename)
+    if fields is None:
+        eprint ("ERROR: unsupported filename: {}".format(basename))
+        return -1
+
+    table_name = fields["table_name"]
+    tstart = fields["tstart"]
+    tend = fields["tend"]
 
     keys = {}
     keys["filename"] = basename
@@ -533,69 +574,6 @@ def process_file_corr (db_path, filename, nc):
 
     return status
 
-def register_one_file (db_path, fn):
-    status = -1
-    basename = os.path.basename(fn)
-    if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
-        with NetCDFFile (fn, "r") as nc:
-            status = process_file_corr (db_path, fn, nc)
-    elif fn.endswith ('.nc'):
-        with NetCDFFile (fn, "r") as nc:
-            status = process_file (db_path, fn, nc)
-    elif fn.endswith ('.tar'):
-        status = process_file_raw (db_path, fn)
-    if status != 0:
-        eprint('Error processing file: {}'.format(fn))
-    return status
-
-def move_failing (fn):
-    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    if arch_dir == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-        return
-    fail_dir = os.path.join (arch_dir, 'registry/failed')
-    if not os.path.isdir (fail_dir):
-        os.makedirs(fail_dir)
-    new_path = os.path.join (fail_dir, os.path.basename(fn))
-    logprint ('moving {} to {}'.format(fn, new_path))
-    os.rename (fn, new_path)
-
-def register_files (db_path, filenames):
-
-    status_list = []
-
-    for fn in filenames:
-        # Operate only on symbolic links!
-        if os.path.islink(fn):
-            try:
-                status = register_one_file (db_path, fn)
-            except BaseException as e:
-                print('An exception occurred: {}'.format(e))
-                print(traceback.print_exc())
-                status_list.append(-1)
-                move_failing(fn)
-            else:
-                status_list.append(status)
-                if status == 0:
-                    os.remove(fn)
-                else:
-                    move_failing(fn)
-
-    return status_list
-
-def collect_filenames (dir):
-    entries = (os.path.join (dir, f) for f in os.listdir(dir))
-    filenames = []
-    for path in entries:
-        if os.path.isfile(path):
-            filenames.append (path)
-    return sorted(filenames, key=os.path.getmtime)
-
-class Registry:
-    def __init__ (self, incoming_dir, file_path):
-        self.incoming_dir = incoming_dir
-        self.file_path = file_path
-
 def check_hcho_destripe_config():
     # Does HCHO_L2 receive a destriping/background correction?
     global HCHO_Needs_Destripe
@@ -606,30 +584,6 @@ def load_config():
     global Reload_Config
     Reload_Config = False
     check_hcho_destripe_config()
-
-def init_registry ():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
-
-    db_l1_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_L1")
-    if db_l1_file_path != None and db_l1_file_path != db_file_path:
-        global Alt_Rad_L1a_Dbfile_Path
-        Alt_Rad_L1a_Dbfile_Path = db_l1_file_path
-
-    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
-    if arch_dir == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
-        sys.exit(1)
-
-    incoming_dir = os.path.join (arch_dir, 'registry/incoming')
-    if not os.path.isdir (incoming_dir):
-        os.makedirs(incoming_dir)
-
-    load_config()
-
-    return Registry (incoming_dir, db_file_path)
 
 class Signal_Catcher:
 
@@ -657,22 +611,114 @@ class Signal_Catcher:
       Reload_Config = True
       self.signum = signum
 
-def run_as_service (reg):
+def move_failing (fn):
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    if arch_dir == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        return
+    fail_dir = os.path.join (arch_dir, 'registry/failed')
+    if not os.path.isdir (fail_dir):
+        os.makedirs(fail_dir)
+    new_path = os.path.join (fail_dir, os.path.basename(fn))
+    logprint ('moving {} to {}'.format(fn, new_path))
+    os.rename (fn, new_path)
 
-    sig = Signal_Catcher()
+def collect_filenames (dir):
+    entries = (os.path.join (dir, f) for f in os.listdir(dir))
+    filenames = []
+    for path in entries:
+        if os.path.isfile(path):
+            filenames.append (path)
+    return sorted(filenames, key=os.path.getmtime)
 
-    logprint ("Started", flush=True)
+class Registry:
+    def __init__ (self, incoming_dir, db_file_path, nrt_db_file_path):
+        self.incoming_dir = incoming_dir
+        self.db_file_path = db_file_path
+        self.nrt_db_file_path = nrt_db_file_path
 
-    while not sig.caught():
-        if Reload_Config:
-            logprint ('Caught signal = SIGHUP: updating configuration', flush=True)
-            load_config()
-        filenames = collect_filenames (reg.incoming_dir)
-        if len(filenames) > 0:
-            status_list = register_files (reg.file_path, filenames)
-        sig.wait(10)
+    def register_one_file (self, fn):
+        status = -1
+        basename = os.path.basename(fn)
 
-    logprint ("Exiting: caught signal = {}".format(sig.signum))
+        # register NRT files in a separate sqlite database
+        if "_NRT_" in basename:
+            if self.nrt_db_file_path is None:
+                eprint ('ERROR: NRT sqlite database path is undefined')
+                return -1
+            db_path = self.nrt_db_file_path
+        else:
+            db_path = self.db_file_path
+
+        if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
+            with NetCDFFile (fn, "r") as nc:
+                status = process_file_corr (db_path, fn, nc)
+        elif fn.endswith ('.nc'):
+            with NetCDFFile (fn, "r") as nc:
+                status = process_file (db_path, fn, nc)
+        elif fn.endswith ('.tar'):
+            status = process_file_raw (db_path, fn)
+        if status != 0:
+            eprint('Error processing file: {}'.format(fn))
+        return status
+
+    def register_files (self, filenames):
+        status_list = []
+        for fn in filenames:
+            # Operate only on symbolic links!
+            if os.path.islink(fn):
+                try:
+                    status = self.register_one_file (fn)
+                except BaseException as e:
+                    print('An exception occurred: {}'.format(e))
+                    print(traceback.print_exc())
+                    status_list.append(-1)
+                    move_failing(fn)
+                else:
+                    status_list.append(status)
+                    if status == 0:
+                        os.remove(fn)
+                    else:
+                        move_failing(fn)
+        return status_list
+
+    def run_as_service (self):
+        sig = Signal_Catcher()
+        logprint ("Started", flush=True)
+        while not sig.caught():
+            if Reload_Config:
+                logprint ('Caught signal = SIGHUP: updating configuration', flush=True)
+                load_config()
+            filenames = collect_filenames (self.incoming_dir)
+            if len(filenames) > 0:
+                status_list = self.register_files (filenames)
+            sig.wait(10)
+        logprint ("Exiting: caught signal = {}".format(sig.signum))
+
+def init_registry ():
+    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+    if db_file_path == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+        sys.exit(1)
+
+    # optional, None is ok
+    nrt_db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_NRT")
+
+    db_l1_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_L1")
+    if db_l1_file_path != None and db_l1_file_path != db_file_path:
+        global Alt_Rad_L1a_Dbfile_Path
+        Alt_Rad_L1a_Dbfile_Path = db_l1_file_path
+
+    arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
+    if arch_dir == None:
+        eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
+        sys.exit(1)
+
+    incoming_dir = os.path.join (arch_dir, 'registry/incoming')
+    if not os.path.isdir (incoming_dir):
+        os.makedirs(incoming_dir)
+
+    return Registry (incoming_dir, db_file_path, nrt_db_file_path)
 
 def main():
     parser = argparse.ArgumentParser(description='register data products in a sqlite database')
@@ -685,12 +731,13 @@ def main():
     if args.trace == True:
         Enable_Sqlite_Trace = True
 
+    load_config()
     reg = init_registry()
 
     if args.service:
-        run_as_service (reg)
+        reg.run_as_service ()
     elif args.filename != None:
-        status_list = register_files (reg.file_path, args.filename)
+        status_list = reg.register_files (args.filename)
         if any(status_list):
             sys.exit(1)
 
