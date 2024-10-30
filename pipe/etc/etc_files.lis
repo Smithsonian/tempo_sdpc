@@ -8,6 +8,7 @@ cachemon/level1a.cfg
 cachemon/level1b.cfg
 cachemon/level2.cfg
 cachemon/level3.cfg
+cachemon/level1b_nrt1.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 inr/TempoMockLogging.conf.in
