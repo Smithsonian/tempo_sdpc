@@ -15,7 +15,7 @@ service_dir="$SDPC_PIPE_DIR/log/$SERVICE"
 mkdir -p $service_dir
 
 case "$SERVICE" in
-  level1a | level1b | level2 | level1b_nrt1 )
+  level1a | level1b | level2 | level1b_nrt1 | level1b_nrt2 )
      mkdir -p $service_dir/slurm
      ;;
   *)

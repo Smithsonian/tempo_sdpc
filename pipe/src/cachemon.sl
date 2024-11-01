@@ -177,6 +177,8 @@ private define new_dirmon (incoming_dir)
         incoming_dir = incoming_dir,
         glob = qualifier ("glob", "*"),
         patc = qualifier ("pcre_pat", NULL),
+        substr_match_patc = qualifier ("substr_match_pat", NULL),
+        substr_match_dir = qualifier ("substr_match_dir", NULL),
         monitor = &dir_monitor,
         process = qualifier ("task", NULL),
         wait = &do_wait,
@@ -190,6 +192,11 @@ private define new_dirmon (incoming_dir)
    if (obj.patc != NULL)
      {
         obj.patc = pcre_compile (obj.patc);
+     }
+
+   if (obj.substr_match_patc != NULL)
+     {
+        obj.substr_match_patc = pcre_compile (obj.substr_match_patc);
      }
 
    return struct_combine (obj, __qualifiers);
@@ -415,6 +422,31 @@ private define run_executable (obj, file, run_dir)
    return -1;
 }
 
+private define have_substr_match (patc, dir, basename)
+{
+   % extract the substring we'll search for:
+   variable num = pcre_exec (patc, basename);
+   if (num == 0)
+     return 0;
+
+   variable seek_substr = pcre_nth_substr (patc, basename, 1);
+   if (seek_substr == NULL)
+     return 0;
+
+   variable file_list = listdir (dir);
+   if (length (file_list) == 0)
+     return 0;
+
+   variable file;
+   foreach file (file_list)
+     {
+        if (is_substr (file, seek_substr))
+          return 1;
+     }
+
+   return 0;
+}
+
 private define claim_with_rename (obj, path)
 {
    if (path == NULL)
@@ -433,6 +465,14 @@ private define claim_with_rename (obj, path)
    variable dname = path_dirname (path);
    variable claimed_bname = ".${bname}"$;
    variable claimed_path = path_concat (dname, claimed_bname);
+
+   if (cl.substr_match_dir != NULL)
+     {
+        % Run executable only when a file with a matching substring exists in substr_match_dir
+        if (have_substr_match (obj.substr_match_patc, obj.substr_match_dir, bname) == 0)
+          return 0;
+     }
+
    if (rename (path, claimed_path) != 0)
      return 0;
 
@@ -469,6 +509,8 @@ variable _P = struct
    incoming_dir = NULL,
    file_glob = "*",
    file_pcre_pat = NULL,
+   substr_match_pat = NULL,
+   substr_match_dir = NULL,
    wait_sec = 1.0,
    wait_arg = WNOHANG,
    use_cpu_limiter = 1,     % boolean
@@ -516,6 +558,8 @@ define slsh_main()
 
    variable dir = new_dirmon (p.incoming_dir; glob = p.file_glob,
                               pcre_pat = p.file_pcre_pat,
+                              substr_match_pat = p.substr_match_pat,
+                              substr_match_dir = p.substr_match_dir,
                               task = &claim_with_rename,
                               delay = p.wait_sec, client_data = p);
 

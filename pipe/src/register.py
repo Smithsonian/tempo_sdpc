@@ -369,9 +369,9 @@ class Basename_Parser_Class:
     product_parse_regex = "TEMPO_(?P<product_name>\w*_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}T\d{6}Z_?(?:|S\d{3}|S\d{3}G\d{2}).nc"
 
     # This regex should match the RADREF and DSTRHCHO files:
-    # Example:   TEMPO_RADREF_L1_V01_20231015_S123456789_E123456789_S001.nc
-    # Example: TEMPO_DSTRHCHO_L2_V01_20231015_S123456789_E123456789_S001.nc
-    corr_file_parse_regex = "TEMPO_(?P<table_name>\w*_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}_S(?P<tstart>\d{9})_E(?P<tend>\d{9})_S\d{3}.nc"
+    # Example:   TEMPO_RADREF_L1_V01_20231015_S1234567890_E1234567890_S001.nc
+    # Example: TEMPO_DSTRHCHO_L2_V01_20231015_S1234567890_E1234567890_S001.nc
+    corr_file_parse_regex = "TEMPO_(?P<table_name>\w*_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}_S(?P<tstart>\d{10})_E(?P<tend>\d{10})_S\d{3}.nc"
 
     def __init__(self):
         self.product_parser = re.compile (self.product_parse_regex)
@@ -530,8 +530,8 @@ def process_file_corr (db_path, filename, nc):
     final_path = os.readlink (filename)
     st = os.stat (filename)
 
-    # Example:   TEMPO_RADREF_L1_V01_YYYYMMDD_S123456789_E123456789_S001.nc
-    # Example: TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S123456789_E123456789_S001.nc
+    # Example:   TEMPO_RADREF_L1_V01_YYYYMMDD_S1234567890_E1234567890_S001.nc
+    # Example: TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S1234567890_E1234567890_S001.nc
     fields = Basename_Parser.corr_file_basename (basename)
     if fields is None:
         eprint ("ERROR: unsupported filename: {}".format(basename))

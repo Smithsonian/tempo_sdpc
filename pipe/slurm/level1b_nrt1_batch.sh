@@ -23,7 +23,7 @@
 #    later on to generate the other Level 2 data products.
 #    A tar file containing the results is stored on the compute node,
 #    and a tar "notice" file is stored in
-#              $SDPC_PIPE_DIR/stage/granules/nrt/o2o2
+#              $SDPC_PIPE_DIR/stage/granules/nrt/cldo4_prep
 #
 # 5. When it's finished, the script cleans up after itself and
 #    should leave nothing behind.
@@ -54,6 +54,7 @@ file_list_file="$2"
 #    rad_path
 #    irr_file
 #    snow_file
+#    orig_rad_path
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -62,7 +63,7 @@ file_list_file="$2"
 etc_dir="$SDPC_PIPE_DIR/etc"
 
 l1_repro_dir="$SDPC_PIPE_DIR/repro/L1"
-nrt_incoming="$SDPC_PIPE_DIR/stage/granules/inr_output/nrt/o2o2"
+nrt_incoming="$SDPC_PIPE_DIR/stage/granules/inr_output/nrt/cldo4_prep"
 l2_out_dir="$SDPC_NODE_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
@@ -252,6 +253,7 @@ perform_cleanup()
 {
    # Delete the preserved radiance file copy, and file list file
    /bin/rm -f "$rad_path" "$file_list_file"
+   /bin/rm -f "$orig_rad_path"
 }
 
 notify_o2o2_granule_ready()

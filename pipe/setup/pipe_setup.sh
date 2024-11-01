@@ -26,7 +26,7 @@ service_states_for_context()
    ioc_srvs="level0"
    lev1a_srvs="level1a inr trend"
    always_up="level1b level2 level3 register pipecron"
-   always_down="asdc iocpull iocpullraw level1b_nrt1"
+   always_down="asdc iocpull iocpullraw level1b_nrt1 level1b_nrt2"
    case "$context" in
       live)
       list_up="$ioc_srvs $lev1a_srvs $always_up"

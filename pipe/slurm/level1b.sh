@@ -44,6 +44,18 @@ log_message()
 test -r $rad_path || error_exit "$LINENO: cannot access granule: $rad_path"
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
+# When NRT pipeline processing is enabled, create a hard link on the master node
+# to trigger NRT processing of this granule
+nrt_enable_feed=$(config_setting nrt.enable_feed)
+if test $nrt_enable_feed -ne 0 ; then
+   pass2_dir="${SDPC_PIPE_DIR}/stage/granules/inr_output/nrt/inr_pass2"
+   if ! test -d $pass2_dir ; then
+      mkdir -p $pass2_dir
+   fi
+   basename_sans_dot=$(basename "$rad_path" | sed -e s"/^[.]//")
+   ln $rad_path $pass2_dir/$basename_sans_dot
+fi
+
 # SDPC_NODE_DIR need not exist on this machine at this point.
 # However, it must be defined, and the value will be used
 # in the processing directory path on the compute nodes.

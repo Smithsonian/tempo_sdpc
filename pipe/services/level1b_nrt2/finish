@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="level1b_nrt2"
+INCDIR=".."
+
+. $INCDIR/finish.inc
