@@ -60,9 +60,9 @@ rad_path="$stage_dir/${rad_basename}.nc"
 ln $orig_rad_path $rad_path
 
 # Create a directory to receive the result tar file
-cldo4_prep_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/nrt/cldo4_prep"
-if ! test -d $cldo4_prep_dir ; then
-   mkdir -p $cldo4_prep_dir
+cldo4_input_dir="$SDPC_PIPE_DIR/stage/granules/cldo4_input_nrt"
+if ! test -d $cldo4_input_dir ; then
+   mkdir -p $cldo4_input_dir
 fi
 
 # construct granule label string for slurm job names

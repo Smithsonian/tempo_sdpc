@@ -23,7 +23,7 @@
 #    later on to generate the other Level 2 data products.
 #    A tar file containing the results is stored on the compute node,
 #    and a tar "notice" file is stored in
-#              $SDPC_PIPE_DIR/stage/granules/nrt/cldo4_prep
+#              $SDPC_PIPE_DIR/stage/granules/cldo4_input_nrt
 #
 # 5. When it's finished, the script cleans up after itself and
 #    should leave nothing behind.
@@ -63,7 +63,7 @@ file_list_file="$2"
 etc_dir="$SDPC_PIPE_DIR/etc"
 
 l1_repro_dir="$SDPC_PIPE_DIR/repro/L1"
-nrt_incoming="$SDPC_PIPE_DIR/stage/granules/inr_output/nrt/cldo4_prep"
+nrt_incoming="$SDPC_PIPE_DIR/stage/granules/cldo4_input_nrt"
 l2_out_dir="$SDPC_NODE_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.

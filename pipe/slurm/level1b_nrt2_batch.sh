@@ -79,8 +79,8 @@ irr_basename=$(basename "$irr_file" .nc)
 # granule_arch_dir_path
 # cld_o4_basename
 #
-cldo4_prep_dir="$SDPC_PIPE_DIR/stage/granules/inr_output/nrt/cldo4_prep"
-. $cldo4_prep_dir/${rad_basename}.cld.tar
+cldo4_input_dir="$SDPC_PIPE_DIR/stage/granules/cldo4_input_nrt"
+. $cldo4_input_dir/${rad_basename}.cld.tar
 
 cld_o4_basename=$(basename "$cld_o4_basename" .nc)
 
@@ -271,7 +271,7 @@ perform_cleanup()
    # Delete the preserved radiance file copy, and file list file
    /bin/rm -f "$rad_path" "$file_list_file"
    # Delete this tar notice file and the corresponding tar file
-   /bin/rm "$cldo4_prep_dir/${rad_basename}.cld.tar"
+   /bin/rm "$cldo4_input_dir/${rad_basename}.cld.tar"
    if test x"$tar_host" != x"$this_host" ; then
       ssh -o ForwardX11=no "$tar_host" /bin/rm -f "$tar_host_file_path"
    else
