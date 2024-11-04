@@ -1,0 +1,13 @@
+#!/bin/sh
+
+exec 2>& 1
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The SDPC environment is not set"
+  exit 1
+fi
+
+export SDPC_LEVEL2_PRODUCTS=$(config_setting level2.products)
+
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2_nrt.cfg" -- "${SDPC_NODE_DIR}/L2"

@@ -124,7 +124,14 @@ for prod in $product_list ; do
 done
 remove_redundant_files
 
-slurm_logdir="$SDPC_PIPE_DIR/log/level2/slurm"
+case "$rad_basename" in
+   *_NRT_* )
+      slurm_logdir="$SDPC_PIPE_DIR/log/level2_nrt/slurm"
+     ;;
+   * )
+      slurm_logdir="$SDPC_PIPE_DIR/log/level2/slurm"
+     ;;
+esac
 
 # Run a background process for each product.
 # Each product script runs the product code via srun so that slurm

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+SERVICE="level2_nrt"
+. ../../log.inc

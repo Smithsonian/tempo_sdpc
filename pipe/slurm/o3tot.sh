@@ -125,5 +125,14 @@ find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 trap - EXIT
 tar_product_to_dest_dir "$l2_out_dir"
 
+case "$rad_basename" in
+   *_NRT_* )
+     arch_dest="NRT/L2"
+     ;;
+   * )
+     arch_dest="L2"
+     ;;
+esac
+
 tarfile_path="$l2_out_dir/${rad_basename}.${work_dir}.tar"
-archive.sl --delete -a $SDPC_ARCHIVE_DIR -l L2 $tarfile_path
+archive.sl --delete -a $SDPC_ARCHIVE_DIR -l $arch_dest $tarfile_path

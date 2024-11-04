@@ -159,7 +159,7 @@ do_daily()
   fi
 
   # delete EMPTY slurm batch log files
-  slurm_log_services=("level1a" "level1b" "level2" "level1b_nrt1" "level1b_nrt2")
+  slurm_log_services=("level1a" "level1b" "level2" "level1b_nrt1" "level1b_nrt2" "level2_nrt")
   for d in ${slurm_log_services[@]}; do
       isup=$(svc_up $d)
       if test x"$isup" = xtrue ; then

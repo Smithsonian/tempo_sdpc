@@ -7,6 +7,7 @@ asdc_collection_domain.csv
 cachemon/level1a.cfg
 cachemon/level1b.cfg
 cachemon/level2.cfg
+cachemon/level2_nrt.cfg
 cachemon/level3.cfg
 cachemon/level1b_nrt1.cfg
 cachemon/level1b_nrt2.cfg
