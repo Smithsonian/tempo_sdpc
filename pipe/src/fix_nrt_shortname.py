@@ -10,6 +10,9 @@ def process_file (ncfile):
 
     # Extract the shortname from the ncfile name
     basename = os.path.basename (ncfile)
+    if '_NRT_' not in basename:
+        return
+
     m = re.match ('(TEMPO_\w+_L\d_NRT)_V', basename)
     shortname = m.group(1)
 

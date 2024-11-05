@@ -279,6 +279,8 @@ def print_report (asdc_status_name, ymd, limit=0):
 
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC file upload status')
+    parser.add_argument('--dbfile', metavar='DBFILE', default=None,
+                        help="sqlite database path")
     parser.add_argument('--num', metavar='STATUS', default=None,
                         help="Count files matching status: {}".format(Asdc_Status))
     parser.add_argument('--list', metavar='STATUS', default=None,
@@ -313,10 +315,13 @@ def main():
     DryRun = args.dryrun
 
     global DB_Path
-    DB_Path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if DB_Path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
+    if args.dbfile is None:
+        DB_Path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+        if DB_Path == None:
+            eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+            sys.exit(1)
+    else:
+        DB_Path = args.dbfile
 
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])

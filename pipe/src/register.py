@@ -33,6 +33,7 @@ Prefix = "register:"
 Have_Rad_L1_Table = False
 Have_Rad_L1a_Table = False
 Alt_Rad_L1a_Dbfile_Path = None
+Rad_L1a_Dbfile_Path_for_NRT_files = None
 HCHO_Needs_Destripe = False
 
 Reload_Config = False
@@ -190,10 +191,10 @@ def insert_generic_product_entry (conn, product_name, init_product_table, entry)
         eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
         return -1
 
-def insert_radiance_product_entry (conn, product_name, entry):
+def insert_radiance_product_entry (conn, product_name, entry, is_nrt):
     status = insert_generic_product_entry (conn, product_name, init_radiance_product_table, entry)
     if status == 0:
-        maybe_handle_scan_completion (conn, product_name, entry["scan_id"])
+        maybe_handle_scan_completion (conn, product_name, entry["scan_id"], is_nrt)
     return status
 
 def insert_dark_product_entry (conn, product_name, entry):
@@ -307,7 +308,7 @@ EOF
 """.format (product_name, l3_path, '\n'.join(paths))
     write_pathlist (os.path.basename (paths[0]), pathlist)
 
-def maybe_handle_scan_completion (conn, product_name, scan_id):
+def maybe_handle_scan_completion (conn, product_name, scan_id, is_nrt):
     """
     To see when all products for a given scan are complete, we compare the number
     of products with the number of archived RAD_L1a files for that scan.
@@ -317,13 +318,11 @@ def maybe_handle_scan_completion (conn, product_name, scan_id):
     generation starts until the INR 2nd pass is finished, and the INR 2nd pass
     cannot finish until after all of the RAD_L1a files have been delivered to INR.
 
+    During near-real-time processing, the NRT products and the RAD_L1a files are
+    tracked in different database files.
+
     During L2 reprocessing, the RAD_L1a files may be in a different archive, so we
     may need to query a different sqlite database for a count of RAD_L1a files.
-
-    If we support near-real-time processing, then the INR 2nd pass may not be performed.
-    In that case, it may be possible for L2 products to be produced before all RAD_L1a
-    products from a given scan are archived.  In that case, we may need a different
-    method to detect scan completion for a given NRT product.
     """
     if not "L2" in product_name:
         return
@@ -332,11 +331,14 @@ def maybe_handle_scan_completion (conn, product_name, scan_id):
 
     if Have_Rad_L1a_Table:
         num_radiance = count_archived_granules (cur, "RAD_L1a", scan_id)
-    elif Alt_Rad_L1a_Dbfile_Path == None:
-        return
-    else:
+    elif is_nrt and Rad_L1a_Dbfile_Path_for_NRT_files != None:
+        with connect_database (Rad_L1a_Dbfile_Path_for_NRT_files) as conn_sep:
+            num_radiance = count_archived_granules (conn_sep.cursor(), "RAD_L1a", scan_id)
+    elif Alt_Rad_L1a_Dbfile_Path != None:
         with connect_database (Alt_Rad_L1a_Dbfile_Path) as conn_sep:
             num_radiance = count_archived_granules (conn_sep.cursor(), "RAD_L1a", scan_id)
+    else:
+        return
 
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
@@ -347,7 +349,7 @@ def table_exists (conn, table_name):
     result = cur.fetchone()
     return result != None
 
-def insert_product_entry (conn, product_name, keys):
+def insert_product_entry (conn, product_name, keys, is_nrt):
     global Have_Rad_L1a_Table
     Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
     global Have_Rad_L1_Table
@@ -356,7 +358,7 @@ def insert_product_entry (conn, product_name, keys):
     if product_name in Radiance_Files:
         status = insert_radiance_entry (conn, product_name, keys)
     elif product_name in Radiance_Derived_Files:
-        status = insert_radiance_product_entry (conn, product_name, keys)
+        status = insert_radiance_product_entry (conn, product_name, keys, is_nrt)
     elif product_name == "DRK_L1":
         status = insert_dark_product_entry (conn, product_name, keys)
     else:
@@ -390,6 +392,7 @@ class Basename_Parser_Class:
         if m is None:
             return None
         return {"table_name":m.group("table_name"),
+                "nrt":len(m.group("nrt")) > 0,
                 "tstart":int(m.group("tstart")),
                 "tend":int(m.group("tend"))}
 
@@ -406,6 +409,7 @@ def process_file (db_path, filename, nc):
 
     product_name = fields["product_name"]
     versionid = fields["versionid"]
+    is_nrt = fields["nrt"]
 
     attr = nc.__dict__
 
@@ -474,7 +478,7 @@ def process_file (db_path, filename, nc):
         get_dark_keys (nc, keys)
 
     with connect_database (db_path) as conn:
-        status = insert_product_entry (conn, product_name, keys)
+        status = insert_product_entry (conn, product_name, keys, is_nrt)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
@@ -703,6 +707,9 @@ def init_registry ():
 
     # optional, None is ok
     nrt_db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_NRT")
+    if nrt_db_file_path != None:
+        global Rad_L1a_Dbfile_Path_for_NRT_files
+        Rad_L1a_Dbfile_Path_for_NRT_files = db_file_path
 
     db_l1_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE_L1")
     if db_l1_file_path != None and db_l1_file_path != db_file_path:

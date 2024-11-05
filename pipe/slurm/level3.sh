@@ -79,15 +79,25 @@ no2_l2_split()
    # put log file in the the first granule directory
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    logdir=$(dirname $first_granule)
-   log_message "strat/trop separation: $(basename $first_granule .nc) scan"
+   first_granule_bn="$(basename $first_granule .nc)"
+   log_message "strat/trop separation: $first_granule_bn scan"
    L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
+   # Select sqlite database file path based on product type
+   case "$first_granule_bn" in
+      *_NRT_* )
+        dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
+        ;;
+      * )
+        dbfile="$SDPC_ARCHIVE_DBFILE"
+        ;;
+   esac
    # Change asdc_status of NO2_L2 products from 'defer' to 'new'
    tmpfile=$(mktemp)
    printf "%s\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
+   asdc_track_uploads.py --dbfile $dbfile --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
    printf "%s.met\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 met asdc_status defer to new"
+   asdc_track_uploads.py --dbfile $dbfile --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 met asdc_status defer to new"
    /bin/rm -f $tmpfile
 }
 
@@ -103,17 +113,29 @@ no2_l2_split()
 # l2_paths = space-delimited list of level 2 data product files
 . $pathlist_file
 
+l3_target_dir=$(dirname $l3_path)
+l3_basename=$(basename $l3_path)
+
+is_nrt=0
+case "$l3_basename" in
+    *_NRT_* )
+       is_nrt=1
+       ;;
+    * )
+       ;;
+esac
+
 case "$product_name" in
   CLDO4_L2 )
      radref_enable=$(config_setting radref.enable)
-     if test $radref_enable -ne 0 ; then
+     if test $radref_enable -ne 0 && test $is_nrt -eq 0 ; then
         make_radref "$l2_paths"
      fi
      ;;
 
   HCHO_L2 )
      destripe_HCHO=$(config_setting destripe.HCHO.enable)
-     if test $destripe_HCHO -ne 0 ; then
+     if test $destripe_HCHO -ne 0 && test $is_nrt -eq 0 ; then
         make_destripe "$l2_paths"
      fi
      ;;
@@ -127,9 +149,6 @@ case "$product_name" in
 esac
 
 # Run L2_regrid on all L2 data products
-
-l3_target_dir=$(dirname $l3_path)
-l3_basename=$(basename $l3_path)
 
 mkdir -p $l3_target_dir || error_exit "mkdir -p $l3_target_dir failed"
 
@@ -150,6 +169,7 @@ log_message "generating L3 product: $l3_basename"
 
 insert_fixed_metadata.py $l3_path
 fix_met_format.py ${l3_path}.met
+fix_nrt_shortname.py $l3_path
 
 register_symlink="$SDPC_ARCHIVE_DIR/registry/incoming/$l3_basename"
 ln -s $l3_path $register_symlink
