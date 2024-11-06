@@ -4,7 +4,9 @@
 from __future__ import print_function
 
 import os, sys
+import re
 import time
+import textwrap
 import sqlite3
 from datetime import date
 from netCDF4 import Dataset as NetCDFFile
@@ -18,14 +20,6 @@ Sqlite_Trace = False
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def get_db_path():
-    db_file_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
-    if db_file_path == None:
-        eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
-        sys.exit(1)
-
-    return db_file_path
-
 def get_rad_info (path):
     with NetCDFFile (path, "r") as nc:
         tstart = nc.getncattr ('time_coverage_start_since_epoch')
@@ -37,8 +31,16 @@ def get_rad_info (path):
     info["scan_num"] = scan_num
     return info
 
+Rad_Basename_Parser = re.compile ("TEMPO_RAD_L1\w?_(?:|NRT_)V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}.nc")
+
 def lookup_radiance_path (c, basename):
-    sql = "select path from 'RAD_L1' where filename='{basename}';".format(**locals())
+
+    g = Rad_Basename_Parser.match (basename)
+    if g is None:
+        return None
+
+    timestamp = g.group(1)
+    sql = "select path from 'RAD_L1' where filename like '%{}%';".format(timestamp)
     c.execute (sql)
     result = c.fetchone()
     if result is None:
@@ -53,34 +55,34 @@ def select_matching_radref (c, window_days, window_hours, minwidth, thisscan, in
     htx = tx % sec_per_day
     tmax = window_days * sec_per_day + window_hours * sec_per_hour;
 
-    # First, get the candidate list, with the newest listed first
     if thisscan:
         scan_num_label = "%%S%03d%%" % (info["scan_num"])
-        subst = {'beg':tx - 3*3600.0, 'end':tx, 'scan_num_label': scan_num_label}
-        cmd = 'select path,0.5*(tstart+tend) from "RADREF_L1" where 0.5*(tstart + tend) between :beg and :end and filename like :scan_num_label order by tstart desc;'
+        subst = {'beg':tx - 3*sec_per_hour, 'end':tx, 'scan_num_label': scan_num_label}
+        cmd = 'select path from "RADREF_L1" where 0.5*(tstart + tend) between :beg and :end and filename like :scan_num_label order by tstart desc limit 1;'
     else:
         t1 = tx-tmax
         t2 = tx-sec_per_day
-        subst = {'beg':min(t1,t2), 'end':max(t1,t2), 'minwidth':minwidth}
-        cmd = "select path,0.5*(tstart+tend) from 'RADREF_L1' where 0.5*(tstart + tend) between :beg and :end and num_mirror_pos >= :minwidth order by tstart desc;"
+        subst = {'beg':min(t1,t2), 'end':max(t1,t2), 'minwidth':minwidth,
+                 'tx':tx, 'htx':htx, 'window_days':window_days, 'window_hours':window_hours}
+        cmd = """
+              with cte as (
+              select path,
+                     abs(:tx - tstart)/86400.0 as day_diff,
+                     abs(:htx - tstart%86400)/3600.0 as hr_diff
+              from RADREF_L1
+              where tstart between :beg and :end and num_mirror_pos >= :minwidth
+              )
+              select path from cte
+              where day_diff < :window_days and hr_diff < :window_hours
+              order by day_diff, hr_diff asc limit 1
+              """
+        cmd = textwrap.dedent(cmd)
 
-    c.execute(cmd, subst)
-
-    # Select from the list
-    path = ""
-    min_t_delta = window_days
-    min_h_delta = window_hours / 24.0
-    tol = min_t_delta * min_h_delta
-    if tol <= 0.0:
-        tol = 1/24.0
-    for row in c:
-        tmid = row[1]
-        t_delta = abs(tx - tmid) / sec_per_day
-        h_delta = abs(htx - (tmid % sec_per_day)) / sec_per_day
-        score = t_delta * h_delta
-        if score < tol:
-            path = row[0]
-            tol = score
+    row = c.execute(cmd, subst)
+    if row is None:
+        path = ""
+    else:
+        path = row.fetchone()[0]
 
     return path
 
@@ -137,6 +139,8 @@ def main():
         minwidth = 600
 
     parser = argparse.ArgumentParser(description='Select the appropriate radiance reference file')
+    parser.add_argument('--dbfile', metavar='DBFILE', default=None,
+                        help="sqlite database path")
     parser.add_argument ('--days',default=days, type=float,
                          help="Acceptable offset in days")
     parser.add_argument ('--hours', default=hours, type=float,
@@ -154,13 +158,23 @@ def main():
     global Sqlite_Trace
     Sqlite_Trace = args.trace
 
-    db_path = get_db_path()
+    if args.dbfile is None:
+        db_path = os.getenv ("SDPC_ARCHIVE_DBFILE")
+        if db_path == None:
+            eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
+            sys.exit(1)
+    else:
+        db_path = args.dbfile
+
+    rad_basename = os.path.basename (args.radiance_file)
+    if "_NRT_" in rad_basename:
+        rad_basename = rad_basename.replace ("_NRT", "")
 
     with connect_database (db_path) as conn:
-        radiance_path = lookup_radiance_path (conn.cursor(), os.path.basename(args.radiance_file))
+        radiance_path = lookup_radiance_path (conn.cursor(), rad_basename)
 
     if radiance_path is None:
-        print ('*** radiance file not in database: {}'.format (args.radiance_file))
+        print ('*** radiance file basename not in database: {}'.format (rad_basename))
         sys.exit(1)
 
     rad_info = get_rad_info (radiance_path)

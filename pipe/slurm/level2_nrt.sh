@@ -48,6 +48,11 @@ log_message()
 
 test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: $SDPC_ROOT"
 
+# initialize before loading tar notice file
+radref_file=""
+
+products_needing_radref="$(config_setting radref.products)"
+
 # Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
@@ -56,6 +61,19 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # Optionally: radref_file = basename of radiance reference file
 # Optionally: redefine SDPC_LEVEL2_PRODUCTS
 . $tar_file_notice
+
+# Some products may require a radiance reference file:
+radref_enable=$(config_setting radref.enable)
+if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
+   # If we've already been given a radref file, then use it.
+   # Otherwise, search.
+   if test -z "$radref_file" ; then
+      radref_file=$(select_radref.py --dbfile "$SDPC_NRT_RADREF_DBFILE" $rad_filename)
+      if test -n "$radref_file" && test -f $radref_file ; then
+         printf "radref_file=\"$radref_file\"\n" >> $tar_file_notice
+      fi
+   fi
+fi
 
 tar_file_basename="$(basename $tar_host_file_path)"
 # Trim any basename characters following and including '.',
@@ -71,26 +89,26 @@ level2_products=${level2_products^^}
 product_list_tokens="$(echo $level2_products | tr , ' ')"
 product_list_sans_o3p="$(echo $product_list_tokens | sed -e s/O3PROF//)"
 
-case "$product_list_sans_o3p" in
-   *)
-    # do nothing
-    ;;
-
-   *HCHO*)
-     # Support HCHO destriping correction
-     hcho_destripe_enable=$(config_setting destripe.HCHO.enable)
-     destripe_file=""
-     if test $hcho_destripe_enable -ne 0 ; then
-        hcho_destripe_apply=$(config_setting destripe.HCHO.apply)
-        hcho_destripe_search=$(config_setting destripe.HCHO.search)
-        if test $hcho_destripe_apply -ne 0 && test $hcho_destripe_search -ne 0 ; then
-           # may return empty string if search fails
-           destripe_file=$(select_destripe.py $rad_filename)
-        fi
-     fi
-     printf "destripe_file=\"$destripe_file\"\n" >> $tar_file_notice
-     ;;
-esac
+# case "$product_list_sans_o3p" in
+#    *)
+#     # do nothing
+#     ;;
+#
+#    *HCHO*)
+#      # Support HCHO destriping correction
+#      hcho_destripe_enable=$(config_setting destripe.HCHO.enable)
+#      destripe_file=""
+#      if test $hcho_destripe_enable -ne 0 ; then
+#         hcho_destripe_apply=$(config_setting destripe.HCHO.apply)
+#         hcho_destripe_search=$(config_setting destripe.HCHO.search)
+#         if test $hcho_destripe_apply -ne 0 && test $hcho_destripe_search -ne 0 ; then
+#            # may return empty string if search fails
+#            destripe_file=$(select_destripe.py $rad_filename)
+#         fi
+#      fi
+#      printf "destripe_file=\"$destripe_file\"\n" >> $tar_file_notice
+#      ;;
+# esac
 
 slurm_logdir="$SDPC_PIPE_DIR/log/level2_nrt/slurm"
 

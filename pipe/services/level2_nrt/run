@@ -10,4 +10,11 @@ fi
 
 export SDPC_LEVEL2_PRODUCTS=$(config_setting level2.products)
 
+# Set sqlite database to use for radiance reference file lookup
+radref_dbfile=$(config_setting nrt.radref_dbfile)
+if test -z "$radref_dbfile" ; then
+   radref_dbfile="$SDPC_ARCHIVE_DBFILE"
+fi
+export SDPC_NRT_RADREF_DBFILE="$radref_dbfile"
+
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2_nrt.cfg" -- "${SDPC_NODE_DIR}/L2"
