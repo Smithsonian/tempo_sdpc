@@ -6,12 +6,15 @@ from datetime import date
 import dateutil.parser
 import sqlite3
 import re
+import fnmatch
 import argparse
 
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 DryRun = False
 DB_Path = None
 TraceSQL = False
+
+PDR_DB_Path = None  # used only to process SHORTPAN files
 
 Uploads_Excluded = ["RAD_L1a", "RADT_L1a"]
 
@@ -25,6 +28,13 @@ class Tokenizer:
 
 def connect_database (mode):
     conn = sqlite3.connect ("file:{}?mode={}".format(DB_Path, mode), uri=True, timeout=20.0)
+    conn.execute("pragma foreign_keys=on")
+    if TraceSQL:
+        conn.set_trace_callback(print)
+    return conn
+
+def __connect_database (mode, dbfile):
+    conn = sqlite3.connect ("file:{}?mode={}".format(dbfile, mode), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
     if TraceSQL:
         conn.set_trace_callback(print)
@@ -140,13 +150,25 @@ def print_files_matching_status (asdc_status, **kwargs):
         for f in table_lists[table]:
             print(f)
 
-def longpan_header (thefile, parse):
-    # MESSAGE_TYPE = LONGPAN
+def shortpan_entry (thefile, parse):
+    entry = {}
     line = thefile.readline()
     tok = parse.tokens (line)
-    if tok[0] != 'MESSAGE_TYPE' or tok[1] != 'LONGPAN':
+    if tok[0] != 'DISPOSITION':
         print ('*** invalid file header: {}'.format(line))
-        return -1
+        return None
+    entry["disposition"] = tok[1].strip('" ')
+    # TIME_STAMP = $time_stamp
+    line = thefile.readline()
+    tok = parse.tokens (line)
+    if tok[0] != 'TIME_STAMP':
+        print ('*** invalid entry: {}'.format(line))
+        return None
+    parsed_t = dateutil.parser.isoparse(tok[1])
+    entry["time_stamp"] = int(parsed_t.timestamp())
+    return entry
+
+def longpan_header (thefile, parse):
     # NO_OF_FILES = $num_files
     line = thefile.readline()
     tok = parse.tokens (line)
@@ -184,8 +206,94 @@ def longpan_entry (thefile, parse):
     entry["time_stamp"] = int(parsed_t.timestamp())
     return entry
 
-def process_longpan(cur, longpan_file):
+def get_product_filenames_from_pdr_file (pdr_path):
+    with open (pdr_path, "r") as fp:
+        lines = fp.readlines()
+    lines = [s.strip() for s in lines]
+    lines = list(filter (None, lines))
+    # Extract the product filenames from the PDR file
+    p = re.compile ("\s*FILE_ID\s*=\s*(..*);$")
+    product_files = []
+    for s in lines:
+        m = re.match (p, s)
+        if m is not None:
+            product_files.append(m.group(1))
+    # Exclude any *.cmr.json files:
+    for f in fnmatch.filter (product_files, "*.cmr.json"):
+        product_files.remove(f)
+    return product_files
+
+def process_shortpan (cur, thefile, parse, pan_file):
+    entry = shortpan_entry (thefile, parse)
+    if entry is None:
+        print ('skipping file: {}'.format(pan_file))
+        return
+    # Can we look up the corresponding PDR file to get product filenames?
+    global PDR_DB_Path
+    if PDR_DB_Path is None:
+        print ('skipping SHORTPAN: {} (pdrdbfile=None)'.format(pan_file))
+        return
+    # Retrieve the PDR file's local path:
+    pdr_file = pan_file.replace ('.PAN', '.PDR')
+    pdr_query = "select path from File_Table where filename == '{}'".format(pdr_file)
+    with __connect_database ("ro", PDR_DB_Path) as conn:
+        pdr_cur = conn.cursor()
+        result = pdr_cur.execute (pdr_query)
+        pdr_path = pdr_cur.fetchone()[0]
+    # Try to read the local PDR file
+    if not os.path.isfile (pdr_path):
+        print ('skipping SHORTPAN: {} (cannot open corresponding PDR file: {})'.format(pan_file, pdr_path))
+        return
+    product_files = get_product_filenames_from_pdr_file (pdr_path)
+    if entry["disposition"] == "SUCCESSFUL":
+        asdc_status = Asdc_Status["accepted"]
+    else:
+        asdc_status = Asdc_Status["problem"]
+        print ('unsuccessful shortpan {} references {} files'.format(pan_file, len(product_files)))
+    # Assign the shortpan disposition to the remaining product files from the PDR.
+    for basename in product_files:
+        table_name = table_name_for_file (basename)
+        update_file_status (cur, table_name, basename, asdc_status, entry["time_stamp"], disposition=entry["disposition"])
+
+def process_longpan (cur, thefile, parse, pan_file):
+    num_files = longpan_header (thefile, parse)
+    if num_files < 0:
+        print ('skipping file: {}'.format(pan_file))
+        return
+
+    num_bad = 0
+    for i in range(num_files):
+        entry = longpan_entry (thefile, parse)
+        if entry == None:
+            break
+        if entry["disposition"] == "SUCCESSFUL":
+            asdc_status = Asdc_Status["accepted"]
+        else:
+            asdc_status = Asdc_Status["problem"]
+            num_bad += 1
+        table_name = table_name_for_file (entry["basename"])
+        update_file_status (cur, table_name, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
+
+    if num_bad > 0:
+        print ('{} has {} bad files'.format(pan_file, num_bad))
+    return
+
+def process_pan (cur, pan_file):
     """
+    The generic SIPS ICD, 423-41-57_ICD_ECSSIPS_RevK_Final.pdf, says:
+       There are two forms of the PAN, a short (Table 3-14) and a long
+       (Table 3-15) form. The short form of the PAN is sent to
+       acknowledge that all files have been successfully transferred,
+       or to report errors that are not specific to individual files
+       but which have precluded processing of any and all files (e.g.,
+       transfer failure). If all files in a request do not have the
+       same disposition, the long form of this message is employed.
+
+    A SHORTPAN file just has 3 lines:
+        MESSAGE_TYPE = SHORTPAN;
+        DISPOSITION = $disposition;
+        TIME_STAMP = $time_stamp
+
     A LONGPAN file has a 2-line header:
         MESSAGE_TYPE = LONGPAN;
         NO_OF_FILES = $num_files;
@@ -199,41 +307,39 @@ def process_longpan(cur, longpan_file):
     On success, $disposition = "SUCCESSFUL", otherwise there was a problem
     """
     parse = Tokenizer()
-    num_bad = 0
-    with open (longpan_file, "r") as thefile:
-        num_files = longpan_header (thefile, parse)
-        if num_files < 0:
-            print ('skipping file: {}'.format(longpan_file))
-            return
-        for i in range(num_files):
-            entry = longpan_entry (thefile, parse)
-            if entry == None:
-                break
-            if entry["disposition"] == "SUCCESSFUL":
-                asdc_status = Asdc_Status["accepted"]
-            else:
-                asdc_status = Asdc_Status["problem"]
-                num_bad += 1
-            table_name = table_name_for_file (entry["basename"])
-            update_file_status (cur, table_name, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
+    with open (pan_file, "r") as thefile:
+        line = thefile.readline()
+        tok = parse.tokens (line)
+        if tok[0] != 'MESSAGE_TYPE':
+            print ('*** unexpected file header: {}'.format(line))
+            return -1
+        if  tok[1] == 'LONGPAN':
+            process_longpan (cur, thefile, parse, pan_file)
+        elif tok[1] == 'SHORTPAN':
+            process_shortpan (cur, thefile, parse, pan_file)
+        else:
+            print ('*** unexpected file header: {}'.format(line))
+            return -1
 
-    return num_bad
+    return 0
 
-def process_longpan_files (longpan_file_list):
-    for longpan_file in longpan_file_list:
+def process_pan_files (pan_file_list):
+    for pan_file in pan_file_list:
         try:
             with connect_database("rw") as conn:
-                num_bad = process_longpan (conn.cursor(), longpan_file)
-            if num_bad > 0:
-                print ('{} has {} bad files'.format(longpan_file, num_bad))
+                process_pan (conn.cursor(), pan_file)
         except BaseException as e:
             print('An exception occurred: {}'.format(e))
-            print ("Error processing file: {}".format(longpan_file))
+            print ("Error processing file: {}".format(pan_file))
 
 def set_file_status (status, file_list, update_stat):
     with open(file_list, "r") as fp:
         files = fp.readlines()
     files = [f.strip() for f in files]
+    # filter out empty strings and cmr.json files
+    files = list(filter (None, files))
+    for f in fnmatch.filter (files, "*.cmr.json"):
+        files.remove(f)
     status_time = int(time.time())
 
     # To streamline transactions and minimize the duration each connection is held open,
@@ -291,8 +397,10 @@ def main():
                         help="File path sort order (asc | desc)")
     parser.add_argument('--set', metavar=('STATUS','FILE_LIST',), default=None, nargs=2,
                         help="Set status of specified files")
-    parser.add_argument('--pans', metavar='LONGPAN', default=None, nargs="*",
-                        help="Process LONGPAN files (changes status 'uploaded' to 'accepted'|'problem')")
+    parser.add_argument('--pans', metavar='PAN', default=None, nargs="*",
+                        help="Process PAN files (changes status 'uploaded' to 'accepted'|'problem')")
+    parser.add_argument('--pdrdbfile', metavar='PDRDBFILE', default=None,
+                        help="sqlite database path used to track PAN files")
     parser.add_argument('--report', metavar='STATUS', default=None,
                         help="Print disposition report for files matching status")
     parser.add_argument('--ymd', action='store_true',
@@ -323,6 +431,9 @@ def main():
     else:
         DB_Path = args.dbfile
 
+    global PDR_DB_Path
+    PDR_DB_Path = args.pdrdbfile
+
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])
     elif args.list:
@@ -330,7 +441,7 @@ def main():
     elif args.set:
         set_file_status (args.set[0], args.set[1], args.stat)
     elif args.pans:
-        process_longpan_files(args.pans)
+        process_pan_files(args.pans)
     elif args.report:
         print_report (args.report, args.ymd, limit=args.limit)
 

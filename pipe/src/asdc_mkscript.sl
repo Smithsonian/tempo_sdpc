@@ -5,16 +5,13 @@ require ("chksum");
 require ("cmdopt");
 require ("pcre");
 
-private variable Dest_Target_Dir = ".";
-% Weirdly, absolute directory paths viewed from inside ASDC are
-% different from those viewed from outside ASDC. To avoid
-% confusion, we use "."
-
 private variable Ancillary_Type_List = ["GEOSCF", "CMIEAST", "CMIWEST", "IMS"];
-private variable Node_Name;
 
 private variable GOES_Path_Pattern = "/20\d{2}/\d{3}/(east|west)_cmi/OR_ABI-"R;
 private variable GOES_Path_Regex = pcre_compile (GOES_Path_Pattern);
+
+private variable Node_Name_Entry;
+private variable Dest_Target_Dir;
 
 define make_file_entry (path, data_type, st, file_type)
 {
@@ -56,7 +53,8 @@ define process_file_corrfile (types, path)
      {
         data_version = version_string,
         entry = entry,
-        met_entry = NULL
+        met_entry = NULL,
+        json_entry = NULL
      };
 
    if (assoc_key_exists (types, product_type))
@@ -98,11 +96,18 @@ define process_file_nc (types, path)
    if (st_met != NULL)
      met_entry = make_file_entry (path_met, data_type, st_met, "METADATA");
 
+   variable path_json = path + ".cmr.json";
+   variable st_json = stat_file (path_json);
+   variable json_entry = NULL;
+   if (st_json != NULL)
+     json_entry = make_file_entry (path_json, data_type, st_json, "METADATA");
+
    variable group = struct
      {
         data_version = data_version,
         entry = entry,
-        met_entry = met_entry
+        met_entry = met_entry,
+        json_entry = json_entry
      };
 
    if (assoc_key_exists (types, product_type))
@@ -133,7 +138,8 @@ define process_file_raw (types, path)
      {
         data_version = data_version,
         entry = entry,
-        met_entry = NULL
+        met_entry = NULL,
+        json_entry = NULL
      };
 
    if (assoc_key_exists (types, product_type))
@@ -185,7 +191,8 @@ define process_file_ancillary (types, path)
      {
         data_version = data_version,
         entry = entry,
-        met_entry = NULL
+        met_entry = NULL,
+        json_entry = NULL
      };
 
    if (assoc_key_exists (types, product_type))
@@ -246,28 +253,32 @@ define write_file_group (fp, g)
         entries = sprintf ("%s\n%s", entries, met_str);
      }
 
+   if (g.json_entry != NULL)
+     {
+        variable json_str = entry_string (g.json_entry);
+        entries = sprintf ("%s\n%s", entries, json_str);
+     }
+
    variable str =
 `OBJECT = FILE_GROUP;
   DATA_TYPE = $data_type;
   DATA_VERSION = $data_version;
-  NODE_NAME = $Node_Name;
-  $entries
+  $Node_Name_Entry$entries
 END_OBJECT = FILE_GROUP;
 `$;
 
    () = fputs (str, fp);
 }
 
-define write_manifest (dest, lst, filename)
+define write_manifest (lst, filename)
 {
    variable g, num_files = 0;
 
    foreach g (lst)
      {
-        if (g.met_entry == NULL)
-          num_files += 1;
-        else
-          num_files += 2;
+        num_files += 1;
+        if (g.met_entry != NULL) num_files += 1;
+        if (g.json_entry != NULL) num_files += 1;
      }
 
    variable hdr =
@@ -302,6 +313,18 @@ define print_script_entry (fp, ary)
    variable i, j = where (has_met, &i);
    if (length(i) > 0) print_mput (fp, ary[i]);
    if (length(j) > 0) print_mput (fp, ary[j]);
+}
+
+define print_list_entry (fp, ary)
+{
+   variable has_met = array_map (Int_Type, &is_substr, ary, ".nc.met");
+   variable has_json = array_map (Int_Type, &is_substr, ary, ".nc.cmr.json");
+   variable i = where (has_met == 0 and has_json == 0);
+   variable j = where (has_json);
+   variable k = where (has_met);
+   if (length(i) > 0) () = fprintf (fp, "%s\n", strjoin (ary[i], "\n"));
+   if (length(j) > 0) () = fprintf (fp, "%s\n", strjoin (ary[j], "\n"));
+   if (length(k) > 0) () = fprintf (fp, "%s\n", strjoin (ary[k], "\n"));
 }
 
 define write_lftp_script (dest, types, type_list, pdr_files, script_file)
@@ -340,6 +363,7 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
              list_append (lst, g.entry.path);
              if (g.met_entry != NULL)
                list_append (lst, g.met_entry.path);
+             % cmr.json metadata not used with direct upload to ASDC
           }
         if (length(lst) > 0)
           {
@@ -351,6 +375,45 @@ define write_lftp_script (dest, types, type_list, pdr_files, script_file)
      }
 
    () = fputs ("exit\n", fp);
+
+   if (0 != fclose (fp))
+     throw IOError, "closing $script_file"$;
+}
+
+define write_aws_upload_sequence (dest, types, type_list, pdr_files, script_file)
+{
+   variable fp = fopen (script_file, "w");
+   if (NULL == fp)
+     throw IOError, "opening $script_file for writing"$;
+
+   % Transfer data files first, then the manifest (PDR) file.
+   % The ASDC ingest system assumes the PDR file is uploaded last.
+   % When a PDR file is detected, the system immediately starts
+   % looking for the files it refers to, and if those files aren't
+   % available, the ingest system fails with "FILE NOT FOUND".
+
+   variable i, num_types = length(type_list);
+
+   _for i (0, num_types-1, 1)
+     {
+        variable this_type = type_list[i];
+        variable g, lst = {};
+        foreach g (types[this_type])
+          {
+             list_append (lst, g.entry.path);
+             if (g.met_entry != NULL)
+               list_append (lst, g.met_entry.path);
+             if (g.json_entry != NULL)
+               list_append (lst, g.json_entry.path);
+          }
+        if (length(lst) > 0)
+          {
+             variable ary = list_to_array (lst);
+             % To avoid long lines, continue lines with a trailing '\\n'
+             print_list_entry (fp, ary);
+             () = fprintf (fp, "%s\n", pdr_files[i]);
+          }
+     }
 
    if (0 != fclose (fp))
      throw IOError, "closing $script_file"$;
@@ -408,7 +471,7 @@ define write_pdr_list (pdr_names, list_file)
      throw IOError, "closing $list_file"$;
 }
 
-define process_file_list (dest, file_list, script_file, pdr_file_list)
+define process_file_list (dest, file_list, script_file, is_aws_upload, pdr_file_list)
 {
    variable path_list = read_file_list (file_list);
 
@@ -416,6 +479,8 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
 
    foreach path (path_list)
      {
+        if (0 == strlen(strtrim(path)))
+          continue;
         variable st = stat_file (path);
         if (st == NULL)
           {
@@ -439,9 +504,9 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
              continue;
           }
         variable extname = path_extname (path);
-        if (extname == ".met")
+        if (extname == ".met" or 0 != string_match (path, ".cmr.json$"))
           {
-             % Silently skip .met files.  They get handled
+             % Silently skip .met files and .cmr.json files  They get handled
              % along with the corresponding data file.
              continue;
           }
@@ -472,10 +537,17 @@ define process_file_list (dest, file_list, script_file, pdr_file_list)
 
    _for i (0, num_types-1, 1)
      {
-        write_manifest (dest, types[type_list[i]], mf_files[i]);
+        write_manifest (types[type_list[i]], mf_files[i]);
      }
 
-   write_lftp_script (dest, types, type_list, mf_files, script_file);
+   if (is_aws_upload == 0)
+     {
+        write_lftp_script (dest, types, type_list, mf_files, script_file);
+     }
+   else
+     {
+        write_aws_upload_sequence (dest, types, type_list, mf_files, script_file);
+     }
 }
 
 private define usage ()
@@ -485,6 +557,7 @@ private define usage ()
 Options:
     -d|--dest USER@HOST:dirpath   Destination account/host/path
     -o|--output FILE      Write lftp script to FILE
+    -a|--aws              Generate output script for AWS S3 upload
     -p|--pdr FILE         Write PDR filenames to FILE
     -h|--help             Show usage message
 `;
@@ -527,10 +600,12 @@ define slsh_main ()
    variable show_usage = 0;
    variable script_file = "script.lftp";
    variable pdr_file_list = NULL;
-   variable user_at_host = "tempo@xfr140.larc.nasa.gov";
+   variable user_at_host = "tempo@xfr140.larc.nasa.gov:ingest/tempo";
+   variable is_aws_upload = 0;
 
    variable opts = cmdopt_new (&cmdopt_error);
    opts.add ("h|help", &show_usage; inc);
+   opts.add ("a|aws", &is_aws_upload; inc);
    opts.add ("d|dest", &user_at_host; type="string");
    opts.add ("o|output", &script_file; type="string");
    opts.add ("p|pdr", &pdr_file_list; type="string");
@@ -558,7 +633,17 @@ define slsh_main ()
    if (NULL != stat_file (script_file))
      throw IOError, "Target file exists: $script_file"$;
 
-   Node_Name = get_hostname();
+   % PDR files differ somewhat between ASDC direct ingest and cloud ingest:
+   if (is_aws_upload == 0)
+     {
+        Node_Name_Entry = sprintf ("NODE_NAME = %s;\n", get_hostname());
+        Dest_Target_Dir = ".";
+     }
+   else
+     {
+        Node_Name_Entry = "";
+        Dest_Target_Dir = "tempo-direct";
+     }
 
-   process_file_list (dest, file_list_file, script_file, pdr_file_list);
+   process_file_list (dest, file_list_file, script_file, is_aws_upload, pdr_file_list);
 }
