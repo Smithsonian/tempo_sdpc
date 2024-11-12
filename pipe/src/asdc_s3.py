@@ -37,10 +37,7 @@ class ProgressPercentage(object):
 
 class asdc_s3:
 
-    Bucket = "asdc2-uat-private"
-    Bucket_Directory = "tempo-direct"
-
-    def __init__ (self, bucket=Bucket, destination_dir=Bucket_Directory):
+    def __init__ (self, bucket, destination_dir):
         self.bucket = bucket
         self.destination_dir = destination_dir.strip('/')
         self.s3client = boto3.client('s3')
@@ -110,6 +107,8 @@ def read_files (listfile):
 
 def main ():
     parser = argparse.ArgumentParser(description='ASDC AWS S3 bucket put/get/list/remove files')
+    parser.add_argument('--bucket', metavar='BUCKET:DIR', default=None,
+                        help="S3 bucket specification")
     parser.add_argument('--list', action='store_true',
                         help="List files in S3 bucket directory")
     parser.add_argument('--pattern', default=None,
@@ -125,7 +124,16 @@ def main ():
 
     args = parser.parse_args()
 
-    s3 = asdc_s3()
+    if args.bucket is None:
+        parser.print_usage(sys.stderr)
+        print('*** Error: undefined S3 bucket')
+        sys.exit(1)
+
+    tok = args.bucket.split(':')
+    bucket = tok[0]
+    bucket_dir = tok[1]
+
+    s3 = asdc_s3 (bucket, bucket_dir)
 
     if args.list:
         files = s3.list_files (args.pattern)

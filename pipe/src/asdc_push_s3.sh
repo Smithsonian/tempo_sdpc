@@ -9,9 +9,21 @@ fi
 #set -e
 set -u
 
+if test $# -ne 1 ; then
+    echo "Usage: $0 Bucket:Bucket_Directory"
+    exit 0
+fi
+
+s3_bucket=$1
+
 # Per-table limit on the number of results from database query
 # (limit<=0 means no limit)
 : "${SDPC_ASDC_LIMIT:=0}"
+
+if ! test -f "$SDPC_ARCHIVE_DBFILE_NRT" ; then
+   echo "asdc_push_s3.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE_NRT"
+   exit 0
+fi
 
 pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs_s3.sqlite"
 ASDC_TRACK_UPLOADS="asdc_track_uploads.py --dbfile $SDPC_ARCHIVE_DBFILE_NRT"
@@ -63,11 +75,11 @@ do_asdc_s3_upload()
   $ASDC_TRACK_UPLOADS --set pending $file_list
 
   # generate manifest files and upload sequence
-  asdc_mkscript.sl --aws --pdr $pdr_list --output $upload_sequence $file_list
+  asdc_mkscript.sl --bucket $s3_bucket --pdr $pdr_list --output $upload_sequence $file_list
 
   # perform the upload
   error_flag=0
-  asdc_s3.py --put $upload_sequence || error_flag=1
+  asdc_s3.py --bucket $s3_bucket --put $upload_sequence || error_flag=1
   if test $error_flag -ne 0 ; then
      echo "*** ERROR: upload failed (see $dir)"
      $ASDC_TRACK_UPLOADS --set new $file_list
@@ -83,7 +95,7 @@ do_asdc_s3_upload()
 
 num=$($ASDC_TRACK_UPLOADS --num new)
 if test x"$num" = x0 ; then
-   echo "asdc_push.sh: ASDC ingest status: new: $num"
+   echo "asdc_push_s3.sh: ASDC ingest status: new: $num"
    exit 0
 fi
 

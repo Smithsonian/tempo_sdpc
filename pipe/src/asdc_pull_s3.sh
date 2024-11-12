@@ -9,6 +9,18 @@ fi
 #set -e
 set -u
 
+if test $# -ne 1 ; then
+    echo "Usage: $0 Bucket:Bucket_Directory"
+    exit 0
+fi
+
+s3_bucket=$1
+
+if ! test -f "$SDPC_ARCHIVE_DBFILE_NRT" ; then
+   echo "asdc_pull_s3.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE_NRT"
+   exit 0
+fi
+
 pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs_s3.sqlite"
 ASDC_TRACK_UPLOADS="asdc_track_uploads.py --dbfile $SDPC_ARCHIVE_DBFILE_NRT"
 
@@ -29,7 +41,7 @@ emit_pan_list()
    # Download a list of PAN files.
    # If none exist, there's nothing else to do.
 
-   asdc_s3.py --list --pattern "*.PAN" > $remote_pan_list
+   asdc_s3.py --bucket $s3_bucket --list --pattern "*.PAN" > $remote_pan_list
    if ! test -s $remote_pan_list ; then
       return 1
    fi
@@ -90,7 +102,7 @@ do_asdc_s3_download()
      return
   fi
 
-  asdc_s3.py --get $pan_list
+  asdc_s3.py --bucket $s3_bucket --get $pan_list
 
   panfiles=$(find . -maxdepth 1 -name "TEMPO*.PAN")
   if test x"$panfiles" != x"" ; then
@@ -107,13 +119,13 @@ do_asdc_s3_download()
 
 num=$($ASDC_TRACK_UPLOADS --num uploaded)
 if test x"$num" = x0 ; then
-   echo "asdc_pull.sh: ASDC ingest status: uploaded products:$num"
+   echo "asdc_pull_s3.sh: ASDC ingest status: uploaded products:$num"
    exit 0
 fi
 
 num_pdr=$(asdc_files.py --dbfile $pdr_dbfile --num new)
 if test x"$num_pdr" = x0 ; then
-   echo "asdc_pull.sh: ASDC ingest status: pending PDRs:$num_pdr"
+   echo "asdc_pull_s3.sh: ASDC ingest status: pending PDRs:$num_pdr"
    exit 0
 fi
 

@@ -555,11 +555,11 @@ private define usage ()
    variable msg =
 `Usage: asdc_mkscript.sl [options] <files.lis>
 Options:
-    -d|--dest USER@HOST:dirpath   Destination account/host/path
-    -o|--output FILE      Write lftp script to FILE
-    -a|--aws              Generate output script for AWS S3 upload
-    -p|--pdr FILE         Write PDR filenames to FILE
-    -h|--help             Show usage message
+    -d|--dest USER@HOST:dirpath     Destination account/host/path
+    -o|--output FILE                Write lftp script to FILE
+    -b|--bucket Bucket:Bucket_dir   Generate output script for AWS S3 upload
+    -p|--pdr FILE                   Write PDR filenames to FILE
+    -h|--help                       Show usage message
 `;
    () = fprintf (stderr, msg);
    exit (0);
@@ -601,11 +601,11 @@ define slsh_main ()
    variable script_file = "script.lftp";
    variable pdr_file_list = NULL;
    variable user_at_host = "tempo@xfr140.larc.nasa.gov:ingest/tempo";
-   variable is_aws_upload = 0;
+   variable s3_bucket = NULL;
 
    variable opts = cmdopt_new (&cmdopt_error);
    opts.add ("h|help", &show_usage; inc);
-   opts.add ("a|aws", &is_aws_upload; inc);
+   opts.add ("b|bucket", &s3_bucket; type="string");
    opts.add ("d|dest", &user_at_host; type="string");
    opts.add ("o|output", &script_file; type="string");
    opts.add ("p|pdr", &pdr_file_list; type="string");
@@ -634,15 +634,19 @@ define slsh_main ()
      throw IOError, "Target file exists: $script_file"$;
 
    % PDR files differ somewhat between ASDC direct ingest and cloud ingest:
-   if (is_aws_upload == 0)
+   variable is_aws_upload = 0;
+   if (s3_bucket == NULL)
      {
         Node_Name_Entry = sprintf ("NODE_NAME = %s;\n", get_hostname());
         Dest_Target_Dir = ".";
      }
    else
      {
+        variable bckt = strtok (s3_bucket, ":");
+        if (length(bckt) != 2) usage();
         Node_Name_Entry = "";
-        Dest_Target_Dir = "tempo-direct";
+        Dest_Target_Dir = bckt[1];
+        is_aws_upload = 1;
      }
 
    process_file_list (dest, file_list_file, script_file, is_aws_upload, pdr_file_list);
