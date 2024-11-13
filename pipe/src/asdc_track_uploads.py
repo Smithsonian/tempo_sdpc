@@ -92,6 +92,8 @@ def product_file_path (nc_or_met_file_path):
     ext_split = os.path.splitext (nc_or_met_file_path)
     if '.met' == ext_split[1]:
         return ext_split[0]
+    elif nc_or_met_file_path.endswith ('.cmr.json'):
+        return nc_or_met_file_path.replace ('.cmr.json', '')
     else:
         return nc_or_met_file_path
 
@@ -104,7 +106,10 @@ def update_file_status (cur, table_name, filename, asdc_status, status_time, upd
         fields["asdc_status"] = asdc_status
     elif '.met' == ext_split[1]:
         fields["asdc_status_met"] = asdc_status
-        file_basename = os.path.basename(ext_split[0])
+        file_basename = ext_split[0]
+    elif file_basename.endswith ('.cmr.json'):
+        fields["asdc_status_met"] = asdc_status
+        file_basename = file_basename.replace ('.cmr.json','')
     elif '.tar' == ext_split[1]:
         fields["asdc_status"] = asdc_status
     else:
@@ -218,9 +223,6 @@ def get_product_filenames_from_pdr_file (pdr_path):
         m = re.match (p, s)
         if m is not None:
             product_files.append(m.group(1))
-    # Exclude any *.cmr.json files:
-    for f in fnmatch.filter (product_files, "*.cmr.json"):
-        product_files.remove(f)
     return product_files
 
 def process_shortpan (cur, thefile, parse, pan_file):
@@ -336,10 +338,8 @@ def set_file_status (status, file_list, update_stat):
     with open(file_list, "r") as fp:
         files = fp.readlines()
     files = [f.strip() for f in files]
-    # filter out empty strings and cmr.json files
+    # filter out empty strings
     files = list(filter (None, files))
-    for f in fnmatch.filter (files, "*.cmr.json"):
-        files.remove(f)
     status_time = int(time.time())
 
     # To streamline transactions and minimize the duration each connection is held open,

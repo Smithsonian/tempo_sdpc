@@ -116,18 +116,19 @@ def filter_file_list (infile, outfile):
     # filter out empty strings
     infile_list = list(filter (None, infile_list))
 
-    # Write out the same file list, inserting a .cmr.json filename after each .met file
+    # Write out the same file list, replacing each .met file with a .cmr.json file
     with open (outfile, "w") as fp:
         for filename in infile_list:
-            fp.write(filename + "\n")
             if filename.endswith (".met"):
                 jsonfile = convert_odl_file (filename)
                 fp.write (jsonfile + "\n")
+            else:
+                fp.write(filename + "\n")
 
 def main():
     parser = argparse.ArgumentParser(description='Convert TEMPO ODL metadata to UMM-G JSON')
     parser.add_argument('--filter', default=None,
-                        help="input filename list (--output is a filtered list, plus JSON files)")
+                        help="input filename list (--output is a filtered list)")
     parser.add_argument('--input', default=None,
                         help="input ODL file (--output is one JSON file)")
     parser.add_argument('--output', default=None,

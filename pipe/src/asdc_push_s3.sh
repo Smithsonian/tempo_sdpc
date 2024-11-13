@@ -56,7 +56,7 @@ do_asdc_s3_upload()
   # make list of new data product files
   $ASDC_TRACK_UPLOADS --limit $SDPC_ASDC_LIMIT --order desc --list new > ${file_list}.new
 
-  # Augment the file list with a .cmr.json file for each .met
+  # Convert .met files to .cmr.json
   convert_odlmet_to_cmrjson.py --filter ${file_list}.new --output $file_list
 
   # apply the upload filter

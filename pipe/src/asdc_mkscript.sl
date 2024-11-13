@@ -68,7 +68,7 @@ define process_file_corrfile (types, path)
    types[product_type] = lst;
 }
 
-define process_file_nc (types, path)
+define process_file_nc (types, path, is_aws_upload)
 {
    variable st = stat_file (path);
    if (st == NULL)
@@ -93,13 +93,13 @@ define process_file_nc (types, path)
    variable path_met = path + ".met";
    variable st_met = stat_file (path_met);
    variable met_entry = NULL;
-   if (st_met != NULL)
+   if (st_met != NULL and is_aws_upload == 0)
      met_entry = make_file_entry (path_met, data_type, st_met, "METADATA");
 
    variable path_json = path + ".cmr.json";
    variable st_json = stat_file (path_json);
    variable json_entry = NULL;
-   if (st_json != NULL)
+   if (st_json != NULL and is_aws_upload != 0)
      json_entry = make_file_entry (path_json, data_type, st_json, "METADATA");
 
    variable group = struct
@@ -401,8 +401,8 @@ define write_aws_upload_sequence (dest, types, type_list, pdr_files, script_file
         foreach g (types[this_type])
           {
              list_append (lst, g.entry.path);
-             if (g.met_entry != NULL)
-               list_append (lst, g.met_entry.path);
+             % if (g.met_entry != NULL)
+             %   list_append (lst, g.met_entry.path);
              if (g.json_entry != NULL)
                list_append (lst, g.json_entry.path);
           }
@@ -512,7 +512,7 @@ define process_file_list (dest, file_list, script_file, is_aws_upload, pdr_file_
           }
         else if (extname == ".nc")
           {
-             process_file_nc (types, path);
+             process_file_nc (types, path, is_aws_upload);
           }
         else if (extname == ".tar")
           {
