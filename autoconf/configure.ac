@@ -324,12 +324,23 @@ if test "x$jh_with_timezone" != "xno"; then
    echo "Setting spacecraft time zone to $jh_with_timezone"
 fi
 
+AC_ARG_WITH(localrootdir,
+  [  --with-localrootdir[=DIR]     Local root directory (must support reliable file locking)],
+  [jh_with_localrootdir=$withval],
+  [jh_with_localrootdir=no])
+if test "x$jh_with_localrootdir" = "xno"; then
+   LOCAL_ROOTDIR='/scratch'
+else
+   LOCAL_ROOTDIR="$jh_with_localrootdir"
+fi
+AC_SUBST(LOCAL_ROOTDIR)
+
 AC_ARG_WITH(lockdir,
   [  --with-lockdir[=FILE]     Put lock files in this directory],
   [jh_with_lockdir=$withval],
   [jh_with_lockdir=no])
 if test "x$jh_with_lockdir" = "xno"; then
-   SDPC_LOCKDIR='/scratch/temposdpc/lock'
+   SDPC_LOCKDIR="${LOCAL_ROOTDIR}/temposdpc/lock"
 else
    SDPC_LOCKDIR="$jh_with_lockdir"
 fi

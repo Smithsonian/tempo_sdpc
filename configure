@@ -646,6 +646,7 @@ SLANG_LIB_DIR
 SLANG_INC
 SLANG_LIB
 SDPC_LOCKDIR
+LOCAL_ROOTDIR
 LEAP_SECONDS_LIST
 GEOTIFF_INC
 GEOTIFF_LIB
@@ -775,6 +776,7 @@ with_geotiff
 with_leapsec
 enable_imgcomp
 with_sc_timezone
+with_localrootdir
 with_lockdir
 with_slang
 with_slanglib
@@ -1430,6 +1432,7 @@ Optional Packages:
   --with-geotiff=DIR      Use geotiff library installed in DIR (default:$prefix)
   --with-leapsec=FILE     Use this leap second file
   --with-sc-timezone=HH   Set the host spacecraft time zone (integer hours relative to UTC)
+  --with-localrootdir=DIR     Local root directory (must support reliable file locking)
   --with-lockdir=FILE     Put lock files in this directory
   --with-slang=DIR      Use DIR/lib and DIR/include for slang
   --with-slanglib=DIR   slang library in DIR
@@ -3000,6 +3003,21 @@ _ACEOF
 fi
 
 
+# Check whether --with-localrootdir was given.
+if test "${with_localrootdir+set}" = set; then :
+  withval=$with_localrootdir; jh_with_localrootdir=$withval
+else
+  jh_with_localrootdir=no
+fi
+
+if test "x$jh_with_localrootdir" = "xno"; then
+   LOCAL_ROOTDIR='/scratch'
+else
+   LOCAL_ROOTDIR="$jh_with_localrootdir"
+fi
+
+
+
 # Check whether --with-lockdir was given.
 if test "${with_lockdir+set}" = set; then :
   withval=$with_lockdir; jh_with_lockdir=$withval
@@ -3008,7 +3026,7 @@ else
 fi
 
 if test "x$jh_with_lockdir" = "xno"; then
-   SDPC_LOCKDIR='/scratch/temposdpc/lock'
+   SDPC_LOCKDIR="${LOCAL_ROOTDIR}/temposdpc/lock"
 else
    SDPC_LOCKDIR="$jh_with_lockdir"
 fi
