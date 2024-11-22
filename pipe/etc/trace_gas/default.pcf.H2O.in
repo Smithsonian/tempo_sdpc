@@ -234,6 +234,15 @@
 700050|TEMPO_Slit_Function_0.6nmGaussian_V1.nc|@refdata_dir@/instrument||||1
 #700050|@irradiance_file@|@spectra_dir@||||1
 # =======================================================================
+# The following file contains the results of the solar slit and wavelength
+# calibration from the trace gas code. The TEMPO trace gas code can be run with three
+# options described by solcal_cache_mode in the pipeline: 1. 'none' performs
+# the solar calibration and then proceeds to fitting; 2. 'save' performs the 
+# solar calibration, which is saved to the file below, then stops; 3. 'read' 
+# reads the pre-computed solar calibration from the file below and then proceeds
+# The mode is set below in the USER DEFINED RUNTIME PARAMETERS.
+700060|@solcal_file@|@solcal_dir@||||1
+# =======================================================================
 # tpk> This should be the place to list all the reference spectra. Needs
 # tpk> some thought on which spectra can occurr in the fitting. BUT we
 # tpk> also need to remember that different PGEs (BrO, OClO, HCHO) have
@@ -348,6 +357,7 @@
 200200|OrbitNumber|08541
 200210|SwathName|"TEMPO Total Column Amount H2O"
 200220|VERSIONID|@versionid@
+200300|solcal_cache_mode|"@solcal_cache_mode@"
 #
 # -------------------
 # SAO PGE Name
