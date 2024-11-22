@@ -82,7 +82,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     common_fitpos, common_fitvar, common_latrange, &
     mdqf_min_good_col, mdqf_max_good_col, mdqf_stddev_sus, mdqf_stddev_bad, &
     mdqf_sza_sus, mdqf_sza_bad, mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min, &
-    radref_latrange, target_npol
+    radref_latrange, target_npol, mask_fitvar_solcal, n_fitvar_solcal
   USE OMSAO_destriping_module, ONLY: &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
     ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
@@ -345,6 +345,8 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   READ (fit_ctrl_unit, *) max_itnum_sol
 
   yn_use_labslitfunc = .TRUE.
+  n_fitvar_solcal = 0
+  mask_fitvar_solcal = 0
   solpars: DO i = 1, max_calfit_idx
 
     READ (fit_ctrl_unit, *) idxchar, vartmp, lotmp, uptmp
@@ -368,6 +370,15 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
       ! Check whether we will be doing slit function fitting
       ! ----------------------------------------------------
       IF ( sidx == hwe_idx .AND. fitvar_sol_init(sidx) > 0.0_r8 ) yn_use_labslitfunc = .FALSE.
+
+      ! -----------------------------------------------
+      ! Check to see which ones are included in the fit
+      ! -----------------------------------------------
+      IF ( lo_sunbnd(i) < up_sunbnd(i) ) THEN
+        n_fitvar_solcal = n_fitvar_solcal + 1
+        mask_fitvar_solcal(n_fitvar_solcal) = i
+       END IF
+
     END IF
   END DO solpars
 

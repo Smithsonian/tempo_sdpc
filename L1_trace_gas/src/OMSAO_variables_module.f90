@@ -36,10 +36,12 @@ MODULE OMSAO_variables_module
 
   INTEGER (KIND=I4), DIMENSION (n_max_fitpars)  :: mask_fitvar_rad, mask_fitvar_cal, all_radfit_idx
 
-  INTEGER (KIND=I4)                             :: n_fitvar_rad, n_fitvar_cal
+  INTEGER (KIND=I4)                             :: n_fitvar_rad, n_fitvar_solcal
 
   REAL    (KIND=r8), DIMENSION (max_calfit_idx) :: &
     fitvar_cal, fitvar_cal_saved, fitvar_sol_init, lo_sunbnd, up_sunbnd
+
+  INTEGER (KIND=I4), DIMENSION (max_calfit_idx) :: mask_fitvar_solcal 
 
   REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: fitvar_rad, fitvar_rad_init
   REAL    (KIND=r8), DIMENSION (n_max_fitpars)  :: fitvar_rad_saved
@@ -219,6 +221,12 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   INTEGER (KIND=I4) :: n_rad_wvl, n_database_wvl
   INTEGER (KIND=I4) :: n_rad_wvl_max
+
+  ! -----------------------------------------------------------------
+  ! Calculated on-orbit solar irradiance calibration file and mode
+  ! -----------------------------------------------------------------
+  CHARACTER (LEN=MAX_STR_LEN) :: solcal_filename
+  CHARACTER (LEN=MAX_STR_LEN) :: solcal_cache_mode
 
   ! --------------------------------------------
   ! Name of the tabulated OMI slit function data

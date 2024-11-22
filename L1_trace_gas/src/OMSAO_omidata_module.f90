@@ -221,7 +221,7 @@ MODULE OMSAO_omidata_module
 
   INTEGER (KIND=i4), DIMENSION (nxtrack_max)                         :: n_omi_database_wvl
   INTEGER (KIND=i2), DIMENSION (nxtrack_max), TARGET                 :: &
-    omi_solcal_xflag, omi_radcal_xflag, omi_radref_xflag
+    omi_solcal_xflag, omi_solcal_itnum, omi_radcal_xflag, omi_radref_xflag
   REAL    (KIND=r8), DIMENSION (max_calfit_idx, nxtrack_max)         :: &
     omi_solcal_pars,  omi_radcal_pars,  omi_radref_pars
   !REAL    (KIND=r8), DIMENSION (nwavel_max, nxtrack_max, max_rs_idx) :: omi_database
@@ -230,7 +230,7 @@ MODULE OMSAO_omidata_module
   REAL    (KIND=r8), DIMENSION (:,:), allocatable                    :: omi_database_wvl
   !JCH -> unused: REAL    (KIND=r8), DIMENSION (nxtrack_max) :: omi_radref_wav_avg
   REAL    (KIND=r8), DIMENSION (nxtrack_max), TARGET :: &
-    omi_solcal_chisq, omi_solcal_shift, omi_radcal_chisq, &
+    omi_solcal_chisq, omi_solcal_shift, omi_radcal_chisq, omi_solcal_rms, &
     omi_radref_chisq, omi_radref_col,   omi_radref_dcol,  &
     omi_radref_rms, omi_radref_xtrcol
   REAL    (KIND=r8), DIMENSION (2,nxtrack_max,0:nlines_max-1)        :: omi_wavwin_rad, omi_fitwin_rad

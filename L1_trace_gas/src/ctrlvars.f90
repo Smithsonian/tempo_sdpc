@@ -51,4 +51,11 @@ module ctrlvars
   !GEMS data flag, set by command line switch, true = GEMS
   logical, public :: yn_gems
 
+  ! Logicals for saving and reading solar irradiance
+  ! These are set from PCF inputs
+  logical, public :: yn_do_solar_cal
+  logical, public :: yn_exit_post_solar_cal
+  logical, public :: yn_write_solar_cal
+  logical, public :: yn_read_solar_cal
+
 end module

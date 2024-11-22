@@ -17,11 +17,15 @@ $(ODIR)/slitfunction_super_gaussian.o: $(SDIR)/slitfunction_super_gaussian.f90 \
   $(ODIR)/SLATEC_davint.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_super_gaussian.f90 -o $(ODIR)/slitfunction_super_gaussian.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/slitfunction_tempo.o: $(SDIR)/slitfunction_tempo.f90 \
+  $(ODIR)/irradiance_data.o \
   $(ODIR)/l1bread_utils.o \
+  $(ODIR)/OMSAO_indices_module.o \
+  $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
-  $(ODIR)/slitfunction_super_gaussian.o
+  $(ODIR)/slitfunction_super_gaussian.o \
+  $(ODIR)/tg_names_module.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_tempo.f90 -o $(ODIR)/slitfunction_tempo.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/cache_module.o: $(SDIR)/cache_module.f90 \
   $(ODIR)/OMSAO_precision_module.o
@@ -155,6 +159,7 @@ $(ODIR)/omi_pge_fitting_process.o: $(SDIR)/omi_pge_fitting_process.f90 \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/OMSAO_wfamf_module.o \
   $(ODIR)/output_tools.o \
+  $(ODIR)/slitfunction_tempo.o \
   $(ODIR)/swathline_loop.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/omi_pge_fitting_process.f90 -o $(ODIR)/omi_pge_fitting_process.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/omi_pge_postprocessing.o: $(SDIR)/omi_pge_postprocessing.f90 \

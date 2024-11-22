@@ -116,18 +116,21 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
      n_max_rspec, errstat)
 
   USE OMSAO_precision_module
-  USE OMSAO_parameters_module, ONLY: i2_missval, MAX_STR_LEN, nwavel_max
+  USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, MAX_STR_LEN, &
+       nwavel_max, nxtrack_max
   USE OMSAO_indices_module,    ONLY: sao_molecule_names, max_rs_idx
   USE OMSAO_variables_module,  ONLY: &
-       l1b_rad_filename, ecs_version_id, &
+       l1b_rad_filename, l1b_irrad_filename, ecs_version_id, &
        l2_filename, pixnum_lim, n_fitvar_rad,   &
        radfit_latrange,                &
        common_latrange,    &
        Radiance_Paras_Type, &
-       radiance_reference_lnums, l1b_radref_filename, common_mode_spec
+       radiance_reference_lnums, l1b_radref_filename, common_mode_spec, &
+       solcal_cache_mode, solcal_filename
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
        yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, &
-       yn_do_he5_output, yn_wrt_odl, yn_gems
+       yn_do_he5_output, yn_wrt_odl, yn_gems, &
+       yn_do_solar_cal, yn_write_solar_cal, yn_read_solar_cal, yn_exit_post_solar_cal
   USE OMSAO_he5_module,       ONLY:  pge_swath_name, n_lun_inp, lun_input
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
   USE OMSAO_radiance_ref_module, ONLY: omi_get_radiance_reference, &
@@ -158,6 +161,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE irradiance_data, only: irradiance_data_init
   use m_write_odl_metadata
   use OMSAO_casestring_module, only : upper_case
+  use slitfunction_tempo, only : solarcal_write_file, solarcal_read_file
   use m_read_gems, only: gems_read_latitude
 
   IMPLICIT NONE
@@ -183,7 +187,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   INTEGER (kind=i4) :: ntimes_rr, nxtrack_rr, nwavel_rr, extension_dot
   INTEGER (KIND=i4), DIMENSION (2) :: radiance_wavcal_lnums
   real (kind=r8), dimension(:,:), allocatable :: save_solcal_wvl, &
-       save_solcal_resid, save_radcal_wvl, save_radcal_resid
+       save_solcal_spec, save_solcal_resid, save_radcal_wvl, save_radcal_resid
 
   ! ----------------------------------------------------------------------
   ! Swath dimensions and variables that aren't passed from calling routine
@@ -287,9 +291,67 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! solar spectrum to avoid un-initialized variables. However, no
   ! actual fitting is performed in the latter case.
   ! ---------------------------------------------------------------
-  CALL xtrack_solar_calibration_loop (first_wc_pix, last_wc_pix, &
-       save_solcal_wvl, save_solcal_resid, errstat)
-  if (errstat /= 0) return
+
+  ! Set logicals to decide how to proceed with solar calibration
+  ! 'none': do solar calibration then proceed with fitting
+  ! 'save': save solar calibration results then exit retrieval
+  ! 'read': skip solar calibration and read results from file
+  SELECT CASE (solcal_cache_mode)
+     CASE ('none')
+        yn_do_solar_cal = .TRUE.
+        yn_exit_post_solar_cal = .FALSE.
+        yn_write_solar_cal = .FALSE.
+        yn_read_solar_cal = .FALSE.
+     CASE ('save')
+        yn_do_solar_cal = .TRUE.
+        yn_exit_post_solar_cal = .TRUE.
+        yn_write_solar_cal = .TRUE.
+        yn_read_solar_cal = .FALSE.
+     CASE ('read')
+        yn_do_solar_cal = .FALSE.
+        yn_exit_post_solar_cal = .FALSE. 
+        yn_write_solar_cal = .FALSE.
+        yn_read_solar_cal = .TRUE.
+  END SELECT
+
+  CALL tell_log(1, 'Solar calibration cache mode = ' // solcal_cache_mode)
+
+  ALLOCATE (save_solcal_wvl(nwavel_max, nxtrack_max), &
+            save_solcal_spec(nwavel_max, nxtrack_max), &
+            save_solcal_resid(nwavel_max, nxtrack_max))
+  save_solcal_wvl(:,:) = r8_missval
+  save_solcal_spec(:,:) = r8_missval
+  save_solcal_resid(:,:) = r8_missval
+
+  
+  if (yn_do_solar_cal) then
+    CALL xtrack_solar_calibration_loop (first_wc_pix, last_wc_pix, &
+       save_solcal_wvl, save_solcal_spec, save_solcal_resid, errstat)
+    if (errstat /= 0) return
+
+    if (yn_write_solar_cal) THEN
+      ! Save the solar calibration results
+      CALL solarcal_write_file(l1b_irrad_filename, molname, solcal_filename, &
+        save_solcal_wvl, save_solcal_spec, save_solcal_resid, errstat)
+      if (errstat /= 0) return 
+    endif
+  endif
+
+  if (yn_read_solar_cal) then
+      ! real previously computed solar calibration data
+      CALL solarcal_read_file(molname, solcal_filename, &
+           save_solcal_wvl, save_solcal_spec, save_solcal_resid, errstat)
+      if (errstat /= 0) return      
+  endif
+
+  if (yn_exit_post_solar_cal) then 
+     deallocate (save_solcal_wvl, save_solcal_spec, save_solcal_resid, stat = errstat)
+     if (errstat /= 0) then
+        call tell_error(tell_malloc_error, "omi_fitting: deallocate failed", &
+                        errstat)
+     endif
+     return
+  endif
 
   ! ---------------------------------------------------------------
   ! No matter what, we need a swath line for radiance wavelength
@@ -380,6 +442,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! -----------------------------------------------------
   ! Across-track loop for radiance wavelength calibration
   ! -----------------------------------------------------
+
   call tell_log (1, 'omi_fitting: calling xtrack_radiance_wvl_calibration')
   omi_radcal_xflag = i2_missval
   CALL xtrack_radiance_wvl_calibration (first_wc_pix, last_wc_pix, &
@@ -398,13 +461,14 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     if (errstat /= 0) return
     ! FIXME: in diagnostic mode, there's a memory leak
     ! if we don't make it to this deallocate statement.
-    deallocate (save_solcal_wvl, save_solcal_resid, &
+    deallocate (save_solcal_wvl, save_solcal_spec, save_solcal_resid, &
          save_radcal_wvl, save_radcal_resid, stat=errstat)
     if (errstat /= 0) then
-      call tell_error(tell_malloc_error, "omi_fitting: deallocate failed", &
-           errstat)
-      return
-    endif
+       call tell_error(tell_malloc_error, "omi_fitting: deallocate failed", &
+                       errstat)
+       return
+     endif
+    if (errstat /= 0) return
   endif
 
   ! --------------------------------------------------------------

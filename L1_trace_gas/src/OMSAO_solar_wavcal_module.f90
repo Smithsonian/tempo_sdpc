@@ -364,14 +364,14 @@ CONTAINS
   END SUBROUTINE solar_fit
 
   SUBROUTINE xtrack_solar_calibration_loop (first_pix, last_pix, &
-                                            save_wvl, save_resid, errstat)
+                                            save_wvl, save_spec, save_resid, errstat)
     USE OMSAO_precision_module
     use ctrlvars, only : yn_diagnostic_run
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
       omi_cross_track_skippix, omi_solcal_shift, &
-      omi_solcal_chisq, omi_solcal_pars, omi_solcal_xflag, &
-      omi_irradiance_wght, omi_irradiance_ccdpix
+      omi_solcal_chisq, omi_solcal_pars, omi_solcal_xflag, omi_solcal_rms, &
+      omi_solcal_itnum, omi_irradiance_wght, omi_irradiance_ccdpix
     USE OMSAO_indices_module, ONLY: &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
     USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN, &
@@ -392,7 +392,8 @@ CONTAINS
     ! -----------------
     ! Modified variable
     ! -----------------
-    real (kind=r8), dimension(:,:), allocatable, intent(inout) :: save_wvl, save_resid
+    real (kind=r8), dimension(:,:), allocatable, intent(inout) :: save_wvl, save_spec, &
+                                                                  save_resid
     INTEGER (KIND=i4), INTENT (INOUT) :: errstat
 
     ! ---------------
@@ -417,24 +418,13 @@ CONTAINS
     omi_solcal_chisq = r8_missval
     omi_solcal_xflag = i2_missval
     omi_solcal_shift = r8_missval
+    omi_solcal_itnum = i2_missval
 
     fitvar_cal_saved(1:max_calfit_idx) = fitvar_sol_init(1:max_calfit_idx)
 
     ! ---------------------------------------------------------------
     ! Loop for solar wavelength calibration and slit function fitting
     ! ---------------------------------------------------------------
-
-    if (yn_diagnostic_run) then
-      allocate (save_wvl(nwavel_max, nxtrack_max), &
-                save_resid(nwavel_max, nxtrack_max), stat=locerrstat)
-      if (locerrstat /= 0) then
-        call tell_error (tell_malloc_error, "xtrack_solar_calibration_loop: allocate failed", &
-                         errstat)
-        return
-      endif
-      save_wvl(:,:) = r8_missval
-      save_resid(:,:) = r8_missval
-    endif
 
     adj_len = 0
     XtrackSolCal: DO ipix = first_pix, last_pix
@@ -500,10 +490,9 @@ CONTAINS
       !   adj_wvl, adj_spec, adj_wgts, Slit_Half_Width_1e, Slit_Asym_Factor, solcal_exval,
       !   solcal_itnum, chisquav, is_bad_pixel, locerrstat
 
-      if (yn_diagnostic_run) then
-        save_wvl(1:n_irradwvl,ipix) = adj_wvl(1:n_irradwvl)
-        save_resid(1:n_irradwvl,ipix) = adj_resid(1:n_irradwvl)
-      endif
+      save_wvl(1:n_irradwvl,ipix) = adj_wvl(1:n_irradwvl)
+      save_spec(1:n_irradwvl,ipix) = adj_spec(1:n_irradwvl)
+      save_resid(1:n_irradwvl,ipix) = adj_resid(1:n_irradwvl)
 
       IF ( is_bad_pixel .OR. locerrstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
         !errstat = MAX ( errstat, locerrstat )
@@ -525,6 +514,11 @@ CONTAINS
       omi_solcal_shift(ipix)                     = fitvar_cal(shi_idx)
       omi_solcal_pars (1:max_calfit_idx,ipix)    = fitvar_cal(1:max_calfit_idx)
       omi_solcal_xflag(ipix)                     = INT (solcal_exval, KIND=i2)
+      omi_solcal_itnum(ipix)                     = INT (solcal_itnum, KIND=i2)
+      omi_solcal_rms(ipix)                       = sqrt(sum(adj_resid(1:n_irradwvl)**2)/real(n_irradwvl, kind=8))
+      !
+      ! Save indices and strings for solar calibration
+
 
       ! ------------------------------------------------------------------------
       ! Save the processed solar spectrum in its original array. Note that the
@@ -553,6 +547,7 @@ CONTAINS
       !IF ( verb_thresh_lev >= vb_lev_screen  ) WRITE (*, '(A)') TRIM(ADJUSTL(addmsg))
 
     END DO XtrackSolCal
+
     !errstat = MAX ( errstat, locerrstat )
 
     ! ----------------------------------------------------------------------------
@@ -569,6 +564,7 @@ CONTAINS
     ! !!     first_pix, last_pix, MAXVAL(omi_nwav_irrad(first_pix:last_pix)),  errstat )
 
     !errstat = MAX ( errstat, locerrstat )
+   
 
     RETURN
   END SUBROUTINE xtrack_solar_calibration_loop

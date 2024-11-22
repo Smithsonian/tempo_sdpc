@@ -324,6 +324,13 @@ MODULE OMSAO_indices_module
     l1b_irradiance_lun     = 700020, & ! PGE L1B Solar irradiance  file
     mdlist_lun             = 700002    ! LUN for metadata namelist
 
+  ! ---------------------------------------------------
+  ! LUNs for use of the TEMPO on-orbit solar calibration file
+  ! ---------------------------------------------------
+  INTEGER (KIND=i4), PARAMETER :: &
+    solcal_fname_lun = 700060, & ! LUN for solar slit/wavelength calibration file
+    solcal_mode_lun  = 200300
+
   ! -----------------------------------------------------------------
   ! Place any of the above LUNs that are associated with Config data
   ! into a single array, which is then used for reading all LUNs in
@@ -335,7 +342,7 @@ MODULE OMSAO_indices_module
   ! Note that this _excludes_ any file names, which must be read
   ! with the PGS_PC_GetReference function.
   ! -----------------------------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: n_config_luns = 16
+  INTEGER (KIND=i4), PARAMETER :: n_config_luns = 17
   INTEGER (KIND=i4), DIMENSION (n_config_luns), PARAMETER :: config_lun_array = (/  &
     granule_s_lun,          granule_e_lun,          &
     verbosity_lun,          pge_version_lun,        &
@@ -344,7 +351,8 @@ MODULE OMSAO_indices_module
     instrument_name_lun,    opmode_lun,             &
     authoraffil_lun,        authorname_lun,         &
     orbitnumber_lun,        swathname_lun,          &
-    versionid_lun,          pge_molid_lun            /)
+    versionid_lun,          pge_molid_lun,          &
+    solcal_mode_lun            /)
 
   CHARACTER (LEN=29), DIMENSION (n_config_luns), PARAMETER :: config_lun_strings = (/  &
     "Granule Start Time           ", "Granule End Time             ", &
@@ -354,7 +362,8 @@ MODULE OMSAO_indices_module
     "InstrumentName               ", "OPERATIONMODE                ", &
     "AuthorAffiliation            ", "AuthorName                   ", &
     "OrbitNumber                  ", "SwathName                    ", &
-    "VERSIONID                    ", "PGE Molecule ID              "   /)
+    "VERSIONID                    ", "PGE Molecule ID              ", &
+    "solcal_cache_mode            "     /)
 
   CHARACTER (LEN=3), DIMENSION (n_config_luns), PARAMETER :: config_lun_autocopy = (/  &
     "no ", "no ", &
@@ -364,7 +373,8 @@ MODULE OMSAO_indices_module
     "yes", "yes", &
     "yes", "yes", &
     "no ", "no ", &
-    "no ", "no " /)
+    "no ", "no ", &
+    "no "  /)
 
   LOGICAL, DIMENSION (n_config_luns), PARAMETER :: yn_config_lun_autocopy = (/  &
     .FALSE., .FALSE., &
@@ -374,7 +384,8 @@ MODULE OMSAO_indices_module
     .TRUE.,  .TRUE.,  &
     .TRUE.,  .TRUE.,  &
     .FALSE., .FALSE., &
-    .FALSE., .FALSE.    /)
+    .FALSE., .FALSE., &
+    .FALSE.    /)
 
   CHARACTER (LEN=MAX_STR_LEN), DIMENSION (n_config_luns) :: config_lun_values
 
@@ -388,8 +399,6 @@ MODULE OMSAO_indices_module
   !   for all PGEs so we use only one LUN.
   ! -------------------------------------------------------------------
   INTEGER (KIND=i4), PARAMETER :: omi_slitfunc_lun = 700050
-
-  ! ----------------------------------------------------------------------
   ! * Input file LUNs for reference spectra and algorithm control file.
   !   The first (ICF) is for static, non-reference spectra input files.
   ! ----------------------------------------------------------------------
