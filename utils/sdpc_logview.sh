@@ -20,6 +20,7 @@ exit_usage()
    echo "   --dir      Primary node pipeline directory [default=\$SDPC_PIPE_DIR]"
    echo "   --ioc      Show IOC interface services"
    echo "   --sci      Show science processing services"
+   echo "   --nrt      Show NRT services"
    echo "   --menu     Display service menu"
    exit "$1"
 }
@@ -38,7 +39,10 @@ choose_logdirs()
 	level1a on
 	inr on
 	level1b on
+        level1b_nrt1 off
+        level1b_nrt2 off
 	level2 on
+        level2_nrt off
 	level3 on
 	trend off
 	register on
@@ -95,6 +99,10 @@ main()
            --ioc)
              shift
              logdirs="iocpull iocpullraw level0 register asdc"
+             ;;
+           --nrt)
+             shift
+             logdirs="level1b_nrt1 level1b_nrt2 level2_nrt register asdc"
              ;;
            --sci | --science)
              shift
