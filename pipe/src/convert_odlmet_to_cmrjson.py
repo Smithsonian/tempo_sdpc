@@ -10,8 +10,12 @@ def format_CollectionReference (shortname, version):
     s = '"CollectionReference": {"ShortName": %s, "Version": "V%02d"}' % (shortname, int(version))
     return s
 
+def format_ProviderDates (productiondatetime):
+    s = '"ProviderDates": [{"Date": %s, "Type":"Create"}]' % (productiondatetime)
+    return s
+
 def format_DataGranule (granuleid, productiondatetime):
-    s = '"DataGranule": {"Identifiers": [{"Identifier": %s,' % (granuleid) \
+    s = '"DataGranule": {"DayNightFlag": "Unspecified", "Identifiers": [{"Identifier": %s,' % (granuleid) \
       + ' "IdentifierType": "ProducerGranuleId"}, {"Identifier": "RFC1321 MD5 = not yet calculated", "IdentifierType": "LocalVersionId"}],' \
       + '"ProductionDateTime": %s}' % (productiondatetime)
     return s
@@ -31,8 +35,8 @@ def format_TemporalExtent (beg_date, beg_time, end_date, end_time):
     end_date = end_date.strip('"')
     end_time = end_time.strip('"')
     s = '"TemporalExtent": { "RangeDateTime": {' \
-      + '"BeginningDateTime": "{}T{}",'.format(beg_date, beg_time) \
-      + '"EndingDateTime": "{}T{}"'.format(end_date, end_time) \
+      + '"BeginningDateTime": "{}T{}Z",'.format(beg_date, beg_time) \
+      + '"EndingDateTime": "{}T{}Z"'.format(end_date, end_time) \
       + '}}'
     return s
 
@@ -78,6 +82,7 @@ def convert_odl_file (metfile, jsonfile=None):
     # Format the metadata tokens as JSON fields
     s = []
     s.append(MetadataSpecification)
+    s.append(format_ProviderDates (tokens["PRODUCTIONDATETIME"]))
     s.append(format_CollectionReference (tokens["SHORTNAME"], tokens["VERSIONID"]))
     s.append(format_DataGranule (tokens["LOCALGRANULEID"], tokens["PRODUCTIONDATETIME"]))
     s.append(format_GranuleUR (tokens["LOCALGRANULEID"]))

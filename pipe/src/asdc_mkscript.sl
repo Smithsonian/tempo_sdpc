@@ -83,6 +83,11 @@ define process_file_nc (types, path, is_aws_upload)
         data_type = "TEMPO_NONORDERABLE";
         data_version = strtrim_beg (tok[3], "V0");   % e.g. 1
      }
+   else if (0 != is_substr (basename, "_NRT_"))
+     {
+        data_type = strjoin (tok[[0:3]], "_");       % e.g. TEMPO_RAD_L1_NRT
+        data_version = tok[4];                       % e.g. V03
+     }
    else
      {
         data_type = strjoin (tok[[0:2]], "_");       % e.g. TEMPO_RAD_L1
