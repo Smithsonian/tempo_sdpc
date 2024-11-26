@@ -9,6 +9,9 @@
  *  @brief Instrument scan characteristics and timing
  */
 
+extern int scan_quantize_num_steps_ceil (double fnum, int q);
+extern int scan_quantize_num_steps_floor (double fnum, int q);
+
 typedef struct Scan_Type Scan_Type;
 
 struct Scan_Type
@@ -60,6 +63,9 @@ struct Scan_Type
 
    double (*st_short_scan_frac)(const Scan_Type *st);
    /**< retrieve the short scan overlap fraction */
+
+   int (*st_scan_step_quantum)(const Scan_Type *);
+   /**< retrieve the value of scan_step_quantum */
 
    int (*st_print_params)(const Scan_Type *, const char *, FILE *);
    /**< print the scan parameters to an open FILE pointer */

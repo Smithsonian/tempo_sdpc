@@ -283,7 +283,7 @@ static int std_scan_table (const Scan_Type *st,
                            double *xstart, double *ystart, int *num_steps)
 {
    double step_size;
-   int max_num_steps;
+   int max_num_steps, q;
 
    /* In this context, we care only about the absolute value of the
     * mirror step size */
@@ -297,7 +297,8 @@ static int std_scan_table (const Scan_Type *st,
      }
 
    /* Coordinate system should ensure beg->azimuth > end->azimuth */
-   max_num_steps = (beg->azimuth - end->azimuth) / step_size;
+   q = st->st_scan_step_quantum (st);
+   max_num_steps = scan_quantize_num_steps_ceil( (beg->azimuth - end->azimuth) / step_size, q);
 
    if (max_num_steps <= 0)
      {
@@ -704,7 +705,7 @@ static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const 
 {
    double f = st->st_short_scan_frac (st);
    double step_size;
-   int max_num_steps;
+   int max_num_steps, q;
 
    /* In this context, we care only about the absolute value of the
     * mirror step size */
@@ -740,8 +741,9 @@ static int opt1_scan_table (const Scan_Type *st, const AziElev_Type *beg, const 
    /* When morning and evening scans are the same length, fewer custom
     * CBMs may be needed to implement the scan plan.
     */
-   num_steps[0] = max_num_steps * f - 1;
-   num_steps[1] = max_num_steps;
+   q = st->st_scan_step_quantum (st);
+   num_steps[0] = scan_quantize_num_steps_ceil (max_num_steps * f - 1, q);
+   num_steps[1] = scan_quantize_num_steps_ceil (max_num_steps, q);
    num_steps[2] = num_steps[0];
 
    return 0;

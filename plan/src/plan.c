@@ -1054,7 +1054,7 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
    double entry_end = entry->tstart + entry->num_repeats * scan_duration_days;
    double fnum = (entry_end - t_bound) / scan_duration_days;
    int num = (int) fnum;
-   double frac, duration_sec, tstart, xstart;
+   double frac, duration_sec, tstart;
 
    *pnew_entry = NULL;
 
@@ -1063,14 +1063,14 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
         frac = (fnum-num);
         duration_sec = floor (frac * entry->scan_duration);
         tstart = t_bound;
-        xstart = entry->xend - floor (frac * (entry->xend - entry->xstart));
+        /* xstart = entry->xend - floor (frac * (entry->xend - entry->xstart)); */
      }
    else
      {  /* stopping early: start normally */
         frac = 1.0 - (fnum-num);
         duration_sec = floor (frac * entry->scan_duration);
         tstart = t_bound - duration_sec / SEC_PER_DAY;
-        xstart = entry->xstart;
+        /* xstart = entry->xstart; */
      }
 
    if (duration_sec < Min_Scan_Duration_Sec)
@@ -1083,7 +1083,6 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
 
    new_entry->maneuver_loss = entry->scan_duration - duration_sec;
 
-   new_entry->xstart = xstart;
    new_entry->tstart = tstart;
    new_entry->scan_duration = duration_sec;
 #if 0
@@ -1099,7 +1098,16 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
         new_entry->num_steps = scan->st_scan_num_steps_in_duration (scan, duration_sec/SEC_PER_DAY);
      }
 #endif
-   new_entry->num_repeats = 1;
+   if (is_start)
+     {
+        new_entry->xstart = entry->xend - new_entry->num_steps * scan->st_step_size(scan);
+     }
+   else
+     {
+        new_entry->xstart = entry->xstart;
+     }
+
+   new_entry->num_repeats = (new_entry->num_steps > 0) ? 1 : 0;
 
    *pnew_entry = new_entry;
 

@@ -39,6 +39,14 @@ typedef struct
    double position_dwell;
    double scan_reset;
    double scan_timing_margin;
+   int scan_step_quantum;
+   /* The number of steps in any scan is an integer multiple of SCAN_STEP_QUANTUM.
+    * This quantization reduces the total number of unique command blocks that need
+    * to be validated to support TEMPO operations. This approach limits the impact
+    * to operations in case the hardware simulator stops working and no new command
+    * blocks can be validated. By default scan_step_quantum=1.
+    */
+
 }
 Step_Config_Type;
 
@@ -82,6 +90,16 @@ Surface_Region_Type;
    int num_scan_steps; \
    uint16_t scan_type;
 #include "scan.h"
+
+int scan_quantize_num_steps_ceil (double fnum, int q)
+{
+   return q * ceil (fnum/q);
+}
+
+int scan_quantize_num_steps_floor (double fnum, int q)
+{
+   return q * floor (fnum/q);
+}
 
 static void free_scan_type (Scan_Type *st)
 {
@@ -358,7 +376,7 @@ static int read_step_config (config_t *cfg, config_setting_t *s, Step_Config_Typ
    char *path = NULL;
    double frame_transfer_time;
    double readout_time;
-   int num_coadds, status;
+   int num_coadds, scan_step_quantum, status;
 
    if (NULL == (sub = config_setting_get_member (s, "step_config")))
      return -1;
@@ -368,6 +386,12 @@ static int read_step_config (config_t *cfg, config_setting_t *s, Step_Config_Typ
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_reset", &dt->scan_reset))
        || (CONFIG_TRUE != config_setting_lookup_float (sub, "scan_timing_margin", &dt->scan_timing_margin)))
      return -1;
+
+   /* optional user-specified value */
+   if (CONFIG_TRUE == config_setting_lookup_int (sub, "scan_step_quantum", &scan_step_quantum))
+     dt->scan_step_quantum = scan_step_quantum;
+   else
+     dt->scan_step_quantum = 1;
 
    /* Try to get the integration time and dwell time from the lookup table */
    if (CONFIG_TRUE == config_lookup_string (cfg, timing_file_var, &ccdtiming_path))
@@ -1121,9 +1145,10 @@ static double __scan_duration_days (const Step_Config_Type *dt, int num_steps)
 static int __scan_num_steps_in_duration (const Step_Config_Type *dt, double duration_days)
 {
    /* underestimate the number of steps to allow margin */
-   int np1 = (floor_sec(duration_days) * SEC_PER_DAY
+   double fnp1 = (floor_sec(duration_days) * SEC_PER_DAY
               - dt->scan_timing_margin - 2*dt->scan_reset) / dt->position_dwell;
-   return (np1 > 0) ? (np1-1) : 0;
+   int n = scan_quantize_num_steps_floor (fnp1 - 1, dt->scan_step_quantum);
+   return (n > 0) ? n : 0;
 }
 
 static double scan_duration (const Scan_Type *st, int num_steps)
@@ -1177,6 +1202,11 @@ static uint16_t query_scan_type (const Scan_Type *st)
    return st->scan_type;
 }
 
+static int scan_config_step_quantum (const Scan_Type *st)
+{
+   return st->dt.scan_step_quantum;
+}
+
 Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
 {
    Scan_Type *st = NULL;
@@ -1201,6 +1231,7 @@ Scan_Type *scan_open (config_t *cfg, uint16_t scan_type)
    st->st_scan_num_steps = scan_num_steps;
    st->st_print_params = scan_print_params;
    st->st_scan_type = query_scan_type;
+   st->st_scan_step_quantum = scan_config_step_quantum;
 
    if (0 != read_params (cfg, st))
      {
