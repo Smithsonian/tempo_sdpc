@@ -334,7 +334,7 @@ std_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
 
    time_full_scan = st->st_scan_duration (st, num_steps);
 
-   if (NULL == (entry = plan_list_entry_alloc (scan_type)))
+   if (NULL == (entry = plan_list_entry_alloc (scan_type, 0)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_beg;
@@ -426,7 +426,7 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
         double time_elapsed, sza;
         int rem = 0;
 
-        if (NULL == (entry = plan_list_entry_alloc (scan_type)))
+        if (NULL == (entry = plan_list_entry_alloc (scan_type, 0)))
           goto return_error;
 
         entry->tstart = tstart;
@@ -476,7 +476,7 @@ make_split_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
                        time_elapsed    = entry->scan_duration * entry->num_repeats;
                        time_remaining -= time_elapsed;
                        tstart         += time_elapsed / SEC_PER_DAY;
-                       if (NULL == (rem_entry = plan_list_entry_alloc (scan_type)))
+                       if (NULL == (rem_entry = plan_list_entry_alloc (scan_type, 0)))
                          goto return_error;
                        *rem_entry = *entry;  /* struct copy */
                        rem_entry->num_repeats = rem;
@@ -591,19 +591,20 @@ twilight_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
+   int region_id = 0;
 
-   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, 0, &beg, &end))
+   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, region_id, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = tst->tst_twilight_scan_duration (tst, num_steps);
+   time_full_scan = tst->tst_twilight_scan_duration (tst, region_id, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_beg - limit_times->jd_utc_beg_safe)
                         / time_full_scan);
 
-   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS)))
+   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS, region_id)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_beg_safe;
@@ -612,7 +613,7 @@ twilight_dawn_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->xend = entry->xstart + num_steps * st->st_step_size (st);
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = tst->tst_twilight_integration_time (tst);
+   entry->integration_time = tst->tst_twilight_integration_time (tst, region_id);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -631,19 +632,20 @@ twilight_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    AziElev_Type beg={0}, end={0};
    double time_full_scan, xstart, ystart;
    int num_steps, num_repeats;
+   int region_id = 1;
 
-   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, 1, &beg, &end))
+   if (0 != twilight_scan_endpoints (tst, solar_geom, limit_times, region_id, &beg, &end))
      return NULL;
    if (0 != std_scan_table (st, &beg, &end, &xstart, &ystart, &num_steps))
      return NULL;
 
-   time_full_scan = tst->tst_twilight_scan_duration (tst, num_steps);
+   time_full_scan = tst->tst_twilight_scan_duration (tst, region_id, num_steps);
 
    /* may be zero */
    num_repeats = floor ((limit_times->jd_utc_end_safe - limit_times->jd_utc_end)
                         / time_full_scan);
 
-   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS)))
+   if (NULL == (entry = plan_list_entry_alloc (TEMPO_SCAN_TYPE_NIGHTLIGHTS, region_id)))
      return NULL;
 
    entry->tstart = limit_times->jd_utc_end_safe - num_repeats * time_full_scan;
@@ -652,7 +654,7 @@ twilight_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->xend = entry->xstart + num_steps * st->st_step_size (st);
    entry->num_steps = num_steps;
    entry->scan_duration = time_full_scan * SEC_PER_DAY;
-   entry->integration_time = tst->tst_twilight_integration_time (tst);
+   entry->integration_time = tst->tst_twilight_integration_time (tst, region_id);
    entry->num_repeats = num_repeats;
 
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
@@ -682,7 +684,7 @@ static int append_entry (Plan_List_Type **lst, const Scan_Type *st,
    if (x->num_steps <= 0)
      return 0;
 
-   if (NULL == (entry = plan_list_entry_alloc (scan_type)))
+   if (NULL == (entry = plan_list_entry_alloc (scan_type, 0)))
      return -1;
 
    entry->tstart = x->tstart;

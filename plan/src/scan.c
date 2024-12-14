@@ -54,6 +54,7 @@ typedef struct
 {
    Surface_Point_Type pt;
    Scan_Angle_Type ang;
+   Step_Config_Type dt;
    double width;
    int num;
 }
@@ -72,8 +73,7 @@ Surface_Region_Type;
 
 #define TWILIGHT_SCAN_TYPE_PRIVATE_DATA \
    Surface_Region_Type east; \
-   Surface_Region_Type west; \
-   Step_Config_Type dt;
+   Surface_Region_Type west;
 
 #define SCAN_TYPE_PRIVATE_DATA \
    double min_sun_angle; \
@@ -565,7 +565,7 @@ static int read_scan_config (config_t *cfg, Scan_Type *st)
    return 0;
 }
 
-static int read_surface_region (config_setting_t *s, const char *name, Surface_Region_Type *reg)
+static int read_surface_region (config_t *cfg, config_setting_t *s, const char *name, Surface_Region_Type *reg)
 {
    config_setting_t *sub;
    int have_angles;
@@ -587,6 +587,13 @@ static int read_surface_region (config_setting_t *s, const char *name, Surface_R
 
    if (reg->num <= 0) reg->num = 1;
 
+   /* Step config may be region specific */
+   if (0 != read_step_config (cfg, sub, &reg->dt))
+     {
+        if (0 != read_step_config (cfg, s, &reg->dt))
+          return -1;
+     }
+
    return 0;
 }
 
@@ -602,7 +609,7 @@ static int read_twilight_scan_config (config_t *cfg, Twilight_Scan_Type *twiligh
         return -1;
      }
 
-   if (0 != read_surface_region (s, "east_region", &twilight_scan->east))
+   if (0 != read_surface_region (cfg, s, "east_region", &twilight_scan->east))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'twilight_scan_config:east': %s",
@@ -610,18 +617,10 @@ static int read_twilight_scan_config (config_t *cfg, Twilight_Scan_Type *twiligh
         return -1;
      }
 
-   if (0 != read_surface_region (s, "west_region", &twilight_scan->west))
+   if (0 != read_surface_region (cfg, s, "west_region", &twilight_scan->west))
      {
         tell_verror (TELL_INVALID_PARM_ERROR,
                      "%s: reading surface point 'twilight_scan_config:west': %s",
-                     __func__, config_error_file (cfg));
-        return -1;
-     }
-
-   if (0 != read_step_config (cfg, s, &twilight_scan->dt))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: reading twilight_scan_config:step_config: %s",
                      __func__, config_error_file (cfg));
         return -1;
      }
@@ -1113,9 +1112,10 @@ static double scan_integration_time (const Scan_Type *st)
    return st->dt.integration_time;
 }
 
-static double twilight_scan_integration_time (const Twilight_Scan_Type *tst)
+static double twilight_scan_integration_time (const Twilight_Scan_Type *tst, int is_east)
 {
-   return tst->dt.integration_time;
+   const Surface_Region_Type *reg = is_east ? &tst->east : &tst->west;
+   return reg->dt.integration_time;
 }
 
 static double split_scan_integration_time (const Split_Scan_Type *sst)
@@ -1160,14 +1160,16 @@ static int scan_num_steps_in_duration (const Scan_Type *st, double duration_days
    return __scan_num_steps_in_duration (&st->dt, duration_days);
 }
 
-static double twilight_scan_duration (const Twilight_Scan_Type *tst, int num_steps)
+static double twilight_scan_duration (const Twilight_Scan_Type *tst, int is_east, int num_steps)
 {
+   const Surface_Region_Type *reg = is_east ? &tst->east : &tst->west;
    /* FIXME - should twilight scan duration be computed differently? */
-   return __scan_duration_days (&tst->dt, num_steps);
+   return __scan_duration_days (&reg->dt, num_steps);
 }
-static int twilight_scan_num_steps_in_duration (const Twilight_Scan_Type *tst, double duration_days)
+static int twilight_scan_num_steps_in_duration (const Twilight_Scan_Type *tst, int is_east, double duration_days)
 {
-   return __scan_num_steps_in_duration (&tst->dt, duration_days);
+   const Surface_Region_Type *reg = is_east ? &tst->east : &tst->west;
+   return __scan_num_steps_in_duration (&reg->dt, duration_days);
 }
 
 static int scan_print_params (const Scan_Type *st, const char *pprefix,

@@ -95,13 +95,13 @@ struct Twilight_Scan_Type
    int (*tst_twilight_scan_region)(const Twilight_Scan_Type *, int, double *, double *, double *, int *);
    /**< retrieve twilight scan region as (lon,lat) of one boundary [deg], and an eastward or westward extent [urad]  */
 
-   double (*tst_twilight_scan_duration)(const Twilight_Scan_Type *, int);
+   double (*tst_twilight_scan_duration)(const Twilight_Scan_Type *, int, int);
    /**< compute the time [sec] required to complete a scan with N steps */
 
-   int (*tst_twilight_scan_num_steps_in_duration)(const Twilight_Scan_Type *, double);
+   int (*tst_twilight_scan_num_steps_in_duration)(const Twilight_Scan_Type *, int, double);
    /**< compute the number of steps in a scan that fits with a given time [days], including margins, etc */
 
-   double (*tst_twilight_integration_time)(const Twilight_Scan_Type *);
+   double (*tst_twilight_integration_time)(const Twilight_Scan_Type *, int);
    /**< retrieve the integration time [sec] for a single twilight exposure in a co-add */
 
 #ifdef TWILIGHT_SCAN_TYPE_PRIVATE_DATA

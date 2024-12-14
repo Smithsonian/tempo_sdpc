@@ -25,6 +25,7 @@ struct Plan_List_Type
    int num_repeats;          /**< number of times to repeat this scan (or cbm) */
    int num_repeats_cbm;      /**< >0 indicates instrument should use a cbm to perform blocks of num_repeats_cbm scans */
    int post_maneuver;        /**< labels the first post-maneuver scan sequence */
+   int region_id;            /**< support referencing different spatial regions within a single scan type (e.g. twilight scan east/west regions) */
    uint16_t scan_type;       /**< scan type value */
 };
 
@@ -42,12 +43,13 @@ struct Plan_Stats_Type
 
 /** Allocate a \ref Plan_List_Type structure
  * @param[in]  \ref scan_type   scan type label
+ * @param[in]  \ref region_id   region id label (may be unused, depending on scan type)
  * @return  A \ref Plan_List_Type pointer on success, NULL on error
  *
  * When no longer needed, the returned structure should be freed
  * by a call to \ref plan_list_entry_free
 */
-extern Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type);
+extern Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type, int region_id);
 
 /** Free resources associated with a \ref Plan_List_Type structure
  * @param[in]  ple  A \ref Plan_List_Type pointer allocated by

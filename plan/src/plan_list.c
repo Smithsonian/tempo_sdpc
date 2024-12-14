@@ -39,7 +39,7 @@ void plan_list_free (Plan_List_Type *head)
      }
 }
 
-Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type)
+Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type, int region_id)
 {
    Plan_List_Type *ple = NULL;
 
@@ -51,6 +51,7 @@ Plan_List_Type *plan_list_entry_alloc (uint16_t scan_type)
    memset ((char *)ple, 0, sizeof *ple);
 
    ple->scan_type = scan_type;
+   ple->region_id = region_id;
 
    return ple;
 }

@@ -1076,7 +1076,7 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
    if (duration_sec < Min_Scan_Duration_Sec)
      return 0;
 
-   if (NULL == (new_entry = plan_list_entry_alloc (entry->scan_type)))
+   if (NULL == (new_entry = plan_list_entry_alloc (entry->scan_type, entry->region_id)))
      return -1;
 
    *new_entry = *entry;
@@ -1091,7 +1091,7 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Type *scan, con
    /* FIXME - this is pretty ugly.  A more object oriented design would be better. */
    if (entry->scan_type == TEMPO_SCAN_TYPE_NIGHTLIGHTS)
      {
-        new_entry->num_steps = twilight_scan->tst_twilight_scan_num_steps_in_duration (twilight_scan, duration_sec/SEC_PER_DAY);
+        new_entry->num_steps = twilight_scan->tst_twilight_scan_num_steps_in_duration (twilight_scan, entry->region_id, duration_sec/SEC_PER_DAY);
      }
    else
      {
@@ -1155,14 +1155,14 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list,
              num_repeats_after = floor ((entry_end - mnv_end) / scan_duration_days);
              if (num_repeats_before > 0)
                {
-                  if (NULL == (new_before = plan_list_entry_alloc (entry->scan_type)))
+                  if (NULL == (new_before = plan_list_entry_alloc (entry->scan_type, entry->region_id)))
                     return -1;
                   *new_before = *entry;  /* struct copy */
                   new_before->num_repeats = num_repeats_before;
                }
              if (num_repeats_after > 0)
                {
-                  if (NULL == (new_after = plan_list_entry_alloc (entry->scan_type)))
+                  if (NULL == (new_after = plan_list_entry_alloc (entry->scan_type, entry->region_id)))
                     {
                        plan_list_free (new_before);
                        return -1;
@@ -1248,7 +1248,7 @@ static int insert_maneuver_gap (Plan_List_Type *plan_list,
              if (num_remaining)
                {
                   Plan_List_Type *post_gap;
-                  if (NULL == (post_gap = plan_list_entry_alloc (entry->scan_type)))
+                  if (NULL == (post_gap = plan_list_entry_alloc (entry->scan_type, entry->region_id)))
                     return -1;
 
                   curr->next = post_gap;
