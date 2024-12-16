@@ -8,6 +8,7 @@ import sqlite3
 import re
 import fnmatch
 import argparse
+import traceback
 
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 DryRun = False
@@ -235,8 +236,8 @@ def process_shortpan (cur, thefile, parse, pan_file):
     if PDR_DB_Path is None:
         print ('skipping SHORTPAN: {} (pdrdbfile=None)'.format(pan_file))
         return
-    # Retrieve the PDR file's local path:
-    pdr_file = pan_file.replace ('.PAN', '.PDR')
+    # Replace PAN file extension (.pan or .PAN) to get the PDR file's local path
+    pdr_file = re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE)
     pdr_query = "select path from File_Table where filename == '{}'".format(pdr_file)
     with __connect_database ("ro", PDR_DB_Path) as conn:
         pdr_cur = conn.cursor()
@@ -315,9 +316,10 @@ def process_pan (cur, pan_file):
         if tok[0] != 'MESSAGE_TYPE':
             print ('*** unexpected file header: {}'.format(line))
             return -1
-        if  tok[1] == 'LONGPAN':
+        message_type = tok[1].strip('"')  # <-- Because people can't be bothered follow specifications
+        if  message_type == 'LONGPAN':
             process_longpan (cur, thefile, parse, pan_file)
-        elif tok[1] == 'SHORTPAN':
+        elif message_type == 'SHORTPAN':
             process_shortpan (cur, thefile, parse, pan_file)
         else:
             print ('*** unexpected file header: {}'.format(line))
@@ -331,8 +333,9 @@ def process_pan_files (pan_file_list):
             with connect_database("rw") as conn:
                 process_pan (conn.cursor(), pan_file)
         except BaseException as e:
+            traceback.print_tb(e.__traceback__)
             print('An exception occurred: {}'.format(e))
-            print ("Error processing file: {}".format(pan_file))
+            print("Error processing file: {}".format(pan_file))
 
 def set_file_status (status, file_list, update_stat):
     with open(file_list, "r") as fp:
