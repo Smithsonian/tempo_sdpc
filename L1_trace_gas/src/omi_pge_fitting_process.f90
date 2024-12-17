@@ -312,7 +312,12 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
         yn_exit_post_solar_cal = .FALSE. 
         yn_write_solar_cal = .FALSE.
         yn_read_solar_cal = .TRUE.
-  END SELECT
+     CASE DEFAULT
+        CALL tell_log(1, 'Solar calibration cache mode = ' // solcal_cache_mode)
+        CALL tell_error (tell_runtime_error, &
+           "omi_pge_fitting_process: solcal_cache_mode input is invalid",  errstat)
+        RETURN
+     END SELECT
 
   CALL tell_log(1, 'Solar calibration cache mode = ' // solcal_cache_mode)
 
