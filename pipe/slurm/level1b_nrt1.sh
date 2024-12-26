@@ -70,16 +70,26 @@ export SDPC_GRANULE_LABEL="${rad_basename}"
 
 irr_select_window=$(config_setting level1b.irr_select_window)
 
-# Generate file list file on master node
+# Prepare file list file on master node
 irr_file=$(select_irr.py --window $irr_select_window "$rad_path")
 snow_file=$(select_ims.py "$rad_path")
 granule_dir=$(dirname "$rad_path")
+
+# When solar wavelength calilbration caching is enabled,
+# we'll use the O2O2 file for generating the CLDO4 product.
+solcal_file_o2o2=""
+if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
+   solcal_file_o2o2=$(select_irrcal.py --molecule O2O2 $irr_file)
+fi
+
+# Write file list file on master node
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
 rad_path=${rad_path}
 irr_file=${irr_file}
 snow_file=${snow_file}
 orig_rad_path=${orig_rad_path}
+solcal_file_o2o2=${solcal_file_o2o2}
 EOF
 
 # Turn off radiance wavelength calibration:

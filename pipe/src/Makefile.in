@@ -17,7 +17,8 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                sdpcrun.sh sdpcpipe.sh make_tar_notice.sh pipecron.sh \
                status_pipe.sh status_ancillary.sh \
                select_ims.py select_iers.py pull_ioc_cache.sh \
-               select_l0.py select_irr.py select_dark.py register.py update_cldo4_geovars.py \
+               select_l0.py select_irr.py select_dark.py select_irrcal.py \
+               register.py update_cldo4_geovars.py \
                insert_fixed_metadata.py fix_cldo4_metadata.py fix_met_format.py fix_nrt_shortname.py \
                fixup_radl1_inputfiles.py handle_inr_crash.py polygon_inside_domain.py \
                copy_level1_frame.py global_attribute.py radiance_telem_only.py \

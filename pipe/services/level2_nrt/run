@@ -8,7 +8,7 @@ then
   exit 1
 fi
 
-export SDPC_LEVEL2_PRODUCTS=$(config_setting level2.products)
+export SDPC_LEVEL2_PRODUCTS=$(config_setting nrt.products)
 
 # Set sqlite database to use for radiance reference file lookup
 radref_dbfile=$(config_setting nrt.radref_dbfile)

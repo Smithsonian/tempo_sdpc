@@ -55,6 +55,7 @@ file_list_file="$2"
 #    irr_file
 #    snow_file
 #    orig_rad_path
+#    solcal_file_o2o2
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -165,6 +166,16 @@ derive_o2o2_slant_column()
   met_file2=""
   met_dir2=""
 
+  # Use cached solar wavelength calibration when it's available
+  solcal_cache_mode="none"
+  solcal_file="none"
+  solcal_dir="none"
+  if test -s "$solcal_file_o2o2" ; then
+        solcal_cache_mode="read"
+        solcal_file="$(basename $solcal_file_o2o2)"
+        solcal_dir="$(dirname $solcal_file_o2o2)"
+  fi
+
   # copy the control file template
   /bin/cp $template_ctrl $control_file
 
@@ -175,6 +186,9 @@ derive_o2o2_slant_column()
    -e s,@refsec_dir@,$refsec_dir,g \
    -e s,@spectra_dir@,$spectra_dir,g \
    -e s,@product_dir@,$product_dir,g \
+   -e s,@solcal_cache_mode@,$solcal_cache_mode,g \
+   -e s,@solcal_file@,$solcal_file,g \
+   -e s,@solcal_dir@,$solcal_dir,g \
    -e s,@etc_dir@,$etc_dir,g \
    -e s,@radiance_file@,$radiance_file,g \
    -e s,@irradiance_file@,$irradiance_file,g \

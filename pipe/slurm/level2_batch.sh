@@ -99,6 +99,8 @@ cld_file=$CLD
 rad_basename=$(basename $rad_file .nc)
 irr_basename=$(basename $irr_file .nc)
 
+solcal_file_list="${rad_basename}.solcal"
+
 init_product_dir()
 {
    # Create target subdirectory, with hard links to (rad, irr, cld)
@@ -106,6 +108,19 @@ init_product_dir()
   /bin/mkdir -p $dir
   /bin/ln ./${rad_basename}.nc ./${irr_basename}.nc ./$cld_file $dir
   /bin/cp pge_input_basenames.lis ${rad_basename}.lis $dir
+}
+
+assign_solcal_cache_file()
+{
+  molecule=$1
+  dir=$molecule
+
+  if test -s $solcal_file_list ; then
+     path=$(grep "_IRR${molecule}_" $solcal_file_list)
+     if test -n "$path" ; then
+        printf "$path\n" > "$dir/$solcal_file_list"
+     fi
+  fi
 }
 
 remove_redundant_files()
@@ -142,11 +157,16 @@ for prod in $product_list ; do
      o3tot.sh > $o3tot_log 2>&1 &
   else
      tracegas_log="$slurm_logdir/${rad_basename}.tracegas-${SLURM_JOB_ID}.out"
+     assign_solcal_cache_file $prod
      tracegas.sh $prod $radref_file $destripe_file > $tracegas_log 2>&1 &
   fi
 done
 
 # wait for background jobs to exit
 wait
+
+if test -f $solcal_file_list ; then
+   /bin/rm -f $solcal_file_list
+fi
 
 level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir "$tar_unpack_dir" > /dev/null

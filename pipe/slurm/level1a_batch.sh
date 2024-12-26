@@ -154,6 +154,37 @@ run_inr_prep()
         L1_inr_prep -v 1 $iers_opt $target_file
 }
 
+cache_tracegas_solcal()
+{
+   irr_file=$1
+
+   # Generate these files only when the working diffuser was used
+   case "$irr_file" in
+      *IRRR* )
+          return
+          ;;
+      * )
+          ;;
+   esac
+
+   product_list="$(echo $SDPC_SOLCAL_CACHE_PRODUCTS | tr -s , ' ')"
+   if test x"$product_list" = x ; then
+      return
+   fi
+
+   irr_basename=$(basename $irr_file .nc)
+
+   # Run a background process for each trace gas product:
+   slurm_logdir="$SDPC_PIPE_DIR/log/level1a/slurm"
+   for molecule in $product_list ; do
+     tracegas_log="$slurm_logdir/${irr_basename}.tracegas-$molecule-${SLURM_JOB_ID}.out"
+     tracegas_solcal_cache.sh $molecule $irr_file > $tracegas_log 2>&1 &
+   done
+
+   # wait for all background jobs to exit
+   wait
+}
+
 case "${granule_basename}" in
   *DRK* )
   output_file=$(mkgranule_name -L 1 -p DRK -v $SDPC_PROCESSING_VERSION $granule_basename)
@@ -166,6 +197,9 @@ case "${granule_basename}" in
   output_file=$(mkgranule_name -L 1 -p $irr_type -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   wavecal.sh $output_file 5
+  if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
+     cache_tracegas_solcal $output_file
+  fi
   ;;
 
   *RAD* )

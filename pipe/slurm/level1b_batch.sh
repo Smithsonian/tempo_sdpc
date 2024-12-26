@@ -396,6 +396,12 @@ derive_o2o2_slant_column()
       met_dir1=$(dirname $USE_SYNTHETIC_MET_DATA)
   fi
 
+  # For now, baseline processing does not use
+  # cached solar wavecal parameters.
+  solcal_cache_mode="none"
+  solcal_file="none"
+  solcal_dir="none"
+
   # copy the control file template
   /bin/cp $template_ctrl $control_file
 
@@ -406,6 +412,9 @@ derive_o2o2_slant_column()
    -e s,@refsec_dir@,$refsec_dir,g \
    -e s,@spectra_dir@,$spectra_dir,g \
    -e s,@product_dir@,$product_dir,g \
+   -e s,@solcal_cache_mode@,$solcal_cache_mode,g \
+   -e s,@solcal_file@,$solcal_file,g \
+   -e s,@solcal_dir@,$solcal_dir,g \
    -e s,@etc_dir@,$etc_dir,g \
    -e s,@radiance_file@,$radiance_file,g \
    -e s,@irradiance_file@,$irradiance_file,g \
