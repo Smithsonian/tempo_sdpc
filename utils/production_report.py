@@ -35,6 +35,23 @@ def get_matching_table_names (cur, pat):
         return None
     return [item for item in table_names if pat in item]
 
+def level1_irr_stats (cur, tbeg, tend):
+    irr_tables = get_matching_table_names (cur, 'IRR')
+    if irr_tables is None:
+        return None
+    if 'IRR_L0' not in irr_tables:
+        return None
+    if 'IRR_L1' not in irr_tables:
+        return None
+    stats = {}
+    # time elapsed between creation of IRR_L0 and completion of IRR_L1
+    sql = 'select avg(IRR_L1.mtime-IRR_L0.mtime) from '\
+          'IRR_L1 inner join IRR_L0 on IRR_L0.istart = IRR_L1.istart ' \
+          'where IRR_L0.mtime > {tbeg} and IRR_L0.mtime < {tend}'.format(**locals())
+    cur.execute (sql)
+    stats["mean_elapsed_sec"] = cur.fetchone()[0]
+    return stats
+
 def level1_rad_stats (cur, tbeg, tend):
     rad_tables = get_matching_table_names (cur, 'RAD')
     if rad_tables is None:
@@ -73,17 +90,27 @@ def print_latencies (dbfile, tbeg, tend):
         print("# Start time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tbeg))))
     print("#   End time: %s" % (time.strftime ('%Y-%m-%dT%H:%M:%SZ', time.gmtime(tend))))
     print ("#")
+    print ("#       Product        mean")
+    print ("#         table  production")
+    print ("#                     [min]")
+
     with connect_database(dbfile) as conn:
-        cur = conn.cursor()
-        print ("#       Product        mean")
-        print ("#         table  production")
-        print ("#                     [min]")
-        stats = level1_rad_stats (cur, tbeg, tend)
+        stats = level1_irr_stats (conn.cursor(), tbeg, tend)
+    if stats is not None:
+        print ("%15s  %10.1f" % ('IRR_L1', stats["mean_elapsed_sec"]/60.0))
+
+    with connect_database(dbfile) as conn:
+        stats = level1_rad_stats (conn.cursor(), tbeg, tend)
+    if stats is not None:
+        print ("%15s  %10.1f" % ('RAD_L1', stats["mean_elapsed_sec"]/60.0))
+
+    with connect_database(dbfile) as conn:
+        level2_tables = get_matching_table_names (conn.cursor(), "L2")
+
+    for table in level2_tables:
+        with connect_database(dbfile) as conn:
+            stats = level2_stats (conn.cursor(), table, tbeg, tend)
         if stats is not None:
-            print ("%15s  %10.1f" % ('RAD_L1', stats["mean_elapsed_sec"]/60.0))
-        level2_tables = get_matching_table_names (cur, "L2")
-        for table in level2_tables:
-            stats = level2_stats (cur, table, tbeg, tend)
             print ("%15s  %10.1f" % (table, stats["mean_elapsed_sec"]/60.0))
 
 def main():
