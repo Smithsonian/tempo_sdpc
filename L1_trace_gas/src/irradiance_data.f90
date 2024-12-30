@@ -26,12 +26,11 @@ module irradiance_data
 
 contains
 
-  subroutine irradiance_data_init (rpt_rad, errstat)
+  subroutine irradiance_data_init (errstat)
 
-    use OMSAO_variables_module, only: Radiance_Paras_Type, OMSAO_I0_filename
+    use OMSAO_variables_module, only: OMSAO_I0_filename, solcal_cache_mode
     use ctrlvars, only: yn_I0
     implicit none
-    type(Radiance_Paras_Type), intent(in) :: rpt_rad
     integer, intent(inout) :: errstat
 
     if (errstat /= 0) return
@@ -39,8 +38,8 @@ contains
     ! ----------------------------------------------------------------------
     ! Solar Irradiance Processing: If we don't use I0 irradiance-replacement
     ! we have to read the irradiance data.
-    ! -------------------------------------------------------------------
-    if ( yn_I0 ) then
+    ! ----------------------------------------------------------------------
+    if ( ( yn_I0 ) .and. ( solcal_cache_mode /= 'save' ) ) then
       call read_I0_irradiance(OMSAO_I0_filename, errstat)
     else
       call read_irradiance_data (errstat)
@@ -208,7 +207,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: &
-      l1b_irrad_filename, l1b_channel
+      l1b_irrad_filename, l1b_channel, solcal_cache_mode
     USE arrayutils, only: array_locate_r4
     use ctrlvars, only: yn_disable_omi_features, yn_gems
     use m_read_gems, only: gems_read_irrad_data
@@ -241,6 +240,9 @@ contains
     else !TEMPO
       call tell_log (1, 'reading irradiances = '//trim(l1b_irrad_filename))
       call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
+      if (solcal_cache_mode == 'save') then
+        call tiof_use_file_epoch (tio_l1obj, errstat)
+      endif
       call lookup_swathname (l1b_channel, swathname, errstat)
       call tiof_inq_group (tio_l1obj, swathname, errstat)
       call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)

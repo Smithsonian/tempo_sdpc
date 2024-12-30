@@ -283,7 +283,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     omi_xtrpix_range_rr(0:ntimes_rad-1,1:2) = omi_xtrpix_range(0:ntimes_rad-1,1:2)
   END IF
 
-  call irradiance_data_init (rpt_rad, errstat);
+  call irradiance_data_init (errstat);
   if (errstat /= 0) return
 
   ! ---------------------------------------------------------------
