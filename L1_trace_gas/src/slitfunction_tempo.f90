@@ -207,7 +207,7 @@ CONTAINS
     USE OMSAO_omidata_module, ONLY: omi_solcal_pars, omi_solcal_xflag, omi_solcal_chisq, &
                                     omi_solcal_rms, omi_solcal_itnum, omi_irradiance_wght
     USE OMSAO_indices_module, ONLY: hwe_idx, asy_idx, sgk_idx, &
-                                    shi_idx, squ_idx, sao_molecule_names, calfit_strings
+                                    shi_idx, squ_idx, calfit_strings
 
     IMPLICIT NONE
 
@@ -244,7 +244,6 @@ CONTAINS
     ! using fill values from the original code simplifies diffing output files
     REAL (KIND=8), PARAMETER :: &
       fill_short = -9999, &
-      fill_float = -1.0e30, &
       fill_double = -1.0e30_r8
 
     IF (errstat /= 0) RETURN
@@ -527,10 +526,9 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: nwavel_max, nxtrack_max
     USE OMSAO_omidata_module, ONLY: omi_solcal_pars, omi_solcal_xflag, omi_solcal_chisq, &
                                     omi_solcal_rms, omi_solcal_shift, omi_irradiance_wght
-    USE OMSAO_variables_module, ONLY: fitvar_cal, n_fitvar_solcal, mask_fitvar_solcal
-    USE OMSAO_indices_module, ONLY: hwe_idx, asy_idx, sgk_idx, &
-                                    shi_idx, squ_idx, max_calfit_idx
+    USE OMSAO_variables_module, ONLY: n_fitvar_solcal, mask_fitvar_solcal
     USE irradiance_data, ONLY: Irr_Data
+    use ctrlvars, only: yn_I0, yn_spectrum_norm
 
     IMPLICIT NONE
 
@@ -609,8 +607,21 @@ CONTAINS
     ENDIF
 
     ! Store data in other variables that get used later
-    Irr_Data%wavelengths = save_solcal_wvl
-    Irr_Data%spectrum = save_solcal_spec
+    if (.not. yn_I0) then
+      Irr_Data%wavelengths = save_solcal_wvl
+      Irr_Data%spectrum = save_solcal_spec
+    else if (yn_spectrum_norm) then
+      ! ---------------------------------------
+      ! Normalize I0 spectrum if necessary.
+      ! Usually is done during solar wavelength
+      ! calibration but we are skipping it.
+      ! ---------------------------------------
+      do i = 1, nxtrack
+        Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) = &
+            Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &
+            (SUM(Irr_Data%spectrum(1:Irr_Data%nwaves(i),i)) / REAL(Irr_Data%nwaves(i),kind=8))
+      end do
+    endif
 
     DO i = 1, n_fitvar_solcal
        omi_solcal_pars(mask_fitvar_solcal(i), :) = solcal_fit_params(i,:)
