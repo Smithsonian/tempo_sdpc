@@ -11,7 +11,7 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat)
 
   USE OMSAO_precision_module
   USE OMSAO_variables_module,    ONLY: l1b_rad_filename, Radiance_Paras_Type, &
-    l1b_radref_filename, l1b_channel
+    l1b_radref_filename, l1b_channel, solcal_cache_mode
   use ctrlvars, only: yn_radiance_reference, yn_gems
   USE OMSAO_omidata_module,      ONLY: omi_radiance_swathname, EarthSunDistance
   USE omi_pge_fitting_aux, ONLY: omi_set_fitting_parameters
@@ -44,54 +44,56 @@ SUBROUTINE omi_pge_fitting ( pge_idx, n_max_rspec, errstat)
   CALL omi_set_fitting_parameters ( pge_idx, errstat )
   if (errstat /= 0) goto 666
 
-  ! -----------------------------------------------------------------------------------
-  ! Get dimensions the L1B radiance granule
-  ! -----------------------------------------------------------------------------------
-  if (.not. yn_gems) then
-    call read_l1_radiance_info(l1b_rad_filename, l1b_channel, rpt_rad, errstat)
-  else ! GEMS
-    call gems_read_l1_rad_info (l1b_rad_filename, rpt_rad, errstat)
-  endif
-  if (errstat /= 0) goto 666
-
-  if (.not. yn_gems) then
-    call read_earth_sun_distance (l1b_rad_filename, EarthSunDistance, errstat)
-  else
-    call gems_read_earth_sun_distance(l1b_rad_filename, EarthSunDistance, &
-         errstat)
-  endif
-  if (errstat /= 0) goto 666
-  omi_radiance_swathname = rpt_rad%swathname
-
-  ! ---------------------------------------------------------------
-  ! Dimensions for Radiance Reference granule
-  ! ---------------------------------------------------------------
-  IF ( .NOT. yn_radiance_reference ) THEN
-    l1b_radref_filename = l1b_rad_filename
-    rpt_rr%l1bfilename = rpt_rad%l1bfilename
-    rpt_rr%ntimes = rpt_rad%ntimes
-    rpt_rr%nxtrack = rpt_rad%nxtrack
-    rpt_rr%nwavel_ccd = rpt_rad%nwavel_ccd
-    rpt_rr%swathname = rpt_rad%swathname
-  ELSE
-    if (.not. yn_gems) then !TEMPO
-      call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, &
-           errstat)
-    else !GEMS
-      call gems_read_l1_rad_info (l1b_radref_filename, rpt_rr, errstat)
+  if (solcal_cache_mode /= 'save') then
+    ! -----------------------------------------------------------------------------------
+    ! Get dimensions the L1B radiance granule
+    ! -----------------------------------------------------------------------------------
+    if (.not. yn_gems) then
+      call read_l1_radiance_info(l1b_rad_filename, l1b_channel, rpt_rad, errstat)
+    else ! GEMS
+      call gems_read_l1_rad_info (l1b_rad_filename, rpt_rad, errstat)
     endif
     if (errstat /= 0) goto 666
-  ENDIF
 
-  ! ----------------------------------------------------------------
-  ! Number of cross-track positions must be the same; fold otherwise
-  ! ----------------------------------------------------------------
-  IF ( rpt_rad%nxtrack /= rpt_rr%nxtrack ) THEN
-    call tell_error (tell_runtime_error, &
-                     "Cross-track position different between L1b radiance granules", &
-                     errstat)
-    GO TO 666
-  END IF
+    if (.not. yn_gems) then
+      call read_earth_sun_distance (l1b_rad_filename, EarthSunDistance, errstat)
+    else
+      call gems_read_earth_sun_distance(l1b_rad_filename, EarthSunDistance, &
+          errstat)
+    endif
+    if (errstat /= 0) goto 666
+    omi_radiance_swathname = rpt_rad%swathname
+
+    ! ---------------------------------------------------------------
+    ! Dimensions for Radiance Reference granule
+    ! ---------------------------------------------------------------
+    IF ( .NOT. yn_radiance_reference ) THEN
+      l1b_radref_filename = l1b_rad_filename
+      rpt_rr%l1bfilename = rpt_rad%l1bfilename
+      rpt_rr%ntimes = rpt_rad%ntimes
+      rpt_rr%nxtrack = rpt_rad%nxtrack
+      rpt_rr%nwavel_ccd = rpt_rad%nwavel_ccd
+      rpt_rr%swathname = rpt_rad%swathname
+    ELSE
+      if (.not. yn_gems) then !TEMPO
+        call read_l1_radiance_info (l1b_radref_filename, l1b_channel, rpt_rr, &
+            errstat)
+      else !GEMS
+        call gems_read_l1_rad_info (l1b_radref_filename, rpt_rr, errstat)
+      endif
+      if (errstat /= 0) goto 666
+    ENDIF
+
+    ! ----------------------------------------------------------------
+    ! Number of cross-track positions must be the same; fold otherwise
+    ! ----------------------------------------------------------------
+    IF ( rpt_rad%nxtrack /= rpt_rr%nxtrack ) THEN
+      call tell_error (tell_runtime_error, &
+                      "Cross-track position different between L1b radiance granules", &
+                      errstat)
+      GO TO 666
+    END IF
+  end if
 
   CALL omi_fitting (pge_idx, rpt_rad, rpt_rr, n_max_rspec, errstat)
   if (errstat /= 0) goto 666
@@ -158,7 +160,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, correlation_names, &
        omi_cross_track_skippix, omi_radcal_xflag, &
        omi_radiance_swathname, result_vars
-  USE irradiance_data, only: irradiance_data_init
+  USE irradiance_data, only: irradiance_data_init, Irr_Data
   use m_write_odl_metadata
   use OMSAO_casestring_module, only : upper_case
   use slitfunction_tempo, only : solarcal_write_file, solarcal_read_file
@@ -222,13 +224,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
 
   if (errstat /= 0) return
 
-  ntimes_rad = rpt_rad%ntimes
-  nxtrack_rad = rpt_rad%nxtrack
-  nwavel_rad = rpt_rad%nwavel_ccd
-
-  ntimes_rr = rpt_rr%ntimes
-  nxtrack_rr = rpt_rr%nxtrack
-  nwavel_rr = rpt_rr%nwavel_ccd
   ! ---------------------------------------------------------------
   ! Some initializations that will save us headaches in cases where
   ! a proper set-up of those variables failes or is bypassed.
@@ -240,48 +235,59 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   ! --------------------------------
   molname = sao_molecule_names(pge_idx)
 
-  ! -------------------------------------------------------------------
-  ! Range of cross-track pixels to fit. This is based on the selection
-  ! in the fitting control file and whether the granule being processed
-  ! is in global or spatial zoom mode, or even a mixture thereof.
-  !
-  ! NOTE that we set OMI_XTRPIX_RANGE for all swath lines because the
-  ! choice of swath lines to process may not contain the radiance
-  ! reference/calibration line.
-  ! -------------------------------------------------------------------
-  CALL omi_read_binning_factor ( &
-       TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-       ntimes_rad, omi_binfac, omi_is_szoom, errstat )
-  if (errstat /= 0) return
+  if (solcal_cache_mode /= 'save') then
+  
+    ntimes_rad = rpt_rad%ntimes
+    nxtrack_rad = rpt_rad%nxtrack
+    nwavel_rad = rpt_rad%nwavel_ccd
 
-  CALL omi_set_xtrpix_range ( &
-       ntimes_rad, nxtrack_rad, pixnum_lim(3:4),                         &
-       omi_binfac, omi_xtrpix_range, &
-       first_wc_pix, last_wc_pix, errstat )
+    ntimes_rr = rpt_rr%ntimes
+    nxtrack_rr = rpt_rr%nxtrack
+    nwavel_rr = rpt_rr%nwavel_ccd
 
-  if (errstat /= 0) return
-
-  ! --------------------------------------------------------------------
-  ! If the radiance reference is obtained from the same L1b file, we can
-  ! simply copy the variables we have just read to the corresponding
-  ! "rr" ones (in this case, the dimensions are the same). Otherwise we
-  ! have to read them from the radiance reference granule.
-  ! --------------------------------------------------------------------
-  IF ( TRIM(ADJUSTL(l1b_radref_filename)) /= TRIM(ADJUSTL(l1b_rad_filename)) ) THEN
+    ! -------------------------------------------------------------------
+    ! Range of cross-track pixels to fit. This is based on the selection
+    ! in the fitting control file and whether the granule being processed
+    ! is in global or spatial zoom mode, or even a mixture thereof.
+    !
+    ! NOTE that we set OMI_XTRPIX_RANGE for all swath lines because the
+    ! choice of swath lines to process may not contain the radiance
+    ! reference/calibration line.
+    ! -------------------------------------------------------------------
     CALL omi_read_binning_factor ( &
-         TRIM(ADJUSTL(l1b_radref_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
-         ntimes_rr, omi_binfac_rr, omi_is_szoom_rr, &
-         errstat )
-    CALL omi_set_xtrpix_range ( &
-         ntimes_rr, nxtrack_rad, pixnum_lim(3:4),                                 &
-         omi_binfac_rr, omi_xtrpix_range_rr, &
-         first_wc_pix, last_wc_pix, errstat )
+        TRIM(ADJUSTL(l1b_rad_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
+        ntimes_rad, omi_binfac, omi_is_szoom, errstat )
     if (errstat /= 0) return
-  ELSE
-    omi_binfac_rr      (0:ntimes_rad-1)     = omi_binfac      (0:ntimes_rad-1)
-    omi_is_szoom_rr    (0:ntimes_rad-1)     = omi_is_szoom    (0:ntimes_rad-1)
-    omi_xtrpix_range_rr(0:ntimes_rad-1,1:2) = omi_xtrpix_range(0:ntimes_rad-1,1:2)
-  END IF
+
+    CALL omi_set_xtrpix_range ( &
+        ntimes_rad, nxtrack_rad, pixnum_lim(3:4),                         &
+        omi_binfac, omi_xtrpix_range, &
+        first_wc_pix, last_wc_pix, errstat )
+
+    if (errstat /= 0) return
+
+    ! --------------------------------------------------------------------
+    ! If the radiance reference is obtained from the same L1b file, we can
+    ! simply copy the variables we have just read to the corresponding
+    ! "rr" ones (in this case, the dimensions are the same). Otherwise we
+    ! have to read them from the radiance reference granule.
+    ! --------------------------------------------------------------------
+    IF ( TRIM(ADJUSTL(l1b_radref_filename)) /= TRIM(ADJUSTL(l1b_rad_filename)) ) THEN
+      CALL omi_read_binning_factor ( &
+          TRIM(ADJUSTL(l1b_radref_filename)), TRIM(ADJUSTL(omi_radiance_swathname)), &
+          ntimes_rr, omi_binfac_rr, omi_is_szoom_rr, &
+          errstat )
+      CALL omi_set_xtrpix_range ( &
+          ntimes_rr, nxtrack_rad, pixnum_lim(3:4),                                 &
+          omi_binfac_rr, omi_xtrpix_range_rr, &
+          first_wc_pix, last_wc_pix, errstat )
+      if (errstat /= 0) return
+    ELSE
+      omi_binfac_rr      (0:ntimes_rad-1)     = omi_binfac      (0:ntimes_rad-1)
+      omi_is_szoom_rr    (0:ntimes_rad-1)     = omi_is_szoom    (0:ntimes_rad-1)
+      omi_xtrpix_range_rr(0:ntimes_rad-1,1:2) = omi_xtrpix_range(0:ntimes_rad-1,1:2)
+    END IF
+  end if
 
   call irradiance_data_init (errstat);
   if (errstat /= 0) return
@@ -303,6 +309,11 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
         yn_write_solar_cal = .FALSE.
         yn_read_solar_cal = .FALSE.
      CASE ('save')
+        ! ------------------------------------------
+        ! Find the range of XT pixels to process
+        ! ------------------------------------------
+        first_wc_pix = MAX (                                        1, pixnum_lim(3) )
+        last_wc_pix  = MAX ( MIN ( Irr_Data%nxtrack,  pixnum_lim(4) ), first_wc_pix     )
         yn_do_solar_cal = .TRUE.
         yn_exit_post_solar_cal = .TRUE.
         yn_write_solar_cal = .TRUE.
