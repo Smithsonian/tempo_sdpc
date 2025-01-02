@@ -102,7 +102,8 @@ CONTAINS
          static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,            &
          solcal_filename, OMSAO_I0_filename, voc_amf_filenames,              &
          refspecs_original, OMSAO_refseccor_filename, OMSAO_OMLER_filename,  &
-         OMSAO_refseccor_cld_filename, l1b_radref_filename, solcal_cache_mode
+         OMSAO_refseccor_cld_filename, l1b_radref_filename,                  &
+         solcal_cache_mode, solcal_source
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
          OMSAO_wfamf_table_filename, OMSAO_climatology_filename, &
          num_met_luns, meteorology_lun, OMSAO_meteorology_filename
@@ -185,6 +186,15 @@ CONTAINS
       CASE ( solcal_mode_lun )
         IF ( estat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = "none"
         solcal_cache_mode = TRIM(ADJUSTL(config_lun_values(i)))
+        ! -----------------------------------------------------------------
+        ! Get the source (solar irradiance file or I0 irradiance) used in
+        ! solar calibration; options are
+        ! 1. solar_irradiance (default)
+        ! 2. I0_irradiance
+        ! -----------------------------------------------------------------
+      CASE ( solcal_source_lun )
+        IF ( estat /= PGS_SMF_MASK_LEV_S ) config_lun_values(i) = "solar_irradiance"
+        solcal_source = TRIM(ADJUSTL(config_lun_values(i)))
         ! -----------------------------------------------------------------
         ! Get Granule Start and End time. This is provided by the Scheduler
         ! and has to be checked against the L1B MetaData fields for

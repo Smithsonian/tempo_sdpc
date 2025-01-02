@@ -222,11 +222,12 @@ MODULE OMSAO_variables_module
   INTEGER (KIND=I4) :: n_rad_wvl, n_database_wvl
   INTEGER (KIND=I4) :: n_rad_wvl_max
 
-  ! -----------------------------------------------------------------
-  ! Calculated on-orbit solar irradiance calibration file and mode
-  ! -----------------------------------------------------------------
+  ! ----------------------------------------------------------------------
+  ! Calculated on-orbit solar irradiance calibration file, mode and source
+  ! ----------------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: solcal_filename
   CHARACTER (LEN=MAX_STR_LEN) :: solcal_cache_mode
+  CHARACTER (LEN=MAX_STR_LEN) :: solcal_source
 
   ! --------------------------------------------
   ! Name of the tabulated OMI slit function data

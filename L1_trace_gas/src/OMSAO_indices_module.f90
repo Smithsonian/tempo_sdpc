@@ -328,8 +328,10 @@ MODULE OMSAO_indices_module
   ! LUNs for use of the TEMPO on-orbit solar calibration file
   ! ---------------------------------------------------
   INTEGER (KIND=i4), PARAMETER :: &
-    solcal_fname_lun = 700060, & ! LUN for solar slit/wavelength calibration file
-    solcal_mode_lun  = 200300
+    solcal_fname_lun  = 700060, & ! Solar slit/wavelength calibration file
+    solcal_mode_lun   = 200300, & ! Solar calibration running mode
+    solcal_source_lun = 200310    ! Logical controlling solar (lun 700020) or 
+                                  ! I0 (700400) use in solar calibration
 
   ! -----------------------------------------------------------------
   ! Place any of the above LUNs that are associated with Config data
@@ -342,7 +344,7 @@ MODULE OMSAO_indices_module
   ! Note that this _excludes_ any file names, which must be read
   ! with the PGS_PC_GetReference function.
   ! -----------------------------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: n_config_luns = 17
+  INTEGER (KIND=i4), PARAMETER :: n_config_luns = 18
   INTEGER (KIND=i4), DIMENSION (n_config_luns), PARAMETER :: config_lun_array = (/  &
     granule_s_lun,          granule_e_lun,          &
     verbosity_lun,          pge_version_lun,        &
@@ -352,7 +354,7 @@ MODULE OMSAO_indices_module
     authoraffil_lun,        authorname_lun,         &
     orbitnumber_lun,        swathname_lun,          &
     versionid_lun,          pge_molid_lun,          &
-    solcal_mode_lun            /)
+    solcal_mode_lun,        solcal_source_lun   /)
 
   CHARACTER (LEN=29), DIMENSION (n_config_luns), PARAMETER :: config_lun_strings = (/  &
     "Granule Start Time           ", "Granule End Time             ", &
@@ -363,7 +365,7 @@ MODULE OMSAO_indices_module
     "AuthorAffiliation            ", "AuthorName                   ", &
     "OrbitNumber                  ", "SwathName                    ", &
     "VERSIONID                    ", "PGE Molecule ID              ", &
-    "solcal_cache_mode            "     /)
+    "solcal_cache_mode            ", "solcal_source                " /)
 
   CHARACTER (LEN=3), DIMENSION (n_config_luns), PARAMETER :: config_lun_autocopy = (/  &
     "no ", "no ", &
@@ -374,7 +376,7 @@ MODULE OMSAO_indices_module
     "yes", "yes", &
     "no ", "no ", &
     "no ", "no ", &
-    "no "  /)
+    "no ", "no "  /)
 
   LOGICAL, DIMENSION (n_config_luns), PARAMETER :: yn_config_lun_autocopy = (/  &
     .FALSE., .FALSE., &
@@ -385,7 +387,7 @@ MODULE OMSAO_indices_module
     .TRUE.,  .TRUE.,  &
     .FALSE., .FALSE., &
     .FALSE., .FALSE., &
-    .FALSE.    /)
+    .FALSE., .FALSE. /)
 
   CHARACTER (LEN=MAX_STR_LEN), DIMENSION (n_config_luns) :: config_lun_values
 
