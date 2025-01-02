@@ -26,24 +26,43 @@ module irradiance_data
 
 contains
 
-  subroutine irradiance_data_init (errstat)
+  subroutine irradiance_data_init (source, errstat)
 
-    use OMSAO_variables_module, only: OMSAO_I0_filename, solcal_cache_mode
-    use ctrlvars, only: yn_I0
+    use OMSAO_variables_module, only: OMSAO_I0_filename, l1b_irrad_filename
+    use netcdf, only : nf90_nowrite
+    use tio_module
+
     implicit none
+    character (len=*), intent (in) :: source
     integer, intent(inout) :: errstat
+    type (tiof_file_type) :: tio_l1obj
 
     if (errstat /= 0) return
 
-    ! ----------------------------------------------------------------------
-    ! Solar Irradiance Processing: If we don't use I0 irradiance-replacement
-    ! we have to read the irradiance data.
-    ! ----------------------------------------------------------------------
-    if ( ( yn_I0 ) .and. ( solcal_cache_mode /= 'save' ) ) then
-      call read_I0_irradiance(OMSAO_I0_filename, errstat)
-    else
-      call read_irradiance_data (errstat)
-    end if
+    ! --------------------------------------------------------------------
+    ! The definition of TEMPO's epoch is always needed. Read it from
+    ! solar irradiance file prior to start the solar calibration
+    ! --------------------------------------------------------------------
+    call tell_log (1, 'reading epoch from '//trim(l1b_irrad_filename))
+    call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
+    call tiof_use_file_epoch (tio_l1obj, errstat)
+    call tiof_close (tio_l1obj, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, &
+           "irradiance_data_init:  failed reading epoch",  errstat)
+      return
+    endif
+    
+    select case ( source )
+      case ('I0_irradiance')
+        call read_I0_irradiance(OMSAO_I0_filename, errstat)
+      case ('solar_irradiance')
+        call read_irradiance_data (errstat)
+      case default
+        call tell_error (tell_runtime_error, &
+            "irradiance_data_init: not a valid source: "//source, errstat)
+        return
+    end select
 
   end subroutine irradiance_data_init
 
@@ -160,7 +179,7 @@ contains
 
     call allocate_irr_data_type (Irr_Data, max_nwavel, nxtrack, errstat)
     if (errstat /= 0) return
-
+    
     Irr_Data%ccdpix_selection = ccdpix_sel
 
     do ix=1, nxtrack
@@ -207,7 +226,7 @@ contains
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module,  ONLY: &
-      l1b_irrad_filename, l1b_channel, solcal_cache_mode
+      l1b_irrad_filename, l1b_channel
     USE arrayutils, only: array_locate_r4
     use ctrlvars, only: yn_disable_omi_features, yn_gems
     use m_read_gems, only: gems_read_irrad_data
@@ -228,7 +247,6 @@ contains
     integer (kind=i2), dimension (:,:,:), allocatable :: tmp_qflags
     integer (kind=i2), dimension (:,:), allocatable :: tmp_qflags_2d
     character (len=64) :: swathname
-    !type (L1B_Object_Type) :: l1bobj
     type (tiof_file_type) :: tio_l1obj
 
     if (errstat /= 0) return
@@ -240,9 +258,6 @@ contains
     else !TEMPO
       call tell_log (1, 'reading irradiances = '//trim(l1b_irrad_filename))
       call tiof_open (l1b_irrad_filename, tio_l1obj, nf90_nowrite, errstat)
-      if (solcal_cache_mode == 'save') then
-        call tiof_use_file_epoch (tio_l1obj, errstat)
-      endif
       call lookup_swathname (l1b_channel, swathname, errstat)
       call tiof_inq_group (tio_l1obj, swathname, errstat)
       call tiof_inq_dimlen (tio_l1obj, "xtrack", nxtrack, errstat)
@@ -318,13 +333,14 @@ contains
   !-------------------------------------------------------------------------
   subroutine read_I0_irradiance (filename, errstat)
 
+    use ctrlvars, only: yn_spectrum_norm
     implicit none
 
     !input variables
     character (len=*), intent(in) :: filename
     integer (kind=4), intent(inout) :: errstat
     !local variables
-    integer (kind=4) :: nxtrack, nwavel
+    integer (kind=4) :: nxtrack, nwavel, i
     real (kind=8), dimension(:,:), allocatable :: spectra, wavelengths
     integer (kind=2), dimension(:,:), allocatable :: qflags
 
@@ -349,6 +365,15 @@ contains
 
     call package_irradiance_data (nwavel, nxtrack, wavelengths, spectra, &
          qflags, errstat)
+
+    ! It is important to normalize the I0_irradiance 
+    if (yn_spectrum_norm) then
+      do i = 1, Irr_Data%nxtrack
+        Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) = &
+            Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &
+            (SUM(Irr_Data%spectrum(1:Irr_Data%nwaves(i),i)) / REAL(Irr_Data%nwaves(i),kind=8))
+      end do
+    endif
 
     deallocate (spectra, wavelengths, qflags, stat=errstat)
     if (errstat /= 0) then

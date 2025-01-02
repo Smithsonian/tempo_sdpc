@@ -528,7 +528,7 @@ CONTAINS
                                     omi_solcal_rms, omi_solcal_shift, omi_irradiance_wght
     USE OMSAO_variables_module, ONLY: n_fitvar_solcal, mask_fitvar_solcal
     USE irradiance_data, ONLY: Irr_Data
-    use ctrlvars, only: yn_I0, yn_spectrum_norm
+    use ctrlvars, only: yn_I0
 
     IMPLICIT NONE
 
@@ -610,18 +610,7 @@ CONTAINS
     if (.not. yn_I0) then
       Irr_Data%wavelengths = save_solcal_wvl
       Irr_Data%spectrum = save_solcal_spec
-    else if (yn_spectrum_norm) then
-      ! ---------------------------------------
-      ! Normalize I0 spectrum if necessary.
-      ! Usually is done during solar wavelength
-      ! calibration but we are skipping it.
-      ! ---------------------------------------
-      do i = 1, nxtrack
-        Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) = &
-            Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &
-            (SUM(Irr_Data%spectrum(1:Irr_Data%nwaves(i),i)) / REAL(Irr_Data%nwaves(i),kind=8))
-      end do
-    endif
+    end if
 
     DO i = 1, n_fitvar_solcal
        omi_solcal_pars(mask_fitvar_solcal(i), :) = solcal_fit_params(i,:)

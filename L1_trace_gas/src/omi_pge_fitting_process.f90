@@ -128,10 +128,10 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
        common_latrange,    &
        Radiance_Paras_Type, &
        radiance_reference_lnums, l1b_radref_filename, common_mode_spec, &
-       solcal_cache_mode, solcal_filename
+       solcal_cache_mode, solcal_filename, solcal_source
   use ctrlvars, only: yn_radiance_reference, yn_common_iter, &
        yn_diagnostic_run, yn_remove_target, yn_disable_omi_features, &
-       yn_do_he5_output, yn_wrt_odl, yn_gems, &
+       yn_do_he5_output, yn_wrt_odl, yn_gems, yn_I0, &
        yn_do_solar_cal, yn_write_solar_cal, yn_read_solar_cal, yn_exit_post_solar_cal
   USE OMSAO_he5_module,       ONLY:  pge_swath_name, n_lun_inp, lun_input
   USE OMSAO_solar_wavcal_module, ONLY: xtrack_solar_calibration_loop
@@ -160,7 +160,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
   USE OMSAO_omidata_module, ONLY: n_comm_wvl, ntimes_loop, correlation_names, &
        omi_cross_track_skippix, omi_radcal_xflag, &
        omi_radiance_swathname, result_vars
-  USE irradiance_data, only: irradiance_data_init, Irr_Data
+  USE irradiance_data, only: irradiance_data_init, Irr_Data, deallocate_irr_data_type
   use m_write_odl_metadata
   use OMSAO_casestring_module, only : upper_case
   use slitfunction_tempo, only : solarcal_write_file, solarcal_read_file
@@ -289,14 +289,19 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
     END IF
   end if
 
-  call irradiance_data_init (errstat);
-  if (errstat /= 0) return
-
   ! ---------------------------------------------------------------
   ! Solar wavelength calibration, done even when we use a composite
   ! solar spectrum to avoid un-initialized variables. However, no
   ! actual fitting is performed in the latter case.
   ! ---------------------------------------------------------------
+  ! ------------------------------------------------
+  ! First call to read solar or I0 irradiance for
+  ! solar calibration (save) and radiance fit (none)
+  ! If solcal_cache_mode = read is also important to
+  ! read it to allocate Irr_Data
+  ! ------------------------------------------------
+  call irradiance_data_init (trim(adjustl(solcal_source)), errstat);
+  if (errstat /= 0) return
 
   ! Set logicals to decide how to proceed with solar calibration
   ! 'none': do solar calibration then proceed with fitting
@@ -368,6 +373,20 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, rpt_rr, &
      endif
      return
   endif
+
+  ! --------------------------------------------------------
+  ! Second call to read I0 irradiance in case it is used for
+  ! radiance fitting after performing the solar calibration
+  ! using solar irradiance
+  ! -------------------------------------------------------
+  if ( ( solcal_source == 'solar_irradiance' ) .and. ( yn_I0 ) ) then
+    if ( allocated(Irr_Data%qflags) ) then
+      call deallocate_irr_data_type (Irr_Data, errstat);
+      if (errstat /= 0) return
+    end if
+    call irradiance_data_init ('I0_irradiance', errstat);
+    if (errstat /= 0) return
+  end if
 
   ! ---------------------------------------------------------------
   ! No matter what, we need a swath line for radiance wavelength
