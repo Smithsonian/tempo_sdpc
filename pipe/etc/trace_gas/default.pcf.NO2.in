@@ -242,6 +242,10 @@
 # solar calibration, which is saved to the file below, then stops; 3. 'read' 
 # reads the pre-computed solar calibration from the file below and then proceeds
 # The mode is set below in the USER DEFINED RUNTIME PARAMETERS.
+# If running the code in 'none' or 'save' modes lun 200310 (solcal_source)
+# allows to specify the source of the spectra used in solar calibration.
+# Accepted values are 'solar_irradiance' (default uses info in lun 700020)
+# and 'I0_irradiance' (uses info in lun 700400).
 700060|@solcal_file@|@solcal_dir@||||1
 # =======================================================================
 # tpk> This should be the place to list all the reference spectra. Needs
@@ -359,6 +363,7 @@
 200210|SwathName|"OMI Total Column Amount NO2"
 200220|VERSIONID|@versionid@
 200300|solcal_cache_mode|"@solcal_cache_mode@"
+200310|solcal_source|"@solcal_source@"
 #
 # -------------------
 # SAO PGE Name
