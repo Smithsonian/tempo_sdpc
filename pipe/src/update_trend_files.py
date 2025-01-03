@@ -321,20 +321,18 @@ def run_as_service (args_dir, arch_dir):
         eprint ('*** Error: SDPC_ARCHIVE_DBFILE is not set')
         sys.exit(1)
 
-    if not os.path.isfile (db_file_path):
-        return 0
-
     table_names = ["HK_L0", "DRK_L1", "IRR_L1", "RAD_L1"]
 
     sig = Signal_Catcher()
 
     logprint ("Started", flush=True)
     while not sig.caught():
-        for tbl in table_names:
-            filenames = unprocessed_files (db_file_path, tbl)
-            if len(filenames) > 0:
-                processed_files, failed_files = process_file_list (filenames, args_dir, arch_dir)
-                mark_as_processed (db_file_path, processed_files, failed_files, tbl)
+        if os.path.isfile (db_file_path):
+            for tbl in table_names:
+                filenames = unprocessed_files (db_file_path, tbl)
+                if len(filenames) > 0:
+                    processed_files, failed_files = process_file_list (filenames, args_dir, arch_dir)
+                    mark_as_processed (db_file_path, processed_files, failed_files, tbl)
         sig.wait(300)
 
     eprint ("Exiting: caught signal = {}".format(sig.signum))
