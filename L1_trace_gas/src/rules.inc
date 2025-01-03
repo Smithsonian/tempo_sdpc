@@ -17,6 +17,7 @@ $(ODIR)/slitfunction_super_gaussian.o: $(SDIR)/slitfunction_super_gaussian.f90 \
   $(ODIR)/SLATEC_davint.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/slitfunction_super_gaussian.f90 -o $(ODIR)/slitfunction_super_gaussian.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/slitfunction_tempo.o: $(SDIR)/slitfunction_tempo.f90 \
+  $(ODIR)/ctrlvars.o \
   $(ODIR)/irradiance_data.o \
   $(ODIR)/l1bread_utils.o \
   $(ODIR)/OMSAO_indices_module.o \
