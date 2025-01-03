@@ -361,8 +361,8 @@
 200200|OrbitNumber|08541
 200210|SwathName|"TEMPO Total Column Amount GLYOXAL"
 200220|VERSIONID|@versionid@
-200300|solcal_cache_mode|"@solcal_cache_mode@"
-200310|solcal_source|"@solcal_source@"
+200300|solcal_cache_mode|@solcal_cache_mode@
+200310|solcal_source|@solcal_source@
 #
 # -------------------
 # SAO PGE Name
