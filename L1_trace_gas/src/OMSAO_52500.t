@@ -124,11 +124,6 @@ OMSAO_E_READ_SOLMONAVE_FILE  ERROR...failed to READ from solar monthly average s
 OMSAO_W_CLOSE_SOLMONAVE_FILE WARNING...failed to close solar monthly average spectrum file
 OMSAO_S_READ_SOLMONAVE_FILE  SUCCESS...completed READ of solar monthly average spectrum file
 
-OMSAO_E_OPEN_REFSECCOR_FILE  ERROR...failed to open reference sector corrrection file
-OMSAO_E_READ_REFSECCOR_FILE  ERROR...failed to READ from reference sector corrrection file
-OMSAO_W_CLOSE_REFSECCOR_FILE WARNING...failed to close reference sector corrrection file
-OMSAO_S_READ_REFSECCOR_FILE  SUCCESS...completed READ of reference sector corrrection file
-
 OMSAO_E_HE5GDOPEN    ERROR...failed to open GRID file
 OMSAO_W_HE5GDCLOSE   WARNING...failed to close GRID file
 OMSAO_E_HE5GDATTACH  ERROR...failed to attach to GRID

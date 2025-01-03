@@ -260,7 +260,7 @@ CONTAINS
     USE OMSAO_he5_module
     USE datafields, ONLY: comdata_he5fields, diagnostic_he5fields, &
       geo_he5fields, o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
-      rad_calfit_he5fields, rad_reffit_he5fields, rs_he5fields, &
+      rad_calfit_he5fields, rad_reffit_he5fields, &
       sol_calfit_he5fields, sw_he5fields, voc_he5fields
     USE OMSAO_errstat_module
 

@@ -22,7 +22,6 @@ module output_tools
     write_radfit_output, write_fitting_statistics, write_common_mode, &
     write_albedo, write_wind_speed, write_gas_profile, write_scattering_weights, &
     write_amf_correction, write_temperature_profile, write_refspec_database, &
-    write_reference_sector_corrected_column, &
     write_solar_wavecal_diagnostics, &
     write_radiance_wavecal_diagnostics, copy_pixel_corners, &
     copy_metadata, copy_gpqf_attributes, label_output_file, &
@@ -674,7 +673,7 @@ contains
   end subroutine append_diagnostic_vars
 
   subroutine append_column_vars (obj, dimlist, amf_wvl, errstat)
-    use OMSAO_indices_module, only : pge_no2_idx, pge_hcho_idx, pge_o2o2_idx
+    use OMSAO_indices_module, only : pge_no2_idx, pge_o2o2_idx
     implicit none
 
     type (tiof_file_type), intent(inout) :: obj
@@ -1774,36 +1773,6 @@ contains
     endif
 
   end subroutine write_refspec_database
-
-  !> Write reference sector corrected column to Level 2 product file
-  !! @param[in] nxtrack Number of cross-track pixels
-  !! @param[in] ntimes Number of scans
-  !! @param[in] column Reference sector corrected column density
-  !! @param[inout] errstat  Error status variable
-  subroutine write_reference_sector_corrected_column (nxtrack, ntimes, column, errstat)
-    implicit none
-    integer (kind=i4), intent(in) :: nxtrack, ntimes
-    real (kind=r8), dimension(1:nxtrack,0:ntimes-1), intent(in) :: column
-    integer, intent(inout) :: errstat
-
-    type (tiof_file_type), pointer :: obj
-
-    if (errstat /= 0) return
-
-    obj => primary_output_file
-
-    call tiof_push_group (obj, tg_grp_product, errstat)
-    call tiof_put2d_r8 (obj, tg_var_refsec_corr, [0,0], [ntimes, nxtrack], &
-                        column(1:nxtrack, 0:ntimes-1), errstat)
-    call tiof_pop_group (obj, errstat)
-
-    if (errstat /= 0) then
-      call tell_error (tell_io_write_error, "in write_reference_sector_corrected_column", &
-                       errstat)
-      return
-    endif
-
-  end subroutine write_reference_sector_corrected_column
 
   !> Write solar wavelength calibration diagnostics to Level 2 product file
   !! @param[in] nwaves  Number of wavelength points

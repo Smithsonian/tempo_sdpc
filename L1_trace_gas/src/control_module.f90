@@ -61,13 +61,13 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   USE OMSAO_precision_module
   USE OMSAO_indices_module, ONLY: &
     max_rs_idx, calfit_strings, max_calfit_idx, radfit_strings, mxs_idx,  &
-    hwe_idx, sgk_idx, refspec_strings,    icf_idx, pge_static_input_luns,                        &
-    genline_str, socline_str, racline_str, rrsline_str, procline_str,                   &
+    hwe_idx, sgk_idx, refspec_strings,    icf_idx, pge_static_input_luns,  &
+    genline_str, socline_str, racline_str, procline_str,                   &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
     destriping_str, nrmline_str, comline_str, o3amf_str, mdqfline_str,   &
     comm_idx, procmode_diag, amf_str, I0_str,            &
-    newshift_str, refseccor_str, scattweight_str, stratrop_str
+    newshift_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
     fitcol_idx, n_mol_fit, max_itnum_sol, max_itnum_rad,            &
@@ -307,17 +307,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
 
   READ (fit_ctrl_unit, *) yn_common_iter
   IF ( yn_common_iter ) READ (fit_ctrl_unit, *) common_latrange
-
-  ! ---------------------------------------------------------------------
-  ! Position cursor to read radiance reference settings.
-  ! ---------------------------------------------------------------------
-  REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, rrsline_str, tmpchar, file_read_stat )
-  if (file_read_stat /= 0) then
-    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(rrsline_str), errstat)
-    return
-  endif
 
   ! ----------------------------------------------------------
   ! Position cursor to read solar calibration input parameters

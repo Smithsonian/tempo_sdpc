@@ -128,12 +128,6 @@ MODULE datafields
     sfitrms_field   = "SlantFittingRMS", &
     sfitcon_field   = "SlantFitConvergenceFlag"
 
-  ! Swath data fields for Reference Sector -- GGA
-  type (Datafield_List_Type), public, save :: rs_he5fields
-  character (len=*), parameter, public :: &
-    rscol_field     = "ReferenceSectorCorrectedVerticalColumn", &
-    rscod_field     = "ReferenceSectorCorrectedUncertainty"
-
   ! Swath data field for Scattering Weights, Gas Profile Averaging Kernels and albedo -- GGA
   type (Datafield_List_Type), public, save :: sw_he5fields
   character (len=*), parameter, public :: &
@@ -893,26 +887,6 @@ CONTAINS
                        "NoUnits", &                        ! units
                        "i2", &                             ! datatype
                        -10.0_r8, 12344.0_r8, &             ! validrange
-                       "OMI-Specific" &                    ! uniquefd
-                      )
-
-    call new_datafield(rs_he5fields, &
-                       "ReferenceSectorCorrectedVerticalColumn", &! name
-                       "Reference Sector Corrected Vertical Column", &! title
-                       "nXtrack,nTimes", &                 ! dimensions
-                       "molec/cm2", &                      ! units
-                       "r8", &                             ! datatype
-                       -1e30_r8, 1e30_r8, &                ! validrange
-                       "OMI-Specific" &                    ! uniquefd
-                      )
-
-    call new_datafield(rs_he5fields, &
-                       "ReferenceSectorCorrectedUncertainty", &! name
-                       "Reference Sector Corrected Uncertainty", &! title
-                       "nXtrack,nTimes", &                 ! dimensions
-                       "molec/cm2", &                      ! units
-                       "r8", &                             ! datatype
-                       -1e30_r8, 1e30_r8, &                ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
 

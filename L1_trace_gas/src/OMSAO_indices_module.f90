@@ -461,13 +461,11 @@ MODULE OMSAO_indices_module
   CHARACTER (LEN=15), PARAMETER :: procline_str    = 'Processing mode'
   CHARACTER (LEN=31), PARAMETER :: racline_str     = 'Radiance calibration parameters'
   CHARACTER (LEN=27), PARAMETER :: rafline_str     = 'Radiance fitting parameters'
-  CHARACTER (LEN=26), PARAMETER :: rrsline_str     = 'Radiance reference setting'
   CHARACTER (LEN=24), PARAMETER :: rspline_str     = 'Input reference spectra'
   CHARACTER (LEN=22), PARAMETER :: I0_str          = 'I0 irradiance spectrum'
   CHARACTER (LEN=28), PARAMETER :: socline_str     = 'Solar calibration parameters'
   CHARACTER (LEN=23), PARAMETER :: wavwindow_str   = 'Fitting window settings'
   CHARACTER (LEN=21), PARAMETER :: newshift_str    = 'New shift and squeeze'
-  CHARACTER (LEN=27), PARAMETER :: refseccor_str   = 'Reference sector correction'
   CHARACTER (LEN=25), PARAMETER :: scattweight_str = 'Scattering weights output'
   CHARACTER (LEN=34), PARAMETER :: stratrop_str    = 'Stratospheric and Tropospheric AMF'
 
