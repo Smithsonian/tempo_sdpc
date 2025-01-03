@@ -77,20 +77,6 @@ Fitting Residual Constraints
  3    1      # Radiance Fit
 
 # ========================================================================
-# Setting for the Radiance Reference/Wavelength Calibration line.
-# (1) Logical for Yes/No Radiance Reference
-# (2) Logical for Yes/No remove target from radiance and polynomial to fit
-#     across track ( both ignored for (1)=No)
-# (3) Two REAL values for Start/End of latitude range to be averaged into
-#     the Radiance Reference (only first number will be used for "No" case
-#     to identify radiance for wavelength calibration)
-# ========================================================================
-Radiance reference setting
-F
-T 0
--30.0 +30.0
-
-# ========================================================================
 # Setting for the fitting wavelength window
 # (1) Three-letter STRING with name of OMI channel (UV1, UV2, VIS)
 # (2) Six REAL values N1-6 for Start/End of wavelength window:
