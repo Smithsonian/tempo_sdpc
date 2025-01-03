@@ -337,14 +337,6 @@ New shift and squeeze
 T
 
 # --------------------------------------------------------------------
-# Logical for background correction using a Reference Sector approach.
-# The reference sector is placed over the Pacific
-# T/F
-# --------------------------------------------------------------------
-Reference sector correction
-F
-
-# --------------------------------------------------------------------
 # Logical for the computation and output of Scattering weights, Target
 # gas profile and Averaging Kernels. This should become the standard
 # after the new two step approach AMF routines are in place.
