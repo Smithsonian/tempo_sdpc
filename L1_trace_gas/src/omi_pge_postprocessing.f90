@@ -7,7 +7,7 @@ CONTAINS
 
 SUBROUTINE omi_pge_postprocess ( &
     l1bfile, omi_radiance_swathname, pge_idx, &
-    ntimes, nxtrack, do_process_line, xtrange, is_szoom, n_max_rspec, &
+    ntimes, nxtrack, do_process_line, xtrange, is_szoom, &
     fit_stats, errstat )
 
   ! ---------------------------------------------------------
@@ -18,16 +18,12 @@ SUBROUTINE omi_pge_postprocess ( &
   ! (2) Fitting statistics
   ! (3) Cross-track destriping
   ! (4) Ground-pixel corner computation
-  ! (5) Reference Sector Background Correction for HCHO
   ! ---------------------------------------------------------
 
   USE OMSAO_precision_module
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
   USE OMSAO_destriping_module, ONLY: xtrack_destriping
-  use ctrlvars, only: yn_radiance_reference, yn_refseccor, yn_do_he5_output, &
-       yn_gems
-  USE OMSAO_indices_module, ONLY: pge_hcho_idx
-  USE OMSAO_Reference_sector_module, ONLY: reference_sector_correction
+  use ctrlvars, only: yn_do_he5_output, yn_gems
   USE OMSAO_wfamf_module, ONLY: amf_calculation, &
     wfamf_deallocate
   USE he5_output_tools, ONLY: saopge_geofield_read, saopge_columninfo_read, &
@@ -44,7 +40,7 @@ SUBROUTINE omi_pge_postprocess ( &
   ! Input variables
   ! ---------------
   CHARACTER (LEN=*),                              INTENT (IN) :: l1bfile, omi_radiance_swathname
-  INTEGER (KIND=i4),                              INTENT (IN) :: ntimes, nxtrack, n_max_rspec, pge_idx
+  INTEGER (KIND=i4),                              INTENT (IN) :: ntimes, nxtrack, pge_idx
   INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),  INTENT (IN) :: xtrange
   LOGICAL,           DIMENSION (0:ntimes-1),      INTENT (IN) :: do_process_line, is_szoom
 
@@ -163,17 +159,6 @@ SUBROUTINE omi_pge_postprocess ( &
   CALL xtrack_destriping (ntimes, nxtrack, do_process_line, xtrange, &
     lat, saocol, &
     fit_stats % quality_flag, errstat)
-
-  ! ---------------------------------------------------------------
-  ! Apply Reference Sector Correction; Only for HCHO retrieval !gga
-  ! ---------------------------------------------------------------
-  IF ((yn_refseccor) .AND. ( pge_idx == pge_hcho_idx ) .AND.  &
-    (yn_radiance_reference)) THEN
-    call tell_log (1, 'omi_pge_postprocess:  calling Reference_Sector_correction')
-    CALL Reference_Sector_correction (ntimes, nxtrack, &
-      saocol, saodco, saoamf, fit_stats % quality_flag, pge_idx, n_max_rspec, &
-      errstat)
-  ENDIF
 
   ! Deallocate AMF variables
   CALL wfamf_deallocate (errstat)

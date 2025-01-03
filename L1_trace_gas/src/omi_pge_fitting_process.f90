@@ -623,7 +623,7 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, n_max_rspec, errstat)
        l1b_rad_filename, omi_radiance_swathname, pge_idx, &
        ntimes_rad, nxtrack_rad, &
        do_radfit_range, omi_xtrpix_range, &
-       omi_is_szoom, n_max_rspec, fit_stats, errstat )
+       omi_is_szoom, fit_stats, errstat )
     if (errstat /= 0) return
 
   call tell_log (1, 'omi_fitting:  writing output...')
