@@ -5,7 +5,7 @@ MODULE he5_output_tools
   USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
   use tell_module
 
-  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights
+  use ctrlvars, only: yn_diagnostic_run, yn_scat_weights
 
   USE OMSAO_he5_module, ONLY: he5_start_1d, he5_stride_1d, he5_edge_1d, &
     he5_start_2d, he5_stride_2d, he5_edge_2d, &
@@ -339,15 +339,6 @@ CONTAINS
 
       call define_fields (pge_swath_id, 1, voc_he5fields, &
                           ntimes, nxtrack, nswlevels, errstat)
-
-      ! ------------------------------------------------------
-      ! Reference Sector Correction 2 fields: Total Column and
-      !   uncertainty but so far by limiting the number of loo
-      !   ps only 1 is used Total Column gga
-      ! ------------------------------------------------------
-      IF (yn_refseccor) &
-        call define_fields (pge_swath_id, 1, rs_he5fields, &
-                            ntimes, nxtrack, nswlevels, errstat)
 
     CASE ( pge_gly_idx)
       ! ---------------------------------------------------------------------
@@ -1526,19 +1517,9 @@ CONTAINS
     ! Special fields for individual PGEs
     ! ----------------------------------
     SELECT CASE ( pge_idx )
+
     CASE ( pge_hcho_idx )          ! OMHCHO
       CALL write_attributes (voc_he5fields, locerrstat)
-
-      ! ------------------------------------------------------
-      ! Reference Sector Correction 2 fields: Total Column and
-      !   uncertainty but so far by limiting the number of loo
-      !   ps only 1 is used Total Column gga
-      ! ------------------------------------------------------
-      ! FIXME: This will do all elements of the list despite the above
-      ! comment.
-      IF (yn_refseccor) THEN
-        CALL write_attributes (rs_he5fields, locerrstat)
-      ENDIF
 
     CASE ( pge_gly_idx) ! OMCHOCHO
         CALL write_attributes (voc_he5fields, locerrstat)

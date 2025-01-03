@@ -28,7 +28,6 @@ module ctrlvars
 
 
   logical, public :: yn_o3amf_cor
-  logical, public :: yn_refseccor   !reference sector correction
 
   ! Scattering weights, gas profile, averaging kernels
   ! and albedo attributes. gga

@@ -11,7 +11,7 @@ module output_tools
   use tio_module
   use tg_names_module
   use OMSAO_precision_module
-  use ctrlvars, only: yn_diagnostic_run, yn_refseccor, yn_scat_weights, &
+  use ctrlvars, only: yn_diagnostic_run, yn_scat_weights, &
        yn_stratrop, yn_gems
   use sao_pge_utils, only: calc_relaz_angle
 
@@ -997,18 +997,7 @@ contains
                                 fillvalue = fill_float, &
                                 attlist=att_coord)
     END IF
-    if (yn_refseccor .and. (target_molecule % pge_idx == pge_hcho_idx)) then
-      call tiof_varlist_append (varlist_supp, errstat, &
-                                tg_var_refsec_corr, &
-                                nf90_double, &
-                                dimids = dimids_xtrack_step, &
-                                long_name = "reference sector correction", &
-                                comment = "reference sector correction based on differences"//&
-                                " between model and retrieval over reference sector", &
-                                units = "molecules/cm^2", &
-                                fillvalue = fill_double, &
-                                attlist=att_coord)
-    endif
+
     call tiof_push_group (obj, tg_grp_support_data, errstat)
     call tiof_def_vars (obj, varlist_supp, errstat)
     call tiof_pop_group (obj, errstat)

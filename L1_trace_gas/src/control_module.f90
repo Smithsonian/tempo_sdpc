@@ -668,22 +668,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_newshift
 
-  ! -------------------------------------------------------------------
-  ! Position cursor to read logical for Reference Sector Correction gga
-  ! -------------------------------------------------------------------
-  REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, refseccor_str, tmpchar, file_read_stat )
-  if (file_read_stat /= 0) then
-    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(refseccor_str), errstat)
-    return
-  endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) yn_refseccor
-
   ! ------------------------------------------------------------------
   ! Position cursor to read logical for Scattering Weights and ... gga
   ! ------------------------------------------------------------------
