@@ -318,14 +318,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(rrsline_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//rrsline_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-
-  READ (fit_ctrl_unit, *) yn_radiance_reference
-  READ (fit_ctrl_unit, *) yn_remove_target, target_npol
-  READ (fit_ctrl_unit, *) radref_latrange(1:2)
 
   ! ----------------------------------------------------------
   ! Position cursor to read solar calibration input parameters
