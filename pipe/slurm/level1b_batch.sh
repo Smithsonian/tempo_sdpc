@@ -413,6 +413,7 @@ derive_o2o2_slant_column()
    -e s,@spectra_dir@,$spectra_dir,g \
    -e s,@product_dir@,$product_dir,g \
    -e s,@solcal_cache_mode@,$solcal_cache_mode,g \
+   -e s,@solcal_source@,solar_irradiance,g \
    -e s,@solcal_file@,$solcal_file,g \
    -e s,@solcal_dir@,$solcal_dir,g \
    -e s,@etc_dir@,$etc_dir,g \

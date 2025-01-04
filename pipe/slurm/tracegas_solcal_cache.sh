@@ -98,7 +98,9 @@ control_file="control_${molecule}.txt"
 this_pcf_file="${pcf_file}_${molecule}"
 
 cld_file=""
-rad_file="notused"
+
+# hack for solcal_cache_mode=save (radiance file isn't used, but a valid filename is needed)
+rad_file="$irr_file"
 
 radref_basename="notused"
 radref_dirname="$spectra_dir"

@@ -149,14 +149,12 @@ fi
 solcal_file_file="${rad_basename}.solcal"
 if test -s $solcal_file_file ; then
    solcal_cache_mode="read"
+   solcal_source="solar_irradiance"
    solcal_file_path="$(cat $solcal_file_file)"
    solcal_file="$(basename $solcal_file_path)"
    solcal_dir="$(dirname $solcal_file_path)"
-   solcal_source="solar_irradiance"
 else
    solcal_cache_mode="none"
-   solcal_file="none"
-   solcal_dir="none"
    case "$molecule" in
        * )
          solcal_source="solar_irradiance"
@@ -165,6 +163,8 @@ else
          solcal_source="I0_irradiance"
          ;;
    esac
+   solcal_file="none"
+   solcal_dir="none"
 fi
 
 # copy the control file template
