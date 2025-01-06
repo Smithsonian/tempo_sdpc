@@ -77,7 +77,6 @@
 # data set files to the location specified by the new setting.
 ! .
 700010|@radiance_file@|@spectra_dir@||||1
-700015|@refsec_rad_file@|@refsec_dir@||||1
 700020|@irradiance_file@|@spectra_dir@||||1
 700240|NONE|NONE||||1
 #
