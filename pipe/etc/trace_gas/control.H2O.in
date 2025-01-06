@@ -296,36 +296,6 @@ Main data quality flag limits
 6.0    -1
 0.1
 
-# ----------------------------------------------------------------
-# The next block controls the cross-track smoothing procedure.
-# Input lines as follows:
-#
-# 1st Line: Logical for destriping
-#
-# 2nd Line: Remove cross-track bias Logical
-#           Order of cross-track bias polynomial
-#
-# 3rd Line: Order of baseline polynomial
-#           Order of scaling polynomial
-#           Order of polynomial to fit to cross-track average
-#
-# 4th Line: Number of scan line blocks to averge
-#           Fixed latitude ramge for destriping
-# ========> Set first number to less than 0 if fixed lats are desired
-#           The blocks option is now death
-#
-# 5th Line: Number of iterations for cross-track fitting
-#
-# 6th Line: Number of iterations for iterative cross-track striping
-# ----------------------------------------------------------------
-Cross-Track Smoothing
- F
- T 3
- 8 1 1
- -200  -50.0 +50.0
-   8
-  10
-
 # ------------------------------------------------------------------
 # Next entry turns on the new shift and squeeze.
 # F it does
