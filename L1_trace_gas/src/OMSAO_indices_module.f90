@@ -448,7 +448,6 @@ MODULE OMSAO_indices_module
   ! Strings to search for in the fitting control input file
   ! -------------------------------------------------------
   CHARACTER (LEN=21), PARAMETER :: comline_str     = 'Common mode iteration'
-  CHARACTER (LEN=22), PARAMETER :: destriping_str  = 'Cross-Track Smoothing'
   CHARACTER (LEN=28), PARAMETER :: fitresconst_str = 'Fitting Residual Constraints'
   CHARACTER (LEN=26), PARAMETER :: genline_str     = 'General fitting parameters'
   CHARACTER (LEN=24), PARAMETER :: iofline_str     = 'Input/output data files'

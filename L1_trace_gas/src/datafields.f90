@@ -123,7 +123,6 @@ MODULE datafields
   character (len=*), parameter, public :: &
     adalb_field     = "AdjustedSceneAlbedo", &
     scol_field      = "SlantColumnAmount", &
-    sdstrcol_field  = "SlantColumnAmountDestriped", &
     sdcol_field     = "SlantColumnUncertainty", &
     sfitrms_field   = "SlantFittingRMS", &
     sfitcon_field   = "SlantFitConvergenceFlag"
@@ -502,17 +501,6 @@ CONTAINS
                        -1e30_r8, 1e30_r8, &                ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
-    ! r8 omi_column_amount (nxtrack_max,0:nlines_max-1)
-
-    call new_datafield(comdata_he5fields, &
-                       "ColumnAmountDestriped", &          ! name
-                       "Column Amount with Destriping Correction", &! title
-                       "nXtrack,nTimes", &                 ! dimensions
-                       "molec/cm2", &                      ! units
-                       "r8", &                             ! datatype
-                       -1e30_r8, 1e30_r8, &                ! validrange
-                       "OMI-Specific" &                    ! uniquefd
-                      )
 
     call new_datafield(comdata_he5fields, &
                        "ColumnUncertainty", &              ! name
@@ -839,16 +827,6 @@ CONTAINS
     call new_datafield(wmamf_he5fields, &
                        "SlantColumnAmount", &              ! name
                        "Slant Column Amount", &            ! title
-                       "nXtrack,nTimes", &                 ! dimensions
-                       "molec/cm2", &                      ! units
-                       "r8", &                             ! datatype
-                       -1e30_r8, 1e30_r8, &                ! validrange
-                       "OMI-Specific" &                    ! uniquefd
-                      )
-
-    call new_datafield(wmamf_he5fields, &
-                       "SlantColumnAmountDestriped", &     ! name
-                       "Slant Column Amount with Destriping Correction", &! title
                        "nXtrack,nTimes", &                 ! dimensions
                        "molec/cm2", &                      ! units
                        "r8", &                             ! datatype

@@ -65,7 +65,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     genline_str, socline_str, racline_str, procline_str,                   &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
-    destriping_str, nrmline_str, comline_str, o3amf_str, mdqfline_str,   &
+    nrmline_str, comline_str, o3amf_str, mdqfline_str,   &
     comm_idx, procmode_diag, amf_str, I0_str,            &
     newshift_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
@@ -83,9 +83,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     mdqf_min_good_col, mdqf_max_good_col, mdqf_stddev_sus, mdqf_stddev_bad, &
     mdqf_sza_sus, mdqf_sza_bad, mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min, &
     mask_fitvar_solcal, n_fitvar_solcal
-  USE OMSAO_destriping_module, ONLY: &
-    ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
-    ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
   USE OMSAO_casestring_module, ONLY: lower_case
   USE OMSAO_errstat_module, only: pgs_smf_mask_lev_s, pgsd_io_gen_rseqfrm
   USE OMSAO_wfamf_module, ONLY: amf_wvl, yn_gler, &
@@ -131,14 +128,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   INTEGER (KIND=i4) :: pgs_smf_teststatuslevel, pgs_io_gen_openf, pgs_io_gen_closef
 
   if (errstat /= 0) return
-
-  ! ---------------------------
-  ! Initialize output variables
-  ! ---------------------------
-  ctr_pol_base    = 0      ; ctr_pol_scal = 0 ; ctr_pol_patt      = 0
-  ctr_nloop       = 0      ; ctr_nloop    = 0 ; ctr_fitfunc_calls = 0
-  ctrdst_latrange = 0.0_r4 ; ctr_maxcol   = 0.0_r8
-  ctr_bias_pol    = 0      ; yn_remove_ctrbias = .FALSE.
 
   ! -------------------------
   ! Open fitting control file
@@ -577,10 +566,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(fitresconst_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//fitresconst_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) ctrl_fitres_range(solcal_idx), ctrl_n_fitres_loop(solcal_idx)
   READ (fit_ctrl_unit, *) ctrl_fitres_range(radcal_idx), ctrl_n_fitres_loop(radcal_idx)
   READ (fit_ctrl_unit, *) ctrl_fitres_range(radref_idx), ctrl_n_fitres_loop(radref_idx)
@@ -596,41 +581,11 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(mdqfline_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//mdqfline_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) mdqf_min_good_col, mdqf_max_good_col
   READ (fit_ctrl_unit, *) mdqf_stddev_sus, mdqf_stddev_bad
   READ (fit_ctrl_unit, *) mdqf_sza_sus, mdqf_sza_bad 
   READ (fit_ctrl_unit, *) mdqf_amfgeo_sus, mdqf_amfgeo_bad  
   READ (fit_ctrl_unit, *) mdqf_amf_min
-
-  ! ---------------------------------------------------------------------------
-  ! Position cursor to read destriping parameters:
-  ! * Order of cross track polynomials (Baseline, Scaling; XTR pattern)
-  ! * Number of swath lines (or latitude limits) to be averaged for XTR pattern
-  ! * Maximum number of calls to fitting function
-  ! * Number of iterations for destriping
-  ! * Absolute maximum column value (+/- range) to include in averaging
-  ! ---------------------------------------------------------------------------
-  REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, destriping_str, tmpchar, file_read_stat )
-  if (file_read_stat /= 0) then
-    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(destriping_str), errstat)
-    return
-  endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
-  READ (fit_ctrl_unit, *) yn_run_destriping
-  READ (fit_ctrl_unit, *) yn_remove_ctrbias, ctr_bias_pol
-  READ (fit_ctrl_unit, *) ctr_pol_base, ctr_pol_scal, ctr_pol_patt
-  READ (fit_ctrl_unit, *) ctr_nblocks, ctrdst_latrange
-  READ (fit_ctrl_unit, *) ctr_fitfunc_calls
-  READ (fit_ctrl_unit, *) ctr_nloop
 
   ! --------------------------------------------------------
   ! Position cursor to read new shift and squeeze option gga
@@ -642,10 +597,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(newshift_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_newshift
 
   ! ------------------------------------------------------------------
@@ -658,10 +609,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
                      trim(scattweight_str), errstat)
     return
   endif
-  !CALL error_check ( &
-  !  file_read_stat, file_read_ok, pge_errstat_fatal, OMSAO_F_READ_FITCTRL_FILE, &
-  !  modulename//f_sep//destriping_str, vb_lev_default, pge_error_status )
-  !IF ( pge_error_status >= pge_errstat_error ) RETURN
   READ (fit_ctrl_unit, *) yn_scat_weights
 
   ! ----------------------------------------------------------------------------------
@@ -675,12 +622,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     return
   endif
   READ (fit_ctrl_unit, *) yn_stratrop
-
-  ! -------------------------------------------------------------------
-  ! Unless we come up with a reason against it, the maximum good column
-  ! also applies to the destriping procedure.
-  ! -------------------------------------------------------------------
-  ctr_maxcol = mdqf_max_good_col
 
   ! -------------------------------------------------------------------------
   ! Determine minimum and maximum wavelength in selected read/fitting windows
