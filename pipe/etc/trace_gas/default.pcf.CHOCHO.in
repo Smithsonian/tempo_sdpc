@@ -294,12 +294,6 @@
 # -------------------------
 700400|not needed now|@refdata_dir@/trace_gas/data||||1
 #
-# -------------------------------------
-# GEOS-Chem reference sector background
-# -------------------------------------
-700600|GEOS_Chem_Reference_Sector_Background.dat|@refdata_dir@/trace_gas/data||||1
-700615|@refsec_cld_file@|@refsec_dir@||||1
-#
 ?   SUPPORT OUTPUT FILES
 #########################################################################
 #
