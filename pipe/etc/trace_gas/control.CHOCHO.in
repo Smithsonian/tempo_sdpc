@@ -296,16 +296,6 @@ Main data quality flag limits
 6.0     -1
 0.1
 
-# ------------------------------------------------------------------
-# Next entry turns on the new shift and squeeze.
-# F it does
-# Lambda = Lambda * (1 + squeeze) + shift it will be
-# T it does
-# Lambda = Lambda * (1 + squeeze) + shift - Lambda_average * squeeze
-# ------------------------------------------------------------------
-New shift and squeeze
-T
-
 # --------------------------------------------------------------------
 # Logical for the computation and output of Scattering weights, Target
 # gas profile and Averaging Kernels. This should become the standard
