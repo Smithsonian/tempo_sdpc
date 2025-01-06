@@ -498,12 +498,6 @@ MODULE OMSAO_indices_module
   ! -----------------------------------------
   INTEGER (KIND=i4), PARAMETER :: OMSAO_I0_lun = 700400
 
-  ! ------------------------------------------------------------
-  ! LUN for GEOS-Chem background Reference Sector concentrations
-  ! ------------------------------------------------------------
-  INTEGER (KIND=i4), PARAMETER :: OMSAO_refseccor_lun     = 700600
-  INTEGER (KIND=i4), PARAMETER :: OMSAO_refseccor_cld_lun = 700615
-
   ! --------------------------------
   ! LUN for OMLER albedo climatology
   ! --------------------------------

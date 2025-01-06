@@ -260,12 +260,6 @@ MODULE OMSAO_variables_module
   ! ---------------------------------------------------------------------
   CHARACTER (LEN=3) :: l1b_channel
 
-  ! --------------------------------------------------------
-  ! Filename and logical for Reference Sector Correction gga
-  ! --------------------------------------------------------
-  CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_refseccor_filename
-  CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_refseccor_cld_filename
-
   ! -----------------------------------------------------------------
   ! Logical for Scattering Weights, Gas Profile and Averaging Kernels
   ! Also filename

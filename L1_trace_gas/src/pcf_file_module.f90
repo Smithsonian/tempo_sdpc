@@ -101,9 +101,8 @@ CONTAINS
          ecs_version_id, l1b_rad_filename, l1b_irrad_filename, l2_filename,  &
          static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,            &
          solcal_filename, OMSAO_I0_filename, voc_amf_filenames,              &
-         refspecs_original, OMSAO_refseccor_filename, OMSAO_OMLER_filename,  &
-         OMSAO_refseccor_cld_filename,                                       &
-         solcal_cache_mode, solcal_source
+         refspecs_original, OMSAO_OMLER_filename, solcal_cache_mode,         &
+         solcal_source
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
          OMSAO_wfamf_table_filename, OMSAO_climatology_filename, &
          num_met_luns, meteorology_lun, OMSAO_meteorology_filename
@@ -433,21 +432,6 @@ CONTAINS
     call do_pgs_get_reference (OMSAO_I0_lun, "PGE_STATIC_INPUT_LUN", &
          OMSAO_W_GETLUN, pge_errstat_warning, &
          OMSAO_I0_filename, pge_error_status)
-
-    ! ------------------------------------------------------------
-    ! Read name of file with GEOS-Chem background Reference Sector
-    ! concentrations !gga
-    ! ------------------------------------------------------------
-    call do_pgs_get_reference (OMSAO_refseccor_lun, "PGE_STATIC_INPUT_LUN", &
-         OMSAO_W_GETLUN, pge_errstat_warning, &
-         OMSAO_refseccor_filename, pge_error_status)
-
-    ! ---------------------------------------------------------
-    ! Read name of file with the radiance reference clouds !gga
-    ! ---------------------------------------------------------
-    call do_pgs_get_reference (OMSAO_refseccor_cld_lun, "PGE_STATIC_INPUT_LUN", &
-         OMSAO_W_GETLUN, pge_errstat_warning, &
-         OMSAO_refseccor_cld_filename, pge_error_status)
 
     ! ----------------------------------
     ! Read name of OMLER albedo file gga

@@ -150,11 +150,8 @@ CONTAINS
   SUBROUTINE Read_reference_sector_concentration(errstat)
 
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
-    USE OMSAO_variables_module, ONLY: OMSAO_refseccor_filename
-    USE OMSAO_indices_module,   ONLY: OMSAO_refseccor_lun
     USE OMSAO_precision_module, ONLY: i4
-    USE OMSAO_errstat_module, only : pge_errstat_ok, pgs_smf_mask_lev_s, &
-      pgsd_io_gen_rseqfrm
+    USE OMSAO_errstat_module, only : pge_errstat_ok, pgs_smf_mask_lev_s
 
     IMPLICIT NONE
     ! ------------------
@@ -172,11 +169,12 @@ CONTAINS
     INTEGER (KIND=i4)           :: funit, igrid
     CHARACTER(LEN=1), PARAMETER :: hstr='#'
     LOGICAL                     :: file_header
-    CHARACTER (LEN=MAX_STR_LEN)    :: header_line
+    CHARACTER (LEN=MAX_STR_LEN)    :: header_line, OMSAO_refseccor_filename
+
     ! ------------------------
     ! Error handling variables
     ! ------------------------
-    INTEGER (KIND=i4) :: version, locerrstat, ios
+    INTEGER (KIND=i4) :: locerrstat, ios
 
     if (errstat /= 0) return
 
@@ -188,19 +186,7 @@ CONTAINS
     ngridpoints = 0_i2
     grid_lat(1:maxngrid) =  0.0_r8
     Reference_sector_concentration(1:maxngrid,1:12) = 0.0_r8
-
-    ! -----------------------------------------
-    ! Open Reference Sector concentrations file
-    ! -----------------------------------------
-    version = 1
-    locerrstat = PGS_IO_GEN_OPENF ( OMSAO_refseccor_lun, PGSd_IO_Gen_RSeqFrm, 0, funit, version )
-    locerrstat = PGS_SMF_TESTSTATUSLEVEL(locerrstat)
-    if (locerrstat > pgs_smf_mask_lev_s) then
-      call tell_error (tell_io_open_error, &
-                       "opening ref. sector concentrations file: "// &
-                       trim(OMSAO_refseccor_filename), errstat)
-      return
-    endif
+    OMSAO_refseccor_filename ='dummy_name.txt'
 
     ! ------------
     ! Reading file
@@ -267,7 +253,7 @@ CONTAINS
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, i2_missval, r8_missval, & ! , r4_missval
       MAX_STR_LEN
     USE OMSAO_wfamf_module,     ONLY: amf_calculation
-    USE OMSAO_variables_module, ONLY: OMSAO_refseccor_cld_filename, voc_amf_filenames, &
+    USE OMSAO_variables_module, ONLY: voc_amf_filenames, &
       Radiance_Paras_Type, common_latrange, l1b_rad_filename
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
@@ -309,7 +295,7 @@ CONTAINS
     INTEGER (KIND=i4) :: nTimesRadRR, nXtrackRadRR, nWvlCCDrr
     type (retrieval_type) :: rt
     type (fitting_statistics_type) :: ref_stats
-    CHARACTER (LEN=MAX_STR_LEN) :: l1b_radref_filename
+    CHARACTER (LEN=MAX_STR_LEN) :: l1b_radref_filename, OMSAO_refseccor_cld_filename
 
     ! ------------------------
     ! Error handling variables
@@ -318,6 +304,9 @@ CONTAINS
     ! ------------------------------
 
     if (errstat /= 0) return
+
+    ! Initialize to something
+    OMSAO_refseccor_cld_filename = 'dummy_name.txt'
 
     nTimesRadRR = rpt_rr%ntimes
     nXtrackRadRR = rpt_rr%nxtrack
