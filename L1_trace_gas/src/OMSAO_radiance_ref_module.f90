@@ -29,7 +29,7 @@ CONTAINS
     USE OMSAO_indices_module,    ONLY: &
       qual_flag_mis, qual_flag_bad, qual_flag_err, qual_flag_sat
     USE OMSAO_variables_module,  ONLY: ctrl_fit_winwav_lim, &
-      ctrl_fit_winexc_lim, radiance_reference_lnums, radref_latrange, &
+      ctrl_fit_winexc_lim, &
       Radiance_Paras_Type
     USE OMSAO_omidata_module,    ONLY: &
       rad_ccdpix_selection, omi_radiance_qflg, omi_radiance_spec, omi_radiance_wavl, &
@@ -82,6 +82,8 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd)           :: radref_wavl_ix
     REAL    (KIND=r8), DIMENSION (rpt_rr%nxtrack, rpt_rr%nwavel_ccd)     :: allcount, dumcount
     REAL    (KIND=r8), DIMENSION (rpt_rr%nwavel_ccd      )     :: cntr8
+    REAL    (KIND=r4), DIMENSION (2) :: radref_latrange
+    INTEGER (KIND=i4), DIMENSION (2) :: radiance_reference_lnums
     integer :: locerrstat
     INTEGER (KIND=i4) :: ntrr, nxrr, nwrr
     integer (kind=i4) :: bad_qflg_mask
@@ -393,7 +395,7 @@ CONTAINS
       n_fitvar_rad, & !verb_thresh_lev,  &
       n_database_wvl, fitvar_rad, n_fincol_idx, fincol_idx, &
       ctrl_n_fitres_loop, ctrl_fitres_range, xtrack_fitres_limit, &
-      n_rad_wvl_max, target_npol, &
+      n_rad_wvl_max, &
       curr_xtrack_pixnum, fitvar_rad_saved, fitvar_rad_init
     USE OMSAO_prefitcol_module, ONLY:  prefit_type, copy_prefit_values
     USE cache_module, ONLY: saved_shift, saved_squeeze
@@ -410,7 +412,6 @@ CONTAINS
     !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
     use irradiance_data, only: Irr_Data
-    use ctrlvars, only: yn_radiance_reference
 
     IMPLICIT NONE
 
@@ -432,7 +433,7 @@ CONTAINS
     REAL    (KIND=r8) :: fitcol, rms, dfitcol, chisquav, rad_spec_avg
     REAL    (KIND=r8), DIMENSION (o3_t1_idx:o3_t3_idx) :: o3fit_cols, o3fit_dcols
     REAL    (KIND=r8), DIMENSION (n_fitvar_rad)        :: corr_matrix_tmp, allfit_cols_tmp, allfit_errs_tmp
-    LOGICAL                  :: do_skip_pix
+    LOGICAL                  :: do_skip_pix, yn_radiance_reference
     CHARACTER (LEN=MAX_STR_LEN) :: addmsg
     LOGICAL                                          :: is_bad_pixel, yn_reference_fit
     INTEGER (KIND=i4), DIMENSION (4)                 :: select_idx
@@ -440,7 +441,7 @@ CONTAINS
     INTEGER (KIND=i4)                                :: n_solar_pts
     REAL    (KIND=r8), DIMENSION (1:nw)              :: solar_wgt
     REAL    (KIND=r8), DIMENSION (n_fincol_idx,1:nx) :: target_var
-    integer (kind=i4) :: nwav_irrad
+    integer (kind=i4) :: nwav_irrad, target_npol
     real (kind=r8), dimension(:), allocatable :: adj_wvls, adj_spec, adj_wgts
     integer (kind=i4) :: num_adj_allocated, n_rad_wvl_loc
     integer locerr
@@ -456,6 +457,9 @@ CONTAINS
     integer :: iselect
 
     if (errstat /= 0) return
+
+    ! Initialize variables
+    yn_radiance_reference = .False.
 
     ! -------------------------
     ! Initialize some variables

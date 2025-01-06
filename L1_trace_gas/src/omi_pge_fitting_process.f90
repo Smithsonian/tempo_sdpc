@@ -502,7 +502,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, n_max_rspec, errstat)
            pge_idx, rpt_rad, n_max_rspec, &
            is_common_range, &
            omi_xtrpix_range, &
-           .FALSE., -1, &
            .TRUE., errstat )
 
       if (errstat /= 0) return
@@ -606,7 +605,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, n_max_rspec, errstat)
          pge_idx, rpt_rad, n_max_rspec,     &
          do_radfit_range,                           &
          omi_xtrpix_range,                      &
-         .FALSE., -1,                       &
          .FALSE., errstat)
     if (errstat /= 0) return
 
@@ -616,7 +614,6 @@ SUBROUTINE omi_fitting (pge_idx, rpt_rad, n_max_rspec, errstat)
   ! This subroutine completes the following tasks:
   !    (1) Compute pixel geololcation corners
   !    (2) Compute AMFs
-  !    (3) Apply cross-track destriping correction
   ! ---------------------------------------
     call tell_log (1, 'omi_fitting:  calling omi_pge_postprocess ----------------------------')
     CALL omi_pge_postprocess ( &

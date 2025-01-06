@@ -272,14 +272,6 @@ MODULE OMSAO_variables_module
   ! -----------------------------------------------------------------
   CHARACTER (LEN=MAX_STR_LEN) :: OMSAO_OMLER_filename
 
-  ! -------------------------------------------------------
-  ! Variables connected with  a radiance reference spectrum
-  ! -------------------------------------------------------
-  INTEGER (KIND=i4)                :: target_npol
-  INTEGER (KIND=i4), DIMENSION (2) :: radiance_reference_lnums
-  REAL    (KIND=r4), DIMENSION (2), TARGET :: radref_latrange
-  CHARACTER (LEN=MAX_STR_LEN) :: l1b_radref_filename
-
   ! This type gets filled in by omi_read_radiance_paras
   TYPE, PUBLIC :: Radiance_Paras_Type
     character (len=MAX_STR_LEN) :: l1bfilename

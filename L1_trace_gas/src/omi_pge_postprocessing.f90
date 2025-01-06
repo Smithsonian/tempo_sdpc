@@ -16,13 +16,10 @@ SUBROUTINE omi_pge_postprocess ( &
   !
   ! (1) AMF calculation
   ! (2) Fitting statistics
-  ! (3) Cross-track destriping
-  ! (4) Ground-pixel corner computation
   ! ---------------------------------------------------------
 
   USE OMSAO_precision_module
   USE OMSAO_pixelcorner_module, ONLY: compute_pixel_corners
-  USE OMSAO_destriping_module, ONLY: xtrack_destriping
   use ctrlvars, only: yn_do_he5_output, yn_gems
   USE OMSAO_wfamf_module, ONLY: amf_calculation, &
     wfamf_deallocate
@@ -152,13 +149,6 @@ SUBROUTINE omi_pge_postprocess ( &
       pge_idx, mdqf_max_good_col, nxtrack, ntimes, fit_stats % quality_flag, &
       fit_stats%col_avg, fit_stats%dcol_avg, fit_stats%rms_avg, locerrstat)
   endif
-  ! ---------------------------------------
-  ! Apply cross-track destriping correction
-  ! ---------------------------------------
-  call tell_log (1, 'omi_pge_postprocess:  calling xtrack_destriping')
-  CALL xtrack_destriping (ntimes, nxtrack, do_process_line, xtrange, &
-    lat, saocol, &
-    fit_stats % quality_flag, errstat)
 
   ! Deallocate AMF variables
   CALL wfamf_deallocate (errstat)

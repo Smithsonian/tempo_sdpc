@@ -82,7 +82,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     common_fitpos, common_fitvar, common_latrange, &
     mdqf_min_good_col, mdqf_max_good_col, mdqf_stddev_sus, mdqf_stddev_bad, &
     mdqf_sza_sus, mdqf_sza_bad, mdqf_amfgeo_sus, mdqf_amfgeo_bad, mdqf_amf_min, &
-    radref_latrange, target_npol, mask_fitvar_solcal, n_fitvar_solcal
+    mask_fitvar_solcal, n_fitvar_solcal
   USE OMSAO_destriping_module, ONLY: &
     ctr_pol_base, ctr_pol_scal, ctr_pol_patt, ctr_nloop, ctrdst_latrange, ctr_nblocks, &
     ctr_fitfunc_calls, ctr_maxcol, yn_remove_ctrbias, ctr_bias_pol, yn_run_destriping
@@ -427,15 +427,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
       endif
     endif
   endif
-
-  ! ---------------------------------------------------------------------
-  ! Check the latitude for the radiance reference, a.k.a. wavelength
-  ! calibration spectrum.
-  ! If larger than 90 deg, set to 0.0, i.e., the Equator.
-  ! ---------------------------------------------------------------------
-  WHERE ( ABS(radref_latrange) > 90.0_r4 )
-    radref_latrange = 0.0_r4
-  END WHERE
 
   ! ---------------------------------------------------------
   ! Position cursor to read WFmodified AMF logical

@@ -372,7 +372,6 @@ CONTAINS
                        -1e30_r8, 1e30_r8, &                ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
-    !r8 omi_radref_col(nxtrack_max)
 
     call new_datafield(rad_reffit_he5fields, &
                        "RadianceReferenceColumnUncertainty", &! name
@@ -383,7 +382,6 @@ CONTAINS
                        0.0_r8, 1e30_r8, &                  ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
-    ! r8 omi_radref_dcol(nxtrack_max)
 
     call new_datafield(rad_reffit_he5fields, &
                        "RadianceReferenceColumnXTRFit", &  ! name
@@ -394,7 +392,6 @@ CONTAINS
                        -1e30_r8, 1e30_r8, &                ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
-    ! r8 omi_radref_xtrcol (nxtrack_max)
 
     call new_datafield(rad_reffit_he5fields, &
                        "RadianceReferenceFittingRMS", &    ! name
@@ -405,7 +402,6 @@ CONTAINS
                        0.0_r8, 1e30_r8, &                  ! validrange
                        "OMI-Specific" &                    ! uniquefd
                       )
-    ! r8 omi_radref_rms (nxtrack_max)
 
     call new_datafield(comdata_he5fields, &
                        "AirMassFactor", &                  ! name

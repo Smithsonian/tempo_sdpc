@@ -4,8 +4,6 @@ module ctrlvars
   ! changed while the program is running.  Hence, they are effectively
   ! constants.
 
-  logical, public :: yn_radiance_reference
-
   logical, public :: yn_common_iter
   ! If TRUE, two passes will be made:  The first pass will perform fitting
   !    and produce a common-mode spectrum.  The second pass will perform the

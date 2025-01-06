@@ -3,18 +3,17 @@ MODULE swathline_loop
 CONTAINS
 SUBROUTINE swathline_loops (                               &
     pge_idx, rpt, n_max_rspec, do_process_line,                     &
-    xtrange, do_remove_target, ntargpol,         &
-    in_common_mode_loop, errstat, retrieval_opt)
+    xtrange, in_common_mode_loop, errstat, retrieval_opt)
 
   USE OMSAO_precision_module,  ONLY: i4, r8, i2, r4
   USE OMSAO_parameters_module, ONLY: i2_missval, r8_missval, MAX_STR_LEN, &
     nlines_max, nUTCdim, NXTRACK_MAX
   USE OMSAO_indices_module,    ONLY: n_max_fitpars
   USE OMSAO_variables_module,  ONLY:  &
-    n_fitvar_rad, l1b_rad_filename, n_fincol_idx, fincol_idx, &
+    n_fitvar_rad, l1b_rad_filename, n_fincol_idx, &
     n_rad_wvl, n_rad_wvl_max, Radiance_Paras_Type, &
     fitvar_rad_init, fitvar_rad_saved
-  use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_do_he5_output
+  use ctrlvars, only: yn_diagnostic_run, yn_do_he5_output
   USE OMSAO_omidata_module,    ONLY:  &
     omi_blockline_no,                  &
     omi_itnum_flag, omi_fitconv_flag, omi_column_amount,                     &
@@ -22,9 +21,6 @@ SUBROUTINE swathline_loops (                               &
     omi_szenith, omi_vzenith, omi_latitude, omi_longitude, omi_xtrflg, omi_height, &
     retrieval_type, input_vars, result_vars, radfit_diagnostics_type, &
     omi_sazimuth, omi_vazimuth
-  USE OMSAO_prefitcol_module, ONLY: read_prefit_columns, init_prefit_files
-  !USE OMSAO_errstat_module
-  USE OMSAO_radiance_ref_module, ONLY: remove_target_from_radiance
   USE omi_read_l1b_data, ONLY: omi_read_radiance_lines
   USE fitting_loops, ONLY: xtrack_radiance_fitting_loop
   USE omi_pge_fitting_aux, ONLY: convert_tai_to_utc
@@ -36,11 +32,11 @@ SUBROUTINE swathline_loops (                               &
   ! ---------------
   ! Input variables
   ! ---------------
-  INTEGER (KIND=i4), INTENT (IN) :: pge_idx, ntargpol, n_max_rspec
+  INTEGER (KIND=i4), INTENT (IN) :: pge_idx, n_max_rspec
   TYPE (Radiance_Paras_Type), INTENT(IN) :: rpt
   INTEGER (KIND=i4), DIMENSION (0:rpt%ntimes-1,1:2),  INTENT (IN) :: xtrange
   LOGICAL,           DIMENSION (0:rpt%ntimes-1),      INTENT (IN) :: do_process_line
-  LOGICAL,           INTENT (IN) :: in_common_mode_loop, do_remove_target
+  LOGICAL,           INTENT (IN) :: in_common_mode_loop
   type (retrieval_type), optional, intent(inout) ::retrieval_opt
 
   ! ------------------
@@ -58,8 +54,7 @@ SUBROUTINE swathline_loops (                               &
   ! ---------------------------------------------------------------
   ! Variables to remove target gas from radiance reference spectrum
   ! ---------------------------------------------------------------
-  REAL (KIND=r8), DIMENSION (n_fincol_idx,1:rpt%nxtrack) :: target_var, targsum, targcnt
-  REAL (KIND=r8), DIMENSION (1:rpt%nxtrack)              :: target_fit, target_col
+  REAL (KIND=r8), DIMENSION (n_fincol_idx,1:rpt%nxtrack) :: target_var
 
   ! ---------------------------------------------------------------------------------
   ! CCM Array to hold (1) Fitted Spec (2) Observed Spec (3) Spec Pos (4) Weight flags
@@ -90,14 +85,6 @@ SUBROUTINE swathline_loops (                               &
   all_fitted_errors   = r8_missval
   correlation_columns = r8_missval
   fitspc_tmp          = r8_missval
-
-  IF ( yn_radiance_reference .AND. do_remove_target ) THEN
-    target_var = 0.0_r8
-    targsum    = 0.0_r8
-    targcnt    = 0.0_r8
-    target_fit = 0.0_r8
-    target_col = 0.0_r8
-  END IF
 
   if (yn_diagnostic_run .and. (.not.in_common_mode_loop)) then
     allocate (omi_fitspc(n_rad_wvl_max,nxtrack_max,4,0:nlines_max-1), stat=locerrstat)
@@ -141,16 +128,6 @@ SUBROUTINE swathline_loops (                               &
     omi_column_uncert(1:nx,     0:nblock-1) = r8_missval
     omi_fit_rms      (1:nx,     0:nblock-1) = r8_missval
     omi_time_utc     (1:nUTCdim,0:nblock-1) = i2_missval
-
-    ! --------------------------------
-    ! Read pre-fitted molecule columns
-    ! --------------------------------
-    IF (.NOT. yn_radiance_reference) then
-      CALL read_prefit_columns ( pge_idx, nx, nblock, iline, errstat) !locerrstat )
-      if (errstat /= 0) return
-      !errstat = MAX ( errstat, locerrstat )
-      !IF ( errstat >= pge_errstat_error ) RETURN
-    END IF
 
     ! -------------------------------------
     ! Re-initialize saved fitting variables
@@ -222,26 +199,6 @@ SUBROUTINE swathline_loops (                               &
         if (yn_diagnostic_run .and. (.not.in_common_mode_loop)) &
           omi_fitspc(1:n_rad_wvl,:,:,iloop) = fitspc_tmp (1:n_rad_wvl,:,:)
 
-        ! ---------------------------------------------------------------
-        ! Add fitted columns for possible removal from radiance reference
-        ! ---------------------------------------------------------------
-        IF ( yn_radiance_reference .AND. do_remove_target ) THEN
-          DO ipix = fpix, lpix
-            IF ( &
-              ( omi_fitconv_flag (ipix,iloop) > 0_i2       ) .AND. &
-              ( omi_column_amount(ipix,iloop) > r8_missval ) .AND. &
-              ( omi_column_amount(ipix,iloop) + &
-              2.0_r8*omi_column_uncert(ipix,iloop) >= 0.0_r8 )  ) THEN
-              targsum(1:n_fincol_idx,ipix) = &
-                targsum(1:n_fincol_idx,ipix) + target_var(1:n_fincol_idx,ipix)
-              targcnt(1:n_fincol_idx,ipix) = &
-                targcnt(1:n_fincol_idx,ipix) + 1.0_r8
-
-              target_col(ipix) = target_col(ipix) + omi_column_amount(ipix,iloop)
-            END IF
-          END DO
-        END IF
-
         ! -----------------------------------------------------
         ! Optionally, keep the results of the fitting in memory
         ! -----------------------------------------------------
@@ -304,28 +261,6 @@ SUBROUTINE swathline_loops (                               &
     END IF
 
   END DO ScanLines
-
-  ! -----------------------------------------
-  ! Remove target gas from radiance reference
-  ! -----------------------------------------
-  IF ( yn_radiance_reference .AND. do_remove_target ) THEN
-
-      WHERE ( targcnt > 0.0_r8 )
-        targsum = targsum / targcnt
-      ELSEWHERE
-        targsum = r8_missval
-      END WHERE
-
-      ! ----------------------------------------------------------------
-      ! Removing the target gas from the radiance reference will alter
-      ! OMI_RADREF_SPEC (1:NWVL,FPIX:LPIX). This is being passed to the
-      ! subroutine via MODULE use rather than through the argument list.
-      ! ----------------------------------------------------------------
-      CALL remove_target_from_radiance (                              &
-        nccd, fpix, lpix, n_fincol_idx, fincol_idx(1:2,1:n_fincol_idx),  &
-        ntargpol, targsum(1:n_fincol_idx,fpix:lpix), target_fit(fpix:lpix) )
-
-  END IF
 
   RETURN
 

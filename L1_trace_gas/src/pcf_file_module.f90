@@ -102,7 +102,7 @@ CONTAINS
          static_input_fnames, Have_AMF_Table, omi_slitfunc_fname,            &
          solcal_filename, OMSAO_I0_filename, voc_amf_filenames,              &
          refspecs_original, OMSAO_refseccor_filename, OMSAO_OMLER_filename,  &
-         OMSAO_refseccor_cld_filename, l1b_radref_filename,                  &
+         OMSAO_refseccor_cld_filename,                                       &
          solcal_cache_mode, solcal_source
     USE OMSAO_wfamf_module,         ONLY: wfamf_table_lun, climatology_lun,  &
          OMSAO_wfamf_table_filename, OMSAO_climatology_filename, &
@@ -385,18 +385,6 @@ CONTAINS
     if (pge_error_status >= pge_errstat_error) then
       call tell_error(tell_io_read_error, &
            "read_pcf_file: failed to read L1B radiance LUN", errstat)
-      return
-    endif
-
-    ! -------------------------------------
-    ! Read Radiance Reference L1B file name
-    ! -------------------------------------
-    call do_pgs_get_reference (l1b_radianceref_lun, "L1B_RADIANCEREF_LUN", &
-         OMSAO_F_GETLUN, pge_errstat_fatal, &
-         l1b_radref_filename, pge_error_status)
-    if (pge_error_status >= pge_errstat_error) then
-      call tell_error(tell_io_read_error, &
-           "read_pcf_file: failed to read L1B radiance reference LUN", errstat)
       return
     endif
 

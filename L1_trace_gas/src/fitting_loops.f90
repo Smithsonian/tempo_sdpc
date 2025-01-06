@@ -14,37 +14,34 @@ CONTAINS
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
       max_calfit_idx, max_rs_idx, hwe_idx, asy_idx, sgk_idx, &
-      shi_idx, squ_idx, solar_idx,    &
+      shi_idx, squ_idx, &
       radcal_idx
     USE OMSAO_parameters_module, ONLY: MAX_STR_LEN, downweight, &
       NWAVEL_MAX, NXTRACK_MAX, r8_missval
     USE OMSAO_variables_module,  ONLY:  &
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor, &
-      database, fitvar_cal, fitvar_cal_saved, &  ! sol_wav_avg,
+      database, fitvar_cal, fitvar_cal_saved, &
       fitvar_rad_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum, refspecs_original, radwavcal_freq
-    use ctrlvars, only: yn_radiance_reference, yn_diagnostic_run, yn_do_he5_output
+    use ctrlvars, only: yn_diagnostic_run, yn_do_he5_output
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
-    USE OMSAO_omidata_module, ONLY: omi_nwav_radref, omi_nwav_rad, &
+    USE OMSAO_omidata_module, ONLY: omi_nwav_rad, &
       omi_irradiance_wght, omi_radiance_wavl, &
-      omi_radiance_spec, omi_radiance_qflg, n_omi_radwvl, omi_radref_wavl, &
-      omi_radref_spec, omi_radref_qflg, rad_ccdpix_selection, &
+      omi_radiance_spec, omi_radiance_qflg, n_omi_radwvl, &
+      rad_ccdpix_selection, &
       rad_ccdpix_exclusion, omi_radiance_ccdpix, omi_cross_track_skippix, &
       omi_radcal_pars, omi_radcal_xflag, &
       omi_radcal_chisq, &
-      omi_radref_wght, omi_database, n_omi_database_wvl, &
-      omi_database_wvl, & ! omi_radref_wav_avg,
+      omi_database, n_omi_database_wvl, &
+      omi_database_wvl, &
       omi_solcal_pars
     USE prepare_databases, ONLY: prep_databases
-    !USE OMSAO_errstat_module
     USE he5_output_tools, ONLY: he5_write_omi_database
     use output_tools, only : write_refspec_database
     USE sao_pge_utils, ONLY: interpolation
     USE radiance_wavcal, ONLY: radiance_wavecal
     USE irradiance_data, ONLY: Irr_Data
-    !USE EZspline_obj
-    !USE EZspline
 
     IMPLICIT NONE
 
@@ -68,9 +65,9 @@ CONTAINS
     ! Local variables
     ! ---------------
     INTEGER   (KIND=i2)      :: radcal_itnum
-    INTEGER   (KIND=i4)      :: locerrstat, ipix, radcal_exval, i, imax, n_ref_wvl !, nxtloc, xtr_add
+    INTEGER   (KIND=i4)      :: locerrstat, ipix, radcal_exval, i, n_ref_wvl
     REAL      (KIND=r8)      :: chisquav, rad_spec_avg
-    LOGICAL                  :: do_skip_pix, is_bad_pixel, did_full_range
+    LOGICAL                  :: do_skip_pix, is_bad_pixel
     CHARACTER (LEN=MAX_STR_LEN) :: addmsg
     INTEGER (KIND=i4), DIMENSION (4)            :: select_idx
     INTEGER (KIND=i4), DIMENSION (2)            :: exclud_idx
@@ -94,15 +91,6 @@ CONTAINS
     ! -------------------------------------------------
     ! Set the number of wavelengths for the common mode
     ! -------------------------------------------------
-    !
-    !JCH: The value of n_comm_wvl should have been correctly determined
-    !     already, in a way that accounts for the fitting window size,
-    !     so there's no need to re-define it in this way.
-    !
-    !n_comm_wvl_out = MAXVAL ( omi_nwav_radref(first_pix:last_pix) )
-    !IF ( MAXVAL(omi_nwav_rad(first_pix:last_pix,0)) > n_comm_wvl_out ) &
-    !  n_comm_wvl_out = MAXVAL(omi_nwav_rad(first_pix:last_pix,0))
-
     if (yn_diagnostic_run) then
       allocate (save_wvl(nwavel_max,nxtrack), &
                 save_resid(nwavel_max,nxtrack), &
@@ -157,7 +145,6 @@ CONTAINS
       ! Restore solar fitting variables for across-track reference in
       ! Earthshine fitting. Use the Radiance References if appropriate.
       ! ---------------------------------------------------------------
-      !sol_wav_avg = omi_radref_wav_avg(ipix)    ! JCH: no need to set this here
       Slit_Half_Width_1e = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor = omi_solcal_pars(asy_idx,ipix)
       Slit_Shape_Factor = omi_solcal_pars(sgk_idx,ipix)
@@ -174,20 +161,6 @@ CONTAINS
         i = adj_num - n_irradwvl
         ref_wgt(n_irradwvl+1:adj_num) = downweight
         ! n_irradwvl = adj_num !! BAD BAD  --JED
-      END IF
-
-      ! ---------------------------------------------------------------
-      ! If a Radiance Reference is being used, then it must be calibrated
-      ! rather than the swath line that has been read.
-      ! ---------------------------------------------------------------
-      IF ( yn_radiance_reference ) THEN
-        n_omi_radwvl = omi_nwav_radref(ipix)   ! JCH let's get the array length right
-        adj_num = n_omi_radwvl
-        if (adj_num > adj_num_max) adj_num_max = adj_num
-
-        omi_radiance_wavl(1:adj_num,ipix,0) = omi_radref_wavl(1:adj_num,ipix)
-        omi_radiance_spec(1:adj_num,ipix,0) = omi_radref_spec(1:adj_num,ipix)
-        omi_radiance_qflg(1:adj_num,ipix,0) = omi_radref_qflg(1:adj_num,ipix)
       END IF
 
       ! ---------------------------------------------------------------------------
@@ -286,22 +259,10 @@ CONTAINS
         ! -----------------------------------------------------------------------
       ENDIF
 
-      IF (yn_radiance_reference) THEN
-        n_ref_wvl = adj_num
-        ref_wvl(1:adj_num) = adj_wvls(1:adj_num)
-        ref_spc(1:adj_num) = adj_spec(1:adj_num)
-        ref_wgt(1:adj_num) = adj_wgts(1:adj_num)
-
-        omi_nwav_radref(ipix)           = adj_num
-        omi_radref_wavl(1:adj_num,ipix) = adj_wvls(1:adj_num)
-        omi_radref_spec(1:adj_num,ipix) = adj_spec(1:adj_num)
-        omi_radref_wght(1:adj_num,ipix) = adj_wgts(1:adj_num)
-      ELSE
-        n_ref_wvl = n_irradwvl
-        ref_wvl(1:n_ref_wvl) = Irr_Data%wavelengths(1:n_ref_wvl,ipix)
-        ref_spc(1:n_ref_wvl) = Irr_Data%spectrum(1:n_ref_wvl,ipix)
-        ref_wgt(1:n_ref_wvl) = omi_irradiance_wght(1:n_ref_wvl,ipix)
-      ENDIF
+      n_ref_wvl = n_irradwvl
+      ref_wvl(1:n_ref_wvl) = Irr_Data%wavelengths(1:n_ref_wvl,ipix)
+      ref_spc(1:n_ref_wvl) = Irr_Data%spectrum(1:n_ref_wvl,ipix)
+      ref_wgt(1:n_ref_wvl) = omi_irradiance_wght(1:n_ref_wvl,ipix)
 
       ! ----------------------------------------------------
       ! Spline reference spectra to current wavelength grid.
@@ -329,55 +290,6 @@ CONTAINS
         omi_database (adj_num+1:adj_num_max,ipix,1:max_rs_idx) = r8_missval
         omi_database_wvl (adj_num+1:adj_num_max, ipix) = r8_missval
       endif
-
-      ! ----------------------------------------------------------------------
-      ! Update the radiance reference with the wavelength calibrated values.
-      ! ----------------------------------------------------------------------
-      IF ( yn_radiance_reference ) THEN
-        !omi_radref_wavl(1:adj_num,ipix) = adj_wvls(1:adj_num)
-        !omi_radref_spec(1:adj_num,ipix) = adj_spec(1:adj_num)
-        omi_radref_wght(adj_num+1:nwavel_max,ipix) = downweight
-
-        ! --------------------------------------------------------
-        ! Update the solar spectrum entry in OMI_DATABASE. First
-        ! re-sample the solar reference spectrum to the OMI grid
-        ! then assign to data base.
-        !
-        ! We need to keep the irradiance spectrum because we still
-        ! have to fit the radiance reference, and we can't really
-        ! do that against itself. In a later module the irradiance
-        ! is replaced by the radiance reference.
-        ! --------------------------------------------------------
-
-        ! ------------------------------------------------------------------
-        ! Prevent failure of interpolation by finding the maximum wavelength
-        ! of the irradiance wavelength array.
-        ! ------------------------------------------------------------------
-        imax = MAXVAL ( MAXLOC (Irr_Data%wavelengths(1:n_irradwvl,ipix) ) )
-        !imin = MINVAL ( MINLOC ( omi_irradiance_wavl(1:imax,          ipix) ) )
-
-        CALL interpolation ( &
-          imax, Irr_Data%wavelengths(1:imax,ipix),                     &
-          Irr_Data%spectrum(1:imax,ipix),                           &
-          adj_num, omi_database_wvl(1:adj_num,ipix),              &
-          omi_database(1:adj_num,ipix,solar_idx),                   &
-          'endpoints', 0.0_r8, did_full_range, errstat) ! locerrstat )
-
-        IF (errstat /= 0) then ! locerrstat >= pge_errstat_error ) THEN
-          !errstat = MAX ( errstat, locerrstat )
-          omi_cross_track_skippix (ipix) = .TRUE.
-          addmsg = ''
-          WRITE (addmsg, '(A,I5)') 'xtrack_radiance_wvl_calibration: SKIPPING cross track pixel #', ipix
-          call tell_log (0, addmsg)
-          call tell_set_error (0)
-          errstat = 0
-          !CALL error_check ( 0, 1, pge_errstat_warning, OMSAO_W_SKIPPIX, &
-          !                  modulename//f_sep//TRIM(ADJUSTL(addmsg)), vb_lev_default, &
-          !                  locerrstat )
-          CYCLE
-        END IF
-
-      END IF
 
     END DO XTrackWavCal
 
@@ -467,18 +379,18 @@ CONTAINS
 
     USE OMSAO_precision_module
     USE OMSAO_indices_module,    ONLY: &
-      wvl_idx, spc_idx, & ! shi_idx,
+      wvl_idx, spc_idx, &
       o3_t1_idx, o3_t3_idx, hwe_idx, asy_idx, sgk_idx, &
-      pge_o3_idx, & !pge_hcho_idx, &
-      solar_idx, radfit_idx, & !pge_gly_idx, &
-      max_rs_idx! , mxs_idx ,max_calfit_idx, lbe_idx, hcho_idx,
+      pge_o3_idx, &
+      solar_idx, radfit_idx, &
+      max_rs_idx
     USE OMSAO_parameters_module, ONLY: &
       i2_missval, r8_missval, nxtrack_max
     USE OMSAO_variables_module,  ONLY:  &
-      database, curr_sol_spec, n_rad_wvl, & ! sol_wav_avg,
+      database, curr_sol_spec, n_rad_wvl, &
       Slit_Half_Width_1e, Slit_Asym_Factor, Slit_Shape_Factor,    &
       n_database_wvl, ctrl_n_fitres_loop, ctrl_fitres_range,     &
-      szamax, n_fincol_idx, curr_xtrack_pixnum!, fitvar_rad
+      szamax, n_fincol_idx, curr_xtrack_pixnum
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_prefitcol_module, ONLY: prefit_type, copy_prefit_values
     USE OMSAO_omidata_module, ONLY: omi_database_wvl, omi_radiance_wavl, &
@@ -487,10 +399,9 @@ CONTAINS
       omi_fit_rms, omi_radiance_spec, omi_column_amount, omi_column_uncert, &
       omi_o3_amount, omi_o3_uncert, n_omi_radwvl, &
       omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
-      omi_radiance_qflg, omi_cross_track_skippix, & ! omi_radref_wav_avg,
+      omi_radiance_qflg, omi_cross_track_skippix, &
       omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
-    !USE OMSAO_errstat_module
     USE radiance_fit, ONLY: fit_radiance
 
     IMPLICIT NONE
@@ -570,8 +481,7 @@ CONTAINS
 
       ! ----------------------------------------------------------------------------
       ! Assign the solar wavelengths. Those should be current in the DATABASE array
-      ! and can be taken from there no matter which case - YN_SOLAR_COMP and/or
-      ! YN_RADIANCE_REFRENCE we are processing.
+      ! and can be taken from there no matter which case we are processing.
       ! ----------------------------------------------------------------------------
       n_solar_pts              = n_omi_database_wvl(ipix)
       if (n_solar_pts < 1) cycle  ! JED fix
@@ -598,7 +508,6 @@ CONTAINS
       ! Note that, for the YN_SOLAR_COMP case, some variables have been assigned already
       ! in the XTRACK_RADIANCE_WAVCAL loop.
       ! ---------------------------------------------------------------------------------
-      !sol_wav_avg                             = omi_radref_wav_avg(ipix)  ! JCH: no need to set this here
       Slit_Half_Width_1e                     = omi_solcal_pars(hwe_idx,ipix)
       Slit_Asym_Factor                       = omi_solcal_pars(asy_idx,ipix)
       Slit_Shape_Factor                       = omi_solcal_pars(sgk_idx,ipix)

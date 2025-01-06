@@ -347,34 +347,19 @@ CONTAINS
 
   END SUBROUTINE compute_fitting_statistics
 
-  SUBROUTINE set_input_pointer_and_versions ( pge_idx )
+  SUBROUTINE set_input_pointer_and_versions ( )
 
-    USE OMSAO_precision_module,    ONLY: i4
     USE OMSAO_indices_module,      ONLY: &
-      l1b_radiance_lun, l1b_radianceref_lun, l1b_irradiance_lun, &
+      l1b_radiance_lun, l1b_irradiance_lun, &
       voc_amf_luns, voc_omicld_idx
-    USE OMSAO_he5_module,          ONLY: n_lun_inp, lun_input
-    USE OMSAO_variables_module,    ONLY: l1b_rad_filename, &
-      l1b_radref_filename
-    use ctrlvars, only: yn_radiance_reference, yn_I0
+    USE OMSAO_he5_module, ONLY: n_lun_inp, lun_input
+    use ctrlvars, only: yn_I0
 
     IMPLICIT NONE
 
     ! ---------------
     ! Input variables
     ! ---------------
-    INTEGER (KIND=i4), INTENT (IN) :: pge_idx
-
-    ! ---------------
-    ! Local variables
-    ! ---------------
-    LOGICAL :: do_radref
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=31), PARAMETER :: modulename = 'set_input_pointer_and_versions'
-
     ! ----------------------------------------
     ! Initialize variables returned via MODULE
     ! ----------------------------------------
@@ -386,27 +371,15 @@ CONTAINS
     ! --------------------------------------------------------------------
     ! The total number of PGE input files depends on
     !
-    ! (a) Whether a solar composite spectrum is being used
-    ! (b) Whether a radiance reference from a granule other than the one
+    ! (a) Whether a radiance reference from a granule other than the one
     !     being processed is being used.
     ! --------------------------------------------------------------------
     ! (0) Processed granule
     ! ---------------------
     n_lun_inp = 1
     lun_input(n_lun_inp) = l1b_radiance_lun
-    ! --------------------------------
-    ! (a) Earthshine reference granule
-    ! --------------------------------
-    IF ( yn_radiance_reference .AND. &
-        ( TRIM(ADJUSTL(l1b_rad_filename)) /= TRIM(ADJUSTL(l1b_radref_filename))) ) THEN
-      n_lun_inp = n_lun_inp + 1
-      lun_input(n_lun_inp) = l1b_radianceref_lun
-      do_radref = .TRUE.
-    ELSE
-      do_radref = .FALSE.
-    END IF
     ! --------------------
-    ! (b) Solar Irradiance
+    ! (a) Solar Irradiance
     ! --------------------
     IF ( .NOT. yn_I0 ) THEN
       n_lun_inp = n_lun_inp + 1

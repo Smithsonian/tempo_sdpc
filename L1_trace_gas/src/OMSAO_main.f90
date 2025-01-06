@@ -161,7 +161,7 @@ SUBROUTINE OMSAO_main ( exit_value )
   ! ---------------------------------------------
   ! Set number of InputPointers and InputVersions
   ! ---------------------------------------------
-  CALL set_input_pointer_and_versions ( pge_idx )
+  CALL set_input_pointer_and_versions ( )
 
   CALL omi_pge_fitting  ( pge_idx, n_max_rspec, errstat )   ! Where all the work is done
   if (errstat /= 0) return

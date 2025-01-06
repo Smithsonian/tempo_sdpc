@@ -29,8 +29,7 @@ MODULE OMSAO_Reference_sector_module
   ! ------------------------------------------------------------------
 
   INTEGER (KIND=i2), PRIVATE, PARAMETER               :: maxngrid = 1000
-  REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid)    :: grid_lat!, background_correction, &
-    !background_level
+  REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid)    :: grid_lat
   REAL    (KIND=r8), PRIVATE, DIMENSION (maxngrid,12) :: Reference_sector_concentration
   INTEGER (KIND=i2), PRIVATE  :: ngridpoints
 
@@ -40,15 +39,14 @@ CONTAINS
       saocol, saodco, saoamf, saomqf, pge_idx, n_max_rspec, &
       errstat)
 
-    !USE l1bread, only: l1bread_radiance_info
+    USE OMSAO_parameters_module, ONLY: MAX_STR_LEN
     use l1bread_utils, only : read_l1_radiance_info
     USE OMSAO_precision_module, ONLY: i4
-    USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, &
-      l1b_radref_filename, l1b_channel
+    USE OMSAO_variables_module, ONLY: Radiance_Paras_Type, l1b_channel, &
+      l1b_rad_filename
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname
     use ctrlvars, only : yn_gems
     use m_read_gems, only : gems_read_l1_rad_info
-    !USE OMSAO_errstat_module
     ! ---------------------------------------------------------------
     ! This subroutine is a wrapper for the Reference Background corre
     ! ction
@@ -60,8 +58,6 @@ CONTAINS
     ! Input variables
     ! ---------------
     INTEGER (KIND=i4),                                   INTENT (IN) :: ntimes, nxtrack
-    !INTEGER (KIND=i4), DIMENSION (0:ntimes-1,1:2),       INTENT (IN) :: xtrange
-    !REAL    (KIND=r4), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (IN) :: lat
     REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (IN) :: saoamf
     INTEGER (KIND=i2), DIMENSION (1:nxtrack,0:ntimes-1), INTENT (IN) :: saomqf
     INTEGER (KIND=i4),                                   INTENT (IN) :: pge_idx, n_max_rspec
@@ -79,14 +75,11 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (1:nxtrack,0:ntimes-1) :: int_saocol, int_saodco
     TYPE(Radiance_Paras_Type) :: rpt_rr
     REAL    (KIND=r8), DIMENSION (:,:), ALLOCATABLE     :: mem_correction
-
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=27), PARAMETER :: modulename = 'Reference_sector_correction'
+    CHARACTER (LEN=MAX_STR_LEN) :: l1b_radref_filename
 
     if (errstat /= 0) return
 
+    l1b_radref_filename = l1b_rad_filename
     !locerrstat = pge_errstat_ok
 
     int_saocol   = saocol
@@ -101,8 +94,6 @@ CONTAINS
     ! ---------------------------------------------------
     ! Obtain dimensions of the Radiance Reference granule
     ! ---------------------------------------------------
-    !CALL l1bread_radiance_info (l1b_radref_filename, l1b_channel, &
-    !                            rpt_rr, errstat)
     if (.not. yn_gems) then !TEMPO
       call read_l1_radiance_info (l1b_radref_filename, l1b_channel, &
                                 rpt_rr, errstat)
@@ -186,10 +177,6 @@ CONTAINS
     ! Error handling variables
     ! ------------------------
     INTEGER (KIND=i4) :: version, locerrstat, ios
-    ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=35), PARAMETER :: modulename = 'Read_reference_sector_concentration'
 
     if (errstat /= 0) return
 
@@ -281,14 +268,13 @@ CONTAINS
       MAX_STR_LEN
     USE OMSAO_wfamf_module,     ONLY: amf_calculation
     USE OMSAO_variables_module, ONLY: OMSAO_refseccor_cld_filename, voc_amf_filenames, &
-      Radiance_Paras_Type, common_latrange, l1b_rad_filename, l1b_radref_filename
+      Radiance_Paras_Type, common_latrange, l1b_rad_filename
     USE OMSAO_indices_module,   ONLY: voc_omicld_idx
     USE omi_pge_fitting_aux, ONLY: read_latitude, find_swathline_range, &
       compute_fitting_statistics, fitting_statistics_type
     use commonmode, only: finalize_common_mode
     USE omi_read_l1b_data, ONLY: omi_read_glint_ice_land_flags, omi_read_binning_factor
     USE swathline_loop, ONLY: swathline_loops
-    !USE omi_pge_swathline_loop_memory, ONLY: omi_pge_swathline_loops_mem
     USE OMSAO_errstat_module, only : pge_errstat_ok, pge_errstat_error
     USE OMSAO_omidata_module, ONLY: omi_radiance_swathname, &
       retrieval_type, alloc_retrieval_type, dealloc_retrieval_type
@@ -323,16 +309,13 @@ CONTAINS
     INTEGER (KIND=i4) :: nTimesRadRR, nXtrackRadRR, nWvlCCDrr
     type (retrieval_type) :: rt
     type (fitting_statistics_type) :: ref_stats
+    CHARACTER (LEN=MAX_STR_LEN) :: l1b_radref_filename
 
     ! ------------------------
     ! Error handling variables
     ! ------------------------
     INTEGER (KIND=i4) :: locerrstat
     ! ------------------------------
-    ! Name of this module/subroutine
-    ! ------------------------------
-    !CHARACTER (LEN=64), PARAMETER :: modulename = &
-    !  'Reference_Sector_radiance_reference_granule_retrieval' !JED fix
 
     if (errstat /= 0) return
 
@@ -346,7 +329,7 @@ CONTAINS
     ! A bit of mess with the file names
     ! ---------------------------------
     l1b_rad_save_filename = l1b_rad_filename
-    l1b_rad_filename      = l1b_radref_filename
+    l1b_radref_filename = l1b_rad_filename
 
     ! -----------------------
     ! Variable initialization
@@ -422,7 +405,6 @@ CONTAINS
       pge_idx, rpt_rr, n_max_rspec, &
       common_range_ok(0:nTimesRadRR-1),                           &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
-      .FALSE., -1,                         &
       .TRUE., locerrstat)
 
     ! ---------------------------------------------------
@@ -440,7 +422,6 @@ CONTAINS
       pge_idx, rpt_rr, n_max_rspec, &
       radfitref_range_ok(0:nTimesRadRR-1),                        &
       omi_xtrpix_range_rr(0:nTimesRadRR-1,1:2),                   &
-      .FALSE., -1,                         &
       .TRUE., locerrstat, retrieval_opt=rt)
 
     ! ------------------------------------------------------

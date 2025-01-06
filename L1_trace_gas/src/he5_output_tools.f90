@@ -260,7 +260,7 @@ CONTAINS
     USE OMSAO_he5_module
     USE datafields, ONLY: comdata_he5fields, diagnostic_he5fields, &
       geo_he5fields, o3_prefit_he5fields, o3_prefit_uncert_he5fields, &
-      rad_calfit_he5fields, rad_reffit_he5fields, &
+      rad_calfit_he5fields, &
       sol_calfit_he5fields, sw_he5fields, voc_he5fields
     USE OMSAO_errstat_module
 
@@ -314,8 +314,6 @@ CONTAINS
     call define_fields (pge_swath_id, 1, rad_calfit_he5fields, &
                         ntimes, nxtrack, nswlevels, errstat)
 
-    call define_fields (pge_swath_id, 1, rad_reffit_he5fields, &
-                        ntimes, nxtrack, nswlevels, errstat)
 
     ! --------------------
     ! Radiance data fields
@@ -473,19 +471,10 @@ CONTAINS
     !USE OMSAO_indices_module,   ONLY: max_calfit_idx
     USE OMSAO_errstat_module
     USE OMSAO_omidata_module,   ONLY: &
-      !n_roff_dig,                                            &
-      omi_solcal_xflag,  omi_radcal_xflag, omi_radref_xflag, &
-      !omi_solcal_pars,   omi_radcal_pars,  omi_radref_pars,  &
-      omi_radref_col,    omi_radref_dcol,  omi_radref_rms,   &
-      omi_radref_xtrcol
-    USE datafields, ONLY: rad_reffit_he5fields, &
-      rrcf_field, rrcol_field, rrdcol_field, rrlr_field, rrrms_field, &
-      rrxcol_field, rwccf_field, rwclr_field, sol_calfit_he5fields, &
+      omi_solcal_xflag,  omi_radcal_xflag
+    USE datafields, ONLY: &
+      rwccf_field, sol_calfit_he5fields, &
       swccf_field, rad_calfit_he5fields
-
-    USE OMSAO_variables_module, ONLY: radref_latrange
-    !USE sao_pge_utils, ONLY: roundoff_2darr_r4, roundoff_1darr_r8
-    !use addr_module
 
     IMPLICIT NONE
 
@@ -518,23 +507,6 @@ CONTAINS
     ! -----------------------------------------------
     npix = lpix - fpix + 1
 
-    ! -------------------------------------------------------------------------------------------
-    ! Write results for solar and radiance wavelength calibration, and the radiance reference fit
-    ! -------------------------------------------------------------------------------------------
-    !DO j = fpix, lpix
-    !  tmpr8(1:max_calfit_idx) = omi_solcal_pars(1:max_calfit_idx,j)
-    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-    !  omi_solcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-    !
-    !  tmpr8(1:max_calfit_idx) = omi_radcal_pars(1:max_calfit_idx,j)
-    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-    !  omi_radcal_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-    !
-    !  tmpr8(1:max_calfit_idx) = omi_radref_pars(1:max_calfit_idx,j)
-    !  CALL roundoff_1darr_r8 ( n_roff_dig, max_calfit_idx, tmpr8(1:max_calfit_idx) )
-    !  omi_radref_pars(1:max_calfit_idx,j) = tmpr8(1:max_calfit_idx)
-    !END DO
-
     ! --------------------------------------------------
     ! There is only one variable in the data field array
     ! --------------------------------------------------
@@ -558,63 +530,6 @@ CONTAINS
 
     array_struct%array_i2 => omi_radcal_xflag; array_struct%dtype = "i2"
     call do_he5_swwrfld (rad_calfit_he5fields, rwccf_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    array_struct%array_i2 => omi_radref_xflag; array_struct%dtype = "i2"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrcf_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    ! --------------------------------------------------------------------------
-    ! Special output for radiance wavelength calibration, and the possibility of
-    ! the usage of a radiance reference spectrum.
-    ! --------------------------------------------------------------------------
-    he5_start_2d  = (/ 0, 0 /)
-    he5_stride_2d = (/ 1, 0 /)
-    he5_edge_2d   = (/ 2, 0 /)
-
-    ! FIXME: The original code used radref_latrange for both rwccf_field and rrlr_field
-    ! Are they always the same??
-    array_struct%array_r4 => radref_latrange; array_struct%dtype = "r4"
-    call do_he5_swwrfld (rad_calfit_he5fields, rwclr_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    array_struct%array_r4 => radref_latrange; array_struct%dtype = "r4"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrlr_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    ! ---------------------------------------------------------------------------
-    ! Write results for column and column uncertainty from radiance reference fit
-    ! ---------------------------------------------------------------------------
-    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_col   (fpix:lpix) )
-    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_dcol  (fpix:lpix) )
-    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_rms   (fpix:lpix) )
-    !CALL roundoff_1darr_r8 ( n_roff_dig, npix, omi_radref_xtrcol(fpix:lpix) )
-
-    he5_start_2d  = (/ 0, 0 /)
-    he5_stride_2d = (/ 1, 0 /)
-    he5_edge_2d   = (/ INT(nXtloc,KIND=C_LONG), INT(0, KIND=C_LONG) /)
-
-    array_struct%array_r8 => omi_radref_col; array_struct%dtype = "r8"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrcol_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    array_struct%array_r8 => omi_radref_dcol; array_struct%dtype = "r8"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrdcol_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    array_struct%array_r8 => omi_radref_xtrcol; array_struct%dtype = "r8"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrxcol_field, &
-                         he5_start_2d, he5_stride_2d, he5_edge_2d, &
-                         array_struct, locerrstat);
-
-    array_struct%array_r8 => omi_radref_rms; array_struct%dtype = "r8"
-    call do_he5_swwrfld (rad_reffit_he5fields, rrrms_field, &
                          he5_start_2d, he5_stride_2d, he5_edge_2d, &
                          array_struct, locerrstat);
 
@@ -1498,8 +1413,6 @@ CONTAINS
     CALL write_attributes (sol_calfit_he5fields, locerrstat)
 
     CALL write_attributes (rad_calfit_he5fields, locerrstat)
-
-    CALL write_attributes (rad_reffit_he5fields, locerrstat)
 
     ! ----------------
     ! Main Data Fields
