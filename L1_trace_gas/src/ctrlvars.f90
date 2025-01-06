@@ -12,10 +12,6 @@ module ctrlvars
 
 
   logical, public :: yn_spectrum_norm
-
-  ! Logical for newshift following Xiong comments -- gga
-  logical, public :: yn_newshift
-
   logical, public :: yn_smooth
   logical, public :: yn_doas
   logical, public :: yn_use_labslitfunc

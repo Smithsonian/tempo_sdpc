@@ -66,8 +66,7 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
     rafline_str, molline_str, eoi3str, us1_idx, us2_idx,      &
     solcal_idx, radcal_idx, radref_idx, radfit_idx, wavwindow_str, fitresconst_str,     &
     nrmline_str, comline_str, o3amf_str, mdqfline_str,   &
-    comm_idx, procmode_diag, amf_str, I0_str,            &
-    newshift_str, scattweight_str, stratrop_str
+    comm_idx, procmode_diag, amf_str, I0_str, scattweight_str, stratrop_str
   USE OMSAO_parameters_module,   ONLY: MAX_STR_LEN, N_FIT_WINWAV, nxtrack_max
   USE OMSAO_variables_module,    ONLY: &
     fitcol_idx, n_mol_fit, max_itnum_sol, max_itnum_rad,            &
@@ -586,18 +585,6 @@ SUBROUTINE read_fitting_control_file ( pge_idx, & !l1b_radiance_esdt, &
   READ (fit_ctrl_unit, *) mdqf_sza_sus, mdqf_sza_bad 
   READ (fit_ctrl_unit, *) mdqf_amfgeo_sus, mdqf_amfgeo_bad  
   READ (fit_ctrl_unit, *) mdqf_amf_min
-
-  ! --------------------------------------------------------
-  ! Position cursor to read new shift and squeeze option gga
-  ! --------------------------------------------------------
-  REWIND (fit_ctrl_unit)
-  CALL skip_to_filemark ( fit_ctrl_unit, newshift_str, tmpchar, file_read_stat )
-  if (file_read_stat /= 0) then
-    call tell_error (tell_io_read_error, "reading fit control file: looking for "// &
-                     trim(newshift_str), errstat)
-    return
-  endif
-  READ (fit_ctrl_unit, *) yn_newshift
 
   ! ------------------------------------------------------------------
   ! Position cursor to read logical for Scattering Weights and ... gga

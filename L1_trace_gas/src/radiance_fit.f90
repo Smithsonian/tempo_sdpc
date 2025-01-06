@@ -583,7 +583,7 @@ CONTAINS
       n_database_wvl, curr_sol_spec, &
       database
     use ctrlvars, only: &
-      yn_doas, yn_newshift
+      yn_doas
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
     USE cache_module, ONLY: saved_shift, saved_squeeze
     !USE OMSAO_errstat_module
@@ -669,20 +669,14 @@ CONTAINS
 
     ! ---------------------------------------------------------------------
     ! Apply Shift&Squeeze
-    ! Changed to include Xiong comments (gga) if yn_newshift equal .true. :
+    ! Changed to include Xiong comments (gga)
     ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
     ! ---------------------------------------------------------------------
     j1 = -1; j2 = -1
-    IF (yn_newshift .EQV. .true.) THEN !gga
-      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
-        shift - rad_wav_avg * squeeze
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 ) !gga
-    ELSE
-      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) + shift
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
-    END IF
+    sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
+      shift - rad_wav_avg * squeeze
+    CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+    CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
 
     sunspec_ss => tmpspace
     ! ---------------------------------------------------------------------
@@ -872,8 +866,7 @@ CONTAINS
     USE OMSAO_variables_module,  ONLY: &
       n_database_wvl, curr_sol_spec, &
       database
-    use ctrlvars, only: yn_doas, &
-      yn_newshift
+    use ctrlvars, only: yn_doas
     USE OMSAO_prefitcol_module,  ONLY:  apply_prefit_values
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE sao_pge_utils, ONLY: interpolation
@@ -944,20 +937,14 @@ CONTAINS
 
     ! ---------------------------------------------------------------------
     ! Apply Shift&Squeeze
-    ! Changed to include Xiong comments (gga) if yn_newshift equal .true. :
+    ! Changed to include Xiong comments (gga):
     ! Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
     ! ---------------------------------------------------------------------
     j1 = -1; j2 = -1
-    IF (yn_newshift .EQV. .true.) THEN !gga
-      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
-        shift - rad_wav_avg * squeeze
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 ) !gga
-    ELSE
-      sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) + shift
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
-      CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
-    END IF
+    sunpos_ss(1:n_sunpos) = sunpos_ss(1:n_sunpos) * (1.0_r8 + squeeze) +       &
+      shift - rad_wav_avg * squeeze
+    CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(       1), 'GE', j1 )
+    CALL array_locate_r8 ( npts, locwvl(1:npts), sunpos_ss(n_sunpos), 'LE', j2 )
 
     ! ---------------------------------------------------------------------
     ! Re-sample the solar reference spectrum to the current radiance grid

@@ -108,7 +108,7 @@ contains
       sin_idx, hwe_idx, asy_idx, sgk_idx, shi_idx, squ_idx 
     USE OMSAO_variables_module,  ONLY: &
       refspecs_original, curr_xtrack_pixnum
-    use ctrlvars, only: yn_spectrum_norm, yn_newshift, yn_use_labslitfunc
+    use ctrlvars, only: yn_spectrum_norm, yn_use_labslitfunc
     use slitfunction, only : slitfunction_convolve
     USE cache_module, ONLY: saved_shift, saved_squeeze, saved_hwe, saved_asy, &
          saved_sgk
@@ -152,17 +152,10 @@ contains
     !     Calculate the spectrum:
     !     First do the shift and squeeze. Shift by FITVAR(SHI_IDX), squeeze by
     !     1 + FITVAR(SQU_IDX); do in absolute sense, to make it easy to back-convert
-    !     OMI data.
-    !     Now, after Xiong recommendation if yn_newfit equal true then (gga):
     !     Lambda = Lambda * (1 + squeeze) + shift - solar_wavel_avg * squeeze
 
-    IF (yn_newshift) THEN ! gga
-      solar_wvls(1:npts) = solar_wvls(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
-        +  loc_cal_parms(shi_idx) - solar_wavel_avg * loc_cal_parms(squ_idx)
-    ELSE ! gga
-      solar_wvls(1:npts) = solar_wvls(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
-        + loc_cal_parms(shi_idx)
-    END IF
+    solar_wvls(1:npts) = solar_wvls(1:npts) * (1.0_r8 + loc_cal_parms(squ_idx)) &
+      +  loc_cal_parms(shi_idx) - solar_wavel_avg * loc_cal_parms(squ_idx)
 
     ! ---------------------------------------
     ! Convolve high resolutioin solar spectra
