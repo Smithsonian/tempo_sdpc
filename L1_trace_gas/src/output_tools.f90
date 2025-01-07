@@ -850,7 +850,7 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner latitude", &
-                              comment = "latitude at pixel corners (SW,SE,NE,NW)", &
+                              comment = "latitude at pixel corners (NE,NW,SW,SE)", &
                               !units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float)
@@ -873,7 +873,7 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner longitude", &
-                              comment = "longitude at pixel corners (SW,SE,NE,NW)", &
+                              comment = "longitude at pixel corners (NE,NW,SW,SE)", &
                               !units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float)
