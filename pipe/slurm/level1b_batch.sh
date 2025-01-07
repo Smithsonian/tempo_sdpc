@@ -369,11 +369,6 @@ derive_o2o2_slant_column()
 
   product_dir="."
   spectra_dir=".."
-  refsec_dir="$SDPC_REFDATA_DIR/trace_gas/refsec"
-
-  # FIXME! reference sector files are in $refsec_dir
-  refsec_rad_file="OML1BRUG-o08544.nc"
-  refsec_cld_file="OMCLDRR-o08544.nc"
 
   radiance_file="${rad_basename}.nc"
   irradiance_file="${irr_basename}.nc"
@@ -409,7 +404,6 @@ derive_o2o2_slant_column()
   sed \
    -e s,@control_file@,$control_file,g \
    -e s,@refdata_dir@,"$SDPC_REFDATA_DIR",g \
-   -e s,@refsec_dir@,$refsec_dir,g \
    -e s,@spectra_dir@,$spectra_dir,g \
    -e s,@product_dir@,$product_dir,g \
    -e s,@solcal_cache_mode@,$solcal_cache_mode,g \
@@ -425,8 +419,6 @@ derive_o2o2_slant_column()
    -e s,@met_dir2@,$met_dir2,g \
    -e s,@met_file2@,$met_file2,g \
    -e s,@product_file@,$product_file,g \
-   -e s,@refsec_rad_file@,$refsec_rad_file,g \
-   -e s,@refsec_cld_file@,$refsec_cld_file,g \
    -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
    $template_pcf > $this_pcf_file
 

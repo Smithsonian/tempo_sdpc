@@ -83,13 +83,8 @@ etc_dir="$SDPC_PIPE_DIR/etc"
 product_dir=.
 spectra_dir=.
 cloud_dir=.
-refsec_dir="$SDPC_REFDATA_DIR/trace_gas/refsec"
 
 pcf_file="$product_dir/trace_gas.pcf"
-
-# FIXME! reference sector files are in $refsec_dir
-refsec_rad_file="OML1BRUG-o08544.nc"
-refsec_cld_file="OMCLDRR-o08544.nc"
 
 product_file="notused"
 template_pcf="${etc_dir}/trace_gas/default.pcf.${molecule}.in"
@@ -119,7 +114,6 @@ met_dir2=""
 sed \
  -e s,@control_file@,$control_file,g \
  -e s,@refdata_dir@,$SDPC_REFDATA_DIR,g \
- -e s,@refsec_dir@,$refsec_dir,g \
  -e s,@spectra_dir@,$spectra_dir,g \
  -e s,@cloud_dir@,$cloud_dir,g \
  -e s,@product_dir@,$product_dir,g \
@@ -139,8 +133,6 @@ sed \
  -e s,@product_file@,$product_file,g \
  -e s,@radref_basename@,$radref_basename,g \
  -e s,@radref_dirname@,$radref_dirname,g \
- -e s,@refsec_rad_file@,$refsec_rad_file,g \
- -e s,@refsec_cld_file@,$refsec_cld_file,g \
  -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
  $template_pcf > $this_pcf_file
 
