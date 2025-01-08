@@ -467,7 +467,7 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               long_name = "pixel corner latitude", &
-                              comment = "latitude at pixel corners (SW,SE,NE,NW)", &
+                              comment = "latitude at pixel corners (NE,NW,SW,SE)", &
                               !units = "degrees_north", &
                               valid_range = [-90.0_r8, 90.0_r8], &
                               fillvalue = fill_float, &
@@ -478,7 +478,7 @@ contains
                               nf90_float, &
                               dimids = dimids_corner_xtrack_step,  &
                               !long_name = "pixel corner longitude", &
-                              comment = "longitude at pixel corners (SW,SE,NE,NW)", &
+                              comment = "longitude at pixel corners (NE,NW,SW,SE)", &
                               units = "degrees_east", &
                               valid_range = [-180.0_r8, 180.0_r8], &
                               fillvalue = fill_float, &
@@ -891,7 +891,7 @@ contains
                               long_name = "cloud radiance fraction at 466nm", &
                        comment = "CRF = ECF*Ic/Im [Vasilkov et al., 2018]", &
                               units = "no unit", &
-                              valid_range = [0.0_r8, 10.0_r8], &
+                              valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
@@ -903,7 +903,7 @@ contains
                               dimids = dimids_xtrack_step,  &
                               long_name = "cloud radiance fraction at 440nm", &
                               units = "no unit", &
-                              valid_range = [0.0_r8, 10.0_r8], &
+                              valid_range = [0.0_r8, 1.0_r8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
