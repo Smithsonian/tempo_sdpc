@@ -10,7 +10,7 @@
 #    command line:
 #          $1 = radiance file basename
 #          $2 = file defining these variables:
-#                rad_file = geolocated radiance file path (or RADT_L1)
+#                rad_path = geolocated radiance file path (or RADT_L1)
 #                irr_file = irradiance file path
 #                snow_file = path to NSIDC snow and ice cover data file
 #
@@ -68,12 +68,11 @@ nrt_incoming="$SDPC_PIPE_DIR/stage/granules/cldo4_input_nrt"
 l2_out_dir="$SDPC_NODE_DIR/L2/out"
 
 # Make a working directory with a local copy of the radiance file.
-rad_file_basename=$(basename "$rad_file" .nc)
-work_dir="${rad_file_basename}"
+work_dir="$(basename $rad_file .nc)"
 /bin/mkdir "$work_dir"
 cd $work_dir
 /bin/cp "$rad_path" "$rad_file"
-/bin/cp "$file_list_file" "${rad_file_basename}.lis"
+/bin/cp "$file_list_file" "${rad_file}.lis"
 chmod u+w "$rad_file"
 
 run_dir=$(pwd)
@@ -87,12 +86,18 @@ irr_basename=$(basename "$irr_file" .nc)
 
 # To generate NRT filenames, mkgranule_name needs to find
 # the attribute near_real_time=1 in the radiance file header
-ncatted -O -h -a near_real_time,global,c,i,1 "$rad_file"
+ncatted -O -h -a near_real_time,global,c,l,1 "$rad_file"
+
+# If the version numbers of the baseline and NRT products differ,
+# then set the version number attribute in the local file copy
+current_version_id=$(global_attribute.py --attr version_id $rad_path)
+if test $current_version_id -ne $SDPC_NRT_PROCESSING_VERSION ; then
+  ncatted -O -h -a version_id,global,m,l,$SDPC_NRT_PROCESSING_VERSION "$rad_file"
+fi
 
 # Define template product file name
 #
-lev1_file_fmt=$(mkgranule_name -L 1 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION "${rad_basename}.nc")
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_NRT_PROCESSING_VERSION "${rad_basename}.nc")
 lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
 
 cld_o4_basename=$(printf "$lev2_base_fmt" CLDO4)
@@ -193,7 +198,7 @@ derive_o2o2_slant_column()
    -e s,@met_dir2@,$met_dir2,g \
    -e s,@met_file2@,$met_file2,g \
    -e s,@product_file@,$product_file,g \
-   -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
+   -e s,@versionid@,$SDPC_NRT_PROCESSING_VERSION,g \
    $template_pcf > $this_pcf_file
 
   export PGS_PC_INFO_FILE="$this_pcf_file"

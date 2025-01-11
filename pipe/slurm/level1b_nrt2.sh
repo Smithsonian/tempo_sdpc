@@ -51,6 +51,15 @@ orig_rad_basename=$(basename "$rad_path" .nc| sed -e s"/.Smoothed$//" -e s"/^[.]
 
 # create NRT file basename
 rad_basename=$(echo $orig_rad_basename | sed -e s"/_V/_NRT_V/")
+# Because the version numbers of the baseline and NRT products may differ,
+# the version number in $rad_basename may be incorrect. Fix the filename here
+# (the version_id attribute in the file gets fixed elsewhere).
+current_version_id=$(global_attribute.py --attr version_id $rad_path)
+if test $current_version_id -ne $SDPC_NRT_PROCESSING_VERSION ; then
+   current_version_label=$(printf "V%02d" $current_version_id)
+   new_version_label=$(printf "V%02d" $SDPC_NRT_PROCESSING_VERSION)
+   rad_basename=$(echo $rad_basename | sed -e "s/${current_version_label}/${new_version_label}/")
+fi
 
 # If necessary, create a directory to receive the result tar notice file
 l2_incoming_nrt="$SDPC_PIPE_DIR/stage/granules/level2_input_nrt"

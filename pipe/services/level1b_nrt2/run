@@ -9,6 +9,7 @@ then
 fi
 
 export SDPC_NRT_PARTITION=$(config_setting nrt.partition)
+export SDPC_NRT_PROCESSING_VERSION=$(config_setting nrt.processing_version)
 export SDPC_SOLCAL_CACHE_ENABLE=$(config_setting nrt.solcal_cache_enable)
 export SDPC_SOLCAL_CACHE_PRODUCTS=$(config_setting level1a.solcal_cache_products)
 

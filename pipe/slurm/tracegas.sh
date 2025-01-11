@@ -46,9 +46,18 @@ cld_file=$CLD
 rad_basename=$(basename $rad_file .nc)
 irr_basename=$(basename $irr_file .nc)
 
+case "$rad_basename" in
+   *_NRT_* )
+     processing_version="$SDPC_NRT_PROCESSING_VERSION"
+     ;;
+   * )
+     processing_version="$SDPC_PROCESSING_VERSION"
+     ;;
+esac
+
 # Define product file name template
 #
-lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $SDPC_PROCESSING_VERSION ${rad_basename}.nc)
+lev2_file_fmt=$(mkgranule_name -L 2 -p %s -v $processing_version ${rad_basename}.nc)
 lev2_base_fmt=$(basename $lev2_file_fmt .nc)
 
 tar_product_to_dest_dir()
@@ -188,7 +197,7 @@ sed \
  -e s,@product_file@,$product_file,g \
  -e s,@radref_basename@,$radref_basename,g \
  -e s,@radref_dirname@,$radref_dirname,g \
- -e s,@versionid@,$SDPC_PROCESSING_VERSION,g \
+ -e s,@versionid@,$processing_version,g \
  $template_pcf > $this_pcf_file
 
 export PGS_PC_INFO_FILE="$this_pcf_file"

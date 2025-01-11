@@ -10,7 +10,7 @@
 #    command line:
 #          $1 = radiance file basename
 #          $2 = file defining these variables:
-#                rad_file = geolocated radiance file path
+#                rad_path = geolocated radiance file path
 #                irr_file = irradiance file path
 #                snow_file = path to NSIDC snow and ice cover data file
 #    NOTE: The basename ($1) is the desired final basename and need not
@@ -67,6 +67,11 @@ l1_out_dir="$SDPC_NODE_DIR/L1/out"
 l1_repro_dir="$SDPC_PIPE_DIR/repro/L1"
 l2_incoming_nrt="$SDPC_PIPE_DIR/stage/granules/level2_input_nrt"
 l2_out_dir="$SDPC_NODE_DIR/L2/out"
+
+# Construct the path to the original RAD_L1a .met file because we'll need that later.
+orig_granule_subdir=$(level1_info --dir $rad_path)
+orig_rad_basename="$(basename $rad_path .Smoothed.nc | sed -e 's/^[.]//' -e 's/_NRT//')"
+orig_metfile_path="$SDPC_ARCHIVE_DIR/L1/${orig_granule_subdir}/${orig_rad_basename}.nc.met"
 
 # Input files:
 #
@@ -309,18 +314,32 @@ if ! test -f "$irr_file" ; then
   exit 1
 fi
 
-# To generate NRT filenames downstream, mkgranule_name needs to find
-# the attribute near_real_time=1 in the radiance file header
-ncatted -O -h -a near_real_time,global,c,i,1 "$rad_file"
-
+# Define archive_subdir before we need to archive anything
 granule_subdir=$(level1_info --dir ${rad_basename}.nc)
 printf "$granule_subdir" > archive_subdir
 
-# We'll be updating the metadata file, so retrieve the pre-INR version from the archive
-# and fixup the LOCALGRANULEID and SHORTNAME values
-orig_rad_basename="$(echo $rad_basename | sed -e 's/_NRT//')"
-/bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${orig_rad_basename}.nc.met" "${rad_basename}.nc.met"
-sed -i -e "s/TEMPO_RAD_L1/TEMPO_RAD_L1_NRT/" "${rad_basename}.nc.met"
+# To generate NRT filenames downstream, mkgranule_name needs to find
+# the attribute near_real_time=1 in the radiance file header
+ncatted -O -h -a near_real_time,global,c,l,1 "$rad_file"
+
+# If the version numbers of the baseline and NRT products may differ,
+# then set the version number attribute in the local file copy
+current_version_id=$(global_attribute.py --attr version_id $rad_path)
+if test $current_version_id -ne $SDPC_NRT_PROCESSING_VERSION ; then
+  ncatted -O -h -a version_id,global,m,l,$SDPC_NRT_PROCESSING_VERSION "$rad_file"
+fi
+
+# Retrieve the pre-INR metfile from the archive
+# and update the LOCALGRANULEID, SHORTNAME, and VERSIONID values.
+/bin/cp "$orig_metfile_path" "${rad_basename}.nc.met"
+have_version=$(printf "TEMPO_RAD_L1_V%02d" $current_version_id)
+want_version=$(printf "TEMPO_RAD_L1_V%02d" $SDPC_NRT_PROCESSING_VERSION)
+have_prefix="TEMPO_RAD_L1"
+want_prefix="TEMPO_RAD_L1_NRT"
+# Note that LOCALGRANULEID gets modified twice here (be careful if you change this!)
+sed -i -e "s/${have_version}/${want_version}/g" -e "s/${have_prefix}/${want_prefix}/g" "${rad_basename}.nc.met"
+set_metfile_versionid.py --version $SDPC_NRT_PROCESSING_VERSION "${rad_basename}.nc.met"
+
 run_inr_post ${rad_basename}.nc
 
 /bin/cp $irr_file ${irr_basename}.nc
