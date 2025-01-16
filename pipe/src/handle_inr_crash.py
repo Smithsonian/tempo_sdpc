@@ -36,7 +36,7 @@ class Signal_Catcher:
     self.signum = signum
 
 def basename_timestamp_field (path):
-    regex = 'TEMPO_RAD[T]?_L1_V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}'
+    regex = r'TEMPO_RAD[T]?_L1_V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}'
     return re.search (regex, os.path.basename(path)).group(1)
 
 def sorted_granule_list (dir, globexpr):
@@ -52,7 +52,7 @@ def redirect_failed_scan_granules (inr_input_dir, problem_dir):
 
     # The crash must have occurred in the first scan.
     # Parse the scan number, keeping it as a string with leading zeros
-    scan_num_regex = 'S(\d{3})G\d{2}'
+    scan_num_regex = r'S(\d{3})G\d{2}'
     scan_num = re.search (scan_num_regex, inr_input_files[0]).group(1)
     log_entry ("moving scan {} to {}".format(scan_num, problem_dir))
 

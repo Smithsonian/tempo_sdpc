@@ -67,7 +67,7 @@ def convert_odl_file (metfile, jsonfile=None):
         odl = fp.read()
 
     # Parse the ODL objects to extract metadata tokens
-    object_regex = "OBJECT\s+=\s+(?P<object_name>\w+)\s+NUM_VAL\s+=\s+(?P<num_val>\d+)(?:|\s+CLASS\s+=\s+..*)\s+VALUE\s+=\s+(?P<value>..*)\s+END_OBJECT"
+    object_regex = r"OBJECT\s+=\s+(?P<object_name>\w+)\s+NUM_VAL\s+=\s+(?P<num_val>\d+)(?:|\s+CLASS\s+=\s+..*)\s+VALUE\s+=\s+(?P<value>..*)\s+END_OBJECT"
     objc = re.compile (object_regex)
     obj_iter = objc.finditer (odl)
 

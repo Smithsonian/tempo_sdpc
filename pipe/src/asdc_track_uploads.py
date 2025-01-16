@@ -218,7 +218,7 @@ def get_product_filenames_from_pdr_file (pdr_path):
     lines = [s.strip() for s in lines]
     lines = list(filter (None, lines))
     # Extract the product filenames from the PDR file
-    p = re.compile ("\s*FILE_ID\s*=\s*(..*);$")
+    p = re.compile (r"\s*FILE_ID\s*=\s*(..*);$")
     product_files = []
     for s in lines:
         m = re.match (p, s)

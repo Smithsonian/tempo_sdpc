@@ -26,7 +26,7 @@ def eprint(*args, **kwargs):
 
 def abi_start_time (base):
     # parse filename to get timestamp to whole seconds precision
-    filename_regex = 'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
+    filename_regex = r'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
     fields = re.search (filename_regex, base)
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
@@ -91,8 +91,8 @@ def abi_entry (path):
     fields["tstart"] = abi_start_time (basename)
     return fields
 
-Filetype_Dict["ims"] = File_Type("ims\d{7,7}_1km_v\d.\d.nc", ims_fields, ims_entry)
-Filetype_Dict["abi"] = File_Type('OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s\d{13}\d_', abi_fields, abi_entry)
+Filetype_Dict["ims"] = File_Type(r"ims\d{7,7}_1km_v\d.\d.nc", ims_fields, ims_entry)
+Filetype_Dict["abi"] = File_Type(r'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s\d{13}\d_', abi_fields, abi_entry)
 
 def classify_filename (path, *args, **kwargs):
     basename = os.path.basename(path)

@@ -76,7 +76,7 @@ def get_yday_subdir (base, zone):
     the files using the day-of-year in the TEMPO satellite-local time zone.
     """
     # parse filename to get timestamp to whole seconds precision
-    filename_regex = 'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
+    filename_regex = r'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
     fields = re.search (filename_regex, base)
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
