@@ -175,6 +175,12 @@ do_daily()
         replace_old_subdirs_with_tarfiles "+2880" $asdc_dir
      fi
   fi
+
+  # Expire old data products in the NRT archive
+  num_days_kept=$(config_setting nrt.num_archive_days)
+  if test $num_days_kept -gt 0 ; then
+     expire_nrt_archive_excess_num_days.sh $num_days_kept
+  fi
 }
 
 do_weekly()
