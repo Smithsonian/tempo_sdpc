@@ -5,10 +5,14 @@ compilers=gnu
 # -- HEAD network
 OS_LABEL=rh8
 DEVROOT=/tempo/nas0
+localroot=/scratch
+pythonbindir=/usr/bin
 
 # -- ITS network
-# OS_LABEL=rocky8
-# DEVROOT=/proj
+#OS_LABEL=rocky8
+#DEVROOT=/proj
+#localroot=/h
+#pythonbindir=/opt/cfpython/python-3.12/bin
 
 build_arch="${compilers}-${OS_LABEL}"
 
@@ -24,7 +28,7 @@ inrroot="$install_root/inr_r3.0.2"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 
-prefix="$install_root/sdpc/devel"
+prefix="$install_root/sdpc/jch_devel"
 
 # --with-iocsdpc=$DEVROOT/sdpc_soft/src/ots_sdpc.git/iocsdpc_test \
 
@@ -34,6 +38,8 @@ prefix="$install_root/sdpc/devel"
             --with-slang=$otsroot \
             --with-inrroot=$inrroot \
             --with-s6root=$s6root \
+            --with-localrootdir=$localroot \
+            --with-pythonbindir=$pythonbindir \
             --with-refdata=$refdata_dir \
             --with-ancdata=$ancdata_dir \
             --with-atlasblas \

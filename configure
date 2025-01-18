@@ -645,6 +645,7 @@ SLANG_INC_DIR
 SLANG_LIB_DIR
 SLANG_INC
 SLANG_LIB
+SDPC_PYTHON_BINDIR
 SDPC_LOCKDIR
 LOCAL_ROOTDIR
 LEAP_SECONDS_LIST
@@ -778,6 +779,7 @@ enable_imgcomp
 with_sc_timezone
 with_localrootdir
 with_lockdir
+with_pythonbindir
 with_slang
 with_slanglib
 with_slanginc
@@ -1434,6 +1436,7 @@ Optional Packages:
   --with-sc-timezone=HH   Set the host spacecraft time zone (integer hours relative to UTC)
   --with-localrootdir=DIR     Local root directory (must support reliable file locking)
   --with-lockdir=FILE     Put lock files in this directory
+  --with-pythonbindir=FILE    Bin directory containing python executable
   --with-slang=DIR      Use DIR/lib and DIR/include for slang
   --with-slanglib=DIR   slang library in DIR
   --with-slanginc=DIR   slang include files in DIR
@@ -3029,6 +3032,21 @@ if test "x$jh_with_lockdir" = "xno"; then
    SDPC_LOCKDIR="${LOCAL_ROOTDIR}/temposdpc/lock"
 else
    SDPC_LOCKDIR="$jh_with_lockdir"
+fi
+
+
+
+# Check whether --with-pythonbindir was given.
+if test "${with_pythonbindir+set}" = set; then :
+  withval=$with_pythonbindir; jh_with_pythonbindir=$withval
+else
+  jh_with_pythonbindir=no
+fi
+
+if test "x$jh_with_pythonbindir" = "xno"; then
+   SDPC_PYTHON_BINDIR=""
+else
+   SDPC_PYTHON_BINDIR="$jh_with_pythonbindir"
 fi
 
 
@@ -6108,6 +6126,7 @@ echo ""
 echo "Configuration summary:"
 echo "     Install dir: $prefix"
 echo "    INR software: $INRSW_ROOT"
+echo "     Python path: $SDPC_PYTHON_BINDIR"
 echo "  Reference data: $REFDATA_DIR"
 echo "  Ancillary data: $ANCILLARY_DATA_DIR"
 echo "   Pipeline home: $PIPE_HOME"

@@ -74,7 +74,9 @@ export SDPC_NODE_DIR="${local_root}/${SDPC_USER}/${SDPC_PIPE_NAME}"
 #  Command search path, etc.
 #---------------------------
 
-_sdpc_paths="$SDPC_S6_ROOT/bin $SDPC_OTS_ROOT/bin $SDPC_ROOT/bin"
+sdpc_python_path=@SDPC_PYTHON_BINDIR@
+
+_sdpc_paths="$sdpc_python_path $SDPC_S6_ROOT/bin $SDPC_OTS_ROOT/bin $SDPC_ROOT/bin"
 
 # Prepend SDPC path entries only if they are not already present
 for x in $_sdpc_paths ; do

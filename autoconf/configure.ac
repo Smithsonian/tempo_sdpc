@@ -346,6 +346,17 @@ else
 fi
 AC_SUBST(SDPC_LOCKDIR)
 
+AC_ARG_WITH(pythonbindir,
+  [  --with-pythonbindir[=FILE]    Bin directory containing python executable],
+  [jh_with_pythonbindir=$withval],
+  [jh_with_pythonbindir=no])
+if test "x$jh_with_pythonbindir" = "xno"; then
+   SDPC_PYTHON_BINDIR=""
+else
+   SDPC_PYTHON_BINDIR="$jh_with_pythonbindir"
+fi
+AC_SUBST(SDPC_PYTHON_BINDIR)
+
 JD_WITH_LIBRARY(slang)
 JD_SLANG_MODULE_INSTALL_DIR
 INSTALL_MODULE="\$(INSTALL_DATA)"
@@ -388,6 +399,7 @@ echo ""
 echo "Configuration summary:"
 echo "     Install dir: $prefix"
 echo "    INR software: $INRSW_ROOT"
+echo "     Python path: $SDPC_PYTHON_BINDIR"
 echo "  Reference data: $REFDATA_DIR"
 echo "  Ancillary data: $ANCILLARY_DATA_DIR"
 echo "   Pipeline home: $PIPE_HOME"

@@ -1,5 +1,8 @@
 #! /bin/sh
 
+# configure test environment to get the right python installation
+. ../etc/sdpc_env.sh
+
 if test "$#" -ne 1 ; then
    echo "Usage: $(basename $0) register_py"
    exit 1
