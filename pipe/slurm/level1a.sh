@@ -145,6 +145,24 @@ prep_inr_goes_source()
 
    set_dirpath_symlink $goes_srcdir/east_cmi $target_dir/Right
    set_dirpath_symlink $goes_srcdir/west_cmi $target_dir/Left
+
+   # Store the same date to prep the nightly INR QA check
+   this_ymd="$(TZ='UTC+6' date -d $tstart +%Y-%m-%d)"
+
+   inr_qa_root_dir="${SDPC_PIPE_DIR}/inr/quality"
+   inr_qa_date_file="$inr_qa_root_dir/date"
+
+   if ! test -d $inr_qa_root_dir ; then
+      mkdir -p $inr_qa_root_dir
+   fi
+   if test -f $inr_qa_date_file ; then
+      file_ymd=$(cat $inr_qa_date_file)
+      if test x"$this_ymd" != x"$file_ymd" ; then
+         echo $this_ymd > $inr_qa_date_file
+      fi
+   else
+      echo $this_ymd > $inr_qa_date_file
+   fi
 }
 
 # Parse the path to the granule file:

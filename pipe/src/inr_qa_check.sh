@@ -62,13 +62,16 @@ unset DISPLAY
 # Generate diagnostic plots
 tempo_inr_quality.sh "$work_dir/config.txt" || error_exit "tempo_inr_quality.sh failed"
 
-# Collect diagnostic output in a tar file
-date_digits="$(echo $date_ymd | tr -d '-')"
-tar_basename="tempo_inrq_${date_digits}"
-tar_path="${output_dir}/${tar_basename}.tgz"
-tar czf "$tar_path" -C "$work_dir" output --transform="s,output,${tar_basename}," || error_exit "tar failed"
+# Name the tar file using the satellite day number extracted from the first radiance file
+first_radiance_path=$(find $work_dir/radiances -maxdepth 1 -type l | sort | head -n 1)
+sat_day=$(ttime -d $first_radiance_path)
+tar_basename="tempo_inrq_d${sat_day}"
+tar_path="${output_dir}/${tar_basename}.tar"
 
-# Delete working directory after successful completion
+# Collect only the diagnostic output in a tar file (does not compress well so dont bother)
+tar cf "$tar_path" -C "$work_dir" output --transform="s,output,${tar_basename}," || error_exit "tar failed"
+
+# Delete entire working directory after successful completion
 if test -d "$work_dir" ; then
    /bin/rm -rf "$work_dir"
 fi

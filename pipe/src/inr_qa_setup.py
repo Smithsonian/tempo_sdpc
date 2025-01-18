@@ -139,7 +139,7 @@ def main():
 
     # time_t window bounds [seconds]
     t1 = time.mktime(tm_tuple)
-    t2 = t1 + 17*3600
+    t2 = t1 + 16*3600
 
     # Collect TEMPO radiances
     rad_paths = get_radiance_paths (dbfile, t1, t2, scan_id=scan_id)

@@ -135,6 +135,11 @@ do_third()
 do_hourly()
 {
   trace_message hourly
+
+  inr_qa_enable=$(config_setting level1b.inr_qa_enable)
+  if test $inr_qa_enable -ne 0 ; then
+     inr_qa_cron.sh &
+  fi
 }
 
 do_daily()
