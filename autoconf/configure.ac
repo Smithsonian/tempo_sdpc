@@ -354,6 +354,10 @@ if test "x$jh_with_pythonbindir" = "xno"; then
    SDPC_PYTHON_BINDIR=""
 else
    SDPC_PYTHON_BINDIR="$jh_with_pythonbindir"
+   if test -n "$SDPC_PYTHON_BINDIR" -a ! -x "$SDPC_PYTHON_BINDIR/python3" ; then
+      echo "ERROR: python3 executable not found in pythonbindir=$jh_with_pythonbindir"
+      exit 1
+   fi
 fi
 AC_SUBST(SDPC_PYTHON_BINDIR)
 

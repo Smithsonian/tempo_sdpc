@@ -18,7 +18,7 @@ case "$settings" in
      OS_LABEL=rh8
      DEVROOT=/tempo/nas0
      localroot=/scratch
-     pythonbindir=/usr/bin
+     pythonbindir=
      ;;
 
   * )
