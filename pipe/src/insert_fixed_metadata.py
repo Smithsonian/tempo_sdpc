@@ -63,7 +63,7 @@ def make_template_string (meta):
 def insert_odl (file_odl_str, meta):
     odl_tmpl = make_template_string (meta)
     odl_str = Template(odl_tmpl).substitute(meta)
-    p = re.compile('(END_GROUP\s*=\s*ADDITIONALATTRIBUTES)')
+    p = re.compile(r'(END_GROUP\s*=\s*ADDITIONALATTRIBUTES)')
     split_fstr = p.split (file_odl_str)
     return ''.join([split_fstr[0], odl_str, split_fstr[1], split_fstr[2]])
 

@@ -31,7 +31,7 @@ def get_rad_info (path):
     info["scan_num"] = scan_num
     return info
 
-Rad_Basename_Parser = re.compile ("TEMPO_RAD_L1\w?_(?:|NRT_)V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}.nc")
+Rad_Basename_Parser = re.compile (r"TEMPO_RAD_L1\w?_(?:|NRT_)V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}.nc")
 
 def lookup_radiance_path (c, basename):
 

@@ -9,9 +9,9 @@ def process_file (metfile, versionid):
     with open (metfile, 'r') as fp:
         text = fp.read()
 
-    beg = re.search ('=\s+VERSIONID', text)
+    beg = re.search (r'=\s+VERSIONID', text)
     b = beg.start()
-    d = re.match ('=\s+VERSIONID\s+NUM_VAL\s+=\s+1\s+VALUE\s+=\s+(\d+)', text[b:])
+    d = re.match (r'=\s+VERSIONID\s+NUM_VAL\s+=\s+1\s+VALUE\s+=\s+(\d+)', text[b:])
 
     with open (metfile, 'w') as fp:
         fp.write(text[:b+d.start(1)] + versionid + text[b+d.end(1):])

@@ -35,7 +35,7 @@ def parse_solcal_log (logfile, nx):
             # subtracting 1 to get a zero-based index
             xtrack = int(halves[0].strip('#')) - 1
             # strip whitespace from the second piece:
-            s = re.sub('[\s+]', '', halves[1])
+            s = re.sub(r'[\s+]', '', halves[1])
             # remove extraneous characters, leaving a semicolon-delimited
             # string that contains variable=float pairs
             s = s.replace('1/e','')

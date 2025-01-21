@@ -55,7 +55,7 @@ def filter_boundary_coords_for_asdc (name, text):
     if (beg == None):
         return text
     b = beg.end()
-    end = re.search ('[ \n]*END_OBJECT[ ]*=[ ]*{}'.format(name), text)
+    end = re.search (r'[ \n]*END_OBJECT[ ]*=[ ]*{}'.format(name), text)
     e = end.start()
     # find the value
     value = re.search ('VALUE[ ]*=', text[b:e])

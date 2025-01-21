@@ -13,7 +13,7 @@ def process_file (ncfile):
     if '_NRT_' not in basename:
         return
 
-    m = re.match ('(TEMPO_\w+_L\d_NRT)_V', basename)
+    m = re.match (r'(TEMPO_\w+_L\d_NRT)_V', basename)
     shortname = m.group(1)
 
     # Set shortname in the ncfile header
@@ -30,7 +30,7 @@ def process_file (ncfile):
         s = matchobj.group(0)
         return s.replace (matchobj.group(1), shortname)
 
-    text = re.sub ('SHORTNAME\s+NUM_VAL\s+=\s+1\s+VALUE\s+=\s+"([^"]+)"', shortname_endswith_nrt, text)
+    text = re.sub (r'SHORTNAME\s+NUM_VAL\s+=\s+1\s+VALUE\s+=\s+"([^"]+)"', shortname_endswith_nrt, text)
 
     with open (metfile, 'w') as fp:
         fp.write(text)
