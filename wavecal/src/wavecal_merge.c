@@ -289,7 +289,17 @@ static int perform_merge (int ncid_target, const char *file)
         int params_dimid, params_dimid_list[3];
         if (0 != TIO_inq_dim (grp_target, params_dimname, &params_dimid, &params_dimlen))
           {
+             int unused_varid;
              if (0 != TIO_def_dim (grp_target, params_dimname, params_dimlen_src, &params_dimid))
+               goto close_and_return;
+             /* Apparently, python-3.12 netcdf4 needs a variable with this name to exist.
+              * If the variable doesn't exist, then attempting to read the resulting file
+              * fails with this error:
+              *   AttributeError: 'NoneType' object has no attribute 'dimensions'
+              * Therefore, don't delete this unused variable unless you're sure that this
+              * python issue is no longer relevant.
+              */
+             if (0 != TIO_def_var (grp_target, params_dimname, TIO_INT, 1, &params_dimid, &unused_varid))
                goto close_and_return;
           }
         params_dimid_list[0] = step_dimid;
@@ -368,7 +378,7 @@ static int perform_merge (int ncid_target, const char *file)
 
         for (int j = 0; j < xtrack_dimlen_src; j++)
           {
-             /* if opt_status > 3 or < 1, refilling is required 
+             /* if opt_status > 3 or < 1, refilling is required
               * if niter = -1, no refilling is required
               */
              if (((opt_status_slab_i[j] > 3) || (opt_status_slab_i[j] < 1)) && (niter_slab_i[j] > 0))
