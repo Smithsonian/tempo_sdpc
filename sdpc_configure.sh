@@ -2,27 +2,24 @@
 
 compilers=gnu
 
-settings=HEAD
-#settings=ITS
+site=HEAD
+#site=ITS
 
-case "$settings" in
+case "$site" in
   ITS )
      OS_LABEL=rocky8
      DEVROOT=/proj
      localroot=/h
-     #pythonbindir=/opt/cfpython/python-3.12/bin
-     pythonbindir=/proj/sdpc_soft/install/gnu-rocky8/python-3.12.8/bin
      ;;
 
   HEAD )
      OS_LABEL=rh8
      DEVROOT=/tempo/nas0
      localroot=/scratch
-     pythonbindir=
      ;;
 
   * )
-     echo "Unsupported network"
+     echo "Unsupported site: $site"
      exit 1
      ;;
 esac
@@ -40,6 +37,12 @@ install_root="$soft_home/install/$build_arch"
 inrroot="$install_root/inr_r3.0.2"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
+
+if test x"$site" = x"ITS" ; then
+   pythonbindir="$install_root/python-3.12.8/bin"
+else
+   pythonbindir=""
+fi
 
 prefix="$install_root/sdpc/jch_devel"
 
