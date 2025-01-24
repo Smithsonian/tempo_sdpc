@@ -64,7 +64,7 @@ tempo_inr_quality.sh "$work_dir/config.txt" || error_exit "tempo_inr_quality.sh 
 
 # Name the tar file using the satellite day number extracted from the first radiance file
 first_radiance_path=$(find $work_dir/radiances -maxdepth 1 -type l | sort | head -n 1)
-sat_day=$(ttime -d $first_radiance_path)
+sat_day=$(level1_info --localday $first_radiance_path | tr -d D)
 tar_basename="tempo_inrq_d${sat_day}"
 tar_path="${output_dir}/${tar_basename}.tar"
 
