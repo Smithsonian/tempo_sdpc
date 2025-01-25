@@ -34,23 +34,23 @@ fi
 # The date most recently processed by INR is stored in this file
 date_file="$root_work_dir/date"
 
-target_time="2am"
+target_time="4am"
 # The script should be run at least once per day, just after $target_time.
 # If it runs more or less often, that will also work, but it's
 # designed to generate output around $target_time every day, so it
 # does its work only when > 24 hours have elapsed since the last check,
-# and it always resets the timer state to aim for that schedule.
+# and it always resets the saved timestamp to aim for that schedule.
 
 tar_prefix="tempo_inrq_d"
 # Prefix used to construct tar file name to be archived
 
-state_file="$root_work_dir/state"
-# The state file always contains the time_t value for
+tstamp_file="$root_work_dir/timestamp"
+# The timestamp file always contains the time_t value for
 # $target_time on the day the INR QA script was last run.
 
 # Exit if the INR QA check has been run within the past 24h.
-if test -f $state_file ; then
-   timet_prev=$(cat $state_file)
+if test -f $tstamp_file ; then
+   timet_prev=$(cat $tstamp_file)
    timet_now=$(date +%s)
    if test $(($timet_now - $timet_prev)) -lt 86400 ; then
       exit 0
@@ -96,8 +96,8 @@ have_unchecked_data $date_ymd
 
 echo "$PGMNAME: performing INR quality check for date: $date_ymd"
 
-# Update the state file.
-date --date "$target_time today" +%s > $state_file
+# Update the timestamp file.
+date --date "$target_time today" +%s > $tstamp_file
 
 # Perform the INR QA check
 log_path="$root_work_dir/log.$(date +%s).txt"
