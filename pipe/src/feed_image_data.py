@@ -193,6 +193,7 @@ class TrackDB:
         fields["istart"] = "integer not null"
         fields["filename"] = "text"
         fields["path"] = "text"
+        fields["tstamp"] = "integer"
         quals = "primary key(istart)"
         field_list = ','.join ('{} {}'.format (k, fields[k]) for k in fields.keys())
         sql = "create table if not exists {table_name} ({field_list}, {quals});".format (**locals())
@@ -231,7 +232,8 @@ class TrackDB:
     def insert_file (self, tstart, path):
         filename = os.path.basename(path)
         istart = int(tstart)
-        sql = "insert into File_Table (istart,filename,path) values ({istart},'{filename}','{path}')".format(**locals())
+        tstamp = int(time.time())
+        sql = "insert into File_Table (istart,filename,path,tstamp) values ({istart},'{filename}','{path}',{tstamp})".format(**locals())
         with sqlite3.connect (self.dbfile) as conn:
             conn.execute(sql)
 
