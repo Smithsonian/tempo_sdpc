@@ -237,12 +237,17 @@ def process_shortpan (cur, thefile, parse, pan_file):
         print ('skipping SHORTPAN: {} (pdrdbfile=None)'.format(pan_file))
         return
     # Replace PAN file extension (.pan or .PAN) to get the PDR file's local path
-    pdr_file = re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE)
+    pdr_file = os.path.basename(re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE))
     pdr_query = "select path from File_Table where filename == '{}'".format(pdr_file)
     with __connect_database ("ro", PDR_DB_Path) as conn:
         pdr_cur = conn.cursor()
-        result = pdr_cur.execute (pdr_query)
-        pdr_path = pdr_cur.fetchone()[0]
+        pdr_cur.execute (pdr_query)
+        result = pdr_cur.fetchone()
+        if result is None:
+            print ('SQL query yields empty result: {}'.format(pdr_query))
+            return
+        else:
+            pdr_path = result[0]
     # Try to read the local PDR file
     if not os.path.isfile (pdr_path):
         print ('skipping SHORTPAN: {} (cannot open corresponding PDR file: {})'.format(pan_file, pdr_path))

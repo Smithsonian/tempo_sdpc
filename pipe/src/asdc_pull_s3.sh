@@ -115,6 +115,8 @@ do_asdc_s3_download()
      echo $panfiles | tr -s ' ' '\n' | sed -e "s,.${panext},.PDR," > pdrs_processed.lis
      # mark each PDR as accepted
      asdc_files.py --dbfile $pdr_dbfile --set accepted pdrs_processed.lis
+     # delete the processed pans from the S3 bucket
+     asdc_s3.py --bucket $s3_bucket --remove $pan_list
   else
      cleanup $dir
   fi
