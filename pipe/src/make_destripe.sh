@@ -54,6 +54,20 @@ make_destripe()
    product_type="$(global_attribute.py --attr product_type $first_path)"
    destripe_dir="$(dirname $granule_dir)/destripe/$product_type"
 
+   # Is this for the NRT product?
+   is_nrt=0
+   case "$first_filename_sans_extname" in
+        *_NRT_* )
+           is_nrt=1
+           dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
+           nrtfield="NRT_"
+           ;;
+        * )
+           dbfile="$SDPC_ARCHIVE_DBFILE"
+           nrtfield=""
+           ;;
+   esac
+
    if ! test -d $destripe_dir ; then
       mkdir -p $destripe_dir
    fi
@@ -64,7 +78,7 @@ make_destripe()
    tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
    scan_label="$(echo $first_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
    #version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
-   version="$(printf V%02d $SDPC_DSTR_VERSION)"
+   version="$(printf ${nrtfield}V%02d $SDPC_DSTR_VERSION)"
    destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
 
    destripe_path="$destripe_dir/$destripe_filename"
@@ -81,7 +95,9 @@ make_destripe()
    make_destripe.py $config_file > $log_file 2>&1 || md_error_exit "make_destripe.py failed (see $log_file)" $LINENO
 
    # Register the file in the sqlite database.
-   ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   if test $is_nrt -eq 0 ; then
+      ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   fi
 
    # Apply the destriping correction
    apply_destripe=$(config_setting destripe.HCHO.apply)
@@ -102,7 +118,7 @@ make_destripe()
       first_basename="$(basename $first_path)"
       this_scan_id="scan_id in (select scan_id from HCHO_L2 where filename = \"$first_basename\")"
       sql="select path from HCHO_L2 where asdc_status = 100 and $this_scan_id order by istart"
-      needs_destripe=$(sqlite3 -readonly -cmd ".timeout 10000" $SDPC_ARCHIVE_DBFILE "$sql")
+      needs_destripe=$(sqlite3 -readonly -cmd ".timeout 10000" $dbfile "$sql")
 
       if test -n "$needs_destripe" ; then
          apply_log="$destripe_dir/destripe.log"
@@ -110,9 +126,9 @@ make_destripe()
          # Change asdc_status of HCHO_L2 products from 'defer' to 'new'
          tmpfile=$(mktemp)
          printf "%s\n" $needs_destripe > $tmpfile
-         asdc_track_uploads.py --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
+         asdc_track_uploads.py --dbfile $dbfile --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
          printf "%s.met\n" $needs_destripe > $tmpfile
-         asdc_track_uploads.py --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
+         asdc_track_uploads.py --dbfile $dbfile --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
          /bin/rm -f $tmpfile
       fi
    fi

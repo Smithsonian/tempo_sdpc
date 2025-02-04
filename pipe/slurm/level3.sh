@@ -135,7 +135,7 @@ case "$product_name" in
 
   HCHO_L2 )
      destripe_HCHO=$(config_setting destripe.HCHO.enable)
-     if test $destripe_HCHO -ne 0 && test $is_nrt -eq 0 ; then
+     if test $destripe_HCHO -ne 0 ; then
         make_destripe "$l2_paths"
      fi
      ;;

@@ -459,7 +459,7 @@ def process_file (db_path, filename, nc):
     #            HCHO_L2 may wait for destriping/background correction
     if product_name == 'NO2_L2':
         defer_asdc_upload = True
-    elif (product_name == 'HCHO_L2' and HCHO_Needs_Destripe and not is_nrt):
+    elif (product_name == 'HCHO_L2' and HCHO_Needs_Destripe):
         defer_asdc_upload = (('destriping_correction' not in nc['support_data'].variables) and
                              ('background_correction' not in nc['support_data'].variables))
     else:
