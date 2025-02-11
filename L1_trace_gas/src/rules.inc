@@ -169,11 +169,8 @@ $(ODIR)/omi_pge_postprocessing.o: $(SDIR)/omi_pge_postprocessing.f90 \
   $(ODIR)/m_read_gems.o \
   $(ODIR)/omi_pge_fitting_aux.o \
   $(ODIR)/omi_read_l1b_data.o \
-  $(ODIR)/OMSAO_destriping_module.o \
-  $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_pixelcorner_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_Reference_sector_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/OMSAO_wfamf_module.o \
   $(ODIR)/output_tools.o
@@ -188,8 +185,6 @@ $(ODIR)/swathline_loop.o: $(SDIR)/swathline_loop.f90 \
   $(ODIR)/OMSAO_omidata_module.o \
   $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
-  $(ODIR)/OMSAO_prefitcol_module.o \
-  $(ODIR)/OMSAO_radiance_ref_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/output_tools.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/swathline_loop.f90 -o $(ODIR)/swathline_loop.o $(MODOUTFLG) $(ODIR)
@@ -311,7 +306,6 @@ $(ODIR)/OMSAO_radiance_ref_module.o: $(SDIR)/OMSAO_radiance_ref_module.f90 \
 $(ODIR)/OMSAO_Reference_sector_module.o: $(SDIR)/OMSAO_Reference_sector_module.f90 \
   $(ODIR)/commonmode.o \
   $(ODIR)/ctrlvars.o \
-  $(ODIR)/datafields.o \
   $(ODIR)/ezspline_interpolation.o \
   $(ODIR)/l1bread_utils.o \
   $(ODIR)/m_read_gems.o \
@@ -325,7 +319,6 @@ $(ODIR)/OMSAO_Reference_sector_module.o: $(SDIR)/OMSAO_Reference_sector_module.f
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/OMSAO_wfamf_module.o \
-  $(ODIR)/output_tools.o \
   $(ODIR)/swathline_loop.o
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/OMSAO_Reference_sector_module.f90 -o $(ODIR)/OMSAO_Reference_sector_module.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/OMSAO_solar_wavcal_module.o: $(SDIR)/OMSAO_solar_wavcal_module.f90 \
@@ -405,7 +398,6 @@ $(ODIR)/radiance_wavcal.o: $(SDIR)/radiance_wavcal.f90 \
 $(ODIR)/control_module.o: $(SDIR)/control_module.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/OMSAO_casestring_module.o \
-  $(ODIR)/OMSAO_destriping_module.o \
   $(ODIR)/OMSAO_errstat_module.o \
   $(ODIR)/OMSAO_indices_module.o \
   $(ODIR)/OMSAO_omidata_module.o \
