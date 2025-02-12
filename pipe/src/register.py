@@ -26,6 +26,8 @@ Coverage_Time_Attributes = ["time_coverage_start_since_epoch", "time_coverage_en
 Radiance_File_Attributes = Coverage_Time_Attributes \
                          + ["scan_num", "scan_type", "granule_num"]
 
+Solcal_Products = ["IRR" + m + "_L2" for m in ["O2O2", "HCHO", "NO2", "BRO", "CHOCHO"]]
+
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 
 Prefix = "register:"
@@ -462,6 +464,8 @@ def process_file (db_path, filename, nc):
     elif (product_name == 'HCHO_L2' and HCHO_Needs_Destripe):
         defer_asdc_upload = (('destriping_correction' not in nc['support_data'].variables) and
                              ('background_correction' not in nc['support_data'].variables))
+    elif product_name in Solcal_Products:
+        defer_asdc_upload = True
     else:
         defer_asdc_upload = False
 
