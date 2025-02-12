@@ -26,6 +26,11 @@ script="lftp.script"
 remote_pan_list="pan.lis.remote"
 pan_list="pan.lis"
 
+if ! test -f "$SDPC_ARCHIVE_DBFILE" ; then
+   echo "asdc_pull.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE"
+   exit 0
+fi
+
 PROGNAME="$(basename $0)"
 catch()
 {

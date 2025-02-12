@@ -22,6 +22,11 @@ user_at_host=$1
 
 pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs.sqlite"
 
+if ! test -f "$SDPC_ARCHIVE_DBFILE" ; then
+   echo "asdc_push.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE"
+   exit 0
+fi
+
 PROGNAME="$(basename $0)"
 catch()
 {

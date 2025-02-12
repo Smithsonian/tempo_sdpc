@@ -439,6 +439,10 @@ def main():
     else:
         DB_Path = args.dbfile
 
+    if not os.path.isfile (DB_Path):
+        eprint ('*** Error: Cannot access database file: {}'.format(DB_Path))
+        sys.exit(1)
+
     global PDR_DB_Path
     PDR_DB_Path = args.pdrdbfile
 
