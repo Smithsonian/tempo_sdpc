@@ -5,12 +5,11 @@ set -e
 
 : "${SDPC_ARCHIVE_DIR:?SDPC_ARCHIVE_DIR not set, run this with sdpcrun.sh}"
 
-if test -e $SDPC_ARCHIVE_DIR ; then
-   echo "File exists: $SDPC_ARCHIVE_DIR"
-   exit 1
+if test -d $SDPC_ARCHIVE_DIR ; then
+   printf "Archive directory exists: $SDPC_ARCHIVE_DIR\n"
+else
+   printf "Creating archive directory: $SDPC_ARCHIVE_DIR\n"
 fi
-
-printf "Creating archive directory: $SDPC_ARCHIVE_DIR\n"
 
 mkdirlist()
 {
