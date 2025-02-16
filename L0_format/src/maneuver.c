@@ -23,9 +23,10 @@
    double outfile_timestamp_end;
 #include "l0_format.h"
 
-static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                        int unwind, const char *incoming_dir)
 {
-   (void) pmt; (void) tpinfo;
+   (void) pmt; (void) tpinfo; (void) unwind; (void) incoming_dir;
    return 0;
 }
 

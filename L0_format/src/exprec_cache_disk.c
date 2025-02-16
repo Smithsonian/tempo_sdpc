@@ -23,33 +23,109 @@
 
 #define EXPREC_CACHE_METHOD_PRIVATE_DATA \
    char *cache_dirname; \
+   char *cache_dirname_done; \
    size_t num_erecs_cached; \
    char **files; \
    size_t num_files; \
    size_t front;
 #include "exprec_cache.h"
 
+static int move_file_to_dir (const char *path, const char *dirpath)
+{
+   const char *basename = ioclib_basename (path);
+   char *newpath;
+   int status;
+   if (NULL == (newpath = ioclib_pathconcat (dirpath, basename)))
+     return -1;
+   status = ioclib_rename (path, newpath);
+   ioclib_free (newpath);
+   return status;
+}
+
+static int move_dirfiles_to_dir (const char *srcdir, const char *destdir, int verbose)
+{
+   char **files = NULL;
+   char *path = NULL;
+   size_t i, num_files;
+   files = ioclib_dir_list (srcdir, &num_files, IOCLIB_LISTDIR_SORT);
+   if (files == NULL)
+     return -1;
+   for (i = 0; i < num_files; i++)
+     {
+        if (NULL == (path = ioclib_pathconcat (srcdir, files[i])))
+          return -1;
+        if (verbose)
+          {
+             tell_vinfo (0, "moving %s to %s", files[i], destdir);
+          }
+        (void) move_file_to_dir (path, destdir);
+        ioclib_free (path);
+     }
+   ioclib_string_array_free (files, num_files);
+   return 0;
+}
+
 static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t file_index)
 {
-   const char *basename = ioclib_basename (file);
-   char *cache_path;
    int status;
 
    /* For this method, we assume all files have 1 erec, so file_index==0, always */
    (void) file_index;
 
-   if (NULL == (cache_path = ioclib_pathconcat (cmt->cache_dirname, basename)))
-     return -1;
-
-   status = ioclib_rename (file, cache_path);
-   ioclib_free (cache_path);
-
-   if (status == 0)
+   if (0 == (status = move_file_to_dir (file, cmt->cache_dirname)))
      {
         cmt->num_erecs_cached++;
      }
 
    return status;
+}
+
+static int cache_unwind (Exprec_Cache_Method_Type *cmt, const char *incoming_dir)
+{
+   int status = -1;
+
+   if (incoming_dir == NULL)
+     {
+        tell_verror (TELL_USAGE_ERROR, "%s: incoming_dir == NULL", __func__);
+        return -1;
+     }
+
+   tell_vinfo (0, "unwinding exposure record caches");
+
+   if ((0 == move_dirfiles_to_dir (cmt->cache_dirname_done, incoming_dir, 1))
+       && (0 == move_dirfiles_to_dir (cmt->cache_dirname, incoming_dir, 1)))
+     {
+        status = 0;
+     }
+
+   return status;
+}
+
+static int cache_unlink_processed (Exprec_Cache_Method_Type *cmt)
+{
+   size_t i, num_files;
+   char **files = NULL;
+   char *path;
+
+   files = ioclib_dir_list (cmt->cache_dirname_done, &num_files, IOCLIB_LISTDIR_SORT);
+   if (files == NULL)
+     return -1;
+   if (num_files == 0)
+     return 0;
+
+   tell_vinfo (1, "unlinking %ld processed exposure records", num_files);
+
+   for (i = 0; i < num_files; i++)
+     {
+        if (NULL == (path = ioclib_pathconcat (cmt->cache_dirname_done, files[i])))
+          return -1;
+        (void) ioclib_unlink (path);
+        ioclib_free (path);
+        path = NULL;
+     }
+
+   ioclib_string_array_free (files, num_files);
+   return 0;
 }
 
 static int cache_num_recs (Exprec_Cache_Method_Type *cmt, size_t *num_erecs_cached)
@@ -143,22 +219,19 @@ static int cache_erec_bad (Exprec_Cache_Method_Type *cmt)
 static int cache_erec_done (Exprec_Cache_Method_Type *cmt)
 {
    char *path = NULL;
-   int status;
 
    if (NULL == (path = get_oldest_file_path (cmt)))
      return -1;
 
    cmt->front++;
 
-   if (0 != (status = ioclib_unlink (path)))
-     {
-        tell_verror (TELL_APPLICATION_ERROR,
-                     "%s: unlink failed: file=%s", __func__, path);
-     }
+   if (0 != move_file_to_dir (path, cmt->cache_dirname_done))
+     return -1;
    ioclib_free (path);
+
    cmt->num_erecs_cached--;
 
-   return status;
+   return 0;
 }
 
 static int cache_erec_path (Exprec_Cache_Method_Type *cmt, char *buf, size_t buflen)
@@ -181,6 +254,7 @@ static int cache_erec_path (Exprec_Cache_Method_Type *cmt, char *buf, size_t buf
 static void cache_delete (Exprec_Cache_Method_Type *cmt)
 {
    FREE(cmt->cache_dirname);
+   FREE(cmt->cache_dirname_done);
    ioclib_string_array_free (cmt->files, cmt->num_files);
    FREE(cmt);
 }
@@ -246,6 +320,12 @@ static int parse_exprec_cache_params (config_t *cfg, Exprec_Cache_Method_Type *c
    if (0 != ioclib_mkdir (cmt->cache_dirname, 0))
      return -1;
 
+   if (NULL == (cmt->cache_dirname_done = ioclib_strcat (cmt->cache_dirname, "_done")))
+     return -1;
+
+   if (0 != ioclib_mkdir (cmt->cache_dirname_done, 0))
+     return -1;
+
    return 0;
 }
 
@@ -274,6 +354,8 @@ Exprec_Cache_Method_Type *open_erec_cache_disk (config_t *cfg)
    cmt->cache_erec_path = cache_erec_path;
    cmt->cache_erec_bad = cache_erec_bad;
    cmt->cache_erec_done = cache_erec_done;
+   cmt->cache_unlink_processed = cache_unlink_processed;
+   cmt->cache_unwind = cache_unwind;
    cmt->cache_delete = cache_delete;
 
    return cmt;

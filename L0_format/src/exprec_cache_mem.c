@@ -113,6 +113,18 @@ static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t f
    return 0;
 }
 
+static int cache_unlink_processed (Exprec_Cache_Method_Type *cmt)
+{
+   (void) cmt;
+   return 0;
+}
+
+static int cache_unwind (Exprec_Cache_Method_Type *cmt, const char *incoming_dir)
+{
+   (void) cmt; (void) incoming_dir;
+   return 0;
+}
+
 static int cache_num_recs (Exprec_Cache_Method_Type *cmt, size_t *num_erecs_cached)
 {
    *num_erecs_cached = cmt->num_erecs_cached;
@@ -256,6 +268,8 @@ Exprec_Cache_Method_Type *open_erec_cache_mem (config_t *cfg)
    cmt->cache_erec_path = cache_erec_path;
    cmt->cache_erec_bad = cache_erec_bad;
    cmt->cache_erec_done = cache_erec_done;
+   cmt->cache_unlink_processed = cache_unlink_processed;
+   cmt->cache_unwind = cache_unwind;
    cmt->cache_delete = cache_delete;
 
    return cmt;

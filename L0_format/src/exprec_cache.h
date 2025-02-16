@@ -36,6 +36,12 @@ struct Exprec_Cache_Method_Type
    int (*cache_erec_done)(Exprec_Cache_Method_Type *);
    /**< Regard the front record as "done", and advance to the next one */
 
+   int (*cache_unlink_processed)(Exprec_Cache_Method_Type *);
+   /**< Unlink all processed files in the cache */
+
+   int (*cache_unwind)(Exprec_Cache_Method_Type *, const char *);
+   /**< Return cached files to the directory they came from */
+
    void (*cache_delete)(Exprec_Cache_Method_Type *);
    /**< Delete this Exprec_Cache_Method_Type object */
 

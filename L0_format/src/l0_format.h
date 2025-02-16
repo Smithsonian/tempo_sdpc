@@ -172,7 +172,7 @@ struct Process_Method_Type
 {
    int (*pmt_process)(Process_Method_Type *, const TPInfo_Type *, const char *, void *);
    void (*pmt_delete)(Process_Method_Type *);
-   int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *);
+   int (*pmt_flush_cache)(Process_Method_Type *, const TPInfo_Type *, int, const char *);
    int (*pmt_query_latest_timestamp)(Process_Method_Type *, int, double *);
    int (*pmt_query_last_erec_cached_timestamp)(const Process_Method_Type *, double *);
 

@@ -631,6 +631,33 @@ return_status:
    return -1;
 }
 
+static int unwind_cache (Process_Method_Type *pmt, const char *incoming_dir)
+{
+   Exprec_Cache_Method_Type *cmt = pmt->cache_method;
+
+   /* Move all cached exposure records, both processed and unprocessed,
+    * back to the incoming directory from whence they came.
+    */
+   (void) cmt->cache_unwind (cmt, incoming_dir);
+
+   /* Remove the unfinished output file, if any. */
+   if (pmt->ncid != INT_MAX)
+     {
+        (void) TIO_close (pmt->ncid);
+        pmt->ncid = INT_MAX;
+        (void) remove_hidden (pmt->out_dirname, pmt->out_basename);
+     }
+
+   /* close_outfile does this, so it seems like a good idea here too */
+   if (pmt->enum_lookup)
+     {
+        elt_close (pmt->enum_lookup);
+        pmt->enum_lookup = NULL;
+     }
+
+   return 0;
+}
+
 static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
                           int process_all_erecs)
 {
@@ -721,7 +748,8 @@ static int process_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
           {
              unsigned int k, granule_size;
 
-             if (-1 == close_outfile (pmt))
+             if ((-1 == close_outfile (pmt))
+                 || (0 != cmt->cache_unlink_processed (cmt)))
                goto return_status;
 
              /* From granule schedule, find out which granule file
@@ -806,18 +834,22 @@ return_status:
      {
         pmt->last_erec_cached_timestamp = 0.0;
      }
-   (void) cmt->cache_close (cmt);
 
    if (erec) iocsdpc_exprec_close (erec);
    (void) close_outfile (pmt);
+   (void) cmt->cache_unlink_processed (cmt);
+   (void) cmt->cache_close (cmt);
+
    return status;
 }
 
 static int radiance_belongs_to_curr_granule (const Process_Method_Type *pmt,
-                                             const Exprec_Info_Type *exprec_info)
+                                             const Exprec_Info_Type *exprec_info, int *is_last)
 {
    const Granule_Schedule_Type *sched = &pmt->sched;
    unsigned int step_ubound = sched->granule_ubound[sched->curr_granule];
+   /* The last one may never arrive, but if it does, we can indicate that */
+   *is_last = ((1 + exprec_info->curr_mirror_step) == step_ubound);
    if (exprec_info->exprec_type != IOCSDPC_EXPREC_TYPE_RAD)
      return 0;
    return (exprec_info->curr_mirror_step < step_ubound);
@@ -851,9 +883,13 @@ static int classify_erec (IOCSDPC_Exprec_Type *erec, Exprec_Info_Type *info)
    return 0;
 }
 
-static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                        int unwind, const char *incoming_dir)
 {
-   return process_cache (pmt, tpinfo, 1);
+   if (unwind != 0)
+     return unwind_cache (pmt, incoming_dir);
+   else
+     return process_cache (pmt, tpinfo, 1);
 }
 
 static int process_exprec1 (Process_Method_Type *pmt,
@@ -862,7 +898,7 @@ static int process_exprec1 (Process_Method_Type *pmt,
                             const char *file, size_t exprec_index)
 {
    Exprec_Cache_Method_Type *cmt = pmt->cache_method;
-   int is_radiance, is_new_type, is_radiance_new_scan;
+   int is_radiance, is_new_type, is_radiance_new_scan, is_last;
 
    /* Invariant:  the cache always contains only records
     * that belong together and could share the same granule.
@@ -933,11 +969,15 @@ static int process_exprec1 (Process_Method_Type *pmt,
           return -1;
      }
 
-   if (radiance_belongs_to_curr_granule (pmt, exprec_info))
-     return 0;
+   if (radiance_belongs_to_curr_granule (pmt, exprec_info, &is_last))
+     {
+        if (is_last == 0) return 0;
+     }
 
-   /* When we see a frame that doesn't belong to the current
-    * radiance granule, that granule is complete. */
+   /* When we see a frame that doesn't belong to the current radiance granule,
+    * or we see the last frame of the current radiance granule, then
+    * the current radiance granule is complete.
+    */
    return process_cache (pmt, tpinfo, 0);
 }
 

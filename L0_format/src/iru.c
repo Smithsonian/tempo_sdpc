@@ -104,9 +104,10 @@ static int close_iru_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
-static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                       int unwind, const char *incoming_dir)
 {
-   (void) tpinfo;
+   (void) tpinfo; (void) unwind; (void) incoming_dir;
    return close_iru_outfile (pmt);
 }
 

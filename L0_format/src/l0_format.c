@@ -777,8 +777,8 @@ static int process_file (const Process_Method_Table_Type *tbl, const TPInfo_Type
    if (NULL == (pmt = find_process_method (tbl, filetype)))
      return -1;
 
+   tell_vinfo (1, "processing: %s", file);
    status = pmt->pmt_process (pmt, tpinfo, file, &ctrl->iru_interval);
-   if (status == 0) tell_vinfo (1, "processed: %s", file);
 
    /* Complain when logging fails, but don't stop processing */
    (void) log_processed_file (ctrl->log_incoming, file, st.st_mtim.tv_sec, status);
@@ -828,8 +828,8 @@ static int process_live_stream_dir_files (const Process_Method_Table_Type *tbl,
    return 0;
 }
 
-static int flush_caches (const Process_Method_Table_Type *tbl,
-                         const TPInfo_Type *tpinfo)
+static int flush_caches (const Process_Method_Table_Type *tbl, const TPInfo_Type *tpinfo,
+                         int unwind, const char *incoming_dir)
 {
    Process_Method_Type *pmt;
    int num_failed = 0;
@@ -839,7 +839,7 @@ static int flush_caches (const Process_Method_Table_Type *tbl,
         pmt = tbl->method;
         if (pmt->pmt_flush_cache)
           {
-             if (0 != pmt->pmt_flush_cache (pmt, tpinfo))
+             if (0 != pmt->pmt_flush_cache (pmt, tpinfo, unwind, incoming_dir))
                num_failed++;
           }
      }
@@ -917,7 +917,7 @@ static int maybe_flush_exprec_cache (const TPInfo_Type *tpinfo, Control_Type *ct
    tell_vinfo (0, "flush exprec cache (first_packet_time - last_erec_time = %0.3f sec > cache_flush_exprec_wait_secs = %0.3f sec)",
                age_secs, ctrl->cache_flush_exprec_wait_secs);
 
-   return pmt->pmt_flush_cache (pmt, tpinfo);
+   return pmt->pmt_flush_cache (pmt, tpinfo, 0, NULL);
 }
 
 #define PROCESS_METHOD(filetype,init,callback) {filetype,NULL,init,callback}
@@ -1026,17 +1026,11 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
 {
    IOCLib_Glob_Type *gt = NULL;
    char *pattern = NULL;
+   int received_signal;
    int status = -1;
 
    pattern = ioclib_pathconcat (ctrl->incoming_dir,
                                 ctrl->input_filename_glob_pattern);
-
-   tell_vinfo (0, "processing %s", pattern);
-   if (ctrl->start_time > 0)
-     {
-        tell_vinfo (0, "start time = %f sec since the epoch", ctrl->start_time);
-     }
-
    if (NULL == pattern)
      {
         tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed",
@@ -1044,7 +1038,13 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
         return -1;
      }
 
-   while (0 == caught_signal())
+   tell_vinfo (0, "processing %s", pattern);
+   if (ctrl->start_time > 0)
+     {
+        tell_vinfo (0, "start time = %f sec since the epoch", ctrl->start_time);
+     }
+
+   while (0 == (received_signal = caught_signal()))
      {
         ioclib_glob_free (gt);
         gt = NULL;
@@ -1063,11 +1063,11 @@ static int process_live_stream (Process_Method_Table_Type *tbl,
         (void) ioclib_sleep (ctrl->monitor_wait_secs);
      }
 
-   if (caught_signal())
+   if (received_signal != 0)
      log_caught_signal();
 
    tell_vinfo (0, "flush caches on exit");
-   if (0 != flush_caches (tbl, tpinfo))
+   if (0 != flush_caches (tbl, tpinfo, received_signal, ctrl->incoming_dir))
      goto return_status;
    if (0 != flush_iru_coverage_for_inr (&ctrl->iru_interval))
      goto return_status;
@@ -1118,6 +1118,7 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
              if (caught_signal())
                {
                   log_caught_signal();
+                  status = 0;
                   goto return_status;
                }
 
@@ -1158,6 +1159,8 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
                                const TPInfo_Type *tpinfo, Control_Type *ctrl,
                                const char *cache_dir_arg)
 {
+   int received_signal = 0;
+
    if (*cache_dir_arg != '@')
      {
         if (0 != process_cache_dir_pattern (tbl, tpinfo, ctrl, cache_dir_arg))
@@ -1179,6 +1182,9 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
              char *newline;
              char buf[1024];
 
+             if (0 != (received_signal = caught_signal()))
+               break;
+
              if (NULL == fgets (buf, sizeof(buf), fp))
                break;
              /* Assume no leading whitespace, no line-breaks within regex,
@@ -1198,7 +1204,8 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
      }
 
    tell_vinfo (0, "flush caches on exit");
-   if (0 != flush_caches (tbl, tpinfo))
+   /* If processing was interrupted, we may want to delete an incomplete image granule */
+   if (0 != flush_caches (tbl, tpinfo, received_signal, NULL))
      return -1;
    if (0 != flush_iru_coverage_for_inr (&ctrl->iru_interval))
      return -1;

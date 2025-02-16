@@ -104,9 +104,10 @@ static int close_outfile (Process_Method_Type *pmt)
    return 0;
 }
 
-static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo)
+static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
+                       int unwind, const char *incoming_dir)
 {
-   (void) tpinfo;
+   (void) tpinfo; (void) unwind; (void) incoming_dir;
    return close_outfile (pmt);
 }
 
@@ -625,6 +626,7 @@ static void delete_tpsec (Process_Method_Type *pmt)
    ioclib_free (pmt->out_basename);
    FREE(pmt->out_dirname);
    FREE(pmt->archdir_path);
+   elt_close (pmt->enum_lookup);
    FREE(pmt);
 }
 
