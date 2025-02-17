@@ -103,6 +103,14 @@ date --date "$target_time today" +%s > $tstamp_file
 log_path="$root_work_dir/log.$(date +%s).txt"
 inr_qa_check.sh $date_ymd $root_work_dir > $log_path 2>&1
 
+# Examine log and report any failures
+num_fail=$(grep -iwc noncompliant $log_path)
+if test $num_fail -gt 0 ; then
+   num_ok=$(grep -iwc compliant $log_path)
+   num_ind=$(grep -iwc indeterminate $log_path)
+   echo "$PGMNAME: WARNING: INR quality check: $date_ymd scans: fail:$num_fail ok:$num_ok indeterminate:$num_ind"
+fi
+
 tar_path=$(find $root_work_dir -maxdepth 1 -name "${tar_prefix}?????.tar" -mtime -5)
 if ! test -f $tar_path ; then
    exit 0
