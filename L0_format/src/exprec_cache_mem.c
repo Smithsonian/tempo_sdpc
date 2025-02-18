@@ -21,7 +21,6 @@ struct Exprec_Rec_Type
 {
    Exprec_Rec_Type *next;
    char *file;
-   size_t file_index;
 };
 
 #define EXPREC_CACHE_METHOD_PRIVATE_DATA \
@@ -47,7 +46,7 @@ static void free_rec_list (Exprec_Rec_Type *rec)
      }
 }
 
-static Exprec_Rec_Type *new_rec (const char *file, size_t file_index)
+static Exprec_Rec_Type *new_rec (const char *file)
 {
    Exprec_Rec_Type *rec = NULL;
    if (NULL == (rec = (Exprec_Rec_Type *)MALLOC (sizeof *rec)))
@@ -56,8 +55,6 @@ static Exprec_Rec_Type *new_rec (const char *file, size_t file_index)
         return NULL;
      }
    memset ((char *)rec, 0, sizeof *rec);
-
-   rec->file_index = file_index;
 
    if (NULL == (rec->file = strdup (file)))
      {
@@ -82,17 +79,17 @@ static int append_rec (Exprec_Rec_Type *head, Exprec_Rec_Type *rec)
           }
      }
 
-   tell_verror (TELL_RUNTIME_ERROR, "%s: appending exposure record: file_index=%ld %s",
-                __func__, rec->file_index, rec->file);
+   tell_verror (TELL_RUNTIME_ERROR, "%s: appending exposure record: %s",
+                __func__, rec->file);
 
    return -1;
 }
 
-static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t file_index)
+static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file)
 {
    Exprec_Rec_Type *rec = NULL;
 
-   if (NULL == (rec = new_rec (file, file_index)))
+   if (NULL == (rec = new_rec (file)))
      return -1;
 
    /* append new record to the end of the queue */
@@ -108,7 +105,7 @@ static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t f
 
    cmt->num_erecs_cached++;
 
-   tell_vinfo (2, "cached erec: %ld file_index=%ld %s", cmt->num_erecs_cached, file_index, file);
+   tell_vinfo (2, "cached erec: %ld %s", cmt->num_erecs_cached, file);
 
    return 0;
 }
@@ -147,7 +144,6 @@ static IOCSDPC_Exprec_Type *open_erec (Exprec_Rec_Type *rec)
 {
    IOCSDPC_Common_Header_Type chdr = {0};
    IOCSDPC_Exprec_Type *erec = NULL;
-   size_t k;
    int fd;
 
    if (-1 == (fd = iocsdpc_open_file_read (rec->file, 0, &chdr)))
@@ -163,17 +159,6 @@ static IOCSDPC_Exprec_Type *open_erec (Exprec_Rec_Type *rec)
         return NULL;
      }
 
-   if (rec->file_index == 0)
-     return erec;
-
-   for (k = 1; /* until EOF */ ; k++)
-     {
-        if (1 != iocsdpc_exprec_open_next (erec))
-          return NULL;
-        if (k == rec->file_index)
-          break;
-     }
-
    return erec;
 }
 
@@ -185,7 +170,7 @@ static IOCSDPC_Exprec_Type *cache_erec_get (Exprec_Cache_Method_Type *cmt)
    if (NULL == rec)
      return NULL;
 
-   tell_vinfo (3, "get cached erec: file_index=%ld %s", rec->file_index, rec->file);
+   tell_vinfo (3, "get cached erec: %s", rec->file);
 
    return open_erec (rec);
 }
@@ -224,7 +209,7 @@ static int cache_erec_bad (Exprec_Cache_Method_Type *cmt)
    if (NULL == rec)
      return -1;
 
-   tell_vinfo (0, "bad exposure record: file=%s file_index=%ld", rec->file, rec->file_index);
+   tell_vinfo (0, "bad exposure record: file=%s", rec->file);
    delete_front (cmt);
 
    return 0;

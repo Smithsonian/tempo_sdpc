@@ -6,10 +6,10 @@
 
 typedef struct Exprec_Cache_Method_Type Exprec_Cache_Method_Type;
 
-/* Cache implements a FIFO queue of records of the form (file, file_index) */
+/* Cache implements a FIFO queue of records */
 struct Exprec_Cache_Method_Type
 {
-   int (*cache_erec)(Exprec_Cache_Method_Type *, const char *, size_t);
+   int (*cache_erec)(Exprec_Cache_Method_Type *, const char *);
    /**< Append a record to the end of the queue */
 
    int (*cache_num_recs)(Exprec_Cache_Method_Type *, size_t *);

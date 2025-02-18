@@ -895,7 +895,7 @@ static int flush_cache (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 static int process_exprec1 (Process_Method_Type *pmt,
                             const TPInfo_Type *tpinfo,
                             const Exprec_Info_Type *exprec_info,
-                            const char *file, size_t exprec_index)
+                            const char *file)
 {
    Exprec_Cache_Method_Type *cmt = pmt->cache_method;
    int is_radiance, is_new_type, is_radiance_new_scan, is_last;
@@ -935,7 +935,7 @@ static int process_exprec1 (Process_Method_Type *pmt,
 
    pmt->exprec_type = exprec_info->exprec_type;
    pmt->img_data_source = exprec_info->img_data_source;
-   if (0 != cmt->cache_erec (cmt, file, exprec_index))
+   if (0 != cmt->cache_erec (cmt, file))
      return -1;
    pmt->last_erec_cached_timestamp = exprec_info->image_end_time;
 
@@ -986,8 +986,8 @@ static int process_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
 {
    IOCSDPC_Common_Header_Type chdr = {0};
    IOCSDPC_Exprec_Type *erec = NULL;
-   size_t exprec_index;
-   int fd, status;
+   Exprec_Info_Type exprec_info = {0};
+   int fd, status = -1;
 
    if (-1 == (fd = iocsdpc_open_file_read (file, 0, &chdr)))
      return -1;
@@ -997,37 +997,25 @@ static int process_exprec (Process_Method_Type *pmt, const TPInfo_Type *tpinfo,
         return -1;
      }
 
-   for (exprec_index=0; /* until EOF */ ;exprec_index++)
+   if (0 != classify_erec (erec, &exprec_info))
      {
-        Exprec_Info_Type exprec_info = {0};
-
-        if (0 != classify_erec (erec, &exprec_info))
-          {
-             tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: classifying exposure record: %s",
-                        __func__, file);
-             goto return_status;
-          }
-
-        if (0 != process_exprec1 (pmt, tpinfo, &exprec_info, file, exprec_index))
-          goto return_status;
-
-        if (pmt->pmt_post_process_callback != NULL)
-          {
-             if (0 != pmt->pmt_post_process_callback (pmt, client_data))
-               goto return_status;
-          }
-
-        /* status=1  => have next record
-         * status=0  => EOF
-         * status=-1 => error occurred
-         */
-        if (1 != (status = iocsdpc_exprec_open_next (erec)))
-          break;
+        tell_vlog (TELL_MSGTYPE_ERROR, 0, "%s: classifying exposure record: %s",
+                   __func__, file);
+        goto return_status;
      }
 
+   if (0 != process_exprec1 (pmt, tpinfo, &exprec_info, file))
+     goto return_status;
+
+   if (pmt->pmt_post_process_callback != NULL)
+     {
+        if (0 != pmt->pmt_post_process_callback (pmt, client_data))
+          goto return_status;
+     }
+
+   status = 0;
 return_status:
    iocsdpc_exprec_close (erec);
-
    return status;
 }
 

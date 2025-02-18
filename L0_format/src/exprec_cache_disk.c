@@ -65,12 +65,9 @@ static int move_dirfiles_to_dir (const char *srcdir, const char *destdir, int ve
    return 0;
 }
 
-static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file, size_t file_index)
+static int cache_erec (Exprec_Cache_Method_Type *cmt, const char *file)
 {
    int status;
-
-   /* For this method, we assume all files have 1 erec, so file_index==0, always */
-   (void) file_index;
 
    if (0 == (status = move_file_to_dir (file, cmt->cache_dirname)))
      {
