@@ -118,7 +118,7 @@ class Signal_Catcher:
 def emit_single_telemetry_only (t0, t1, destdir):
     global Epoch
     global Epoch_Timet
-    timestamp = check_output (["ttime", "--epoch", Epoch, "--timestamp", "{}".format(t0)])
+    timestamp = check_output (["sdpc_time", "--epoch", Epoch, "--timestamp", "{}".format(t0)])
     timestamp = timestamp.decode("ascii")
     filename = 'TEMPO_INR_L1_V01_%s.nc' % (timestamp)
     path = os.path.join (destdir, filename)
