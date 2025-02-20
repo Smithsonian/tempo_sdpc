@@ -14,7 +14,7 @@ check-plan-std:
 	@printf "Checking plan: scan=std\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) $(PLAN_EXEC) --config "plan_opt1_panhandle_4.cfg" \
-	     --epoch $(EPOCH) --mark-scan-seq-start \
+	     --epoch $(EPOCH) \
 	     --maneuver "tempo_d15479m53112000u000_r0_maneuver.csv" \
 	     --date 2022-05-27 --ndays 14 \
 	     --scan std \
@@ -27,7 +27,7 @@ check-plan-opt1:
 	@printf "Checking plan: scan=opt1\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) $(PLAN_EXEC) --config "plan_opt1_panhandle_4.cfg" \
-	     --epoch $(EPOCH) --mark-scan-seq-start \
+	     --epoch $(EPOCH) \
 	     --maneuver "tempo_d15479m53112000u000_r0_maneuver.csv" \
 	     --date 2022-05-27 --ndays 14 \
 	     --scan opt1 \
@@ -40,7 +40,7 @@ check-plan-opt1-hour:
 	@printf "Checking plan: scan=opt1 start on the hour\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) $(PLAN_EXEC) --config "plan_opt1_hourly.cfg" \
-	     --epoch $(EPOCH) --mark-scan-seq-start \
+	     --epoch $(EPOCH) \
 	     --maneuver "tempo_d15479m53112000u000_r0_maneuver.csv" \
 	     --date 2022-05-27 --ndays 14 --hour "0;1" \
 	     --scan opt1 \
@@ -53,7 +53,7 @@ check-plan-split-opt1-cbm:
 	@printf "Checking plan: scan=split-opt1 with custom CBM\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) $(PLAN_EXEC) --config "plan_opt1_panhandle_4.cfg" \
-	     --epoch $(EPOCH) --mark-scan-seq-start \
+	     --epoch $(EPOCH) \
 	     --maneuver "tempo_d15479m53112000u000_r0_maneuver.csv" \
 	     --date 2022-05-27 --ndays 14 \
 	     --scan split-opt1-Panhandle-4 \
@@ -66,7 +66,7 @@ check-plan-twilight:
 	@printf "Checking plan: scan=opt1 + twilight\n"
 	@source ../../pipe/etc/sdpc_env.sh && \
 	$(DEBUG) $(PLAN_EXEC) --config "plan_citylights.cfg" \
-	     --epoch $(EPOCH) --mark-scan-seq-start \
+	     --epoch $(EPOCH) \
 	     --maneuver "tempo_d15682m00018000u000_r0_maneuver.csv" \
 	     --date 2022-12-15 --ndays 14 \
 	     --scan opt1 --nightlights \

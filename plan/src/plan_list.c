@@ -117,7 +117,7 @@ static double mirror_tilt (double azimuth)
 
 #define TIME_BUFSIZE 32
 
-int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head)
+int plan_list_write (FILE *fp, const Plan_List_Type *head)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
@@ -125,7 +125,7 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
    double unix_epoch_jd;
    double previous_entry_tstop_tai, previous_entry_jd_utc_end;
    uint16_t scan_num;
-   int num_scan_csm, num_days, scan_num_to_inr;
+   int num_scan_csm, num_days;
 
    unix_epoch_jd = novas_julian_date (1970,1,1,0.0);
 
@@ -141,13 +141,12 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
    scan_num = 1;
    num_scan_csm = 0;
    num_days = 0;
-   scan_num_to_inr = 0;
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
         double tstart_utc, tstart_tai, fsw_xstart;
         char buf[TIME_BUFSIZE];
-        int is_twilight = (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS);
+        /* int is_twilight = (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS); */
         int new_day = (previous_entry_jd_utc_end < entry->tstart);
         int i, num_scans;
 
@@ -178,7 +177,6 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
         if (new_day)
           {
              scan_num = 1;       /* <- WARNING: Don't change the scan numbering! */
-             scan_num_to_inr = 0;
              num_days++;
           }
 
@@ -193,14 +191,12 @@ int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *he
              if (0 != mkjdtimestr (tstart_jd, buf, sizeof(buf)))
                return -1;
 
-             /* mark only the first scan of each new sequence destined for INR */
-             if (is_twilight == 0) scan_num_to_inr++;
-             if (((scan_num_to_inr == 1) || (entry->post_maneuver != 0))
-                 && (i == 0) && (mark_scan_seq_start != 0))
+             scan_type = entry->scan_type;
+
+             if ((entry->perform_inr_restart != 0) && (i == 0))
                {
-                  scan_type = entry->scan_type | TEMPO_SCAN_TYPE_SCAN_SEQ_START;
+                  scan_type |= TEMPO_SCAN_TYPE_SCAN_SEQ_START;
                }
-             else scan_type = entry->scan_type;
 
              if (0 != tio_make_scan_label (&scan_label, scan_type, scan_num))
                return -1;

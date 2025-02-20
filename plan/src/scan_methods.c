@@ -657,6 +657,13 @@ twilight_dusk_plan (const Scan_Type *st, Solar_Geom_Type *solar_geom,
    entry->integration_time = tst->tst_twilight_integration_time (tst, region_id);
    entry->num_repeats = num_repeats;
 
+   /* Geolocation of evening city lights scans sometimes fails for reasons that
+    * aren't understood.  Performing an explicit INR restart avoids this problem.
+    * Therefore, we always perform an explicit INR restart before processing
+    * evening city lights scans.
+    */
+   entry->perform_inr_restart = 1;
+
    entry->jd_utc_beg_safe = limit_times->jd_utc_beg_safe;
    entry->jd_utc_end_safe = limit_times->jd_utc_end_safe;
 

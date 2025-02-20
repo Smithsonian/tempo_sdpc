@@ -25,6 +25,7 @@ struct Plan_List_Type
    int num_repeats;          /**< number of times to repeat this scan (or cbm) */
    int num_repeats_cbm;      /**< >0 indicates instrument should use a cbm to perform blocks of num_repeats_cbm scans */
    int post_maneuver;        /**< labels the first post-maneuver scan sequence */
+   int perform_inr_restart;  /**< perform INR restart before processing these scans */
    int region_id;            /**< support referencing different spatial regions within a single scan type (e.g. twilight scan east/west regions) */
    uint16_t scan_type;       /**< scan type value */
 };
@@ -78,13 +79,11 @@ extern int plan_stats_set_scan_times (Plan_Stats_Type *stats, const Plan_List_Ty
 
 /** Write plan list parameters to an ASCII file.
  * @param[in]  fp     Initialized FILE pointer for the destination file
- * @param[in]  mark_scan_seq_start  When non-zero, scan labels will have
- *                                  the scan_seq_start bit set
  * @param[in]  head  The head of a plan list.
  * @param[in]  stats  The head of a Plan_Stats_Type list (NULL is ok)
  * @return 0 on success, -1 on error.
 */
-extern int plan_list_write (FILE *fp, int mark_scan_seq_start, const Plan_List_Type *head);
+extern int plan_list_write (FILE *fp, const Plan_List_Type *head);
 
 extern int plan_stats_write (const Plan_Stats_Type *stats, double min_sun_angle, const char *filename);
 
