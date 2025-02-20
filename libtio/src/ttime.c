@@ -28,14 +28,12 @@ static void usage (void)
 {
    int sc_timezone_default;
    (void) _pTIO_get_sc_timezone (&sc_timezone_default);
-   fprintf (stderr, "Usage: ttime -s SECONDS\n");
-   fprintf (stderr, "   or: ttime -u YYYY-MM-DDTHH:MM:SS.SSSZ\n");
-   fprintf (stderr, "   or: ttime -i dDDDDDmMMMMMMMMuUUU\n");
+   fprintf (stderr, "Usage: ttime <TAI seconds since epoch>\n");
+   fprintf (stderr, "   or: ttime YYYY-MM-DDTHH:MM:SS.SSSZ\n");
+   fprintf (stderr, "   or: ttime YYYYMMDDTHHMMSS.SSSZ\n");
+   fprintf (stderr, "   or: ttime dDDDDDmMMMMMMMMuUUU\n");
    fprintf (stderr, "   or: ttime -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
-   fprintf (stderr, "  -s | --sec SECONDS  Convert TAI seconds since epoch to UTC timestamp string\n");
-   fprintf (stderr, "  -u | --utc TSTAMP   Convert UTC timestamp string to TAI seconds since epoch\n");
-   fprintf (stderr, "  -i | --ioc TSTAMP   Convert IOC timestamp string to TAI seconds since epoch\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
    fprintf (stderr, "  -z | --zone h       Spacecraft local time-zone offset from UTC. Must be in range [-12,12].\n");
@@ -45,7 +43,7 @@ static void usage (void)
    fprintf (stderr, "  -g | --grp PATH     File group containing time variable [default: /]\n");
    fprintf (stderr, "  -v | --var VARNAME  Name of time variable [default: /time]\n");
    fprintf (stderr, "  -w | --write        Write time_reference timestamp to netcdf4/HDF5 file header\n");
-   fprintf (stderr, "  -T | --timestamp SECONDS  Generate a UTC timestamp for a TEMPO filename\n");
+   fprintf (stderr, "  -T | --timestamp    Generate a UTC timestamp for a TEMPO filename\n");
    fprintf (stderr, "  ISO-8601 UTC timestamp format: YYYY-MM-DDTHH:MM:SSZ or YYYYMMDDTHHMMSSZ\n");
    exit (EXIT_SUCCESS);
 }
@@ -289,8 +287,6 @@ int main (int argc, char **argv)
 {
    static struct option long_options[] =
      {
-        {"utc",   required_argument, 0, 'u'},
-        {"sec",   required_argument, 0, 's'},
         {"day",   required_argument, 0, 'd'},
         {"write", no_argument,       0, 'w'},
         {"epoch", required_argument, 0, 'e'},
@@ -298,11 +294,10 @@ int main (int argc, char **argv)
         {"fix",   required_argument, 0, 'f'},
         {"grp",   required_argument, 0, 'g'},
         {"var",   required_argument, 0, 'v'},
-        {"timestamp", required_argument, 0, 'T'},
+        {"timestamp", no_argument,   0, 'T'},
         {0,0,0,0}
      };
-   const char *utc_string = NULL;
-   const char *ioc_string = NULL;
+   const char *timestamp_string = NULL;
    const char *epoch_string = EPOCH_DEFAULT;
    const char *path = NULL;
    const char *grp = "/";
@@ -318,13 +313,13 @@ int main (int argc, char **argv)
    int have_utc_string = 0;
    int have_ioc_string = 0;
 
-   if (argc < 3)
+   if (argc < 2)
      usage();
 
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "wd:e:f:g:i:s:T:u:v:z:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "wd:e:f:g:Tv:z:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -359,33 +354,31 @@ int main (int argc, char **argv)
 		  exit(1);
 	       }
              break;
-           case 's':
-	     task = TASK_PRINT_TIMES;
-	     if (1 != sscanf (optarg, "%le", &taix))
-	       {
-		  fprintf (stderr, "*** Error: setting elapsed seconds since the epoch\n");
-		  exit(1);
-	       }
-             break;
            case 'T':
 	     task = TASK_PRINT_TIMESTAMP;
-	     if (1 != sscanf (optarg, "%le", &taix))
-	       {
-		  fprintf (stderr, "*** Error: setting elapsed seconds since the epoch\n");
-		  exit(1);
-	       }
-             break;
-           case 'u':
-	     task = TASK_PRINT_TIMES;
-	     utc_string = optarg;
-             have_utc_string = 1;
-             break;
-           case 'i':
-	     task = TASK_PRINT_TIMES;
-	     ioc_string = optarg;
-             have_ioc_string = 1;
              break;
           }
+     }
+
+   if ((optind == argc) && (task != TASK_FIX_FILE))
+     usage();
+   else
+     {
+        int len;
+
+        timestamp_string = argv[optind++];
+        len = strlen (timestamp_string);
+
+        if (timestamp_string[len-1] == 'Z')
+          have_utc_string = 1;
+        else if (timestamp_string[0] == 'd')
+          have_ioc_string = 1;
+        else if (1 != sscanf (timestamp_string, "%le", &taix))
+          {
+             fprintf (stderr, "*** Error: invalid timestamp string: %s\n", timestamp_string);
+             exit(1);
+          }
+        if (task == TASK_UNKNOWN) task = TASK_PRINT_TIMES;
      }
 
    if (sc_timezone != INT_MAX)
@@ -410,12 +403,12 @@ int main (int argc, char **argv)
 
    if (have_utc_string)
      {
-        if (0 != convert_utc_string_to_taix (utc_string, &taix))
+        if (0 != convert_utc_string_to_taix (timestamp_string, &taix))
           goto error_return;
      }
    else if (have_ioc_string)
      {
-        if (0 != convert_ioc_string_to_taix (ioc_string, &taix))
+        if (0 != convert_ioc_string_to_taix (timestamp_string, &taix))
           goto error_return;
      }
 
