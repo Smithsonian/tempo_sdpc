@@ -3,7 +3,7 @@
 include ../../Makefile.defines
 
 THIS_LIB = tio
-EXECUTABLES = mkgranule_name mkgranule_ident level1_info ttime bounding_polygon
+EXECUTABLES = mkgranule_name mkgranule_ident level1_info sdpc_time bounding_polygon
 
 srcdir  = $(config_dir)/lib$(THIS_LIB)/src
 elfdir  = $(srcdir)/$(archobjs)
@@ -208,8 +208,8 @@ level1_info:
 	$(COMPILE_CMD) -o level1_info $(INCS) level1_info.c \
 	     $(TIO_LIBPATHS) -ltio $(LIBS)
 
-ttime:
-	$(COMPILE_CMD) -o ttime $(INCS) ttime.c \
+sdpc_time:
+	$(COMPILE_CMD) -o sdpc_time $(INCS) sdpc_time.c \
 	     $(TIO_LIBPATHS) -ltio $(LIBS) -lm
 
 bounding_polygon:

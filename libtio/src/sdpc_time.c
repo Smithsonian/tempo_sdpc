@@ -28,11 +28,11 @@ static void usage (void)
 {
    int sc_timezone_default;
    (void) _pTIO_get_sc_timezone (&sc_timezone_default);
-   fprintf (stderr, "Usage: ttime <TAI seconds since epoch>\n");
-   fprintf (stderr, "   or: ttime YYYY-MM-DDTHH:MM:SS.SSSZ\n");
-   fprintf (stderr, "   or: ttime YYYYMMDDTHHMMSS.SSSZ\n");
-   fprintf (stderr, "   or: ttime dDDDDDmMMMMMMMMuUUU\n");
-   fprintf (stderr, "   or: ttime -f FILE [-g PATH] [-v VARNAME]\n");
+   fprintf (stderr, "Usage: sdpc_time <TAI seconds since epoch>\n");
+   fprintf (stderr, "   or: sdpc_time YYYY-MM-DDTHH:MM:SS.SSSZ\n");
+   fprintf (stderr, "   or: sdpc_time YYYYMMDDTHHMMSS.SSSZ\n");
+   fprintf (stderr, "   or: sdpc_time dDDDDDmMMMMMMMMuUUU\n");
+   fprintf (stderr, "   or: sdpc_time -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
    fprintf (stderr, "                      [default: %s]\n", EPOCH_DEFAULT);
