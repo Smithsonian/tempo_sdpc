@@ -15,6 +15,6 @@ update_interval=$(config_setting asdc.update_interval)
 export SDPC_ASDC_LIMIT=$(config_setting asdc.max_num_files)
 
 # boto3 environment variable gives path to AWS config file
-export AWS_CONFIG_FILE="$HOME/.ssh/asdc_aws_config"
+export AWS_CONFIG_FILE=$(config_setting asdc.aws_config_file)
 
 exec ${SDPC_ROOT}/bin/asdc_transfer.py --wait $update_interval --bucket $bucket $dropbox
