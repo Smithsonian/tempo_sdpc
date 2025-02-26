@@ -189,7 +189,7 @@ run_inr_post()
 
    # If the $input_files entry in the RAD_L1 .met file hasn't
    # been expanded yet, expand it here.
-   fixup_radl1_inputfiles.py $radiance_file
+   fix_radl1_metadata.py $radiance_file
 
    (tar_l1_radiance_to_dest "$l1_out_dir")
 }

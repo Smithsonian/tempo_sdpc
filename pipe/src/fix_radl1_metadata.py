@@ -31,8 +31,12 @@ def main ():
 
     metfile = args.radiance_file + ".met"
 
-    with NetCDFFile(args.radiance_file, "r") as nc:
+    local_granule_id = os.path.basename (args.radiance_file)
+
+    with NetCDFFile(args.radiance_file, "r+") as nc:
         input_files = nc.getncattr ("input_files")
+        # ensure local_granule_id matches actual filename
+        nc.setncattr ("local_granule_id", local_granule_id)
 
     fix_input_files_entry (metfile, input_files)
 
