@@ -316,8 +316,8 @@ drift_v3=0
 # Random walk coefficients allocated to Kalman Filter states for process noise
 # Units are per root(second) or radians/root(second)
 randomWalkCoefficient_roll=1.111e-7
-randomWalkCoefficient_pitch=1.111e-7
-randomWalkCoefficient_yaw=1.111e-7
+randomWalkCoefficient_pitch=5.555e-6
+randomWalkCoefficient_yaw=5.555e-6
 randomWalkCoefficient_mag=0
 randomWalkCoefficient_misalign=0
 randomWalkCoefficient_smile=0
