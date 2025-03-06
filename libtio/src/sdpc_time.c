@@ -3,6 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <time.h>
+#include <sys/time.h>
 #include <math.h>
 #include <limits.h>
 
@@ -32,6 +33,7 @@ static void usage (void)
    fprintf (stderr, "   or: sdpc_time YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: sdpc_time YYYYMMDDTHHMMSS.SSSZ\n");
    fprintf (stderr, "   or: sdpc_time dDDDDDmMMMMMMMMuUUU\n");
+   fprintf (stderr, "   or: sdpc_time now\n");
    fprintf (stderr, "   or: sdpc_time -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
    fprintf (stderr, "  -e | --epoch TSTAMP Epoch defined as an ISO-8601 UTC timestamp string\n");
@@ -312,6 +314,7 @@ int main (int argc, char **argv)
    int utc_day;
    int have_utc_string = 0;
    int have_ioc_string = 0;
+   int have_now = 0;
 
    if (argc < 2)
      usage();
@@ -373,6 +376,8 @@ int main (int argc, char **argv)
           have_utc_string = 1;
         else if (timestamp_string[0] == 'd')
           have_ioc_string = 1;
+        else if (0 == strcmp (timestamp_string, "now"))
+          have_now = 1;
         else if (1 != sscanf (timestamp_string, "%le", &taix))
           {
              fprintf (stderr, "*** Error: invalid timestamp string: %s\n", timestamp_string);
@@ -409,6 +414,19 @@ int main (int argc, char **argv)
    else if (have_ioc_string)
      {
         if (0 != convert_ioc_string_to_taix (timestamp_string, &taix))
+          goto error_return;
+     }
+   else if (have_now)
+     {
+        struct timeval tv = {0};
+        double utc_time;
+        if (0 != gettimeofday (&tv, NULL))
+          {
+             fprintf (stderr, "*** Error: gettimeofday failed\n");
+             goto error_return;
+          }
+        utc_time = tv.tv_sec + tv.tv_usec / 1.e6;
+        if (0 != tio_time_utc_to_taix (utc_time, &taix))
           goto error_return;
      }
 
