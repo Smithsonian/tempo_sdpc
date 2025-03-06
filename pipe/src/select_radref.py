@@ -167,10 +167,16 @@ def main():
         db_path = args.dbfile
 
     rad_basename = os.path.basename (args.radiance_file)
-    if "_NRT_" in rad_basename:
-        rad_basename = rad_basename.replace ("_NRT", "")
 
-    with connect_database (db_path) as conn:
+    if "_NRT_" in rad_basename:
+        db_rad_path = os.getenv ("SDPC_ARCHIVE_DBFILE_NRT")
+        if db_rad_path == None:
+            eprint ('*** Error: SDPC_ARCHIVE_DBFILE_NRT is not set')
+            sys.exit(1)
+    else:
+        db_rad_path = db_path
+
+    with connect_database (db_rad_path) as conn:
         radiance_path = lookup_radiance_path (conn.cursor(), rad_basename)
 
     if radiance_path is None:
