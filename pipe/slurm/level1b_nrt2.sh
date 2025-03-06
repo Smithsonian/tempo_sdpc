@@ -79,17 +79,26 @@ granule_dir=$(dirname "$rad_path")
 
 solcal_file_list="$granule_dir/${rad_basename}.solcal"
 # When solar wavelength calilbration caching is enabled,
-# generate a list of available cached files
+# generate a list of available cached files.
+# Complain if any solcal file is missing when solcal caching is enabled.
 if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
    product_list="$(echo $SDPC_SOLCAL_CACHE_PRODUCTS | tr -s , ' ')"
    if test x"$product_list" != x ; then
       truncate -s 0 $solcal_file_list
+      missing_solcal_file=0
       for molecule in $product_list ; do
           solcal_path=$(select_irrcal.py --molecule $molecule $irr_file)
-          if test -n $solcal_path ; then
+          if test -f "$solcal_path" ; then
              echo $solcal_path >> $solcal_file_list
+          else
+             log_message "WARNING: no $molecule solcal file for: $irr_file"
+             missing_solcal_file=1
           fi
       done
+      if test $missing_solcal_file -ne 0 ; then
+         log_message "WARNING: level1b_nrt2_batch not submitted: $SDPC_GRANULE_LABEL"
+         exit 0
+      fi
    fi
 fi
 

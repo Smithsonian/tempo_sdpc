@@ -53,7 +53,14 @@ if test $nrt_enable_feed -ne 0 ; then
       mkdir -p $pass2_dir
    fi
    basename_sans_dot=$(basename "$rad_path" | sed -e s"/^[.]//")
-   ln $rad_path $pass2_dir/$basename_sans_dot
+   # Don't deliver RADT files to the NRT pipeline - only _RAD_ files.
+   case "$basename_sans_dot" in
+      *_RAD_* )
+        ln $rad_path $pass2_dir/$basename_sans_dot
+        ;;
+      * )
+        ;;
+   esac
 fi
 
 # SDPC_NODE_DIR need not exist on this machine at this point.

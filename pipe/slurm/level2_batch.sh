@@ -117,7 +117,7 @@ assign_solcal_cache_file()
 
   if test -s $solcal_file_list ; then
      path=$(grep "_IRR${molecule}_" $solcal_file_list)
-     if test -n "$path" ; then
+     if test -f "$path" ; then
         printf "$path\n" > "$dir/$solcal_file_list"
      fi
   fi
