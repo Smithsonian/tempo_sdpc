@@ -52,7 +52,6 @@ def select_matching_radref (c, window_days, window_hours, minwidth, thisscan, in
     sec_per_day = 86400.0
     sec_per_hour = 3600.0
     tx = info["tmid"]
-    htx = tx % sec_per_day
     tmax = window_days * sec_per_day + window_hours * sec_per_hour;
 
     if thisscan:
@@ -63,12 +62,12 @@ def select_matching_radref (c, window_days, window_hours, minwidth, thisscan, in
         t1 = tx-tmax
         t2 = tx-sec_per_day
         subst = {'beg':min(t1,t2), 'end':max(t1,t2), 'minwidth':minwidth,
-                 'tx':tx, 'htx':htx, 'window_days':window_days, 'window_hours':window_hours}
+                 'tx':tx, 'window_days':window_days, 'window_hours':window_hours}
         cmd = """
               with cte as (
               select path,
-                     abs(:tx - tstart)/86400.0 as day_diff,
-                     abs(:htx - tstart%86400)/3600.0 as hr_diff
+                      abs(:tx - tstart)/86400.0 as day_diff,
+                     (abs(:tx - tstart)%86400)/3600.0 as hr_diff
               from RADREF_L1
               where tstart between :beg and :end and num_mirror_pos >= :minwidth
               )
