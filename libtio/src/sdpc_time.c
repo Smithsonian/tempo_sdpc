@@ -33,6 +33,7 @@ static void usage (void)
    fprintf (stderr, "   or: sdpc_time YYYY-MM-DDTHH:MM:SS.SSSZ\n");
    fprintf (stderr, "   or: sdpc_time YYYYMMDDTHHMMSS.SSSZ\n");
    fprintf (stderr, "   or: sdpc_time dDDDDDmMMMMMMMMuUUU\n");
+   fprintf (stderr, "   or: sdpc_time @<seconds since Unix epoch>\n");
    fprintf (stderr, "   or: sdpc_time now\n");
    fprintf (stderr, "   or: sdpc_time -f FILE [-g PATH] [-v VARNAME]\n");
    fprintf (stderr, "Options:\n");
@@ -305,7 +306,7 @@ int main (int argc, char **argv)
    const char *grp = "/";
    const char *var = "time";
    double taix = 0.0;
-   double flocal_day;
+   double flocal_day, utc_time;
    int exit_status = EXIT_FAILURE;
    int status = -1;
    int write_epoch = 0;
@@ -315,6 +316,7 @@ int main (int argc, char **argv)
    int have_utc_string = 0;
    int have_ioc_string = 0;
    int have_now = 0;
+   int have_timet = 0;
 
    if (argc < 2)
      usage();
@@ -376,6 +378,8 @@ int main (int argc, char **argv)
           have_utc_string = 1;
         else if (timestamp_string[0] == 'd')
           have_ioc_string = 1;
+        else if (timestamp_string[0] == '@')
+          have_timet = 1;
         else if (0 == strcmp (timestamp_string, "now"))
           have_now = 1;
         else if (1 != sscanf (timestamp_string, "%le", &taix))
@@ -419,13 +423,22 @@ int main (int argc, char **argv)
    else if (have_now)
      {
         struct timeval tv = {0};
-        double utc_time;
         if (0 != gettimeofday (&tv, NULL))
           {
              fprintf (stderr, "*** Error: gettimeofday failed\n");
              goto error_return;
           }
         utc_time = tv.tv_sec + tv.tv_usec / 1.e6;
+        if (0 != tio_time_utc_to_taix (utc_time, &taix))
+          goto error_return;
+     }
+   else if (have_timet)
+     {
+        if (1 != sscanf (timestamp_string, "@%le", &utc_time))
+          {
+             fprintf (stderr, "*** Error: invalid timestamp string: %s\n", timestamp_string);
+             goto error_return;
+          }
         if (0 != tio_time_utc_to_taix (utc_time, &taix))
           goto error_return;
      }
