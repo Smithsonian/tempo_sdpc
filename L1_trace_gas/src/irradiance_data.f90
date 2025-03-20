@@ -342,7 +342,9 @@ contains
     !local variables
     integer (kind=4) :: nxtrack, nwavel, i
     real (kind=8), dimension(:,:), allocatable :: spectra, wavelengths
+    real (kind=8), dimension(:), allocatable :: weightsum
     integer (kind=2), dimension(:,:), allocatable :: qflags
+    integer (kind=2), parameter :: bad_pixel = 1
 
     if (errstat /= 0) return
 
@@ -352,7 +354,7 @@ contains
     if (errstat /= 0) return
 
     allocate ( spectra(nwavel,nxtrack), wavelengths(nwavel, nxtrack), &
-         qflags(nwavel, nxtrack), stat=errstat)
+         qflags(nwavel, nxtrack), weightsum(nwavel), stat=errstat)
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, &
            "read_I0_irradiance: allocation error", errstat)
@@ -369,13 +371,18 @@ contains
     ! It is important to normalize the I0_irradiance 
     if (yn_spectrum_norm) then
       do i = 1, Irr_Data%nxtrack
-        Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) = &
+        weightsum = 1.0
+        nwavel = Irr_Data%nwaves(i)
+        where (Irr_Data%qflags(1:nwavel,i) == bad_pixel)
+          weightsum = 0.0
+        endwhere
+        Irr_Data%spectrum(1:nwavel,i) = &
             Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &
-            (SUM(Irr_Data%spectrum(1:Irr_Data%nwaves(i),i)) / REAL(Irr_Data%nwaves(i),kind=8))
+            (SUM(Irr_Data%spectrum(1:nwavel,i)*weightsum(1:nwavel)) / SUM(weightsum(1:nwavel)))
       end do
     endif
 
-    deallocate (spectra, wavelengths, qflags, stat=errstat)
+    deallocate (spectra, wavelengths, qflags, weightsum, stat=errstat)
     if (errstat /= 0) then
       call tell_error (tell_malloc_error, &
            "read_I0_irradiance: deallocation error", errstat)
