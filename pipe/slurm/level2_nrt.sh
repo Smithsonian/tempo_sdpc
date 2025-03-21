@@ -89,27 +89,6 @@ level2_products=${level2_products^^}
 product_list_tokens="$(echo $level2_products | tr , ' ')"
 product_list_sans_o3p="$(echo $product_list_tokens | sed -e s/O3PROF//)"
 
-# case "$product_list_sans_o3p" in
-#    *)
-#     # do nothing
-#     ;;
-#
-#    *HCHO*)
-#      # Support HCHO destriping correction
-#      hcho_destripe_enable=$(config_setting destripe.HCHO.enable)
-#      destripe_file=""
-#      if test $hcho_destripe_enable -ne 0 ; then
-#         hcho_destripe_apply=$(config_setting destripe.HCHO.apply)
-#         hcho_destripe_search=$(config_setting destripe.HCHO.search)
-#         if test $hcho_destripe_apply -ne 0 && test $hcho_destripe_search -ne 0 ; then
-#            # may return empty string if search fails
-#            destripe_file=$(select_destripe.py $rad_filename)
-#         fi
-#      fi
-#      printf "destripe_file=\"$destripe_file\"\n" >> $tar_file_notice
-#      ;;
-# esac
-
 slurm_logdir="$SDPC_PIPE_DIR/log/level2_nrt/slurm"
 
 if test x"$product_list_sans_o3p" != x ; then

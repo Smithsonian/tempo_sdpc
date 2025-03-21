@@ -16,16 +16,11 @@ ulimit -s unlimited
 # 2. When processing ends, remove the processing directory.
 
 radref_file=""
-destripe_file=""
 
 molecule="$1"
 shift
 if test $# -ge 1 ; then
    radref_file="$1"
-   shift
-fi
-if test $# -ge 1 ; then
-   destripe_file="$1"
    shift
 fi
 work_dir="$molecule"
@@ -204,16 +199,6 @@ export PGS_PC_INFO_FILE="$this_pcf_file"
 
 srun --ntasks=1 --exclusive --output=log_${molecule}.txt --job-name=${molecule} \
  L1_trace_gas -tempo -wrt_odl
-
-if test -n "$destripe_file" ; then
-   case "$molecule" in
-         * )
-           ;;
-      HCHO )
-           destripe.py --corrfile $destripe_file $product_file > log_destripe.txt 2>&1
-           ;;
-   esac
-fi
 
 # SDPTK MET routines litter the directory with temporary files
 find . -maxdepth 1 -name "MCFWrite.temp_*" -delete

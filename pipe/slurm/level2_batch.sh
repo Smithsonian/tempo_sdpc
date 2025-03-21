@@ -39,7 +39,6 @@ test -r $tar_file_notice || exit 1
 etc_dir="$SDPC_PIPE_DIR/etc"
 
 radref_file=""
-destripe_file=""
 # tar_file_notice is a short script that defines the variables
 # tar_host = machine with the tar file on its local disk
 # tar_host_file_path = path to the tar file on $tar_host
@@ -158,7 +157,7 @@ for prod in $product_list ; do
   else
      tracegas_log="$slurm_logdir/${rad_basename}.tracegas-${SLURM_JOB_ID}.out"
      assign_solcal_cache_file $prod
-     tracegas.sh $prod $radref_file $destripe_file > $tracegas_log 2>&1 &
+     tracegas.sh $prod $radref_file > $tracegas_log 2>&1 &
   fi
 done
 
