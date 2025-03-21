@@ -155,11 +155,11 @@ if test -s $solcal_file_file ; then
 else
    solcal_cache_mode="none"
    case "$molecule" in
-       * )
-         solcal_source="solar_irradiance"
-         ;;
        HCHO )
          solcal_source="I0_irradiance"
+         ;;
+       * )
+         solcal_source="solar_irradiance"
          ;;
    esac
    solcal_file="none"
