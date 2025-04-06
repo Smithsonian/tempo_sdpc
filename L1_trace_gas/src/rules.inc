@@ -473,6 +473,8 @@ $(ODIR)/irradiance_data.o: $(SDIR)/irradiance_data.f90 \
   $(ODIR)/ctrlvars.o \
   $(ODIR)/l1bread_utils.o \
   $(ODIR)/m_read_gems.o \
+  $(ODIR)/OMSAO_omidata_module.o \
+  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_variables_module.o \
   $(ODIR)/sao_pge_utils.o

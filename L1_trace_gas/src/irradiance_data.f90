@@ -334,6 +334,8 @@ contains
   subroutine read_I0_irradiance (filename, errstat)
 
     use ctrlvars, only: yn_spectrum_norm
+    USE OMSAO_parameters_module, ONLY: downweight, normweight
+    USE OMSAO_omidata_module, ONLY: omi_irradiance_wght
     implicit none
 
     !input variables
@@ -368,6 +370,17 @@ contains
     call package_irradiance_data (nwavel, nxtrack, wavelengths, spectra, &
          qflags, errstat)
 
+    ! Set omi_irradiance_wght values. This is important if reading
+    ! slift calibration parameters since the spectra will not be fitted
+    ! and bad pixels identified. If the I0_irradiance is used for
+    ! slift calibration then omi_irradiance_wght is set later on
+    do i = 1, Irr_Data%nxtrack
+      nwavel = Irr_Data%nwaves(i)
+      where (Irr_Data%qflags(1:nwavel,i) == bad_pixel)
+        omi_irradiance_wght(1:nwavel,i) = downweight
+      endwhere
+    enddo
+
     ! It is important to normalize the I0_irradiance 
     if (yn_spectrum_norm) then
       do i = 1, Irr_Data%nxtrack
@@ -375,6 +388,7 @@ contains
         nwavel = Irr_Data%nwaves(i)
         where (Irr_Data%qflags(1:nwavel,i) == bad_pixel)
           weightsum = 0.0
+          ! Irr_Data%spectrum(1:nwavel,i) = 0.0
         endwhere
         Irr_Data%spectrum(1:nwavel,i) = &
             Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &

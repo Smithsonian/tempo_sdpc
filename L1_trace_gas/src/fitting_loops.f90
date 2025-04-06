@@ -400,7 +400,7 @@ CONTAINS
       omi_o3_amount, omi_o3_uncert, n_omi_radwvl, &
       omi_szenith, n_omi_database_wvl, omi_nwav_rad, &
       omi_radiance_qflg, omi_cross_track_skippix, &
-      omi_solcal_pars, omi_radiance_ccdpix, omi_radref_wght
+      omi_solcal_pars, omi_radiance_ccdpix, omi_irradiance_wght
     USE OMSAO_radiance_ref_module, ONLY: omi_adjust_radiance_data
     USE radiance_fit, ONLY: fit_radiance
 
@@ -537,7 +537,7 @@ CONTAINS
 
       adj_wvls(1:adj_num) = omi_radiance_wavl (1:adj_num, ipix, iloop)
       adj_spec(1:adj_num) = omi_radiance_spec (1:adj_num, ipix, iloop)
-      adj_wgts(1:adj_num) = omi_radref_wght(1:adj_num,ipix)
+      adj_wgts(1:adj_num) = omi_irradiance_wght(1:adj_num,ipix)
 
       select_idx(1:4) = rad_ccdpix_selection(ipix,1:4)
       exclud_idx(1:2) = rad_ccdpix_exclusion(ipix,1:2)
@@ -574,7 +574,6 @@ CONTAINS
         ! to fit_radiance.  I assume the intent was to call fit_radiance
         ! with yn_reference_fit=.false.
         yn_reference_fit = .false.
-
         call tell_log (2, 'xtrack_radiance_fitting_loop: call fit_radiance')
         is_bad_pixel = .FALSE.
         CALL fit_radiance ( &
