@@ -12,6 +12,7 @@ export SDPC_RADIANCE_WAVECAL=$(config_setting level1b.wavecal)
 export SDPC_RADIANCE_WAVECAL_NTASKS=$(config_setting level1b.wavecal_ntasks)
 export SDPC_RADIANCE_POLCORR=$(config_setting level1b.polcorr)
 export SDPC_RADIANCE_POSTINR=$(config_setting level1b.postinr)
+export SDPC_RADIANCE_POSTINR_ONLY=$(config_setting level1b.postinr_only)
 export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1b.diagnostic_index)
 
 dbfile_level1="$(config_setting dbfile.level1)"

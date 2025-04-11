@@ -46,6 +46,9 @@ ulimit -s unlimited
 # To turn off post-INR radiance processing, set it to zero.
 : "${SDPC_RADIANCE_POSTINR:=1}"
 
+# If SDPC_RADIANCE_POSTINR_ONLY is not set, define it to be OFF (zero).
+: "${SDPC_RADIANCE_POSTINR_ONLY:=0}"
+
 # If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).
 # To turn off radiance wavelength calibration, set it to zero.
 : "${SDPC_RADIANCE_WAVECAL:=1}"
@@ -559,6 +562,11 @@ if test $SDPC_RADIANCE_POSTINR -ne 0 ; then
    # We'll be updating the metadata file, so retrieve the pre-INR version from the archive
    /bin/cp "$SDPC_ARCHIVE_DIR/L1/$granule_subdir/${rad_basename}.nc.met" .
    run_inr_post ${rad_basename}.nc
+fi
+
+if test $SDPC_RADIANCE_POSTINR_ONLY -ne 0 ; then
+   perform_cleanup
+   exit 0
 fi
 
 if test $is_radt_l1 -eq 0 ; then
