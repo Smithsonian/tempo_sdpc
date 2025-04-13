@@ -112,7 +112,9 @@ checkpoint13_longitude=-136.578769444444
 # Source satellite type ("GOES-NOP" or "GOES-R")
 type=GOES-R
 # Source satellite ID ("13", "14" or "15" for type=="GOES-NOP", "16", "17" or "18" for type == "GOES-R")
-satID=16
+satID=19
+# G16 to G19 transition occurred 2025-04-07 1710Z
+#satID=16
 # Reference longitude in degrees (-75.0 for GOES-13 East, -89.5 for GOES-14 Center, -135.0 for GOES-15 West)
 refLon=-75
 # Reference image staging directory
