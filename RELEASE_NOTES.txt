@@ -1,3 +1,31 @@
+TEMPO_SDPC_v4.5.0   2025 Apr
+===============================
+  * L0_format: Improve interrupt handling to avoid disrupting generation
+      of image data granules.
+  * Add pipeline infrastructure to generate NRT data products
+    - New services: level1b_nrt1, level1b_nrt2, level2_nrt
+    - Asdc service updated to support uploading NRT products to AWS S3 bucket
+    - Add NRT support to monitoring and reporting scripts
+    - Limit number of days NRT products are archived
+  * L1_trace_gas: enable NRT product generation
+    - Support pre-computing fit-window specific IRR wavelength calibration
+  * L1_cloud_o4:
+    - NRT product support:
+      * Recompute relative azimuth angle
+      * Recompute O2O2 product main_data_quality flag
+  * plan:
+    - Support quantizing the number of scan steps to maximize
+      opportunities for validated command block re-use when the
+      instrument simulator is not available.
+    - Trigger an INR restart before processing evening city lights scans
+      (see redmine 248).
+  * INR:
+    - Change pitch/yaw random walk coefficients based on investigation
+      of 2024-10-12 INR anomaly.
+    - Support daily automated INR quality check
+    - Update default configuration to use GOES-East=G19
+  * Support building SDPC software on SAO/ITS network
+
 TEMPO_SDPC_v4.4.3   2024 Oct
 ===============================
   * Apply image start time correction per redmine #204.
