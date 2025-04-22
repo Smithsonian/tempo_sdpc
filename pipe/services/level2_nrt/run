@@ -17,5 +17,6 @@ if test -z "$radref_dbfile" ; then
 fi
 export SDPC_NRT_RADREF_DBFILE="$radref_dbfile"
 export SDPC_NRT_PROCESSING_VERSION=$(config_setting nrt.processing_version)
+export SDPC_NRT_PARTITION=$(config_setting nrt.partition)
 
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2_nrt.cfg" -- "${SDPC_NODE_DIR}/L2"
