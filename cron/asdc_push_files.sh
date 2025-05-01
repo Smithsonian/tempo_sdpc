@@ -57,7 +57,13 @@ do_asdc_upload()
   asdc_mkscript.sl --dest $user_at_host --output $script $file_list
 
   # perform the upload
-  lftp -f $script
+  error_flag=0
+  lftp -f $script || error_flag=1
+  if test $error_flag -ne 0 ; then
+     echo "*** ERROR: upload failed (see $dir)"
+     asdc_files.py --dbfile $dbfile --set new $file_list
+     return
+  fi
 
   # mark the files as "uploaded"
   asdc_files.py --dbfile $dbfile --set uploaded $file_list
