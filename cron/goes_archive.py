@@ -8,7 +8,8 @@ import glob
 import hashlib
 import re
 import pathlib
-from datetime import datetime,timedelta
+import time
+import calendar
 import argparse
 import subprocess
 
@@ -69,26 +70,30 @@ def move_file_to_dir (path, dest_dir, clobber=True):
     if Verbose:
         print ("{} <- {}".format(dest_dir, path))
 
-def get_yday_subdir (base, zone):
-    """
-    It's convenient to have one directory contain all GOES imagery
-    needed for a single operational day.  To implement this, we organize
-    the files using the day-of-year in the TEMPO satellite-local time zone.
-    """
-    # parse filename to get timestamp to whole seconds precision
+def abi_start_time_utc_tuple (base):
+    # parse filename to get UTC time-tuple to whole seconds precision
     filename_regex = r'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
     fields = re.search (filename_regex, base)
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
         return None
-    # help strptime by adding a timezone specification
-    tstamp = fields.group(1)+'+0000'
+    return time.strptime (fields.group(1), '%Y%j%H%M%S')
 
-    # archive using day-of-year in satellite local time zone (SLT)
-    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S%z')
-    tstamp_slt_obj = tstamp_obj - timedelta(hours=zone)
-    yday_subdir = datetime.strftime (tstamp_slt_obj, "%Y/%j")
-    return yday_subdir
+def abi_start_time_timet (base):
+    """
+    Compute unix time_t value for ABI filename's UTC start time
+    """
+    tp_utc = abi_start_time_utc_tuple (base)
+    return calendar.timegm(tp_utc)
+
+def abi_archive_yday_subdir (base, zone):
+    """
+    Archive GOES imagery by TEMPO local solar day of year number,
+    (e.g. the day of the year, 001-366, in TEMPO local solar time)
+    """
+    timet = abi_start_time_timet (base)
+    tp_lst = time.gmtime(timet + zone*3600)
+    return time.strftime ('%Y/%j', tp_lst)
 
 def classify_goes_file (path, root_dir):
     try:
@@ -122,7 +127,7 @@ def archive_goes_file (path, root_dir, zone):
 
     # Determine the archive path from the filename
     base = os.path.basename (path)
-    yday_subdir = get_yday_subdir (base, zone)
+    yday_subdir = abi_archive_yday_subdir (base, zone)
     if yday_subdir is None:
         return
 
@@ -150,7 +155,7 @@ def handle_bad_checksum (path, root_dir):
     move_file_to_dir (suffix_sha1(path), dir, clobber=False)
 
 def main():
-    default_zone = 6 # spacecraft local time zone
+    default_zone = -6 # spacecraft local time zone
     parser = argparse.ArgumentParser(description='Validate and archive GOES CMI data products')
     parser.add_argument('--root', metavar='DIR', help="Root directory to hold GOES archive directory tree: YYYY/ddd/xxxx_cmi")
     parser.add_argument('--zone', type=int, default=default_zone, help="Satellite local time zone [integer hours east of UTC; default={}]".format(default_zone))

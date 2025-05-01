@@ -13,7 +13,7 @@ from __future__ import print_function
 import re
 import os, sys
 import time
-from datetime import datetime, timezone
+import calendar
 import sqlite3
 import argparse
 
@@ -24,18 +24,21 @@ TraceSQL = False
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def abi_start_time (base):
-    # parse filename to get timestamp to whole seconds precision
+def abi_start_time_utc_tuple (base):
+    # parse filename to get UTC time-tuple to whole seconds precision
     filename_regex = r'OR_ABI-L2-CMIPF-M\d{1}C\d{2}_G\d{2}_s(\d{13})\d_'
     fields = re.search (filename_regex, base)
     if fields is None:
         eprint ("*** Error: regex mismatch: {}".format(base))
         return None
-    # help strptime by adding a timezone specification
-    tstamp = fields.group(1)+'+0000'
-    tstamp_obj = datetime.strptime(tstamp, '%Y%j%H%M%S%z')
-    timet = time.mktime(tstamp_obj.timetuple())
-    return int(timet)
+    return time.strptime (fields.group(1), '%Y%j%H%M%S')
+
+def abi_start_time_timet (base):
+    """
+    Compute unix time_t value for ABI filename's UTC start time
+    """
+    tp_utc = abi_start_time_utc_tuple (base)
+    return calendar.timegm(tp_utc)
 
 class Tokenizer:
     def __init__ (self):
@@ -88,7 +91,7 @@ def abi_fields ():
 def abi_entry (path):
     basename = os.path.basename(path)
     fields = {}
-    fields["tstart"] = abi_start_time (basename)
+    fields["tstart"] = abi_start_time_timet (basename)
     return fields
 
 Filetype_Dict["ims"] = File_Type(r"ims\d{7,7}_1km_v\d.\d.nc", ims_fields, ims_entry)
