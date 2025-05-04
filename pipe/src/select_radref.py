@@ -29,61 +29,11 @@ def get_rad_info (path):
     info = {}
     info["tmid"] = 0.5*(tstart+tend)
     info["scan_num"] = scan_num
+    info["tstart"] = tstart
+    info["tend"] = tend
     return info
 
 Rad_Basename_Parser = re.compile (r"TEMPO_RAD_L1\w?_(?:|NRT_)V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}.nc")
-
-def lookup_radiance_path (c, basename):
-
-    g = Rad_Basename_Parser.match (basename)
-    if g is None:
-        return None
-
-    timestamp = g.group(1)
-    sql = "select path from 'RAD_L1' where filename like '%{}%';".format(timestamp)
-    c.execute (sql)
-    result = c.fetchone()
-    if result is None:
-        return None
-    else:
-        return result[0]
-
-def select_matching_radref (c, window_days, window_hours, minwidth, thisscan, info):
-    sec_per_day = 86400.0
-    sec_per_hour = 3600.0
-    tx = info["tmid"]
-    tmax = window_days * sec_per_day + window_hours * sec_per_hour;
-
-    if thisscan:
-        scan_num_label = "%%S%03d%%" % (info["scan_num"])
-        subst = {'beg':tx - 3*sec_per_hour, 'end':tx, 'scan_num_label': scan_num_label}
-        cmd = 'select path from "RADREF_L1" where 0.5*(tstart + tend) between :beg and :end and filename like :scan_num_label order by tstart desc limit 1;'
-    else:
-        t1 = tx-tmax
-        t2 = tx-sec_per_day
-        subst = {'beg':min(t1,t2), 'end':max(t1,t2), 'minwidth':minwidth,
-                 'tx':tx, 'window_days':window_days, 'window_hours':window_hours}
-        cmd = """
-              with cte as (
-              select path,
-                      abs(:tx - tstart)/86400.0 as day_diff,
-                     (abs(:tx - tstart)%86400)/3600.0 as hr_diff
-              from RADREF_L1
-              where tstart between :beg and :end and num_mirror_pos >= :minwidth
-              )
-              select path from cte
-              where day_diff < :window_days and hr_diff < :window_hours
-              order by day_diff, hr_diff asc limit 1
-              """
-        cmd = textwrap.dedent(cmd)
-
-    row = c.execute(cmd, subst)
-    if row is None:
-        path = ""
-    else:
-        path = row.fetchone()[0]
-
-    return path
 
 def connect_database (db_path):
     """
@@ -99,6 +49,79 @@ def connect_database (db_path):
     if Sqlite_Trace:
         conn.set_trace_callback(print)
     return conn
+
+def lookup_radiance_path (db_rad_path, basename):
+
+    g = Rad_Basename_Parser.match (basename)
+    if g is None:
+        return None
+
+    timestamp = g.group(1)
+    sql = "select path from 'RAD_L1' where filename like '%{}%';".format(timestamp)
+
+    with connect_database (db_rad_path) as conn:
+        cur = conn.execute (sql)
+        result = cur.fetchone()
+
+    if result is None:
+        return None
+    else:
+        return result[0]
+
+def select_matching_radref (db_path, window_days, window_hours, minwidth, thisscan, info):
+    sec_per_day = 86400.0
+    sec_per_hour = 3600.0
+    tempo_epoch_timet = 315964800
+    tx = info["tmid"]
+
+    if thisscan:
+        scan_num_label = "%%S%03d%%" % (info["scan_num"])
+        subst = {'beg':tx - 3*sec_per_hour, 'end':tx, 'scan_num_label': scan_num_label}
+        cmd = 'select path from "RADREF_L1" where 0.5*(tstart + tend) between :beg and :end and filename like :scan_num_label order by tstart desc limit 1;'
+    else:
+        tx = info["tstart"]
+        t1 = tx - (window_days*sec_per_day + window_hours*sec_per_hour);
+        t2 = tx - (            sec_per_day - window_hours*sec_per_hour);
+        # To avoid end-of-day hour-wrap issues, select
+        # hour-of-day using local time instead of UTC.
+        tx_lst = time.localtime(tx + tempo_epoch_timet)
+        subst = {'beg':min(t1,t2), 'end':max(t1,t2),
+                 'tempo_epoch_timet': tempo_epoch_timet,
+                 'tx': tx,
+                 'tx_lst_hr': tx_lst.tm_hour + tx_lst.tm_min/60.0,
+                 'minwidth':minwidth,
+                 'window_days':window_days + window_hours/24,
+                 'window_hours':window_hours}
+        # Select a radref file from a previous day for a scan collected
+        # at about the same time of day. Ugh.
+        cmd = """
+              with cte as (
+              select path,
+                      abs(:tx - tstart)/86400.0 as day_diff,
+                      abs(:tx_lst_hr - (cast(strftime('%H', tstart+:tempo_epoch_timet, 'unixepoch', 'localtime') as real)
+                                      + cast(strftime('%M', tstart+:tempo_epoch_timet, 'unixepoch', 'localtime') as real)/60.0)) as hr_diff
+              from RADREF_L1
+              where tstart between :beg and :end and num_mirror_pos >= :minwidth
+              )
+              select path from cte
+              where day_diff < :window_days and hr_diff < :window_hours
+              order by hr_diff asc, day_diff limit 1
+              """
+        cmd = textwrap.dedent(cmd)
+
+    with connect_database (db_path) as conn:
+        try:
+            cur = conn.execute(cmd, subst)
+            row = cur.fetchone()
+        except:
+            row = None
+
+    if row is None:
+        path = ""
+    else:
+        path = row[0]
+
+    return path
 
 def config_file_defaults (filename):
     install_root = os.getenv ("SDPC_ROOT")
@@ -175,8 +198,7 @@ def main():
     else:
         db_rad_path = db_path
 
-    with connect_database (db_rad_path) as conn:
-        radiance_path = lookup_radiance_path (conn.cursor(), rad_basename)
+    radiance_path = lookup_radiance_path (db_rad_path, rad_basename)
 
     if radiance_path is None:
         print ('*** radiance file basename not in database: {}'.format (rad_basename))
@@ -184,13 +206,7 @@ def main():
 
     rad_info = get_rad_info (radiance_path)
 
-    with connect_database (db_path) as conn:
-        c = conn.cursor()
-        try:
-            radref = select_matching_radref (c, args.days, args.hours, args.minwidth, args.thisscan, rad_info)
-        except:
-            radref = ""
-
+    radref = select_matching_radref (db_path, args.days, args.hours, args.minwidth, args.thisscan, rad_info)
     print(radref)
 
 if __name__ == "__main__":
