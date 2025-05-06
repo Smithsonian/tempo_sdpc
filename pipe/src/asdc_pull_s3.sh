@@ -17,7 +17,7 @@ fi
 s3_bucket=$1
 
 # File extension may be either .PAN or .pan
-panext="pan"
+panext="PAN"
 
 if ! test -f "$SDPC_ARCHIVE_DBFILE_NRT" ; then
    echo "asdc_pull_s3.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE_NRT"
