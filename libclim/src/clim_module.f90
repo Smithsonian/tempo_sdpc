@@ -350,10 +350,10 @@ contains
 
     if (errstat /= 0) return
 
-    ilon0 = cpt % lon_subset % imin - 1
+    ilon0 = cpt % lon_subset % imin
     nlon = cpt % lon_subset % num_values
 
-    ilat0 = cpt % lat_subset % imin - 1
+    ilat0 = cpt % lat_subset % imin
     nlat = cpt % lat_subset % num_values
 
     istart(1) = 0
