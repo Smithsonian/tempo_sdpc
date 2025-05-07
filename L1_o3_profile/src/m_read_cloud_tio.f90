@@ -131,7 +131,6 @@ contains
     ! Fill in cloud top pressure values for bad pixels
      call fill_in_tempoctp(nxtrack, ntimes, ctp(1:nxtrack, 0:ntimes-1), &
          qflag(1:nxtrack, 0:ntimes-1))
-     
 
     ! Move cloud arrays into cloud block and rebin
     nl = (eline-sline+1)/nybin

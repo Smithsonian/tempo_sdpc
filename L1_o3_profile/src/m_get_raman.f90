@@ -57,7 +57,6 @@ contains
     CHARACTER (LEN=9), PARAMETER :: modulename = 'GET_RAMAN'
 
     errstat = pge_errstat_ok 
-   
     IF (ozabs_convl) THEN   ! Check this for each cross track position
      IF (allocated(ramanwav)) deallocate (ramanwav, swavs, raycof)   
      allocate (ramanwav(maxnu))
@@ -237,6 +236,7 @@ contains
         WRITE(92, '(f8.4, D14.5)') refwvl(refidx(i)), newring(refidx(i))
      ENDDO
   ENDIF
+
   deallocate (newring)
   deallocate (strans, vtrans)
   deallocate (ring, st, vt)

@@ -1641,7 +1641,7 @@ SUBROUTINE get_v8prof(toz, oz)
      
      ! Check the availablity of MLS ozone profiles
      !apfname =TRIM(ADJUSTL(atmdbdir)) // 'MLSO3/zm_v02_' // yrc // monc // dayc // '.dat'
-     apfname =TRIM(ADJUSTL(atmdbdir)) // 'MLSO3V4/zm_v04_' // yrc // monc // dayc // '.dat'
+     apfname =TRIM(ADJUSTL(atmdbdir)) // 'MLSO3V5/zm_v05_' // yrc // monc // dayc // '.dat'
       
      ! Determine if file exists or not
      INQUIRE (FILE= apfname, EXIST= file_exist) 

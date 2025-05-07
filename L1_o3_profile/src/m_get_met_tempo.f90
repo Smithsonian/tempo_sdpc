@@ -94,7 +94,6 @@ MODULE  m_get_met_tempo
         call tell_error (tell_runtime_error, "get_met_tempo: errors in clim_pres_init", errstat)
         return
       endif
-
       call clim_query_apriori_source (cpt, have_forecast, errstat)
       if (have_forecast) then
         apriori_source = 'GEOSCF:forecast'
