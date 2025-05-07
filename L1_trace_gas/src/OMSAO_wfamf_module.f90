@@ -1826,9 +1826,11 @@ CONTAINS
              goto 999
           END IF
           Radiance_cld = linInterpol(nctp,nvza,nsza, &
+               ! REAL(lut_srf(idx_srf(1):idx_srf(2)),KIND=8), &
                REAL(lut_srf(idx_ctp(1):idx_ctp(2)),KIND=8), &
                REAL(SIN(lut_vza(idx_vza(1):idx_vza(2))*d2r),KIND=8), &
                REAL(SIN(lut_sza(idx_sza(1):idx_sza(2))*d2r),KIND=8), &
+               ! Rad_3D_cloud, local_srf, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
                Rad_3D_cloud, local_ctp, SIN(local_vza*d2r), SIN(local_sza*d2r), status=status)
           IF ( status /= 0 ) THEN
             amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_sca)
