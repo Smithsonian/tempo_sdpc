@@ -16,9 +16,6 @@ fi
 
 s3_bucket=$1
 
-# File extension may be either .PAN or .pan
-panext="PAN"
-
 if ! test -f "$SDPC_ARCHIVE_DBFILE_NRT" ; then
    echo "asdc_pull_s3.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE_NRT"
    exit 0
@@ -44,7 +41,7 @@ emit_pan_list()
    # Download a list of PAN files.
    # If none exist, there's nothing else to do.
 
-   asdc_s3.py --bucket $s3_bucket --list --pattern "*.${panext}" > $remote_pan_list
+   asdc_s3.py --bucket $s3_bucket --list --pattern "*.PAN" > $remote_pan_list
    if ! test -s $remote_pan_list ; then
       return 1
    fi
@@ -61,7 +58,7 @@ emit_pan_list()
    cat $remote_pan_list |
    while read -r pan_file
    do
-      pdr_file=$(echo $pan_file | sed -e "s,.${panext},.PDR,")
+      pdr_file=$(echo $pan_file | sed -e "s,.PAN,.PDR,")
       pdr_file_status=$(asdc_files.py --dbfile $pdr_dbfile --status $pdr_file)
       if test x"$pdr_file_status" == x0 ; then
          echo "$pan_file" >> $pan_list
@@ -107,14 +104,10 @@ do_asdc_s3_download()
 
   asdc_s3.py --bucket $s3_bucket --get $pan_list
 
-  panfiles=$(find . -maxdepth 1 -name "TEMPO*.${panext}")
+  panfiles=$(find . -maxdepth 1 -name "TEMPO*.PAN")
   if test x"$panfiles" != x"" ; then
      # process the downloaded SHORTPAN files
      $ASDC_TRACK_UPLOADS --pdrdbfile $pdr_dbfile --pans $panfiles
-     # for each PAN file, generate the corresponding PDR name
-     echo $panfiles | tr -s ' ' '\n' | sed -e "s,.${panext},.PDR," > pdrs_processed.lis
-     # mark each PDR as accepted
-     asdc_files.py --dbfile $pdr_dbfile --set accepted pdrs_processed.lis
      # delete the processed pans from the S3 bucket
      asdc_s3.py --bucket $s3_bucket --remove $pan_list
   else

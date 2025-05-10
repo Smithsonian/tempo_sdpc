@@ -137,11 +137,7 @@ do_asdc_download()
   panfiles=$(find . -maxdepth 1 -name "TEMPO*.PAN")
   if test x"$panfiles" != x"" ; then
      # process the downloaded PAN files
-     asdc_track_uploads.py --pans $panfiles
-     # for each PAN file, generate the corresponding PDR name
-     echo $panfiles | tr -s ' ' '\n' | sed -e s,.PAN,.PDR, > pdrs_processed.lis
-     # mark each PDR as accepted
-     asdc_files.py --dbfile $pdr_dbfile --set accepted pdrs_processed.lis
+     asdc_track_uploads.py --pdrdbfile $pdr_dbfile --pans $panfiles
   else
      cleanup $dir
   fi

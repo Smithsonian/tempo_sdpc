@@ -15,8 +15,6 @@ DryRun = False
 DB_Path = None
 TraceSQL = False
 
-PDR_DB_Path = None  # used only to process SHORTPAN files
-
 Uploads_Excluded = ["RAD_L1a", "RADT_L1a"]
 
 class Tokenizer:
@@ -226,20 +224,23 @@ def get_product_filenames_from_pdr_file (pdr_path):
             product_files.append(m.group(1))
     return product_files
 
-def process_shortpan (cur, thefile, parse, pan_file):
+def mark_pdr_accepted (pdr_dbfile, pdr_file):
+    subst = {"asdc_status": Asdc_Status["accepted"], "filename":pdr_file}
+    with __connect_database ("rw", pdr_dbfile) as conn:
+        conn.execute ("update File_Table set asdc_status=:asdc_status where filename=:filename", subst)
+
+def process_shortpan (cur, thefile, parse, pan_file, pdr_dbfile):
     entry = shortpan_entry (thefile, parse)
     if entry is None:
         print ('skipping file: {}'.format(pan_file))
         return
-    # Can we look up the corresponding PDR file to get product filenames?
-    global PDR_DB_Path
-    if PDR_DB_Path is None:
-        print ('skipping SHORTPAN: {} (pdrdbfile=None)'.format(pan_file))
+    if pdr_dbfile is None:
+        print ('skipping SHORTPAN: {} (pdr_dbfile=None)'.format(pan_file))
         return
     # Replace PAN file extension (.pan or .PAN) to get the PDR file's local path
     pdr_file = os.path.basename(re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE))
     pdr_query = "select path from File_Table where filename == '{}'".format(pdr_file)
-    with __connect_database ("ro", PDR_DB_Path) as conn:
+    with __connect_database ("ro", pdr_dbfile) as conn:
         pdr_cur = conn.cursor()
         pdr_cur.execute (pdr_query)
         result = pdr_cur.fetchone()
@@ -255,15 +256,16 @@ def process_shortpan (cur, thefile, parse, pan_file):
     product_files = get_product_filenames_from_pdr_file (pdr_path)
     if entry["disposition"] == "SUCCESSFUL":
         asdc_status = Asdc_Status["accepted"]
+        mark_pdr_accepted (pdr_dbfile, pdr_file)
     else:
         asdc_status = Asdc_Status["problem"]
         print ('unsuccessful shortpan {} references {} files'.format(pan_file, len(product_files)))
-    # Assign the shortpan disposition to the remaining product files from the PDR.
+    # Assign the shortpan disposition to the product files from the PDR.
     for basename in product_files:
         table_name = table_name_for_file (basename)
         update_file_status (cur, table_name, basename, asdc_status, entry["time_stamp"], disposition=entry["disposition"])
 
-def process_longpan (cur, thefile, parse, pan_file):
+def process_longpan (cur, thefile, parse, pan_file, pdr_dbfile):
     num_files = longpan_header (thefile, parse)
     if num_files < 0:
         print ('skipping file: {}'.format(pan_file))
@@ -282,11 +284,16 @@ def process_longpan (cur, thefile, parse, pan_file):
         table_name = table_name_for_file (entry["basename"])
         update_file_status (cur, table_name, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
 
-    if num_bad > 0:
+    if num_bad == 0:
+        # Replace PAN file extension (.pan or .PAN) to get the PDR file's local path
+        pdr_file = os.path.basename(re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE))
+        mark_pdr_accepted (pdr_dbfile, pdr_file)
+    else:
         print ('{} has {} bad files'.format(pan_file, num_bad))
+
     return
 
-def process_pan (cur, pan_file):
+def process_pan (cur, pan_file, pdr_dbfile):
     """
     The generic SIPS ICD, 423-41-57_ICD_ECSSIPS_RevK_Final.pdf, says:
        There are two forms of the PAN, a short (Table 3-14) and a long
@@ -323,20 +330,20 @@ def process_pan (cur, pan_file):
             return -1
         message_type = tok[1].strip('"')  # <-- Because people can't be bothered follow specifications
         if  message_type == 'LONGPAN':
-            process_longpan (cur, thefile, parse, pan_file)
+            process_longpan (cur, thefile, parse, pan_file, pdr_dbfile)
         elif message_type == 'SHORTPAN':
-            process_shortpan (cur, thefile, parse, pan_file)
+            process_shortpan (cur, thefile, parse, pan_file, pdr_dbfile)
         else:
             print ('*** unexpected file header: {}'.format(line))
             return -1
 
     return 0
 
-def process_pan_files (pan_file_list):
+def process_pan_files (pan_file_list, pdr_dbfile):
     for pan_file in pan_file_list:
         try:
             with connect_database("rw") as conn:
-                process_pan (conn.cursor(), pan_file)
+                process_pan (conn.cursor(), pan_file, pdr_dbfile)
         except BaseException as e:
             traceback.print_tb(e.__traceback__)
             print('An exception occurred: {}'.format(e))
@@ -443,9 +450,6 @@ def main():
         eprint ('*** Error: Cannot access database file: {}'.format(DB_Path))
         sys.exit(1)
 
-    global PDR_DB_Path
-    PDR_DB_Path = args.pdrdbfile
-
     if args.num:
         count_files_matching_status (Asdc_Status[args.num])
     elif args.list:
@@ -453,7 +457,7 @@ def main():
     elif args.set:
         set_file_status (args.set[0], args.set[1], args.stat)
     elif args.pans:
-        process_pan_files(args.pans)
+        process_pan_files(args.pans, args.pdrdbfile)
     elif args.report:
         print_report (args.report, args.ymd, limit=args.limit)
 
