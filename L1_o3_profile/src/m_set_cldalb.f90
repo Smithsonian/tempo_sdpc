@@ -10,7 +10,7 @@
 module m_set_cldalb
   USE m_get_initial_albedo, only: adj_albcfrac, get_gome_alb, &
         get_initial_albedo, get_omi_alb, get_omler_alb, get_omler_albs,get_toms_alb, &
-        get_sciagm2_alb, get_surface_spectrum  
+        get_sciagm2_alb, get_surface_spectrum, get_gler_albedo  
 
   PUBLIC set_cldalb
   INTEGER (kind=1) :: oceanflg, snowflg
@@ -46,8 +46,8 @@ module m_set_cldalb
   USE OMSAO_variables_module,    ONLY: fitvar_rad_init, fitvar_rad_str, &
        lo_radbnd, up_radbnd, nf=>n_fitvar_rad, mask_fitvar_rad, &
        the_month, the_day, edgelons, edgelats, the_jday, &
-       the_sza_atm, the_vza_atm, the_aza_atm, & 
-       numwin,  widx_rvis, nradpix, widx_vis, rmask_fitvar_rad
+       the_sza_atm, the_vza_atm, the_aza_atm, the_lat, the_lon, the_surfalt, the_time, & 
+       numwin,  widx_rvis, nradpix, widx_vis, rmask_fitvar_rad, nxtrack, ntimes
   USE ozprof_data_module,        ONLY: albidx, albfidx, nalb, nfalb, albmin, &
        albmax, albfpix, alblpix, albfpix_r, alblpix_r, & 
         do_lambcld, lambcld_refl, which_alb, &
@@ -77,6 +77,8 @@ module m_set_cldalb
                                   nsub, which_sciagm2, nalbw
   INTEGER, DIMENSION(npoints)  :: hasalb, haswfc
   REAL (KIND=dp)               :: cfrac_old, albedo, wavg
+  real (kind=4) :: gler_lat, gler_lon, gler_time
+  integer (kind=4) :: gler_land, gler_snow
   INTEGER, DIMENSION(2)        :: wavin
   REAL (KIND=dp), DIMENSION(2) :: wavfrac
   ! GOME albedo database: 335, 380, 440, 495, 555, 610, 670 nm
@@ -87,6 +89,7 @@ module m_set_cldalb
   INTEGER (KIND=i4), EXTERNAL        :: day_of_year       
   REAL (KIND=dp), DIMENSION (nalbw0) :: albarr, albwave
   REAL (KIND=dp), ALLOCATABLE        :: tmpspcs(:,:), tmpwav(:)
+  real(kind=4) :: wind_speed
   ! ===============
   ! module name
   ! ===============
@@ -117,6 +120,20 @@ module m_set_cldalb
      !   print *, albwave(i), albarr(i)
      !ENDDO
      !stop 1
+   ELSE IF (which_alb == 8)  THEN !READ GLER: added by Junsung (07/03/2025)
+     gler_lat = real(the_lat, kind=4)
+     gler_lon = real(the_lon, kind=4)
+     gler_time = real(the_time, kind=4)
+     gler_land = int(the_landwater_flg, kind=4)
+     gler_snow = int(the_snowice, kind=4) 
+     CALL GET_GLER_ALBEDO(ntimes, nxtrack, gler_lat, gler_lon, &
+             gler_time, gler_land, gler_snow, wind_speed, &
+             albedo, pge_error_status)
+     IF (pge_error_status ==  pge_errstat_error) THEN
+         WRITE(*,'(A)') modulename//'GLER reading fail  !!!'
+         WRITE(*, *) 'GLER reading fail!!!'; RETURN
+     ENDIF
+     albarr(1:nalbw) = albedo
   ELSE
      WRITE(*, *) 'Albedo database: not implemented!!!'
      pge_error_status = pge_errstat_error; RETURN
@@ -129,7 +146,6 @@ module m_set_cldalb
      ELSE
         noalb = .FALSE.
      ENDIF
-
      ! get effective surface albedo if noalb = .false.
      ! otherwise, compute I/F at albedo wavelength for further derivation of 
      ! surface albedo and/or initial cloud fraction
@@ -167,7 +183,6 @@ module m_set_cldalb
         pge_error_status = pge_errstat_error; RETURN
      END IF
   ENDIF
-  
   IF (do_simu .AND. .NOT. radcalwrt .AND. the_fixalb >= 0.0) albedo = the_fixalb
 
   ! adjust the cloud fraction or surface albedo based on 
@@ -190,27 +205,33 @@ module m_set_cldalb
    !ELSE IF (the_snowice > 1 .AND. the_snowice <= 100) THEN
    !   albedo = MAX(albedo, 0.8 * the_snowice / 100.0)
    !ENDIF
-
-  ! xliu, 12/07/2014, changed based on ASTER snow spectrum
-  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
-   IF (the_snowice > 100 .and. snowflg == 1 ) THEN  ! permanently covered
-      albedo = 0.98
-      albarr = albedo
-   ELSE IF (the_snowice > 1 .AND. the_snowice <= 100) THEN ! partialy covered
-      albedo = MAX(albedo, 0.98 * the_snowice / 100.0)
-      albarr = albedo
-   ENDIF
-  
+!
+!Junsung (03/03/2025)
+!  ! xliu, 12/07/2014, changed based on ASTER snow spectrum
+!  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
+!   IF (the_snowice > 100 .and. snowflg == 1 ) THEN  ! permanently covered
+!      albedo = 0.98
+!      albarr = albedo
+!   ELSE IF (the_snowice > 1 .AND. the_snowice <= 100) THEN ! partialy covered
+!      albedo = MAX(albedo, 0.98 * the_snowice / 100.0)
+!      albarr = albedo
+!   ENDIF
+!
+!Junsung (03/03/2025)
+!   cfrac = 0.0 !202408
    do_adjcfrac = .TRUE.
+   !do_adjcfrac = .FALSE.  !202408
    IF (nrefl < 1) do_adjcfrac = .FALSE.
    IF ( do_adjcfrac ) THEN
      cfrac_old = cfrac  ! save cloud fraction from other products
      CALL ADJ_ALBCFRAC(albedo, cfrac, ctau, pge_error_status) 
    ENDIF
-   salbedo = albedo   ! Surface albedo
+   !print*, albedo, cfrac! 202408
+!   salbedo = 0.07673226 !albedo   ! Surface albedo
+   salbedo = albedo
    ! Test using FRECO cld fraction 
    !cfrac = cfrac_old 
- 
+
    ! xliu: 08/16/2008, when surface albedo increases, it is more difficult to differentiate clouds/surfaces
    ! Assume a cloud fraction of 0 and increases a priori error for surface albedo and cloud fraction
    !IF (albedo > 0.6 .AND. cfrac >= 0.6 ) cfrac = 0.5
@@ -230,7 +251,7 @@ module m_set_cldalb
      IF ( cfrac >= 0.99) cfrac = 1.00
      !IF ( has_glint .AND. cfrac < 0.20 * glintprob ) cfrac = 0.0D0
   ENDIF
-  
+ 
   ! copy initial albedo to fitvar_rad_init   
   DO i =  1, nalb
      j = albidx + i - 1
@@ -256,9 +277,8 @@ module m_set_cldalb
               albedo = albedo + albarr(wavin(k)) * wavfrac(k)
            ENDDO
         ENDIF
-
         fitvar_rad_init(j) = albedo 
-      
+     
         IF (up_radbnd(j) == lo_radbnd(j)) THEN
            up_radbnd(j) = albedo; lo_radbnd(j) = albedo
         ENDIF
@@ -266,7 +286,7 @@ module m_set_cldalb
         ! at specfit_ozprof 
      ENDIF
   ENDDO
- 
+
   ! Go thorugh albedo terms again to check for unused 
   ! 04/21/2016, updated 
 
@@ -352,6 +372,8 @@ module m_set_cldalb
         ENDIF
      ENDIF
   ENDDO
+!Junsung
+  !print*, albedo, cfrac
 
   ! Go thorugh wfc terms again to check for unused
   IF (nwfc > 0) THEN

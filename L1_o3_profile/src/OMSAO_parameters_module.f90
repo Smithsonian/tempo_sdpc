@@ -32,7 +32,7 @@ MODULE OMSAO_parameters_module
   ! Maximum numbers for fitting parameters, GOME pixels, spectral points, ...
   ! -------------------------------------------------------------------------
   INTEGER, PARAMETER :: max_spec_pts = 37000 ! Original reference spectrum
-  INTEGER, PARAMETER :: max_fit_pts  = 800   ! fitted array
+  INTEGER, PARAMETER :: max_fit_pts  = 1100   ! fitted array 2024
   INTEGER, PARAMETER :: max_ref_pts  = max_fit_pts + 20  ! convolved refspc
   INTEGER, PARAMETER :: max_ring_pts = max_fit_pts + 50  ! solar for ring
   INTEGER, PARAMETER :: maxloc  =  5  ! # of points to describe a pixel
@@ -182,12 +182,14 @@ MODULE OMSAO_parameters_module
   CHARACTER (LEN=9),   PARAMETER :: str_missval     = "undefined"
   INTEGER   (KIND=i1), PARAMETER :: int8_missval    = -100         !-127
   INTEGER   (KIND=i2), PARAMETER :: int16_missval   = -30000       !-32767
+  INTEGER   (KIND=i2), PARAMETER :: int16_missval_l1= -32767
   INTEGER   (KIND=i4), PARAMETER :: int32_missval   = -2000000000  !-2147483647
   REAL (KIND=r4), PARAMETER :: float32_missval = -1.0E+30_r4  !-1.0_r4*(2.0_r4**100)
   REAL (KIND=r8), PARAMETER :: float64_missval = -1.0E+30_r8  !-HUGE(1.0_r8) !-1.0_r8*(2.0_r8**100)
 
   INTEGER   (KIND=i1), PARAMETER :: i1_missval = int8_missval
   INTEGER   (KIND=i2), PARAMETER :: i2_missval = int16_missval
+  INTEGER   (KIND=i2), PARAMETER :: i2_missval_l1 = int16_missval_l1
   INTEGER   (KIND=i4), PARAMETER :: i4_missval = int32_missval
   REAL      (KIND=r4), PARAMETER :: r4_missval = float32_missval
   REAL      (KIND=r8), PARAMETER :: r8_missval = float64_missval

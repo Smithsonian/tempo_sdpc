@@ -31,6 +31,12 @@ TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
 TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 
+GLER_LIB     = $(prefix)/lib
+GLER_SRC     = $(config_dir)/libgler/src
+GLERSRC_OBJS = $(GLER_SRC)/$(archobjs)
+GLERINCS     = -I$(GLERSRC_OBJS)
+GLERLIBS     = -L$(GLERSRC_OBJS) -L$(GLER_LIB) -lgler_f $(NDINTERP_LIB)
+
 CLIM_LIB     = $(prefix)/lib
 CLIM_SRC     = $(config_dir)/libclim/src
 CLIMSRC_OBJS = $(CLIM_SRC)/$(archobjs)
@@ -79,6 +85,7 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD) \
 	 $(CLIMINCS) \
+	 $(GLERINCS) \
 	 $(METINCS) \
          $(MDINCS)
 
@@ -88,7 +95,7 @@ LFLAGS = -L$(objdir) \
 
 LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS) \
-	 $(CLIMLIBS) $(METLIBS) $(MDLIBS)
+	 $(CLIMLIBS) $(GLERLIBS) $(METLIBS) $(MDLIBS)
 
 CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 

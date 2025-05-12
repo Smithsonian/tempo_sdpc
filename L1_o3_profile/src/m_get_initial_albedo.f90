@@ -31,9 +31,13 @@ MODULE m_get_initial_albedo
 
     USE OMSAO_precision_module
     USE OMSAO_variables_module, ONLY : the_sza_atm, the_vza_atm, &
-         the_aza_atm, reduce_resolution, use_redfixwav
+         the_aza_atm, reduce_resolution, use_redfixwav, &
+         sza_atm, the_lat, the_lon, the_time, the_surfalt, nxtrack, ntimes
     USE ozprof_data_module, ONLY : pos_alb, toms_fwhm, rad_posr, rad_specr, &
          sun_posr, sun_specr, ps0, measref, nrefl
+    USE OMSAO_parameters_module, ONLY: i2_missval_l1, i4_missval, &
+        r4_missval, r8_missval
+
    
     IMPLICIT NONE
 
@@ -274,7 +278,6 @@ MODULE m_get_initial_albedo
 
     isurf = refl - the_i0 - the_i1 - the_i2
     albedo = isurf / (the_t + isurf * the_sb)
-
     RETURN
   END FUNCTION calc_albedo
 
@@ -351,7 +354,6 @@ MODULE m_get_initial_albedo
      ELSE
         do_codwf = .TRUE.
      ENDIF
-
      walb0s(1) = albedo
      the_cfrac = cfrac
      wfc0s(1) = cfrac
@@ -384,6 +386,7 @@ MODULE m_get_initial_albedo
      IF (errstat == pge_errstat_error) RETURN 
 
      ! Initial delta values to zero
+!Junsung (03/03/2025)_checked
      delta_cfrac = 0.0; delta_alb = 0.0; delta_cod = 0.0
      IF (cfrac > 0.0 .AND. cfrac < 1.0D0) THEN  
         delta_cfrac = (measref - simrad(1)) / cfracwf(1)
@@ -442,7 +445,6 @@ MODULE m_get_initial_albedo
   IF (taodfind > 0 .OR. twaefind> 0) THEN
      albedo = initalb
   ENDIF
-
   IF (scnwrt) WRITE(*, '(A21,4d14.5,I5)') '  Rs, Rc, Fc, Tc, #: ', albedo, lambcld_refl, cfrac, ctau, num_iter
   RETURN
   END SUBROUTINE adj_albcfrac
@@ -678,7 +680,6 @@ MODULE m_get_initial_albedo
     ELSE
       albedo = 0.10
     ENDIF
-
     RETURN
   END SUBROUTINE get_toms_alb
 
@@ -820,7 +821,6 @@ MODULE m_get_initial_albedo
     ELSE
       albedo = 0.10
     ENDIF
-
     RETURN
   END SUBROUTINE get_omi_alb
 
@@ -996,9 +996,81 @@ MODULE m_get_initial_albedo
     ELSE
       albedo = 0.10
     ENDIF
-
     RETURN
   END SUBROUTINE get_omler_alb
+
+
+
+  ! ========================================================================
+  ! Obtain GLER adopted from TEMPO_L1_Tracegas and TEMPO_L1_CLOUD_O$ algorithms
+  ! Junsung 07/03/2025
+  ! ========================================================================
+  subroutine get_gler_albedo(ntimes, nxtrack, gl_lat, gl_lon, gl_time, gl_land, gl_snow, &
+                              wind_speed, result_alb, errstat)
+    use gler_module
+    use tell_module
+    use OMSAO_parameters_module,        ONLY: r8_missval
+    type (gler_type) :: glt
+    integer, intent(in) :: ntimes, nxtrack
+    real, intent(in) :: gl_lat, gl_lon
+    real, intent(in) :: gl_time
+    integer, intent(in) :: gl_land, gl_snow
+    integer, intent(inout) :: errstat
+    real(kind=8) :: thistime, result_alb
+    real(kind=4) :: wind_speed, thissnowice, thislat, thislon, thisalb, fspecial
+    integer(kind=2) :: thislandwater
+    pge_error_status = pge_errstat_ok
+    fspecial = r8_missval
+
+    ! wind_speed set to 5m/s for all options but GEOS5
+    ! GMI climatology does not have surface wind speed
+    wind_speed = 5.
+    ! Used wavelength
+    iwavelen = 340
+
+    call gler_open(glt, iwavelen, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_io_error, 'gler_open failed for 440', errstat)
+      pge_error_status = pge_errstat_error
+      return
+    endif
+
+    thistime = gl_time
+
+    call gler_interp_time(glt, thistime, errstat)
+    if (errstat /= 0) then
+      call tell_error (tell_runtime_error, 'gler_interp_time failed', errstat)
+      pge_error_status = pge_errstat_error
+      return
+    endif
+
+        thislat = gl_lat
+        if ((thislat .lt. -90.) .or. (thislat .gt. 90.)) continue
+        thislon = gl_lon
+        if ((thislon .lt. -360.) .or. (thislon .gt. 360.)) continue
+        if (wind_speed .lt. 0.) continue
+        thissnowice = gl_snow
+        if ((thissnowice .lt. 0.) .or. (thissnowice .gt. 1.)) continue
+        thislandwater = gl_land!int(ibits(gler_land, 0, 4), kind=2)
+        call gler_albedo (glt, thislon, thislat, thislandwater, windspeed, &
+                thissnowice, thisalb, errstat)
+        if (errstat /= 0) then
+          errstat = 0
+          call tell_set_error (0)
+          write (*,*)'gler_albedo failed: lon=',thislon,'lat=',thislat
+          pge_error_status = pge_errstat_error
+          thisalb = fspecial
+        endif
+        if (isnan(thisalb)) then ! test NAN
+               thisalb = fspecial
+               nana = nana + 1
+        endif
+        result_alb = real(thisalb, kind=8)
+
+    call gler_close (glt)
+
+  end subroutine get_gler_albedo
+
 
  ! ========================================================================
  ! Obtain OMLER (OMI product from Kleipool et al 2008)
@@ -1366,7 +1438,7 @@ MODULE m_get_initial_albedo
      albspcs, nspec, landfrac, pge_error_status) 
 
   USE OMSAO_precision_module 
-  USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad
+  USE OMSAO_parameters_module, ONLY: maxchlen, deg2rad, i2_missval_l1
   USE OMSAO_variables_module,  ONLY: atmdbdir, atmos_unit
   USE OMSAO_errstat_module
   USE ozprof_data_module,      ONLY: malbspc, use_albeofs !nalbspc
