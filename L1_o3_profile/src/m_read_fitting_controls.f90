@@ -55,7 +55,7 @@ contains
          wavcal_fname, swavcal_fname, use_meas_sig,  smooth_slit, &
          slit_fit_pts, wavcal_fit_pts, n_wavcal_step, wcal_bef_coadd,       &
          wavcal_sol, mask_fitvar_rad, mask_fitvar_sol, n_fitvar_sol, renorm,&
-         weight_rad, szamax, zatmos, slit_rad, rslit_fname,  n_fitvar_rad,  &
+         weight_rad, szamax, vzamax, zatmos, slit_rad, rslit_fname,  n_fitvar_rad,  &
          lo_sunbnd, up_sunbnd, lo_sunbnd_init,up_sunbnd_init, lo_radbnd,    &
          up_radbnd, refspec_fname, &
          radwavcal_freq, tol,  epsrel,  epsabs,  epsx, pm_one, phase, &
@@ -176,7 +176,6 @@ contains
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, &
            'fit_ctrl_file ='//TRIM(fit_ctrl_file), modulename, 0)
    END IF
-
     OPEN ( UNIT=fit_ctrl_unit, FILE=TRIM(ADJUSTL(fit_ctrl_file)), &
          STATUS='OLD', IOSTAT=errstat)
     IF ( errstat /= pge_errstat_ok ) THEN
@@ -186,7 +185,6 @@ contains
       pge_error_status = pge_errstat_error
       RETURN
     END IF
- 
     ! -----------------------------------------------------------
     ! Get database directories fro external
     ! -----------------------------------------------------------
@@ -202,7 +200,6 @@ contains
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, 'tabdir ='//TRIM(tabdir), &
            modulename, 0)
     END IF
-
     ! atmdbdir
     version = 1
     errstat = PGS_PC_getreference( ATMOSDB_DIR_LUN, version, atmdbdir )
@@ -230,7 +227,6 @@ contains
     ELSE
       errstat = OMI_SMF_setmsg(OMI_S_SUCCESS, TRIM(refdbdir), modulename, 0)
     END IF
-    
     ! ctrdir
     version = 1
     errstat = PGS_PC_getreference( CTRDB_DIR_LUN, version, ctrdbdir )
@@ -258,7 +254,6 @@ contains
     READ (fit_ctrl_unit, '(A)') tmpchar
     CALL string2index ( which_instrument, max_instrument_idx, tmpchar, &
          instrument_idx )
-
     ! Set up according to instrument 
     ! If Tempo synthetic data, we need to behave like OMI, but with an
     ! over-ride for some settings (e.g., uv2_coadd)
@@ -279,7 +274,6 @@ contains
       write (*,*)'**** Error: read_fitting_control_file: unsupported instrument index = ',instrument_idx
       stop 1
     ENDIF
-
     ! -----------------------------------------------------------
     ! Position cursor to debug options
     ! -----------------------------------------------------------
@@ -336,7 +330,6 @@ contains
     ENDIF
     READ (fit_ctrl_unit, *) redsampr
     READ (fit_ctrl_unit, *) redlam
-
     ! -----------------------------------------------------
     ! Position cursor to read OMI channels used for fitting
     ! -----------------------------------------------------
@@ -451,7 +444,7 @@ contains
         nswath = 1
       ENDIF        
     ENDIF
-  
+
     IF (coadd_uv2) THEN
       ncoadd = 2
     ELSE
@@ -640,6 +633,7 @@ contains
     READ (fit_ctrl_unit, *) max_itnum_rad
     READ (fit_ctrl_unit, *) radwavcal_freq
     READ (fit_ctrl_unit, *) szamax
+    READ (fit_ctrl_unit, *) vzamax
     READ (fit_ctrl_unit, *) zatmos
     READ (fit_ctrl_unit, *) phase
 
@@ -802,8 +796,6 @@ contains
       lo_radbnd (i) = lotmp
       up_radbnd (i) = uptmp
     END DO getpars
-
-
     ! -------------------------------------------------------------
     ! Find the indices of those variables that are actually varied
     ! during the fitting, and save those in MASK_FITVAR_RAD. Save
@@ -896,6 +888,7 @@ contains
         ntsh = ntsh + 1
       END IF
     END DO
+
     !  ! --------------------------------------
     !  ! Position cursor to read AMF table file
     !  ! --------------------------------------
@@ -1166,6 +1159,7 @@ contains
       j = INDEX(l2_filename, 'lv2')
       outdir = l2_filename(1:j-1)
     ENDIF
+
     IF (use_backup) THEN 
       sol_identifier = rad_identifier 
     ENDIF
@@ -1379,7 +1373,7 @@ contains
     ! ------------------------------------------------------------------------
     ! Read fitting conrol parameters from input file for
     ! ozone profile variables
-    IF (ozprof_flag) THEN 
+    IF (ozprof_flag) THEN
       CALL read_ozprof_input ( &
            fit_ctrl_unit, ozprof_input_fname, pge_error_status )
       IF ( pge_error_status >= pge_errstat_error ) RETURN
@@ -1428,6 +1422,7 @@ contains
     ENDIF
     www_message = ''
     RETURN
+
     !xliu, 09/23/05 Add direcotry, remove hard code directory
     ! ----------------------------------------------------------
     ! Position cursor to read database directory

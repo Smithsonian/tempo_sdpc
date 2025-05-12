@@ -31,7 +31,7 @@ module m_o3p_params
        o3tot_prec, o3tot_err, o3strat, o3strat_prec, o3strat_err, &
        o3trop, o3trop_prec, o3trop_err
   real (kind=4), dimension(:,:), allocatable :: aeros_idx, cld_frac, &
-       cld_pres, glintprob, eff_alb, ozinfo, cld_opt_depth
+       cld_pres, glintprob, eff_alb, ozinfo, ozdfs, cld_opt_depth !Junsung: add ozdfs for output 2025/05/09
   integer (kind=4), dimension(:,:), allocatable :: tropo_idx, &
          cld_flag, n_fit_wvl
   integer (kind=4), dimension(:,:), allocatable :: exval, iterations
@@ -60,6 +60,7 @@ module m_o3p_params
        aeros_scatter_thick
   ! (nnoise_elems, nxtrack, nstep)
   integer (kind=2), dimension(:,:,:), allocatable :: noise_mtrx
+  real (kind=4), dimension(:,:,:), allocatable :: fnoise_mtrx
   ! (nmax_wavs, nxtrack, nstep)
   real (kind=4), dimension(:,:,:), allocatable :: wavelengths, norm_rad, &
        sim_norm_rad
@@ -68,13 +69,15 @@ module m_o3p_params
   integer (kind=4), dimension(:,:,:), allocatable :: n_window_wvl
   real (kind=4), dimension(:,:,:), allocatable :: rms, avg_resid
   ! (nfitvars, nfitvars, nxtrack, nstep)
-  real (kind=4), dimension(:,:,:,:), allocatable :: correl_mtrx
+  real (kind=4), dimension(:,:,:,:), allocatable :: correl_mtrx, fcov_mtrx, fncov_mtrx
+  integer (kind=2), dimension(:,:,:,:), allocatable :: cov_mtrx, ncov_mtrx
   ! (nfitvars, nmax_wavs, nxtrack, nstep)
   real (kind=4), dimension(:,:,:,:), allocatable :: wgt_func
   ! (nmax_wavs, nfitvars, nxtrack, nstep)
   real (kind=4), dimension(:,:,:,:), allocatable :: contrib_mtrx
   ! (nlayer, nlayer, nxtrack, nstep)
   integer (kind=2), dimension(:,:,:,:), allocatable :: avg_kernel
+  real (kind=4), dimension(:,:,:,:), allocatable :: favg_kernel
 
 
 contains
@@ -103,7 +106,7 @@ contains
 
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
          ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
-         do_lambcld
+         do_lambcld, use_SC, ozwrtncovar
     use OMSAO_variables_module, only: reduce_resolution
 
     implicit none
@@ -163,6 +166,7 @@ contains
          n_window_wvl(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
          rms(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
          avg_resid(nwindow, min_xtrack:max_xtrack, min_step:max_step), &
+         ozdfs(min_xtrack:max_xtrack, min_step:max_step), &
          stat=errstat)
 
     if (errstat /= 0) then
@@ -191,16 +195,31 @@ contains
            nongas_units(nnongas), &
            stat = errstat)
     endif
-    if (nlayer > 0 .and. ozwrtavgk) then
+    if (nlayer > 0 .and. use_SC .and. ozwrtavgk) then
       allocate(avg_kernel(nlayer, nlayer, min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
+    else if (nlayer > 0 .and. (.not. use_SC) .and. ozwrtavgk) then
+      allocate(favg_kernel(nlayer, nlayer, min_xtrack:max_xtrack, min_step:max_step), &
            stat = errstat)
     endif
     if (nfitvars > 0 .and. ozwrtcorr) then
       allocate(correl_mtrx(nfitvars, nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
            stat = errstat)
+      allocate(cov_mtrx(nfitvars, nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
+      allocate(ncov_mtrx(nfitvars, nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
+      allocate(fcov_mtrx(nfitvars, nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
+      allocate(fncov_mtrx(nfitvars, nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
     endif
-    if (nnoise_elems > 0 .and. ozwrtcovar) then
+    if ((nnoise_elems > 0) .and. (use_SC) .and. (ozwrtcovar .or. ozwrtcorr)) then
       allocate(noise_mtrx(nnoise_elems, min_xtrack:max_xtrack, min_step:max_step), &
+           ozinfo(min_xtrack:max_xtrack, min_step:max_step), &
+           stat = errstat)
+    else if ((nnoise_elems > 0) .and. (.not. use_SC) .and. (ozwrtcovar .or. ozwrtcorr)) then
+      allocate(fnoise_mtrx(nnoise_elems, min_xtrack:max_xtrack, min_step:max_step), &
            ozinfo(min_xtrack:max_xtrack, min_step:max_step), &
            stat = errstat)
     endif
@@ -328,9 +347,16 @@ contains
     if(allocated(nongas_names)) deallocate(nongas_names , stat=errstat)
     if(allocated(nongas_units)) deallocate(nongas_units , stat=errstat)
     if(allocated(avg_kernel)) deallocate(avg_kernel , stat=errstat)
+    if(allocated(favg_kernel)) deallocate(favg_kernel , stat=errstat)
     if(allocated(correl_mtrx)) deallocate(correl_mtrx , stat=errstat)
     if(allocated(noise_mtrx)) deallocate(noise_mtrx , stat=errstat)
+    if(allocated(fnoise_mtrx)) deallocate(fnoise_mtrx , stat=errstat)
+    if(allocated(cov_mtrx)) deallocate(cov_mtrx, stat=errstat)
+    if(allocated(ncov_mtrx)) deallocate(ncov_mtrx, stat=errstat)
+    if(allocated(fcov_mtrx)) deallocate(fcov_mtrx, stat=errstat)
+    if(allocated(fncov_mtrx)) deallocate(fncov_mtrx, stat=errstat)
     if(allocated(ozinfo)) deallocate(ozinfo , stat=errstat)
+    if(allocated(ozdfs)) deallocate(ozdfs, stat=errstat)  !Junsung: add ozdfs for output (2025/05/09)
     if(allocated(fit_wgt)) deallocate(fit_wgt , stat=errstat)
     if(allocated(wavelengths)) deallocate(wavelengths , stat=errstat)
     if(allocated(norm_rad)) deallocate(norm_rad , stat=errstat)
@@ -429,6 +455,7 @@ contains
     iterations = int(fill_uint1)
     rms = fill_float
     avg_resid = fill_float
+    ozdfs = fill_float !Junsung: add ozdfs for output (2025/05/09)
 
     ! assign fill values to optional variables
     if (allocated(gas)) then
@@ -448,11 +475,18 @@ contains
     endif
 
     if (allocated(avg_kernel)) avg_kernel = int(fill_int16, kind=2)
-
+    if (allocated(favg_kernel)) favg_kernel = fill_float
     if (allocated(correl_mtrx)) correl_mtrx = fill_float
-
+    if (allocated(cov_mtrx)) cov_mtrx = int(fill_int16, kind=2)
+    if (allocated(ncov_mtrx)) ncov_mtrx = int(fill_int16, kind=2)
+    if (allocated(fcov_mtrx)) fcov_mtrx = fill_float
+    if (allocated(fncov_mtrx)) fncov_mtrx = fill_float
     if (allocated(noise_mtrx)) then
       noise_mtrx = int(fill_int16, kind=2)
+      ozinfo = fill_float
+    endif
+    if (allocated(fnoise_mtrx)) then
+      fnoise_mtrx = fill_float
       ozinfo = fill_float
     endif
 

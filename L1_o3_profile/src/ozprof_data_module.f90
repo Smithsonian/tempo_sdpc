@@ -39,10 +39,13 @@ MODULE ozprof_data_module
   LOGICAL                       :: ozwrtint
   CHARACTER (LEN=maxchlen)      :: ozwrtint_fname    
 
+  ! Whether to write correlation and to apply UT and SC
+  LOGICAL :: use_correl, use_UT, use_SC
+
   ! Whether to write correlation maxtrix, covariance matrix, contribution function, 
   ! and residual, atmospheric condition used in radiative transfer, and trace gases
   LOGICAL :: ozwrtvar, ozwrtcorr, ozwrtcovar, ozwrtavgk, ozwrtfavgk, ozwrtcontri, &
-       ozwrtres, atmwrt, gaswrt, radcalwrt, ozwrtwf, ozwrtsnr, wrtring,wrtozcrs, wrtalbspc
+       ozwrtres, atmwrt, gaswrt, radcalwrt, ozwrtwf, ozwrtsnr, wrtring,wrtozcrs, wrtalbspc, ozwrtncovar
 
   ! Options and ozone profiles used in performing radiometric calibration
   INTEGER                       :: which_caloz ! 1 climatology 2 true O3P

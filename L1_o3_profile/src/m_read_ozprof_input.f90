@@ -13,10 +13,11 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   USE ozprof_data_module, ONLY: algorithm_name, algorithm_version, &
          do_multi_vza, do_radinter, do_simu, do_simu_rmring, radcalwrt, &
          which_caloz, caloz_fname, use_oe, use_lograd, use_logstate, use_flns, &
+         use_correl, use_UT, use_SC, &
          ring_on_line, ring_convol, fit_atanring, ring_lut, & 
          do_twostep, do_bothstep, use_large_so2_aperr, do_tracewf, do_subfit,& 
          rtm_treatment, atmwrt, atmos_prof_fname, &
-         gaswrt, ozwrtcorr, ozwrtcovar, ozwrtcontri, ozwrtres, &
+         gaswrt, ozwrtcorr, ozwrtcovar, ozwrtncovar, ozwrtcontri, ozwrtres, &
          ozwrtvar, ozwrtwf, ozwrtsnr, ozwrtavgk,  ozwrtfavgk, &
          wrtring, wrtozcrs, wrtalbspc, ozwrtint, ozwrtint_fname, &
          lcurve_write, lcurve_fname,lcurve_gcv, ptr_order, ptr_w0, ptr_w1, ptr_w2, &
@@ -133,7 +134,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, '(A)') algorithm_version
   algorithm_name = TRIM(ADJUSTL(algorithm_name))
   algorithm_version = TRIM(ADJUSTL(algorithm_version))
- 
+
  ! -------------------------------
   ! Read general control variables
   ! -------------------------------
@@ -147,19 +148,20 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, *) do_radinter
   READ (fit_ctrl_unit, *) do_simu, do_simu_rmring
   IF ( .NOT. do_simu ) do_simu_rmring = .FALSE.
-  
+
   READ (fit_ctrl_unit, *) use_oe
   READ (fit_ctrl_unit, *) do_twostep, do_bothstep, use_large_so2_aperr
-  READ (fit_ctrl_unit, *) do_tracewf 
+  READ (fit_ctrl_unit, *) do_tracewf
+  READ (fit_ctrl_unit, *) use_correl, use_UT, use_SC
   READ (fit_ctrl_unit, *) 
-  READ (fit_ctrl_unit, *) atmwrt, scnwrt, ozwrtint, gaswrt, ozwrtvar, ozwrtcorr, &
+  READ (fit_ctrl_unit, *) atmwrt, scnwrt, ozwrtint, gaswrt, ozwrtvar, ozwrtncovar, &
        ozwrtcovar, ozwrtavgk, ozwrtfavgk, ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        wrtring, wrtozcrs, wrtalbspc
   ozwrtint_fname = TRIM(ADJUSTL(outdir)) // 'inter_' // TRIM(ADJUSTL(rad_identifier)) // '.dat'
   READ (fit_ctrl_unit, *) 
   READ (fit_ctrl_unit, '(A)') atmos_prof_fname
   atmos_prof_fname = TRIM(ADJUSTL(outdir)) // TRIM(ADJUSTL(atmos_prof_fname))
-  
+
   !  Calibration options
   READ (fit_ctrl_unit, *) 
   READ (fit_ctrl_unit, *) radcalwrt, which_caloz
@@ -169,8 +171,8 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   IF (radcalwrt .AND. .NOT. do_simu) ozwrtres = .FALSE.
   IF (radcalwrt .AND. do_simu) THEN
      ozwrtavgk = .FALSE.; ozwrtfavgk = .FALSE. ; ozwrtint = .FALSE.
-     ozwrtcorr = .FALSE.; ozwrtcovar = .FALSE.;  ozwrtcontri = .FALSE.
-     ozwrtwf   = .FALSE.; ozwrtsnr   = .FALSE.;  ozwrtres = .TRUE.
+     ozwrtncovar = .FALSE.; ozwrtcovar = .FALSE.;  ozwrtcontri = .FALSE.
+     ozwrtwf   = .TRUE.; ozwrtsnr   = .FALSE.;  ozwrtres = .TRUE.
      ozwrtvar  = .FALSE.; wrtalbspc  = .FALSE.
   ENDIF
 
@@ -199,7 +201,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, *) norm_tropo3
   READ (fit_ctrl_unit, *) which_alb
   READ (fit_ctrl_unit, *) which_cld
-  
+
   fnldir='fnl13.75LST'
   IF (instrument_idx == gome_idx .or. instrument_idx == gome2_idx) THEN 
     fnldir = 'fnl9.5LST'
@@ -234,7 +236,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         pge_error_status = pge_errstat_error; RETURN
      ENDIF
   ENDIF
-  IF (which_alb > 7) THEN
+  IF (which_alb > 8) THEN
      WRITE(www_lun, *) modulename, ' No such albedo database!!!'
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
@@ -281,7 +283,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
      WRITE(www_lun, *) modulename, ':hres_samprate must be > 0.0005!!!'
      pge_error_status = pge_errstat_error; RETURN
   ENDIF
-  
+
   IF ( MOD(hres_samprate * 100, 1.0) /= 0) THEN
      WRITE(www_lun, *) modulename, ': hres_samprate must be multiples of 0.01!!!'
      !hres_samprate = NINT(hres_samprate * 100) / 100.
@@ -364,7 +366,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
   READ (fit_ctrl_unit, *) fixed_ptrop, pst0, ntp0
   READ (fit_ctrl_unit, *) adjust_trop_layer  
   READ (fit_ctrl_unit, *) define_2km_layer
-  
+
   ! -----------------------------------------------
   ! Read initial ozone profile variables
   ! -----------------------------------------------

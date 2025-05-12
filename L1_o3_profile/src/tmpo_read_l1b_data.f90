@@ -592,7 +592,7 @@ module tmpo_read_l1b_data
    USE OMSAO_variables_module, ONLY: nswath, nxtrack, inschs,&
        l1b_rad_filename, nxbin, nybin, inschs, numwin, reduce_resolution, &
        upper_spec, lower_spec, &
-       wcal_bef_coadd, ybin_decerr, szamax
+       wcal_bef_coadd, ybin_decerr, szamax, vzamax
    USE OMSAO_precision_module
    USE OMSAO_errstat_module
    USE ozprof_data_module, ONLY: nrefl
@@ -769,9 +769,13 @@ module tmpo_read_l1b_data
     DO iloop = 0, nl-1
       ! Subset and coadd radiance spectrum
       IF (ALL(tmpo_rad%pix_errstat(first_pix:last_pix, iloop) == pge_errstat_error)) CYCLE
-      
       DO ix = first_pix, last_pix
         IF (tmpo_geo%sza (ix, iloop+iline) > szamax .OR. tmpo_geo%sza (ix,iloop+iline) < 0 ) THEN
+           tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
+          CYCLE
+        ENDIF
+        !Junsung: add vzamax part
+        IF (tmpo_geo%vza (ix, iloop+iline) > vzamax .OR. tmpo_geo%vza (ix,iloop+iline) < 0 ) THEN
            tmpo_rad%pix_errstat(ix, iloop) = pge_errstat_error
           CYCLE
         ENDIF

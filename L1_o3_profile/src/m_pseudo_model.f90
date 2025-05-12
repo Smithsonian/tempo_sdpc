@@ -601,7 +601,8 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   IF (any(albarr(1:n0alb) < 0) .or. any(walb0s(1:ns) <0)) THEN
     albnegval = .TRUE.
     albadj = 0.0
-    newalb = 0.01
+    newalb = 0.01 !Junsung: this should be used for omler
+    !newalb = 0.05 !Junsung: 0.01 has been changed to 0.05 (12/03/2025) for gler
     IF (.NOT. vary_sfcalb) THEN
       IF (any(albarr(1:n0alb) <0)) THEN 
         DO i = 1, n0alb 
@@ -631,7 +632,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       ENDDO
     ENDIF
   ENDIF
-
   ! === Call LIDORT, polarization correction, and additional wf calc =====
   IF (use_effcrs) THEN
      CALL LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi,&
@@ -649,7 +649,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
           maxoth, o3shi, nlay, ozprof, tprof,&
           nostk,rio, errstat)
   ENDIF
-
   IF (errstat == pge_errstat_error) THEN
     IF (use_effcrs) THEN
       WRITE(*, *) modulename, ': Errors in calling LIDORT_PROF_ENV!!!'
@@ -743,7 +742,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       ENDIF
     ENDIF
   ENDDO
-
   IF (albnegval) THEN
     IF (.NOT. vary_sfcalb) THEN
       DO i = 1, n0alb
@@ -752,7 +750,10 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
           ! + albadj(i) * albwf(albpmin(i):albpmax(i), 1, 1)
           fsimrad(albpmin(i):albpmax(i),1) = fsimrad(albpmin(i):albpmax(i),1) &
            - albadj(i) * albwf(albpmin(i):albpmax(i), 1, 1)
-          fitvar_rad(idx0alb(i)) = newalb !- albadj(i)
+          fitvar_rad(idx0alb(i)) = newalb !- albadj(i) !Junsung: deleted (03/12/2025) for gler, this should be used for omler
+          fitvar_rad(idx0alb(i)) = albadj(i)!newalb - albadj(i) !Junsung: added (03/12/2025) for gler
+          !fitvar_rad(idx0alb(i)) = newalb - albadj(i) !Junsung: added (03/12/2025) for gler
+          !fitvar(28) = albadj(1) !Junsung: added (03/12/2025) for gler
         ENDIF
       ENDDO
     ELSE
@@ -779,7 +780,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       ENDDO
     ENDIF
   ENDIF
-
   simrad(1:ns) = fsimrad(1:ns, 1)
   IF (nostk > 1) THEN
     Qsimrad (1:ns) = fsimrad(1:ns, 2)
@@ -788,7 +788,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
        direc = -1.0
     END WHERE
   ENDIF
-
   !IF (radcalwrt .AND. do_simu) THEN
   !   albwf(1:ns, 1) = 0.0
   !   o3shiwf(1:ns, 1) = 0.0
@@ -891,7 +890,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   ELSE
      do_shiwf = .FALSE.
   ENDIF
-
   CALL spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errstat)
   IF (errstat == pge_errstat_error) THEN
      WRITE(*, *) modulename, ': Errors in spectra_reflectance!!!'; RETURN
@@ -948,7 +946,6 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
   rms =    SQRT(chisq  / REAL(ns, KIND=dp))
   relrms = 100.D0 * SQRT(SUM(ABS((simrad-fitspec) / fitspec)**2.0) &
        / REAL(ns, KIND=dp))
- 
   IF (scnwrt) THEN
      fidx = 1
      DO i = 1, numwin
@@ -1150,12 +1147,15 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
            !   dyda(:, i) = - EXP(fitspec(1:ns)) * database(ridx, refidx(1:ns))  
         ELSE
            sim1 = simrad
-           fitvar(i) = fitvar_saved(i) * 1.001           
+           fitvar(i) = fitvar_saved(i) * 1.001
+
            CALL spectra_reflectance (ns, nf, fitvar, do_shiwf, sim1, meas1, errstat)
            IF (errstat == pge_errstat_error) THEN
               WRITE(*, *) modulename, ': Errors in spectra_reflectance!!!'
               fitvar(i) = fitvar_saved(i); RETURN
            ENDIF
+           stop
+
            sim2 = simrad
            fitvar(i) = fitvar_saved(i) * 0.999
            CALL spectra_reflectance (ns, nf, fitvar, do_shiwf, sim2, meas2, errstat)  
@@ -1369,16 +1369,16 @@ SUBROUTINE pseudo_model (num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gs
       !IF (idx330  > 0 .AND. idx330  <= ns) dyda(idx330:ns, :) = 0.0D0
      ENDIF
 
-     !WRITE(92, *) ns, nf
-     !DO i = 1, ns
-     !   WRITE(92, '(f10.4, 80d14.6)') fitwavs(i), fitspec(i), simrad(i), walb0s(i), dyda(i, 1:nf)
-     !ENDDO
-     !CLOSE(92) !; stop 1
+     WRITE(92, *) ns, nf
+     DO i = 1, ns
+        WRITE(92, '(f10.4, 80d14.6)') fitwavs(i), fitspec(i), simrad(i), walb0s(i), dyda(i, 1:nf)
+     ENDDO
+     CLOSE(92) !; stop 1
+     !stop
 
      DO i = 1, nf  
         dyda(:, i) = dyda(:, i) / fitweights(1:ns)
      END DO 
-
      ! finnally obtain the new spectrum to be fitted in the GSVD
      gspec(1:ns) = fitres(1:ns) / fitweights(1:ns)
      ! Restore the unperturbated fitting variables

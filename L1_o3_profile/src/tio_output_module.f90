@@ -6,7 +6,8 @@ module tio_output_module
   use o3p_names_module
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, wrtring, &
-       ozwrtvar, gaswrt, aerosol, do_lambcld
+       ozwrtvar, gaswrt, aerosol, do_lambcld, &
+       use_correl, use_UT, use_SC, ozwrtncovar
   use OMSAO_variables_module, only: reduce_resolution
 
   implicit none
@@ -135,7 +136,7 @@ contains
     call tiof_dimlist_append(dimlist, o3p_dim_param_unit_strlen, &
                              param_unit_strlen, errstat)
     !dimensions for optional variables
-    if (ozwrtcovar) then
+    if ((use_correl) .or. (ozwrtcovar)) then
       call tiof_dimlist_append(dimlist, o3p_dim_elms, num_elms, errstat)
     endif
     if (ozwrtres) then
@@ -297,7 +298,7 @@ contains
 
     if (.false.) then
       !If optional variables in use, allocate indices
-      if (ozwrtcovar) then
+      if ((use_correl) .or. (ozwrtcovar) .or. (ozwrtncovar)) then
         allocate(elm_indices(num_elms), stat=status)
         if (status /= 0) then
           call tell_error (tell_malloc_error, &
@@ -359,7 +360,7 @@ contains
       call tiof_varlist_append (varlist, errstat, o3p_dim_windows, nf90_int, &
                                 dimids=[dimids(8)])
       ! Add optional coordinates
-      if (ozwrtcovar) then
+      if ((use_correl) .or. (ozwrtcovar) .or. (ozwrtncovar)) then
         call tiof_dimlist_lookup(dimlist, [o3p_dim_elms], dimids(9:9), errstat)
         call tiof_varlist_append (varlist, errstat, o3p_dim_elms, nf90_int, &
                                   dimids=[dimids(9)])
@@ -426,7 +427,7 @@ contains
       call tiof_put1d_i4 (obj, o3p_dim_windows, [0], [num_windows], &
                           window_indices, errstat)
 
-      if (ozwrtcovar) then
+      if ((use_correl) .or. (ozwrtcovar) .or. (ozwrtncovar)) then
         elm_indices = [(i, i=0,num_elms-1)]
         call tiof_put1d_i4 (obj, o3p_dim_elms, [0], [num_elms], &
                             elm_indices, errstat)
@@ -460,7 +461,7 @@ contains
 
     if (.false.) then
       !tidy up any allocated arrays
-      if (ozwrtcovar) then
+      if ((use_correl) .or. (ozwrtcovar) .or. (ozwrtncovar)) then
         deallocate(elm_indices, stat=errstat)
       endif
 
@@ -1061,7 +1062,7 @@ contains
                               dimids_ulen_names, &
                               errstat)
     endif
-    if (ozwrtcovar) then
+    if (use_UT) then
       call tiof_dimlist_lookup (dimlist, &
                               [o3p_dim_elms, o3p_dim_xtrack, o3p_dim_step], &
                               dimids_elms_xtrack_step, &
@@ -1367,12 +1368,24 @@ contains
     endif ! non-gas params
 
     ! Ozone averaging kernels
-    if (ozwrtavgk) then
+    if ((ozwrtavgk) .and. (.not. use_SC)) then
+      call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_o3_avg_kernel, &
+                              nf90_float, &
+                              dimids = dimids_layer_layer_xtrack_step, &
+                              comment = "ozone profile averaging kernels", &
+                              valid_range = [-4.0_8, 4.0_8], &
+                              !units = "DU", &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord_layer)
+    else if ((ozwrtavgk) .and. (use_SC)) then
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_o3_avg_kernel, &
                               nf90_short, &
                               dimids = dimids_layer_layer_xtrack_step, &
-                              comment = "ozone profile averaging kernels", &
+                              comment = "ozone profile averaging kernels (scale factor = 10000)", &
                               valid_range = [-32766.0_8, 32767.0_8], &
                               !units = "DU", &
                               fillvalue = fill_int16, &
@@ -1381,49 +1394,114 @@ contains
                               attlist=att_coord_layer)
     endif
 
-    ! Ozone correlation matrix
-    if (ozwrtcorr) then
+    ! correlation matrix
+    if (use_correl) then
+    if (.not. use_SC) then
+    if (.not. use_UT) then
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_correl, &
                               nf90_float, &
-                              dimids = dimids_fitvar_fitvar_xtrack_step, &
-                              comment = "correlation matrix (upper matrix above diagonal)", &
+                              dimids = dimids_layer_layer_xtrack_step, &
+                              comment = "correlation matrix", &
+                              valid_range = [-1.0_8, 1.0_8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord)
+    else if (use_UT) then
+      call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_upcorrel, &
+                              nf90_float, &
+                              dimids = dimids_elms_xtrack_step, &
+                              comment = "correlation matrix (upper matrix)", &
                               valid_range = [-1.0_8, 1.0_8], &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif
-
-    ! Ozone noise matrix
-    if (ozwrtcovar) then
+    else if (use_SC) then
+    if (.not. use_UT) then
       call tiof_varlist_append (varlist, errstat, &
-                              o3p_var_o3_noise_matrix, &
+                              o3p_var_correl, &
+                              nf90_short, &
+                              dimids = dimids_layer_layer_xtrack_step, &
+                              comment = "correlation matrix (scale factor = 10000)", &
+                              valid_range = [-10000.0_8, 10000.0_8], &
+                              fillvalue = fill_int16, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord)
+    else if (use_UT) then
+      call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_upcorrel, &
                               nf90_short, &
                               dimids = dimids_elms_xtrack_step, &
-                              comment = "O3 noise correlation matrix", &
+                              comment = "correlation matrix (upper matrix) (scale factor = 10000)", &
                               valid_range = [-10000.0_8, 10000.0_8], &
-                              !units = "DU", &
                               fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif
+    endif
 
-    ! FIXME - information content should have its own switch rather than
-    !   using the covariance matrix switch, but for now this is OK.
+    ! Ozone noise matrix
+    else if (.not. use_correl) then
     if (ozwrtcovar) then
       call tiof_varlist_append (varlist, errstat, &
-                              o3p_var_o3_info_content, &
+                              o3p_var_cov, &
                               nf90_float, &
-                              dimids = dimids_xtrack_step, &
-                              comment = "ozone information content", &
-                              valid_range = [0.0_8, 100.0_8], &
+                              dimids = dimids_layer_layer_xtrack_step, &
+                              comment = "covariance matrix", &
+                              valid_range = [-1.0_8, 1.0_8], &
+                              !units = "DU", &
                               fillvalue = fill_float, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)
     endif
+    if (ozwrtncovar) then
+      call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_ncov, &
+                              nf90_float, &
+                              dimids = dimids_layer_layer_xtrack_step, &
+                              comment = "noise covariance matrix", &
+                              valid_range = [-1.0_8, 1.0_8], &
+                              !units = "DU", &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord)
+    endif
+    endif
+
+    ! FIXME - information content should have its own switch rather than
+    !   using the covariance matrix switch, but for now this is OK.
+    !if ((ozwrtcovar) .or. (ozwrtncovar)) then
+    call tiof_varlist_append (varlist, errstat, &
+                            o3p_var_o3_info_content, &
+                            nf90_float, &
+                            dimids = dimids_xtrack_step, &
+                            comment = "ozone information content", &
+                            valid_range = [0.0_8, 100.0_8], &
+                            fillvalue = fill_float, &
+                            deflate_level = deflate_level, &
+                            shuffle = shuffle, &
+                            attlist=att_coord)
+    !endif
+    !Junsung: add o3p_var_o3_dfs for output 2025/05/09
+    call tiof_varlist_append (varlist, errstat, &
+                              o3p_var_o3_dfs, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step, &
+                              comment = "ozone degree of freedom for signal", &
+                              valid_range = [0.0_8, 100.0_8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_coord)
+
     ! Contibution matrix
     if (ozwrtcontri) then
       call tiof_varlist_append (varlist, errstat, &
@@ -1477,7 +1555,6 @@ contains
     endif
 
     call tiof_def_vars (obj, varlist, errstat)
-
     ! Customizing attributes via the attlist option of tiof_varlist_append
     ! becomes inconvenient, so we add additional variable attributes as follows:
     
@@ -1583,6 +1660,7 @@ contains
       endif
 
     ! Weighting function
+    !print*, ozwrtwf
     if (ozwrtwf) then
       call tiof_varlist_append (varlist, errstat, &
                               o3p_var_weight_func, &
@@ -1860,9 +1938,9 @@ contains
     use OMSAO_pixelcorner_module, only: omi_Mflg
     use ozprof_data_module, only: use_lograd, the_ai, ozprof, ozprof_std, &
          ozprof_nstd, ozprof_ap, ozprof_apstd, tracegas, fgaspos, fgasidxs, &
-         atmosprof, the_ctp, the_cfrac, the_cod, the_cld_flg, ozinfo, ntp, &
+         atmosprof, the_ctp, the_cfrac, the_cod, the_cld_flg, ozinfo, ozdfs, ntp, & !Junsung: add ozdfs for output 2025/05/09
          eff_alb, thealbidx, glintprob, avg_kernel, covar, ncovar, contri, &
-         weight_function, tropaod, tropsca, num_iter
+         weight_function, tropaod, tropsca, num_iter, favg_kernel
     use m_o3p_params, only: param_strlen, param_unit_strlen
     use ISO_C_BINDING, only: c_null_char
 
@@ -1876,14 +1954,18 @@ contains
 
     real (kind=8), dimension (nwindow)           :: allrms, allavgres
     !real (kind=8), dimension (5, n_max_fitpars) :: tempvar
-    real (kind=8), dimension (nfitvar, nfitvar) :: correl
+    real (kind=8), dimension (nlayer, nlayer) :: fcorrel, tmpfcorrel
+    integer (kind=2), dimension (nlayer, nlayer) :: correl, tmpcorrel
     !real (kind=8), dimension (max_fit_pts)      :: tempring
-    real (kind=8)                               :: ncorrl_foo
+    real (kind=8)                               :: fcorrl_foo, fncorrl_foo
+    integer (kind=2)                            :: corrl_foo, ncorrl_foo
     real (kind=8) , dimension(n_rad_wvl) :: lfitres_rad
     real (kind=4), dimension(:), allocatable :: tmp_coord_var
     real (kind=4), dimension(:,:), allocatable :: tmp_coord_var_bnds
     integer (KIND= 2), dimension(nlayer,nlayer)  :: OzAvgK_I16
-    integer (kind=2), dimension (:), allocatable :: ncorrl_1d
+    integer (kind=2), dimension (:), allocatable :: corrl_1d, ncorrl_1d
+    real    (kind=4), dimension (:), allocatable :: fcorrl_1d, fncorrl_1d
+    real (KIND=4), dimension(nlayer,nlayer)   :: fOzAvgK_I16
     character (len = 4), dimension(nfitvar)  :: varnames_nNum
     character (len = 20), dimension(nfitvar) :: units
     character (len=param_strlen) :: charbuf_param_strlen
@@ -1896,7 +1978,6 @@ contains
     type (tiof_file_type), pointer :: obj
 
     if (errstat < 0) return
-
     obj => primary_output_file
 
     num_elms = (nlayer * (nlayer - 1))/2
@@ -1905,7 +1986,16 @@ contains
     allocate (tmp_coord_var(nlayer), tmp_coord_var_bnds(2,nlayer))
 
     ! allocate ncorrl_1d if we need it
-    if (ozwrtcovar) then
+    if (.not. use_SC) then
+      allocate(fcorrl_1d(num_elms), stat=errstat)
+      allocate(fncorrl_1d(num_elms), stat=errstat)
+      if (errstat /= 0) then
+        call tell_error (tell_malloc_error, &
+             'l2_tio_write_data: allocate ncorrl_1d failed', errstat)
+        return
+      endif
+    else if (use_SC) then 
+      allocate(corrl_1d(num_elms), stat=errstat)
       allocate(ncorrl_1d(num_elms), stat=errstat)
       if (errstat /= 0) then
         call tell_error (tell_malloc_error, &
@@ -2024,6 +2114,10 @@ contains
     call tiof_put1d_r4 (obj, o3p_var_aeros_index, [iline, ipix], [1,1], &
          [real(the_ai, kind=4)], errstat)
 
+ !Junsung: add dfs for output 2025/05/09
+    call tiof_put1d_r4 (obj, o3p_var_o3_dfs, [iline, ipix], &
+       [1,1], [real(ozdfs, kind=4)], errstat)
+
     tmp_coord_var(1:nlayer) = real(sqrt(atmosprof(1,0:nlayer-1) &
                                         * atmosprof(1,1:nlayer)), kind=4)
 !    tmp_coord_var(1:nlayer) = real(atmosprof(1,1:nlayer), kind=4) ! for pressure test, modified by junsung (DEC 2023)
@@ -2032,7 +2126,9 @@ contains
 
     tmp_coord_var(1:nlayer) = real(0.5*(atmosprof(2,0:nlayer-1) &
                                         + atmosprof(2,1:nlayer)), kind=4)
-
+!add test for surface pressure
+!    tmp_coord_var(1:nlayer) = real(atmosprof(2,1:nlayer), kind=4)     
+!end test
 !    tmp_coord_var(1:nlayer) = real(atmosprof(2,1:nlayer), kind=4) ! for pressure test, modified by junsung (DEC 2023)
     call tiof_put1d_r4 (obj, o3p_var_profile_alt, [iline, ipix, 0], &
          [1,1, nlayer], tmp_coord_var(1:nlayer), errstat)
@@ -2113,30 +2209,44 @@ contains
         enddo
       endif
     endif
+
     !averaging kernels
-    if (ozwrtavgk) then
+    if ((use_SC) .and. (ozwrtavgk)) then
       i = ozfit_idxs; j = ozfit_idxe
       ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
       OzAvgK_I16(1:nlayer,1:nlayer) = nint(avg_kernel(i:j, i:j)*pack_factor, KIND= 2)
       call tiof_put2d_i2 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
            [1,1,nlayer,nlayer], transpose(OzAvgK_I16(1:nlayer,1:nlayer)), errstat)
+    else if ((.not. use_SC) .and. (ozwrtavgk)) then
+      i = ozfit_idxs; j = ozfit_idxe
+      ! Transpose averaging kernels, so in he5, row x col (same as avg_kernel)
+      fOzAvgK_I16(1:nlayer,1:nlayer) = favg_kernel(i:j, i:j)
+      call tiof_put2d_r4 (obj, o3p_var_o3_avg_kernel, [iline, ipix, 0, 0], &
+           [1,1,nlayer,nlayer], transpose(fOzAvgK_I16(1:nlayer,1:nlayer)), errstat)
     endif
+
     !correlation matrix
-    if (ozwrtcorr) then
-      do i = 1, nfitvar
-        correl(i, i) = 1.0
+    if ((use_correl) .and. (.not. use_UT) .and. (.not. use_SC)) then
+!      do i = 1, nfitvar - 11
+!        fcorrel(i, i) = 1.0
+!        do j = 1, i - 1
+!          fcorrel(i, j) = covar(i+3, j+3) / sqrt(covar(i+3, i+3) * covar(j+3, j+3))
+!          fcorrel(j, i) = fcorrel(i, j)
+!        enddo
+!      enddo
+      tmpfcorrel = covar(4:27, 4:27)
+      do i = 1, nlayer - 1
+        fcorrel(i, i) = 1.0
         do j = 1, i - 1
-          correl(i, j) = covar(i, j) / sqrt(covar(i, i) * covar(j, j))
-          correl(j, i) = correl(i, j)
+          fcorrel(i, j) = tmpfcorrel(i, j) / sqrt(tmpfcorrel(i, i) * tmpfcorrel(j, j))
+          fcorrel(j, i) = fcorrel(i, j)
         enddo
       enddo
       call tiof_put2d_r4 (obj, o3p_var_correl, &
-         [iline, ipix, 0, 0], [1,1,nfitvar,nfitvar], &
-         real(correl(1:nfitvar, 1:nfitvar), &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         real(fcorrel(1:nlayer, 1:nlayer), &
          kind=4), errstat)
-    endif
-    !noise matrix
-    if (ozwrtcovar) then
+    else if ((use_correl) .and. (use_UT) .and. (.not. use_SC)) then
       i = ozfit_idxs; j = ozfit_idxe
       nn = j-i+1
       if( nn /= nlayer ) then
@@ -2145,29 +2255,112 @@ contains
                        errstat)
         return
       endif
+      tmpfcorrel = covar(4:27, 4:27)
       ii = 0
+!      do irow=1,nn-1
+!        do jcol = irow+1, nn
+!          ii = ii + 1
+!          fcorrl_foo    = covar(irow+3,jcol+3) / sqrt( covar(irow+3,irow+3)*covar(jcol+3,jcol+3))
+!          fcorrl_1d(ii) = fcorrl_foo
+!        enddo
+!      enddo
       do irow=1,nn-1
         do jcol = irow+1, nn
           ii = ii + 1
-          ncorrl_foo    = ncovar(irow,jcol) &
-               / sqrt( ncovar(irow,irow)*ncovar(jcol,jcol))
-          ncorrl_1d(ii) = nint( ncorrl_foo*pack_factor , kind=2)
+          fcorrl_foo    = tmpfcorrel(irow,jcol) / sqrt( tmpfcorrel(irow,irow)*tmpfcorrel(jcol,jcol))
+          fcorrl_1d(ii) = fcorrl_foo
         enddo
       enddo
+
       if( ii /= num_elms) then
         call tell_error (tell_io_write_error, &
                        "l2_tio_write_data: upper off-diagonal elements size mismatch", &
                        errstat)
         return
       endif
-      call tiof_put1d_i2 (obj, o3p_var_o3_noise_matrix, &
+      call tiof_put1d_r4 (obj, o3p_var_upcorrel, &
          [iline, ipix, 0], [1,1,num_elms], &
-         ncorrl_1d(1:num_elms), errstat)
-      !
-      ! FIXME - ozone information content should have its own switch
-      call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
-         [1,1], [real(ozinfo, kind=4)], errstat)
+         fcorrl_1d(1:num_elms), errstat)
+    else if ((use_correl) .and. (.not. use_UT) .and. (use_SC)) then
+!      do i = 1, nfitvar - 11
+!        correl(i, i) = 1
+!        do j = 1, i - 1
+!          correl(i, j) = int((covar(i+3, j+3) / sqrt(covar(i+3, i+3) * covar(j+3, j+3)))*pack_factor, kind=2)
+!          correl(j, i) = correl(i, j)
+!        enddo
+!      enddo
+      tmpfcorrel = covar(4:27, 4:27)
+      do i = 1, nlayer - 1
+        correl(i, i) = 1
+        do j = 1, i - 1
+          correl(i, j) = int(tmpfcorrel(i, j) / sqrt(tmpfcorrel(i, i) * tmpfcorrel(j, j))*pack_factor, kind=2)
+          correl(j, i) = correl(i, j)
+        enddo
+      enddo
+
+      call tiof_put2d_i2 (obj, o3p_var_correl, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         correl(1:nlayer, 1:nlayer), errstat)
+    else if ((use_correl) .and. (use_UT) .and. (use_SC)) then
+      i = ozfit_idxs; j = ozfit_idxe
+      nn = j-i+1
+      if( nn /= nlayer ) then
+        call tell_error (tell_io_write_error, &
+                       "l2_tio_write_data: nn not equal to nlayer", &
+                       errstat)
+        return
+      endif
+!      ii = 0
+!      do irow=1,nn-1
+!        do jcol = irow+1, nn
+!          ii = ii + 1
+!          corrl_foo    = int(covar(irow+3,jcol+3) / sqrt( covar(irow+3,irow+3)*covar(jcol+3,jcol+3))*pack_factor, kind=2)
+!          corrl_1d(ii) = corrl_foo
+!        enddo
+!      enddo
+      tmpfcorrel = covar(4:27, 4:27)
+      ii = 0
+      do irow=1,nn-1
+        do jcol = irow+1, nn
+          ii = ii + 1
+          corrl_foo    = int(covar(irow+3,jcol+3) / sqrt( covar(irow+3,irow+3)*covar(jcol+3,jcol+3))*pack_factor, kind=2)
+          corrl_1d(ii) = corrl_foo
+        enddo
+      enddo
+
+      if( ii /= num_elms) then
+        call tell_error (tell_io_write_error, &
+                       "l2_tio_write_data: upper off-diagonal elements size mismatch", &
+                       errstat)
+        return
+      endif
+      call tiof_put1d_i2 (obj, o3p_var_upcorrel, &
+         [iline, ipix, 0], [1,1,num_elms], &
+         corrl_1d(1:num_elms), errstat)
     endif
+
+    !covariance matrix
+    if ((.not. use_correl) .and. (ozwrtcovar)) then
+      fcorrel = covar(4:27, 4:27)
+      call tiof_put2d_r4 (obj, o3p_var_cov, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         real(fcorrel(1:nlayer, 1:nlayer), &
+         kind=4), errstat)
+    endif
+    !noise covariance matrix
+    if ((.not. use_correl) .and. (ozwrtncovar)) then
+      fcorrel = ncovar(4:27, 4:27)
+      call tiof_put2d_r4 (obj, o3p_var_ncov, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         real(fcorrel(1:nlayer, 1:nlayer), &
+         kind=4), errstat)
+    endif
+
+    !
+    ! FIXME - ozone information content should have its own switch
+    call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
+       [1,1], [real(ozinfo, kind=4)], errstat)
+
     !contribution matrix
     if (ozwrtcontri) then
       if (num_wav_max > n_rad_wvl) then
@@ -2279,6 +2472,7 @@ contains
 
     !tidy up
     first = .false.
+    if (allocated(corrl_1d)) deallocate(corrl_1d, stat=errstat)
     if (allocated(ncorrl_1d)) deallocate(ncorrl_1d, stat=errstat)
 
   end subroutine l2_tio_write_data
@@ -2317,7 +2511,8 @@ contains
     real (KIND=4), dimension(nwindow)        :: tmp1D_numwin
     !integer (KIND=2), dimension(maxwin)      :: tmp1D_num
     integer (KIND=4), dimension(nwindow)      :: tmp1D_num
-    integer (KIND=2), dimension(nlayer*(nlayer-1)/2)       :: tmp1D_ncorrl
+    integer (KIND=2), dimension(nlayer*(nlayer-1)/2)       :: tmp1D_corrl, tmp1D_ncorrl
+    real    (KIND=4), dimension(nlayer*(nlayer-1)/2)       :: ftmp1D_corrl, ftmp1D_ncorrl
     integer(KIND=2), dimension(nfitvar, nfitvar) :: tmp2D_fitvarK16
     real (KIND=4), dimension(nwindow+2)      :: tmp1D_aer
     real (KIND=4), dimension(nfitvar, nfitvar) :: tmp2D_fitvar
@@ -2406,6 +2601,9 @@ contains
          [tmp1D_layer(1)], errstat)
     call tiof_put2d_r4 (obj, o3p_var_profile_pres_bnds, [iline, ipix, 0,0], &
          [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
+    !Junsung: add o3p_var_o3_dfs for output 2025/05/09
+    call tiof_put1d_r4 (obj, o3p_var_o3_dfs, [iline, ipix], &
+         [1,1], [tmp1D_layer(1)], errstat)
     call tiof_put2d_r4 (obj, o3p_var_profile_alt_bnds, [iline, ipix, 0,0], &
          [1,1, nlayer,2], tmp1D_layer_bnds(1:2,1:nlayer), errstat)
     call tiof_put1d_r4 (obj, o3p_var_profile_pres, [iline, ipix, 0], &
@@ -2459,23 +2657,50 @@ contains
            [1,1,nlayer,nlayer], tmp2D_fitvarK16(i:j, i:j), errstat)
     endif
     !correlation matrix
-    if (ozwrtcorr) then
+    if ((use_correl) .and. (.not. use_SC)) then
+    if (.not. use_UT) then
       call tiof_put2d_r4 (obj, o3p_var_correl, &
-         [iline, ipix, 0, 0], [1,1,nfitvar,nfitvar], &
-         tmp2D_fitvar(1:nfitvar, 1:nfitvar), errstat)
-    endif
-    !noise matrix
-    if (ozwrtcovar) then
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         tmp2D_fitvar(1:nlayer, 1:nlayer), errstat)
+    else if (use_UT) then
       i = ozfit_idxs; j = ozfit_idxe
-      tmp1D_ncorrl(1:num_elms) = int(fill_int16, kind=2)
-      call tiof_put1d_i2 (obj, o3p_var_o3_noise_matrix, &
+      ftmp1D_corrl(1:num_elms) = fill_float
+      call tiof_put1d_r4 (obj, o3p_var_upcorrel, &
          [iline, ipix, 0], [1,1,num_elms], &
-         tmp1D_ncorrl(1:num_elms), errstat)
-      !
-      ! FIXME - ozone info content should have its own switch eventually
-      call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
-         [1,1], [tmp1D_layer(1)], errstat)
+         ftmp1D_corrl(1:num_elms), errstat)
     endif
+    else if ((use_correl) .and. (use_SC)) then
+    if (.not. use_UT) then
+      call tiof_put2d_i2 (obj, o3p_var_correl, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         tmp2D_fitvarK16(1:nlayer, 1:nlayer), errstat)
+    else if (use_UT) then
+      i = ozfit_idxs; j = ozfit_idxe
+      tmp1D_corrl(1:num_elms) = int(fill_int16, kind=2)
+      call tiof_put1d_i2 (obj, o3p_var_upcorrel, &
+         [iline, ipix, 0], [1,1,num_elms], &
+         tmp1D_corrl(1:num_elms), errstat)
+    endif
+    endif
+
+    !covariance matrix
+    if ((.not. use_correl) .and. (ozwrtcovar)) then
+      call tiof_put2d_r4(obj, o3p_var_cov, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         tmp2D_fitvar(1:nlayer, 1:nlayer), errstat)
+    endif
+    !noise covariance matrix
+    if ((.not. use_correl) .and. (ozwrtncovar)) then
+      call tiof_put2d_r4(obj, o3p_var_ncov, &
+         [iline, ipix, 0, 0], [1,1,nlayer,nlayer], &
+         tmp2D_fitvar(1:nlayer, 1:nlayer), errstat)
+    endif
+
+    !
+    ! FIXME - ozone info content should have its own switch eventually
+    call tiof_put1d_r4 (obj, o3p_var_o3_info_content, [iline, ipix], &
+       [1,1], [tmp1D_layer(1)], errstat)
+
     !contribution matrix
     if (ozwrtcontri) then
       tmp2D_contri(1:nfitvar, 1:num_wav_max) = real(fill_double, kind=4)
@@ -2671,13 +2896,13 @@ contains
          cld_frac, cld_pres, cld_flag, glintprob, eff_alb, n_fit_wvl, &
          n_window_wvl, gas_apriori, gas_apriori_err, nongas_apriori, &
          nongas_apriori_err, gas_names, nongas_names, nongas_units, &
-         avg_kernel, correl_mtrx, noise_mtrx, ozinfo, contrib_mtrx, &
+         avg_kernel, correl_mtrx, noise_mtrx, ozinfo, ozdfs, contrib_mtrx, & !Junsung: add ozdfs for output 2025/05/09
          cld_opt_depth, aeros_opt_thick, aeros_scatter_thick, &
          exval,wavelengths, wgt_func, norm_rad, sim_norm_rad, exval, &
-         iterations, mqf, rms, avg_resid, fit_wgt
+         iterations, mqf, rms, avg_resid, fit_wgt, favg_kernel, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
          ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
-         ozwrtvar, gaswrt, aerosol, do_lambcld
+         ozwrtvar, gaswrt, aerosol, do_lambcld, ozwrtncovar
     use OMSAO_variables_module, only: reduce_resolution
     use m_o3p_params, only: param_strlen, param_unit_strlen
     use ISO_C_BINDING, only: c_null_char
@@ -2806,6 +3031,10 @@ contains
     call tiof_put3d_i4 (obj, o3p_var_window_wavel, &
          [min_step, min_xtrack, 0], [nstep, nxtrack, nfitwins], &
                         n_window_wvl(1:nfitwins,1:nxtrack,1:nstep), errstat)
+    !Junsung: add o3p_var_o3_dfs for output 2025/05/09
+    call tiof_put2d_r4 (obj, o3p_var_o3_dfs, [min_step, min_xtrack], &
+         [nstep, nxtrack], ozdfs(1:nxtrack,1:nstep), errstat)
+
     ! Optional parameters
     ! Other fitted gases
     if ( ngas > 0 .and. gaswrt ) then
@@ -2839,29 +3068,41 @@ contains
       enddo
     endif
     !averaging kernels
-    if (ozwrtavgk) then
+    if ((ozwrtavgk) .and. (use_SC)) then
       call tiof_put4d_i2 (obj, o3p_var_o3_avg_kernel, &
            [min_step, min_xtrack, 0, 0], &
            [nstep, nxtrack, nlayer, nlayer], &
                           avg_kernel(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+    else if ((ozwrtavgk) .and. (.not. use_SC)) then
+      call tiof_put4d_r4 (obj, o3p_var_o3_avg_kernel, &
+           [min_step, min_xtrack, 0, 0], &
+           [nstep, nxtrack, nlayer, nlayer], &
+                          favg_kernel(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
     endif
+
     !correlation matrix
-    if (ozwrtcorr) then
+    if ((use_correl) .and. (use_SC)) then
+      call tiof_put4d_i2 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
+           [nstep, nxtrack, nlayer, nlayer], &
+                          cov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+    else if ((use_correl) .and. (.not. use_SC)) then
       call tiof_put4d_r4 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
-           [nstep, nxtrack, nfitvars, nfitvars], &
-                          correl_mtrx(1:nfitvars,1:nfitvars,1:nxtrack,1:nstep), errstat)
+           [nstep, nxtrack, nlayer, nlayer], &
+                          fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
     endif
-    !noise matrix
-    if (ozwrtcovar) then
-      call tiof_put3d_i2 (obj, o3p_var_o3_noise_matrix, &
-         [min_step, min_xtrack, 0], [nstep, nxtrack, nnoise_elems], &
-         noise_mtrx(1:nnoise_elems,1:nxtrack,1:nstep), errstat)
-      !
-      ! FIXME - ozone information content should have its own switch
-      call tiof_put2d_r4 (obj, o3p_var_o3_info_content, &
-           [min_step, min_xtrack], [nstep, nxtrack], &
-                          ozinfo(1:nxtrack,1:nstep), errstat)
+
+    !covariance matrix
+    if ((.not. use_correl) .and. (ozwrtcovar)) then
+      call tiof_put4d_r4 (obj, o3p_var_cov, &
+         [min_step, min_xtrack, 0, 0], [nstep, nxtrack, nlayer, nlayer], &
+         fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
     endif
+    !
+    ! FIXME - ozone information content should have its own switch
+    call tiof_put2d_r4 (obj, o3p_var_o3_info_content, &
+         [min_step, min_xtrack], [nstep, nxtrack], &
+                        ozinfo(1:nxtrack,1:nstep), errstat)
+    
     !contribution matrix
     if (ozwrtcontri) then
       call tiof_put4d_r4 (obj, o3p_var_contrib_func, &
