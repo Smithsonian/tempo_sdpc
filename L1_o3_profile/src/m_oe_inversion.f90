@@ -299,7 +299,7 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
   ENDDO
 
   ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
-  IF (last_iter .OR. do_oe_output) THEN  
+  !IF (last_iter .OR. do_oe_output) THEN Junsung: delete this IF sentence to calculate dfn and ozinfo in all case 
 
      dfn = SUM(1.0d0 / tmpw2p1)
      h = SUM(0.5d0 * LOG (tmpw2p1) )
@@ -312,7 +312,7 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
 
      ! need to check for this later        
      ozinfoh = ozdfs / dfs * h    
-  ENDIF
+  !ENDIF
   !  Level 2 output debug                                                 
   !  --------------------                                                 
   IF (do_oe_output) THEN
@@ -649,8 +649,9 @@ SUBROUTINE oe_inversion_y (do_sa_diagonal, do_oe_output, file_unit, delta_chi_mi
 
   Sxn = MATMUL(MATMUL(MATMUL(MATMUL(sx, TRANSPOSE(rK)), sy_inv), rK), Sx)
 
-  ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h): 
-  IF (last_iter .OR. do_oe_output) THEN  
+
+  ! Degrees of Freedom Noise and Signal, Information content (dfn,dfs,h):
+  !IF (last_iter .OR. do_oe_output) THEN  Junsung: delete this IF sentence to calculate dfn and ozinfo in all case
 
      dfn = SUM(1.0d0 / tmpw2p1)
      h = SUM(0.5d0 * LOG (tmpw2p1) )
@@ -663,7 +664,7 @@ SUBROUTINE oe_inversion_y (do_sa_diagonal, do_oe_output, file_unit, delta_chi_mi
 
      ! need to check for this later        
      ozinfoh = ozdfs / dfs * h    
-  ENDIF
+  !ENDIF
   !  Level 2 output debug                                                 
   !  --------------------                                                 
   IF (do_oe_output) THEN
