@@ -6,6 +6,11 @@ MODULE m_get_toz
   USE OMSAO_errstat_module
   USE OMSAO_he5_module
   USE m_utilities, ONLY: get_latfrac, get_gridfrac
+  use netcdf, only: nf90_nowrite, nf90_noerr, nf90_global, nf90_enotatt, &
+      nf90_get_att, nf90_inquire_attribute
+  use tio_module
+  use tell_module
+
   IMPLICIT NONE
   INTEGER, PRIVATE :: i, j, nblat, nblon
   INTEGER, DIMENSION(2), PRIVATE :: latin, lonin
@@ -36,6 +41,9 @@ MODULE m_get_toz
     IF (toz <= 0.0) THEN 
        CALL get_omtoz_zm(toz)
     ENDIF
+  !Junsung
+  ELSE IF (which_toz == 4) THEN
+       CALL get_ompstoz (toz)
   ENDIF
   WRITE(www_lun, *) 'get_toz:', toz, 'which_toz:', which_toz  
   END SUBROUTINE get_toz
@@ -325,5 +333,167 @@ MODULE m_get_toz
 !     ENDIF
 !     toz = toz - do3
   END SUBROUTINE get_omtoz_zm
+  !Junsung
+  SUBROUTINE get_ompstoz (toz)
+  IMPLICIT NONE
+
+  ! ======================
+  ! Input/Output variables
+  ! ======================
+  REAL (KIND=dp), INTENT(OUT) :: toz
+  ! ======================
+  ! Local variables
+  ! ======================
+  INTEGER, PARAMETER           :: nlat=180, nlon=360
+  REAL (KIND=dp), PARAMETER    :: longrid = 1, latgrid = 1.0, lon0=-180.0, lat0=-90.0
+  INTEGER                      :: i, j, k,  fidx, lidx, sidx, eidx
+  REAL                         :: dis, frac, toz0
+  CHARACTER (LEN=200)          :: ompso3fname
+  real (kind=dp)               :: sumfrac
+  INTEGER :: fid, grid_id, status
+  INTEGER (KIND=8), DIMENSION(2)       :: start, stride
+  INTEGER (KIND=8), DIMENSION(2)       :: edge =(/nlon, nlat/)
+  REAL, SAVE, DIMENSION(:,:),ALLOCATABLE   :: glbtoz
+  LOGICAL, PARAMETER                   :: do_fillin =.TRUE.
+  LOGICAL, SAVE                        :: first = .TRUE.
+  type (tiof_file_type) :: tio_l1obj
+  integer (kind=4)      :: errstat
+
+  IF (first) THEN
+     !l3_toc_filename = '/data/tempo1/Shared/jspark/TEMPO/L1_o3_profile_test/refdata/o3_profile/data/ATMOS/OMPS/OMPS-NPP_NMTO3-L3-DAILY_v2.1_2023m1114_2023m1116t015747.h5'
+     !ompso3fname = TRIM(ADJUSTL(atmdbdir)) // 'OMPS/OMPS-NPP_NMTO3-L3-DAILY_v2.1_2023m1015_2023m1017t020541.h5'
+     ompso3fname = TRIM(ADJUSTL(atmdbdir)) // 'OMPS/OMPS-NPP_NMTO3-L3-DAILY_v2.1_2024m0315_2024m0317t032035.h5'
+
+     ! Determine if file exists or not
+     allocate(glbtoz(nlon, nlat))
+     INQUIRE (FILE = TRIM(ADJUSTL(ompso3fname)), EXIST = file_exist)
+     IF (.NOT. file_exist) THEN
+        WRITE(*,*) 'please prepare OMPS TO3 L3 climatological data'
+        WRITE(*, *) 'GET_OMPSTOZ: TOC file does not exist!!!', ompso3fname ; stop 1
+     ENDIF
+
+     call tiof_open(ompso3fname, tio_l1obj, nf90_nowrite, errstat)
+     if (errstat /= 0) then
+       call tell_error (tell_io_open_error, &
+            "OMPS_read: error opening OMPS file", errstat)
+       return
+     endif
+     call tiof_get2d_r4 (tio_l1obj, "ColumnAmountO3", [0,0], [nlat,nlon], &
+     glbtoz, errstat)
+
+     ! fill in the bad data
+     DO j = 2, nlat -1
+         DO i = 1, nlon
+            IF ( glbtoz(i, j) <= 0 .and. glbtoz( i, j-1) >0 .and. glbtoz(i, j+1) > 0 ) THEN
+                 glbtoz(i,j) = ( glbtoz(i,j-1) + glbtoz(i,j+1)) /2.0
+            ENDIF
+         ENDDO
+     ENDDO
+     DO j = 1, nlat
+     DO i = 2, nlon-1
+            IF ( glbtoz(i, j) <= 0 .and. glbtoz( i-1, j) >0 .and. glbtoz(i+1, j) > 0 ) THEN
+                 glbtoz(i,j) = ( glbtoz(i-1,j) + glbtoz(i+1,j)) /2.0
+            ENDIF
+         ENDDO
+     ENDDO
+
+     IF (do_fillin) THEN
+     ! linear interpolation along the track
+     DO i = 1, nlon
+      DO j = 1, nlat
+        IF (glbtoz(i,j) > 0.0 ) EXIT
+      ENDDO
+      fidx = j
+      DO j = nlat, 1, -1
+         IF (glbtoz(i,j) > 0.0) EXIT
+      ENDDO
+      lidx = j
+      !glbtoz(i, 1:fidx) = glbtoz(i,fidx)
+      !glbtoz(i, lidx:nlat) = glbtoz(i,lidx)
+      IF (fidx >= lidx ) CYCLE
+      j = fidx + 1
+      DO while (j <=lidx)
+         IF (glbtoz(i,j) <= 0.0 ) THEN
+             sidx = j -1 ; j = j + 1
+             eidx = sidx -1
+             DO WHILE ( j <=lidx)
+               IF (glbtoz(i,j) > 0.0 ) THEN
+                   eidx = j ; j = j + 1 ;EXIT
+               ELSE
+                   j = j + 1
+               ENDIF
+             ENDDO
+             dis = eidx - sidx
+             IF (dis <= 10) THEN
+                   DO k= sidx +1, eidx -1
+                      frac = 1.0 - (k - sidx)/dis
+                      glbtoz(i,k) = frac*glbtoz(i, sidx) + (1.0 - frac)*glbtoz(i,eidx)
+                   ENDDO
+             ENDIF
+         ELSE
+           j = j + 1
+         ENDIF
+      ENDDO ! loop of endwhile
+     ENDDO  ! loop of i
+
+     ! linear interpolation across the track
+     Do j = 1, nlat
+       DO i = 1, nlon
+          IF (glbtoz(i,j) > 0.0 ) EXIT
+       ENDDO
+       fidx = i
+       DO i = nlon, 1, -1
+          IF (glbtoz(i,j) > 0.0 ) EXIT
+       ENDDO
+       lidx = i
+       IF (fidx >= lidx) CYCLE
+
+       i = fidx + 1
+       DO WHILE ( i <= lidx)
+         IF (glbtoz(i,j) <= 0.0 ) THEN
+             sidx = i -1 ; i = i + 1
+             eidx = sidx -1
+             DO WHILE ( i <=lidx)
+               IF (glbtoz(i,j) > 0.0 ) THEN
+                   eidx = i ; i = i + 1 ;EXIT
+               ELSE
+                   i = i + 1
+               ENDIF
+             ENDDO
+             dis = eidx - sidx
+             IF (dis <= 10) THEN
+                   DO k= sidx +1, eidx -1
+                      frac = 1.0 - (k - sidx) /dis
+                      glbtoz(k,j) = frac*glbtoz(sidx, j) + (1.0 - frac)*glbtoz(eidx,j)
+                   ENDDO
+             ENDIF
+         ELSE
+           i = i + 1
+         ENDIF
+      ENDDO ! loop of endwhile
+     ENDDO ! loop of latitude
+     ENDIF
+     first = .FALSE.
+  ENDIF
+
+  CALL get_gridfrac(nlon, nlat, longrid, latgrid, lon0, lat0, &
+       the_lon, the_lat, nblon, nblat, lonfrac, latfrac, lonin, latin)
+  toz = 0.0 ; sumfrac=0.0
+  DO i = 1, nblon
+     DO j = 1, nblat
+        IF (glbtoz(lonin(i), latin(j)) > 0) THEN
+             toz = toz + glbtoz(lonin(i), latin(j)) * lonfrac(i) * latfrac(j)
+             sumfrac = sumfrac + lonfrac(i)*latfrac(j)
+        ENDIF
+     ENDDO
+  ENDDO
+  toz0=real(toz, kind=sp)
+  IF (toz > 0) toz = toz/sumfrac
+  IF (toz > 0) toz = toz +3
+  print*, toz
+ 
+  RETURN
+
+  END SUBROUTINE get_ompstoz
 
 END MODULE m_get_toz
