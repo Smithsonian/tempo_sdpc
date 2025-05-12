@@ -4,6 +4,7 @@ module m_read_L2_o3p_tio
   use tio_module
   use tell_module
   use o3p_names_module
+  use ozprof_data_module, only:use_SC
 
 
   implicit none
@@ -370,12 +371,11 @@ contains
     use m_o3p_params, only: geoflg, aeros_idx, tropo_idx, cld_frac, cld_pres, &
          cld_flag, glintprob, eff_alb, o3apriori, o3apriori_err, &
          ozprof_pres, ozprof_alt, ozprof_temp, ozprof_pres_bnds, ozprof_alt_bnds, &
-         ozinfo, cld_opt_depth, &
+         ozinfo, ozdfs, cld_opt_depth, & !Junsung: add ozdfs for output (2025/05/09)
          gas_apriori, gas_apriori_err, nongas_apriori, nongas_apriori_err, &
          correl_mtrx, contrib_mtrx, aeros_opt_thick, aeros_scatter_thick, &
          avg_kernel, noise_mtrx, n_fit_wvl, n_window_wvl, gas_names, &
-         nongas_names, nongas_units, param_strlen, param_unit_strlen
-
+         nongas_names, nongas_units, param_strlen, param_unit_strlen, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx
     implicit none
 
     !input variables
@@ -497,22 +497,59 @@ contains
            [nstep, nxtrack, nlayer, nlayer], &
            avg_kernel(1:nlayer,1:nlayer,min_xtrack:max_xtrack,min_step:max_step), errstat)
     endif
-    ! Optional - correlation matrix
-    if (ozwrtcorr .and. nfitvars > 0) then
+!    ! Optional - correlation matrix
+!    if (ozwrtcorr .and. nfitvars > 0) then
+!      call tiof_get4d_r4 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
+!           [nstep, nxtrack, nfitvars, nfitvars], &
+!           correl_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+!           errstat)
+!    endif
+
+!    ! Optional - noise matrix & ozone information content matrix
+!    if (ozwrtcovar .and. nnoise_elms > 0) then
+!      call tiof_get3d_i2 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0], &
+!           [nstep, nxtrack, nnoise_elms], &
+!           noise_mtrx(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+!      call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_info_content, [0, 0], &
+!           [nstep, nxtrack], &
+!           ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
+!    endif
+
+    ! Optional - covariance matrix
+    if ((.not. use_SC) .and. ozwrtcorr .and. nfitvars > 0) then
       call tiof_get4d_r4 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
            [nstep, nxtrack, nfitvars, nfitvars], &
-           correl_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           fcov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+           errstat)
+    else if (use_SC .and. ozwrtcorr .and. nfitvars > 0) then
+      call tiof_get4d_i2 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
+           [nstep, nxtrack, nfitvars, nfitvars], &
+           cov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
            errstat)
     endif
-    ! Optional - noise matrix & ozone information content matrix
-    if (ozwrtcovar .and. nnoise_elms > 0) then
-      call tiof_get3d_i2 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0], &
-           [nstep, nxtrack, nnoise_elms], &
-           noise_mtrx(:, min_xtrack:max_xtrack, min_step:max_step), errstat)
+
+    !Junsung: add o3p_var_o3_dfs for output (2025/05/09)
+    call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_dfs, [0, 0], &
+         [nstep, nxtrack], &
+         ozdfs(min_xtrack:max_xtrack, min_step:max_step), errstat)
+
+    ! Optional - noise covariance matrix & ozone information content matrix
+    if ((.not. use_SC) .and. ozwrtcovar .and. nfitvars > 0) then
+      call tiof_get4d_r4 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0, 0], &
+           [nstep, nxtrack, nfitvars, nfitvars], &
+           fncov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), errstat)
+      call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_info_content, [0, 0], &
+           [nstep, nxtrack], &
+           ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
+    else if (use_SC .and. ozwrtcovar .and. nfitvars > 0) then
+      call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0, 0], &
+           [nstep, nxtrack, nfitvars, nfitvars], &
+           ncov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), errstat)
       call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_info_content, [0, 0], &
            [nstep, nxtrack], &
            ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
     endif
+
     ! Optional - contribution matrix
     if (ozwrtcontri .and. nfitvars > 0 .and. nmax_wavs > 0) then
       call tiof_get4d_r4 (tio_l2obj, o3p_var_contrib_func, [0, 0, 0, 0], &
