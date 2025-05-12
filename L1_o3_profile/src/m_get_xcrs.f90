@@ -68,7 +68,8 @@ MODULE m_get_xcrs
    !-----------------------------------------------------------------
    ! help variables
    !-----------------------------------------------------------------
-   REAL (KIND=dp), PARAMETER :: rm_uv = 370, rm_vis = 530   
+!   REAL (KIND=dp), PARAMETER :: rm_uv = 370, rm_vis = 530   
+   REAL (KIND=dp), PARAMETER :: rm_uv = 500, rm_vis = 530
 
    !-----------------------------------------------------------------
    ! output variables
@@ -135,16 +136,16 @@ CONTAINS
   dods = crsz%do_shiwf
   dodt = crsz%do_tmpwf
   dodp = crsz%do_pslwf
- 
   ! load origianl spectrum
   IF (first) THEN
     ! read cross section 
-    CALL read_txcrs (ozabs_fname,winwav_min, winwav_max,lut)  
+    CALL read_txcrs (ozabs_fname,winwav_min, winwav_max,lut) 
     IF (lut%wvl(1)  > lamda(1) .OR. lut%wvl(lut%nw)  < lamda(nlsav)) THEN
        WRITE(www_lun, *) modulename//': O3abs should cover the whole fit wavelenth!!!'
        WRITE(www_lun, *)'crswav::', lut%wvl(1)  , lut%wvl(lut%nw),'omiwav:',lamda(1), lamda(nlsav)
        problems = .TRUE. ; return
     ENDIF
+
     IF (.NOT. lut%slitconv ) THEN
        WRITE(www_lun, *) modulename//': Need to use high-resolution cross section for O3!!!'
        problems = .TRUE. ; return
@@ -156,6 +157,7 @@ CONTAINS
     ozabs_convl = .true.
     first = .FALSE.
   ENDIF
+
   allocate (savabs(nt, nlsav), savabs_d1(nt, nlsav) )
   allocate (tmpabs(nt, nlamda),tmpabs_d1(nt, nlamda))
   !-----------------------------------------------------------------------------------------
@@ -2068,10 +2070,9 @@ CONTAINS
         WRITE(*,*) modulename//': No file of '//TRIM(ADJUSTL(absfname)); stop 1
     ENDIF
 
-    DO WHILE (tmpchar /= 'START OF TABLE') 
+    DO WHILE (tmpchar /= 'START OF TABLE')
        READ (ozabs_unit, '(A14)') tmpchar
     ENDDO
-     
     READ (ozabs_unit, *) nline, tmp, tmp, txcrs%normc
     READ (ozabs_unit, *) txcrs%tdepend, txcrs%nt, txcrs%slitconv
     allocate (ts(txcrs%nt),wvl(nline), crs(nline, txcrs%nt))
@@ -2088,6 +2089,7 @@ CONTAINS
        IF (wvl(j) > minw  .AND. wvl(j) <  maxw .AND. &
           .NOT. (wvl(j) > rm_uv .AND. wvl(j) < rm_vis) )  j = j + 1
     ENDDO
+
     CLOSE (ozabs_unit)
     txcrs%nw = j - 1    
     allocate (txcrs%ts(txcrs%nt), txcrs%wvl(txcrs%nw), & 
