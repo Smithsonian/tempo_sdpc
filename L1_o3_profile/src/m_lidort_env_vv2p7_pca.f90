@@ -41,7 +41,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
        n_rad_wvl, fitwavs, radwvl_sav, n_radwvl_sav, &
        rmask_fitvar_rad, mask_fitvar_rad, &
        fitvar_rad, fitvar_rad_init, fitvar_rad_apriori, &
-       refidx, refspec_norm, database_pslwf, ctrdbdir
+       refidx, refspec_norm, database_pslwf, ctrdbdir, tabdir
   USE ozprof_data_module,     ONLY : num_iter,&
        do_simu, radcalwrt, do_tracewf, use_effcrs, do_multi_vza,&
        ncalcp, radcwav, osfind, oswins,&
@@ -64,7 +64,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
                         get_hres_gascrs_ray, get_effres_gascrs_ray
   USE m_lidort_util, ONLY: set_polcorr, polcorr_online, polcorr_online_with_lut,&
                            radwf_inter_convol,hres_radwf_inter_convol, &
-                           get_tracegas_wf, debug_rtm, debug_taug
+                           get_tracegas_wf, debug_rtm, debug_taug, set_polcorr_new
 
   IMPLICIT NONE
   ! =======================
@@ -149,6 +149,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   ! Name of this module/subroutine
   ! ==============================
   CHARACTER (LEN=15), PARAMETER :: modulename = 'LIDORT_PROF_PCA'
+  CHARACTER (LEN=15) :: vldlut = 'vldlut'
 
   call cpu_time(e_s)
   IF (nw <= 1 .or. use_effcrs ) THEN     
@@ -489,7 +490,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
    allocate (do_polcorrs(nw), polidx(nw))
    npolcorr=0; do_polcorrs(1:nw) = .FALSE. ; polidx(1:nw) = 0; polcorr_idxs(:) = 0 
    IF ( (polcorr >= 3 .AND. polcorr <= 5) .AND. nw > 1 ) THEN
-     call set_polcorr(numwin, winlim(1:numwin, :),nw, waves, do_radcals(1:nw), &
+     call set_polcorr_new(numwin, winlim(1:numwin, :),nw, waves, do_radcals(1:nw), &
      npolcorr,do_polcorrs, polidx, polcorr_idxs)
    ENDIF
   ENDIF
@@ -999,8 +1000,12 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
     ENDDO
 
     toz = SUM(ozs(1:nfsfc-1))
-    VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
-    CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nfsfc, nalbwf,&
+
+    ! Junsung: revised the ots library for VLDLUTdir
+    ! Junsung: chnage the nfsfc to nsprs
+    ! VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
+    VLDLUTdir= TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(vldlut))
+    CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nsprs, nalbwf,&
          do_albwf, do_cfracwf, the_cfrac, albclrcld(fidx:lidx, 1:2),&
          sza, vza, aza, lat, toz, fps(0:nz1), ps(1:nz1), &
          waves(fidx:lidx),  rad(fidx:lidx, 1),&
@@ -1062,8 +1067,11 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
     DO i = 1, nz1
      tauwf (fidx:lidx, i) = fozwf(fidx:lidx, i, 1)/ccrs%o3(fidx:lidx, i)/rad(fidx:lidx,1)/du2mol
     ENDDO
-    VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8/LUT-W/'
-    CALL polcorr_online_with_lut(num_iter, VLDLUTdir, lidx-fidx+1, nz1, nctp,nfsfc, nalbwf,&
+    ! Junsung: revised the ots library for VLDLUTdir
+    ! Junsung: chnage the nfsfc to nsprs
+    ! VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8/LUT-W/'
+    VLDLUTdir= TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(vldlut))
+    CALL polcorr_online_with_lut(num_iter, VLDLUTdir, lidx-fidx+1, nz1, nctp,nsprs, nalbwf,&
          do_albwf, do_cfracwf, the_cfrac, albclrcld(fidx:lidx, 1:2),&
          sza, vza, aza, lat, toz, fps(0:nz1), ps(1:nz1), &
          radwvl_sav(fidx:lidx),  rad(fidx:lidx, 1),&

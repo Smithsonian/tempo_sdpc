@@ -51,7 +51,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
        nradpix, n_rad_wvl, fitwavs, radwvl_sav, n_radwvl_sav, & 
        mask_fitvar_rad, &
        fitvar_rad, fitvar_rad_apriori, &
-       refidx, refspec_norm, the_surfalt, database_pslwf, npsl
+       refidx, refspec_norm, the_surfalt, database_pslwf, npsl, tabdir
   USE ozprof_data_module,     ONLY : num_iter, do_debug_o3p, & 
        do_tracewf, use_effcrs, &
        ncalcp, radcwav, &
@@ -74,7 +74,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
                         get_hres_gascrs_ray, get_effres_gascrs_ray
   USE m_lidort_util, ONLY: set_polcorr, polcorr_online, polcorr_online_with_lut, &
                            radwf_interpol, hres_radwf_inter_convol,&
-                           get_tracegas_wf, debug_rtm, debug_taug
+                           get_tracegas_wf, debug_rtm, debug_taug, set_polcorr_new
   USE m_ezspline_interpolation, ONLY: bspline
   USE m_set_brdf, ONLY: error, surface, SurfProf, window, Geolocation
   USE Surface_module, ONLY: SetSurfaceLinearization,SetSurfaceOpticalProperties
@@ -166,6 +166,7 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
 !  VLIDORT supplements i/o structure
    TYPE(VLIDORT_Sup_InOut)                :: VLIDORT_Sup
    TYPE(VLIDORT_LinSup_InOut)             :: VLIDORT_LinSup
+   CHARACTER (LEN=15) :: vldlut = 'vldlut'
   ! ==============================
   ! Name of this module/subroutine
   ! ==============================
@@ -656,10 +657,10 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
     npolcorr=0;do_polcorrs(1:nw) = .FALSE.;polidx(1:nw) = 0; polcorr_idxs(:) = 0
     IF ( (polcorr >= 3 .AND. polcorr <= 5) .AND. nw > 1 ) THEN
       IF (use_effcrs) THEN
-       CALL set_polcorr(numwin, winlim(1:numwin,:),nw, waves, do_radcals(1:nw), &
+       CALL set_polcorr_new(numwin, winlim(1:numwin,:),nw, waves, do_radcals(1:nw), &
                        npolcorr,  do_polcorrs(1:nw), polidx(1:nw), polcorr_idxs)
       ELSE
-       CALL set_polcorr(numwin, winlim(1:numwin,:),ncalcp, radcwav, &
+       CALL set_polcorr_new(numwin, winlim(1:numwin,:),ncalcp, radcwav, &
            do_radcals(1:ncalcp),npolcorr,do_polcorrs(1:ncalcp),polidx(1:ncalcp), &
            polcorr_idxs)
     ENDIF
@@ -832,7 +833,6 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         ELSE
           nlayers = nctp-1  ! from cloud top to TOA
           nz1 = nlayers;    do_clouds = .FALSE.
-
           IF (the_cfrac == 1.0 .AND. nw /= 1) THEN
             lambertian_albedo = albs(iw)
             lambcld_refl = albs(iw)
@@ -1051,8 +1051,12 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
     ENDDO
 
     toz = SUM(ozs(1:nfsfc-1))
-    VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
-    CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nfsfc, nalbwf,&
+    ! Junsung: revised the ots library for VLDLUTdir
+    ! Junsung: chnage the nfsfc to nsprs
+    ! VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
+    ! VLDLUTdir='/home/jbak/OzoneFit/tbl/vldlut/'
+    VLDLUTdir= TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(vldlut))
+    CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nsprs, nalbwf,&
          do_albwf, do_cfracwf, the_cfrac, albclrcld(fidx:lidx, 1:2),&
          sza, vza, aza, lat, toz, fps(0:nz1), ps(1:nz1), &
          waves(fidx:lidx),  rad(fidx:lidx, 1),&
@@ -1144,8 +1148,12 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
         DO i = 1, nz1
          tauwf (fidx:lidx, i) = fozwf(fidx:lidx, i, 1)/ccrs%o3(fidx:lidx,i)/rad(fidx:lidx,1)/du2mol
         ENDDO
-        VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8/LUT-conv/'
-        CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nfsfc, nalbwf,&
+        ! Junsung: revised the ots library for VLDLUTdir
+        ! Junsung: chnage the nfsfc to nsprs
+        ! VLDLUTdir='/home/jbak/data/GEMSTOOL/lutdatav2.8/LUT-conv/'
+        ! VLDLUTdir='/home/jbak/OzoneFit/tbl/vldlut/'
+        VLDLUTdir= TRIM(ADJUSTL(tabdir)) // TRIM(ADJUSTL(vldlut))
+        CALL polcorr_online_with_lut(num_iter,VLDLUTdir,lidx-fidx+1, nz1, nctp,nsprs, nalbwf,&
              do_albwf, do_cfracwf, the_cfrac, albclrcld(fidx:lidx, 1:2),&
              sza, vza, aza, lat, toz, fps(0:nz1), ps(1:nz1), &
              radwvl_sav(fidx:lidx),  rad(fidx:lidx, 1),&
@@ -1288,7 +1296,6 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
   rto%so2zwf  = so2zwf(1:nw0,:)
   rto%ozwf    = ozwf(1:nw0,1:nl,:)
   rto%tmpwf   = tmpwf(1:nw0,1:nl,:)
-  
 !  RETURN
   !--------------------------------
   ! Check running time in RT simulation

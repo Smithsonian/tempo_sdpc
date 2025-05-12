@@ -51,7 +51,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
        wrtring, wfcfidx, nfwfc, ecfrind, ecfrfind, so2zfind, so2valts, do_twostep, &
        use_large_so2_aperr, use_effcrs, do_simu_rmring, trace_avgk, trace_profwf, &
        ring_LUT, merr_covar, do_sy_diagonal, the_ai, & 
-       so2fidx, so2vfidx
+       so2fidx, so2vfidx, use_SC
   USE OMSAO_variables_module,   ONLY: epsrel, NSPC_omi, &
        nradpix, fitwavs, fitweights, clmspec_rad, mask_fitvar_rad, &
        fitvar_rad_str, fitvar_rad,  &
@@ -126,6 +126,8 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
   CHARACTER (LEN=14), PARAMETER :: modulename = 'ozprof_inverse'
 
   use_uv2init = .FALSE.
+  ! Junsung: add for checking the currpix, currline
+  ! print*, currpix, currline
   ! recheck, inconsistent btw OMI and GOME
   IF (numwin >= 2 ) THEN 
      fidx = 1
@@ -140,7 +142,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
      ENDDO
   ENDIF
   use_uv2init = .FALSE. !xl,1/5/2021, disable this for now
-
   uv12_retflg = 0 ! 0: uv1+uv2 1: uv1+uv2+modified a priori 2: uv2 retrieval only
 
   num_iter  = 0  
@@ -155,7 +156,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
   correct_merr = .FALSE. 
   cmerr_niter = 0 !maxit + 1
   readout_noise=1.0
-
   ! After retrievals are done with currently assumed measurement errors, preform retrievals again
   ! with adjusted measurement errors based on fitting residuals in several different spectral regions
   adjust_merr = .FALSE.
@@ -171,13 +171,11 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
         fidx = lidx + 1
      ENDDO
   ENDIF
-
  ! constract Sy, Sy = S_rnd + S_sys, S_rnd is diagonal, represented by measurements noise,
  ! S_sys is square, symetric, represented by sig^2*exp(-(lambda1-lambda2)/h)  
   IF (.NOT. do_sy_diagonal) THEN
      Sy = merr_covar(1:ns, 1:ns)
   ENDIF
-
  ! Calculate ring spectrum
   IF (ring_on_line .AND. .NOT. (do_simu .AND. radcalwrt .AND. .NOT. wrtring .AND. .NOT. do_simu_rmring) ) THEN
      IF (ring_LUT) THEN
@@ -190,10 +188,8 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
        exval = -4; RETURN
      ENDIF
   ENDIF
-
   IF (ozwrtint) WRITE(ozwrtint_unit, '(A,I5,A10,I5, A10, I5)')  'Line = ', &
        currline, ' XPix = ', currpix, ' Loop = ', currloop
-
   ochisq = 10.0D20;  oradrms = 100.0
   inverse: DO WHILE (proceed)
 
@@ -205,10 +201,11 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
      ENDIF
      IF (num_iter == cmerr_niter .AND. correct_merr .AND. instrument_idx == omi_idx) &
         fitweights(1:ns) = fitweights(1:ns) / SQRT(1.0d0 * NSPC_omi) * readout_noise
-
      CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gspec, &
           fitres, fitspec, fitqres, fitq, nchisq, nradrms, errstat)
- 
+    !Junsung: added (03/12/2025)
+    !xold = fitvar
+    !Junsung: end added
     IF (errstat == pge_errstat_error) THEN
         proceed = .FALSE.; exval = -5; CYCLE
      ENDIF
@@ -246,7 +243,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
 
      num_iter = num_iter + 1
      so2aperr_update = .FALSE.
-
      DO 
         IF (use_oe) THEN  ! use optimal estimation
            last_iter = .FALSE.
@@ -257,11 +253,14 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
                       varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), ncovar(1:nf, 1:nf),&
                       conv, avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec_new)
               ELSE
- 
+!Junsung: Alb values changed as negative here
                  CALL oe_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel,        &
                       last_iter, num_iter, ns, nf, gspec, sig, dyda, xap, xold, sa, &
                       varname, ffidx, flidx, delta_x, covar(1:nf, 1:nf), ncovar(1:nf, 1:nf),&
                       conv, avg_kernel(1:nf, 1:nf), contri(1:nf, 1:ns), ozdfs, ozinfo, lchisq, gspec_new)
+              !print*, delta_x
+              !print*, xold
+              !print*, xap
               ENDIF
            ELSE
              CALL twostep_inversion (do_sa_diagonal, ozwrtint, ozwrtint_unit, epsrel,        &
@@ -284,7 +283,19 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
            !ENDDO
            ! Ring effect, assume ring effect last variable, one single band
            ! last two variables if using two bands
-
+        !Junsung
+        IF (ozwrtwf) THEN
+          IF (.NOT. do_sy_diagonal) THEN
+            DO i = 1, nf
+              weight_function(1:ns, i) = dyda(1:ns, i)
+            ENDDO
+          ELSE
+            DO i = 1, nf
+              weight_function(1:ns, i) = dyda(1:ns, i) * fitweights(1:ns)
+            ENDDO
+          ENDIF
+        ENDIF
+        !END
             Do i = 1, nf
                READ (fitvar_rad_str(mask_fitvar_rad(i)), '(a3)') chaidx
                IF (chaidx == 'rin' .or. chaidx == 'shi' .or. chaidx == 'ozs')  THEN 
@@ -304,12 +315,13 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
            !fitvar = delta_x + xold
            exval = 0; RETURN
         ENDIF
-              
-        fitvar = delta_x + xold
+
+        !Junsung
+        !print*, fitvar
+        fitvar = delta_x + xold !Junsung: Alb values changed as negative here
         IF (IEOR(IBCLR(TRANSFER(lchisq, NAN), DPSB), NAN) == 0) THEN  ! check for NAN 
            proceed = .FALSE.; exval = -6; EXIT
         ENDIF
-
         ! Special treatment for SO2
         IF (do_twostep .OR. (so2vfidx <= 0 .AND. so2fidx <= 0) .OR. use_large_so2_aperr) EXIT
         so2aperr_update = .FALSE.
@@ -319,7 +331,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
               so2aperr_update  = .TRUE.
            ENDIF
         ENDIF
-
         IF ( so2fidx > 0 ) THEN
            IF ( ABS(fitvar(so2fidx)) > SQRT(sa(so2fidx, so2fidx)) * 0.5) THEN
               sa(so2fidx, so2fidx) = 4.0 * fitvar(so2fidx) ** 2.0 
@@ -328,7 +339,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
         ENDIF
         IF (.NOT. so2aperr_update ) EXIT
      ENDDO
-
      IF (use_logstate) THEN
         fitvar(ffidx:flidx) = EXP(fitvar(ffidx:flidx)) 
         xold(ffidx:flidx) = EXP(xold(ffidx:flidx)) 
@@ -378,7 +388,10 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
         !IF (num_iter >= 2) xap(ffidx:flidx) = fitvar(ffidx:flidx)
 
         ! update the uncondensed fitting variables
-        fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
+        fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar 
+!Junsung
+!print*, fitvar_rad
+!stop
      END IF
 
      IF ( ALL(ABS(delta_x(ffidx:flidx) / fitvar(ffidx:flidx)) <= epsrel) ) THEN
@@ -439,7 +452,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
         tracegas(k, 10) = SUM(avg_kernel(i, 1:nf) * aperr(1:nf) / aperr(i) )  
      ENDIF
   ENDDO
-  IF (ozwrtfavgk) favg_kernel(1:nf, 1:nf) = avg_kernel(1:nf, 1:nf)
+  IF (.not. use_SC) favg_kernel(1:nf, 1:nf) = avg_kernel(1:nf, 1:nf)
 
   ! xliu: 03/19/2010
   ! Averaging kernels have already been calculated for each iteration
@@ -531,7 +544,7 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
           ANY (fitvar(ffidx:flidx) >= upbnd(ffidx:flidx))) THEN
         WRITE(www_lun, *) modulename, ': Retrieved ozone values out of bounds!!!'
         exval = -3
-     ELSE       
+     ELSE      
         ! update the uncondensed fitting variables
         fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
      END IF
@@ -542,7 +555,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
         ENDIF
      ENDDO
   ENDIF
-
   IF (ozwrtwf .AND. exval >= 0) THEN
      IF (.NOT. do_sy_diagonal) THEN
         DO i = 1, nf
@@ -599,7 +611,6 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
   !   delchi = ABS(nradrms - oradrms) / oradrms   ! converge, exit
   !   IF (delchi < epsrel)  exval = exval + 1
   !END IF
-
   IF (exval >= 0 .AND. radcalwrt) THEN
      refl_only = .TRUE.
      xold = fitvar     
@@ -618,12 +629,11 @@ SUBROUTINE ozprof_inverse (nf, varname, fitvar, fitvarap, lowbnd, upbnd,  &
      IF (nfalb > 0) fitvar(albfidx:albfidx+nfalb-1) = fitvarap0(albfidx:albfidx+nfalb-1)
      IF (nfwfc > 0) fitvar(wfcfidx:wfcfidx+nfwfc-1) = fitvarap0(wfcfidx:wfcfidx+nfwfc-1)
      IF (ecfrfind > 0) fitvar(ecfrind) = fitvarap0(ecfrind)
-     fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar    
-
+     fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar   
      CALL pseudo_model(num_iter, refl_only, ns, nf, fitvar, fitvarap, dyda, gspec, &
           fitres1, fitspec1, fitres, fitq, nchisq, nradrms, errstat)
-
      ! Restore the retrieved variables
+     !Junsung
      fitvar = xold
      fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar
 

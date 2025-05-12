@@ -2031,7 +2031,6 @@ SUBROUTINE radwf_interpol(nw, nz, nctp, ncbp, nsprs, faerlvl, do_radcals, &
         albwf = albwf / rad
      ENDWHERE
   ENDIF
-
   IF (do_cfracwf) THEN
      WHERE(do_radcals)
         cfracwf = cfracwf / rad
@@ -2432,7 +2431,99 @@ SUBROUTINE set_polcorr (numwin, winlim, nw, waves, do_radcals, npolcorr, do_polc
        ENDIF
      ENDDO
  RETURN
-END SUBROUTINE
+END SUBROUTINE set_polcorr
+
+SUBROUTINE set_polcorr_new (numwin, winlim, nw, waves, do_radcals, npolcorr, do_polcorrs, polidx, polcorr_idxs)
+  USE OMSAO_precision_module, ONLY:dp
+  USE ozprof_data_module, ONLY:mpolcorr
+  IMPLICIT NONE
+  !=============================================
+  !INPUT VARIABLES
+  INTEGER, INTENT(IN) :: nw, numwin
+  LOGICAL, INTENT(IN) :: do_radcals(nw)
+  REAL (KIND=dp), INTENT(IN), DIMENSION(numwin, 2) :: winlim
+  REAL (KIND=dp), INTENT(IN) :: waves (nw)
+  !=============================================
+  !OUTOUT VARIABLES
+  INTEGER, INTENT(OUT) :: npolcorr
+  INTEGER, INTENT(OUT), DIMENSION (mpolcorr) :: polcorr_idxs
+  INTEGER, INTENT(OUT), DIMENSION (nw)       :: polidx
+  LOGICAL, INTENT(OUT), DIMENSION (nw)       :: do_polcorrs
+  !LOCAL VARIABLES
+  INTEGER :: fidx, idum, iw, lidx, i, j, k, jj, kk, jk
+  REAL (KIND=dp) :: temp
+
+  do_polcorrs(1:nw) = .FALSE. ; npolcorr = 0
+  fidx = 1; idum = 0
+  DO iw = 1, numwin
+     IF (iw == numwin) THEN
+        temp = winlim(iw, 2)
+     ELSE
+        temp = (winlim(iw, 2) + winlim(iw + 1, 1)) / 2.
+     ENDIF
+     lidx = MINVAL(MAXLOC(waves(1:nw), MASK=(waves(1:nw) < temp .AND. waves(1:nw) > 0)))
+     do_polcorrs(fidx) = .TRUE.
+     idum = fidx
+
+     DO i = fidx + 1, lidx - 1
+        IF (do_radcals(i) ) THEN
+           IF ( (waves(idum) < 290.0 .AND. waves(i) >= 290.0) .OR.  &
+                (waves(idum) < 295.0 .AND. waves(i) >= 295.0) .OR.  &
+                (waves(idum) < 299.0 .AND. waves(i) >= 299.0) .OR.  &
+                (waves(idum) < 301.0 .AND. waves(i) >= 301.0) .OR.  &
+                (waves(idum) < 303.0 .AND. waves(i) >= 303.0) .OR.  &
+                (waves(idum) < 305.0 .AND. waves(i) >= 305.0) .OR.  &
+                (waves(idum) < 307.0 .AND. waves(i) >= 307.0) .OR.  &
+                (waves(idum) < 309.0 .AND. waves(i) >= 309.0) .OR.  &
+                (waves(idum) < 311.0 .AND. waves(i) >= 311.0) .OR.  &
+                (waves(idum) < 313.0 .AND. waves(i) >= 313.0) .OR.  &
+                (waves(idum) < 316.0 .AND. waves(i) >= 316.0) .OR.  &
+                (waves(idum) < 320.0 .AND. waves(i) >= 320.0) .OR.  &
+                (waves(idum) < 325.0 .AND. waves(i) >= 325.0) .OR.  &
+                (waves(idum) < 330.0 .AND. waves(i) >= 330.0) .OR.  &
+                (waves(idum) < 340.0 .AND. waves(i) >= 340.0) ) THEN 
+
+                    do_polcorrs(i) = .TRUE.              
+                    ! print * , do_polcorrs(i), i, waves(idum)
+                    idum = i
+            ENDIF
+        ENDIF
+     ENDDO
+     IF (waves(lidx) < 310.0) THEN
+        IF (waves(lidx) - waves(idum) < 1.0) THEN
+           do_polcorrs(idum) = .FALSE.
+        ENDIF
+        do_polcorrs(lidx) = .TRUE.
+        idum = lidx
+     ELSE
+        IF (waves(lidx) - waves(idum) < 5.0) THEN
+           do_polcorrs(idum) = .FALSE.
+        ELSE
+               
+           fidx = idum + 1
+           DO i = fidx, lidx - 1
+              IF (waves(i) - waves(idum) >= 10.0) THEN
+                 do_polcorrs(idum) = .TRUE.
+                 idum = i
+              ENDIF
+           ENDDO
+           IF (waves(lidx) - waves(idum) < 5.0) do_polcorrs(idum) = .FALSE.
+           do_polcorrs(lidx) = .TRUE.
+           idum = lidx
+        ENDIF
+     ENDIF
+
+     fidx = lidx + 1
+  ENDDO
+  DO i = 1, nw
+     IF ( do_polcorrs(i) ) THEN
+        npolcorr = npolcorr + 1
+        polcorr_idxs(npolcorr) = i
+        polidx(i) = npolcorr
+     ENDIF
+  ENDDO
+  RETURN
+END SUBROUTINE set_polcorr_new
 
 SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
            do_albwf, do_cfracwf, the_cfrac, albs, &
@@ -2474,12 +2565,14 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
   REAL (KIND=dp):: frac,frac1, frac2, pt,ctp,sfcp, adj_o3, adj_ray
   REAL (KIND=dp), DIMENSION(nz) :: dtau
   ! LUT variables
-  LOGICAL, PARAMETER :: do_plan = .true., do_debug=.false.
+  LOGICAL, PARAMETER :: do_plan = .false., do_debug=.false.
   CHARACTER (LEN=255) :: msg
   !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-r/LUT-48/'
   !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/data/GEMSTOOL/lutdatav2.8-o3-UV/LUT-24/'
-  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/OzoneFit/tbl/vldlut/'
-  CHARACTER(LEN=12), DIMENSION(2)  :: LUT_type = (/"vec06st72nl_", "sca02st26nl_"  /)
+  !CHARACTER (LEN=255), parameter :: VLDLUTdir1='/home/jbak/OzoneFit/tbl/vldlut/'
+  CHARACTER (LEN=255), parameter :: VLDLUTdir1='/data/tempo1/Shared/jspark/TEMPO/L1_o3_profile_test/refdata/o3_profile/data/vldlut/'
+!  CHARACTER(LEN=12), DIMENSION(2)  :: LUT_type = (/"vec06st72nl_", "sca02st26nl_"  /)
+  CHARACTER(LEN=14), DIMENSION(2)  :: LUT_type = (/"vec06st72nl26_", "sca02st26nl_  "  /)
   LOGICAL :: log_ret = .FALSE., L_stageJ, LFAIL
   REAL (KIND=4), DIMENSION(1:13) :: vza_grid = & 
        (/0.0, 15.0, 30.0, 43.0, 53.0, 61.0, 67.0, 72.0, 76.0, 80.0, 84.0, 86.0, 88.0/)
@@ -2515,16 +2608,18 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
     ! define the range of LUT to be used
     wlm(1:2)=REAL((/wave(1), wave(nw)/), KIND=4)
     !vza_min = vza ; vza_max=vza
-    iv_min = get_index(DBLE(vza_min), DBLE(vza_grid(1:8)), MAX_LG_INTERP)
-    iv_max = get_index(DBLE(vza_max), DBLE(vza_grid(1:8)), MAX_LG_INTERP)
-    iv_max = MIN( 8, iv_max + MAX_LG_INTERP-1 )
+    iv_min = get_index(DBLE(vza_min), DBLE(vza_grid(1:13)), MAX_LG_INTERP) !Junsung 2025/04/30
+    iv_max = get_index(DBLE(vza_max), DBLE(vza_grid(1:13)), MAX_LG_INTERP) !Junsung 2025/04/30
+!    print*, iv_min, iv_max
+    iv_max = MIN( 13, iv_max + MAX_LG_INTERP-1 ) !Junsung 2025/04/30
+!    print*, iv_min, iv_max
     vzam= vza_grid((/iv_min, iv_max/))
-    print * , 'LUT:vza', iv_min, iv_max
-    iv_min = get_index(DBLE(sza_min), DBLE(sza_grid(1:12)), MAX_LG_INTERP)
-    iv_max = get_index(DBLE(sza_max), DBLE(sza_grid(1:12)), MAX_LG_INTERP)
-    iv_max = MIN( 12, iv_max + MAX_LG_INTERP-1 )
+!    print * , 'LUT:vza', iv_min, iv_max
+    iv_min = get_index(DBLE(sza_min), DBLE(sza_grid(1:12)), MAX_LG_INTERP) !Jusnung 2025/04/30
+    iv_max = get_index(DBLE(sza_max), DBLE(sza_grid(1:12)), MAX_LG_INTERP) !Junsung 2025/04/30
+    iv_max = MIN( 12, iv_max + MAX_LG_INTERP-1 ) !Junsung 2025/04/30
     szam= sza_grid((/iv_min, iv_max/))
-    print * , 'LUT:sza', iv_min, iv_max
+!    print * , 'LUT:sza', iv_min, iv_max
     DO ib = 1, 2 !! ib = 1, vecLUT; ib = 2, scaLUT
       CALL Init__VLDLUT( VLDLUTdir1, ib, LUT_type(ib), wlm(:), szam(:), &
                          vzam(:), L_stageJ, LFAIL, msg  )
@@ -2569,7 +2664,6 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
     wl(1:nwLUT) =  wlLUT_B(ib,1:nwLUT)
     do_polut_init = .false.
   ENDIF
-
   sfcp=ps(nsprs-1) ; ctp = ps(nctp-1)
   ilat = INT(ABS(lat/30.0)) + 1
   allocate (alb(nwLUT), alb1(nwLUT),alb2(nwLUT))
@@ -2595,25 +2689,29 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
        IF (ic == 2) pt = ctp
        IF (do_raywf) THEN 
        ib = 1 ! vector
-       CALL Itoa_rpro( ib, ilat, pt, ozdu, sza, vza, phi, &
+!       print*, ib, ilat, pt, ozdu, sza, vza, phi, &
+!                log_ret,  nwLUT, wl(:), i0V(:,ic), trV(:,ic), sbV(:,ic), &
+!                LFAIL, msg
+
+       CALL Itoa_rpro(ib, ilat, pt, ozdu, sza, vza, phi, &
                 log_ret,  nwLUT, wl(:), i0V(:,ic), trV(:,ic), sbV(:,ic), &
                 LFAIL, msg,npJ_k=npJ, pJ_k=pJ(:),& 
                 di0dt_k=di0dtV(:,:,ic),dtrdt_k=dtrdtV(:,:,ic),dsbdt_k=dsbdtV(:,:,ic), &
                 di0dt2_k=di0dtV2(:,:,ic),dtrdt2_k=dtrdtV2(:,:,ic),dsbdt2_k=dsbdtV2(:,:,ic))
        ib = 2 ! scalar
-       CALL Itoa_rpro( ib, ilat, pt, ozdu, sza, vza, phi, &
+       CALL Itoa_rpro(ib, ilat, pt, ozdu, sza, vza, phi, &
                 log_ret,  nwLUT, wl(:), i0S(:,ic), trS(:,ic), sbS(:,ic), &
                 LFAIL, msg,npJ_k=npJ, pJ_k=pJ(:),&
                 di0dt_k=di0dtS(:,:,ic),dtrdt_k=dtrdtS(:,:,ic),dsbdt_k=dsbdtS(:,:,ic), &
                 di0dt2_k=di0dtS2(:,:,ic),dtrdt2_k=dtrdtS2(:,:,ic),dsbdt2_k=dsbdtS2(:,:,ic))
        ELSE
        ib = 1 ! vector
-       CALL Itoa_rpro( ib, ilat, pt, ozdu, sza, vza, phi, &
+       CALL Itoa_rpro(ib, ilat, pt, ozdu, sza, vza, phi, &
                 log_ret,  nwLUT, wl(:), i0V(:,ic), trV(:,ic), sbV(:,ic), &
                 LFAIL, msg,npJ_k=npJ, pJ_k=pJ(:),& 
                 di0dt_k=di0dtV(:,:,ic),dtrdt_k=dtrdtV(:,:,ic),dsbdt_k=dsbdtV(:,:,ic))
        ib = 2 ! scalar
-       CALL Itoa_rpro( ib, ilat, pt, ozdu, sza, vza, phi, &
+       CALL Itoa_rpro(ib, ilat, pt, ozdu, sza, vza, phi, &
                 log_ret,  nwLUT, wl(:), i0S(:,ic), trS(:,ic), sbS(:,ic), &
                 LFAIL, msg,npJ_k=npJ, pJ_k=pJ(:),&
                 di0dt_k=di0dtS(:,:,ic),dtrdt_k=dtrdtS(:,:,ic),dsbdt_k=dsbdtS(:,:,ic))
@@ -2621,6 +2719,7 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
      ENDDO
      ib = 1 ; ipt = tsi%ipt
      pL(0:npJ) = plevLUT(0:npJ, ipt)
+!     print*, ib, ipt, npJ, nwLUT, Tsi%io3p(1), Tsi%wts(2), Tsi%io3p(2), shape(Ti0trsb)
      taucum_lut(1:nwLUT,0:npJ)= Tsi%wts(1)*Ti0trsb(ib,ipt,Tsi%io3p(1))%taucum(1:nwLUT,0:npJ) &
            +Tsi%wts(2)*Ti0trsb(ib,ipt,Tsi%io3p(2))%taucum(1:nwLUT,0:npJ)
      IF (do_raywf) THEN 
@@ -2799,7 +2898,6 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
         dtau (1:nz) = tray(i, 1:nz) - (taucum2(i,1:nz) - taucum2(i,0:nz-1))
         adj_ray = sum(dfraywf(i,1:nz)*dtau(1:nz))
       ENDIF
-
       rad(i)       = rad(i)*exp(dfrad(i)  + adj_o3 + adj_ray)
       fozwf(i, 1:nz) = fozwf(i, 1:nz)*dffozwf(i,1:nz)
       if (do_albwf) albwf(i,1)   = albwf(i,1)*dfalbwf(i)
@@ -2810,7 +2908,6 @@ SUBROUTINE polcorr_online_with_lut(niter, VLDLUTdir, nw,nz, nctp,nsprs,nalb, &
       !        'cf/alb/o3=',dfcfracwf(i),dfalbwf(i),dffozwf(i,nz), & 
       !        'tau=',sum(tabs(i,1:nz)), taucum(i, nz), dftauwf(i,nz),'ozdu=',ozdu
   ENDDO 
-    
   IF(first) first=.false.
 END SUBROUTINE polcorr_online_with_lut
 
