@@ -151,9 +151,7 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
            ENDDO
         ENDDO
      ENDIF
-
   ELSE ! Sa is not diagonal      
-
      ! SVD of Sa to calculate Sa^(1/2) and Sa^(-1/2)                         
      ! NOTE: Sa is square and symmetric: u=v                                 
      usa = sa
@@ -208,9 +206,8 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
         DO j = 1, nx 
            tmp (i, j) = SUM(sasqp(i, :) * v (:, j)) 
         ENDDO
-        x (i) =  SUM(tmp (i, :) * x_prime)
+        x (i) =  SUM(tmp (i, :) * x_prime) !Junsung: x (delta_x) is a negative value, so this makes the albedo values to negative
      ENDDO
-
      ! Construct Sx=Sa^(1/2)*V* (WT*W+I)^(-1) *VT*Sa^(1/2)                   
      ! First: tmp = Sa^(1/2)*V* (WT*W+I)^(-1)                                
      DO i = 1, nx 
@@ -316,7 +313,6 @@ SUBROUTINE oe_inversion (do_sa_diagonal, do_oe_output, file_unit, delta_chi_min,
      ! need to check for this later        
      ozinfoh = ozdfs / dfs * h    
   ENDIF
-
   !  Level 2 output debug                                                 
   !  --------------------                                                 
   IF (do_oe_output) THEN
@@ -668,7 +664,6 @@ SUBROUTINE oe_inversion_y (do_sa_diagonal, do_oe_output, file_unit, delta_chi_mi
      ! need to check for this later        
      ozinfoh = ozdfs / dfs * h    
   ENDIF
-
   !  Level 2 output debug                                                 
   !  --------------------                                                 
   IF (do_oe_output) THEN

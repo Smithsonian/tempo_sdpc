@@ -66,7 +66,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
        saodfind, ecfrind, ecfrfind, ecodind, ecodfind, ectpind, ectpfind, has_glint, &
        twaefind, saodind, sprsind, sprsfind, so2zind, so2zfind,&
        albfpix, alblpix, is_albspcvar, use_albeofs, nalbspc, nactalbspc, &
-       which_albspc,sfcalbs, albspcs, do_brdf, nalbwf, do_debug_o3p
+       which_albspc,sfcalbs, albspcs, do_brdf, nalbwf, do_debug_o3p, which_alb
   USE OMSAO_errstat_module
   USE m_get_reg_matrix, ONLY: get_reg_matrix
   USE m_get_bclayer, ONLY: get_bc_layer
@@ -111,6 +111,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   !xliu: 09/03/05, add sacldscal, scaling factor for scaling a priori covariance below clouds
   REAL (KIND=dp), DIMENSION(nlay)           :: sacldscl
   REAL (KIND=dp), ALLOCATABLE               :: tmpcovar(:,:), tmpspc(:)
+  REAL (KIND=dp) :: init_alb
  ! systematic noise
   INTEGER, PARAMETER              :: nreg = 4 !should be updated for TEMPO/GOME2
   REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
@@ -311,7 +312,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   ! Set up albedo and cloud fraction in the retrieval
   ! albedo and cloud fraction can be adjusted based on 370.2 nm reflectance
   CALL set_cldalb(npoints, fitwavs, the_cod, the_ctp, the_cfrac, salbedo, errstat)
-
+  
   IF (do_debug_o3p) WRITE(www_lun, '(A)') '@ finish set up cldalb'
   IF (errstat == pge_errstat_error)  THEN
      WRITE(*,'(A)') modulename//': Errors in set_cldalb'
@@ -732,7 +733,8 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   fitvarap(1:nf)  = fitvar_rad_apriori(mask_fitvar_rad(1:nf))
   lowbond(1:nf)   = lo_radbnd(mask_fitvar_rad(1:nf))
   upbond(1:nf)    = up_radbnd(mask_fitvar_rad(1:nf))
- 
+
+  !print*, fitvar_rad
   IF (do_debug_o3p) WRITE(www_lun, '(A)') 'start ozprof_invesre'
   CALL ozprof_inverse (nf, varname(1:nf), fitvar(1:nf), fitvarap(1:nf), &
        lowbond(1:nf), upbond(1:nf), npoints, nump, sa(1:nf,1:nf), bb(1:nf,1:nf), &
@@ -741,6 +743,7 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
 
   fitvar_rad(mask_fitvar_rad(1:nf)) = fitvar(1:nf)  ! for safe 
   fitvar_rad_apriori(mask_fitvar_rad(1:nf)) = fitvarap(1:nf)  ! Some a priori values can be changed
+
   DO i = 1, nf
      fitvar_rad_aperror(i) = SQRT(sa(i, i))
   ENDDO
@@ -897,8 +900,11 @@ SUBROUTINE specfit_ozprof (initval, fitcol, dfitcol, rms, exval)
   eff_alb_init = fitvar_rad_init(albidx:albidx+maxalb-1)
   eff_alb      = fitvar_rad(albidx:albidx+maxalb-1) 
   eff_wfc_init = fitvar_rad_init(wfcidx:wfcidx+maxwfc-1)
-  eff_wfc      = fitvar_rad(wfcidx:wfcidx+maxwfc-1) 
-
+  eff_wfc      = fitvar_rad(wfcidx:wfcidx+maxwfc-1)
+ !Junsung
+ !print*, eff_alb_init 
+ !print*, eff_alb
+ !stop
   ! Derive Final Albedo spectraum
   !IF (wrtalbspc) THEN
     DO i = 1, nalb
