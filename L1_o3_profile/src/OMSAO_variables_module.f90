@@ -335,7 +335,7 @@ MODULE OMSAO_variables_module
   ! -----------------------------
   ! Previously IMPLICIT variables
   ! -----------------------------
-  REAL (KIND=dp) :: phase, szamax, zatmos, chisq
+  REAL (KIND=dp) :: phase, szamax, vzamax, zatmos, chisq !Junsung: add vzamax
   ! ------------------------------------------------------------------------
   ! Variables connected with ELSUNC numerical precision/convergence criteria
   ! ------------------------------------------------------------------------

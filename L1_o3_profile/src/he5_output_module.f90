@@ -19,7 +19,7 @@ MODULE he5_output_module
        fothvarpos, fitvar_rad_aperror, reduce_resolution, fitvar_rad_unit, &
        which_slit, rm_mgline, winlim, n_band_avg, n_band_samp, wavcal, &
        use_backup, yn_varyslit, refspec_fname, do_bandavg, use_redfixwav, &
-       redfixwav_fname, redsampr, redlam, wcal_bef_coadd, szamax, zatmos, &
+       redfixwav_fname, redsampr, redlam, wcal_bef_coadd, szamax, vzamax, zatmos, &
        radwavcal_freq, max_itnum_rad, n_wavcal_step, n_slit_step, &
        slit_fit_pts, wavcal_fit_pts, smooth_slit, wavcal_sol, &
        slit_trunc_limit, l1b_irrad_filename, l1b_rad_filename, &
@@ -1383,6 +1383,9 @@ CONTAINS
 
     WRITE( tempc1, '(F9.3)' ) szamax
     ProcessingControls = TRIM(ProcessingControls) // ' Maximum Solar Zenith Processed = '//TRIM( tempc1 ) //';'
+    !Junsung: add vzamax part
+    WRITE( tempc1, '(F9.3)' ) vzamax
+    ProcessingControls = TRIM(ProcessingControls) // ' Maximum Viewing Zenith Processed = '//TRIM( tempc1 ) //';'    
 
     WRITE( tempc1, '(F9.3)' ) zatmos
     ProcessingControls = TRIM(ProcessingControls) // ' Viewing Geometry Altitude = '//TRIM( tempc1 ) //';'
