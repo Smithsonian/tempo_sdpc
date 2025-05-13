@@ -15,7 +15,7 @@ bindir     = $(prefix)/bin
 msgs_installdir = $(prefix)/msgs
 
 ADDLIBD    = -Wl,-rpath=$(OTS_ROOT)/lib -L$(OTS_ROOT)/lib
-ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llidort_vv2p7_pcachrisbrdf -llapack -lblas -lLUT_SAO
+ADDLIBS    = $(RPATH) -lsz -lm $(DL_LIB) -llidort_vv2p7_pcachrisbrdf -llapack -lblas
 
 #---------------------------------------------------------------
 # Ideally, you shouldn't need to change anything below this line
@@ -30,6 +30,9 @@ TIO_SRC  = $(config_dir)/libtio/src
 TIO_SRC_OBJDIR = $(TIO_SRC)/$(archobjs)
 TIOINCS     = -I$(TIOSRC_OBJS)
 TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
+
+LUTSAO_DIR = $(OTS_ROOT)/lib/lutsao-1.0.0
+LUTSAO_LIB = -L$(LUTSAO_DIR) -lLUT_SAO
 
 GLER_LIB     = $(prefix)/lib
 GLER_SRC     = $(config_dir)/libgler/src
@@ -84,6 +87,7 @@ IFLAGS = $(MODFLG)$(HDFEOS_INC) \
          $(MODFLG)$(TELL_INC) \
          $(MODFLG)$(NETCDF_INC) \
 	 $(MODFLG)$(PSPLINEMOD) \
+         $(MODFLG)$(LUTSAO_DIR) \
 	 $(CLIMINCS) \
 	 $(GLERINCS) \
 	 $(METINCS) \
@@ -95,7 +99,7 @@ LFLAGS = -L$(objdir) \
 
 LIBS   = $(PSPLINELIBS) $(TIOLIBS) $(NETCDFLIBS) \
          $(OMILIBS) $(PGSLIBS) $(HE5LIBS) $(HE4LIBS) $(ADDLIBS) \
-	 $(CLIMLIBS) $(GLERLIBS) $(METLIBS) $(MDLIBS)
+	 $(CLIMLIBS) $(GLERLIBS) $(METLIBS) $(MDLIBS) $(LUTSAO_LIB)
 
 CINCFLGS = -I$(PGSINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS5_INC) -I$(objdir)
 
