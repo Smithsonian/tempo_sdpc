@@ -565,6 +565,7 @@ if test $SDPC_RADIANCE_POSTINR -ne 0 ; then
 fi
 
 if test $SDPC_RADIANCE_POSTINR_ONLY -ne 0 ; then
+   trap - EXIT
    perform_cleanup
    exit 0
 fi
