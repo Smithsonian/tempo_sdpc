@@ -12,7 +12,7 @@ TMPO
 
 *debug
 scnwrt calwrt calscn rtmdbg
-F      F      F      F
+F      F       F     F
 
 *Reduce spectral resolution
 F      ; T: Reduce spectral resolution; F: Original
@@ -30,7 +30,7 @@ T   4                  # Coadd across track, # of observations to be coadded (1-
 F   3                  # Coadd along track,  # of observations to be coadded (1-~129)
 F                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
 1   F  F               # # of bands, spectral coadd? wavelength calibration before coadd?
-1  293.0 340.0  5  2 0  # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate;320-355
+1  293.0 340.0  5  2 0 # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
 2  540.0 650.0  2  2
 # If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
 # Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
@@ -86,7 +86,8 @@ eoi  0 0 0  # end of input
  F            # weight radiance spectrum?
  8            # maximum number of iterations for fitting (<0: default)
  150          # frequency of radiance wavelength calibration
- 89.9         # maximum solar zenith angle to process
+ 87.9         # maximum solar zenith angle to process
+ 87.9         # maximum viewing zenith angle to process
  0.0          # "Top of Atmosphere" height [km]
  +0.1         # "phase" of undersampling spectrum
 bl0   0 0 0 -1.56  -1.0E+99   1.0E+99
@@ -147,7 +148,7 @@ lbe    5.00D-5 -1.0E+99 1.0E+99
 ad2    0 0 0
 hchos  0 0 0  -1.0E+99 1.0E+99
 o2o2
-OMSAO_Thalman_O4_293K_extended654nm.dat
+OMSAO_FinkenzellerEtVolkamer_O4_293K_extended654nm.dat
 ad1    0.0E+00  0.0E+00  0.0E+00
 lbe    0 0 0 2.5E-03  -1.0E+99    1.0E+99
 ad2    0.0000000E+00    0.0E+00        0.0E+00
