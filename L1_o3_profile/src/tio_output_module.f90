@@ -1789,11 +1789,11 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist, errstat, &
                               o3p_var_iter, &
-                              nf90_ushort, &
+                              nf90_short, &
                               dimids = dimids_xtrack_step, &
                               comment = "number of iterations", &
                               valid_range = [0.0_8, max_itnum_rad * 1.0_8], &
-                              fillvalue = fill_uint1, &
+                              fillvalue = fill_int16, &
                               deflate_level = deflate_level, &
                               shuffle = shuffle, &
                               attlist=att_coord)

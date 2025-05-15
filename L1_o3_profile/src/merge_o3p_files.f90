@@ -12,7 +12,7 @@ program merge_o3p_files
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
        ozwrtvar, gaswrt, aerosol, do_lambcld, use_SC, use_correl, use_UT
-  use OMSAO_variables_module, only: reduce_resolution
+  use OMSAO_variables_module, only: reduce_resolution, max_itnum_rad
 
   implicit none
 
@@ -122,6 +122,11 @@ program merge_o3p_files
       call tiof_push_group (tio_l2in, o3p_grp_qa_stats, errstat)
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_merr, dummyid)
       if (status == nf90_noerr) ozwrtsnr = .true.
+      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_iter, dummyid)
+      if (status == nf90_noerr) then
+        ! preserve the valid_max value from the input file
+        status = nf90_get_att (tio_l2in%groupid, dummyid, "valid_max", max_itnum_rad)
+      endif
       call tiof_pop_group(tio_l2in, errstat)
 
       ! diagnostic group is optional
