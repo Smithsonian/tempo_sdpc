@@ -34,11 +34,14 @@ TIOLIBS     = -L$(TIO_LIB) -ltio_f -ltio
 LUTSAO_DIR = $(OTS_ROOT)/lib/lutsao-1.0.0
 LUTSAO_LIB = -L$(LUTSAO_DIR) -lLUT_SAO
 
+NDINTERP_LIB = $(config_dir)/libndinterp/src/$(archobjs)
+NDINTERP_LIBPATHS = -L$(NDINTERP_LIB) -Wl,-rpath=$(prefix)/lib -L$(prefix)/lib -lndinterp_f
+
 GLER_LIB     = $(prefix)/lib
 GLER_SRC     = $(config_dir)/libgler/src
 GLERSRC_OBJS = $(GLER_SRC)/$(archobjs)
 GLERINCS     = -I$(GLERSRC_OBJS)
-GLERLIBS     = -L$(GLERSRC_OBJS) -L$(GLER_LIB) -lgler_f $(NDINTERP_LIB)
+GLERLIBS     = -L$(GLERSRC_OBJS) -L$(GLER_LIB) -lgler_f $(NDINTERP_LIBPATHS)
 
 CLIM_LIB     = $(prefix)/lib
 CLIM_SRC     = $(config_dir)/libclim/src
