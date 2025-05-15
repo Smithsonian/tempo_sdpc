@@ -28,7 +28,7 @@ T                        ; use floor noise
 T  F   F   F             ; on-line ring effect, slit convolution, fitting atan-1, KaiYang RRS table
 T  F                     ; bias correction, time-dependent degradation correction T  T
 7  ; which biascorr (1: direct corr. 2: para. corr 3: dirrect corr (offset & slope) 4: para. (offset & slope) 5. same as 3 but LOG(I) 6. xtrack correction (theta) 7 xtrack and wave 8. time poly fit xwcorr 9 non-linear in time
-SoftCal/TEMPO_xtrack_v316G07_new.dat
+SoftCal/0916_293_340_cf_scf_10_sza_90_res_10_geos_test.dat
 INP/GOME_degcoirr_glb_lut_s_s6.dat
 T                        ; do_subfit (T: some paraeters will be used for each window)
 1                 	 ; 1: lcurve, 2: gcv, 3: gcv with lcurve
