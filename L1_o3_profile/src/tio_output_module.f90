@@ -2899,7 +2899,8 @@ contains
          avg_kernel, correl_mtrx, noise_mtrx, ozinfo, ozdfs, contrib_mtrx, & !Junsung: add ozdfs for output 2025/05/09
          cld_opt_depth, aeros_opt_thick, aeros_scatter_thick, &
          exval,wavelengths, wgt_func, norm_rad, sim_norm_rad, exval, &
-         iterations, mqf, rms, avg_resid, fit_wgt, favg_kernel, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx
+         iterations, mqf, rms, avg_resid, fit_wgt, favg_kernel, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx, &
+         corr_ut_mtrx, fcorr_ut_mtrx
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
          ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
          ozwrtvar, gaswrt, aerosol, do_lambcld, ozwrtncovar
@@ -3081,22 +3082,34 @@ contains
     endif
 
     !correlation matrix
-    if ((use_correl) .and. (use_SC)) then
-      call tiof_put4d_i2 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
-           [nstep, nxtrack, nlayer, nlayer], &
-                          cov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
-    else if ((use_correl) .and. (.not. use_SC)) then
-      call tiof_put4d_r4 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
-           [nstep, nxtrack, nlayer, nlayer], &
-                          fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+!JCH    if ((use_correl) .and. (use_SC)) then
+!JCH      call tiof_put4d_i2 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
+!JCH           [nstep, nxtrack, nlayer, nlayer], &
+!JCH                          cov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+!JCH    else if ((use_correl) .and. (.not. use_SC)) then
+!JCH      call tiof_put4d_r4 (obj, o3p_var_correl, [min_step, min_xtrack, 0, 0], &
+!JCH           [nstep, nxtrack, nlayer, nlayer], &
+!JCH                          fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+!JCH    endif
+
+    if (use_correl .and. use_UT .and. ozwrtcorr .and. nnoise_elems > 0) then
+      if (use_SC) then
+        call tiof_put3d_i2 (obj, o3p_var_upcorrel, [min_step, min_xtrack, 0], &
+                            [nstep, nxtrack, nnoise_elems], &
+                            corr_ut_mtrx(:, 1:nxtrack, 1:nstep), errstat)
+      else
+        call tiof_put3d_r4 (obj, o3p_var_upcorrel, [min_step, min_xtrack, 0], &
+                            [nstep, nxtrack, nnoise_elems], &
+                            fcorr_ut_mtrx(:, 1:nxtrack, 1:nstep), errstat)
+      endif
     endif
 
     !covariance matrix
-    if ((.not. use_correl) .and. (ozwrtcovar)) then
-      call tiof_put4d_r4 (obj, o3p_var_cov, &
-         [min_step, min_xtrack, 0, 0], [nstep, nxtrack, nlayer, nlayer], &
-         fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
-    endif
+!JCH    if ((.not. use_correl) .and. (ozwrtcovar)) then
+!JCH      call tiof_put4d_r4 (obj, o3p_var_cov, &
+!JCH         [min_step, min_xtrack, 0, 0], [nstep, nxtrack, nlayer, nlayer], &
+!JCH         fcov_mtrx(1:nlayer,1:nlayer,1:nxtrack,1:nstep), errstat)
+!JCH    endif
     !
     ! FIXME - ozone information content should have its own switch
     call tiof_put2d_r4 (obj, o3p_var_o3_info_content, &

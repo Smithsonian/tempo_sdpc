@@ -4,8 +4,7 @@ module m_read_L2_o3p_tio
   use tio_module
   use tell_module
   use o3p_names_module
-  use ozprof_data_module, only:use_SC
-
+  use ozprof_data_module, only:use_SC, use_UT, use_correl
 
   implicit none
 
@@ -13,8 +12,6 @@ module m_read_L2_o3p_tio
   public read_o3p_dims, read_o3p_dim_indices, read_o3p_product, &
        read_o3p_geolocation, read_o3p_support, read_o3p_diagnostic, &
        read_o3p_qastat, open_o3p, close_o3p, compare_o3p_pipe_attributes
-
-
 
 contains
 
@@ -112,8 +109,6 @@ contains
 
   end subroutine read_o3p_dims
 
-
-
   !> Open L2 netCDF O3 profile product and read step and xtrack index arrays
   !--------------------------------------------------------------------------
   !
@@ -157,8 +152,6 @@ contains
     endif
 
   end subroutine read_o3p_dim_indices
-
-
 
   !> Read geolocation parameters from an L2 netCDF O3 profile product
   !--------------------------------------------------------------------------
@@ -226,7 +219,6 @@ contains
     endif
 
   end subroutine read_o3p_geolocation
-
 
   !> Read product parameters from an L2 netCDF O3 profile product
   !--------------------------------------------------------------------------
@@ -339,7 +331,6 @@ contains
 
   end subroutine read_o3p_product
 
-
   !> Read support parameters from an L2 netCDF O3 profile product
   !--------------------------------------------------------------------------
   !
@@ -375,7 +366,8 @@ contains
          gas_apriori, gas_apriori_err, nongas_apriori, nongas_apriori_err, &
          correl_mtrx, contrib_mtrx, aeros_opt_thick, aeros_scatter_thick, &
          avg_kernel, noise_mtrx, n_fit_wvl, n_window_wvl, gas_names, &
-         nongas_names, nongas_units, param_strlen, param_unit_strlen, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx
+         nongas_names, nongas_units, param_strlen, param_unit_strlen, cov_mtrx, ncov_mtrx, fcov_mtrx, fncov_mtrx, &
+         corr_ut_mtrx, fcorr_ut_mtrx
     implicit none
 
     !input variables
@@ -515,18 +507,31 @@ contains
 !           ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
 !    endif
 
-    ! Optional - covariance matrix
-    if ((.not. use_SC) .and. ozwrtcorr .and. nfitvars > 0) then
-      call tiof_get4d_r4 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
-           [nstep, nxtrack, nfitvars, nfitvars], &
-           fcov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
-           errstat)
-    else if (use_SC .and. ozwrtcorr .and. nfitvars > 0) then
-      call tiof_get4d_i2 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
-           [nstep, nxtrack, nfitvars, nfitvars], &
-           cov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
-           errstat)
+    ! Optional - upper triangular correlation matrix
+    if (use_correl .and. use_UT .and. ozwrtcorr .and. nnoise_elms > 0) then
+      if (use_SC) then
+        call tiof_get3d_i2 (tio_l2obj, o3p_var_upcorrel, [0, 0, 0], &
+                            [nstep, nxtrack, nnoise_elms], &
+                            corr_ut_mtrx(1:nnoise_elms, min_xtrack:max_xtrack, min_step:max_step), errstat)
+      else
+        call tiof_get3d_r4 (tio_l2obj, o3p_var_upcorrel, [0, 0, 0], &
+                            [nstep, nxtrack, nnoise_elms], &
+                            fcorr_ut_mtrx(1:nnoise_elms, min_xtrack:max_xtrack, min_step:max_step), errstat)
+      endif
     endif
+
+    ! Optional - covariance matrix
+!JCH    if ((.not. use_SC) .and. ozwrtcorr .and. nfitvars > 0) then
+!JCH      call tiof_get4d_r4 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
+!JCH           [nstep, nxtrack, nfitvars, nfitvars], &
+!JCH           fcov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+!JCH           errstat)
+!JCH    else if (use_SC .and. ozwrtcorr .and. nfitvars > 0) then
+!JCH      call tiof_get4d_i2 (tio_l2obj, o3p_var_correl, [0, 0, 0, 0], &
+!JCH           [nstep, nxtrack, nfitvars, nfitvars], &
+!JCH           cov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), &
+!JCH           errstat)
+!JCH    endif
 
     !Junsung: add o3p_var_o3_dfs for output (2025/05/09)
     call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_dfs, [0, 0], &
@@ -542,9 +547,9 @@ contains
            [nstep, nxtrack], &
            ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
     else if (use_SC .and. ozwrtcovar .and. nfitvars > 0) then
-      call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0, 0], &
-           [nstep, nxtrack, nfitvars, nfitvars], &
-           ncov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), errstat)
+!JCH      call tiof_get4d_i2 (tio_l2obj, o3p_var_o3_noise_matrix, [0, 0, 0, 0], &
+!JCH           [nstep, nxtrack, nfitvars, nfitvars], &
+!JCH           ncov_mtrx(1:nfitvars, 1:nfitvars, min_xtrack:max_xtrack, min_step:max_step), errstat)
       call tiof_get2d_r4 (tio_l2obj, o3p_var_o3_info_content, [0, 0], &
            [nstep, nxtrack], &
            ozinfo(min_xtrack:max_xtrack, min_step:max_step), errstat)
@@ -583,8 +588,6 @@ contains
     endif
 
   end subroutine read_o3p_support
-
-
 
   !> Read diagnostic parameters from an L2 netCDF O3 profile product
   !--------------------------------------------------------------------------
@@ -650,8 +653,6 @@ contains
 
   end subroutine read_o3p_diagnostic
 
-
-
   !> Read QA statistics parameters from an L2 netCDF O3 profile product
   !--------------------------------------------------------------------------
   !
@@ -715,7 +716,6 @@ contains
 
   end subroutine read_o3p_qastat
 
-
   !> open an L2 netCDF O3 profile product file for reading
   !--------------------------------------------------------------------------
   !
@@ -743,7 +743,6 @@ contains
 
   end subroutine open_o3p
 
-
   !> close an L2 netCDF O3 profile product file after reading
   !--------------------------------------------------------------------------
   !
@@ -768,7 +767,6 @@ contains
     endif
 
   end subroutine close_o3p
-
 
   !> Compare global attributes needed by pipeline in two L2 O3P files
   !--------------------------------------------------------------------------
@@ -814,7 +812,6 @@ contains
       call tell_error (tell_io_read_error, &
            "read_o3p_pipe_attributes: granule metadata differs", errstat)
     endif
-      
 
     call tiof_close(tio_l2obj_a, errstat)
     call tiof_close(tio_l2obj_b, errstat)
@@ -825,9 +822,5 @@ contains
     endif
 
   end subroutine compare_o3p_pipe_attributes
-
-
-
-
 
 end module m_read_L2_o3p_tio

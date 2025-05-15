@@ -11,7 +11,7 @@ program merge_o3p_files
        set_production_date_time, set_local_granule_id
   use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
        ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
-       ozwrtvar, gaswrt, aerosol, do_lambcld
+       ozwrtvar, gaswrt, aerosol, do_lambcld, use_SC, use_correl, use_UT
   use OMSAO_variables_module, only: reduce_resolution
 
   implicit none
@@ -26,7 +26,7 @@ program merge_o3p_files
   ! dimension indices
   integer (kind=4) :: min_step, max_step, min_xtrack, max_xtrack, &
        nstep_tot, nxtrack_tot, start_wstep, end_wstep, start_wxtrack, &
-       end_wxtrack, err, processing_version
+       end_wxtrack, err, processing_version, o3_avg_kernel_xtype
   integer (kind=4) :: min_sf, max_sf, min_xf, max_xf
   integer (kind=4), dimension(:,:), allocatable :: step, xtrack, dup_check
   integer (kind=4), dimension(:), allocatable :: step_out
@@ -93,9 +93,23 @@ program merge_o3p_files
       endif
       call tiof_push_group (tio_l2in, o3p_grp_support_data, errstat)
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_o3_avg_kernel, dummyid)
-      if (status == nf90_noerr) ozwrtavgk = .true.
+      if (status == nf90_noerr) then
+        ozwrtavgk = .true.
+        status = nf90_inquire_variable (tio_l2in%groupid, dummyid, xtype=o3_avg_kernel_xtype)
+        if (o3_avg_kernel_xtype == nf90_short) then
+          use_SC = .true.
+        else
+          use_SC = .false.
+        endif
+      endif
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_correl, dummyid)
       if (status == nf90_noerr) ozwrtcorr = .true.
+      status = nf90_inq_varid(tio_l2in%groupid, o3p_var_upcorrel, dummyid)
+      if (status == nf90_noerr) then
+        use_correl = .true.
+        use_UT = .true.
+        ozwrtcorr = .true.
+      endif
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_contrib_func, dummyid)
       if (status == nf90_noerr) ozwrtcontri = .true.
       status = nf90_inq_varid(tio_l2in%groupid, o3p_var_cld_opt_depth, dummyid)

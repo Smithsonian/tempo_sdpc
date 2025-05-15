@@ -61,6 +61,9 @@ module m_o3p_params
   ! (nnoise_elems, nxtrack, nstep)
   integer (kind=2), dimension(:,:,:), allocatable :: noise_mtrx
   real (kind=4), dimension(:,:,:), allocatable :: fnoise_mtrx
+  ! (nnoise_elems, nxtrack, nstep)
+  integer (kind=2), dimension(:,:,:), allocatable :: corr_ut_mtrx
+  real (kind=4), dimension(:,:,:), allocatable :: fcorr_ut_mtrx
   ! (nmax_wavs, nxtrack, nstep)
   real (kind=4), dimension(:,:,:), allocatable :: wavelengths, norm_rad, &
        sim_norm_rad
@@ -105,8 +108,8 @@ contains
        naeros_wavs, errstat)
 
     use ozprof_data_module, only: ozwrtavgk, ozwrtcorr, ozwrtcovar, &
-         ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, &
-         do_lambcld, use_SC, ozwrtncovar
+         ozwrtcontri, ozwrtres, ozwrtwf, ozwrtsnr, ozwrtncovar, &
+         do_lambcld, use_SC, use_UT, use_correl
     use OMSAO_variables_module, only: reduce_resolution
 
     implicit none
@@ -222,6 +225,15 @@ contains
       allocate(fnoise_mtrx(nnoise_elems, min_xtrack:max_xtrack, min_step:max_step), &
            ozinfo(min_xtrack:max_xtrack, min_step:max_step), &
            stat = errstat)
+    endif
+    if (use_correl .and. use_UT .and. ozwrtcorr .and. nnoise_elems > 0) then
+      if (use_SC) then
+        allocate(corr_ut_mtrx(nnoise_elems, min_xtrack:max_xtrack, min_step:max_step), &
+                 stat = errstat)
+      else
+        allocate(fcorr_ut_mtrx(nnoise_elems, min_xtrack:max_xtrack, min_step:max_step), &
+                 stat = errstat)
+      endif
     endif
     if (nmax_wavs > 0) then
       if (.not. reduce_resolution) &
