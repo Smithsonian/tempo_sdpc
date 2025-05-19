@@ -400,14 +400,12 @@ static int read_step_config (config_t *cfg, config_setting_t *s, Step_Config_Typ
           return -1;
         status = lookup_int_time_and_dwell_time (path, num_coadds, dt);
         FREE(path);
-        if (status < 0 )
-          {
-             return status;
-          }
-        else if (status)
-          {
-             fprintf (stderr, "*** WARNING: %s: unable to use CCD timing table, scan timing is approximate\n", __func__);
-          }
+        /* Return on success (status=0) or error (status<0) */
+        if (status <= 0 )
+          return status;
+        /* status=1 means the lookup table is inapplicable,
+         * so we'll have to use an alternate method. */
+        fprintf (stderr, "*** WARNING: %s: unable to use CCD timing table, scan timing is approximate\n", __func__);
      }
    else
      {
