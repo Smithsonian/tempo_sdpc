@@ -80,6 +80,10 @@ def main():
                         help="start time [sec since TEMPO epoch]")
     parser.add_argument('--end', type=float, default=None,
                         help="end time [sec since TEMPO epoch]")
+    parser.add_argument('--dx', type=float, default=20.0, help="+/-X plot limits [km]")
+    parser.add_argument('--dy', type=float, default=5.0, help="+/-Y plot limits [km]")
+    parser.add_argument('--dz', type=float, default=35.0, help="+/-Z plot limits [km]")
+    parser.add_argument('--dd', type=float, default=10.0, help="+/-Z plot limits [km]")
     parser.add_argument('files', nargs=argparse.REMAINDER,
                         help="path to netcdf4/HDF5 ephemeris data file")
     if len(sys.argv)==1:
@@ -123,6 +127,13 @@ def main():
         zax.tick_params(axis="x", direction='in', length=4, labelbottom=False)
         dlt.tick_params(axis="x", direction='in', length=4)
 
+        x_med = np.median(gps["x"])
+        y_med = np.median(gps["y"])
+        z_med = np.median(gps["z"])
+        xax.set_ylim (x_med - args.dx, x_med + args.dx)
+        yax.set_ylim (y_med - args.dy, y_med + args.dy)
+        zax.set_ylim (z_med - args.dz, z_med + args.dz)
+
         plt.xlim (tt_gps[0], tt_gps[-1])
         xax.plot (tt_gps, gps["x"], color='k', lw=lw_std, label='GPSR')
         yax.plot (tt_gps, gps["y"], color='k', lw=lw_std)
@@ -136,7 +147,8 @@ def main():
         gps_y = np.interp (tt_dop, tt_gps, gps["y"])
         gps_z = np.interp (tt_dop, tt_gps, gps["z"])
         delta = np.hypot (gps_x-dop["x"], gps_y-dop["y"], gps_z-dop["z"])
-        dlt.set_ylim (0, 20.0)
+        delta_med = np.median(delta)
+        dlt.set_ylim (0, delta_med + args.dd)
         dlt.plot (tt_dop, delta, color='k', lw=lw_std*2)
 
         # Convert seconds-since-epoch numbers into struct_time objects and then to
