@@ -1089,20 +1089,24 @@ static int partial_scan (const Plan_List_Type *entry, const Scan_Info_Type *scan
    new_entry->maneuver_loss = entry->scan_duration - duration_sec;
 
    new_entry->tstart = tstart;
-   new_entry->scan_duration = duration_sec;
 #if 0
+   new_entry->scan_duration = duration_sec;
    new_entry->num_steps = frac * entry->num_steps;
 #else
-   /* FIXME - this is pretty ugly.  A more object oriented design would be better. */
+   /* Update the number of steps to fit the estimated duration, then
+    * compute the scan duration consistent with that number of steps.
+    * FIXME - this is pretty ugly.  A more object oriented design would be better. */
    if (entry->scan_type == TEMPO_SCAN_TYPE_NIGHTLIGHTS)
      {
         const Twilight_Scan_Type *twilight_scan = scan_info->twilight_scan;
         new_entry->num_steps = twilight_scan->tst_twilight_scan_num_steps_in_duration (twilight_scan, entry->region_id, duration_sec/SEC_PER_DAY);
+        new_entry->scan_duration = SEC_PER_DAY * twilight_scan->tst_twilight_scan_duration (twilight_scan, entry->region_id, new_entry->num_steps);
      }
    else
      {
         const Scan_Type *scan = scan_info->scan;
         new_entry->num_steps = scan->st_scan_num_steps_in_duration (scan, duration_sec/SEC_PER_DAY);
+        new_entry->scan_duration = SEC_PER_DAY * scan->st_scan_duration (scan, new_entry->num_steps);
      }
 #endif
    if (is_start)
