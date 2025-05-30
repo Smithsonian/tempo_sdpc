@@ -10,6 +10,8 @@ import sqlite3
 from dateutil import parser as dateparser
 import time
 
+from netCDF4 import Dataset
+
 TraceSQL = False
 
 def eprint(*args, **kwargs):
@@ -44,26 +46,26 @@ def get_radiance_paths (dbfile, t1, t2, scan_id=None):
     print ("{} radiance files: {}".format(len(paths), dbfile))
     return paths
 
-def get_goes_paths1 (dbfile, t1, t2):
+def get_goes_paths (dbfile, t1, t2):
+    dbfile = os.path.expandvars (dbfile)
     with connect_database (dbfile) as conn:
         cur = conn.cursor()
         cur.execute ("select path from File_Table where tstart between {} and {}".format(t1, t2))
         rows = cur.fetchall()
 
     paths = [t[0] for t in rows]
-    return paths
-
-def get_goes_paths (dbfile_list, t1, t2):
-    goes_paths = []
-    for dbfile in dbfile_list:
-        dbfile = os.path.expandvars (dbfile)
-        paths = get_goes_paths1 (dbfile, t1, t2)
-        print ("{} GOES files: {}".format (len(paths), dbfile))
-        goes_paths = goes_paths + paths
     if len(paths) == 0:
         eprint ("Error: No GOES imagery in time range: {}-{}".format(t1, t2))
         return None
-    return goes_paths
+    else:
+        print ("{} GOES files: {}".format (len(paths), dbfile))
+
+    return paths
+
+def classify_goes_file (path):
+    with Dataset (path, "r") as nc:
+        platform_id = nc.getncattr ('platform_ID')
+    return int(platform_id.strip('G'))
 
 def create_config_file_text (work_dir, radiance_dir, goes_dir):
     """
@@ -90,7 +92,7 @@ def make_symlinks (dir, paths):
         dir_p = os.path.join (dir, os.path.basename(p))
         os.symlink (p, dir_p)
 
-def initialize_working_directory (work_dir, rad_paths, goes_paths):
+def initialize_working_directory (work_dir, rad_paths, goes_paths, goes_west_id, goes_east_id):
     # populate subdirectory with TEMPO radiances
     radiance_dir = os.path.join (work_dir, "radiances")
     os.mkdir (radiance_dir)
@@ -108,6 +110,10 @@ def initialize_working_directory (work_dir, rad_paths, goes_paths):
     config_file_text = create_config_file_text (work_dir, radiance_dir, goes_dir)
     with open (config_file_path, "w") as fp:
         fp.write(config_file_text)
+    with open (os.path.join (work_dir, "GOES_East"), "w") as fp:
+        fp.write(format(goes_east_id))
+    with open (os.path.join (work_dir, "GOES_West"), "w") as fp:
+        fp.write(format(goes_west_id))
     print("initialized working directory: {}".format(work_dir))
 
 def main():
@@ -147,12 +153,21 @@ def main():
         sys.exit(1)
 
     # Collect GOES imagery
-    goes_dbfiles = ["$SDPC_ANCILLARY_ROOT/var/goes/{}.sqlite".format(db) for db in ["cmieast", "cmiwest"]]
-    goes_paths = get_goes_paths (goes_dbfiles, t1, t2)
-    if goes_paths is None:
+    goes_east = "$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
+    goes_west = "$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
+    goes_east_paths = get_goes_paths (goes_east, t1, t2)
+    if goes_east_paths is None:
         sys.exit(1)
+    goes_east_id = classify_goes_file (goes_east_paths[0])
 
-    initialize_working_directory (work_dir, rad_paths, goes_paths)
+    goes_west_paths = get_goes_paths (goes_west, t1, t2)
+    if goes_west_paths is None:
+        sys.exit(1)
+    goes_west_id = classify_goes_file (goes_west_paths[0])
+
+    goes_paths = goes_east_paths + goes_west_paths
+
+    initialize_working_directory (work_dir, rad_paths, goes_paths, goes_west_id, goes_east_id)
 
 if __name__ == "__main__":
     main()

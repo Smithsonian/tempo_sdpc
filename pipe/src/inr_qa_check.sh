@@ -59,11 +59,14 @@ inr_qa_setup.py --dbfile "$SDPC_ARCHIVE_DBFILE" --dir "$work_dir" $date_ymd || e
 # from OTS SW about about port 6011 connections refused
 unset DISPLAY
 
+goes_east=$(cat "$work_dir/GOES_East")
+goes_west=$(cat "$work_dir/GOES_West")
+
 # Generate diagnostic plots
-tempo_inr_quality.sh "$work_dir/config.txt" || error_exit "tempo_inr_quality.sh failed"
+tempo_inr_quality.sh $goes_west $goes_east "$work_dir/config.txt" || error_exit "tempo_inr_quality.sh failed"
 
 # Name the tar file using the satellite day number extracted from the first radiance file
-first_radiance_path=$(find $work_dir/radiances -maxdepth 1 -type l | sort | head -n 1)
+first_radiance_path=$(find $work_dir/radiances -mindepth 1 -maxdepth 1 -type l | sort | head -n 1)
 sat_day=$(level1_info --localday $first_radiance_path | tr -d D)
 tar_basename="tempo_inrq_d${sat_day}"
 tar_path="${output_dir}/${tar_basename}.tar"
