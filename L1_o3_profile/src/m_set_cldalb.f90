@@ -206,18 +206,18 @@ module m_set_cldalb
    !   albedo = MAX(albedo, 0.8 * the_snowice / 100.0)
    !ENDIF
 !
-!Junsung (03/03/2025)
-!  ! xliu, 12/07/2014, changed based on ASTER snow spectrum
-!  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
-!   IF (the_snowice > 100 .and. snowflg == 1 ) THEN  ! permanently covered
-!      albedo = 0.98
-!      albarr = albedo
-!   ELSE IF (the_snowice > 1 .AND. the_snowice <= 100) THEN ! partialy covered
-!      albedo = MAX(albedo, 0.98 * the_snowice / 100.0)
-!      albarr = albedo
-!   ENDIF
-!
-!Junsung (03/03/2025)
+!Junsung (03/03/2025-delete) -> (05/30/2025-add and modify)
+  ! xliu, 12/07/2014, changed based on ASTER snow spectrum
+  CALL set_snowoceanflg(the_snowice,the_landwater_flg) 
+   IF (the_snowice > 100 .and. snowflg == 1 ) THEN  ! permanently covered
+      albedo = 0.98
+      albarr = albedo
+      cfrac = 0.0 !added by Junsung for setting CF as 0 under the_snowice ge 100
+   ELSE IF (the_snowice > 1 .AND. the_snowice <= 100) THEN ! partialy covered
+      albedo = MAX(albedo, 0.98 * the_snowice / 100.0)
+      albarr = albedo
+   ENDIF
+
 !   cfrac = 0.0 !202408
    do_adjcfrac = .TRUE.
    !do_adjcfrac = .FALSE.  !202408
