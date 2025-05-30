@@ -213,6 +213,20 @@ case "${granule_basename}" in
   # Both RAD and RADT are delivered to the INR input cache
   rad_tmpfile=$inr_input_cache/.${output_file}
   /bin/cp $output_file $rad_tmpfile
+
+  # Optionally, hard link a copy of the input to support
+  # offline INR reprocessing
+  if test $SDPC_SAVE_INR_INPUT -ne 0 ; then
+     inr_save_dir="$inr_input_cache/save"
+     if ! test -d $inr_save_dir ; then
+        mkdir -p $inr_save_dir
+     fi
+     if test -d $inr_save_dir ; then
+        ln $rad_tmpfile $inr_save_dir/$output_file
+     fi
+  fi
+
+  # make file visible in INR input cache
   /bin/mv $rad_tmpfile $inr_input_cache/$output_file
   ;;
 

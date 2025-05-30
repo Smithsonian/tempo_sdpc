@@ -12,6 +12,8 @@ export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1a.diagnostic_index)
 export SDPC_SOLCAL_CACHE_ENABLE=$(config_setting level1a.solcal_cache_enable)
 export SDPC_SOLCAL_CACHE_PRODUCTS=$(config_setting level1a.solcal_cache_products)
 
+export SDPC_SAVE_INR_INPUT=$(config_setting level1a.save_inr_input)
+
 dbfile_level0="$(config_setting dbfile.level0)"
 if ! test -f "$dbfile_level0" ; then
    dbfile_level0="$SDPC_ARCHIVE_DBFILE"
