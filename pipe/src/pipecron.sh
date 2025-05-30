@@ -132,14 +132,68 @@ do_third()
   fi
 }
 
+perform_inr_qa_check()
+{
+   d_path=$1
+   inr_qa_cron.sh $(basename $d_path)
+   if test $? -eq 0 ; then
+      /bin/rm -f $d_path
+   else
+      /bin/mv $d_path ${d_path}.failed
+   fi
+}
+export -f perform_inr_qa_check
+
+manage_inr_qa_checking()
+{
+  inr_qa_enable=$(config_setting level1b.inr_qa_enable)
+  if test $inr_qa_enable -eq 0 ; then
+     return
+  fi
+
+  root_work_dir="$SDPC_PIPE_DIR/inr/quality"
+
+  # Do we have any dates to process?
+  date_file_paths=$(find $root_work_dir -mindepth 1 -maxdepth 1 -type f -name "????-??-??")
+  if test -z "$date_file_paths" ; then
+     return
+  fi
+  num_dates=$(echo $date_file_paths | wc -w)
+
+  tstamp_file="$root_work_dir/timestamp"
+  # The timestamp file always contains the time_t value
+  # for when the INR QA script was last run.
+
+  timer_expired=0
+  if test -f $tstamp_file ; then
+     timet_prev=$(cat $tstamp_file)
+     timet_now=$(date +%s)
+     if test $(($timet_now - $timet_prev)) -gt 86400 ; then
+	timer_expired=1
+     fi
+  fi
+
+  if test $timer_expired -ne 0 ; then
+      # Update the timestamp file before processing
+      daily_target_time="4am"
+      date --date "$daily_target_time today" +%s > $tstamp_file
+  elif test $num_dates -gt 1 ; then
+      # Process any accumulated backlog without waiting
+      date_file_paths=$(echo $date_file_paths | tr ' ' '\n' | head --lines=-1)
+  else
+      # Timer hasn't expired, and no backlog, so do nothing and return.
+      return
+  fi
+
+  # When multiple dates need processing, limit the number of parallel instances
+  max_num_parallel=3
+  (echo $date_file_paths | xargs -n 1 -P $max_num_parallel /bin/bash -c 'perform_inr_qa_check "$@"' _) &
+}
+
 do_hourly()
 {
   trace_message hourly
-
-  inr_qa_enable=$(config_setting level1b.inr_qa_enable)
-  if test $inr_qa_enable -ne 0 ; then
-     inr_qa_cron.sh &
-  fi
+  manage_inr_qa_checking
 }
 
 do_daily()
