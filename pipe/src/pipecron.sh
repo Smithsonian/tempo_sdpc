@@ -135,11 +135,18 @@ do_third()
 perform_inr_qa_check()
 {
    d_path=$1
-   inr_qa_cron.sh $(basename $d_path)
+
+   # change name to avoid a race condition
+   d_path_working=${d_path}.working
+   /bin/mv $d_path $d_path_working
+
+   date_string=$(basename $d_path)
+   inr_qa_cron.sh $date_string
+
    if test $? -eq 0 ; then
-      /bin/rm -f $d_path
+      /bin/rm -f $d_path_working
    else
-      /bin/mv $d_path ${d_path}.failed
+      /bin/mv $d_path_working ${d_path}.failed
    fi
 }
 export -f perform_inr_qa_check
@@ -152,9 +159,12 @@ manage_inr_qa_checking()
   fi
 
   root_work_dir="$SDPC_PIPE_DIR/inr/quality"
+  if ! test -d $root_work_dir ; then
+     return
+  fi
 
   # Do we have any dates to process?
-  date_file_paths=$(find $root_work_dir -mindepth 1 -maxdepth 1 -type f -name "????-??-??")
+  date_file_paths=$(find $root_work_dir -mindepth 1 -maxdepth 1 -type f -name "????-??-??" | sort)
   if test -z "$date_file_paths" ; then
      return
   fi
@@ -173,17 +183,16 @@ manage_inr_qa_checking()
      fi
   fi
 
-  if test $timer_expired -ne 0 ; then
-      # Update the timestamp file before processing
-      daily_target_time="4am"
-      date --date "$daily_target_time today" +%s > $tstamp_file
-  elif test $num_dates -gt 1 ; then
+  if test $num_dates -gt 1 ; then
       # Process any accumulated backlog without waiting
       date_file_paths=$(echo $date_file_paths | tr ' ' '\n' | head --lines=-1)
-  else
+  elif test $timer_expired -eq 0 ; then
       # Timer hasn't expired, and no backlog, so do nothing and return.
       return
   fi
+
+  # Update the timestamp file before processing
+  date +%s > $tstamp_file
 
   # When multiple dates need processing, limit the number of parallel instances
   max_num_parallel=3
