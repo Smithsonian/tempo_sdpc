@@ -1,3 +1,16 @@
+TEMPO_SDPC_v4.6.0   2025 Jun
+===============================
+  * O3PROF product update to support initial release
+  * INR:
+    - configuration update recommended by Carr Astronautics
+  * plan:
+    - recompute duration of maneuver-interrupted scans to
+      ensure consistency with specified number of co-adds.
+  * asdc:
+    - mark PDR file accepted only when all data products were
+      successfully ingested (enables software to handle a common
+      situation autonomously).
+
 TEMPO_SDPC_v4.5.0   2025 Apr
 ===============================
   * L0_format: Improve interrupt handling to avoid disrupting generation
