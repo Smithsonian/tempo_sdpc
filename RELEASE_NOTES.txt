@@ -10,6 +10,9 @@ TEMPO_SDPC_v4.6.0   2025 Jun
     - mark PDR file accepted only when all data products were
       successfully ingested (enables software to handle a common
       situation autonomously).
+  * L1_cloud_o4:
+    - NRT product now uses option_apply_solshift=0,
+      option_apply_radshift=0
 
 TEMPO_SDPC_v4.5.0   2025 Apr
 ===============================
