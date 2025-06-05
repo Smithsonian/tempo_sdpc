@@ -212,7 +212,7 @@ mode=BINOCULAR
 numThreads=4
 # Flag indicating whether optical flow in reference images are used to improve calculations
 # TRUE or FALSE
-useOpticalFlow=FALSE
+useOpticalFlow=TRUE
 # The maximum number of loops to be used in optical flow
 useOpticalFlowMaxLoops=10
 # The position tolerance for optical flow calculation in km
@@ -227,7 +227,7 @@ cosLimb=0.087155742747658
 [TiePointChecker]
 
 # Minimum acceptable peak correlation
-rhothreshold=0.8
+rhothreshold=0.5
 # Maximum allowed solar zenith angle in degrees
 solarZenithThreshold=80
 # The minimum ellipse ratio
@@ -319,7 +319,7 @@ drift_v3=0
 # Units are per root(second) or radians/root(second)
 randomWalkCoefficient_roll=1.111e-7
 randomWalkCoefficient_pitch=5.555e-6
-randomWalkCoefficient_yaw=5.555e-6
+randomWalkCoefficient_yaw=1.111e-7
 randomWalkCoefficient_mag=0
 randomWalkCoefficient_misalign=0
 randomWalkCoefficient_smile=0
@@ -489,7 +489,7 @@ init_state_smile=3.4e-6
 init_state_eflvar=3.367e-7
 init_state_e0=0
 init_state_n0=0
-init_state_ke=-7.5e-3
+init_state_ke=-1.03e-2
 init_state_xe=0
 init_state_kee2=0
 init_state_kne2=2e-2
