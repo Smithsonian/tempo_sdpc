@@ -457,6 +457,8 @@ derive_cloud_o4_params()
        -e "s,@irradiance_file@,$irradiance_file," \
        -e "s,@product_file@,$product_file," \
        -e "s,@refdata_dir@,$refdata_dir," \
+       -e "s,@apply_solshift@,1," \
+       -e "s,@apply_radshift@,1," \
        $template_ctrl > $ctrl_file
 
    srun --ntasks=1 --output=log_cloud_o4.txt \

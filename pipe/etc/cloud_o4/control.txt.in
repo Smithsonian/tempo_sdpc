@@ -64,8 +64,8 @@ Runtime Parameters:
     option_destripe_scd: 0
     ecfocp_maxiter: 5
     option_scdfullfilter: 1
-    option_apply_solshift: 1
-    option_apply_radshift: 1
+    option_apply_solshift: @apply_solshift@
+    option_apply_radshift: @apply_radshift@
 
 Perturbations:
     Perturb_Alb466: N
