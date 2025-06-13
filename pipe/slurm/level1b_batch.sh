@@ -133,24 +133,20 @@ lev2_base_fmt=$(basename "$lev2_file_fmt" .nc)
 cld_o4_basename=$(printf "$lev2_base_fmt" CLDO4)
 cld_rr_basename=$(printf "$lev2_base_fmt" CLDRR)
 
-get_tiepoint_file()
+get_tiepoint_files()
 {
-   # If the basename has a leading ".", remove it
-   rad_path_basename_sans_ext=$(basename $rad_path .nc | sed -e s"/^[.]//")
-   rad_path_dir=$(dirname $rad_path)
+   # The original radiance file path is $dir/.XXXX.Smoothed.nc
+   _rad_dir=$(dirname $rad_path)
+   _rad_root=$(basename $rad_path .Smoothed.nc | sed -e s"/^[.]//")
 
-   # Since the original radiance path is XXXX.Smoothed.nc
-   #    we want the tie point file named XXXX.Smoothed.Internal.nc
-   tiepoint_path="$rad_path_dir/${rad_path_basename_sans_ext}.Internal.nc"
-
-   if test -f "$tiepoint_path" ; then
-      tiepoint_file=$(printf "$lev1_file_fmt" INR)
-      /bin/cp $tiepoint_path $tiepoint_file
-      chmod u+w $tiepoint_file
-   else
-      tiepoint_path=""
-      tiepoint_file=""
-   fi
+   # Tie point files are named XXXX.Internal.nc and XXXX.Smoothed.Internal.nc
+   for tag in Internal Smoothed.Internal ; do
+       tp_file="${_rad_root}.${tag}.nc"
+       if test -f $_rad_dir/$tp_file ; then
+          /bin/mv $_rad_dir/$tp_file .
+          chmod u+w $tp_file
+       fi
+   done
 }
 
 tar_granule_dir_to_dest()
@@ -177,10 +173,6 @@ tar_l1_radiance_to_dest()
    mkdir -p "$dest_dir"
    cd $parent_dir
 
-   if test x"$tiepoint_file" != x ; then
-      tiepoint_file="$granule_dir/$tiepoint_file"
-   fi
-
    tarfile_rad="${rad_basename}.rad.tar"
 
    EXTRA_FILES=""
@@ -199,17 +191,25 @@ tar_l1_radiance_to_dest()
        fi
    done
 
+   tiepoint_files="${rad_basename}.Internal.nc ${rad_basename}.Smoothed.Internal.nc"
+   for f in $tiepoint_files ; do
+       f_path="$granule_dir/$f"
+       if test -f $f_path ; then
+          EXTRA_FILES="$EXTRA_FILES $f_path"
+       fi
+   done
+
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
        $granule_dir/archive_subdir \
-       $granule_dir/log_inr_post.txt $tiepoint_file \
+       $granule_dir/log_inr_post.txt \
        $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 
    /bin/mv $dest_dir/.${tarfile_rad} $dest_dir/${tarfile_rad}
 
    archive.sl --clobber --delete -a $SDPC_ARCHIVE_DIR -l L1 $dest_dir/${tarfile_rad}
 
-   /bin/rm -f $granule_dir/log_inr_post.txt $tiepoint_file \
+   /bin/rm -f $granule_dir/log_inr_post.txt \
               $granule_dir/${rad_basename}.nc.met $EXTRA_FILES
 
    # Now that the final L1b radiance file has been archived, we can
@@ -516,18 +516,14 @@ perform_cleanup()
    # Delete the original radiance file, and file list file
    /bin/rm -f "$rad_path" "$file_list_file"
 
-   # We need original radiance path, without the "." prefix on the basename
-   # (usually looks like "$some_dir/${prefix}.Smoothed.nc"):
-   rad_path_nodot="$rad_path_dir/${rad_path_basename_sans_ext}.nc"
-
-   INR_FILE_TAGS="NavigatedResult Internal Smoothed.Internal"
-
-   for tag in $INR_FILE_TAGS ; do
-       inrfile_path=$(echo "$rad_path_nodot" | sed -e "s/Smoothed.nc/${tag}.nc/")
-       if test -f "$inrfile_path" ; then
-          /bin/rm -f "$inrfile_path"
-       fi
-   done
+   # Original radiance path looks like "${some_dir}/.${rad_base}.Smoothed.nc".
+   _rad_dir=$(dirname "$rad_path")
+   _rad_root=$(basename "$rad_path" .Smoothed.nc | sed -e s"/^[.]//")
+   # Delete the NavigatedResult file
+   nav_path="$_rad_dir/${_rad_root}.NavigatedResult.nc"
+   if test -f $nav_path ; then
+      /bin/rm -f $nav_path
+   fi
 }
 
 notify_granule_ready()
@@ -555,7 +551,7 @@ if ! test -f "$irr_file" ; then
   exit 1
 fi
 
-get_tiepoint_file
+get_tiepoint_files
 
 granule_subdir=$(level1_info --dir ${rad_basename}.nc)
 printf "$granule_subdir" > archive_subdir

@@ -238,7 +238,7 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         variable pp_basename = path_basename (pp);
         if (0 != strncmp (pp_basename, "TEMPO_", 6))
           continue;
-        variable exclude_substrs = ["TEMPO_INR", "_diag.nc"];
+        variable exclude_substrs = ["TEMPO_INR", "_diag.nc", "Internal.nc"];
         if (any(array_map (Integer_Type, &is_substr, pp_basename, exclude_substrs)))
           continue;
 
