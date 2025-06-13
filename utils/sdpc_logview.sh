@@ -47,6 +47,7 @@ choose_logdirs()
 	trend off
 	register on
 	asdc on
+	asdc_s3 off
 	pipecron off
 	EOF
 
@@ -102,7 +103,7 @@ main()
              ;;
            --nrt)
              shift
-             logdirs="level1b_nrt1 level1b_nrt2 level2_nrt register asdc"
+             logdirs="level1b_nrt1 level1b_nrt2 level2_nrt register asdc_s3"
              ;;
            --sci | --science)
              shift

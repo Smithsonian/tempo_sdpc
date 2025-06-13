@@ -37,58 +37,32 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
-class Enable_Switch:
-
-    disable_file = "disable-asdc"
-
-    def __init__(self, name):
-        self.dir = os.getenv ("SDPC_PIPE_DIR")
-        self.disable_path = os.path.join (self.dir, self.disable_file)
-        self.name = name
-        self.name_file = "{}-{}".format(self.disable_file, name)
-        self.name_path = os.path.join (self.dir, self.name_file)
-
-    def enable (self):
-        if os.path.isfile (self.disable_path):
-            logprint ("ASDC {} service disabled ({} exists)".format(self.name, self.disable_file))
-            return False
-        elif os.path.isfile (self.name_path):
-            logprint ("ASDC {} service disabled ({} exists)".format(self.name, self.name_file))
-            return False
-        else:
-            return True
-
 def main():
     parser = argparse.ArgumentParser(description='Manage ASDC interface')
     parser.add_argument('--wait', type=int, default=300,
                         help="time interval [sec] between updates")
-    parser.add_argument('--bucket', metavar='BUCKET:DIR', default=None,
-                        help="ASDC S3 bucket")
-    parser.add_argument('user_at_host', metavar='USER@HOST:dir', default=None,
-                        help="ASDC dropbox account")
-    if len(sys.argv) < 2:
+    parser.add_argument('--script-fmt', default=None,
+                        help="Push/pull script basename format, e.g. asdc_%%s.sh where %%s is push|pull")
+    parser.add_argument('dest', default=None,
+                        help="Destination string, e.g. bucket:dir or user@host:dir")
+    if len(sys.argv) == 1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
 
     wait = abs(args.wait)
-    user_at_host = args.user_at_host
-    s3_bucket = args.bucket
+    dest = args.dest
+
+    pull_script = args.script_fmt % ("pull")
+    push_script = args.script_fmt % ("push")
 
     sig = Signal_Catcher()
 
     logprint ("Started")
 
-    enable_s3 = Enable_Switch ("s3")
-    enable_direct = Enable_Switch ("direct")
-
     while not sig.caught():
-        if enable_s3.enable() and s3_bucket is not None:
-            obj = subprocess.run (["asdc_pull_s3.sh", s3_bucket])
-            obj = subprocess.run (["asdc_push_s3.sh", s3_bucket])
-        if enable_direct.enable():
-            obj = subprocess.run (["asdc_pull.sh", user_at_host])
-            obj = subprocess.run (["asdc_push.sh", user_at_host])
+        obj = subprocess.run ([pull_script, dest])
+        obj = subprocess.run ([push_script, dest])
         sig.wait(wait)
 
     logprint ("Exiting: caught signal = {}".format(sig.signum))

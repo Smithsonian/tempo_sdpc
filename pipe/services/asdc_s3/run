@@ -1,0 +1,19 @@
+#!/bin/sh
+
+exec 2>& 1
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The SDPC environment is not set"
+  exit 1
+fi
+
+bucket=$(config_setting asdc.bucket)
+update_interval=$(config_setting asdc.update_interval_s3)
+
+export SDPC_ASDC_LIMIT=$(config_setting asdc.max_num_files_s3)
+
+# boto3 environment variable gives path to AWS config file
+export AWS_CONFIG_FILE=$(config_setting asdc.aws_config_file)
+
+exec ${SDPC_ROOT}/bin/asdc_transfer.py --wait $update_interval --script-fmt "asdc_%s_s3.sh" $bucket

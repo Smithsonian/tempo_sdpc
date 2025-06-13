@@ -9,12 +9,8 @@ then
 fi
 
 dropbox=$(config_setting asdc.dropbox)
-bucket=$(config_setting asdc.bucket)
 update_interval=$(config_setting asdc.update_interval)
 
 export SDPC_ASDC_LIMIT=$(config_setting asdc.max_num_files)
 
-# boto3 environment variable gives path to AWS config file
-export AWS_CONFIG_FILE=$(config_setting asdc.aws_config_file)
-
-exec ${SDPC_ROOT}/bin/asdc_transfer.py --wait $update_interval --bucket $bucket $dropbox
+exec ${SDPC_ROOT}/bin/asdc_transfer.py --wait $update_interval --script-fmt "asdc_%s.sh" $dropbox

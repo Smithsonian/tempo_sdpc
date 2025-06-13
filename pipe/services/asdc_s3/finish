@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="asdc_s3"
+INCDIR=".."
+
+. $INCDIR/finish.inc
