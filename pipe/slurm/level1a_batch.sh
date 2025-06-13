@@ -216,7 +216,7 @@ case "${granule_basename}" in
 
   # Optionally, hard link a copy of the input to support
   # offline INR reprocessing
-  if test $SDPC_SAVE_INR_INPUT -ne 0 ; then
+  if test -f "$SDPC_PIPE_DIR/ctrl/save-inr-input" ; then
      inr_save_dir="$inr_input_cache/save"
      if ! test -d $inr_save_dir ; then
         mkdir -p $inr_save_dir

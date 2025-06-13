@@ -31,6 +31,7 @@ PIPE_DIRS="stage/level0/ccd \
            stage/granules/level2_input \
            stage/scans \
            repro/L0 repro/L1 repro/L2 \
+           ctrl \
 	   log"
 
 mkdirlist $SDPC_PIPE_DIR "$PIPE_DIRS"
