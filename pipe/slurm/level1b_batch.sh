@@ -93,6 +93,8 @@ esac
 #    rad_path
 #    irr_file
 #    snow_file
+#    solcal_file_o2o2
+#    solcal_file_list
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -112,6 +114,11 @@ work_dir="${rad_file_basename}"
 cd $work_dir
 /bin/cp "$rad_path" "$rad_file"
 /bin/cp "$file_list_file" "${rad_file_basename}.lis"
+if test -s "$solcal_file_list" ; then
+   # We want this list copied into the tar file
+   # that provides inputs for all L2 product generation
+   /bin/cp "$solcal_file_list" .
+fi
 chmod u+w "$rad_file"
 
 run_dir=$(pwd)
@@ -394,11 +401,15 @@ derive_o2o2_slant_column()
       met_dir1=$(dirname $USE_SYNTHETIC_MET_DATA)
   fi
 
-  # For now, baseline processing does not use
-  # cached solar wavecal parameters.
+  # Use cached solar wavelength calibration when it's available
   solcal_cache_mode="none"
   solcal_file="none"
   solcal_dir="none"
+  if test -s "$solcal_file_o2o2" ; then
+        solcal_cache_mode="read"
+        solcal_file="$(basename $solcal_file_o2o2)"
+        solcal_dir="$(dirname $solcal_file_o2o2)"
+  fi
 
   # copy the control file template
   /bin/cp $template_ctrl $control_file
@@ -514,7 +525,7 @@ EOF
 perform_cleanup()
 {
    # Delete the original radiance file, and file list file
-   /bin/rm -f "$rad_path" "$file_list_file"
+   /bin/rm -f "$rad_path" "$file_list_file" "$solcal_file_list"
 
    # Original radiance path looks like "${some_dir}/.${rad_base}.Smoothed.nc".
    _rad_dir=$(dirname "$rad_path")

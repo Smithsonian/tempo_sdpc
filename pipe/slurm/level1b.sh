@@ -80,11 +80,42 @@ irr_select_window=$(config_setting level1b.irr_select_window)
 irr_file=$(select_irr.py --window $irr_select_window "$rad_path")
 snow_file=$(select_ims.py "$rad_path")
 granule_dir=$(dirname "$rad_path")
+
+solcal_file_o2o2=""
+solcal_file_list="$granule_dir/${rad_basename}.solcal"
+# When solar wavelength calilbration caching is enabled,
+# generate a list of available cached files.
+# Complain if any solcal file is missing when solcal caching is enabled.
+if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
+   # Use cached O2O2 solar wavecal to generate the CLDO4 product.
+   solcal_file_o2o2=$(select_irrcal.py --molecule O2O2 $irr_file)
+   product_list="$(echo $SDPC_SOLCAL_CACHE_PRODUCTS | tr -s , ' ')"
+   if test x"$product_list" != x ; then
+      truncate -s 0 $solcal_file_list
+      missing_solcal_file=0
+      for molecule in $product_list ; do
+          solcal_path=$(select_irrcal.py --molecule $molecule $irr_file)
+          if test -f "$solcal_path" ; then
+             echo $solcal_path >> $solcal_file_list
+          else
+             log_message "WARNING: no $molecule solcal file for: $irr_file"
+             missing_solcal_file=1
+          fi
+      done
+      if test $missing_solcal_file -ne 0 ; then
+         log_message "WARNING: level1b_batch not submitted: $SDPC_GRANULE_LABEL"
+         exit 0
+      fi
+   fi
+fi
+
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
 rad_path=${rad_path}
 irr_file=${irr_file}
 snow_file=${snow_file}
+solcal_file_o2o2=${solcal_file_o2o2}
+solcal_file_list=${solcal_file_list}
 EOF
 
 # If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).

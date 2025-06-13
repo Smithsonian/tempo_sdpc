@@ -15,6 +15,9 @@ export SDPC_RADIANCE_POSTINR=$(config_setting level1b.postinr)
 export SDPC_RADIANCE_POSTINR_ONLY=$(config_setting level1b.postinr_only)
 export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1b.diagnostic_index)
 
+export SDPC_SOLCAL_CACHE_ENABLE=$(config_setting level1a.solcal_cache_enable)
+export SDPC_SOLCAL_CACHE_PRODUCTS=$(config_setting level1a.solcal_cache_products)
+
 dbfile_level1="$(config_setting dbfile.level1)"
 if ! test -f "$dbfile_level1" ; then
    dbfile_level1="$SDPC_ARCHIVE_DBFILE"
