@@ -1187,30 +1187,6 @@ contains
     endif
 
 
-!    call tiof_varlist_append (varlist, errstat, &
-!                              "RadShift", &
-!                              nf90_float, &
-!                              dimids = dimids_xtrack_step,  &
-!                              long_name = "radiance wavelength shift", &
-!                              units = "nm", &
-!                              valid_range = [-1.0_r8, 1.0_r8], &
-!                              fillvalue = fill_float, &
-!                              deflate_level = deflate_level, &
-!                              shuffle = shuffle, &
-!                              attlist=att_support)
-
-!    call tiof_varlist_append (varlist, errstat, &
-!                             "IrrShift", &
-!                             nf90_float, &
-!                             dimids = dimids_xtrack, &
-!                             long_name = "irradiance wavelength shift", &
-!                             units = "nm", &
-!                             valid_range = [-1.0_r8, 1.0_r8], &
-!                             fillvalue = fill_float, &
-!                             deflate_level = deflate_level, &
-!                             shuffle = shuffle, &
-!                             attlist=att_support)
-    
 
     !-------------
     if (run_mode .EQ. 'production') then
@@ -1228,6 +1204,30 @@ contains
                               attlist=att_support)
 
     else ! 'development'
+    call tiof_varlist_append (varlist, errstat, &
+                              "RadShift", &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "radiance wavelength shift", &
+                              units = "nm", &
+                              valid_range = [-1.0_r8, 1.0_r8], &
+                              fillvalue = fill_float, &
+                              deflate_level = deflate_level, &
+                              shuffle = shuffle, &
+                              attlist=att_support)
+
+    call tiof_varlist_append (varlist, errstat, &
+                             "IrrShift", &
+                             nf90_float, &
+                             dimids = dimids_xtrack, &
+                             long_name = "irradiance wavelength shift", &
+                             units = "nm", &
+                             valid_range = [-1.0_r8, 1.0_r8], &
+                             fillvalue = fill_float, &
+                             deflate_level = deflate_level, &
+                             shuffle = shuffle, &
+                             attlist=att_support)
+    
     call tiof_varlist_append (varlist, errstat, &
                               "nonclipped_cloud_fraction", &
                               nf90_float, &
@@ -1587,12 +1587,6 @@ contains
          [nstep, nxtrack], out_ScenePressure, errstat)
     endif
 
-!    call tiof_put2d_r4 (tio_l2obj, "RadShift", [0,0], &
-!         [nstep, nxtrack], rad_waveshift, errstat)
-
-!    call tiof_put1d_r4 (tio_l2obj, "IrrShift", [0,0], &
-!         [nxtrack], irr_waveshift, errstat)
-
     !-----------------------------------
     if (run_mode .EQ. 'production') then
 
@@ -1600,6 +1594,12 @@ contains
          [nstep, nxtrack], l2_TerrainPressure, errstat)
 
     else !------------------------------
+    call tiof_put2d_r4 (tio_l2obj, "RadShift", [0,0], &
+         [nstep, nxtrack], rad_waveshift, errstat)
+
+    call tiof_put1d_r4 (tio_l2obj, "IrrShift", [0,0], &
+         [nxtrack], irr_waveshift, errstat)
+
     call tiof_put2d_r4 (tio_l2obj, "nonclipped_cloud_fraction", [0,0], &
          [nstep, nxtrack], out_EffectiveCloudFractionNotClipped, errstat)
 
