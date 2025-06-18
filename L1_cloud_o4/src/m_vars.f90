@@ -201,7 +201,8 @@ module m_vars
   real,parameter::vcd_convfac = 6.733e-4 !previously 6.765e-4
 
  ! add the fraction used for cpp during scd temperature correction
-  real,parameter:: frac4cpp = 0.7937 !previously 0.5
+  real,parameter:: frac4cpp = 0.7937 ! half mass at ~0.70
+ ! frac4cpp is tunable, does not necessarily reflect half mass
 
 !-----------
 ! input LUN
