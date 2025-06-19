@@ -153,7 +153,7 @@ eoi   0         0         0        # end of input
 
 Radiance calibration parameters
  T                    # Correct O3 cross sections for "solar I0 effect"?
- 15                   # maximum number of iterations for fitting (<0: default)
+ 60                   # maximum number of iterations for fitting (<0: default)
  10000                # frequency of radiance wavelength calibration
   90.00               # maximum solar zenith angle to process
    0.00               # "Top of Atmosphere" height [km]
