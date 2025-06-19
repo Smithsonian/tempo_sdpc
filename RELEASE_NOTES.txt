@@ -1,3 +1,8 @@
+TEMPO_SDPC_v4.6.1   2025 Jun
+===============================
+  * Manage NRT uploads in a separate service, asdc_s3
+  * Update INR SW to r3.0.4
+
 TEMPO_SDPC_v4.6.0   2025 Jun
 ===============================
   * O3PROF product update to support initial release
