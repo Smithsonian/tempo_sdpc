@@ -528,11 +528,6 @@ integer:: ilun_gmi_tmp = 4003
   real, parameter:: max_o2o2_relerr = 0.3 
 
   integer :: option_destripe_scd = 0
-  character(len=255)::name_desfac_dir='./'
-  character(len=255)::name_desfac_fnm='test_desfac.txt'
-  integer:: lun_desfac_fnm=177
-
-  real(kind=4),dimension(:),allocatable:: scddes_hour
 
 !-----------
 ! calculate raa  
@@ -540,6 +535,7 @@ integer:: ilun_gmi_tmp = 4003
 !                =0: use raa from l2 fitting output
 !-----------
   integer :: option_calc_raa = 1
+  real(kind=4),dimension(:,:),pointer:: scddes
 
 !-------------
 ! Perturbations
@@ -553,7 +549,7 @@ integer:: ilun_gmi_tmp = 4003
   ! perturbation polynomial coeff for rad466/irr466 [0,1,2,3]order
   integer(kind=4) :: nord_RoI466pert = 3 ! 3rd order polynomial has 4 coeffs
   !real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.95,0.0,0.0/)
-  ! the following is from HCH: y = (1.-(-271.98*x+23.62)/100.)*x
+  ! the following is from HCH test case: y = (1.-(-271.98*x+23.62)/100.)*x
   real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.7638,2.7198,0.0/)
 
   logical :: PerturbO4SCD = .False.

@@ -788,7 +788,6 @@ contains
 
      ! Allocate cldo4 variables
      call allocate_cldo4_vars(nTimes,nXtrack,errstat)
-     call allocate_init_desvars (nxtrack, errstat)
      if (errstat /= 0) then
           call tell_error (tell_runtime_error, "allocate_cldo4_vars: failed", errstat)
           return
@@ -952,9 +951,12 @@ contains
            tmp_dbl = dspecial ! negative value
      end where
 
-     ! assign nasa_SlantColumnAmountO2O2 
-     ! de-stripe scd, nasa_SlantColumnAmountO2O2 is real (kind=4)
-     call destripe_o2o2scd(tmp_dbl,nXtrack,nTimes,nasa_SlantColumnAmountO2O2)
+     ! assign nasa_SlantColumnAmountO2O2 real(kind=4)
+     do ix = 1, nXtrack
+        do it = 1, nTimes
+           nasa_SlantColumnAmountO2O2(ix,it) = real(tmp_dbl(ix,it),kind=4)
+        enddo
+     enddo
 
     ! set filtered out scd to fFillValue for output
     where (nasa_SlantColumnAmountO2O2 < 0.)
@@ -1315,7 +1317,7 @@ end subroutine read_cldo4_dims
   subroutine allocate_cldo4_vars (ntimes, nxtrack, errstat)
 
      use m_vars, only: nasa_SlantColumnAmountO2O2, l2_TerrainPressure,&
-           scd_mdqfl, fit_convergence_flag, &
+           scd_mdqfl, fit_convergence_flag, scddes, &
            nasa_scdrms, nasa_scduncertainty
 
      use m_vars, only: rad_SolarZenithAngle, rad_SolarAzimuthAngle, &
@@ -1345,6 +1347,7 @@ end subroutine read_cldo4_dims
           rad_ViewingAzimuthAngle(nxtrack, ntimes), &
           rad_RelativeAzimuthAngle(nxtrack, ntimes), &
           out_RelativeAzimuthAngle(nxtrack, ntimes), &
+          scddes(nxtrack, ntimes), &
           stat=errstat)
 
      if (errstat /= 0) then
@@ -1366,6 +1369,7 @@ end subroutine read_cldo4_dims
       rad_ViewingAzimuthAngle = fFillValue
       rad_RelativeAzimuthAngle = fFillValue
       out_RelativeAzimuthAngle = fFillValue
+      scddes = fFillValue
 
    end subroutine allocate_cldo4_vars
 
@@ -1490,89 +1494,6 @@ end subroutine read_cldo4_dims
 
    end subroutine read_diaglog_vars
 
-!--------------------------------------------------------------------
-   subroutine allocate_init_desvars(nxtrack, errstat)
+!------------------------------------------------------------------
 
-   use m_vars, only: scddes_hour
-   use m_vars, only: lun_desfac_fnm
-   use m_vars, only: name_desfac_fnm
-   use m_vars, only: name_desfac_dir,option_destripe_scd
-
-   implicit none
-   integer, intent(in):: nxtrack
-   integer, intent(inout):: errstat
-   character(len=255):: filename_deshour
-   real :: tmpvalue
-   integer :: ix
-
-   filename_deshour = trim(name_desfac_dir)//trim(name_desfac_fnm)
-
-     ! allocate array
-     allocate (scddes_hour(nxtrack), stat=errstat)
-     if (errstat /= 0) return
-     ! initialize scddes
-     scddes_hour = 1.
-
-     if (option_destripe_scd .eq. 1) then 
-     ! temporary fix below: read scddes from filename_deshour
-        write(*,*) '   reading destripe factor '//trim(filename_deshour)
-        open(unit=lun_desfac_fnm,file=trim(filename_deshour))
-        do ix = 1, nxtrack
-           read(lun_desfac_fnm,*) tmpvalue
-           scddes_hour(ix) = tmpvalue
-        enddo
-        close(lun_desfac_fnm)
-     else
-        write(*,*) '  desfac=1.0 for all pixels'
-     endif 
-        
-   end subroutine allocate_init_desvars
-!-----------------------------------------------------------
-
-   subroutine destripe_o2o2scd(arrin,nXtrack,nTimes,arrout)
-
-   use m_vars, only: scddes_hour, option_destripe_scd
-   use m_vars, only: fFillValue
-
-   implicit none
-   
-   real(kind=8),dimension(nXtrack,nTimes),intent(in)::arrin
-   integer, intent(in):: nXtrack,nTimes
-   real(kind=4),dimension(nXtrack,nTimes),intent(out)::arrout
-   
-   real:: fspecial = fFillValue 
-   real:: desfac, thisarr
-   ! local variable
-   real, dimension(nXtrack):: scddes
-
-   integer:: ix, it
-
-   arrout = fspecial
-
-   scddes = scddes_hour
-
-   if (option_destripe_scd .eq. 1) then 
-   write(*,*) '    destriping scd'
-   do ix = 1, nXtrack
-      desfac = scddes(ix)
-      if (desfac .gt. 0.) then
-        do it = 1, nTimes
-          thisarr = real(arrin(ix,it),kind=4)
-          if (thisarr < 0.) then
-             arrout(ix,it) = fFillValue
-          else
-             arrout(ix,it) = thisarr/desfac
-          endif
-        enddo
-      endif
-   enddo 
-   else
-       write(*,*) '     scd is not destriped.'
-       ! convert double to real
-       arrout = real(arrin,kind=4)
-   endif
-
-   end subroutine destripe_o2o2scd
-
-  !-----------------------------------------------------------
 end module m_read_input_tio

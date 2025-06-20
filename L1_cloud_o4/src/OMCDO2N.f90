@@ -277,23 +277,6 @@ program OMCDO2N
   endif
   write(*,*) 'option_destripe_scd=',option_destripe_scd
 
-  if (option_destripe_scd .eq. 1) then
-    errhere=GetConfigString("W","Input Files desfac_dir",buf)
-    if(errhere .ne. 0) then
-      write(*,*) 'No desfac_dir in control file, use default'
-    else
-       name_desfac_dir=trim(buf)
-    endif
-
-    errhere=GetConfigString("W","Input Files desfac_fnm",buf)
-    if(errhere .ne. 0) then
-       write(*,*) 'No desfac_fnm in control file, usedefault'
-    else
-       name_desfac_fnm=trim(buf)
-    endif
-    write(*,*) 'desfac_filename=',trim(name_desfac_dir),trim(name_desfac_fnm)
-  endif
-
   !------ wavelength shift ------
   status=GetConfigString("W","Runtime Parameters option_apply_solshift",buf)
   if (status .ne. 0) then
