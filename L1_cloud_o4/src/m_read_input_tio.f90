@@ -733,7 +733,7 @@ contains
 
 !-------------------------------------------------------------------
   subroutine read_cldo4_tio (l2_file, errstat)
-     use m_vars, only: nasa_SlantColumnAmountO2O2,fFillValue
+     use m_vars, only: nasa_SlantColumnAmountO2O2,scddes,fFillValue
      use m_vars, only: nasa_NumTimes, nasa_nXtrack
      use m_vars, only: scd_mdqfl,nasa_scdrms,nasa_scduncertainty
      use m_vars, only: fit_convergence_flag
@@ -744,7 +744,7 @@ contains
      use m_vars, only: max_o2o2_scd, max_o2o2_uncertainty, max_o2o2_relerr
      use m_vars, only: o2o2_norm, max_SZA_mdqfl
      use m_vars, only: fFillValue, dFillValue, iFillValue
-     use m_vars, only: option_scdfullfilter, option_calc_raa
+     use m_vars, only: option_scdfullfilter, option_calc_raa, option_destripe_scd
      use m_vars, only: PerturbO4SCD, O4SCDPertFactor
 
      implicit none
@@ -909,7 +909,7 @@ contains
 
      !------
      ! allocate tmp_dbl array for scd and scd_uncertainty
-     !write(*,*) 'read support_data from L2 file'
+     ! write(*,*) 'read support_data from L2 file'
      allocate(tmp_dbl(nXtrack, nTimes), stat = errstat)
      if (errstat /= 0) then
           call tell_error (tell_runtime_error, &
@@ -928,10 +928,25 @@ contains
      !------
      ! read fitted_slant_column
      call tiof_get2d_r8 (tio_l2obj, "fitted_slant_column", [0,0], [ntimes, nxtrack],&
-           tmp_dbl, errstat)
+             tmp_dbl, errstat)
      if (errstat /= 0) then
-          call tell_error (tell_runtime_error, "read_cldo4_tio: fitted_slant_column failed", errstat)
-          return
+        call tell_error (tell_runtime_error, "read_cldo4_tio: fitted_slant_column failed", errstat)
+        return
+     endif
+
+     if (option_destripe_scd .EQ. 1) then
+        write(*,*) "      replace fitted_slant_column with scddes"
+        call tiof_get2d_r8 (tio_l2obj, "scddes", [0,0], [ntimes, nxtrack],&
+             scddes, errstat1)
+         if (errstat1 /= 0) then
+            ! in case of read error for scddes 
+            call tell_error (tell_runtime_error,"read_cldo4_tio: scddes", errstat1)
+            write(*,*) "      go back using fitted_slant_column instead"
+            scddes = tmp_dbl ! contains fitted_slant_column
+            ! update option_destripe_scd to 0
+            option_destripe_scd = 0
+         endif
+         tmp_dbl = scddes 
      endif
 
      ! normalize scd 
@@ -1369,7 +1384,7 @@ end subroutine read_cldo4_dims
       rad_ViewingAzimuthAngle = fFillValue
       rad_RelativeAzimuthAngle = fFillValue
       out_RelativeAzimuthAngle = fFillValue
-      scddes = fFillValue
+      scddes = 0.d0 ! kind=8
 
    end subroutine allocate_cldo4_vars
 

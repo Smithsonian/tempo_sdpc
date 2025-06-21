@@ -535,7 +535,7 @@ integer:: ilun_gmi_tmp = 4003
 !                =0: use raa from l2 fitting output
 !-----------
   integer :: option_calc_raa = 1
-  real(kind=4),dimension(:,:),pointer:: scddes
+  real(kind=8),dimension(:,:),pointer:: scddes
 
 !-------------
 ! Perturbations
