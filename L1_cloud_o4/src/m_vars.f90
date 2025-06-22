@@ -414,8 +414,8 @@ integer:: ilun_gmi_tmp = 4003
   character(len=255):: name_diaglog_fnm='empty'
   real(kind=4),dimension(:,:),allocatable:: rad_waveshift
   real(kind=4),dimension(:),allocatable:: irr_waveshift
-  real(kind=4):: maxradshift = 0.5 !nm larger rad_waveshift will be set to 0.
-  real(kind=4):: maxirrshift = 0.5 !nm larger irr_waveshift will be set to 0.
+  real(kind=4):: maxradshift = 0.1 !nm larger rad_waveshift will be set to 0.
+  real(kind=4):: maxirrshift = 0.1 !nm larger irr_waveshift will be set to 0.
 
 !------------
 ! input extra
