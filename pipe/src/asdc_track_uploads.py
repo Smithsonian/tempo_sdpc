@@ -54,15 +54,28 @@ def table_files_matching_status (cur, table_name, asdc_status, limit=0, order='a
     if limit > 0:
         qual += " limit {}".format(limit)
 
-    nc_query  = "select path from {table_name} where asdc_status == {asdc_status} {qual}".format(**locals())
-    met_query = "select path from {table_name} where asdc_status_met == {asdc_status} {qual}".format(**locals())
+    nonexistent = Asdc_Status["nonexistent"]
 
-    cur.execute (nc_query)
-    nc_paths = [item for t in cur.fetchall() for item in t]
-    cur.execute (met_query)
-    met_paths = [item + ".met" for t in cur.fetchall() for item in t]
+    # We want a list of data product files and, if they exist, the corresponding .met files.
+    # To avoid a race condition, we want to get this from a single SQL query.
+    # Unfortunately, the way .met files are tracked makes this difficult with SQL alone,
+    # so some post-processing seems necessary.
 
-    return sorted (nc_paths + met_paths)
+    sql = "select asdc_status_met,path from {table_name} where asdc_status == {asdc_status} and (asdc_status_met == {asdc_status} or asdc_status_met == {nonexistent}) {qual}".format (**locals())
+    cur.execute (sql)
+    rows = cur.fetchall()
+
+    path_list = []
+    for row in rows:
+        path = row[1]
+        path_list.append (path)
+        asdc_status_met = row[0]
+        if asdc_status_met == asdc_status:
+            path_list.append (path + ".met")
+
+    path_list = sorted (path_list)
+
+    return path_list
 
 def files_matching_status (cur, asdc_status, **kwargs):
     """
