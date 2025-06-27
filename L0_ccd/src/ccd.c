@@ -1724,7 +1724,8 @@ static int mean_sdc_quad (const CCD_Object_Type *obj,
    if (pixcount > 0)
      {
         float sr_distance = num_dg_rows + num_tg_rows/2.0;
-        *mean_sdc_per_pixel = (((pixsum / num_tg_rows) / pixcount) / sr_distance);
+        int nr = quad->row_end - quad->row_beg;
+        *mean_sdc_per_pixel = (((pixsum / num_tg_rows) / pixcount) / sr_distance * nr);
      }
 
    return 0;
@@ -1920,7 +1921,7 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
                                  int sb, int se, int sstep)
 {
    const Response_Info_Type *rit = &ccd->resp_info;
-   int num_xfer_smear = ccd->obj.num_parallel_oclock;
+   int num_xfer_smear = ccd->obj.num_parallel_oclock + ccd->obj.num_parallel_sdc;
    float sdc_scaled, sdc_factor;
    int p, s, num_xfer_p;
 
@@ -1935,7 +1936,7 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
         Image_Pqf_Bitmap_Type *pqf = noisesq->pixel_quality_flags + p * noisesq->num_cols;
 #endif
         num_xfer_p = (pstep < 0) ? (1+p) : (pe-p);
-        sdc_scaled = (sdc * num_xfer_p) /(pe - pb);
+        sdc_scaled = (sdc * (num_xfer_p + ccd->obj.num_parallel_sdc)) /(pe - pb + num_xfer_smear);
         sdc_factor = pow (sdc_scaled, 0.715);
         for (s = sb; s < se; s++)
           {
@@ -1950,10 +1951,12 @@ static void update_noisesq_quad (const CCD_Type *ccd, float sdc, Image_Type *noi
                }
 #endif
              num_xfer_s = (sstep < 0) ? (1+s) : (se - s);
+             /* number of transfers for storage region signal */
              num_xfer1 = num_xfer_p + num_xfer_smear + num_xfer_s;
+             /* number of transfers for active region signal */
              num_xfer2 = num_xfer_p + num_xfer1;
-             ctesq = (num_xfer1 * pow (pnsq[s], 0.715)
-                      + num_xfer2 * sdc_factor);
+             ctesq = (num_xfer2 * pow (pnsq[s], 0.715)
+                      + num_xfer1 * sdc_factor);
              pnsq[s] += ctesq * 2.0 * (1.0 - rit->cte) + rit->readnoise_sq;
           }
      }
