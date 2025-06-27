@@ -453,7 +453,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
           }
      }
 
-   if (0) (void) image_write_raw (exprec->img, "coadd");
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "coadd");
 
    if (0 != ccd->ccd_configure_using_octant_phase (ccd, exprec->img))
      return -1;
@@ -467,7 +467,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != ccd->ccd_correct_offset (ccd, exprec->img))
      return -1;
 
-   if (0) (void) image_write_raw (exprec->img, "offset");
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "offset");
 
    /* It's not expected that data from a linearity sweep will be processed
     * to Level 1, but if it is, then we'll treat it exactly the same
@@ -477,8 +477,12 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (-1 == ccd->ccd_correct_nonlinearity (ccd, exprec->img))
      return -1;
 
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "nonlinearity");
+
    if (0 != ccd->ccd_correct_crosstalk (ccd, exprec->img))
      return -1;
+
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "crosstalk");
 
    fpa_sum   = 0.0;
    fpe_sum   = 0.0;
@@ -499,7 +503,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
     * how it works for different integration modes.
     *
     * September 25, 2024: Code revised to un-tweak image time.
-    * This is a temporary solution. New dark correction is expected in Version 4.
+    * This is a temporary solution. New dark correction will be implemented.
     */
 
    double secs_per_clock      = 8.2987551867219914e-08;
@@ -616,7 +620,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (-1 == ccd->ccd_correct_gain (ccd, exprec->img, xr->fpa_temp, xr->fpe_temp))
      return -1;
 
-   if (0) (void) image_write_raw (exprec->img, "gain");
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "gain");
 
    if (-1 == ccd->ccd_mean_storage_region_dark (ccd, exprec->img,
                                                 exprec->num_dg_rows, exprec->num_tg_rows,
@@ -645,6 +649,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
 
    if (-1 == ccd->ccd_correct_smear (ccd, &smear_fraction, exprec->img))
      return -1;
+
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "smear");
 
    /* trim parallel overclocks, and serial leading and trailing */
    if (NULL == (aimg = ccd->ccd_copy_active_pixels (ccd, exprec->img)))
@@ -679,6 +685,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
    if (0 != trend_collect_sdc (exprec->num_dg_rows, exprec->num_tg_rows, xr->storage_region_dark))
      return -1;
 
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "integration_time");
+
    if (0 != ccd->ccd_correct_prnu (ccd, exprec->img))
      return -1;
 
@@ -688,7 +696,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
           return -1;
      }
 
-   if (0) (void) image_write_raw (exprec->img, "prnu");
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (exprec->img, "prnu");
 
    return 0;
 }
@@ -1074,7 +1082,7 @@ static int radcal_and_output (Output_Type *out, Calibration_Type *cal, Solar_Geo
    if (0 != radiometric_correction (cal, sgt, xr))
      goto return_status;
 
-   if (0) (void) image_write_raw (xr->exprec->img, "final");
+   if (want_diagnostic_output(xr->index)) (void) image_write_raw (xr->exprec->img, "final");
 
    if ((num_negative = image_check_negative_pixels (xr->exprec->img, 1)) < 0)
      goto return_status;
