@@ -67,19 +67,28 @@ have_unchecked_data()
 }
 have_unchecked_data $date_ymd
 
-echo "$PGMNAME: performing INR quality check for date: $date_ymd"
-
 # Perform the INR QA check
 log_path="$root_work_dir/log.$(date +%s).txt"
 inr_qa_check.sh $date_ymd $root_work_dir > $log_path 2>&1
+exit_status="$?"
 
-# Summarize log, warning when scans are noncompliant
-num_non=$(grep -iwc noncompliant $log_path)
-if test $num_non -gt 0 ; then
+# Summarize log, warn if necessary
+num_ok=0
+num_ind=0
+num_non=0
+if test -f "$log_path" ; then
    num_ok=$(grep -iwc compliant $log_path)
    num_ind=$(grep -iwc indeterminant $log_path)
-   echo "$PGMNAME: WARNING: INR quality check: $date_ymd scans: noncompliant:$num_non compliant:$num_ok indeterminant:$num_ind"
+   num_non=$(grep -iwc noncompliant $log_path)
 fi
+if test "$exit_status" -ne 0 ; then
+   status="ERROR"
+elif test $num_non -gt 0 || test $num_ok -lt $num_ind ; then
+   status="WARNING"
+else
+   status="SUCCESS"
+fi
+echo "$PGMNAME: $status: INR quality check: $date_ymd scans: noncompliant:$num_non compliant:$num_ok indeterminant:$num_ind"
 
 tar_path=$(find $root_work_dir -maxdepth 1 -name "${tar_prefix}?????.tar" -mtime -5)
 if ! test -f $tar_path ; then
