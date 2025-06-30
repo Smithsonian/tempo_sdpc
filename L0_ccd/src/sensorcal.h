@@ -67,6 +67,8 @@ struct Calibration_Type
 
    int (*cal_straylight_correction)(const Calibration_Type *, Image_Type *);
 
+   int (*cal_reconstruction_method)(Image_Type *, int, int);
+
    /** Define a nominal wavelength grid
     * @param cal  non-NULL pointer to a Calibration_Type object
     * @param band_id  integer band index (TEMPO_BAND_UV | TEMPO_BAND_VIS)

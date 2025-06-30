@@ -11,6 +11,7 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_matrix_float.h>
+#include <gsl/gsl_fit.h>
 
 #include "granule.h"
 #include "config.h"
@@ -127,7 +128,9 @@ static void free_lps_table (Lps_Table_Type *tbl);
    int num_xpos; \
    unsigned int straylight_shadow_method; \
    int num_col_top; \
-   int num_col_bot;
+   int num_col_bot; \
+   int skip_col_top; \
+   int skip_col_bot;
 #include "sensorcal.h"
 
 static int read_wavelength_grid_cal (Calibration_Type *cal, const char *file)
@@ -1398,7 +1401,7 @@ static int alloc_hole_info (size_t n, Hole_Info_Type *h)
 }
 
 static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf_Bitmap_Type *pqf,
-                       Image_Pqf_Bitmap_Type mask, size_t n)
+                       Image_Pqf_Bitmap_Type mask, size_t n, int s_top, int s_bot)
 {
    gsl_interp *lin = NULL;
    size_t i, g, b;
@@ -1413,7 +1416,7 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
 
    g = 0;
    b = 0;
-   for (i = 5; i < (n-7); i++)
+   for (i = s_top; i < (n-s_bot); i++)
      {
         if (pqf[i] & mask)
           {
@@ -1464,7 +1467,88 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
    return status;
 }
 
-static int fill_image_holes (Image_Type *img)
+static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Image_Pqf_Bitmap_Type mask)
+{
+   size_t np = img->num_rows;
+   size_t ns = img->num_cols;
+   int p;
+   int pb = (band == 0) ? 0 : np/2;
+   int pe = (band == 0) ? np/2 : np;
+   double c0, c1, cov00, cov01, cov11, chisq;
+
+   int num_sig = (band == 0) ? 2: 4;
+   int start[4], end[4];
+   double mid[4];
+
+   if (band == 0)
+     {
+        start[0] = 150; start[1] = 1024;
+        mid  [0] = 175; mid  [1] = 1024;
+        end  [0] = 200; end  [1] = 1024;
+     }
+   if (band == 1)
+     {
+        start[0] = 325; start[1] = 496; start[2] = 513; start[3] = 564;
+        mid  [0] = 327; mid  [1] = 499; mid  [2] = 516; mid  [3] = 567;
+        end  [0] = 331; end  [1] = 501; end  [2] = 519; end  [3] = 571;
+     }
+
+   double good_sig  [4] = {1e30, 1e30, 1e30, 1e30};
+   double target_sig[4] = {1e30, 1e30, 1e30, 1e30};
+   double ratio_sig [4];
+
+   /* Calculate the good and target signal ratios */
+   for (int i = 0; i < num_sig; i++)
+    {
+      for (p = pb+start[i]; p < pb+end[i]; p++)
+        {
+          Image_Pixel_Type good_pixel   = img->pixels[good_col + p * ns];
+          Image_Pixel_Type target_pixel = img->pixels[s + p * ns];
+
+          good_sig  [i] = (good_pixel   < good_sig  [i]) ? good_pixel   : good_sig  [i];
+          target_sig[i] = (target_pixel < target_sig[i]) ? target_pixel : target_sig[i];
+        }
+
+      if (good_sig[i] == 1e30)
+        {
+           tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: good_sig[%d] was never updated, skipping", __func__, i);
+           return -1;
+        }
+      ratio_sig[i] = target_sig[i] / good_sig[i];
+    }
+
+   /* Perform linear fitting on the ratios */
+   if (0 != gsl_fit_linear(mid, 1, ratio_sig, 1, num_sig, &c0, &c1, &cov00, &cov01, &cov11, &chisq))
+     {
+        tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: gsl_fit_linear failed", __func__);
+        return -1;
+     }
+
+   if (isnan(c0) || isnan(c1))
+     {
+        tell_vlog(TELL_MSGTYPE_WARN, 1, "%s: linear fit returned NaN values (c0=%f, c1=%f)", __func__, c0, c1);
+        return -1;
+     }
+
+   /* Apply the linear fit to the bad pixels in the target spectrum */
+   for (p = pb; p < pe; p++)
+     {
+        Image_Pixel_Type good_pixel   = img->pixels[good_col + p * ns];
+        Image_Pixel_Type target_pixel = img->pixels[s + p * ns];
+        Image_Pqf_Bitmap_Type target_pqf = img->pixel_quality_flags[s + p * ns];
+
+        if (target_pqf & mask)
+          {
+             target_pixel = (c0 + c1 * (double)(p - pb)) * good_pixel;
+             /* Update the pixel value */
+             img->pixels[s + p * ns] = target_pixel;
+          }
+     }
+
+   return 0;
+}
+
+static int reconstruct_image (Image_Type *img, int s_top, int s_bot)
 {
    Hole_Info_Type h = {0};
    Image_Pqf_Bitmap_Type mask = IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA;
@@ -1488,7 +1572,7 @@ static int fill_image_holes (Image_Type *img)
           {
              if (pqf[s] & mask)
                {
-                  if (0 != interp_row (&h, pixels, pqf, mask, ns))
+                  if (0 != interp_row (&h, pixels, pqf, mask, ns, s_top, s_bot))
                     {
                        free_hole_info (&h);
                        return -1;
@@ -1499,6 +1583,70 @@ static int fill_image_holes (Image_Type *img)
      }
 
    free_hole_info (&h);
+
+   return 0;
+}
+
+static int reconstruct_ratio (Image_Type *img, int s_top, int s_bot)
+{
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA | IMAGE_PQF_SATURATED;
+   size_t np = img->num_rows;
+   size_t ns = img->num_cols;
+   size_t s, p, t, good_col;
+   int num_mask_vis[ns], num_mask_uv[ns];
+
+   memset((char *)num_mask_vis, 0, ns * sizeof(int));
+   memset((char *)num_mask_uv, 0, ns * sizeof(int));
+
+   /* We reconstruct spectra for saturated pixels
+    * and other bad pixels using spectra from nearest good pixels.
+    */
+
+   for (p = 0; p < np; p++)
+     {
+        Image_Pqf_Bitmap_Type *pqf = img->pixel_quality_flags + p * ns;
+
+        for (s = 0; s < ns; s++)
+          {
+            if (pqf[s] & mask)
+              {
+                 if (p  < np/2) num_mask_vis[s]++;
+                 if (p >= np/2) num_mask_uv [s]++;
+              }
+          }
+      }
+
+   for (s = (ns-((size_t)s_bot+1)); s > ((size_t)s_top-1); s--)
+     {
+        for (int band = 0; band < 2; band++) /* band 0: VIS, band 1: UV */
+          {
+             int *num_mask = (band == 0) ? num_mask_vis : num_mask_uv;
+
+             if (num_mask[s] > 0)
+               {
+                  for (t = 1; t < ns; t++)
+                    {
+                       for (int sign = 1; sign >= -1; sign-= 2)
+                         {
+                            int idx = s + sign * t;
+                            idx = fmax(0, fmin(idx, ns-1));
+                            if (num_mask[idx] == 0)
+                              {
+                                 good_col = idx;
+                                 goto found;
+                              }
+                         }
+                    }
+                  tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: no good columns to use", __func__);
+                  found:;
+ 
+                  if (0 != interp_col(band, img, s, good_col, mask))
+                    {
+                       tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: unfilled image holes at column %zu", __func__, s);
+                    }
+               }
+          }
+     }
 
    return 0;
 }
@@ -1525,7 +1673,7 @@ static int slcorr_using_bb_kernels (const Calibration_Type *cal, Image_Type *img
    if (NULL == (img0 = image_dup (img)))
      return -1;
 
-   if (0 != fill_image_holes (img0))
+   if (0 != cal->cal_reconstruction_method (img0, cal->skip_col_top, cal->skip_col_bot))
      goto return_status;
 
    if ((NULL == (kti0 = image_new (sl_bbk->num_kernels, num_cols)))
@@ -1826,7 +1974,7 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    if (NULL == (img0 = image_dup (img)))
      goto return_status;
 
-   if (0 != fill_image_holes (img0))
+   if (0 != cal->cal_reconstruction_method (img0, cal->skip_col_top, cal->skip_col_bot))
      goto return_status;
 
    if (psf->fill_ccd_gap)
@@ -2101,6 +2249,50 @@ static int read_shadow_qualifiers (Calibration_Type *cal, config_t *cfg)
    return 0;
 }
 
+static int read_reconst_qualifiers (Calibration_Type *cal, config_t *cfg)
+{
+   config_setting_t *s;
+   const char *which_reconst;
+
+   if (NULL == (s = config_lookup (cfg, "straylight.reconstruction_method")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing group 'straylight.reconstruction_method' in param file: %s",
+                     __func__, config_error_file (cfg));
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "skip_col_top", &cal->skip_col_top))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "skip_col_bot", &cal->skip_col_bot))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        return -1;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_string (s, "which_reconst", &which_reconst))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading confg file", __func__);
+        return -1;
+     }
+
+   if (0 == strcmp (which_reconst, "image"))
+     {
+        cal->cal_reconstruction_method = reconstruct_image;
+     }
+
+   if (0 == strcmp (which_reconst, "ratio"))
+     {
+        cal->cal_reconstruction_method = reconstruct_ratio;
+     }
+
+   return 0;
+}
+
 static int config_straylight_method (Calibration_Type *cal, config_t *cfg)
 {
    const char *sl_method = enable_state_query_enum (ENABLE_STRAYLIGHT);
@@ -2116,7 +2308,7 @@ static int config_straylight_method (Calibration_Type *cal, config_t *cfg)
         if (0 != read_bb_kernels (cal, cfg))
           return -1;
         cal->cal_straylight_correction = slcorr_using_bb_kernels;
-        return 0;
+        return read_reconst_qualifiers (cal, cfg);
      }
 
    if (0 == strcmp (sl_method, "psf"))
@@ -2124,7 +2316,8 @@ static int config_straylight_method (Calibration_Type *cal, config_t *cfg)
         if (0 != read_sl_psf_matrix (cal, cfg))
           return -1;
         cal->cal_straylight_correction = slcorr_using_psf;
-        return read_shadow_qualifiers (cal, cfg);
+        return ((0 != read_shadow_qualifiers (cal, cfg))
+            || (0 != read_reconst_qualifiers (cal, cfg))) ? -1 : 0;
      }
 
    if (0 == strncmp (sl_method, "shadow", 6))
