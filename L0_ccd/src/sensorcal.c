@@ -96,6 +96,8 @@ typedef struct
    float *Ainv;
    /**< Ainv matrix, square, [num_waves,num_waves] */
 
+   int row_lo;
+   int row_hi;
    double scale_factor_vis_to_uv;
    int use_shadows;
    int fill_ccd_gap;
@@ -1257,7 +1259,7 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
    const char *path_str;
    char *path = NULL;
    int ncid, dimid, start[2], count[2];
-   int use_shadows, fill_ccd_gap;
+   int use_shadows, fill_ccd_gap, row_lo, row_hi;
    double scale_factor_vis_to_uv;
    size_t num_waves;
    int status = -1;
@@ -1297,6 +1299,18 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 
    fill_ccd_gap = config_setting_get_bool (m);
 
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "row_lo", &row_lo))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        goto return_status;
+     }
+
+   if (CONFIG_TRUE != config_setting_lookup_int (s, "row_hi", &row_hi))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        goto return_status;
+     }
+
    if (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
@@ -1322,6 +1336,8 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 
    psf->use_shadows = use_shadows;
    psf->fill_ccd_gap = fill_ccd_gap;
+   psf->row_lo = row_lo;
+   psf->row_hi = row_hi;
    psf->scale_factor_vis_to_uv = scale_factor_vis_to_uv;
 
    start[0] = 0;
@@ -2057,24 +2073,26 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    /* UV correction proportional to uncorrected VIS band signal: */
    if (psf->scale_factor_vis_to_uv > 0.0)
      {
-        Image_Pixel_Type *pixels0 = img0->pixels;
-        Image_Pixel_Type *pixels  = corr->pixels;
-        double uv_corr, vis0_total;
+        size_t p, s;
+        double uv_corr, bkg_total;
 
-        /* Compute uncorrected VIS signal */
-        vis0_total = 0.0;
-        for (i = 0; i < num_pixels/2; i++)
+        for (s = 0; s < num_cols; s++)
           {
-             vis0_total += pixels0[i];
-          }
+             /* Compute uncorrected VIS signal */
+             bkg_total = 0.0;
+             for (p = (size_t)psf->row_lo; p < (size_t)(psf->row_hi+1); p++)
+               {
+                  bkg_total += (img0->pixels[s + p * num_cols]);
+               }
 
-        /* Scale UV correction */
-        uv_corr = vis0_total * psf->scale_factor_vis_to_uv;
+             /* Scale UV correction */
+             uv_corr = bkg_total / (psf->row_hi - psf->row_lo + 1) * psf->scale_factor_vis_to_uv;
 
-        /* Apply UV correction */
-        for (i = num_pixels/2; i < num_pixels; i++)
-          {
-             pixels[i] -= uv_corr;
+             /* Apply UV correction */
+             for (p = (num_rows - img->num_rows/2); p < num_rows; p++)
+               {
+                  corr->pixels[s + p * num_cols] -= (uv_corr);
+               }
           }
      }
 
