@@ -37,26 +37,26 @@ typedef struct
    float *aov;
    /* [deg] "angle of view" */
 
-   int do_scat_ang_corr;
-   /* whether to perform scattering angle correction of BTDF */
-   int do_extra_corr;
-   /* whether to perform extra BTDF correction */
-
    int num_slope_aoi;
+   int num_band;
+   int num_aoi_range;
    float *slope_aoi;
    /* polynomial coefficients for interpolating the dependence on angle of incidence
     * (polar angle, theta) */
-   float *slope_aoi_extra;
-   /* Extra adjustment to BTDF sensitivity (minor correction for angle of incidence) */
+
+   int num_ns;
+   float *slope_azi;
+   /* polynomial coefficients for interpolating the dependence on azimuth angle (phi) */
 
    float aoi_nom;
    /* [deg] nominal angle of incidence (polar angle, theta) */
 
+   int num_aoi;
+   float *daoi;
+   /* [deg] angle of incidence difference against nominal */
+
    float *btdfe_lut;
    /* [dimensionless] (num_waves,num_aov) Effective BTDF, averaged over pixel FOV */
-
-   float lab_sf;
-   /* [dimensionless] Lab results scaling factor */
 
    float *trend;
    /* [dimensionless] (row,col) BTDF trend multiplicative correction factor
@@ -516,13 +516,15 @@ static void btdf_free (BTDF_Type *btdf)
    FREE(btdf->waves);
    FREE(btdf->aov);
    FREE(btdf->slope_aoi);
-   FREE(btdf->slope_aoi_extra);
+   FREE(btdf->slope_azi);
+   FREE(btdf->daoi);
    FREE(btdf->btdfe_lut);
    FREE(btdf->trend);
    FREE(btdf);
 }
 
-static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope_aoi)
+static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_aoi,
+                              size_t num_aoi_range, size_t num_band, size_t num_slope_aoi, size_t num_ns)
 {
    BTDF_Type *btdf = NULL;
 
@@ -535,8 +537,9 @@ static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope
 
    if ((NULL == (btdf->waves = (float *)MALLOC (num_waves * sizeof(float))))
        || (NULL == (btdf->aov = (float *)MALLOC (num_aov * sizeof(float))))
-       || (NULL == (btdf->slope_aoi = (float *)MALLOC (num_slope_aoi * sizeof(float))))
-       || (NULL == (btdf->slope_aoi_extra = (float *)MALLOC (num_slope_aoi * sizeof(float))))
+       || (NULL == (btdf->daoi = (float *)MALLOC (num_aoi * sizeof(float))))
+       || (NULL == (btdf->slope_aoi = (float *)MALLOC (num_slope_aoi * num_aoi_range * num_band * sizeof(float))))
+       || (NULL == (btdf->slope_azi = (float *)MALLOC (num_slope_aoi * num_aoi_range * num_ns * num_band * sizeof(float))))
        || (NULL == (btdf->btdfe_lut = (float *)MALLOC (num_aov * num_waves * sizeof(float)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
@@ -544,9 +547,13 @@ static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope
         return NULL;
      }
 
-   btdf->num_aov = num_aov;
    btdf->num_waves = num_waves;
+   btdf->num_aov = num_aov;
+   btdf->num_aoi = num_aoi;
+   btdf->num_aoi_range = num_aoi_range;
+   btdf->num_band = num_band;
    btdf->num_slope_aoi = num_slope_aoi;
+   btdf->num_ns = num_ns;
 
    return btdf;
 }
@@ -621,74 +628,42 @@ close_and_return:
    return status;
 }
 
-static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file, config_t *cfg)
+static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file)
 {
-   config_setting_t *s, *m;
    BTDF_Type *btdf = NULL;
-   const char *slope_aoi_name;
+   const char *slope_aoi_name, *slope_azi_name;
    const char *lut_name;
-   size_t num_waves, num_aov, num_slope_aoi;
-   int start[2], count[2];
+   size_t num_waves, num_aov, num_aoi, num_aoi_range, num_band, num_slope_aoi, num_ns;
+   int start[4], count[4];
    int ncid, dimid, status = -1;
-   int do_extra_corr, do_scat_ang_corr;
-   double lab_scaling_factor;
-
-   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
-
-   if (NULL == (s = config_lookup (cfg, "btdf")))
-     {
-        tell_verror (TELL_INVALID_PARM_ERROR,
-                     "%s: accessing group 'btdf' in param file: %s",
-                     __func__, config_error_file (cfg));
-        goto close_and_return;
-     }
-
-   if (NULL == (m = config_setting_get_member (s, "do_scat_ang_corr")))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file",__func__);
-        goto close_and_return;
-     }
-
-   do_scat_ang_corr = config_setting_get_bool (m);
-
-   if (NULL == (m = config_setting_get_member (s, "do_extra_corr")))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file",__func__);
-        goto close_and_return;
-     }
-
-   do_extra_corr = config_setting_get_bool (m);
-
-   if (CONFIG_TRUE != config_setting_lookup_float (s, "lab_scaling_factor", &lab_scaling_factor))
-     {
-        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file:", __func__);
-        goto close_and_return;
-     }
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return NULL;
 
    if ((0 != TIO_inq_dim (ncid, "n_BTDF_w", &dimid, &num_waves))
        || (0 != TIO_inq_dim (ncid, "n_BTDF_aov", &dimid, &num_aov))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_aoi", &dimid, &num_aoi))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_aoi_range", &dimid, &num_aoi_range))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_band", &dimid, &num_band))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_NS", &dimid, &num_ns))
        || (0 != TIO_inq_dim (ncid, "n_BTDF_slope_aoi", &dimid, &num_slope_aoi)))
      goto close_and_return;
 
-   if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_slope_aoi)))
+   if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_aoi, num_aoi_range, num_band, num_slope_aoi, num_ns)))
      goto close_and_return;
 
-   btdf->do_scat_ang_corr = do_scat_ang_corr;
-   btdf->do_extra_corr = do_extra_corr;
-   btdf->lab_sf = lab_scaling_factor;
    btdf->is_reference_diffuser = is_reference_diffuser;
 
    if (is_reference_diffuser)
      {
         slope_aoi_name = "BTDF_ref_slope_aoi";
+        slope_azi_name = "BTDF_ref_slope_azi";
         lut_name = "BTDFe_ref_lut";
      }
    else
      {
         slope_aoi_name = "BTDF_work_slope_aoi";
+        slope_azi_name = "BTDF_work_slope_azi";
         lut_name = "BTDFe_work_lut";
      }
 
@@ -711,12 +686,31 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
      goto close_and_return;
 
    start[0] = 0;
-   count[0] = num_slope_aoi;
+   count[0] = num_aoi;
+
+   if (0 != TIO_get_var_section (ncid, "BTDF_daoi", start, count, TIO_FLOAT, btdf->daoi))
+     goto close_and_return;
+
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   count[0] = num_band;
+   count[1] = num_aoi_range;
+   count[2] = num_slope_aoi;
 
    if (0 != TIO_get_var_section (ncid, slope_aoi_name, start, count, TIO_FLOAT, btdf->slope_aoi))
      goto close_and_return;
 
-   if (0 != TIO_get_var_section (ncid, "BTDF_slope_aoi_extra", start, count, TIO_FLOAT, btdf->slope_aoi_extra))
+   start[0] = 0;
+   start[1] = 0;
+   start[2] = 0;
+   start[3] = 0;
+   count[0] = num_band;
+   count[1] = num_ns;
+   count[2] = num_aoi_range;
+   count[3] = num_slope_aoi;
+
+   if (0 != TIO_get_var_section (ncid, slope_azi_name, start, count, TIO_FLOAT, btdf->slope_azi))
      goto close_and_return;
 
    start[0] = 0;
@@ -743,9 +737,9 @@ close_and_return:
    return btdf;
 }
 
-static int read_btdf (Calibration_Type *cal, config_t *cfg, const char *path, const char *trend_file)
+static int read_btdf (Calibration_Type *cal, const char *path, const char *trend_file)
 {
-   if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path, cfg)))
+   if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path)))
        || (0 != init_btdf_trend_correction (cal->diffuser_wrk, cal->num_xpos, cal->num_waves, trend_file)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading working BTDF parameters from %s",
@@ -753,7 +747,7 @@ static int read_btdf (Calibration_Type *cal, config_t *cfg, const char *path, co
         return -1;
      }
 
-   if ((NULL == (cal->diffuser_ref = read_btdf_parameters (1, path, cfg)))
+   if ((NULL == (cal->diffuser_ref = read_btdf_parameters (1, path)))
        || (0 != init_btdf_trend_correction (cal->diffuser_ref, cal->num_xpos, cal->num_waves, trend_file)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading reference BTDF parameters from %s",
@@ -831,8 +825,10 @@ static int cal_apply_btdf (const Calibration_Type *cal,
           {
              float *lut_w0, *lut_w1;
              float aov_s_rad, wave_s, fa0, fa1, fw0, fw1, b0, b1;
-             float aoi_correction, aoi_correction_extra, sa_correction, btdfe_s;
-             float sf = bt->lab_sf;
+             float aoi_correction, azi_correction, btdfe_s;
+             double aoi_nom_rad = bt->aoi_nom * DEGTORAD;
+             double sin_aoi_nom = sin(aoi_nom_rad);
+             double cos_aoi_nom = cos(aoi_nom_rad);
              double solar_theta = solar_theta_deg * DEGTORAD;
              double sin_aoi = sin(solar_theta);
              double cos_aoi = cos(solar_theta);
@@ -850,25 +846,63 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 
              aov_s_rad = SLIT_AOV_STEP_RAD * (hs - s);
              wave_s = waves[s];
+             int band_idx = (wave_s < 515) ? 0 : 1;
+             /* 0: UV, 1: VIS */
+             int ns_idx = (s < 1024) ? 0 : 1;
+             /* 0: North, 1: South */
 
-             /* angle of incidendence correction */
-             aoi_correction = ((bt->slope_aoi[0] + wave_s * bt->slope_aoi[1])
-                               * (solar_theta_deg - bt->aoi_nom) / 100.0);
-
-             aoi_correction_extra = ((bt->slope_aoi_extra[0] + wave_s * bt->slope_aoi_extra[1])
-                                     * (bt->aoi_nom - solar_theta_deg) / 100.0);
-
-             /* scattering angle correction */
              double aov_phi      = (aov_s_rad > 0) ? 0 : 180;
-             double scat_ang     = acos(cos_aoi * cos(fabs(aov_s_rad))
+             double scat_ang_nom = acos(cos_aoi_nom * cos(fabs(aov_s_rad))
+                                    + sin_aoi_nom * sin(fabs(aov_s_rad)) * cos((-90.0 - aov_phi) * DEGTORAD))
+                                    * RADTODEG;
+             double scat_ang_mea = acos(cos_aoi * cos(fabs(aov_s_rad))
                                     + sin_aoi * sin(fabs(aov_s_rad)) * cos((solar_phi_deg - aov_phi) * DEGTORAD))
                                     * RADTODEG;
-             double scat_ang_nom = acos(cos_aoi * cos(fabs(aov_s_rad))
-                                    + sin_aoi * sin(fabs(aov_s_rad)) * cos((        -90.0 - aov_phi) * DEGTORAD))
+             double scat_ang_aoi = acos(cos_aoi_nom * cos(fabs(aov_s_rad))
+                                    + sin_aoi_nom * sin(fabs(aov_s_rad)) * cos((solar_phi_deg - aov_phi) * DEGTORAD))
                                     * RADTODEG;
 
-             sa_correction = -sf * ((bt->slope_aoi[0] + wave_s * bt->slope_aoi[1])
-                                    * (scat_ang - scat_ang_nom) / 100.0);
+             /* angle of incidendence correction */
+             double scat_ang_diff = scat_ang_mea - scat_ang_aoi;
+
+             int aoi_pos = 0;
+             for (int i = 0; i < bt->num_aoi - 1; i++)
+               {
+                  if ((fabs(scat_ang_diff) >= bt->daoi[i]) && (fabs(scat_ang_diff) < bt->daoi[i+1]))
+                    {
+                       aoi_pos = i+1;
+                       break;
+                    }
+               }
+             if (fabs(scat_ang_diff) >= bt->daoi[bt->num_aoi - 1])
+               {
+                  aoi_pos = bt->num_aoi;
+               }
+
+             int index = band_idx * (bt->num_aoi_range * bt->num_slope_aoi) + aoi_pos * (bt->num_slope_aoi);
+
+             aoi_correction = ((bt->slope_aoi[index] + wave_s * bt->slope_aoi[index+1]) * scat_ang_diff / 100.0);
+
+             /* azimuth angle correction */
+             scat_ang_diff = scat_ang_aoi - scat_ang_nom;
+
+             int azi_pos = 0;
+             for (int i = 0; i < bt->num_aoi - 1; i++)
+               {
+                  if ((fabs(scat_ang_diff) >= bt->daoi[i]) && (fabs(scat_ang_diff) < bt->daoi[i+1]))
+                    {
+                       azi_pos = i+1;
+                       break;
+                    }
+               }
+             if (fabs(scat_ang_diff) >= bt->daoi[bt->num_aoi - 1])
+               {
+                  azi_pos = bt->num_aoi;
+               }
+
+             index = band_idx * (bt->num_ns * bt->num_aoi_range * bt->num_slope_aoi) + ns_idx * (bt->num_aoi_range * bt->num_slope_aoi) + azi_pos * (bt->num_slope_aoi);
+
+             azi_correction = ((bt->slope_azi[index] + wave_s * bt->slope_azi[index+1]) * scat_ang_diff / 100.0);
 
              /* Bilinear interpolation of effective BTDF, with no extrapolation */
              double aov_s = aov_s_rad * RADTODEG;
@@ -913,13 +947,7 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              fw0 = (bt->waves[iw+1] - wave_s) / wave_step;
              fw1 = (wave_s   - bt->waves[iw]) / wave_step;
 
-             btdfe_s = (fw0 * b0 + fw1 * b1) * (1.0 + aoi_correction);
-
-             if (bt->do_scat_ang_corr)
-               btdfe_s /= (1.0 + sa_correction);
-
-             if (bt->do_extra_corr)
-               btdfe_s /= (1.0 + aoi_correction_extra);
+             btdfe_s = (fw0 * b0 + fw1 * b1) * cos_aoi * (1.0 + aoi_correction) * (1.0 + azi_correction);
 
              img_pixels[s] /= btdfe_s * bt_trend[s];
              if (img_diag)
@@ -2602,7 +2630,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char
 
    if (enable_state_query_bool (ENABLE_BTDF) > 0)
      {
-        if (0 != read_btdf (cal, cfg, path, btdf_trend_file))
+        if (0 != read_btdf (cal, path, btdf_trend_file))
           goto free_and_return;
 
         if (enable_state_query_bool (ENABLE_DIFF_POLCORR) > 0)
