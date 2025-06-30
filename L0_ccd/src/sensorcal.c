@@ -97,6 +97,7 @@ typedef struct
 
    double scale_factor_vis_to_uv;
    int use_shadows;
+   int fill_ccd_gap;
 }
 PSF_Matrix_Type;
 
@@ -1253,7 +1254,7 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
    const char *path_str;
    char *path = NULL;
    int ncid, dimid, start[2], count[2];
-   int use_shadows;
+   int use_shadows, fill_ccd_gap;
    double scale_factor_vis_to_uv;
    size_t num_waves;
    int status = -1;
@@ -1285,6 +1286,14 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 
    use_shadows = config_setting_get_bool (m);
 
+   if (NULL == (m = config_setting_get_member (s, "fill_ccd_gap")))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
+        goto return_status;
+     }
+
+   fill_ccd_gap = config_setting_get_bool (m);
+
    if (CONFIG_TRUE != config_setting_lookup_float (s, "scale_factor_vis_to_uv", &scale_factor_vis_to_uv))
      {
         tell_verror (TELL_IO_READ_ERROR, "%s: reading config file", __func__);
@@ -1294,13 +1303,22 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
    if (0 != TIO_open (path, NC_NOWRITE, &ncid))
      goto return_status;
 
-   if (0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
-     goto return_status;
+   if (fill_ccd_gap)
+     {
+        if (0 != TIO_inq_dim (ncid, "ewave", &dimid, &num_waves))
+          goto return_status;
+     }
+   else
+     {
+        if (0 != TIO_inq_dim (ncid, "wave", &dimid, &num_waves))
+          goto return_status;
+     }
 
    if (NULL == (psf = alloc_psf_matrix_type (num_waves)))
      goto return_status;
 
    psf->use_shadows = use_shadows;
+   psf->fill_ccd_gap = fill_ccd_gap;
    psf->scale_factor_vis_to_uv = scale_factor_vis_to_uv;
 
    start[0] = 0;
@@ -1310,8 +1328,16 @@ static int read_sl_psf_matrix (Calibration_Type *cal, config_t *cfg)
 
    /* After this read, psf->Ainv actually holds transpose(Ainv).
     * Immediately after the read, we'll transpose the array in-place. */
-   if (0 != TIO_get_var_section (ncid, "PSF_1dSpectral_AInv", start, count, TIO_FLOAT, psf->Ainv))
-     goto return_status;
+   if (fill_ccd_gap)
+     {
+        if (0 != TIO_get_var_section (ncid, "PSF_1dSpectral_AInv_extended", start, count, TIO_FLOAT, psf->Ainv))
+          goto return_status;
+     }
+   else
+     {
+        if (0 != TIO_get_var_section (ncid, "PSF_1dSpectral_AInv", start, count, TIO_FLOAT, psf->Ainv))
+          goto return_status;
+     }
 
    /* Transpose psf->Ainv in place */
    Ainv = gsl_matrix_float_view_array (psf->Ainv, psf->num_waves, psf->num_waves);
@@ -1803,7 +1829,45 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    if (0 != fill_image_holes (img0))
      goto return_status;
 
-   if (NULL == (corr = image_new (img->num_rows, img->num_cols)))
+   if (psf->fill_ccd_gap)
+     {
+        Image_Type *img0_extended = NULL;
+        size_t p, s;
+        size_t num_rows_half = (img->num_rows)/2;
+        size_t num_rows_gap = 212;
+
+        num_rows = num_rows + num_rows_gap;
+        if (NULL == (img0_extended = image_new (num_rows, num_cols)))
+          goto return_status;
+
+        memcpy ((char *)img0_extended->pixels,
+                (char *)img0->pixels, num_rows_half * num_cols * sizeof(Image_Pixel_Type));
+        memcpy ((char *)&img0_extended->pixels[(num_rows_half + num_rows_gap)*num_cols],
+                (char *)&img0->pixels[num_rows_half * num_cols], num_rows_half * num_cols * sizeof(Image_Pixel_Type));
+
+        int edge_margin = 20;
+        int idx_low  = num_rows_half - edge_margin - 1;
+        int idx_high = num_rows_half + edge_margin;
+        for (p = num_rows_half; p < (num_rows_half + num_rows_gap); p++)
+          {
+             Image_Pixel_Type *extended_pixels = img0_extended->pixels + p * num_cols;
+             Image_Pixel_Type img0_low, img0_high;
+             for (s = 0; s < num_cols; s++)
+               {
+                  img0_low  = img0->pixels[s + idx_low  * img->num_cols];
+                  img0_high = img0->pixels[s + idx_high * img->num_cols];
+                  extended_pixels[s] = img0_low * (idx_high - p + num_rows_gap)/(idx_high - idx_low + num_rows_gap) +
+                                       img0_high * (p - idx_low)/(idx_high - idx_low + num_rows_gap);
+               }
+          }
+
+        image_free(img0);
+        if (NULL == (img0 = image_dup (img0_extended)))
+          goto return_status;
+        image_free(img0_extended);
+     }
+
+   if (NULL == (corr = image_new (num_rows, num_cols)))
      goto return_status;
 
    Ainv = gsl_matrix_float_view_array (psf->Ainv, psf->num_waves, psf->num_waves);
@@ -1821,6 +1885,26 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
 
    /* I = Ainv * I0 */
    gsl_blas_sgemm (CblasNoTrans, CblasNoTrans, 1.0, &Ainv.matrix, &I0.matrix, 0.0, &I.matrix);
+
+   if (psf->fill_ccd_gap)
+     {
+        Image_Type *corr_active = NULL;
+        int num_rows_half = (img->num_rows)/2;
+        int num_rows_gap = 212;
+
+        if (NULL == (corr_active = image_new (img->num_rows, img->num_cols)))
+          goto return_status;
+
+        memcpy ((char *)corr_active->pixels,
+                (char *)corr->pixels, num_rows_half * num_cols * sizeof(Image_Pixel_Type));
+        memcpy ((char *)&corr_active->pixels[num_rows_half * num_cols],
+                (char *)&corr->pixels[(num_rows_half + num_rows_gap) * num_cols], num_rows_half * num_cols * sizeof(Image_Pixel_Type));
+
+        image_free(corr);
+        if (NULL == (corr = image_dup (corr_active)))
+          goto return_status;
+        image_free(corr_active);
+     }
 
    /* UV correction proportional to uncorrected VIS band signal: */
    if (psf->scale_factor_vis_to_uv > 0.0)
