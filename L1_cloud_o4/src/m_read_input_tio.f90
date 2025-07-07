@@ -761,6 +761,7 @@ contains
      real (kind=4), allocatable, dimension(:,:) :: scd_relerr
      real (kind=8), allocatable, dimension(:,:) :: tmp_dbl
      real (kind=8):: dspecial
+     real (kind=8):: maxscddes
 
      real(kind=4):: tmp_raa, temp_raa, fspecial
      real(kind=4):: thissza, thisscd, thisunc
@@ -941,12 +942,24 @@ contains
          if (errstat1 /= 0) then
             ! in case of read error for scddes 
             call tell_error (tell_runtime_error,"read_cldo4_tio: scddes", errstat1)
-            write(*,*) "      go back using fitted_slant_column instead"
+            write(*,*) "     read scddes error, go back to fitted_slant_column"
             scddes = tmp_dbl ! contains fitted_slant_column
             ! update option_destripe_scd to 0
             option_destripe_scd = 0
+         else ! errstat == 0
+            maxscddes = MAXVAL(scddes)
+            if (maxscddes .LE. 0.) then
+               ! scddes is invalid
+               write(*,*) "   max(scddes).LE. 0, go back using fitted_slant_column"
+               scddes = tmp_dbl ! assign scddes to fitted_slant_column
+               ! update option_destripe_scd to 0
+               option_destripe_scd = 0
+            endif
+            ! otherwise, maxscddes>0., by design, scddes is valid
          endif
-         tmp_dbl = scddes 
+         ! assign scddes to tmp_dbl
+         tmp_dbl = scddes
+         write(*,*) "      actual option_destripe_scd=",option_destripe_scd 
      endif
 
      ! normalize scd 
@@ -1339,7 +1352,7 @@ end subroutine read_cldo4_dims
                        rad_ViewingZenithAngle, rad_ViewingAzimuthAngle, &
                        rad_RelativeAzimuthAngle, out_RelativeAzimuthangle 
  
-     use m_vars, only: fFillValue, iFillValue
+     use m_vars, only: fFillValue, iFillValue, dFillValue
 
      implicit none
 
@@ -1384,7 +1397,7 @@ end subroutine read_cldo4_dims
       rad_ViewingAzimuthAngle = fFillValue
       rad_RelativeAzimuthAngle = fFillValue
       out_RelativeAzimuthAngle = fFillValue
-      scddes = 0.d0 ! kind=8
+      scddes = dFillValue 
 
    end subroutine allocate_cldo4_vars
 
