@@ -16,16 +16,19 @@ fi
 
 # Silent exit when the OTS INR QA check script is not available
 if ! command -v tempo_inr_quality.sh &> /dev/null ; then
+   echo "$PGMNAME: tempo_inr_quality.sh not found"
    exit 0
 fi
 # Silent exit when database doesn't exist
 if ! test -f $SDPC_ARCHIVE_DBFILE ; then
+   echo "$PGMNAME: archive database file not found: $SDPC_ARCHIVE_DBFILE"
    exit 0
 fi
 # Silent exit when RAD_L1 table doesn't exist
 sql_table_query="select name from sqlite_master where type='table' and name='RAD_L1'"
 table_name=$(sqlite3 -readonly -cmd ".timeout 20000" $SDPC_ARCHIVE_DBFILE "$sql_table_query")
 if test -z "$table_name" ; then
+   echo "$PGMNAME: RAD_L1 table not found in archive database: $SDPC_ARCHIVE_DBFILE"
    exit 0
 fi
 
@@ -53,6 +56,7 @@ have_unchecked_data()
    sql_query="select count(*) from RAD_L1 where istart between $_tempo_t1 and $_tempo_t2"
    num_files=$(sqlite3 -readonly -cmd ".timeout 20000" $SDPC_ARCHIVE_DBFILE "$sql_query")
    if test $num_files -eq 0 ; then
+      echo "$PGMNAME: no RAD_L1 data in time range [$_tempo_t1, $_tempo_t2]"
       exit 0
    fi
    # Satellite-local day number for the specified date
@@ -61,7 +65,7 @@ have_unchecked_data()
    _archived_tar_path="$SDPC_ARCHIVE_DIR/L1/RAD/D${_sat_day}/inr/${tar_prefix}${_sat_day}.tar"
    # Exit if the tar file is already archived
    if test -f $_archived_tar_path ; then
-      echo "file exists: $_archived_tar_path"
+      echo "$PGMNAME: file exists: $_archived_tar_path"
       exit 0
    fi
 }
@@ -80,6 +84,9 @@ if test -f "$log_path" ; then
    num_ok=$(grep -iwc compliant $log_path)
    num_ind=$(grep -iwc indeterminant $log_path)
    num_non=$(grep -iwc noncompliant $log_path)
+else
+   echo "$PGMNAME: expected log file not found: $log_path"
+   exit 1
 fi
 if test "$exit_status" -ne 0 ; then
    status="ERROR"
@@ -92,6 +99,7 @@ echo "$PGMNAME: $status: INR quality check: $date_ymd scans: noncompliant:$num_n
 
 tar_path=$(find $root_work_dir -maxdepth 1 -name "${tar_prefix}?????.tar" -mtime -5)
 if ! test -f $tar_path ; then
+   echo "$PGMNAME: expected tar file not found: $tar_path"
    exit 0
 fi
 sat_day=$(basename $tar_path .tar | sed -e s,${tar_prefix},,)
@@ -99,7 +107,7 @@ sat_day=$(basename $tar_path .tar | sed -e s,${tar_prefix},,)
 # Move the log and tar files into the archive
 dest_dir="$SDPC_ARCHIVE_DIR/L1/RAD/D${sat_day}/inr/"
 if ! test -d $dest_dir ; then
-   mkdir -p $dest_dir
+   mkdir -p $dest_dir || exit 1
 fi
 /bin/mv $log_path $dest_dir/${tar_prefix}${sat_day}.log
 /bin/mv $tar_path $dest_dir
