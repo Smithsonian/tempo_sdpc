@@ -1,6 +1,7 @@
 #! /bin/bash
 
 : "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
+: "${SDPC_GEOSCF_VERSION:=1}"
 
 set -e
 set -u
@@ -38,7 +39,7 @@ fi
 
 # Always get forecasts based on the previous day's replay:
 rpl_day="$(date -u $yesterday_opt +%Y%m%d)"
-source_url="$source_url/$(date -u $yesterday_opt +Y%Y/M%m/D%d/H12)"
+source_url="$source_url/$(date -u $yesterday_opt +Y%Y/M%m/D%d)"
 export source_url
 
 # Re-order the file variable dimensions
@@ -59,9 +60,26 @@ fetch_forecast_for_date()
   date_opt="$1"
 
   fcst_day="$(date -u $date_opt +%Y%m%d)"
-  fcst_root="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}"
-  fcst_regex="${fcst_root}_??00z.nc4"
-  fcst_fmt="${fcst_root}_%sz.nc4"
+
+  case "$SDPC_GEOSCF_VERSION" in
+    1)
+      fcst_root="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}"
+      fcst_regex="${fcst_root}_??00z.nc4"
+      fcst_fmt="H12/${fcst_root}_%sz.nc4"
+      ;;
+
+    2)
+      # Sample files provided for testing were initialized at 21z,
+      # but production files are expected to be initialized at 09z.
+      fcst_root="GEOS.cf.fcst.sat_inst_1hr_reg_L721x361_v72.${rpl_day}_09z+${fcst_day}"
+      fcst_regex="${fcst_root}_??00z.V01.nc4"
+      fcst_fmt="${fcst_root}_%sz.V01.nc4"
+      ;;
+
+    *)
+      echo "*** Error: unsupported GEOS-CF version: $SDPC_GEOSCF_VERSION"
+      return 1
+  esac
 
   # After reformatting, the files will be moved
   # to their final location:
