@@ -3,13 +3,14 @@
 export SDPC_REFDATA_DIR=/tempo/nas0/sdpc_soft/refdata
 export SDPC_ANCILLARY_ROOT=/tempo/nas0/sdpc_archive/ancillary
 
-export SDPC_GEOSCF_CONFIG="clim_config.ini"
+#export SDPC_GEOSCF_CONFIG="clim_config.ini"
+export SDPC_GEOSCF_CONFIG="clim_config_v2.ini"
 
 #PREFIX="gdb --args"
 #PREFIX="valgrind --tool=memcheck --log-file=valgrind.log --leak-check=yes --error-limit=no --num-callers=25"
 #PREFIX="valgrind --tool=memcheck --log-file=valgrind.log --leak-check=full --show-leak-kinds=all --error-limit=no --num-callers=25"
 #PREFIX="/usr/bin/time -v"
-#PREFIX=""
+PREFIX=""
 
 $PREFIX ./test_clim > out.dat
 #$PREFIX ./test_clim

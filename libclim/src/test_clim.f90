@@ -13,13 +13,14 @@ program test_clim
   real (kind=4), dimension(1) :: u2m, v2m
   character (len=*), parameter :: species = 'NO2'
   logical :: have_forecast
+  character (len=64) :: apriori_source
 
   errstat = 0
 
   call tell_open ("test_clim", 0)
   call tell_set_log_level (1)
 
-  call clim_read_config ('clim_config.ini', errstat)
+  call clim_read_config ('clim_config_v2.ini', errstat)
   if (errstat /= 0) call exit(1)
 
   call clim_query_nz (nz, errstat)
@@ -37,17 +38,29 @@ program test_clim
   bounds % lat_min = 15.0
   bounds % lat_max = 70.0
 
-  !year = 2022
-  !month = 1
-  !day   = 25
-  year = 2023
-  month = 8
-  day   = 30
+  if (.false.) then
+    ! geoscf-v1-forecast
+    year = 2022
+    month = 1
+    day   = 25
+  else if (.false.) then
+    ! geoscf-v2-forecast:
+    year = 2023
+    month = 8
+    day   = 30
+  else if (.true.) then
+    ! geoscf-v2-analysis
+    year = 2025
+    month = 1
+    day   = 27
+  endif
 
   call clim_pres_init (cpt, year, month, day, bounds, errstat)
   if (errstat /= 0) call exit(1)
 
   call clim_query_apriori_source (cpt, have_forecast, errstat)
+  if (errstat /= 0) call exit(1)
+  call clim_query_source (cpt, apriori_source, errstat)
   if (errstat /= 0) call exit(1)
 
   allocate (pres_z(nz+1), ap(nz+1), bp(nz+1))
@@ -67,6 +80,7 @@ program test_clim
   call clim_cloud (cct, month, day, lon, lat, cloud_pressure, errstat)
   if (errstat /= 0) call exit(1)
 
+  write (*,'(a,a)')'source = ',trim(apriori_source)
   write (*,'(a,f10.4,a)')'cloud pressure = ',cloud_pressure,' hPa'
 
   write (*,*)'species = ',species

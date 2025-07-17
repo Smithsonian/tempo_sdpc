@@ -12,6 +12,7 @@ typedef struct
 {
    char *cf_climatology;
    char *cf_forecast;
+   char *cf_analysis;
    char *cf_pressure_grid;
    char *cloud_climatology;
 }
@@ -23,6 +24,7 @@ static Clim_File_Pattern_Type Clim_File_Patterns = {0};
 extern int read_config_file (const char *config_file);
 extern int make_climatology_path (int month, int hour, char *buf, int bufsize);
 extern int make_forecast_path (time_t tt, char *buf, int bufsize);
+extern int make_analysis_path (time_t tt, char *buf, int bufsize);
 extern int make_pressure_eta_path (char *buf, int bufsize);
 extern int make_cloud_climatology_path (char *buf, int bufsize);
 
@@ -98,6 +100,7 @@ static int replace_file_patterns (Clim_File_Pattern_Type *old, Clim_File_Pattern
      return -1;
    REPLACE_ALLOC_STR(old,p,cf_climatology);
    REPLACE_ALLOC_STR(old,p,cf_forecast);
+   REPLACE_ALLOC_STR(old,p,cf_analysis);
    REPLACE_ALLOC_STR(old,p,cf_pressure_grid);
    REPLACE_ALLOC_STR(old,p,cloud_climatology);
    return 0;
@@ -111,6 +114,7 @@ int read_config_file (const char *config_file)
      {
         {"GEOSCF_Climatology_Files", &p.cf_climatology, IOCLIB_CONFIG_TYPE_STR},
         {"GEOSCF_Forecast_Files", &p.cf_forecast, IOCLIB_CONFIG_TYPE_STR},
+        {"GEOSCF_Analysis_Files", &p.cf_analysis, IOCLIB_CONFIG_TYPE_STR},
         {"GEOSCF_Pressure_Grid", &p.cf_pressure_grid, IOCLIB_CONFIG_TYPE_STR},
         {"Cloud_Climatology", &p.cloud_climatology, IOCLIB_CONFIG_TYPE_STR},
         {NULL,NULL,0}
@@ -276,11 +280,57 @@ int make_forecast_path (time_t tt, char *buf, int bufsize)
    return 0;
 }
 
-/* return 1 means we have the forecast file,
- * return 0 means we don't have the forecast file
+int make_analysis_path (time_t tt, char *buf, int bufsize)
+{
+   const char *fmt = FILE_PATTERN_PTR(cf_analysis);
+   struct tm tm = {0};
+   int n, year, month, day, dayofyear;
+
+   if (fmt == NULL)
+     {
+        if (read_config_file (NULL))
+          return -1;
+        fmt = FILE_PATTERN_PTR(cf_analysis);
+     }
+
+   if (NULL == gmtime_r (&tt, &tm))
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: gmtime_r failed (tt = %ld", __func__, tt);
+        return -1;
+     }
+
+   year = tm.tm_year + 1900;
+   month = tm.tm_mon + 1;
+   day = tm.tm_mday;
+   dayofyear = tm.tm_yday + 1;
+
+   if ((n = snprintf (buf, bufsize, fmt, year, dayofyear,
+                      year, month, day, tm.tm_hour)) < 0)
+     {
+        tell_verror (TELL_RUNTIME_ERROR, "%s: snprintf failed", __func__);
+        return -1;
+     }
+   if (n >= bufsize)
+     {
+        tell_verror (TELL_RUNTIME_ERROR,
+                     "%s: buffer size exceeded: string length = %d > %d",
+                     __func__, n, bufsize);
+        return -1;
+     }
+
+   if (0 != expand_buffer_in_place (buf, bufsize))
+     return -1;
+
+   /* As long as the path was created successfully, we return "success",
+    * even when the generated path doesn't exist. */
+   return 0;
+}
+
+/* return 1 means we have the file type,
+ * return 0 means we don't have the file type
  * return -1 means an error occurred
  */
-int have_forecast_files (time_t tt, int num_hours)
+static int have_files_of_type (time_t tt, int num_hours, int (*make_path)(time_t, char *, int))
 {
 #define CF_BUFSIZE 1024
    char path[CF_BUFSIZE];
@@ -306,7 +356,7 @@ int have_forecast_files (time_t tt, int num_hours)
 
    for (hour = 0; hour <= num_hours; hour++)
      {
-        if (0 != make_forecast_path (tt + hour * 3600, path, CF_BUFSIZE))
+        if (0 != (*make_path)(tt + hour * 3600, path, CF_BUFSIZE))
           return -1;
 
         if (0 != access (path, F_OK))
@@ -314,6 +364,16 @@ int have_forecast_files (time_t tt, int num_hours)
      }
 
    return 1;
+}
+
+int have_forecast_files (time_t tt, int num_hours)
+{
+   return have_files_of_type (tt, num_hours, make_forecast_path);
+}
+
+int have_analysis_files (time_t tt, int num_hours)
+{
+   return have_files_of_type (tt, num_hours, make_analysis_path);
 }
 
 int make_pressure_eta_path (char *buf, int bufsize)

@@ -24,6 +24,7 @@ module clim_module
 
   public clim_read_config
   public clim_query_nz
+  public clim_query_source
   public clim_query_apriori_source
   public clim_pres, clim_pres_init, clim_pres_eta
   public clim_val_interp, clim_val_init
@@ -38,13 +39,13 @@ module clim_module
   real (kind=4), private, parameter :: mean_days_per_month = 365.25/12
 
   integer, private, parameter :: path_bufsize = 1024, msg_bufsize = 128
+  integer, private, parameter :: src_analysis = 1, src_forecast = 2, src_climatology = 3
 
   ! Vertical grid has Num_Layers with Num_Layers+1 edges
   ! At each layer edge:     EtaA, EtaB, i=1,Num_Layers+1
   ! At each layer midpoint: have VMR(k), k=1,Num_Layers
   real (kind=4), private, dimension(:), allocatable :: EtaA, EtaB
   integer, private :: Num_Layers
-  logical, private :: Have_Forecast
 
   type :: dim_subset_type
     integer :: dimlen
@@ -62,6 +63,7 @@ module clim_module
 
   type, public :: clim_pres_type
     private
+    integer :: source
     integer :: year, month, day
     integer :: month0, month1
     real (kind=4) :: month0_weight
@@ -133,6 +135,18 @@ module clim_module
   end interface
 
   interface
+    function c_make_analysis_path (timet, path, path_buflen) &
+        bind (c, name='make_analysis_path')
+      use, intrinsic :: iso_c_binding, only : c_char, c_int, c_long
+      implicit none
+      integer (c_long), value, intent(in) :: timet
+      integer (c_int), value, intent(in) :: path_buflen
+      character (kind=c_char), intent(out) :: path(*)
+      integer (c_int) :: c_make_analysis_path
+    end function
+  end interface
+
+  interface
     function c_make_pressure_eta_path (path, path_buflen) &
         bind (c, name='make_pressure_eta_path')
       use, intrinsic :: iso_c_binding, only : c_char, c_int
@@ -172,6 +186,17 @@ module clim_module
       integer (c_long), value, intent(in) :: tt
       integer (c_int), value, intent(in) :: num_hours
       integer (c_int) :: c_have_forecast_files
+    end function
+  end interface
+
+  interface
+    function c_have_analysis_files (tt, num_hours) &
+        bind (c, name='have_analysis_files')
+      use, intrinsic :: iso_c_binding, only : c_int, c_long
+      implicit none
+      integer (c_long), value, intent(in) :: tt
+      integer (c_int), value, intent(in) :: num_hours
+      integer (c_int) :: c_have_analysis_files
     end function
   end interface
 
@@ -473,19 +498,22 @@ contains
   !> @param[inout] errstat        Error status code (0 on success)
   !> @param[in,optional] use_fcast   If present, and .false., the forecast
   !>                                 files are ignored.
-  subroutine clim_pres_init_struct (cpt, year, month, day, b, errstat, use_fcast)
+  !> @param[in,optional] use_analysis If present, and .false., the analysis
+  !>                                  files are ignored.
+  subroutine clim_pres_init_struct (cpt, year, month, day, b, errstat, &
+                                    use_fcast, use_analysis)
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
     integer, intent(in) :: year, month, day
     type (clim_pres_bounds_type), intent(in) :: b
     integer, intent(inout) :: errstat
-    logical, optional, intent(in) :: use_fcast
+    logical, optional, intent(in) :: use_fcast, use_analysis
 
     call clim_pres_init_args (cpt, year, month, day, &
                               b % hour_beg, b % hour_end, &
                               b % lon_min, b % lon_max, &
                               b % lat_min, b % lat_max, errstat, &
-                              use_fcast)
+                              use_fcast, use_analysis)
   end subroutine
 
   !> @brief
@@ -501,10 +529,13 @@ contains
   !> @param[inout] errstat        Error status code (0 on success)
   !> @param[in,optional] use_fcast   If present, and .false., the forecast
   !>                                 files are ignored.
+  !> @param[in,optional] use_analysis If present, and .false., the analysis
+  !>                                  files are ignored.
   subroutine clim_pres_init_args (cpt, year, month, day, &
                                   hour_beg, hour_end, &
                                   lon_min, lon_max, &
-                                  lat_min, lat_max, errstat, use_fcast)
+                                  lat_min, lat_max, errstat, &
+                                  use_fcast, use_analysis)
     use, intrinsic :: iso_c_binding, only : c_char
     implicit none
     type (clim_pres_type), intent(inout) :: cpt
@@ -512,10 +543,11 @@ contains
     real (kind=4), intent(in) :: hour_beg, hour_end
     real (kind=4), intent(in) :: lon_min, lon_max, lat_min, lat_max
     integer, intent(inout) :: errstat
-    logical, optional, intent(in) :: use_fcast
+    logical, optional, intent(in) :: use_fcast, use_analysis
 
     character (kind=c_char, len=path_bufsize) :: file_month0, file_month1
-    integer :: i, nhours, have_forecast_files
+    integer :: i, nhours
+    logical :: have_forecast, have_analysis
     integer (kind=8) :: timet, timet_beg
     real (kind=4) :: wt0
     type (clim_pres_slab_type) :: cps0, cps1
@@ -539,19 +571,29 @@ contains
     cpt % year = year
 
     timet_beg = c_make_timet (year, month, day, int(hour_beg))
-    have_forecast_files = c_have_forecast_files (timet_beg, nhours)
-    Have_Forecast = (have_forecast_files == 1)
 
+    have_forecast = (1 == c_have_forecast_files (timet_beg, nhours))
     if (present(use_fcast)) then
-      if (.not.use_fcast) Have_Forecast = .false.
+      if (.not.use_fcast) have_forecast = .false.
     endif
 
-    if (Have_Forecast) then
+    have_analysis = (1 == c_have_analysis_files (timet_beg, nhours))
+    if (present(use_analysis)) then
+      if (.not.use_analysis) have_analysis = .false.
+    endif
+
+    if (have_forecast .or. have_analysis) then
 
       do i = 1, nhours
         !timet = c_make_timet (year, month, day, int(modulo(cpt % hours(i),24.0)))
         timet = timet_beg + 3600 * (i-1)
-        call make_forecast_path (timet, file_month0, errstat)
+        if (have_analysis) then
+          cpt % source = src_analysis
+          call make_analysis_path (timet, file_month0, errstat)
+        else
+          cpt % source = src_forecast
+          call make_forecast_path (timet, file_month0, errstat)
+        endif
         call maybe_alloc_subset (cpt, file_month0, lon_min, lon_max, lat_min, lat_max, nhours, errstat)
         if (errstat /= 0) return
 
@@ -565,6 +607,7 @@ contains
     else
 
       wt0 = cpt % month0_weight
+      cpt % source = src_climatology
 
       do i = 1, nhours
         call make_climatology_path (cpt % month0, int(modulo(cpt % hours(i),24.0)), file_month0, errstat)
@@ -596,6 +639,35 @@ contains
 
   end subroutine
 
+  subroutine clim_query_source (cpt, source, errstat)
+    implicit none
+    type (clim_pres_type), intent(in) :: cpt
+    character (len=*), intent(out) :: source
+    integer, intent(inout) :: errstat
+
+    if (errstat /= 0) return
+
+    if (allocated (cpt % p_surf)) then
+      select case (cpt % source)
+        case (src_analysis)
+          source = "GEOSCF:analysis"
+        case (src_forecast)
+          source = "GEOSCF:forecast"
+        case (src_climatology)
+          source = "GEOSCF:climatology"
+        case default
+          call tell_error (tell_runtime_error, &
+                           'clim_query_source: unrecognized source (this should never happen)', &
+                           errstat)
+      end select
+    else
+      call tell_error (tell_runtime_error, &
+                       'clim_query_source: clim_pres_type instance not initialized', &
+                       errstat)
+    endif
+
+  end subroutine
+
   subroutine clim_query_apriori_source (cpt, apriori_is_forecast, errstat)
     implicit none
     type (clim_pres_type), intent(in) :: cpt
@@ -605,7 +677,7 @@ contains
     if (errstat /= 0) return
 
     if (allocated (cpt % p_surf)) then
-      apriori_is_forecast = Have_Forecast
+      apriori_is_forecast = (cpt % source == src_forecast)
     else
       apriori_is_forecast = .false.
       call tell_error (tell_runtime_error, &
@@ -898,6 +970,24 @@ contains
 
   end subroutine
 
+  subroutine make_analysis_path (ttime, file, errstat)
+    use, intrinsic :: iso_c_binding, only : c_null_char, c_char, c_int, c_long
+    implicit none
+    integer (kind=c_long), intent(in) :: ttime
+    character (kind=c_char, len=*), intent(inout) :: file
+    integer, intent(inout) :: errstat
+
+    integer :: err
+
+    if (errstat /= 0) return
+    err = c_make_analysis_path (ttime, file, len(file))
+    if (err /= 0) then
+      call tell_error (tell_runtime_error, "make_analysis_path: failed", errstat)
+      return
+    endif
+
+  end subroutine
+
   subroutine append_unique_basename (s, path)
     implicit none
     character (len=*), intent(inout) :: s
@@ -979,48 +1069,53 @@ contains
       if (errstat /= 0) return
     enddo
 
-    if (Have_Forecast) then
-      ! read composition forecast
-
-      timet_beg = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(1),24.0)))
-
-      do i = 1, nhours
-        !timet = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(i),24.0)))
-        timet = timet_beg + 3600 * (i-1)
-        call make_forecast_path (timet, file_month0, errstat)
-        if (errstat /= 0) return
-        call read_climatology (cpt, file_month0, name, cst % clim(i), errstat)
-        if (present(clim_source)) then
-          call append_unique_basename (clim_source, file_month0)
-        endif
-      enddo
-
-    else
-      ! read composition climatologies and perform month interpolation
-
-      call allocate_clim_type (cpt, ct_month0, errstat, single_layer)
-      call allocate_clim_type (cpt, ct_month1, errstat, single_layer)
-      if (errstat /= 0) return
-
-      wt0 = cpt % month0_weight
-
-      do i = 1,nhours
-        call make_climatology_path (cpt % month0, int(modulo(cst % hours(i),24.0)), file_month0, errstat)
-        call make_climatology_path (cpt % month1, int(modulo(cst % hours(i),24.0)), file_month1, errstat)
+    select case (cpt % source)
+      case (src_forecast, src_analysis)
+        ! read composition forecast or analysis
+        timet_beg = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(1),24.0)))
+        do i = 1, nhours
+          !timet = c_make_timet (cpt % year, cpt % month, cpt % day, int(modulo(cpt % hours(i),24.0)))
+          timet = timet_beg + 3600 * (i-1)
+          if (cpt % source == src_analysis) then
+            call make_analysis_path (timet, file_month0, errstat)
+          else
+            call make_forecast_path (timet, file_month0, errstat)
+          endif
+          if (errstat /= 0) return
+          call read_climatology (cpt, file_month0, name, cst % clim(i), errstat)
+          if (present(clim_source)) then
+            call append_unique_basename (clim_source, file_month0)
+          endif
+        enddo
+      case (src_climatology)
+        ! read composition climatologies and perform month interpolation
+        call allocate_clim_type (cpt, ct_month0, errstat, single_layer)
+        call allocate_clim_type (cpt, ct_month1, errstat, single_layer)
         if (errstat /= 0) return
 
-        call read_climatology (cpt, file_month0, name, ct_month0, errstat)
-        call read_climatology (cpt, file_month1, name, ct_month1, errstat)
-        if (errstat /= 0) return
-        if (present(clim_source)) then
-          call append_unique_basename (clim_source, file_month0)
-          call append_unique_basename (clim_source, file_month1)
-        endif
+        wt0 = cpt % month0_weight
 
-        cst % clim(i) % values(:,:,:) = &
-          (wt0 * ct_month0 % values(:,:,:) + (1.0 - wt0) * ct_month1 % values(:,:,:))
-      enddo
-    endif
+        do i = 1,nhours
+          call make_climatology_path (cpt % month0, int(modulo(cst % hours(i),24.0)), file_month0, errstat)
+          call make_climatology_path (cpt % month1, int(modulo(cst % hours(i),24.0)), file_month1, errstat)
+          if (errstat /= 0) return
+
+          call read_climatology (cpt, file_month0, name, ct_month0, errstat)
+          call read_climatology (cpt, file_month1, name, ct_month1, errstat)
+          if (errstat /= 0) return
+          if (present(clim_source)) then
+            call append_unique_basename (clim_source, file_month0)
+            call append_unique_basename (clim_source, file_month1)
+          endif
+
+          cst % clim(i) % values(:,:,:) = &
+            (wt0 * ct_month0 % values(:,:,:) + (1.0 - wt0) * ct_month1 % values(:,:,:))
+        enddo
+      case default
+        call tell_error (tell_runtime_error, &
+                         'clim_val_init: unrecognized source (this should never happen)', &
+                         errstat)
+      end select
 
   end subroutine
 
