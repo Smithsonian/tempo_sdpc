@@ -74,6 +74,23 @@ sqlite_backup()
    sqlite3 -cmd ".timeout 20000" $dbpath ".backup $backup_path"
 }
 
+explain_error_status()
+{
+  case "$1" in
+    16 ) _msg="Download process unable to acquire lock on lockfile: $lockfile_goes"
+       ;;
+    17 ) _msg="Download process unable to acquire lock on lockfile: $lockfile_geoscf"
+       ;;
+    18 ) _msg="Upload process unable to acquire lock on lockfile: $lockfile_goes"
+       ;;
+    19 ) _msg="Upload process unable to acquire lock on lockfile: $lockfile_geoscf"
+       ;;
+    *) _msg=""
+      ;;
+  esac
+  echo "$_msg"
+}
+
 export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 tbeg=$(date +%s)
@@ -151,6 +168,10 @@ exit_status="$?"
 tend=$(date +%s)
 tdelta=$((tend-tbeg))
 msg="$(date -u +%Y%m%d%H%M%SZ): crontab.sh $_task: exit status ${exit_status}: $tdelta seconds"
+explain=$(explain_error_status $exit_status)
+if test -n "$explain" ; then
+   msg="${msg}\n${explain}"
+fi
 printf "${msg}\n"
 
 if test x"$exit_status" != x0 ; then
