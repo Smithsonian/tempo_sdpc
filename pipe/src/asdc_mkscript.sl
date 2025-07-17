@@ -167,9 +167,18 @@ define process_file_ancillary (types, path)
    variable basename = path_basename (path);
 
    variable product_type = NULL;
+
+   % Default data_version=1 may be over-ridden below.
+   variable data_version = "1";
+
    if (0 == strncmp ("GEOS-CF", basename, 7))
      {
         product_type = "GEOSCF";
+     }
+   else if (0 == strncmp ("GEOS.cf", basename, 7))
+     {
+        product_type = "GEOSCF";
+        data_version = "2";
      }
    else if (0 == strncmp ("OR_ABI", basename, 6))
      {
@@ -189,7 +198,6 @@ define process_file_ancillary (types, path)
      }
 
    variable data_type    = "TEMPO_NONORDERABLE";
-   variable data_version = "1";
    variable entry = make_file_entry (path, data_type, st, "SCIENCE");
 
    variable group = struct
