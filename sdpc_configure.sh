@@ -38,11 +38,7 @@ inrroot="$install_root/inr_r3.0.4"
 otsroot="$install_root/ots"
 s6root="$install_root/skarnet"
 
-if test x"$site" = x"ITS" ; then
-   pythonbindir="$install_root/python-3.12.8/bin"
-else
-   pythonbindir=""
-fi
+pythonbindir="$install_root/python-3.12.8/bin"
 
 prefix="$install_root/sdpc/jch_devel"
 
