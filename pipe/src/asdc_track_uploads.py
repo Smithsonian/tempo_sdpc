@@ -15,7 +15,8 @@ DryRun = False
 DB_Path = None
 TraceSQL = False
 
-Uploads_Excluded = ["RAD_L1a", "RADT_L1a"]
+# Don't from table names that match any of these regular expressions
+Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]*"])
 
 class Tokenizer:
     def __init__ (self):
@@ -86,7 +87,7 @@ def files_matching_status (cur, asdc_status, **kwargs):
 
     paths = {}
     for tbl in table_names:
-        if tbl in Uploads_Excluded:
+        if any(re.findall (Uploads_Excluded_Regex, tbl)):
             continue
         paths[tbl] = table_files_matching_status (cur, tbl, asdc_status, **kwargs)
 
@@ -406,7 +407,7 @@ def print_report (asdc_status_name, ymd, limit=0):
         cur = conn.cursor()
         table_names = get_product_table_names (cur)
         for tbl in table_names:
-            if tbl in Uploads_Excluded:
+            if any(re.findall (Uploads_Excluded_Regex, tbl)):
                 continue
             sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} or asdc_status_met = {asdc_status} order by asdc_upload_time {limit_qual}".format (**locals())
             print_query (cur, sql)

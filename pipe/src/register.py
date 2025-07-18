@@ -81,15 +81,18 @@ def basic_fields_dict ():
     fields["istart"] = "integer not null"
     fields["mtime"] = "integer"
     fields["size"] = "integer"
+    return fields
+
+def asdc_fields_dict (fields):
     fields["asdc_status"] = "integer"
     fields["asdc_status_met"] = "integer"
     fields["asdc_upload_time"] = "integer"
     fields["asdc_ingest_time"] = "integer"
     fields["asdc_disposition"] = "text"
-    return fields
 
 def common_fields_dict():
     fields = basic_fields_dict()
+    asdc_fields_dict (fields)
     fields["time_coverage_start_since_epoch"] = "float not null"
     fields["time_coverage_end_since_epoch"] = "float not null"
     fields["versionid"] = "integer"
@@ -130,6 +133,7 @@ def init_other_product_table (table_name):
 
 def init_raw_file_table (table_name):
     fields = basic_fields_dict()
+    asdc_fields_dict (fields)
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
@@ -555,11 +559,6 @@ def process_file_corr (db_path, filename, nc):
     keys["istart"] = tstart
     keys["mtime"] = int(st.st_mtime)
     keys["size"] = st.st_size
-    keys["asdc_status"] = Asdc_Status["new"]
-    keys["asdc_upload_time"] = 0
-    keys["asdc_ingest_time"] = 0
-    keys["asdc_status_met"] = Asdc_Status["nonexistent"]
-    keys["asdc_disposition"] = ""
 
     begin_time = nc.getncattr('begin_time')
     end_time = nc.getncattr('end_time')
