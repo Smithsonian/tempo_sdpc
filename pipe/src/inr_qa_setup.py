@@ -7,7 +7,7 @@ import os, sys
 import re
 import argparse
 import sqlite3
-from dateutil import parser as dateparser
+from datetime import datetime
 import time
 
 from netCDF4 import Dataset
@@ -139,11 +139,9 @@ def main():
     Select input files for the specified date.
     The time window spans the maximum interval within instrument safety constraints.
     """
-    # Unix time_t on the specified date, at approximately the earliest possible scan start:
-    tm_tuple = dateparser.parse(date + 'T04:00:00-06:00').timetuple()
-
-    # time_t window bounds [seconds]
-    t1 = time.mktime(tm_tuple)
+    # Unix time_t window bounds [seconds]
+    # beginning at approximately the earliest possible scan start:
+    t1 = datetime.fromisoformat(date + 'T10:00:00Z').timestamp()
     t2 = t1 + 16*3600
 
     # Collect TEMPO radiances
