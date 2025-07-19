@@ -169,6 +169,21 @@ smc_file_list=NONE
 iers_bulletin=NONE
 
 case "${granule_basename}" in
+   *_RADT_* )
+       # Optionally skip processing of RADT data
+       radt_enable="$(config_setting level1a.radt_enable)"
+      if test $radt_enable -eq 0 ; then
+         log_message "skipping RADT: $granule_basename"
+         /bin/rm -f "$granule_path"
+         exit 0
+      fi
+      ;;
+
+   * )
+   ;;
+esac
+
+case "${granule_basename}" in
    *_INR_* )
    make_iru_only_file_for_inr $granule_path
    exit 0
