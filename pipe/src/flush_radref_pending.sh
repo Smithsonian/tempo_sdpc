@@ -6,13 +6,22 @@ then
   exit 1
 fi
 
-usage_message()
-{
-   echo "Usage: $(basename $0) [FILES]"
+if test $# -eq 0 ; then
+   echo "Usage: $(basename $0) [radref_search]"
+   echo " Where radref_search = 0|1"
    exit 0
-}
+fi
 
-radref_search=$(config_setting radref.search)
+radref_search=$1
+case "$radref_search" in
+  0 | 1 )
+        # valid input
+        ;;
+  * )
+    echo "*** Error: invalid input: $radref_search (input value must be 0 or 1)"
+    exit 1
+    ;;
+esac
 
 process_tar_file()
 {
@@ -37,13 +46,6 @@ process_tar_file()
 
 main()
 {
-  if test $# -ne 0 ; then
-     case "$1" in
-        --help) usage_message
-          ;;
-     esac
-  fi
-
   pending_dir="$SDPC_PIPE_DIR/stage/granules/level2_input/radref_pending"
   if ! test -d $pending_dir ; then
      exit 0

@@ -19,4 +19,7 @@ export SDPC_NRT_RADREF_DBFILE="$radref_dbfile"
 export SDPC_NRT_PROCESSING_VERSION=$(config_setting nrt.processing_version)
 export SDPC_NRT_PARTITION=$(config_setting nrt.partition)
 
+export SDPC_RADREF_PRODUCTS="$(config_setting radref.products)"
+export SDPC_RADREF_ENABLE=$(config_setting radref.enable)
+
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level2_nrt.cfg" -- "${SDPC_NODE_DIR}/L2"

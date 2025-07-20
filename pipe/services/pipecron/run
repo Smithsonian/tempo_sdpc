@@ -8,4 +8,9 @@ then
   exit 1
 fi
 
+export SDPC_RADREF_SEARCH=$(config_setting radref.search)
+export SDPC_RADREF_CRON_TRIGGER_LEVEL2=$(config_setting radref.cron_trigger_level2)
+
+export SDPC_INR_QA_ENABLE=$(config_setting level1b.inr_qa_enable)
+
 exec /bin/sh -c "$SDPC_ROOT/bin/pipecron.sh --service"

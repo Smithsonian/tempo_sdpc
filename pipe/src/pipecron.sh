@@ -126,9 +126,8 @@ do_third()
 {
   trace_message third
 
-  cron_trigger_level2=$(config_setting radref.cron_trigger_level2)
-  if test $cron_trigger_level2 -ne 0 ; then
-     flush_radref_pending.sh
+  if test $SDPC_RADREF_CRON_TRIGGER_LEVEL2 -ne 0 ; then
+     flush_radref_pending.sh $SDPC_RADREF_SEARCH
   fi
 }
 
@@ -153,8 +152,7 @@ export -f perform_inr_qa_check
 
 manage_inr_qa_checking()
 {
-  inr_qa_enable=$(config_setting level1b.inr_qa_enable)
-  if test $inr_qa_enable -eq 0 ; then
+  if test $SDPC_INR_QA_ENABLE -eq 0 ; then
      return
   fi
 

@@ -52,12 +52,9 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 
 : "${SDPC_PIPE_ID:?SDPC_PIPE_ID not set}"
 
-# Potential wait times for corresponding Level 0 IRU, SMC, HK
-wait_iru_sec="$(config_setting level1a.wait_iru_sec)"
-wait_hk_sec="$(config_setting level1a.wait_hk_sec)"
+wait_iru_sec="$SDPC_WAIT_IRU_SEC"
+wait_hk_sec="$SDPC_WAIT_HK_SEC"
 
-# Take nominal wavelength grid from recent IRR_L1 file?
-nominal_rad_wavegrid_from_irr="$(config_setting level1a.nominal_rad_wavegrid_from_irr)"
 irr_file_path=""
 
 make_iru_only_file_for_inr()
@@ -171,8 +168,7 @@ iers_bulletin=NONE
 case "${granule_basename}" in
    *_RADT_* )
        # Optionally skip processing of RADT data
-       radt_enable="$(config_setting level1a.radt_enable)"
-      if test $radt_enable -eq 0 ; then
+      if test $SDPC_RADT_ENABLE -eq 0 ; then
          log_message "skipping RADT: $granule_basename"
          /bin/rm -f "$granule_path"
          exit 0
@@ -204,9 +200,8 @@ case "${granule_basename}" in
    smc_file_list="$granule_dir/.${granule_basename}_smc.lis"
    select_l0.py --wait $wait_iru_sec --table SMC_L0 --granule "$granule_path" > $smc_file_list
 
-   if test $nominal_rad_wavegrid_from_irr -ne 0 ; then
-      irr_select_window=$(config_setting level1b.irr_select_window)
-      irr_file_path=$(select_irr.py --window $irr_select_window "$granule_path")
+   if test $SDPC_NOMINAL_RAD_WAVEGRID_FROM_IRR -ne 0 ; then
+      irr_file_path=$(select_irr.py --window $SDPC_IRR_SELECT_WINDOW "$granule_path")
    fi
 
    tstart=$(global_attribute.py --attr time_coverage_start "$granule_path")

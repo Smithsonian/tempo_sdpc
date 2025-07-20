@@ -12,6 +12,15 @@ export SDPC_DIAGNOSTIC_INDEX=$(config_setting level1a.diagnostic_index)
 export SDPC_SOLCAL_CACHE_ENABLE=$(config_setting level1a.solcal_cache_enable)
 export SDPC_SOLCAL_CACHE_PRODUCTS=$(config_setting level1a.solcal_cache_products)
 
+export SDPC_NOMINAL_RAD_WAVEGRID_FROM_IRR="$(config_setting level1a.nominal_rad_wavegrid_from_irr)"
+export SDPC_IRR_SELECT_WINDOW=$(config_setting level1b.irr_select_window)
+
+# Potential wait times for corresponding Level 0 IRU, SMC, HK
+export SDPC_WAIT_IRU_SEC="$(config_setting level1a.wait_iru_sec)"
+export SDPC_WAIT_HK_SEC="$(config_setting level1a.wait_hk_sec)"
+
+export SDPC_RADT_ENABLE="$(config_setting level1a.radt_enable)"
+
 dbfile_level0="$(config_setting dbfile.level0)"
 if ! test -f "$dbfile_level0" ; then
    dbfile_level0="$SDPC_ARCHIVE_DBFILE"

@@ -13,6 +13,8 @@ export SDPC_NRT_PROCESSING_VERSION=$(config_setting nrt.processing_version)
 export SDPC_SOLCAL_CACHE_ENABLE=$(config_setting nrt.solcal_cache_enable)
 export SDPC_SOLCAL_CACHE_PRODUCTS=$(config_setting level1a.solcal_cache_products)
 
+export SDPC_IRR_SELECT_WINDOW=$(config_setting level1b.irr_select_window)
+
 # NRT pipeline uses irradiance from main pipeline.
 dbfile_level1="$(config_setting dbfile.level1)"
 if ! test -f "$dbfile_level1" ; then

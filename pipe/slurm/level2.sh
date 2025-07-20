@@ -51,8 +51,6 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # initialize before loading tar notice file
 radref_file=""
 
-products_needing_radref="$(config_setting radref.products)"
-
 # Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
@@ -86,15 +84,13 @@ case "$product_list_tokens" in
 esac
 
 # Some products may need to wait for a radiance reference file:
-radref_enable=$(config_setting radref.enable)
-if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
+if test $SDPC_RADREF_ENABLE -ne 0 && test -n "$SDPC_RADREF_PRODUCTS" ; then
 
-   radref_search=$(config_setting radref.search)
    if test -z "$radref_file" ; then
       # We weren't given a radref filename, but we can try to search for one.
       # If the search fails, radref_file will be the empty string, and we'll
       # try the next alternative.
-      if test $radref_search -ne 0 ; then
+      if test $SDPC_RADREF_SEARCH -ne 0 ; then
          # When "search" is enabled, then we're allowed a relatively large search window
          radref_file=$(select_radref.py $rad_filename)
       else
@@ -136,7 +132,7 @@ if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
       products_that_must_wait=""
       products_that_can_proceed=""
       for p in $product_list_sans_o3p ; do
-          case "$products_needing_radref" in
+          case "$SDPC_RADREF_PRODUCTS" in
              *$p*)
                 products_that_must_wait="$products_that_must_wait $p"
                 ;;

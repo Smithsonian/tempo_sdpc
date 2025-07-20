@@ -51,8 +51,6 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 # initialize before loading tar notice file
 radref_file=""
 
-products_needing_radref="$(config_setting radref.products)"
-
 # Sourcing the tar file notice defines the variables:
 # tar_host = machine with tar file on local disk
 # tar_host_file_path = path to tar file on $tar_host
@@ -63,8 +61,7 @@ products_needing_radref="$(config_setting radref.products)"
 . $tar_file_notice
 
 # Some products may require a radiance reference file:
-radref_enable=$(config_setting radref.enable)
-if test $radref_enable -ne 0 && test -n "$products_needing_radref" ; then
+if test $SDPC_RADREF_ENABLE -ne 0 && test -n "$SDPC_RADREF_PRODUCTS" ; then
    # If we've already been given a radref file, then use it.
    # Otherwise, search.
    if test -z "$radref_file" ; then

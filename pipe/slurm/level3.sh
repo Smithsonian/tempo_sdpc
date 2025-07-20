@@ -125,8 +125,7 @@ esac
 
 case "$product_name" in
   CLDO4_L2 )
-     radref_enable=$(config_setting radref.enable)
-     if test $radref_enable -ne 0 && test $is_nrt -eq 0 ; then
+     if test $SDPC_RADREF_ENABLE -ne 0 && test $is_nrt -eq 0 ; then
         make_radref "$l2_paths"
      fi
      ;;
