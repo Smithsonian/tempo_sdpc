@@ -123,12 +123,10 @@ make_destripe()
       if test -n "$needs_destripe" ; then
          apply_log="$destripe_dir/destripe.log"
          destripe.py --corrfile "$destripe_path" $needs_destripe > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
-         # Change asdc_status of HCHO_L2 products from 'defer' to 'new'
+         # Change asdc_status of HCHO_L2 products and met files from 'defer' to 'new'
          tmpfile=$(mktemp)
          printf "%s\n" $needs_destripe > $tmpfile
-         asdc_track_uploads.py --dbfile $dbfile --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
-         printf "%s.met\n" $needs_destripe > $tmpfile
-         asdc_track_uploads.py --dbfile $dbfile --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 met asdc_status defer to new"
+         asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
          /bin/rm -f $tmpfile
       fi
    fi

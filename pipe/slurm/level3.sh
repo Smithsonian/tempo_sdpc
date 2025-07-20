@@ -92,12 +92,10 @@ no2_l2_split()
         dbfile="$SDPC_ARCHIVE_DBFILE"
         ;;
    esac
-   # Change asdc_status of NO2_L2 products from 'defer' to 'new'
+   # Change asdc_status of NO2_L2 products and met files from 'defer' to 'new'
    tmpfile=$(mktemp)
    printf "%s\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --dbfile $dbfile --stat --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
-   printf "%s.met\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --dbfile $dbfile --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 met asdc_status defer to new"
+   asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
    /bin/rm -f $tmpfile
 }
 
