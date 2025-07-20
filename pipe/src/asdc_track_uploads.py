@@ -110,7 +110,7 @@ def product_file_path (nc_or_met_file_path):
     else:
         return nc_or_met_file_path
 
-def update_file_status (cur, table_name, filename, asdc_status, status_time, update_stat=False, disposition=None):
+def update_file_status (cur, table_name, filename, asdc_status, status_time, update_stat=False, disposition=None, include_met=False):
     fields = {}
 
     file_basename = os.path.basename (filename)
@@ -135,6 +135,9 @@ def update_file_status (cur, table_name, filename, asdc_status, status_time, upd
             st = os.stat(path)
             fields["mtime"] = int(st.st_mtime)
             fields["size"] = st.st_size
+
+    if include_met:
+        fields["asdc_status_met"] = asdc_status
 
     if asdc_status == Asdc_Status["uploaded"]:
         fields["asdc_upload_time"] = status_time
@@ -363,7 +366,7 @@ def process_pan_files (pan_file_list, pdr_dbfile):
             print('An exception occurred: {}'.format(e))
             print("Error processing file: {}".format(pan_file))
 
-def set_file_status (status, file_list, update_stat):
+def set_file_status (status, file_list, update_stat, include_met):
     with open(file_list, "r") as fp:
         files = fp.readlines()
     files = [f.strip() for f in files]
@@ -385,7 +388,7 @@ def set_file_status (status, file_list, update_stat):
     for table_name in table_lists.keys():
         with connect_database("rw") as conn:
             for f in table_lists[table_name]:
-                update_file_status (conn.cursor(), table_name, f, Asdc_Status[status], status_time, update_stat=update_stat)
+                update_file_status (conn.cursor(), table_name, f, Asdc_Status[status], status_time, update_stat=update_stat, include_met=include_met)
 
 def print_query (cur, sql):
     cur.execute (sql)
@@ -436,6 +439,8 @@ def main():
                         help="Print report times as YYYY-MM-DD HH:MM:SS")
     parser.add_argument('--stat', action='store_true',
                         help="Update file size, mtime")
+    parser.add_argument('--include-met', action='store_true',
+                        help="Update met file status at the same time the product status is updated")
     parser.add_argument('--dryrun', action='store_true',
                         help="Show actions, but don't modify the database")
     parser.add_argument('--trace', action='store_true',
@@ -469,7 +474,7 @@ def main():
     elif args.list:
         print_files_matching_status (Asdc_Status[args.list], limit=args.limit, order=args.order)
     elif args.set:
-        set_file_status (args.set[0], args.set[1], args.stat)
+        set_file_status (args.set[0], args.set[1], args.stat, args.include_met)
     elif args.pans:
         process_pan_files(args.pans, args.pdrdbfile)
     elif args.report:
