@@ -33,7 +33,6 @@ Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded"
 Prefix = "register:"
 
 Have_Rad_L1_Table = False
-Have_Rad_L1a_Table = False
 Alt_Rad_L1a_Dbfile_Path = None
 Rad_L1a_Dbfile_Path_for_NRT_files = None
 HCHO_Needs_Destripe = False
@@ -197,21 +196,18 @@ def insert_generic_product_entry (conn, product_name, init_product_table, entry)
         eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
         return -1
 
-def insert_radiance_product_entry (conn, product_name, entry, is_nrt):
-    status = insert_generic_product_entry (conn, product_name, init_radiance_product_table, entry)
-    if status == 0:
-        maybe_handle_scan_completion (conn, product_name, entry["scan_id"], is_nrt)
-    return status
+def insert_radiance_product_entry (conn, product_name, entry):
+    global Have_Rad_L1_Table
+    Have_Rad_L1_Table = table_exists (conn, 'RAD_L1')
+    return insert_generic_product_entry (conn, product_name, init_radiance_product_table, entry)
 
 def insert_dark_product_entry (conn, product_name, entry):
-    status = insert_generic_product_entry (conn, product_name, init_dark_product_table, entry)
-    return status
+    return insert_generic_product_entry (conn, product_name, init_dark_product_table, entry)
 
 def insert_other_product_entry (conn, product_name, entry):
-    status = insert_generic_product_entry (conn, product_name, init_other_product_table, entry)
-    return status
+    return insert_generic_product_entry (conn, product_name, init_other_product_table, entry)
 
-def connect_database (db_path):
+def connect_database (db_path, mode):
     """
     For back-compatibility sqlite has foreign keys turned off by default,
     and foreign_keys=off is ALWAYS stored in the database, regardless of
@@ -220,7 +216,7 @@ def connect_database (db_path):
     connection is established.
     """
     db_exists = os.path.isfile (db_path)
-    conn = sqlite3.connect (db_path, timeout=20.0)
+    conn = sqlite3.connect ("file:{}?mode={}".format (db_path, mode), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
 
     # When creating a new database file, use journal_mode=WAL.
@@ -314,7 +310,7 @@ EOF
 """.format (product_name, l3_path, '\n'.join(paths))
     write_pathlist (os.path.basename (paths[0]), pathlist)
 
-def maybe_handle_scan_completion (conn, product_name, scan_id, is_nrt):
+def maybe_handle_scan_completion (conn_ro, product_name, scan_id, is_nrt):
     """
     To see when all products for a given scan are complete, we compare the number
     of products with the number of archived RAD_L1a files for that scan.
@@ -332,16 +328,17 @@ def maybe_handle_scan_completion (conn, product_name, scan_id, is_nrt):
     """
     if not "L2" in product_name:
         return
-    cur = conn.cursor()
+    cur = conn_ro.cursor()
     num_products = count_archived_granules (cur, product_name, scan_id)
 
-    if Have_Rad_L1a_Table:
+    have_rad_l1a_table = table_exists (conn_ro, 'RAD_L1a')
+    if have_rad_l1a_table:
         num_radiance = count_archived_granules (cur, "RAD_L1a", scan_id)
     elif is_nrt and Rad_L1a_Dbfile_Path_for_NRT_files != None:
-        with connect_database (Rad_L1a_Dbfile_Path_for_NRT_files) as conn_sep:
+        with connect_database (Rad_L1a_Dbfile_Path_for_NRT_files, "ro") as conn_sep:
             num_radiance = count_archived_granules (conn_sep.cursor(), "RAD_L1a", scan_id)
     elif Alt_Rad_L1a_Dbfile_Path != None:
-        with connect_database (Alt_Rad_L1a_Dbfile_Path) as conn_sep:
+        with connect_database (Alt_Rad_L1a_Dbfile_Path, "ro") as conn_sep:
             num_radiance = count_archived_granules (conn_sep.cursor(), "RAD_L1a", scan_id)
     else:
         return
@@ -355,20 +352,23 @@ def table_exists (conn, table_name):
     result = cur.fetchone()
     return result != None
 
-def insert_product_entry (conn, product_name, keys, is_nrt):
-    global Have_Rad_L1a_Table
-    Have_Rad_L1a_Table = table_exists (conn, 'RAD_L1a')
-    global Have_Rad_L1_Table
-    Have_Rad_L1_Table = table_exists (conn, 'RAD_L1')
+def insert_product_entry (db_path, product_name, keys, is_nrt):
 
-    if product_name in Radiance_Files:
-        status = insert_radiance_entry (conn, product_name, keys)
-    elif product_name in Radiance_Derived_Files:
-        status = insert_radiance_product_entry (conn, product_name, keys, is_nrt)
+    if product_name in Radiance_Derived_Files:
+        with connect_database (db_path, "rw") as conn:
+            status = insert_radiance_product_entry (conn, product_name, keys)
+        if status == 0:
+            with connect_database (db_path, "ro") as conn_ro:
+                maybe_handle_scan_completion (conn_ro, product_name, keys["scan_id"], is_nrt)
+    elif product_name in Radiance_Files:
+        with connect_database (db_path, "rw") as conn:
+            status = insert_radiance_entry (conn, product_name, keys)
     elif product_name == "DRK_L1":
-        status = insert_dark_product_entry (conn, product_name, keys)
+        with connect_database (db_path, "rw") as conn:
+            status = insert_dark_product_entry (conn, product_name, keys)
     else:
-        status = insert_other_product_entry (conn, product_name, keys)
+        with connect_database (db_path, "rw") as conn:
+            status = insert_other_product_entry (conn, product_name, keys)
 
     return status
 
@@ -485,8 +485,7 @@ def process_file (db_path, filename, nc):
     elif product_name == "DRK_L1":
         get_dark_keys (nc, keys)
 
-    with connect_database (db_path) as conn:
-        status = insert_product_entry (conn, product_name, keys, is_nrt)
+    status = insert_product_entry (db_path, product_name, keys, is_nrt)
 
     if status < 0:
         eprint('ERROR: processing file {}'.format(filename))
@@ -518,7 +517,7 @@ def process_file_raw (db_path, filename):
     keys["asdc_status_met"] = Asdc_Status["nonexistent"]
     keys["asdc_disposition"] = ""
 
-    with connect_database (db_path) as conn:
+    with connect_database (db_path, "rw") as conn:
         status = insert_raw_entry (conn, table_name, keys)
 
     if status < 0:
@@ -571,7 +570,7 @@ def process_file_corr (db_path, filename, nc):
     keys["end_hour_utc"] = max(end_time)
     keys["num_mirror_pos"] = nc.getncattr("num_mirror_pos")
 
-    with connect_database (db_path) as conn:
+    with connect_database (db_path, "rw") as conn:
         status = insert_corrfile_entry (conn, table_name, keys)
 
     if status < 0:
