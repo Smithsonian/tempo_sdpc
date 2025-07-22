@@ -11,6 +11,7 @@ cachemon/level2_nrt.cfg
 cachemon/level3.cfg
 cachemon/level1b_nrt1.cfg
 cachemon/level1b_nrt2.cfg
+cachemon/daily.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 inr/TempoMockLogging.conf.in

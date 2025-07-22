@@ -12,7 +12,7 @@ SCRIPT_FILES= level1a.sh level1a_batch.sh \
               wavecal.sh \
               o3tot.sh tracegas.sh tracegas_solcal_cache.sh \
               o3prof_batch.sh o3prof_block.sh o3prof_merge.sh o3prof_util.sh \
-              level3.sh \
+              level3.sh daily.sh \
               level1b_nrt1.sh level1b_nrt1_batch.sh \
               level1b_nrt2.sh level1b_nrt2_batch.sh \
               level2_nrt.sh

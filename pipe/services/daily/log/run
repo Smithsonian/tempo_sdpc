@@ -1,0 +1,4 @@
+#!/bin/sh
+
+SERVICE="daily"
+. ../../log.inc

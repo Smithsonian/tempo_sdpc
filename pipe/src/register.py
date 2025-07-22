@@ -30,6 +30,8 @@ Solcal_Products = ["IRR" + m + "_L2" for m in ["O2O2", "HCHO", "NO2", "BRO", "CH
 
 Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
 
+Asdc_Status_Defer = Asdc_Status["defer"]
+
 Prefix = "register:"
 
 Have_Rad_L1_Table = False
@@ -277,17 +279,14 @@ def make_l3_path (l2_path):
     l3_path = os.path.join (l3_scan_dir, l3_filename) + '.nc'
     return l3_path
 
-def write_pathlist (file_basename, pathlist):
-    pipe_dir = os.getenv ("SDPC_PIPE_DIR")
-    target_dir = os.path.join (pipe_dir, "stage/scans")
+def write_textfile (target_dir, file_basename, text):
     os.makedirs (target_dir, exist_ok=True)
     # Ensure that the output file appears atomicly
     # write file to hidden_path, then rename to target_path
     hidden_path = os.path.join (target_dir, '.' + file_basename)
     target_path = os.path.join (target_dir, file_basename)
-    fp = open (hidden_path, 'w')
-    fp.write (pathlist)
-    fp.close ()
+    with open (hidden_path, 'w') as fp:
+        fp.write (text)
     os.rename (hidden_path, target_path)
 
 def collect_granule_paths (cur, product_name, scan_id):
@@ -308,7 +307,8 @@ read -r -d '' l2_paths <<'EOF'
 {}
 EOF
 """.format (product_name, l3_path, '\n'.join(paths))
-    write_pathlist (os.path.basename (paths[0]), pathlist)
+    target_dir = os.path.expandvars ("$SDPC_PIPE_DIR/stage/scans")
+    write_textfile (target_dir, os.path.basename(paths[0]), pathlist)
 
 def maybe_handle_scan_completion (conn_ro, product_name, scan_id, is_nrt):
     """
@@ -345,6 +345,59 @@ def maybe_handle_scan_completion (conn_ro, product_name, scan_id, is_nrt):
 
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
+        if not is_nrt:
+            maybe_handle_L2_day_completion (conn_ro, product_name, scan_id)
+
+def sat_local_day_time_range (sat_day):
+    """
+    The solar boresight angle safety constraint limits radiance
+    scanning to begin no earlier than about 1000Z, and the latest
+    end time is about 16 hours later (on the following UTC date).
+    """
+    tbeg = 10*3600 + int(sat_day)*86400
+    tend = 16*3600 + tbeg
+    return (tbeg, tend)
+
+def count_finished_granules_day (cur, product_name, sat_day):
+    t = sat_local_day_time_range (sat_day)
+    cur.execute ("select count(1) from {} where istart between {} and {} and asdc_status != {}".format(product_name, t[0], t[1], Asdc_Status_Defer))
+    return cur.fetchone()[0]
+
+def collect_finished_granules_day (cur, product_name, sat_day):
+    t = sat_local_day_time_range (sat_day)
+    cur.execute ("select path from {} where istart between {} and {} and asdc_status != {} order by istart".format(product_name, t[0], t[1], Asdc_Status_Defer))
+    paths = [item for t in cur.fetchall() for item in t]
+    return paths
+
+def handle_L2_day_completion (cur, product_name, sat_day):
+    paths = collect_finished_granules_day (cur, product_name, sat_day)
+    target_dir = os.path.expandvars ("$SDPC_PIPE_DIR/stage/days")
+    target_file = "d%5d_%s.lis" % (int(sat_day), product_name)
+    write_textfile (target_dir, target_file, '\n'.join(paths))
+
+def maybe_handle_L2_day_completion (conn_ro, product_name, scan_id):
+    """
+    By definition, all L2 granules for a day are completed
+    when the number of granules with asdc_status != defer
+    equals the number of L1a radiance granules collected that day.
+    """
+    if not "L2" in product_name:
+        return
+    sat_day = int(scan_id/1000)
+    cur = conn_ro.cursor()
+    num_products = count_finished_granules_day (cur, product_name, sat_day)
+
+    have_rad_l1a_table = table_exists (conn_ro, 'RAD_L1a')
+    if have_rad_l1a_table:
+        num_radiance = count_finished_granules_day (cur, "RAD_L1a", sat_day)
+    elif Alt_Rad_L1a_Dbfile_Path != None:
+        with connect_database (Alt_Rad_L1a_Dbfile_Path, "ro") as conn_sep:
+            num_radiance = count_finished_granules_day (conn_sep.cursor(), "RAD_L1a", sat_day)
+    else:
+        return
+
+    if num_products == num_radiance:
+        handle_L2_day_completion (cur, product_name, sat_day)
 
 def table_exists (conn, table_name):
     cur = conn.cursor()
@@ -474,8 +527,8 @@ def process_file (db_path, filename, nc):
         defer_asdc_upload = False
 
     if defer_asdc_upload:
-        keys["asdc_status"] = Asdc_Status["defer"]
-        keys["asdc_status_met"] = Asdc_Status["defer"]
+        keys["asdc_status"] = Asdc_Status_Defer
+        keys["asdc_status_met"] = Asdc_Status_Defer
 
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)

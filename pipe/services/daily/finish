@@ -1,0 +1,6 @@
+#!/bin/sh
+
+SERVICE="daily"
+INCDIR=".."
+
+. $INCDIR/finish.inc

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+exec 2>& 1
+
+if test -z "${SDPC_ROOT}"
+then
+  echo "The SDPC environment is not set"
+  exit 1
+fi
+
+dbfile_level1="$(config_setting dbfile.level1)"
+if ! test -f "$dbfile_level1" ; then
+   dbfile_level1="$SDPC_ARCHIVE_DBFILE"
+fi
+export SDPC_ARCHIVE_DBFILE_L1="$dbfile_level1"
+
+exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/daily.cfg"
