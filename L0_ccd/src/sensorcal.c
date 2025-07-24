@@ -1528,7 +1528,7 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
      {
         start[0] = 150; start[1] = 1024;
         mid  [0] = 175; mid  [1] = 1024;
-        end  [0] = 200; end  [1] = 1024;
+        end  [0] = 200; end  [1] = 1025;
      }
    if (band == 1)
      {
@@ -1555,7 +1555,7 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
 
       if (good_sig[i] == 1e30)
         {
-           tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: good_sig[%d] was never updated, skipping", __func__, i);
+           tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: good_sig[%d] was never updated, skipping band %d (0: VIS, 1: UV)", __func__, i, band);
            return -1;
         }
       ratio_sig[i] = target_sig[i] / good_sig[i];
@@ -1564,13 +1564,13 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
    /* Perform linear fitting on the ratios */
    if (0 != gsl_fit_linear(mid, 1, ratio_sig, 1, num_sig, &c0, &c1, &cov00, &cov01, &cov11, &chisq))
      {
-        tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: gsl_fit_linear failed", __func__);
+        tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: gsl_fit_linear failed", __func__);
         return -1;
      }
 
    if (isnan(c0) || isnan(c1))
      {
-        tell_vlog(TELL_MSGTYPE_WARN, 1, "%s: linear fit returned NaN values (c0=%f, c1=%f)", __func__, c0, c1);
+        tell_vlog(TELL_MSGTYPE_WARN, 0, "%s: linear fit returned NaN values (c0=%f, c1=%f)", __func__, c0, c1);
         return -1;
      }
 
@@ -1665,6 +1665,8 @@ static int reconstruct_ratio (Image_Type *img, int s_top, int s_bot)
         for (int band = 0; band < 2; band++) /* band 0: VIS, band 1: UV */
           {
              int *num_mask = (band == 0) ? num_mask_vis : num_mask_uv;
+             int min_mask = (int)np;
+             int col_min_mask;
 
              if (num_mask[s] > 0)
                {
@@ -1679,14 +1681,20 @@ static int reconstruct_ratio (Image_Type *img, int s_top, int s_bot)
                                  good_col = idx;
                                  goto found;
                               }
+                            if (num_mask[idx] < min_mask)
+                              {
+                                 min_mask = num_mask[idx];
+                                 col_min_mask = idx;
+                              }
                          }
                     }
-                  tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: no good columns to use", __func__);
+                  good_col = col_min_mask;
+                  tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: no good columns to use for column %zu (number of bad pixels: %d)", __func__, s, min_mask);
                   found:;
  
                   if (0 != interp_col(band, img, s, good_col, mask))
                     {
-                       tell_vlog (TELL_MSGTYPE_WARN, 1, "%s: unfilled image holes at column %zu", __func__, s);
+                       tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: unfilled image holes at column %zu", __func__, s);
                     }
                }
           }
