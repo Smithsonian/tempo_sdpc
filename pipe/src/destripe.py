@@ -2,7 +2,7 @@
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import argparse
 import yaml
 import numpy as np
@@ -30,8 +30,7 @@ def str_to_bool(s):
     else:
         return False
 
-def destripe (dst, scd, medval):
-    print_message('writing destriping correction to L2 file')
+def destripe (dst, scd, stripe_val):
     units = dst['support_data']['fitted_slant_column'].units
     corrected_product = dst.product_type
     try:
@@ -39,96 +38,67 @@ def destripe (dst, scd, medval):
         if 'destriping_correction' not in grp.variables:
             dst_des = grp.createVariable('destriping_correction',np.float32,('xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
             dst_des.long_name = 'destriping correction'.format(corrected_product)
-            dst_des.comment = 'xtrack dependent {} slant column destriping correcton'.format(corrected_product)
+            dst_des.comment = 'across track dependent {} slant column destriping correcton'.format(corrected_product)
             dst_des.units = units
         else:
             dst_des = grp['destriping_correction']
-            add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':destriping correction\n'
-            dst.history = '{}{}'.format(dst.history,add_history)
-        dst_des[:] = medval
-        # leave L2 file's fitted_slant_column unchanged
-        return (scd - medval)
-    except Exception as e:
-        print_message(e)
-        print_message('writing destriping correction to L2 file',error=True)
-
-def correct_background (dst, scd, bgrcor):
-    print_message('writing background correction to L2 file')
-    units = dst['support_data']['fitted_slant_column'].units
-    corrected_product = dst.product_type
-    try:
-        grp = dst['support_data']
-        # Make it a 2D variable to support ASDC concatenation services
-        if 'background_correction' not in grp.variables:
-            dst_bgr = grp.createVariable('background_correction',np.float32,('mirror_step','xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
-            dst_bgr.long_name = 'background correction'.format(corrected_product)
-            dst_bgr.comment = 'xtrack dependent {} slant column background correction'.format(corrected_product)
-            dst_bgr.coordinates = 'time longitude latitude'
-            dst_bgr.units = units
-        else:
-            dst_bgr = grp['background_correction']
-        add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
+        add_history = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')+':destriping correction\n'
         dst.history = '{}{}'.format(dst.history,add_history)
-        dst_bgr[:] = np.repeat(bgrcor[np.newaxis,:],scd.shape[0],axis=0)
-        # leave L2 file's fitted_slant_column unchanged
-        return (scd + bgrcor)
+        dst_des[:] = stripe_val
+        # Save original fitted slant column density from spectral fit
+        if 'fitted_slant_column_uncorrected' not in grp.variables:
+            dst_scd_orig = grp.createVariable('fitted_slant_column_uncorrected',np.float32,('mirror_step','xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
+            dst_scd_orig.long_name = 'fitted slant column before destriping correction'.format(corrected_product)
+            dst_scd_orig.comment = 'fitted slant column before destriping correction'.format(corrected_product)
+            dst_scd_orig.coordinates = 'time longitude latitude'
+            dst_scd_orig.units = units
+            dst_scd_orig[:] = scd
+
+        return (scd - stripe_val)
+
     except Exception as e:
         print_message(e)
-        print_message('writing background correction to L2 file',error=True)
+        print_message('destriping L2 file',error=True)
 
-def apply_corrections (control, corrfile, input_files):
-
-    # Logical to update and write results to L2 files
-    yn_L2_des = str_to_bool(control['yn_L2_write_destriping'])
-    yn_L2_bgr = str_to_bool(control['yn_L2_write_background'])
+def apply_destripe (corrfile, input_files):
 
     with Dataset(corrfile, 'r') as src:
-        medval = src.variables['destriping_correction'][:]
-        bgrcor = src.variables['background_correction'][:]
+        stripe_val = src.variables['destriping_correction'][:]
 
     for fp in input_files:
         try:
             with Dataset(fp,'r+') as dst:
-                amf = dst['support_data']['amf'][:]
+                print_message('destriping L2 file {}'.format(fp))
+                amf = dst['support_data']['amf_total'][:]
                 scd = dst['support_data']['fitted_slant_column'][:]
-                if yn_L2_des:
-                    scd = destripe (dst, scd, medval)
-                if yn_L2_bgr:
-                    scd = correct_background (dst, scd, bgrcor)
-                # Save corrected VCDs to L2 file
-                dst['product']['vertical_column'][:] = scd/amf
+                scd = destripe (dst, scd, stripe_val)
+                grp_prod = dst['product']
+                grp_supp = dst['support_data']
+                # Save corrected SCDs and VCDs to L2 file
+                dst['support_data']['fitted_slant_column'][:] = scd
+                vcd = scd/amf
+                if 'vertical_column' in grp_prod.variables:
+                    dst['product']['vertical_column'][:] = vcd
+                elif 'vertical_column_total' in grp_supp.variables:
+                    dst['support_data']['vertical_column_total'][:] = vcd
         except Exception as e:
             print_message(e)
-            print_message('saving correction(s) to file {}'.format(fp),error=True)
+            print_message('destriping L2 file {}'.format(fp),error=True)
 
 def main():
-    pipe_dir = os.getenv ("SDPC_PIPE_DIR")
-    if pipe_dir is None:
-        default_config = None
-    else:
-        default_config = os.path.join (pipe_dir, "etc/destripe.yml")
-
     parser = argparse.ArgumentParser(description='Destripe L2 products')
     parser.add_argument('--corrfile', default=None,
                         help="Correction file path")
-    parser.add_argument('--config',  default=default_config,
-                        help="Configuration file path")
     parser.add_argument('filenames', nargs=argparse.REMAINDER)
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
 
-    if not os.path.isfile(args.config):
-        print_message('cannot find configuration file', error=True)
-
     if not os.path.isfile(args.corrfile):
         print_message('cannot find correction file: {}'.format(args.corrfile), error=True)
 
-    control = yaml.load(open(args.config),Loader=yaml.BaseLoader)
-    print_message('loaded {}'.format(args.config))
-
-    apply_corrections (control, args.corrfile, args.filenames)
+    apply_destripe (args.corrfile, args.filenames)
 
 if __name__ == "__main__":
     main()
