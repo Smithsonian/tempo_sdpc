@@ -105,6 +105,9 @@ no2_l2_split()
 # Import function to generate destriping correction files
 . $SDPC_ROOT/bin/make_destripe.sh
 
+# Import function to generate background correction files
+. $SDPC_ROOT/bin/make_background.sh
+
 # loading $pathlist_file defines these variables:
 # product_name = e.g. HCHO_L2
 # l3_path = path to target Level 3 data product to be generated
@@ -128,6 +131,14 @@ for p in $_destripe_products ; do
     if test $p = $product_type ; then
        # This is a no-op if destriping has already been done
        destripe_scan "$l2_paths"
+    fi
+done
+
+_bkgcorr_products=$(echo $SDPC_BKGCORR_TG | tr , ' ')
+for p in $_bkgcorr_products ; do
+    if test $p = $product_type ; then
+       # This is a no-op if background correction has already been done
+       bkgcorr_scan "$l2_paths"
     fi
 done
 

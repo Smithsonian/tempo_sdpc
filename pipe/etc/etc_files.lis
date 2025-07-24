@@ -15,6 +15,7 @@ cachemon/daily.cfg
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 inr/TempoMockLogging.conf.in
+trace_gas/make_background.yml.in
 trace_gas/control.BRO.in
 trace_gas/default.pcf.BRO.in
 trace_gas/SIMPLE_BRO.MCF
@@ -57,7 +58,7 @@ l0_ccd_drk.cfg
 make_radref.yml.in
 select_destripe.yml
 select_radref.yml
-destripe.yml
+background.yml
 wavecal_irr.cfg
 wavecal_rad.cfg
 l1_inr_prep.cfg
