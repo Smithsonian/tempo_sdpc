@@ -1029,7 +1029,7 @@ SUBROUTINE read_ozprof_input (fit_ctrl_unit, fit_ctrl_file, pge_error_status )
         ncm = nord; cmwins = tmpwins; cmind = tmpind; cmfind = tmpfind
      ENDIF  
   ENDDO
-print*, nos, nsl, nsh, nrn, ndc, nis, nir, np1, np2, np3, ncm
+!print*, nos, nsl, nsh, nrn, ndc, nis, nir, np1, np2, np3, ncm
   IF (np1 + np2 + np3 /= 0 ) THEN  
     IF (which_slit == 0 ) THEN   ! gaussian
         npsl = 1 ; psl_fpos(1:npsl) = [hwe_idx]
