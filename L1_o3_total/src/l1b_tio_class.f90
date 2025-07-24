@@ -259,7 +259,7 @@ contains
         irr(iw, ix) = irr(iw, ix) * correction_factors(iw)
       end do
     end do
-!
+
 !    do iw = 106, 147
 !      do ix = 1, nx
 !        irr(iw, ix) = irr(iw, ix) * correction_factors(iw)
