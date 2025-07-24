@@ -24,53 +24,46 @@ def get_db_path():
 
     return db_file_path
 
-def get_rad_info (path):
-    with NetCDFFile (path, "r") as nc:
-        tstart = nc.getncattr ('time_coverage_start_since_epoch')
-        tend = nc.getncattr ('time_coverage_end_since_epoch')
-
-    info = {}
-    info["tmid"] = 0.5*(tstart+tend)
-    return info
-
-def lookup_radiance_path (c, basename):
-    sql = "select path from 'RAD_L1' where filename='{basename}';".format(**locals())
-    c.execute (sql)
+def lookup_radiance_start_time (c, basename):
+    c.execute ("select istart from 'RAD_L1' where filename='{}';".format(basename))
     result = c.fetchone()
     if result is None:
         return None
     else:
         return result[0]
 
-def select_matching_destripe (c, molecule, window_days, window_hours, minwidth, info):
-    sec_per_day = 86400.0
-    sec_per_hour = 3600.0
-    tx = info["tmid"]
-    htx = tx % sec_per_day
-    tmax = window_days * sec_per_day + window_hours * sec_per_hour;
+def find_most_recent_irradiance (c, istart):
+    c.execute ("select istart from 'IRR_L1' where istart < {} order by istart desc limit 1".format(istart))
+    result = c.fetchone()
+    if result is None:
+        return None
+    else:
+        return result[0]
 
-    # First, get the candidate list, with the newest listed first
-    subst = {'beg':tx-tmax, 'end':tx-sec_per_day, 'minwidth':minwidth}
-    cmd = "select path,0.5*(tstart+tend) from 'DSTR{}_L2' where :beg <= 0.5*(tstart+tend) and 0.5*(tstart+tend) <= :end and num_mirror_pos >= :minwidth order by tstart desc;".format(molecule)
-    c.execute(cmd, subst)
+def select_suitable_destripe (c, molecule, window_days, istart, istart_solar):
+    """
+    Look for a pre-computed destriping file generated since the most recent
+    solar calibration observation.  If none exists, then an alternate destriping
+    method will be used.
+    """
+    dt_max = window_days * 86400
+    dt_irr = istart - istart_solar
 
-    # Select from the list
-    path = ""
-    min_t_delta = window_days
-    min_h_delta = window_hours / 24.0
-    tol = min_t_delta * min_h_delta
-    for row in c:
-        tmid = row[1]
-        t_delta = abs(tx - tmid) / sec_per_day
-        h_delta = abs(htx - (tmid % sec_per_day)) / sec_per_day
-        score = t_delta * h_delta
-        if score < tol:
-            path = row[0]
-            tol = score
+    if dt_irr < dt_max:
+        istart_min = istart_solar
+    else:
+        istart_min = istart - dt_max
 
-    return path
+    cmd = "select path from 'DSTR{}_L2' where istart > {} order by istart desc limit 1".format(molecule, istart_min)
+    c.execute(cmd)
+    path = c.fetchone()
+    if path is None:
+        return None
+    else:
+        return path[0]
 
 def connect_database (db_path):
+    conn = sqlite3.connect ("file:{}?mode=ro".format(db_path), uri=True, timeout=20.0)
     """
     For back-compatibility sqlite has foreign keys turned off by default,
     and foreign_keys=off is ALWAYS stored in the database, regardless of
@@ -78,7 +71,6 @@ def connect_database (db_path):
     we apparently need to turn it on explicitly, each time the database
     connection is established.
     """
-    conn = sqlite3.connect ("file:{}?mode=ro".format(db_path), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
     #conn.set_trace_callback(print)
     return conn
@@ -109,26 +101,15 @@ def config_file_defaults (filename):
     return cfg
 
 def main():
-
     cfg = config_file_defaults ("etc/select_destripe.yml")
     if cfg is not None:
         days  = cfg["max_days_previous"]
-        hours = cfg["max_time_offset"]
-        minwidth = cfg["min_scan_width"]
     else:
-        days = 2.0
-        hours= 2.0
-        minwidth = 600
+        days = 1.0
 
     parser = argparse.ArgumentParser(description='Select the appropriate destriping correction file')
-    parser.add_argument ('--molecule',default="HCHO",
-                         help="Molecule symbol")
-    parser.add_argument ('--days',default=days, type=float,
-                         help="Acceptable offset in days")
-    parser.add_argument ('--hours', default=hours, type=float,
-                         help="Acceptable offset in hours")
-    parser.add_argument ('--minwidth', default=minwidth, type=int,
-                         help="Minimum acceptable scan width")
+    parser.add_argument ('--molecule', help="Molecule symbol")
+    parser.add_argument ('--days',default=days, type=float, help="Acceptable offset in days")
     parser.add_argument ('radiance_file', help="Basename of Level 1 radiance file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
@@ -138,18 +119,22 @@ def main():
     db_path = get_db_path()
 
     with connect_database (db_path) as conn:
-        radiance_path = lookup_radiance_path (conn.cursor(), args.radiance_file)
+        istart = lookup_radiance_start_time (conn.cursor(), args.radiance_file)
 
-    if radiance_path is None:
+    if istart is None:
         print ('*** radiance file not in database: {}'.format (args.radiance_file))
         sys.exit(1)
 
-    rad_info = get_rad_info (radiance_path)
+    with connect_database (db_path) as conn:
+        istart_solar = find_most_recent_irradiance (conn.cursor(), istart)
+
+    if istart_solar is None:
+        print ('*** no irradiance file in database! (this should never happen)')
+        sys.exit(1)
 
     with connect_database (db_path) as conn:
-        c = conn.cursor()
         try:
-            destripe = select_matching_destripe (c, args.molecule, args.days, args.hours, args.minwidth, rad_info)
+            destripe = select_suitable_destripe (conn.cursor(), args.molecule, args.days, istart, istart_solar)
         except:
             destripe = ""
 

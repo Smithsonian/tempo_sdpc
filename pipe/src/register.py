@@ -37,9 +37,8 @@ Prefix = "register:"
 Have_Rad_L1_Table = False
 Alt_Rad_L1a_Dbfile_Path = None
 Rad_L1a_Dbfile_Path_for_NRT_files = None
-HCHO_Needs_Destripe = False
-
-Reload_Config = False
+Destripe_Products = None
+Background_Correction_Products = None
 
 Enable_Sqlite_Trace = False
 
@@ -148,6 +147,13 @@ def init_corrfile_table (table_name):
     quals = "unique(istart)"
     return Table_Type(table_name, fields, quals)
 
+def init_dstrfile_table (table_name):
+    fields = basic_fields_dict()
+    fields["tstart"] = "integer not null"
+    fields["tend"] = "integer not null"
+    quals = "unique(istart)"
+    return Table_Type(table_name, fields, quals)
+
 def insert_raw_entry (conn, table_name, entry):
     c = conn.cursor()
     raw = init_raw_file_table(table_name)
@@ -163,6 +169,18 @@ def insert_raw_entry (conn, table_name, entry):
 def insert_corrfile_entry (conn, table_name, entry):
     c = conn.cursor()
     tbl = init_corrfile_table(table_name)
+    tbl.create(c)
+    try:
+        tbl.new_entry (c, entry.keys(), entry.values())
+        conn.commit()
+        return 0
+    except sqlite3.IntegrityError:
+        eprint ('ERROR: duplicate primary key: istart={}'.format(entry["istart"]))
+        return -1
+
+def insert_dstrfile_entry (conn, table_name, entry):
+    c = conn.cursor()
+    tbl = init_dstrfile_table(table_name)
     tbl.create(c)
     try:
         tbl.new_entry (c, entry.keys(), entry.values())
@@ -211,20 +229,24 @@ def insert_other_product_entry (conn, product_name, entry):
 
 def connect_database (db_path, mode):
     """
+    When creating a new database file, use journal_mode=WAL.
+    When accessing an existing database, leave journal_mode as-is.
+    """
+    db_exists = os.path.isfile (db_path)
+    if db_exists:
+        conn = sqlite3.connect ("file:{}?mode={}".format (db_path, mode), uri=True, timeout=20.0)
+    else:
+        conn = sqlite3.connect (db_path, timeout=20.0)
+        conn.execute ("pragma journal_mode=WAL")
+
+    """
     For back-compatibility sqlite has foreign keys turned off by default,
     and foreign_keys=off is ALWAYS stored in the database, regardless of
     the runtime setting when the database was created.  For this reason,
     we apparently need to turn it on explicitly, each time the database
     connection is established.
     """
-    db_exists = os.path.isfile (db_path)
-    conn = sqlite3.connect ("file:{}?mode={}".format (db_path, mode), uri=True, timeout=20.0)
     conn.execute("pragma foreign_keys=on")
-
-    # When creating a new database file, use journal_mode=WAL.
-    # When accessing an existing database, leave journal_mode as-is.
-    if not db_exists:
-        conn.execute ("pragma journal_mode=WAL")
 
     # Optionally, trace callbacks
     if Enable_Sqlite_Trace == True:
@@ -429,14 +451,18 @@ class Basename_Parser_Class:
     # This regex should match any TEMPO data product, including NRT products.
     product_parse_regex = r"TEMPO_(?P<product_name>\w+_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}T\d{6}Z_?(?:|S\d{3}|S\d{3}G\d{2}).nc"
 
-    # This regex should match the RADREF and DSTRHCHO files:
+    # This regex should match the RADREF files:
     # Example:   TEMPO_RADREF_L1_V01_20231015_S1234567890_E1234567890_S001.nc
-    # Example: TEMPO_DSTRHCHO_L2_V01_20231015_S1234567890_E1234567890_S001.nc
     corr_file_parse_regex = r"TEMPO_(?P<table_name>\w+_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_\d{8}_S(?P<tstart>\d{10})_E(?P<tend>\d{10})_S\d{3}.nc"
+
+    # This regex should match the destriping files:
+    # Example:   TEMPO_DSTRNO2_L2_V01_D16630.nc
+    dstr_file_parse_regex = r"TEMPO_(?P<table_name>\w+_L\d)_?(?P<nrt>|NRT)_?V(?P<version>\d{2})_(?P<date>\d{8}).nc"
 
     def __init__(self):
         self.product_parser = re.compile (self.product_parse_regex)
         self.corr_file_parser = re.compile (self.corr_file_parse_regex)
+        self.dstr_file_parser = re.compile (self.dstr_file_parse_regex)
 
     def product_basename (self, basename):
         m = re.match (self.product_parser, basename)
@@ -454,6 +480,14 @@ class Basename_Parser_Class:
                 "nrt":len(m.group("nrt")) > 0,
                 "tstart":int(m.group("tstart")),
                 "tend":int(m.group("tend"))}
+
+    def dstr_file_basename (self, basename):
+        m = re.match (self.dstr_file_parser, basename)
+        if m is None:
+            return None
+        return {"table_name":m.group("table_name"),
+                "nrt":len(m.group("nrt")) > 0,
+                "date":int(m.group("date"))}
 
 Basename_Parser = Basename_Parser_Class()
 
@@ -514,17 +548,13 @@ def process_file (db_path, filename, nc):
     # uploading to ASDC.  Such products are initially registered
     # with status "defer", which is later updated to "new" (elsewhere)
     # upon completion of the final processing step.
-    # currently: NO2_L2 waits for strat/trop separation
-    #            HCHO_L2 may wait for destriping/background correction
-    if product_name == 'NO2_L2':
+    defer_asdc_upload = False
+    if product_name in Solcal_Products:
         defer_asdc_upload = True
-    elif (product_name == 'HCHO_L2' and HCHO_Needs_Destripe):
-        defer_asdc_upload = (('destriping_correction' not in nc['support_data'].variables) and
-                             ('background_correction' not in nc['support_data'].variables))
-    elif product_name in Solcal_Products:
+    if product_name in Destripe_Products and ('destriping_correction' not in nc['support_data'].variables):
         defer_asdc_upload = True
-    else:
-        defer_asdc_upload = False
+    if product_name in Background_Correction_Products and ('background_correction' not in nc['support_data'].variables):
+        defer_asdc_upload = True
 
     if defer_asdc_upload:
         keys["asdc_status"] = Asdc_Status_Defer
@@ -595,7 +625,6 @@ def process_file_corr (db_path, filename, nc):
     st = os.stat (filename)
 
     # Example:   TEMPO_RADREF_L1_V01_YYYYMMDD_S1234567890_E1234567890_S001.nc
-    # Example: TEMPO_DSTRHCHO_L2_V01_YYYYMMDD_S1234567890_E1234567890_S001.nc
     fields = Basename_Parser.corr_file_basename (basename)
     if fields is None:
         eprint ("ERROR: unsupported filename: {}".format(basename))
@@ -633,16 +662,41 @@ def process_file_corr (db_path, filename, nc):
 
     return status
 
-def check_hcho_destripe_config():
-    # Does HCHO_L2 receive a destriping/background correction?
-    global HCHO_Needs_Destripe
-    setting = check_output (["config_setting", "destripe.HCHO.apply"])
-    HCHO_Needs_Destripe = (setting != b'0')
+def process_file_dstr (db_path, filename, nc):
 
-def load_config():
-    global Reload_Config
-    Reload_Config = False
-    check_hcho_destripe_config()
+    basename = os.path.basename (filename)
+    final_path = os.readlink (filename)
+    st = os.stat (filename)
+
+    # Example:   TEMPO_DSTR${product_type}_V03_20250715.nc
+    fields = Basename_Parser.dstr_file_basename (basename)
+    if fields is None:
+        eprint ("ERROR: unsupported filename: {}".format(basename))
+        return -1
+
+    table_name = fields["table_name"]
+    tstart = nc.time_coverage_start_since_epoch[0]
+    tend = nc.time_coverage_end_since_epoch[-1]
+
+    keys = {}
+    keys["filename"] = basename
+    keys["path"] = final_path
+    keys["istart"] = int(tstart)
+    keys["mtime"] = int(st.st_mtime)
+    keys["size"] = st.st_size
+
+    keys["tstart"] = tstart
+    keys["tend"] = tend
+
+    with connect_database (db_path, "rw") as conn:
+        status = insert_dstrfile_entry (conn, table_name, keys)
+
+    if status < 0:
+        eprint('ERROR: processing file {}'.format(filename))
+    else:
+        logprint ('{}: {}'.format(table_name, basename), flush=True)
+
+    return status
 
 class Signal_Catcher:
 
@@ -664,11 +718,6 @@ class Signal_Catcher:
   def handler(self,signum, frame):
     self.exit.set()
     self.signum = signum
-
-  def config_update(self,signum,frame):
-      global Reload_Config
-      Reload_Config = True
-      self.signum = signum
 
 def move_failing (fn):
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
@@ -709,9 +758,12 @@ class Registry:
         else:
             db_path = self.db_file_path
 
-        if basename.startswith ('TEMPO_RADREF') or basename.startswith('TEMPO_DSTR'):
+        if basename.startswith ('TEMPO_RADREF'):
             with NetCDFFile (fn, "r") as nc:
                 status = process_file_corr (db_path, fn, nc)
+        elif basename.startswith('TEMPO_DSTR'):
+            with NetCDFFile (fn, "r") as nc:
+                status = process_file_dstr (db_path, fn, nc)
         elif fn.endswith ('.nc'):
             with NetCDFFile (fn, "r") as nc:
                 status = process_file (db_path, fn, nc)
@@ -745,9 +797,6 @@ class Registry:
         sig = Signal_Catcher()
         logprint ("Started", flush=True)
         while not sig.caught():
-            if Reload_Config:
-                logprint ('Caught signal = SIGHUP: updating configuration', flush=True)
-                load_config()
             filenames = collect_filenames (self.incoming_dir)
             if len(filenames) > 0:
                 status_list = self.register_files (filenames)
@@ -793,7 +842,20 @@ def main():
     if args.trace == True:
         Enable_Sqlite_Trace = True
 
-    load_config()
+    global Destripe_Products
+    Destripe_Products = os.getenv ("SDPC_DESTRIPE_TG")
+    if Destripe_Products is None:
+        Destripe_Products = []
+    else:
+        Destripe_Products = Destripe_Products.split(',')
+
+    global Background_Correction_Products
+    Background_Correction_Products = os.getenv ("SDPC_BKGCORR_TG")
+    if Background_Correction_Products is None:
+        Background_Correction_Products = []
+    else:
+        Background_Correction_Products = Background_Correction_Products.split(',')
+
     reg = init_registry()
 
     if args.service:

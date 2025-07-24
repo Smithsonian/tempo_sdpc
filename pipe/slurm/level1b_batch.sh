@@ -95,6 +95,7 @@ esac
 #    snow_file
 #    solcal_file_o2o2
 #    solcal_file_list
+#    destripe_file_list
 . "$file_list_file"
 
 # Setup paths to scripts, config files
@@ -118,6 +119,11 @@ if test -s "$solcal_file_list" ; then
    # We want this list copied into the tar file
    # that provides inputs for all L2 product generation
    /bin/cp "$solcal_file_list" .
+fi
+if test -s "$destripe_file_list" ; then
+   # We want this list copied into the tar file
+   # that provides inputs for all L2 product generation
+   /bin/cp "$destripe_file_list" .
 fi
 chmod u+w "$rad_file"
 
@@ -525,7 +531,7 @@ EOF
 perform_cleanup()
 {
    # Delete the original radiance file, and file list file
-   /bin/rm -f "$rad_path" "$file_list_file" "$solcal_file_list"
+   /bin/rm -f "$rad_path" "$file_list_file" "$solcal_file_list" "$destripe_file_list"
 
    # Original radiance path looks like "${some_dir}/.${rad_base}.Smoothed.nc".
    _rad_dir=$(dirname "$rad_path")

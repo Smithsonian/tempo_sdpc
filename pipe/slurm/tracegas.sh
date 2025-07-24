@@ -15,15 +15,13 @@ ulimit -s unlimited
 #    appropriate destination directory.
 # 2. When processing ends, remove the processing directory.
 
-radref_file=""
-
 molecule="$1"
-shift
-if test $# -ge 1 ; then
-   radref_file="$1"
-   shift
-fi
 work_dir="$molecule"
+
+radref_file=""
+if test -f "$work_dir/radref_file" ; then
+   radref_file=$(cat "$work_dir/radref_file")
+fi
 
 l2_out_dir="$SDPC_NODE_DIR/L2/out"
 l2_repro_dir="$SDPC_PIPE_DIR/repro/L2"
@@ -68,6 +66,7 @@ tar_product_to_dest_dir()
    /bin/rm -f $work_dir/${rad_basename}.nc
    /bin/rm -f $work_dir/${irr_basename}.nc
    /bin/rm -f $work_dir/$cld_file
+   /bin/rm -f $work_dir/radref_file
 
    work_dir_tarfile="${rad_basename}.${work_dir}.tar"
    granule_dir=$(basename $run_dir)
@@ -199,6 +198,14 @@ export PGS_PC_INFO_FILE="$this_pcf_file"
 
 srun --ntasks=1 --exclusive --output=log_${molecule}.txt --job-name=${molecule} \
  L1_trace_gas -tempo -wrt_odl
+
+# Apply destriping correction when possible
+destripe_file_file="${rad_basename}.destripe"
+if test -s $destripe_file_file ; then
+   destripe_path=$(cat $destripe_file_file)
+   srun --ntasks=1 --output=log_destripe.txt --job-name=${molecule} \
+      destripe.py --corrfile "$destripe_path" $product_file
+fi
 
 # SDPTK MET routines litter the directory with temporary files
 find . -maxdepth 1 -name "MCFWrite.temp_*" -delete

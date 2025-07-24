@@ -123,17 +123,18 @@ case "$l3_basename" in
        ;;
 esac
 
+_destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
+for p in $_destripe_products ; do
+    if test $p = $product_type ; then
+       # This is a no-op if destriping has already been done
+       destripe_scan "$l2_paths"
+    fi
+done
+
 case "$product_name" in
   CLDO4_L2 )
      if test $SDPC_RADREF_ENABLE -ne 0 && test $is_nrt -eq 0 ; then
         make_radref "$l2_paths"
-     fi
-     ;;
-
-  HCHO_L2 )
-     destripe_HCHO=$(config_setting destripe.HCHO.enable)
-     if test $destripe_HCHO -ne 0 ; then
-        make_destripe "$l2_paths"
      fi
      ;;
 

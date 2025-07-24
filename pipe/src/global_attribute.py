@@ -6,7 +6,7 @@ import argparse
 from netCDF4 import Dataset as NetCDFFile
 
 def main():
-    parser = argparse.ArgumentParser(description='print radiance header attribute')
+    parser = argparse.ArgumentParser(description='print global attribute')
     parser.add_argument('--attr', help="attribute name")
     parser.add_argument('ncfile', help="netCDF data file name")
     args = parser.parse_args()

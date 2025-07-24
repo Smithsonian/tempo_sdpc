@@ -1,9 +1,3 @@
 
-# Max age [days] for an acceptable destriping/background correction file
-max_days_previous: 2.0
-
-# Max time-of-day offset [hours] for an acceptable destriping/background correction file
-max_time_offset: 2.0
-
-# Min scan width for an acceptable destriping/background correction file
-min_scan_width: 600
+# Max age [days] for an acceptable destriping correction file
+max_days_previous: 1.0

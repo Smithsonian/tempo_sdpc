@@ -243,7 +243,7 @@ do_daily()
   fi
 
   # Expire old data products in the NRT archive
-  num_days_kept=$(config_setting nrt.num_archive_days)
+  num_days_kept=$SDPC_NRT_NUM_DAYS_KEPT
   if test $num_days_kept -gt 0 ; then
      expire_nrt_archive_excess_num_days.sh $num_days_kept
   fi

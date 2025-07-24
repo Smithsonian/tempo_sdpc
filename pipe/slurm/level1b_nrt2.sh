@@ -100,6 +100,20 @@ if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
    fi
 fi
 
+# Prepare for destriping of trace gas products
+destripe_file_list="$granule_dir/${rad_basename}.destripe"
+truncate -s 0 $destripe_file_list
+if test -n "$SDPC_DESTRIPE_TG" ; then
+   _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
+   for p in $_destripe_products ; do
+       molecule=$(echo $p | tr -d _L2)
+       destripe_path=$(select_destripe.py --molecule $molecule ${rad_basename}.nc)
+       if test -f "$destripe_path" ; then
+          echo $destripe_path >> $destripe_file_list
+       fi
+   done
+fi
+
 # Write file list file on master node
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
@@ -107,6 +121,7 @@ rad_path=${rad_path}
 irr_file=${irr_file}
 snow_file=${snow_file}
 solcal_file_list=${solcal_file_list}
+destripe_file_list=${destripe_file_list}
 EOF
 
 # Turn off radiance wavelength calibration:

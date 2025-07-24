@@ -42,6 +42,22 @@ error_exit()
 
 log_message "processing $pathlist_file"
 
-pathlist_basename="$(basename $pathlist_file)"
+# Import function to generate destriping correction files
+. $SDPC_ROOT/bin/make_destripe.sh
+
+# Parse pathlist filename:
+pathlist_basename_sans_extname=$(basename $pathlist_file .lis)
+product_type=$(echo $pathlist_basename_sans_extname | cut -d_ -f2)
+
+# Make daily destriping files for selected products
+if test -n $SDPC_MAKE_DESTRIPE_TG ; then
+   _destripe_products=$(echo $SDPC_MAKE_DESTRIPE_TG | tr , ' ')
+   for p in $_destripe_products ; do
+       if test $p = $product_type ; then
+          make_day_destripe_file $pathlist_file
+          break
+       fi
+   done
+fi
 
 /bin/rm -f "$pathlist_file"

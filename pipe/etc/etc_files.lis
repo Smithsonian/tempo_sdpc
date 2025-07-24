@@ -24,12 +24,14 @@ trace_gas/SIMPLE_CHOCHO.MCF
 trace_gas/control.HCHO.in
 trace_gas/default.pcf.HCHO.in
 trace_gas/SIMPLE_HCHO.MCF
+trace_gas/make_destripe.HCHO.yml.in
 trace_gas/control.H2O.in
 trace_gas/default.pcf.H2O.in
 trace_gas/SIMPLE_H2O.MCF
 trace_gas/control.NO2.in
 trace_gas/default.pcf.NO2.in
 trace_gas/SIMPLE_NO2.MCF
+trace_gas/make_destripe.NO2.yml.in
 trace_gas/control.O2O2.in
 trace_gas/default.pcf.O2O2.in
 trace_gas/SIMPLE_O2O2.MCF
@@ -52,7 +54,6 @@ level3/simple.met.template
 l0_format.cfg
 l0_ccd.cfg
 l0_ccd_drk.cfg
-make_destripe.yml.in
 make_radref.yml.in
 select_destripe.yml
 select_radref.yml

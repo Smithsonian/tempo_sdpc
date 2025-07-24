@@ -8,6 +8,8 @@ then
   exit 1
 fi
 
+export SDPC_MAKE_DESTRIPE_TG=$(config_setting daily.make_destripe_tg)
+
 dbfile_level1="$(config_setting dbfile.level1)"
 if ! test -f "$dbfile_level1" ; then
    dbfile_level1="$SDPC_ARCHIVE_DBFILE"

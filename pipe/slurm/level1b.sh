@@ -46,8 +46,7 @@ test -d "$SDPC_ROOT" || error_exit "$LINENO: cannot access SDPC_ROOT directory: 
 
 # When NRT pipeline processing is enabled, create a hard link on the master node
 # to trigger NRT processing of this granule
-nrt_enable_feed=$(config_setting nrt.enable_feed)
-if test $nrt_enable_feed -ne 0 ; then
+if ! test -f "$SDPC_PIPE_DIR/ctrl/disable-nrt" ; then
    pass2_dir="${SDPC_PIPE_DIR}/stage/granules/inr_output/nrt/inr_pass2"
    if ! test -d $pass2_dir ; then
       mkdir -p $pass2_dir
@@ -107,6 +106,20 @@ if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
    fi
 fi
 
+# Prepare for destriping of trace gas products
+destripe_file_list="$granule_dir/${rad_basename}.destripe"
+truncate -s 0 $destripe_file_list
+if test -n "$SDPC_DESTRIPE_TG" ; then
+   _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
+   for p in $_destripe_products ; do
+       molecule=$(echo $p | tr -d _L2)
+       destripe_path=$(select_destripe.py --molecule $molecule ${rad_basename}.nc)
+       if test -f "$destripe_path" ; then
+          echo $destripe_path >> $destripe_file_list
+       fi
+   done
+fi
+
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
 rad_path=${rad_path}
@@ -114,6 +127,7 @@ irr_file=${irr_file}
 snow_file=${snow_file}
 solcal_file_o2o2=${solcal_file_o2o2}
 solcal_file_list=${solcal_file_list}
+destripe_file_list=${destripe_file_list}
 EOF
 
 # If SDPC_RADIANCE_WAVECAL is not set, define it to be ON (non-zero).

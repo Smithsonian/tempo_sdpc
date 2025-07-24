@@ -99,6 +99,7 @@ rad_basename=$(basename $rad_file .nc)
 irr_basename=$(basename $irr_file .nc)
 
 solcal_file_list="${rad_basename}.solcal"
+destripe_file_list="${rad_basename}.destripe"
 
 init_product_dir()
 {
@@ -118,6 +119,29 @@ assign_solcal_cache_file()
      path=$(grep "_IRR${molecule}_" $solcal_file_list)
      if test -f "$path" ; then
         printf "$path\n" > "$dir/$solcal_file_list"
+     fi
+  fi
+}
+
+assign_radref_file()
+{
+   molecule=$1
+   dir=$molecule
+
+   if test "$molecule" = HCHO ; then
+      echo $radref_file > $dir/radref_file
+   fi
+}
+
+assign_destripe_file()
+{
+  molecule=$1
+  dir=$molecule
+
+  if test -s $destripe_file_list ; then
+     path=$(grep "_DSTR${molecule}_" $destripe_file_list)
+     if test -f "$path" ; then
+        printf "$path\n" > "$dir/$destripe_file_list"
      fi
   fi
 }
@@ -157,7 +181,9 @@ for prod in $product_list ; do
   else
      tracegas_log="$slurm_logdir/${rad_basename}.tracegas-${SLURM_JOB_ID}.out"
      assign_solcal_cache_file $prod
-     tracegas.sh $prod $radref_file > $tracegas_log 2>&1 &
+     assign_radref_file $prod
+     assign_destripe_file $prod
+     tracegas.sh $prod > $tracegas_log 2>&1 &
   fi
 done
 

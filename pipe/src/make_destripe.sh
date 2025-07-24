@@ -3,8 +3,6 @@
 # The functions are intended to be called from a parent script
 # which imports these definitions.
 
-: "${SDPC_DSTR_VERSION:=1}"
-
 # Format the YAML file lists
 # The result will have a trailing newline, but
 # AFAIK, blank lines in yaml files are ok.
@@ -29,106 +27,104 @@ md_error_exit()
 }
 trap 'md_error_exit $? $LINENO' EXIT
 
-make_destripe()
+make_path_for_scan_destripe_file()
 {
-  l2_paths="$1"
+   first_path="$1"
 
-   # Get timestamps from each data product
-   tbeg_lis=""
-   tend_lis=""
-   for f in $l2_paths ; do
-      b=$(basename $f)
-      tstart=$(global_attribute.py --attr time_coverage_start_since_epoch $f)
-      tend=$(global_attribute.py --attr time_coverage_end_since_epoch $f)
-      tbeg_lis="${tbeg_lis}${tstart}\n"
-      tend_lis="${tend_lis}${tend}\n"
-   done
+   product_type="$(global_attribute.py --attr product_type $first_path)"
+   destripe_filename="$(basename $first_path | sed -E -e s,${product_type},DSTR${product_type}, -e 's,G[0-9]+,,')"
 
-   l2_yaml_list=$(print_yaml_list "$l2_paths")
-
-   # put destripe in destripe/$product_type subdir of granule scan directory
-   first_path=$(echo $l2_paths | cut -d' ' -f1)
-   first_filename_sans_extname=$(basename $first_path .nc)
    product_dir=$(dirname $first_path)
    granule_dir=$(dirname $product_dir)
-   product_type="$(global_attribute.py --attr product_type $first_path)"
    destripe_dir="$(dirname $granule_dir)/destripe/$product_type"
 
-   # Is this for the NRT product?
-   is_nrt=0
-   case "$first_filename_sans_extname" in
-        *_NRT_* )
-           is_nrt=1
-           dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
-           nrtfield="NRT_"
-           ;;
-        * )
-           dbfile="$SDPC_ARCHIVE_DBFILE"
-           nrtfield=""
-           ;;
-   esac
+   echo "$destripe_dir/$destripe_filename"
+}
 
+make_path_for_day_destripe_file()
+{
+   first_path="$1"
+
+   product_type="$(global_attribute.py --attr product_type $first_path)"
+   destripe_filename="$(basename $first_path | sed -E -e s,${product_type},DSTR${product_type}, -e 's,T[0-9]+Z_S[0-9]+G[0-9]+,,')"
+
+   day_dir=$(level1_info -l $first_path)
+   destripe_dir="$SDPC_ARCHIVE_DIR/L2/RAD/$day_dir/destripe/$product_type"
+
+   echo "$destripe_dir/$destripe_filename"
+}
+
+destripe_scan()
+{
+   l2_paths="$1"
+
+   # If any file has been destriped previously, silently do nothing.
+   for p in $l2_paths ; do
+       res="$(variable_exists.py --var /support_data/destriping_correction $p)"
+       if test x"$res" == x"yes" ; then
+          return
+       fi
+   done
+
+   first_path=$(echo $l2_paths | cut -d' ' -f1)
+   product_type="$(global_attribute.py --attr product_type $first_path)"
+   processing_version="$(global_attribute.py --attr processing_version $first_path)"
+
+   destripe_path="$(make_path_for_scan_destripe_file $first_path)"
+   destripe_dir=$(dirname $destripe_path)
    if ! test -d $destripe_dir ; then
       mkdir -p $destripe_dir
    fi
 
-   # make destripe filename
-   ymd=$(global_attribute.py --attr time_coverage_start $first_path | cut -dT -f1 | tr -d '-')
-   tbeg="$(echo $tbeg_lis | sort -n | head -1 | cut -d'.' -f1)"
-   tend="$(echo $tend_lis | sort -n | tail -1 | cut -d'.' -f1)"
-   scan_label="$(echo $first_filename_sans_extname | cut -d_ -f6 | cut -dG -f1)"
-   #version="$(echo $first_filename_sans_extname | cut -d_ -f4)"
-   version="$(printf ${nrtfield}V%02d $SDPC_DSTR_VERSION)"
-   destripe_filename="TEMPO_DSTR${product_type}_L2_${version}_${ymd}_S${tbeg}_E${tend}_${scan_label}.nc"
+   config_file="$destripe_dir/make_destripe.${product_type}.yml"
+   log_file="$destripe_dir/make_destripe_${product_type}.log"
 
-   destripe_path="$destripe_dir/$destripe_filename"
-   config_file="$destripe_dir/make_destripe.yml"
-   log_file="$destripe_dir/make_destripe.log"
+   l2_yaml_list=$(print_yaml_list "$l2_paths")
 
    # edit the control file template
    sed -e s,'@LEVEL2_PRODUCT_PATHS@',"$l2_yaml_list", \
        -e s,'@DESTRIPE_FILE_PATH@',"$destripe_path", \
-       -e s,'@SDPC_DSTR_VERSION@',"$SDPC_DSTR_VERSION", \
-       $SDPC_ROOT/etc/make_destripe.yml.in > $config_file
+       -e s,'@SDPC_DSTR_VERSION@',"$processing_version", \
+       $SDPC_ROOT/etc/trace_gas/make_destripe.${product_type}.yml.in > $config_file
+
+   # Generate the destriping correction file
+   # (We don't register this file in the archive
+   #  because it won't be used for anything else)
+   make_destripe.py $config_file > $log_file 2>&1 || md_error_exit "make_destripe.py failed (see $log_file)" $LINENO
+
+   # Apply destriping correction
+   apply_log="$destripe_dir/destripe_${product_type}.log"
+   destripe.py --corrfile "$destripe_path" $l2_paths > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
+}
+
+make_day_destripe_file()
+{
+   l2_path_list_file="$1"
+
+   first_path=$(head -1 $l2_path_list_file)
+   product_type="$(global_attribute.py --attr product_type $first_path)"
+   processing_version="$(global_attribute.py --attr processing_version $first_path)"
+
+   destripe_path="$(make_path_for_day_destripe_file $first_path)"
+   destripe_dir=$(dirname $destripe_path)
+   if ! test -d $destripe_dir ; then
+      mkdir -p $destripe_dir
+   fi
+
+   config_file="$destripe_dir/make_destripe.${product_type}.yml"
+   log_file="$destripe_dir/make_destripe.${product_type}.log"
+
+   l2_yaml_list=$(print_yaml_list "$(cat $l2_path_list_file)")
+
+   # edit the control file template
+   sed -e s,'@LEVEL2_PRODUCT_PATHS@',"$l2_yaml_list", \
+       -e s,'@DESTRIPE_FILE_PATH@',"$destripe_path", \
+       -e s,'@SDPC_DSTR_VERSION@',"$processing_version", \
+       $SDPC_ROOT/etc/trace_gas/make_destripe.${product_type}.yml.in > $config_file
 
    # Generate the destriping correction file
    make_destripe.py $config_file > $log_file 2>&1 || md_error_exit "make_destripe.py failed (see $log_file)" $LINENO
 
    # Register the file in the sqlite database.
-   if test $is_nrt -eq 0 ; then
-      ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
-   fi
-
-   # Apply the destriping correction
-   apply_destripe=$(config_setting destripe.HCHO.apply)
-   if test $apply_destripe -ne 0 ; then
-      # If destripe_search==True, and the search succeeded, then
-      # the files have already been destriped, and could be marked with
-      # asdc_status=new|pending|uploaded|accepted|problem, depending on
-      # what happened afterward. Otherwise (if the search failed, or if
-      # destripe_search==False) then destriping was delayed until now,
-      # and the products will be marked with asdc_status='defer'=100.
-      # Now that we've generated the necessary destriping correction,
-      # destriping can proceed, but we apply the correction only to
-      # products marked 'defer'.
-
-      # In the product database, scan_id combines the day number and scan number.
-      # It uniquely identifies a single scan during the mission,
-      # as long as a scan number is not re-used in a single day.
-      first_basename="$(basename $first_path)"
-      this_scan_id="scan_id in (select scan_id from HCHO_L2 where filename = \"$first_basename\")"
-      sql="select path from HCHO_L2 where asdc_status = 100 and $this_scan_id order by istart"
-      needs_destripe=$(sqlite3 -readonly -cmd ".timeout 10000" $dbfile "$sql")
-
-      if test -n "$needs_destripe" ; then
-         apply_log="$destripe_dir/destripe.log"
-         destripe.py --corrfile "$destripe_path" $needs_destripe > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
-         # Change asdc_status of HCHO_L2 products and met files from 'defer' to 'new'
-         tmpfile=$(mktemp)
-         printf "%s\n" $needs_destripe > $tmpfile
-         asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile || error_exit "asdc_track_uploads failed: changing HCHO_L2 asdc_status defer to new"
-         /bin/rm -f $tmpfile
-      fi
-   fi
-
+   echo ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
 }

@@ -20,5 +20,6 @@ export SDPC_NRT_PROCESSING_VERSION=$(config_setting nrt.processing_version)
 
 export SDPC_RADREF_ENABLE=$(config_setting radref.enable)
 export SDPC_RADREF_CRON_TRIGGER_LEVEL2=$(config_setting radref.cron_trigger_level2)
+export SDPC_DESTRIPE_TG=$(config_setting level2.destripe_tg)
 
 exec ${SDPC_ROOT}/bin/cachemon.sl "${SDPC_PIPE_DIR}/etc/cachemon/level3.cfg"
