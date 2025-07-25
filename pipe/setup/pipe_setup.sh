@@ -26,7 +26,7 @@ service_states_for_context()
    ioc_srvs="level0"
    lev1a_srvs="level1a inr trend"
    nrt_srvs="level1b_nrt1 level1b_nrt2 level2_nrt"
-   always_up="level1b level2 level3 register pipecron"
+   always_up="level1b level2 level3 register pipecron daily"
    always_down="asdc iocpull iocpullraw"
    case "$context" in
       live)
@@ -90,7 +90,7 @@ setup_archiver()
 
    echo "Using external archiver: $archiver_name"
    echo "Updating service defaults:"
-   service_default_down "level3 trend register"
+   service_default_down "level3 trend register daily"
 
    # We can create the archiver script to setup future shells, but
    # environment variables in the current shell must be set manually:
