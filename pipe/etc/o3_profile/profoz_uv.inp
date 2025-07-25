@@ -28,7 +28,7 @@ T                        ; use floor noise
 T  F   F   F             ; on-line ring effect, slit convolution, fitting atan-1, KaiYang RRS table
 T  F                     ; bias correction, time-dependent degradation correction T  T
 7  ; which biascorr (1: direct corr. 2: para. corr 3: dirrect corr (offset & slope) 4: para. (offset & slope) 5. same as 3 but LOG(I) 6. xtrack correction (theta) 7 xtrack and wave 8. time poly fit xwcorr 9 non-linear in time
-SoftCal/0916_293_340_cf_scf_10_sza_90_res_10_geos_test.dat
+SoftCal/TEMPO_2024m07_xtrack_v4p4_V03_all_fnl_tb_soft.dat
 INP/GOME_degcoirr_glb_lut_s_s6.dat
 T                        ; do_subfit (T: some paraeters will be used for each window)
 1                 	 ; 1: lcurve, 2: gcv, 3: gcv with lcurve
@@ -41,7 +41,7 @@ F  0.15  0.5             ; Loose a priori constraint, relative error in the stra
 T                        ; T: update ozone below clouds through smoothing F: Don't update ozone below clouds
 0                        ; which_toz Total ozone. 0: TOMS/OMI Zonal mean 1: eptoz 2: TOMS/OMI Zonal mean 3: gridded TOMS/OMI 4. Individual (now for OMPS)
 T                        ; T: normalize tropospheric column ozone F. normalize whole profile
-6                        ; which albedo database (1: GOME from Kolemeijer; 2: TOMS from J.R. Herman; 3: OMI from Omar; 4: Kleipool (OMI LER); 5: SCIAMACHY LER; 6: GOME2 MSC LER; 7: GOME2 PMD LER
+4                        ; which albedo database (1: GOME from Kolemeijer; 2: TOMS from J.R. Herman; 3: OMI from Omar; 4: Kleipool (OMI LER); 5: SCIAMACHY LER; 6: GOME2 MSC LER; 7: GOME2 PMD LER
 4                        ; which_cloud (0 OMCLDO2/OMCLDRR; 2 OMCLDRR CLIMA; 3 OMCLDO2/OMCLDRR + OMCLDRR CLIMA) 5 Derived cloud from (O2-O2+RRS) : 3 default
 F  F                     ; aerosol in LIDORT, stratospheric aerosols
 * trop. aerosol (0: all 1: dust 2: sulfate, 3: BC 4: OC 5: fine SS 6:coarse SS), scale AOD, and aerosol optical thickness

@@ -30,7 +30,7 @@ T   4                  # Coadd across track, # of observations to be coadded (1-
 F   3                  # Coadd along track,  # of observations to be coadded (1-~129)
 F                      # Filter spectral pixels around Mg and Mg-II (280 and 285 nm)
 1   F  F               # # of bands, spectral coadd? wavelength calibration before coadd?
-1  293.0 340.0  5  2 0 # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
+1  308.0 340.0  5  2 0 # which channel, start & end wavelengths, # of spectral pixels to be coadded, coadding rate
 2  540.0 650.0  2  2
 # If 0. Write ASCII output, 1. Write short HDF output, 2. Write long HDF output 3. Write HDF-EOS5 output
 # Note: 0: works for GOME-1 and OMI, 1 and 2 works for GOME-2 only, and 3 works for OMI only
