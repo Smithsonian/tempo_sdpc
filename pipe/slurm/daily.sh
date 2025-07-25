@@ -42,8 +42,9 @@ error_exit()
 
 log_message "processing $pathlist_file"
 
-# Import function to generate destriping correction files
+# Import functions to generate destriping correction files
 . $SDPC_ROOT/bin/make_destripe.sh
+. $SDPC_ROOT/bin/make_destripe_cldo4.sh
 
 # Parse pathlist filename:
 pathlist_basename_sans_extname=$(basename $pathlist_file .lis)
@@ -59,5 +60,14 @@ if test -n $SDPC_MAKE_DESTRIPE_TG ; then
        fi
    done
 fi
+
+case "$product_type" in
+   CLDO4_L2 )
+   make_cldo4_destripe_file $pathlist_file
+   ;;
+
+   * )
+   ;;
+esac
 
 /bin/rm -f "$pathlist_file"

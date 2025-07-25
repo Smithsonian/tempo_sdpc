@@ -74,6 +74,15 @@ class Table_Type:
         value_string_tuple = tuple(str(v) for v in values)
         cur.execute (cmd, value_string_tuple)
 
+    def replace_entry(self, cur, names, values):
+        """Insert or replace a table entry"""
+        self.create(cur)
+        name_list=','.join(names)
+        value_slots = ','.join(['?']*len(values))
+        cmd = "REPLACE INTO {} ({}) VALUES ({})".format(self.table_name, name_list, value_slots)
+        value_string_tuple = tuple(str(v) for v in values)
+        cur.execute (cmd, value_string_tuple)
+
 def basic_fields_dict ():
     fields = {}
     fields["filename"] = "text"
@@ -179,11 +188,19 @@ def insert_corrfile_entry (conn, table_name, entry):
         return -1
 
 def insert_dstrfile_entry (conn, table_name, entry):
+    """
+    Because archived destriping files are typically based on data from an entire day,
+    it can happen that a file needs to be replaced because more data for that day
+    arrived after a version of the file was archived.  Therefore, to allow the
+    corresponding database entry to be revised, we need to use REPLACE instead of INSERT.
+    And since, in sqlite, REPLACE means 'INSERT or REPLACE', we can use 'REPLACE'
+    to insert all such database entries.
+    """
     c = conn.cursor()
     tbl = init_dstrfile_table(table_name)
     tbl.create(c)
     try:
-        tbl.new_entry (c, entry.keys(), entry.values())
+        tbl.replace_entry (c, entry.keys(), entry.values())
         conn.commit()
         return 0
     except sqlite3.IntegrityError:
@@ -402,6 +419,22 @@ def maybe_handle_L2_day_completion (conn_ro, product_name, scan_id):
     By definition, all L2 granules for a day are completed
     when the number of granules with asdc_status != defer
     equals the number of L1a radiance granules collected that day.
+
+    Unfortunately, this simple criterion may sometimes be misleading.
+    For example, if the live data stream stops for several hours after
+    completion of a scan, then L2 processing might catch up and cause
+    this day-completion criterion to be satisfied at some point before the
+    actual end of the day.
+
+    One way to handle this shortcoming is to allow the L2 day-completion
+    state to occur multiple times if it needs to, updating any data products
+    that depended on the result. Theoretically, this revision could affect
+    data products that have already been uploaded to ASDC, but it should be
+    possible to avoid that situation in most cases. The only alternative
+    I see at the moment is to rely on an external signal that the archive
+    RAD_L1a content is complete for a given day, but it's unclear how
+    to implement that robustly. What automated source could reliably
+    generate that signal?
     """
     if not "L2" in product_name:
         return

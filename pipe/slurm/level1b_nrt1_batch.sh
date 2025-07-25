@@ -208,7 +208,7 @@ derive_o2o2_slant_column()
 
   diagnostic_file="${out_basename}_diag.nc"
   if test -f $diagnostic_file ; then
-     tg_diag_filter.py --output diaglog_${molecule}.nc log_${molecule}.txt $diagnostic_file
+     tg_diag_filter.py $product_file --diagfile=$diagnostic_file --outfile=${out_basename}_diaglog.nc
      /bin/rm -f $diagnostic_file
   fi
 

@@ -29,6 +29,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                public_mirror.py update_public_mirror.sh inrmonitor.sh feed_image_data.py \
                make_radref.sh make_radref.py select_radref.py flush_radref_pending.sh \
                make_destripe.sh make_destripe.py destripe.py select_destripe.py \
+               make_destripe_cldo4.sh tempo_destripe_regular.py \
                make_background.sh make_background.py background.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)

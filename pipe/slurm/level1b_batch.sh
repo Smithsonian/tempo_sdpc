@@ -449,7 +449,7 @@ derive_o2o2_slant_column()
 
   diagnostic_file="${out_basename}_diag.nc"
   if test -f $diagnostic_file ; then
-     tg_diag_filter.py --output diaglog_${molecule}.nc log_${molecule}.txt $diagnostic_file
+     tg_diag_filter.py $product_file --diagfile=$diagnostic_file --outfile=${out_basename}_diaglog.nc
      /bin/rm -f $diagnostic_file
   fi
 
@@ -508,6 +508,15 @@ run_cloud_o4()
 
   # From O2O2 slant column, derive cloud parameters
   derive_cloud_o4_params "${cld_o4_basename}.nc"
+
+  # Destripe if possible:
+  destripe_file=""
+  if test -f "$destripe_file_list" ; then
+     destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
+  fi
+  if test -f "$destripe_file" ; then
+     tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "${cld_o4_basename}.nc" > log_destripe.txt 2>&1
+  fi
 
   tar_l2_cloud_to_dest "$cld_o4_dir" "$l2_out_dir"
 

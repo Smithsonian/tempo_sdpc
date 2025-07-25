@@ -238,6 +238,15 @@ derive_cloud_o4_params()
    srun --ntasks=1 --output=log_cloud_o4.txt \
         L1_cloud_o4 $ctrl_file
 
+   # Destripe if possible:
+   destripe_file=""
+   if test -f "$destripe_file_list" ; then
+      destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
+   fi
+   if test -f "$destripe_file" ; then
+      tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
+   fi
+
    # remove variables:
    #        - main_data_quality_flag
    #        - surface_pressure

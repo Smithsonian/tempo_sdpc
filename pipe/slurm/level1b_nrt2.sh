@@ -114,6 +114,14 @@ if test -n "$SDPC_DESTRIPE_TG" ; then
    done
 fi
 
+# Prepare for CLDO4 destriping
+if ! test -f $SDPC_PIPE_DIR/ctrl/disable-destripe-CLDO4 ; then
+   destripe_path=$(select_destripe.py --molecule CLDO4 ${rad_basename}.nc)
+   if test -f "$destripe_path" ; then
+      echo $destripe_path >> $destripe_file_list
+   fi
+fi
+
 # Write file list file on master node
 file_list_file="$granule_dir/${rad_basename}.lis"
 cat <<EOF > $file_list_file
