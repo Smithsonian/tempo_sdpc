@@ -449,8 +449,10 @@ derive_o2o2_slant_column()
 
   diagnostic_file="${out_basename}_diag.nc"
   if test -f $diagnostic_file ; then
-     tg_diag_filter.py $product_file --diagfile=$diagnostic_file --outfile=${out_basename}_diaglog.nc
-     /bin/rm -f $diagnostic_file
+     tg_diag_filter.py $product_file --diagfile $diagnostic_file --outfile diaglog_O2O2.nc > tg_diag_filter.log 2>&1
+     if test "$?" -eq 0 ; then
+        /bin/rm -f $diagnostic_file
+     fi
   fi
 
   # SDPTK MET routines litter the directory with temporary files
@@ -468,12 +470,26 @@ derive_cloud_o4_params()
    template_ctrl="${etc_dir}/cloud_o4/control.txt.in"
    ctrl_file="cloud_o4_control.txt"
 
+   out_basename="$(basename $product_file .nc)"
+
+   # Destripe if possible:
+   destripe_file=""
+   apply_destripe=0
+   if test -s "$destripe_file_list" ; then
+      destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
+      if test -f "$destripe_file" ; then
+         tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
+         apply_destripe=1
+      fi
+   fi
+
    # edit the control file template
    sed -e "s,@cldo4_file@,$product_file," \
        -e "s,@radiance_file@,$radiance_file," \
        -e "s,@irradiance_file@,$irradiance_file," \
        -e "s,@product_file@,$product_file," \
        -e "s,@refdata_dir@,$refdata_dir," \
+       -e "s,@apply_destripe@,$apply_destripe," \
        -e "s,@apply_solshift@,1," \
        -e "s,@apply_radshift@,1," \
        $template_ctrl > $ctrl_file
@@ -508,15 +524,6 @@ run_cloud_o4()
 
   # From O2O2 slant column, derive cloud parameters
   derive_cloud_o4_params "${cld_o4_basename}.nc"
-
-  # Destripe if possible:
-  destripe_file=""
-  if test -f "$destripe_file_list" ; then
-     destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
-  fi
-  if test -f "$destripe_file" ; then
-     tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "${cld_o4_basename}.nc" > log_destripe.txt 2>&1
-  fi
 
   tar_l2_cloud_to_dest "$cld_o4_dir" "$l2_out_dir"
 

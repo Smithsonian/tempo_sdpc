@@ -61,7 +61,7 @@ Runtime Parameters:
     Collection: 002
     ixdebug: -1
     itdebug: -1
-    option_destripe_scd: 1
+    option_destripe_scd: @apply_destripe@
     ecfocp_maxiter: 5
     option_scdfullfilter: 1
     option_apply_solshift: @apply_solshift@

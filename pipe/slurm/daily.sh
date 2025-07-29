@@ -40,7 +40,8 @@ error_exit()
    exit 1
 }
 
-log_message "processing $pathlist_file"
+pathlist_basename=$(basename $pathlist_file | sed -e s"/^[.]//")
+log_message "processing $pathlist_basename"
 
 # Import functions to generate destriping correction files
 . $SDPC_ROOT/bin/make_destripe.sh

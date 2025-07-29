@@ -107,7 +107,7 @@ if test -n "$SDPC_DESTRIPE_TG" ; then
    _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
    for p in $_destripe_products ; do
        molecule=$(echo $p | tr -d _L2)
-       destripe_path=$(select_destripe.py --molecule $molecule ${rad_basename}.nc)
+       destripe_path=$(select_destripe.py --molecule $molecule $rad_path)
        if test -f "$destripe_path" ; then
           echo $destripe_path >> $destripe_file_list
        fi
@@ -116,7 +116,7 @@ fi
 
 # Prepare for CLDO4 destriping
 if ! test -f $SDPC_PIPE_DIR/ctrl/disable-destripe-CLDO4 ; then
-   destripe_path=$(select_destripe.py --molecule CLDO4 ${rad_basename}.nc)
+   destripe_path=$(select_destripe.py --molecule CLDO4 $rad_path)
    if test -f "$destripe_path" ; then
       echo $destripe_path >> $destripe_file_list
    fi

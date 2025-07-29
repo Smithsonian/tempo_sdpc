@@ -208,8 +208,10 @@ derive_o2o2_slant_column()
 
   diagnostic_file="${out_basename}_diag.nc"
   if test -f $diagnostic_file ; then
-     tg_diag_filter.py $product_file --diagfile=$diagnostic_file --outfile=${out_basename}_diaglog.nc
-     /bin/rm -f $diagnostic_file
+     tg_diag_filter.py $product_file --diagfile $diagnostic_file --outfile diaglog_O2O2.nc > tg_diag_filter.log 2>&1
+     if test "$?" -eq 0 ; then
+        /bin/rm -f $diagnostic_file
+     fi
   fi
 
   # SDPTK MET routines litter the directory with temporary files

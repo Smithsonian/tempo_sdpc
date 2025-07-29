@@ -225,27 +225,32 @@ derive_cloud_o4_params()
    template_ctrl="${etc_dir}/cloud_o4/control.txt.in"
    ctrl_file="cloud_o4_control.txt"
 
+   out_basename="$(basename $product_file .nc)"
+
+   # Destripe if possible:
+   destripe_file=""
+   apply_destripe=0
+   if test -s "$destripe_file_list" ; then
+      destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
+      if test -f "$destripe_file" ; then
+         tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
+         apply_destripe=1
+      fi
+   fi
+
    # edit the control file template
    sed -e "s,@cldo4_file@,$product_file," \
        -e "s,@radiance_file@,$radiance_file," \
        -e "s,@irradiance_file@,$irradiance_file," \
        -e "s,@product_file@,$product_file," \
        -e "s,@refdata_dir@,$refdata_dir," \
+       -e "s,@apply_destripe@,$apply_destripe," \
        -e "s,@apply_solshift@,0," \
        -e "s,@apply_radshift@,0," \
        $template_ctrl > $ctrl_file
 
    srun --ntasks=1 --output=log_cloud_o4.txt \
         L1_cloud_o4 $ctrl_file
-
-   # Destripe if possible:
-   destripe_file=""
-   if test -f "$destripe_file_list" ; then
-      destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
-   fi
-   if test -f "$destripe_file" ; then
-      tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
-   fi
 
    # remove variables:
    #        - main_data_quality_flag

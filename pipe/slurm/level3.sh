@@ -128,7 +128,7 @@ esac
 
 _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
 for p in $_destripe_products ; do
-    if test $p = $product_type ; then
+    if test $p = $product_name ; then
        # This is a no-op if destriping has already been done
        destripe_scan "$l2_paths"
     fi
@@ -136,7 +136,7 @@ done
 
 _bkgcorr_products=$(echo $SDPC_BKGCORR_TG | tr , ' ')
 for p in $_bkgcorr_products ; do
-    if test $p = $product_type ; then
+    if test $p = $product_name ; then
        # This is a no-op if background correction has already been done
        bkgcorr_scan "$l2_paths"
     fi
