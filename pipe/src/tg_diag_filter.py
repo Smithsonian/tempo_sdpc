@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # author: JCH & HQW (originally named collect_o2o2_diagnostics.py)
 # collecting solshi & radshi for CLDO4
-# to call: 
+# to call:
 # conda activate earth
 # python tg_diag_filter.py l2fnm --diagfile=fnmdiag --outfile=fnmout
 #
@@ -9,7 +9,7 @@
 # hqw removes dependence on log file (202506)
 #      baseline & NRT has different log output from sdpc
 #      NRT solar fit is saved and used later, log file has no solar fit info
-#      baseline still does solar fit every granule and contains solar fit info 
+#      baseline still does solar fit every granule and contains solar fit info
 
 # import libraries
 import re
@@ -24,7 +24,7 @@ Fill_Value = np.float32(-1.e30)
 
 #===============================================
 # functions
-# 
+#
 #-----------------------------------------------
 # parse l2 log file to gather solcal information
 # no longer used (202506)
@@ -54,11 +54,11 @@ def parse_solcal_log (logfile, nx):
             # subtracting 1 to get a zero-based index
             xtrack = int(halves[0].strip('#')) - 1
             # strip whitespace from the second piece:
-            s = re.sub('[\s+]', '', halves[1])
+            s = re.sub(r'[\s+]', '', halves[1])
             # remove extraneous characters, leaving a semicolon-delimited
             # string that contains variable=float pairs
-            s = s.replace('1/e','')
-            s = s.replace('e_','')
+            s = s.replace(r'1/e','')
+            s = s.replace(r'e_','')
             # split this string on semicolons, extract the float values,
             # and store in the corresponding array.
             fields = s.split(';')
@@ -158,34 +158,41 @@ def main():
                         help="Output netcdf4 file")
     parser.add_argument('--diagfile', default="O2O2_diag.nc",
                         help="Netcdf4 O2O2 diagnostic file")
-    parser.add_argument('filename', 
+    parser.add_argument('filename',
            help = "L2 O2O2 file after fitting before cldo4")
 
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
     args = parser.parse_args()
-    
+
    # log_file = args.log
    # print('logfile:',log_file)
     diag_file = args.diagfile
-    print('diagfile:',diag_file)
     outfile = args.outfile
-    print('outfile:',outfile)
     l2_file = args.filename
-    print('l2file:',l2_file)
 
-    radshi = read_named_fit_parameter (diag_file, 'shi')
-    (nt,nx) = radshi.shape
-    solshi = read_l2diag_var(diag_file, 'solcal_shift')
-    #log_params = parse_solcal_log (log_file, nx)
+    if not os.path.isfile (diag_file):
+        print ("*** Error: cannot access diagnostic file: {}".format(diag_file))
+        sys.exit(1)
+    if not os.path.isfile (l2_file):
+        print ("*** Error: cannot access L2 file: {}".format(l2_file))
+        sys.exit(1)
 
-    # right after fitting, main_data_quality_flag is in product group
-    mdqfl = read_l2_var(l2_file, 'product', 'main_data_quality_flag')
+    try:
+        radshi = read_named_fit_parameter (diag_file, 'shi')
+        (nt,nx) = radshi.shape
+        solshi = read_l2diag_var(diag_file, 'solcal_shift')
+        #log_params = parse_solcal_log (log_file, nx)
 
-    if radshi is not None:
-        #write_params (outfile, log_params, radshi, mdqfl)
-        write_params2 (outfile, solshi, radshi, mdqfl)
+        # right after fitting, main_data_quality_flag is in product group
+        mdqfl = read_l2_var(l2_file, 'product', 'main_data_quality_flag')
+
+        if radshi is not None:
+            #write_params (outfile, log_params, radshi, mdqfl)
+            write_params2 (outfile, solshi, radshi, mdqfl)
+    except Exception as e:
+        print('*** Error: {}'.format(e))
 
 #===========================================
 if __name__ == '__main__':
