@@ -24,7 +24,7 @@ def get_db_path():
 
     return db_file_path
 
-def lookup_radiance_start_time (c, basename):
+def get_radiance_start_time (c, basename):
     c.execute ("select istart from 'RAD_L1' where filename='{}';".format(basename))
     result = c.fetchone()
     if result is None:
@@ -110,7 +110,7 @@ def main():
     parser = argparse.ArgumentParser(description='Select the appropriate destriping correction file')
     parser.add_argument ('--molecule', help="Molecule symbol")
     parser.add_argument ('--days',default=days, type=float, help="Acceptable offset in days")
-    parser.add_argument ('radiance_file', help="Basename of Level 1 radiance file")
+    parser.add_argument ('radiance_path', help="Path to Level 1 radiance file")
     if len(sys.argv)==1:
         parser.print_usage(sys.stderr)
         sys.exit(0)
@@ -118,12 +118,8 @@ def main():
 
     db_path = get_db_path()
 
-    with connect_database (db_path) as conn:
-        istart = lookup_radiance_start_time (conn.cursor(), args.radiance_file)
-
-    if istart is None:
-        print ('*** radiance file not in database: {}'.format (args.radiance_file))
-        sys.exit(1)
+    with NetCDFFile (args.radiance_path, "r") as nc:
+        istart = int(nc.time_coverage_start_since_epoch)
 
     with connect_database (db_path) as conn:
         istart_solar = find_most_recent_irradiance (conn.cursor(), istart)
