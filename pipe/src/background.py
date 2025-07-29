@@ -2,7 +2,7 @@
 import os
 import sys
 import time
-from datetime import datetime
+import datetime
 import argparse
 import yaml
 import numpy as np
@@ -45,7 +45,7 @@ def correct_background (dst, scd, bgrcor):
             dst_bgr.units = units
         else:
             dst_bgr = grp['background_correction']
-        add_history = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
+        add_history = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')+':background correction\n'
         dst.history = '{}{}'.format(dst.history,add_history)
         dst_bgr[:] = np.repeat(bgrcor[np.newaxis,:],scd.shape[0],axis=0)
         # leave L2 file's fitted_slant_column unchanged

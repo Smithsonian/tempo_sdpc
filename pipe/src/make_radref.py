@@ -3,7 +3,7 @@
 import numpy as np
 import numpy.ma as ma
 from netCDF4 import Dataset
-from datetime import datetime
+import datetime
 import os
 import yaml
 import sys
@@ -56,7 +56,7 @@ time_coverage_start = []
 time_coverage_end = []
 time_coverage_start_since_epoch = []
 time_coverage_end_since_epoch = []
-production_date_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+production_date_time = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
 radiance_granules = []
 cloud_granules = []
 begin_date = []

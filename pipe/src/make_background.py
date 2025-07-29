@@ -2,7 +2,7 @@
 import numpy as np
 import numpy.ma as ma
 from netCDF4 import Dataset
-from datetime import datetime
+import datetime
 from scipy.ndimage import generic_filter
 import os
 import yaml
@@ -73,7 +73,7 @@ begin_date = []
 begin_time = []
 end_date = []
 end_time = []
-production_date_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+production_date_time = datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
 input_granules = []
 title = control['title']
 corrected_product = []
