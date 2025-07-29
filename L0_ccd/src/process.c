@@ -83,6 +83,12 @@ static struct
 }
 Diagnostic_Controls;
 
+static int set_diagnostic_controls_index (int index)
+{
+   Diagnostic_Controls.index = index;
+   return 0;
+}
+
 /* Setting environment variable SDPC_DIAGNOSTIC_INDEX to
  * an integer >= 0 turns on diagnostic output for the specified
  * image index.
@@ -111,7 +117,6 @@ static int create_diagnostic_file (const Control_Type *ctrl, int num_parallel_ac
    int varid, ncid;
    int status = -1;
 
-   Diagnostic_Controls.index = ctrl->diagnostic_index;
    if (ctrl->diagnostic_index < 0)
      return 0;
 
@@ -1665,6 +1670,8 @@ int process_inputs (config_t *cfg, const Control_Type *ctrl)
         if (NULL == (tft = trend_collect_open (ctrl->trend_file, exposure_type)))
           goto return_status;
      }
+
+   (void) set_diagnostic_controls_index (ctrl->diagnostic_index);
 
    /* It's not expected that data from a linearity sweep will be processed
     * to Level 1, but if it is, then we'll treat it exactly the same
