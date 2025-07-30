@@ -60,7 +60,6 @@ def apply_background (control, corrfile, input_files):
     yn_L2_bgr = str_to_bool(control['yn_L2_write_background'])
 
     with Dataset(corrfile, 'r') as src:
-        medval = src.variables['destriping_correction'][:]
         bgrcor = src.variables['background_correction'][:]
 
     for fp in input_files:

@@ -1,9 +1,11 @@
-# TEMPO background correction control file.
+# TEMPO destriping and background correction control file.
 # This is a YAML file. It has to be run for each species after a full
-# scan of slant column densities and air mass factor calculations is
-# completed.
+# scan of slant column densities and air mass factor calculations is 
+# completed. If using any of this corrections for NO2, the stratospheric
+# tropospheric separation should be run after applying the de-striping
+# and/or radiance reference sector correction
 
-# The control file provides controls to choose which corrections to apply to
+# The control file provides controls to choose which correctios to apply to
 # input level 2 files
 # It always output the corrections to an auxiliary file to
 # Radiance input files
@@ -11,36 +13,22 @@ Input files:
 @LEVEL2_PRODUCT_PATHS@
 # Use only pixels with mincfr < cloud fraction < maxcfr
 mincfr: 0.0
-maxcfr: 1.0
-# Use only pixels within certain SZA and VZA limits
-maxsza: 85.0
-maxvza: 85.0
-# Use only unpolluted pixels with a priori VCD less than a threshold
-# vcd_apriori_type can be either 'none' (don't filter), 'troposphere' or 'total'
-vcd_apriori_type: 'troposphere' 
-maxvcd_apriori: 2e15
-# Set threshold for considering observed VCDs to use in calculation
-# vcd_obs_type can be either 'none' (don't filter) or 'total'
-vcd_obs_type: 'total'
-minvcd_obs: -1e16
-maxvcd_obs: 1e16 
+maxcfr: 0.5
 # RMS number of standard deviations (STD) to filter out pixels considered in the
-# background correction. MEDIAN(RMS) + nsigma*msig
+# destriping and background corrections. MEDIAN(RMS) + nsigma*msig
 # with msig = 1.4826 x MEDIAN(|RMS - MEDIAN(RMS)|)
 nsigma: 1.0
 # Main data quality flags of pixels to be considered in the corrections
-mqfval: [0,1]
-# Minimum number of pixels required to correct a cross-track position
-# If there are fewer than this number of pixels, don't correct this position
-minpixels: 10
-# Number of N/S cross track positions and polynomial order to use for 
-# cross track smoothing with Savitzky-Golay filter. The nxtrack window
-# size should be an odd number.
-smooth_nxtrack: 51
-smooth_polyorder: 3
+mqfval: [0]
+# Percentile used to calculate background correction
+# Only use pixels below "percentile" (a number between
+# 0 and 100)
+percentile: 90
+# Kernel size of median filter
+kernel: 250
 # Correction file attributes
 processing_version: @SDPC_BKGCORR_VERSION@
 output_filename: @BKGCORR_FILE_PATH@
-title: TEMPO background correction
-# Switch on to save diagnostic info to files
+title: TEMPO destriping and background corrections for HCHO
+# Switch to save diagnostic info to files
 yn_diagnostic: F

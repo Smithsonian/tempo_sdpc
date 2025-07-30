@@ -120,9 +120,9 @@ make_day_bkgcorr_file() # currently unused
        -e s,'@SDPC_BKGCORR_VERSION@',"$processing_version", \
        $SDPC_ROOT/etc/trace_gas/make_background.yml.in > $config_file
 
-   # Generate the destriping correction file
+   # Generate the background correction file
    make_background.py $config_file > $log_file 2>&1 || md_error_exit "make_background.py failed (see $log_file)" $LINENO
 
    # Register the file in the sqlite database.
-   ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   ln -s $bkgcorr_path $SDPC_ARCHIVE_DIR/registry/incoming
 }
