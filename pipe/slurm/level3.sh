@@ -83,19 +83,25 @@ no2_l2_split()
    log_message "strat/trop separation: $first_granule_bn scan"
    L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
    public_mirror_symlink "$l2_paths"
-   # Select sqlite database file path based on product type
-   case "$first_granule_bn" in
-      *_NRT_* )
-        dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
-        ;;
-      * )
-        dbfile="$SDPC_ARCHIVE_DBFILE"
-        ;;
-   esac
-   # Change asdc_status of NO2_L2 products and met files from 'defer' to 'new'
+}
+
+set_asdc_status_to_new()
+{
+   _is_nrt="$1"
+   l2_paths="$2"
+
+   if test $_is_nrt -ne 0 ; then
+      dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
+   else
+      dbfile="$SDPC_ARCHIVE_DBFILE"
+   fi
+
    tmpfile=$(mktemp)
    printf "%s\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile || error_exit "asdc_track_uploads failed: changing NO2_L2 asdc_status defer to new"
+   asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile
+   if test "$?" -ne 0 ; then
+      error_exit "asdc_track_uploads failed: changing $product_name asdc_status defer to new in $dbfile"
+   fi
    /bin/rm -f $tmpfile
 }
 
@@ -126,6 +132,7 @@ case "$l3_basename" in
        ;;
 esac
 
+# Optional: perform destriping
 _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
 for p in $_destripe_products ; do
     if test $p = $product_name ; then
@@ -134,6 +141,7 @@ for p in $_destripe_products ; do
     fi
 done
 
+# Optional: perform background correction
 _bkgcorr_products=$(echo $SDPC_BKGCORR_TG | tr , ' ')
 for p in $_bkgcorr_products ; do
     if test $p = $product_name ; then
@@ -156,6 +164,10 @@ case "$product_name" in
   * )
      ;;
 esac
+
+# At this point, any L2 products with asdc_status='defer'
+# should be ready to upload to ASDC, so we set asdc_status='new'
+set_asdc_status_to_new "$is_nrt" "$l2_paths"
 
 # Run L2_regrid on all L2 data products
 
