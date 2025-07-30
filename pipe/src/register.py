@@ -384,8 +384,6 @@ def maybe_handle_scan_completion (conn_ro, product_name, scan_id, is_nrt):
 
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
-        if not is_nrt:
-            maybe_handle_L2_day_completion (conn_ro, product_name, scan_id)
 
 def sat_local_day_time_range (sat_day):
     """
@@ -436,11 +434,17 @@ def maybe_handle_L2_day_completion (conn_ro, product_name, scan_id):
     to implement that robustly. What automated source could reliably
     generate that signal?
     """
-    if not "L2" in product_name:
+    if not "L3" in product_name:
         return
+    """
+    The moment when an L3 product is archived is a good time to examine
+    whether a day's worth of L2 data products has completed processing.
+    """
+    l2_product_name = product_name.replace("L3","L2")
+
     sat_day = int(scan_id/1000)
     cur = conn_ro.cursor()
-    num_products = count_finished_granules_day (cur, product_name, sat_day)
+    num_products = count_finished_granules_day (cur, l2_product_name, sat_day)
 
     have_rad_l1a_table = table_exists (conn_ro, 'RAD_L1a')
     if have_rad_l1a_table:
@@ -452,7 +456,7 @@ def maybe_handle_L2_day_completion (conn_ro, product_name, scan_id):
         return
 
     if num_products == num_radiance:
-        handle_L2_day_completion (cur, product_name, sat_day)
+        handle_L2_day_completion (cur, l2_product_name, sat_day)
 
 def table_exists (conn, table_name):
     cur = conn.cursor()
@@ -467,7 +471,11 @@ def insert_product_entry (db_path, product_name, keys, is_nrt):
             status = insert_radiance_product_entry (conn, product_name, keys)
         if status == 0:
             with connect_database (db_path, "ro") as conn_ro:
-                maybe_handle_scan_completion (conn_ro, product_name, keys["scan_id"], is_nrt)
+                if "L2" in product_name:
+                    maybe_handle_scan_completion (conn_ro, product_name, keys["scan_id"], is_nrt)
+                elif "L3" in product_name and not is_nrt:
+                    maybe_handle_L2_day_completion (conn_ro, product_name, keys["scan_id"])
+
     elif product_name in Radiance_Files:
         with connect_database (db_path, "rw") as conn:
             status = insert_radiance_entry (conn, product_name, keys)
