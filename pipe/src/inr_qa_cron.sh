@@ -42,11 +42,11 @@ fi
 tar_prefix="tempo_inrq_d"
 # Prefix used to construct tar file name to be archived
 
-have_unchecked_data()
+have_data()
 {
    _ymd=$1
    # Unix time_t early on the specified date
-   _t1=$(date --date "${_ymd}T04:00:00-06:00" +%s)
+   _t1=$(date --date "${_ymd}T10:00:00Z" +%s)
    # Unix time_t at the TEMPO epoch (1980-01-06T00:00:00Z)
    _tempo_epoch_timet=315964800
    # TEMPO timestamp early on the specified date
@@ -59,17 +59,8 @@ have_unchecked_data()
       echo "$PGMNAME: no RAD_L1 data in time range [$_tempo_t1, $_tempo_t2]"
       exit 0
    fi
-   # Satellite-local day number for the specified date
-   _sat_day="$((${_tempo_t1}/86400))"
-   # Path to tar file containing output for this date
-   _archived_tar_path="$SDPC_ARCHIVE_DIR/L1/RAD/D${_sat_day}/inr/${tar_prefix}${_sat_day}.tar"
-   # Exit if the tar file is already archived
-   if test -f $_archived_tar_path ; then
-      echo "$PGMNAME: file exists: $_archived_tar_path"
-      exit 0
-   fi
 }
-have_unchecked_data $date_ymd
+have_data $date_ymd
 
 # Perform the INR QA check
 log_path="$root_work_dir/log.$(date +%s).txt"
@@ -109,5 +100,6 @@ dest_dir="$SDPC_ARCHIVE_DIR/L1/RAD/D${sat_day}/inr/"
 if ! test -d $dest_dir ; then
    mkdir -p $dest_dir || exit 1
 fi
+# Assume it's ok to over-write any previous version
 /bin/mv $log_path $dest_dir/${tar_prefix}${sat_day}.log
 /bin/mv $tar_path $dest_dir
