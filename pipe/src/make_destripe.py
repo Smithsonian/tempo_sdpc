@@ -60,6 +60,8 @@ vcd_apriori_type = control['vcd_apriori_type']
 maxvcd_apriori = float(control['maxvcd_apriori'])
 if vcd_apriori_type == 'troposphere':
     filter_vcd_trop_ap = True
+else:
+    filter_vcd_trop_ap = False
 # Limits to filter for VCD value from observation
 # Valid values for type are 'none' or 'total'
 vcd_obs_type = control['vcd_obs_type']
@@ -131,20 +133,28 @@ for fp in input_files:
             la = src['geolocation']['latitude'][:]
             m = src['product']['main_data_quality_flag'][:]
             r = src['qa_statistics']['fit_rms_residual'][:]
-            a = src['support_data']['amf_total'][:]
+            grp_prod = src['product']
+            grp_supp = src['support_data']
+            if 'amf_total' in grp_supp.variables:
+                a = src['support_data']['amf_total'][:]
+            elif 'amf' in grp_supp.variables:
+                a = src['support_data']['amf'][:]
             c = src['support_data']['amf_cloud_fraction'][:]
             sz = src['geolocation']['solar_zenith_angle'][:]
             vz = src['geolocation']['viewing_zenith_angle'][:]
             s = src['support_data']['fitted_slant_column'][:]
             p = src['support_data']['gas_profile'][:]
-            tp = src['support_data']['tropopause_pressure'][:]
             sp = src['support_data']['surface_pressure'][:]
-            vt = src['support_data']['vertical_column_total'][:]
+            if 'vertical_column_total' in grp_supp.variables:
+                vt = src['support_data']['vertical_column_total'][:]
+            elif 'vertical_column' in grp_prod.variables:
+                vt = src['product']['vertical_column'][:]
             units = src['support_data']['fitted_slant_column'].units
             vtot = ma.sum(p,axis=2)  # vcd used here is a priori vcd
 
             if filter_vcd_trop_ap:
             # Calculate a priori VCD trop which is needed to filter polluted pixels
+                tp = src['support_data']['tropopause_pressure'][:]
                 eta_a = src['support_data']['surface_pressure'].Eta_A
                 eta_b = src['support_data']['surface_pressure'].Eta_B
                 pz = eta_a + eta_b * sp[:,:,np.newaxis]

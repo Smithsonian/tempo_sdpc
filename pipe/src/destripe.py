@@ -69,11 +69,14 @@ def apply_destripe (corrfile, input_files):
         try:
             with Dataset(fp,'r+') as dst:
                 print_message('destriping L2 file {}'.format(fp))
-                amf = dst['support_data']['amf_total'][:]
-                scd = dst['support_data']['fitted_slant_column'][:]
-                scd = destripe (dst, scd, stripe_val)
                 grp_prod = dst['product']
                 grp_supp = dst['support_data']
+                if 'amf_total' in grp_supp.variables:
+                    amf = dst['support_data']['amf_total'][:]
+                elif 'amf' in grp_supp.variables:
+                    amf = dst['support_data']['amf'][:]
+                scd = dst['support_data']['fitted_slant_column'][:]
+                scd = destripe (dst, scd, stripe_val)
                 # Save corrected SCDs and VCDs to L2 file
                 dst['support_data']['fitted_slant_column'][:] = scd
                 vcd = scd/amf

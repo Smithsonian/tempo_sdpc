@@ -18,7 +18,7 @@ maxsza: 85.0
 maxvza: 85.0
 # Use only unpolluted pixels with a priori VCD less than a threshold
 # vcd_apriori_type can be either 'none' (don't filter), 'troposphere' or 'total'
-vcd_apriori_type: 'troposphere' 
+vcd_apriori_type: 'total'
 maxvcd_apriori: 2e15
 # Set threshold for considering observed VCDs to use in calculation
 # vcd_obs_type can be either 'none' (don't filter) or 'total'
