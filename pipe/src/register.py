@@ -28,7 +28,10 @@ Radiance_File_Attributes = Coverage_Time_Attributes \
 
 Solcal_Products = ["IRR" + m + "_L2" for m in ["O2O2", "HCHO", "NO2", "BRO", "CHOCHO"]]
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
+Asdc_Excluded_Products = Solcal_Products
+Asdc_Excluded_Products += ['RAD_L1a', 'RADT_L1a']
+
+Asdc_Status = {"expired":-10, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100, "excluded":200}
 
 Asdc_Status_Defer = Asdc_Status["defer"]
 
@@ -532,6 +535,10 @@ class Basename_Parser_Class:
 
 Basename_Parser = Basename_Parser_Class()
 
+def initial_asdc_status (keys, status):
+    keys["asdc_status"] = status
+    keys["asdc_status_met"] = status
+
 def process_file (db_path, filename, nc):
 
     basename = os.path.basename (filename)
@@ -585,21 +592,19 @@ def process_file (db_path, filename, nc):
     else:
         keys["asdc_status_met"] = Asdc_Status["nonexistent"]
 
-    # Some products require additional processing steps before
-    # uploading to ASDC.  Such products are initially registered
-    # with status "defer", which is later updated to "new" (elsewhere)
-    # upon completion of the final processing step.
-    defer_asdc_upload = False
-    if product_name in Solcal_Products:
-        defer_asdc_upload = True
-    if product_name in Destripe_Products and ('destriping_correction' not in nc['support_data'].variables):
-        defer_asdc_upload = True
-    if product_name in Background_Correction_Products and ('background_correction' not in nc['support_data'].variables):
-        defer_asdc_upload = True
+    # Some products require additional processing steps before uploading to ASDC.
+    # Such products are initially registered with status "defer", which is later
+    # updated to "new" (elsewhere) upon completion of the final processing step.
 
-    if defer_asdc_upload:
-        keys["asdc_status"] = Asdc_Status_Defer
-        keys["asdc_status_met"] = Asdc_Status_Defer
+    # Note that a product can be in both Destripe_Products and Background_Correction_Products
+    if product_name in Destripe_Products and ('destriping_correction' not in nc['support_data'].variables):
+        initial_asdc_status (keys, Asdc_Status_Defer)
+    if product_name in Background_Correction_Products and ('background_correction' not in nc['support_data'].variables):
+        initial_asdc_status (keys, Asdc_Status_Defer)
+
+    # Some products are never uploaded to ASDC
+    if product_name in Asdc_Excluded_Products:
+        initial_asdc_status (keys, Asdc_Status["excluded"])
 
     if product_name in Radiance_Files:
         keys["scan_id"] = get_scan_id (final_path)

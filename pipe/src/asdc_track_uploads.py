@@ -10,7 +10,7 @@ import fnmatch
 import argparse
 import traceback
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
+Asdc_Status = {"expired":-10, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100, "excluded":200}
 DryRun = False
 DB_Path = None
 TraceSQL = False
