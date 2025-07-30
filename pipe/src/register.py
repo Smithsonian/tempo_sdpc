@@ -748,7 +748,6 @@ class Signal_Catcher:
     self.exit = Event()
     signal.signal(signal.SIGINT, self.handler)
     signal.signal(signal.SIGTERM, self.handler)
-    signal.signal(signal.SIGHUP, self.config_update)
 
   def wait(self, delay):
       self.exit.wait(delay)
