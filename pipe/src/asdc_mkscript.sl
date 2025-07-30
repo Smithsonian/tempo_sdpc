@@ -41,15 +41,26 @@ define process_file_nc (types, path, is_aws_upload)
      return;
 
    variable basename = path_basename (path);
+   variable is_nrt = (0 != is_substr (basename, "_NRT_"));
    variable tok = strtok (basename, "_");
-   variable product_type = strjoin (tok[[1:3]], "_");
+
+   variable product_type;
+   if (is_nrt == 0)
+     {
+        product_type = strjoin (tok[[1:3]], "_");   % e.g. RAD_L1_V01
+     }
+   else
+     {
+        product_type = strjoin (tok[[1:4]], "_");   % e.g. RAD_L1_NRT_V01
+     }
+
    variable data_type, data_version;
    if (0 != is_substr (basename, "_L0_"))
      {
         data_type = "TEMPO_NONORDERABLE";
         data_version = strtrim_beg (tok[3], "V0");   % e.g. 1
      }
-   else if (0 != is_substr (basename, "_NRT_"))
+   else if (0 != is_nrt)
      {
         data_type = strjoin (tok[[0:3]], "_");       % e.g. TEMPO_RAD_L1_NRT
         data_version = tok[4];                       % e.g. V03
