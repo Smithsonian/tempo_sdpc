@@ -54,7 +54,7 @@ def select_suitable_destripe (c, molecule, window_days, istart, istart_solar):
     else:
         istart_min = istart - dt_max
 
-    cmd = "select path from 'DSTR{}_L2' where istart > {} order by istart desc limit 1".format(molecule, istart_min)
+    cmd = "select path from 'DSTR{}_L2' where istart between {} and {} order by istart desc limit 1".format(molecule, istart_min, istart)
     c.execute(cmd)
     path = c.fetchone()
     if path is None:
