@@ -9,20 +9,30 @@ fi
 #set -e
 set -u
 
-if test $# -ne 1 ; then
-    echo "Usage: $0 Bucket:Bucket_Directory"
+if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
+   echo "asdc_pull_s3.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
+   exit 0
+fi
+
+if test $# -lt 1 ; then
+    echo "Usage: $0 Bucket:Bucket_Directory [DBFILE]"
     exit 0
 fi
 
 s3_bucket=$1
+if test $# -eq 1 ; then
+   source_dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
+else
+   source_dbfile="$2"
+fi
 
-if ! test -f "$SDPC_ARCHIVE_DBFILE_NRT" ; then
-   echo "asdc_pull_s3.sh: nonexistent database file: $SDPC_ARCHIVE_DBFILE_NRT"
+if ! test -f "$source_dbfile" ; then
+   echo "asdc_pull_s3.sh: nonexistent database file: $source_dbfile"
    exit 0
 fi
 
 pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs_s3.sqlite"
-ASDC_TRACK_UPLOADS="asdc_track_uploads.py --dbfile $SDPC_ARCHIVE_DBFILE_NRT"
+ASDC_TRACK_UPLOADS="asdc_track_uploads.py --dbfile $source_dbfile"
 
 remote_pan_list="pan_s3.lis.remote"
 pan_list="pan_s3.lis"

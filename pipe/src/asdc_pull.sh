@@ -9,6 +9,11 @@ fi
 #set -e
 set -u
 
+if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
+   echo "asdc_pull.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
+   exit 0
+fi
+
 if test $# -ne 1 ; then
     echo "Usage: $0 USER@HOST:dirpath"
     exit 0

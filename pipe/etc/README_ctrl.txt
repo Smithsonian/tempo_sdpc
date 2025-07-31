@@ -18,3 +18,9 @@ FILENAME: disable-destripe-CLDO4
 FUNCTION: When $SDPC_PIPE_DIR/ctrl/disable-destripe-CLDO4 exists,
           destriping of CLDO4 data products is disabled
 
+FILENAME: disable-asdc-transfer
+FUNCTION: When $SDPC_PIPE_DIR/ctrl/disable-asdc-transfer exists,
+          the ASDC service(s) prepare files for upload by
+          generating file manifests, but no data files are
+          uploaded or downloaded.
+

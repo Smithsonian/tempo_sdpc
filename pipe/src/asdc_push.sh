@@ -73,6 +73,11 @@ do_asdc_upload()
   # generate manifest files and upload script
   asdc_mkscript.sl --dest $user_at_host --pdr $pdr_list --output $script $file_list
 
+  if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
+     echo "asdc_push.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
+     return
+  fi
+
   # perform the upload
   error_flag=0
   lftp -f $script || error_flag=1

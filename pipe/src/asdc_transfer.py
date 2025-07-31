@@ -58,6 +58,9 @@ def main():
 
     sig = Signal_Catcher()
 
+    # It's convenient to define this here so it's available for all push/pull scripts
+    os.putenv ("SDPC_ASDC_TRANSFER_DISABLE", os.path.expandvars ("$SDPC_PIPE_DIR/ctrl/disable-asdc-transfer"))
+
     logprint ("Started")
 
     while not sig.caught():
