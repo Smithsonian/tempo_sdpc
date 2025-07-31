@@ -8,8 +8,13 @@ import sqlite3
 import re
 import argparse
 
-Asdc_Status = {"nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100}
+Asdc_Status = {"expired":-10, "nonexistent":-2, "problem":-1, "new": 0, "pending":1, "uploaded":2, "accepted":3, "defer":100, "excluded":200}
 Asdc_Status_Lookup = {value: key for key, value in Asdc_Status.items()}
+
+Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]+", "^IRR[A-Za-z0-9]+"])
+
+def excluded_table (table_name):
+    return any(re.findall (Uploads_Excluded_Regex, table_name))
 
 # python3 will provide file= redirection to stderr
 def eprint(*args, **kwargs):
@@ -99,6 +104,8 @@ def print_table_summaries (db_file_path, table_list, tbeg, tend):
         print ("#         table  age_upload  age_ingest       size     size    total  accepted  pending  problem")
         print ("#                     [min]       [min]       [MB]     [GB]                                     ")
         for table in table_list:
+            if excluded_table (table):
+                continue
             status_count, num_files = table_status_summary (cur, table, tbeg, tend)
             stats = table_stats (cur, table, tbeg, tend)
             print ("%15s  %10.1f  %10.1f %9.1f %9.1f  %7d   %7d  %7d  %7d" % (table,

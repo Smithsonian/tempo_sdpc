@@ -16,7 +16,7 @@ DB_Path = None
 TraceSQL = False
 
 # Don't upload from table names that match any of these regular expressions
-Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]*"])
+Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]+", "^IRR[A-Za-z0-9]+"])
 
 class Tokenizer:
     def __init__ (self):
@@ -78,6 +78,9 @@ def table_files_matching_status (cur, table_name, asdc_status, limit=0, order='a
 
     return path_list
 
+def excluded_table (table_name):
+    return any(re.findall (Uploads_Excluded_Regex, table_name))
+
 def files_matching_status (cur, asdc_status, **kwargs):
     """
     Returns a dict type, e.g:
@@ -87,7 +90,7 @@ def files_matching_status (cur, asdc_status, **kwargs):
 
     paths = {}
     for tbl in table_names:
-        if any(re.findall (Uploads_Excluded_Regex, tbl)):
+        if excluded_table (tbl):
             continue
         paths[tbl] = table_files_matching_status (cur, tbl, asdc_status, **kwargs)
 
@@ -410,7 +413,7 @@ def print_report (asdc_status_name, ymd, limit=0):
         cur = conn.cursor()
         table_names = get_product_table_names (cur)
         for tbl in table_names:
-            if any(re.findall (Uploads_Excluded_Regex, tbl)):
+            if excluded_table (tbl):
                 continue
             sql = "select {times},{other_columns} from {tbl} where asdc_status = {asdc_status} or asdc_status_met = {asdc_status} order by asdc_upload_time {limit_qual}".format (**locals())
             print_query (cur, sql)
