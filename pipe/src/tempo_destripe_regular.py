@@ -635,7 +635,7 @@ def tempo_addorupdate_1dfloat(filename,groupname,varname,varval,
 # write 2D variable to level 2 ncdf file
 def tempo_addorupdate_2dfloat(filename,groupname,varname,varval,
         missing=missval,comment='None',long_name='None',units='None',
-        valid_min=np.float(-1.e45),valid_max=np.float(1.e45)):
+        valid_min=float(-1.e45),valid_max=float(1.e45)):
 
     with Dataset(filename,'r+') as dst:
         al = dst.dimensions['mirror_step'].size
