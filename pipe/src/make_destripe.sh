@@ -126,5 +126,7 @@ make_day_destripe_file()
    make_destripe.py $config_file > $log_file 2>&1 || md_error_exit "make_destripe.py failed (see $log_file)" $LINENO
 
    # Register the file in the sqlite database.
-   ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   if test -f $destripe_path ; then
+      ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   fi
 }

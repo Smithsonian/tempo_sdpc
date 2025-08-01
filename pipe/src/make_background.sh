@@ -124,5 +124,7 @@ make_day_bkgcorr_file() # currently unused
    make_background.py $config_file > $log_file 2>&1 || md_error_exit "make_background.py failed (see $log_file)" $LINENO
 
    # Register the file in the sqlite database.
-   ln -s $bkgcorr_path $SDPC_ARCHIVE_DIR/registry/incoming
+   if test -f $bkgcorr_path ; then
+      ln -s $bkgcorr_path $SDPC_ARCHIVE_DIR/registry/incoming
+   fi
 }

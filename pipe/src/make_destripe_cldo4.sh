@@ -46,5 +46,7 @@ make_cldo4_destripe_file()
    fi
 
    # Register the file in the sqlite database.
-   ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   if test -f $destripe_path ; then
+      ln -s $destripe_path $SDPC_ARCHIVE_DIR/registry/incoming
+   fi
 }
