@@ -49,13 +49,15 @@ log_message "processing $pathlist_basename"
 
 # Parse pathlist filename:
 pathlist_basename_sans_extname=$(basename $pathlist_file .lis)
-product_type=$(echo $pathlist_basename_sans_extname | cut -d_ -f2)
+# product_type, e.g. NO2_L2
+product_type=$(echo $pathlist_basename_sans_extname | cut -d_ -f2,3)
+product_type_sans_level=$(echo $product_type | cut -d_ -f1)
 
 # Make daily destriping files for selected products
 if test -n $SDPC_MAKE_DESTRIPE_TG ; then
-   _destripe_products=$(echo $SDPC_MAKE_DESTRIPE_TG | tr , ' ')
+   _destripe_products="$(echo $SDPC_MAKE_DESTRIPE_TG | tr , ' ')"
    for p in $_destripe_products ; do
-       if test $p = $product_type ; then
+       if test $p = $product_type_sans_level ; then
           make_day_destripe_file $pathlist_file
           break
        fi
