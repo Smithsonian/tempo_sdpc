@@ -36,7 +36,7 @@ def destripe (dst, scd, stripe_val):
     try:
         grp = dst['support_data']
         if 'destriping_correction' not in grp.variables:
-            dst_des = grp.createVariable('destriping_correction',np.float32,('xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
+            dst_des = grp.createVariable('destriping_correction',np.float32,('mirror_step','xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
             dst_des.long_name = 'destriping correction'.format(corrected_product)
             dst_des.comment = 'across track dependent {} slant column destriping correcton'.format(corrected_product)
             dst_des.units = units
@@ -44,7 +44,7 @@ def destripe (dst, scd, stripe_val):
             dst_des = grp['destriping_correction']
         add_history = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')+':destriping correction\n'
         dst.history = '{}{}'.format(dst.history,add_history)
-        dst_des[:] = stripe_val
+        dst_des[:] = np.repeat(stripe_val[np.newaxis,:],scd.shape[0],axis=0)
         # Save original fitted slant column density from spectral fit
         if 'fitted_slant_column_uncorrected' not in grp.variables:
             dst_scd_orig = grp.createVariable('fitted_slant_column_uncorrected',np.float32,('mirror_step','xtrack'),fill_value=-1.0e30,zlib=True,complevel=Deflate_Level)
