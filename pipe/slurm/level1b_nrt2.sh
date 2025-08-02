@@ -106,7 +106,7 @@ truncate -s 0 $destripe_file_list
 if test -n "$SDPC_DESTRIPE_TG" ; then
    _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
    for p in $_destripe_products ; do
-       molecule=$(echo $p | tr -d _L2)
+       molecule=$(echo $p | sed -e 's,_L2,,')
        destripe_path=$(select_destripe.py --molecule $molecule $rad_path)
        if test -f "$destripe_path" ; then
           echo $destripe_path >> $destripe_file_list
