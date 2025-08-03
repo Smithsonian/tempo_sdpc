@@ -116,7 +116,7 @@ assign_solcal_cache_file()
   dir=$molecule
 
   if test -s $solcal_file_list ; then
-     path=$(grep "_IRR${molecule}_" $solcal_file_list)
+     path=$(grep "_IRR${molecule}_" $solcal_file_list || true)
      if test -f "$path" ; then
         printf "$path\n" > "$dir/$solcal_file_list"
      fi
@@ -139,7 +139,7 @@ assign_destripe_file()
   dir=$molecule
 
   if test -s $destripe_file_list ; then
-     path=$(grep "_DSTR${molecule}_" $destripe_file_list)
+     path=$(grep "_DSTR${molecule}_" $destripe_file_list || true)
      if test -f "$path" ; then
         printf "$path\n" > "$dir/$destripe_file_list"
      fi

@@ -227,16 +227,15 @@ derive_cloud_o4_params()
 
    out_basename="$(basename $product_file .nc)"
 
-   # Destripe if possible:
-   destripe_file=""
-   apply_destripe=0
+   destripe_file="nonexistent"
    if test -s "$destripe_file_list" ; then
-      destripe_file="$(grep DSTRCLDO4 $destripe_file_list)"
-      if test -f "$destripe_file" ; then
-         tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
-         apply_destripe=1
+      destripe_file_from_lookup="$(grep DSTRCLDO4 $destripe_file_list || true)"
+      if test -f "$destripe_file_from_lookup" ; then
+         destripe_file="$destripe_file_from_lookup"
       fi
    fi
+   # Destripe if possible, but nonexistent destripe file is ok here:
+   tempo_destripe_regular.py --mode apply --desfnm "$destripe_file" --l2fnm "$product_file" > log_destripe.txt 2>&1
 
    # edit the control file template
    sed -e "s,@cldo4_file@,$product_file," \
@@ -244,7 +243,7 @@ derive_cloud_o4_params()
        -e "s,@irradiance_file@,$irradiance_file," \
        -e "s,@product_file@,$product_file," \
        -e "s,@refdata_dir@,$refdata_dir," \
-       -e "s,@apply_destripe@,$apply_destripe," \
+       -e "s,@apply_destripe@,1," \
        -e "s,@apply_solshift@,0," \
        -e "s,@apply_radshift@,0," \
        $template_ctrl > $ctrl_file
