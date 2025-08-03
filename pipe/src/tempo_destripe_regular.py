@@ -98,8 +98,8 @@ def derive_descor(input_files,nx=nXtrack,fout=None,
     minscdnorm = minscd/normcol
 
     #initialize masked arrays
-    rms = ma.array(np.zeros([1,nx],dtype=np.float),mask=True)
-    scd = ma.array(np.zeros([1,nx],dtype=np.float),mask=True)
+    rms = ma.array(np.zeros([1,nx],dtype=float),mask=True)
+    scd = ma.array(np.zeros([1,nx],dtype=float),mask=True)
 
     nfiles = 0 # count number of files in input_files
 
@@ -614,7 +614,7 @@ def tempo_addorupdate_1dfloat(filename,groupname,varname,varval,
                 'valid_min':valid_min,'units':units,\
                 'valid_max':valid_max,\
                 }
-           create_variable(dst.groups[groupname],varname,np.float,\
+           create_variable(dst.groups[groupname],varname,np.float64,\
                 ('xtrack'),attributes,
                 fill_value=missing)
         else:
@@ -646,7 +646,7 @@ def tempo_addorupdate_2dfloat(filename,groupname,varname,varval,
                 'valid_min':valid_min,'units':units,\
                 'valid_max':valid_max,\
                 }
-           create_variable(dst.groups[groupname],varname,np.float,\
+           create_variable(dst.groups[groupname],varname,np.float64,\
                 ('mirror_step','xtrack'),attributes,
                 fill_value=missing)
         else:
@@ -678,21 +678,21 @@ def create_descor_diagfile(diagfnm,medval00,medval_fit,descor,nx=nXtrack):
 
             # Create variables
             print('descor')
-            dst_des = dst.createVariable('descor',np.float,('cross_track'),
+            dst_des = dst.createVariable('descor',np.float64,('cross_track'),
                       fill_value=-1.0e30,zlib=True,complevel=4)
             dst_des.title = 'final destriping vector (divide)'
             dst_des.units = '1'
             dst_des[:] = descor
 
             print('medval00')
-            dst_medval = dst.createVariable('medval00',np.float,('cross_track'),
+            dst_medval = dst.createVariable('medval00',np.float64,('cross_track'),
                       fill_value=-1.0e30,zlib=True,complevel=4)
             dst_medval.title = 'median scd used for descor00'
             dst_medval.units = 'molec cm^-2'
             dst_medval[:] = medval00
 
             print('medval_fit')
-            dst_medfit = dst.createVariable('medval_fit',np.float,('cross_track'),
+            dst_medfit = dst.createVariable('medval_fit',np.float64,('cross_track'),
                       fill_value=-1.e30,zlib=True,complevel=4)
             dst_medfit.title = 'fit to medval00'
             dst_medfit.units = 'molec cm^-2'
@@ -789,14 +789,14 @@ def create_scddes_file(fnm,scd,scddes,descor):
                 dst_nint = dst.createDimension('interval',ninterval)
 
             # Create variables
-            dst_des = dst.createVariable('fitted_slant_column',np.float,
+            dst_des = dst.createVariable('fitted_slant_column',np.float64,
                 ('mirror_step','cross_track'),fill_value=-1.0e30,
                 zlib=True,complevel=4)
             dst_des.title = 'fitted_slant_column'
             dst_des.units = 'molec^2 cm^-5'
             dst_des[:] = scd
 
-            dst_des2 = dst.createVariable('scddes',np.float,
+            dst_des2 = dst.createVariable('scddes',np.float64,
                 ('mirror_step','cross_track'),fill_value=-1.0e30,
                 zlib=True,complevel=4)
             dst_des2.title = 'scddes'
@@ -804,13 +804,13 @@ def create_scddes_file(fnm,scd,scddes,descor):
             dst_des2[:] = scddes
 
             if (ndimdes == 1):
-               dst_des3 = dst.createVariable('descor',np.float,
+               dst_des3 = dst.createVariable('descor',np.float64,
                    ('cross_track'),fill_value=-1.0e30)
                dst_des3.title = 'descor'
                dst_des3.units = '1'
                dst_des3[:] = descor
             else:
-               dst_des3 = dst.createVariable('descor',np.float,
+               dst_des3 = dst.createVariable('descor',np.float64,
                    ('cross_track','interval'),fill_value=-1.0e30,
                    zlib=True,complevel=4)
                dst_des3.title = 'descor'
