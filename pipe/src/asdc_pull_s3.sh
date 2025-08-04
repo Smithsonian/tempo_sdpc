@@ -137,7 +137,8 @@ if test x"$num_pdr" = x0 ; then
    exit 0
 fi
 
-download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_s3_%Y%jT%H%M%SZ)"
+uniqify="$(mktemp XXXX)"
+download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_s3_%Y%jT%H%M%SZ_${uniqify})"
 
 do_asdc_s3_download $download_dir_path
 

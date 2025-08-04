@@ -43,6 +43,8 @@ def main():
                         help="time interval [sec] between updates")
     parser.add_argument('--script-fmt', default=None,
                         help="Push/pull script basename format, e.g. asdc_%%s.sh where %%s is push|pull")
+    parser.add_argument('--dbfile', default=None,
+                        help="Source sqlite database file")
     parser.add_argument('dest', default=None,
                         help="Destination string, e.g. bucket:dir or user@host:dir")
     if len(sys.argv) == 1:
@@ -52,9 +54,17 @@ def main():
 
     wait = abs(args.wait)
     dest = args.dest
+    dbfile = args.dbfile
 
     pull_script = args.script_fmt % ("pull")
     push_script = args.script_fmt % ("push")
+
+    if dbfile is None:
+        pull_args = [pull_script, dest]
+        push_args = [push_script, dest]
+    else:
+        pull_args = [pull_script, dest, dbfile]
+        push_args = [push_script, dest, dbfile]
 
     sig = Signal_Catcher()
 
@@ -64,8 +74,8 @@ def main():
     logprint ("Started")
 
     while not sig.caught():
-        obj = subprocess.run ([pull_script, dest])
-        obj = subprocess.run ([push_script, dest])
+        obj = subprocess.run (pull_args)
+        obj = subprocess.run (push_args)
         sig.wait(wait)
 
     logprint ("Exiting: caught signal = {}".format(sig.signum))
