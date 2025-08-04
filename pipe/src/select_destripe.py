@@ -42,19 +42,28 @@ def find_most_recent_irradiance (c, istart):
 
 def select_suitable_destripe (c, molecule, window_days, istart, istart_solar):
     """
+    Suitable destriping file should come no later than the previous operational day.
+    Earliest possible start time on any given day is around 10:00:00Z, so the
+    destriping file start time should be earlier than that.
+    Given any timestamp, midnight UTC is: int(istart/86400)*86400, so 10Z is
+    10*3600 sec later.
+    """
+    istart_max = int(istart/86400)*86400 + 10*3600
+
+    """
     Look for a pre-computed destriping file generated since the most recent
     solar calibration observation.  If none exists, then an alternate destriping
     method will be used.
     """
     dt_max = window_days * 86400
-    dt_irr = istart - istart_solar
+    dt_irr = istart_max - istart_solar
 
     if dt_irr < dt_max:
         istart_min = istart_solar
     else:
-        istart_min = istart - dt_max
+        istart_min = istart_max - dt_max
 
-    cmd = "select path from 'DSTR{}_L2' where istart between {} and {} order by istart desc limit 1".format(molecule, istart_min, istart)
+    cmd = "select path from 'DSTR{}_L2' where istart between {} and {} order by istart desc limit 1".format(molecule, istart_min, istart_max)
     c.execute(cmd)
     path = c.fetchone()
     if path is None:
