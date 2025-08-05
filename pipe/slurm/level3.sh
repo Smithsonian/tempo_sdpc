@@ -85,7 +85,7 @@ no2_l2_split()
    public_mirror_symlink "$l2_paths"
 }
 
-set_asdc_status_to_new()
+change_asdc_status_defer_to_new()
 {
    _is_nrt="$1"
    l2_paths="$2"
@@ -98,7 +98,7 @@ set_asdc_status_to_new()
 
    tmpfile=$(mktemp)
    printf "%s\n" $l2_paths > $tmpfile
-   asdc_track_uploads.py --dbfile $dbfile --stat --include-met --set new $tmpfile
+   asdc_track_uploads.py --dbfile $dbfile --undefer $tmpfile
    if test "$?" -ne 0 ; then
       error_exit "asdc_track_uploads failed: changing $product_name asdc_status defer to new in $dbfile"
    fi
@@ -166,8 +166,8 @@ case "$product_name" in
 esac
 
 # At this point, any L2 products with asdc_status='defer'
-# should be ready to upload to ASDC, so we set asdc_status='new'
-set_asdc_status_to_new "$is_nrt" "$l2_paths"
+# should be ready to upload to ASDC, so we set them to asdc_status='new'
+change_asdc_status_defer_to_new "$is_nrt" "$l2_paths"
 
 # Run L2_regrid on all L2 data products
 

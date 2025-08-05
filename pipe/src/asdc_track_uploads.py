@@ -394,6 +394,35 @@ def set_file_status (status, file_list, update_stat, include_met):
             for f in table_lists[table_name]:
                 update_file_status (conn.cursor(), table_name, f, Asdc_Status[status], status_time, update_stat=update_stat, include_met=include_met)
 
+def undefer_table_files (table_name, path_list):
+    basenames = [os.path.basename(p) for p in path_list]
+    asdc_status_new = Asdc_Status["new"]
+    asdc_status_defer = Asdc_Status["defer"]
+    if not DryRun:
+        with connect_database("rw") as conn:
+            conn.executemany ("update {} set asdc_status={}, asdc_status_met={} where asdc_status={} and filename=?".format(table_name, asdc_status_new, asdc_status_new, asdc_status_defer), zip(basenames))
+
+def undefer_files (file_list):
+    with open(file_list, "r") as fp:
+        files = fp.readlines()
+    files = [f.strip() for f in files]
+    # filter out empty strings
+    files = list(filter (None, files))
+
+    # To streamline transactions and minimize the duration each connection is held open,
+    # we process the files by table, starting a new database connection for each table.
+
+    table_lists = {}
+    for f in files:
+        table_name = table_name_for_file (f)
+        if table_name in table_lists.keys():
+            table_lists[table_name].append(f)
+        else:
+            table_lists[table_name] = [f]
+
+    for table_name in table_lists.keys():
+        undefer_table_files (table_name, table_lists[table_name])
+
 def print_query (cur, sql):
     cur.execute (sql)
     for row in cur:
@@ -439,6 +468,8 @@ def main():
                         help="sqlite database path used to track PAN files")
     parser.add_argument('--report', metavar='STATUS', default=None,
                         help="Print disposition report for files matching status")
+    parser.add_argument('--undefer', metavar='FILE_LIST', default=None,
+                        help="Change file status from 'defer' to 'new'")
     parser.add_argument('--ymd', action='store_true',
                         help="Print report times as YYYY-MM-DD HH:MM:SS")
     parser.add_argument('--stat', action='store_true',
@@ -479,6 +510,8 @@ def main():
         print_files_matching_status (Asdc_Status[args.list], limit=args.limit, order=args.order)
     elif args.set:
         set_file_status (args.set[0], args.set[1], args.stat, args.include_met)
+    elif args.undefer:
+        undefer_files (args.undefer)
     elif args.pans:
         process_pan_files(args.pans, args.pdrdbfile)
     elif args.report:
