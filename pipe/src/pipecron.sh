@@ -15,6 +15,9 @@ wait_hour=3600
 wait_day=86400
 wait_week=604800
 
+# Schedule daily tasks at 4am:
+daily_time="4am today"
+
 PGMNAME="$(basename $0)"
 
 svc_up()
@@ -328,7 +331,7 @@ main()
 
       if test $now -gt $(($last_daily + $wait_day)) ; then
          do_daily
-	 last_daily=$now
+	 last_daily=$(date --date "$daily_time" +%s)
       fi
 
       if test $now -gt $(($last_weekly + $wait_week)) ; then
