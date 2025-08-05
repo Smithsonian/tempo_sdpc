@@ -10,15 +10,18 @@ fi
 set -u
 
 if test $# -lt 1 ; then
-    echo "Usage: $0 Bucket:Bucket_Directory [DBFILE]"
+    echo "Usage: $0 Bucket:Bucket_Directory [<arg>]"
+    echo "  When optional argument is present, baseline products are transferred instead of NRT"
     exit 0
 fi
 
 s3_bucket=$1
 if test $# -eq 1 ; then
    source_dbfile="$SDPC_ARCHIVE_DBFILE_NRT"
+   pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs_nrt.sqlite"
 else
-   source_dbfile="$2"
+   source_dbfile="$SDPC_ARCHIVE_DBFILE"
+   pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs.sqlite"
 fi
 
 # Per-table limit on the number of results from database query
@@ -30,7 +33,6 @@ if ! test -f "$source_dbfile" ; then
    exit 0
 fi
 
-pdr_dbfile="$SDPC_ARCHIVE_DIR/asdc/pdrs_s3.sqlite"
 ASDC_TRACK_UPLOADS="asdc_track_uploads.py --dbfile $source_dbfile"
 
 PROGNAME="$(basename $0)"
