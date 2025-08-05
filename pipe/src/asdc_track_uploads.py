@@ -301,8 +301,9 @@ def process_longpan (cur, thefile, parse, pan_file, pdr_dbfile):
         else:
             asdc_status = Asdc_Status["problem"]
             num_bad += 1
-        table_name = table_name_for_file (entry["basename"])
-        update_file_status (cur, table_name, entry["basename"], asdc_status, entry["time_stamp"], disposition=entry["disposition"])
+        filename = entry["basename"].strip ('"') # quotes in filenames. sigh.
+        table_name = table_name_for_file (filename)
+        update_file_status (cur, table_name, filename, asdc_status, entry["time_stamp"], disposition=entry["disposition"])
 
     if num_bad == 0:
         # Replace PAN file extension (.pan or .PAN) to get the PDR file's local path
