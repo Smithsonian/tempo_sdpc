@@ -30,7 +30,7 @@ def str_to_bool(s):
     else:
         return False
 
-def destripe (dst, scd, stripe_val):
+def destripe (dst, scd, stripe_val, corrfile):
     units = dst['support_data']['fitted_slant_column'].units
     corrected_product = dst.product_type
     try:
@@ -44,6 +44,7 @@ def destripe (dst, scd, stripe_val):
             dst_des = grp['destriping_correction']
         add_history = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')+':destriping correction\n'
         dst.history = '{}{}'.format(dst.history,add_history)
+        dst_des.source_file = os.path.basename (corrfile)
         dst_des[:] = np.repeat(stripe_val[np.newaxis,:],scd.shape[0],axis=0)
         # Save original fitted slant column density from spectral fit
         if 'fitted_slant_column_uncorrected' not in grp.variables:
@@ -76,7 +77,7 @@ def apply_destripe (corrfile, input_files):
                 elif 'amf' in grp_supp.variables:
                     amf = dst['support_data']['amf'][:]
                 scd = dst['support_data']['fitted_slant_column'][:]
-                scd = destripe (dst, scd, stripe_val)
+                scd = destripe (dst, scd, stripe_val, corrfile)
                 # Save corrected SCDs and VCDs to L2 file
                 dst['support_data']['fitted_slant_column'][:] = scd
                 vcd = scd/amf
