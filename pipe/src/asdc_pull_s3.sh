@@ -127,15 +127,14 @@ do_asdc_s3_download()
   fi
 }
 
-num=$($ASDC_TRACK_UPLOADS --num uploaded)
-if test x"$num" = x0 ; then
-   echo "asdc_pull_s3.sh: ASDC ingest status: uploaded products:$num"
-   exit 0
-fi
-
+# Attempt a download only when we're expecting something.
+num_uploaded=$($ASDC_TRACK_UPLOADS --num uploaded)
+num_problem=$($ASDC_TRACK_UPLOADS --num problem)
 num_pdr=$(asdc_files.py --dbfile $pdr_dbfile --num new)
-if test x"$num_pdr" = x0 ; then
-   echo "asdc_pull_s3.sh: ASDC ingest status: pending PDRs:$num_pdr"
+try_download=$(($num_uploaded + $num_problem + $num_pdr))
+
+if test $try_download -eq 0; then
+   echo "asdc_pull_s3.sh: ASDC ingest status: uploaded:$num_uploaded  problem:$num_problem  pending PDRs:$num_pdr"
    exit 0
 fi
 
