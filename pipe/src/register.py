@@ -16,6 +16,7 @@ import argparse
 from subprocess import check_output
 from netCDF4 import Dataset as NetCDFFile
 import dateutil.parser as dp
+import numpy as np
 
 Radiance_Files = ["RAD_L1a", "RAD_L1", "RADT_L1a", "RADT_L1"]
 Radiance_Products = ["CLDRR", "CLDO4", "BRO", "CHOCHO", "HCHO", "H2O", "NO2", "O3TOT", "O3PROF"]
@@ -721,8 +722,11 @@ def process_file_dstr (db_path, filename, nc):
         return -1
 
     table_name = fields["table_name"]
-    tstart = nc.time_coverage_start_since_epoch[0]
-    tend = nc.time_coverage_end_since_epoch[-1]
+
+    tstart = nc.time_coverage_start_since_epoch[:]
+    tend = nc.time_coverage_end_since_epoch[:]
+    tstart = np.min(tstart[tstart > 0.0])
+    tend = np.max(tend[tend > 0.0])
 
     keys = {}
     keys["filename"] = basename

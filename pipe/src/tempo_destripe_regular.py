@@ -92,7 +92,7 @@ def derive_descor(input_files,nx=nXtrack,fout=None,
 
     from scipy.signal import savgol_filter
     from scipy.interpolate import interp1d
-    from tempo_cldo4 import tempo_cldo4_util as tcu
+    #from tempo_cldo4 import tempo_cldo4_util as tcu
 
     maxscdnorm = maxscd/normcol
     minscdnorm = minscd/normcol
@@ -100,6 +100,9 @@ def derive_descor(input_files,nx=nXtrack,fout=None,
     #initialize masked arrays
     rms = ma.array(np.zeros([1,nx],dtype=float),mask=True)
     scd = ma.array(np.zeros([1,nx],dtype=float),mask=True)
+    
+    tstart = []
+    tend = []
 
     nfiles = 0 # count number of files in input_files
 
@@ -113,6 +116,8 @@ def derive_descor(input_files,nx=nXtrack,fout=None,
                 q = src['qa_statistics']['fit_convergence_flag'][:] #1=good
                 r = src['qa_statistics']['fit_rms_residual'][:]
                 theta = src['geolocation']['solar_zenith_angle'][:]
+                tstart.append(src.time_coverage_start_since_epoch)
+                tend.append(src.time_coverage_end_since_epoch)
 
             # remove suspicious scd column regardless of rm_suspicious_column
             # to ensure they do not mess up statistics
@@ -291,7 +296,7 @@ def derive_descor(input_files,nx=nXtrack,fout=None,
 
     # write descor to file according to fout extension
     if (fout is not None):
-        write_descor1d_result(fout,descorfinal,medval00,fill_savgol)
+        write_descor1d_result(fout,descorfinal,medval00,fill_savgol,tstart,tend)
 
     return descorfinal
 
@@ -666,13 +671,15 @@ def tempo_addorupdate_2dfloat(filename,groupname,varname,varval,
 
 ######
 # create diagnostic descor file
-def create_descor_diagfile(diagfnm,medval00,medval_fit,descor,nx=nXtrack):
+def create_descor_diagfile(diagfnm,medval00,medval_fit,descor,tstart,tend,nx=nXtrack):
 
     #Create a file to save the results of the calculation
     print('writting correction results to {0}'.format(diagfnm))
     try:
         with Dataset(diagfnm,'w',clobber=True) as dst:
 
+            dst.time_coverage_start_since_epoch = tstart
+            dst.time_coverage_end_since_epoch = tend
             # Create dimensions
             dst_nx = dst.createDimension('cross_track',nx)
 
@@ -705,7 +712,7 @@ def create_descor_diagfile(diagfnm,medval00,medval_fit,descor,nx=nXtrack):
 
 ######
 # write txt or nc descor file
-def write_descor1d_result(fout,descor,medval00,medval_fit):
+def write_descor1d_result(fout,descor,medval00,medval_fit,tstart,tend):
     print('writing '+fout)
 
     # convert masked array to numpy array
@@ -725,7 +732,7 @@ def write_descor1d_result(fout,descor,medval00,medval_fit):
           for b in medval_fit2:
              f.write(str(b)+'\n')
     else: # nc
-       create_descor_diagfile(fout,medval002,medval_fit2,descor2)
+       create_descor_diagfile(fout,medval002,medval_fit2,descor2,tstart,tend)
 
     return
 
