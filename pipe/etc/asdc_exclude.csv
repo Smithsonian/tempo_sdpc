@@ -13,4 +13,4 @@
 #  "TEMPO_\w+_L0_V\d{2}_\d{8}T\d{6}Z(_S\d{3}G\d{2})??.nc"
 #--------------------------------------------------------------------
 pattern,begin_exclude_hour,end_exclude_hour
-"tempo_\d*T\d*Z_soc",6,18
+#"tempo_\d*T\d*Z_soc",6,18
