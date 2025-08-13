@@ -47,6 +47,10 @@ if ! test -d $sqlite_backup_dir ; then
    mkdir -p $sqlite_backup_dir || exit_status 1 "*** Error: failed creating directory: $sqlite_backup_dir"
 fi
 
+if test -f "$aws_config_file" ; then
+   export AWS_CONFIG_FILE="$aws_config_file"
+fi
+
 rotate_backups()
 {
    name="$1"
@@ -122,10 +126,10 @@ case $_task in
    test x"$state_asdc_goes" = xon || exit 0
    ( flock -E 18 -n 9
      if test "$?" -eq 0 ; then
-        asdc_pull_ack.sh $asdc_dropbox $cmieast_sqlite CMIEAST
-        asdc_pull_ack.sh $asdc_dropbox $cmiwest_sqlite CMIWEST
-        asdc_push_files.sh $asdc_dropbox $cmieast_sqlite
-        asdc_push_files.sh $asdc_dropbox $cmiwest_sqlite
+        $asdc_pull_method $asdc_dropbox $cmieast_sqlite CMIEAST
+        $asdc_pull_method $asdc_dropbox $cmiwest_sqlite CMIWEST
+        $asdc_push_method $asdc_dropbox $cmieast_sqlite
+        $asdc_push_method $asdc_dropbox $cmiwest_sqlite
      fi
    ) 9> $lockfile_goes
    ;;
@@ -134,16 +138,16 @@ case $_task in
    test x"$state_asdc_geoscf" = xon || exit 0
    ( flock -E 19 -n 9
      if test "$?" -eq 0 ; then
-        asdc_pull_ack.sh $asdc_dropbox $geoscf_sqlite GEOSCF
-        asdc_push_files.sh $asdc_dropbox $geoscf_sqlite
+        $asdc_pull_method $asdc_dropbox $geoscf_sqlite GEOSCF
+        $asdc_push_method $asdc_dropbox $geoscf_sqlite
      fi
    ) 9> $lockfile_geoscf
    ;;
 
    ASDC_IMS )
    test x"$state_asdc_ims" = xon || exit 0
-   asdc_pull_ack.sh $asdc_dropbox $ims_sqlite IMS
-   asdc_push_files.sh $asdc_dropbox $ims_sqlite
+   $asdc_pull_method $asdc_dropbox $ims_sqlite IMS
+   $asdc_push_method $asdc_dropbox $ims_sqlite
    ;;
 
    CLEANUP )

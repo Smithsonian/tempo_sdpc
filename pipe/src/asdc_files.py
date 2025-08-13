@@ -242,7 +242,7 @@ def longpan_header (thefile, parse):
     # MESSAGE_TYPE = LONGPAN
     line = thefile.readline()
     tok = parse.tokens (line)
-    if tok[0] != 'MESSAGE_TYPE' or tok[1] != 'LONGPAN':
+    if tok[0] != 'MESSAGE_TYPE' or tok[1].strip('" ') != 'LONGPAN':
         print ('*** invalid file header: {}'.format(line))
         return -1
     # NO_OF_FILES = $num_files
@@ -264,7 +264,7 @@ def longpan_entry (thefile, parse):
     if tok[0] != 'FILE_NAME':
         print ('*** invalid entry: {}'.format(line))
         return None
-    entry["basename"] = tok[1]
+    entry["basename"] = tok[1].strip('" ')
     # DISPOSITION = $disposition
     line = thefile.readline()
     tok = parse.tokens (line)
