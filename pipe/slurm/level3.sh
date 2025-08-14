@@ -179,11 +179,17 @@ for f in $l2_paths ; do
    echo $f >> $regrid_list
 done
 
-if test x"$product_name" = x"O3PROF_L2" ; then
-   l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
-else
-   l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"
-fi
+case "$product_name" in
+  O3PROF_L2 )
+      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
+      ;;
+  O3TOT_L2 )
+      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3t.cfg"
+      ;;
+  * )
+      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"
+      ;;
+esac
 
 log_message "generating L3 product: $l3_basename"
 (cd $l3_target_dir && L2_regrid -v $l2_regrid_cfg > log_regrid_${product_name}.txt 2>&1 ) || error_exit "L2_regrid failed"
