@@ -275,14 +275,14 @@ CONTAINS
            + IBITS( solarIrrQF(iwlArray(iwl)), 3, 8 )
     ENDDO
 
-    IF( descendQ )       QAflags = IBSET( QAflags, 3  )
+    !IF( descendQ )       QAflags = IBSET( QAflags, 3  ) !Junsung: TEMPO does not distinguish between descending and ascending orbits
     IF(anomflg_3 > 0)    QAflags = IBSET( QAflags, 6 )
     !   to use KMNI L1B XtrackQualityFlags instead, use:
     !   IF (IAND(anomflg, mask7) > 0)) QAflags = IBSET( QAflags, 6 )
     IF( PclimQ )         QAflags = IBSET( QAflags, 7  )
     IF( IBITS( gflg, 6, 1 ) == 1 ) &
          QAflags = IBSET( QAflags, 8  )
-    IF( sza  >= 88.0 .or. vza >= 88.0) QAflags = IBSET( QAflags, 9  )
+    IF( sza  >= 88.0 .or. vza >= 88.0) QAflags = IBSET( QAflags, 9  ) !Junsung: need to consider changing the threshold from 88 to 80
     IF( radMissing > 0 ) QAflags = IBSET( QAflags, 10 )
     IF( radError   > 0 ) QAflags = IBSET( QAflags, 11 )
     IF( radWarning > 0 ) QAflags = IBSET( QAflags, 12 )
@@ -303,7 +303,7 @@ CONTAINS
     IF( irrWarning > 0 ) L2param%NumberOfIrradianceWarning &
          = L2param%NumberOfIrradianceWarning + 1
 
-    IF( sza >= 88.0 .OR. vza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 &
+    IF( sza >= 88.0 .OR. vza >= 88.0 .OR. radMissing > 0 .OR. radError > 0 & !Junsung: need to consider changing the threshold from 88 to 80
          .OR. irrMissing > 0 .OR. irrError > 0 ) THEN
       skipit = .TRUE.
       L2param%NumberOfSkippedSamples = L2param%NumberOfSkippedSamples + 1
@@ -343,10 +343,11 @@ CONTAINS
       badPixQ = .FALSE.
     ENDIF
 
-    IF( (.NOT. descendQ) .AND. (.NOT. badPixQ ) ) THEN
+    !IF( (.NOT. descendQ) .AND. (.NOT. badPixQ ) ) THEN !Junsung: TEMPO does not distinguish between descending and ascending orbits
+    IF (.NOT. badPixQ) THEN
       L2param%NumberOfGoodInputSamples = &
            L2param%NumberOfGoodInputSamples + 1
-      IF( sza > 84. ) L2param%NumberOfLargeSZAInputSamples  &
+      IF( sza > 84. ) L2param%NumberOfLargeSZAInputSamples  & !Junsung: need to consider changing the threshold from 84 to 88
            = L2param%NumberOfLargeSZAInputSamples + 1
     ENDIF
 
@@ -381,7 +382,7 @@ CONTAINS
     IF( glint ) errflgs = 1
 
     ! -- set sza flag
-    IF( sza > 84. ) errflgs = 2
+    IF( sza > 84. ) errflgs = 2 !Junsung: need to consider changing the threshold from 84 to 80
     !
     ! -- flag 3 for high 360 nm residue
     !

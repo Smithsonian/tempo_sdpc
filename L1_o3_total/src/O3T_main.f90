@@ -958,7 +958,7 @@ PROGRAM O3T_mainNVAdj
     DO iX = 1, nXtrack_rad
       iwl_oz             = iwl_ozone
       skipit             = .FALSE.
-      pixSURF%glint_flag = .FALSE.
+      pixSURF%glint_flag = IBITS (geoflg(iX), 4, 1) == 1 !.FALSE.  !Junsung: for sun glint flag
       sza_p              = szenith(iX)
       vza_p              = vzenith(iX)
       phi                = phiArray(iX)

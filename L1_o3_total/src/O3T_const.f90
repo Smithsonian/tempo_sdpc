@@ -41,7 +41,7 @@ MODULE O3T_const
     REAL (KIND=4), DIMENSION(3) :: f360 = &         ! aerosol adjustment factor
                                            (/ 4.223, -1.460, 0.145 /) 
     REAL (KIND=4) :: f313    =-8.0  !profile shape adjustment factor
-    REAL (KIND=4) :: swthrsh = 1.25 !threshold ratio for hi sza
+    REAL (KIND=4) :: swthrsh = 1.25 !threshold ratio for hi sza !Junsung: need to be checked (1.25 or other values)
     REAL (KIND=4) :: soilimEP= 12.5 !so2 flag limit
     REAL (KIND=4) :: soilimN7= 25.0 !so2 flag limit
     REAL (KIND=4) :: soilimM3= 24.0 !so2 flag limit

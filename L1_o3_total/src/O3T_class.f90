@@ -710,6 +710,7 @@ MODULE O3T_class
         ozpath = pathl * stp2oz
 
         stp3oz = stp2oz
+        !Junsung: need to be updated in the future for TEMPO
         IF( ozpath < 2000.0 .AND. algflg == 1 ) THEN
           aiadj=f360(1)+f360(2)*pathl+f360(3)*pathl**2.0
           stp3oz = stp2oz + aiadj* (res_stp2(iglnt)/100.0 )*stp2oz

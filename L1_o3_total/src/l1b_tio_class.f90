@@ -256,10 +256,10 @@ contains
     irr(1:nw, 1:nx) = tmp_spectrum(1:nw, 1:nx, 1)
     do iw = 72, 178
       do ix = 1, nx
-        irr(iw, ix) = irr(iw, ix) * correction_factors(iw)
+        irr(iw, ix) = irr(iw, ix) * (correction_factors(iw)*1.01)
       end do
     end do
-
+!
 !    do iw = 106, 147
 !      do ix = 1, nx
 !        irr(iw, ix) = irr(iw, ix) * correction_factors(iw)
@@ -272,17 +272,24 @@ contains
 !      end do
 !    end do
 !
-!    do iw = 126, 127
+!    do iw = 129, 131
 !      do ix = 1, nx
-!        irr(iw, ix) = irr(iw, ix) * 1.01505
+!        irr(iw, ix) = irr(iw, ix) * 0.98495!1.01505
 !      end do
 !    end do
-!    
-!    do iw = 197, 198
+!
+!    do iw = 198, 201
 !      do ix = 1, nx
-!        irr(iw, ix) = irr(iw, ix) * 1.01778
+!        irr(iw, ix) = irr(iw, ix) * 1.01
 !      end do
-!    end do 
+!    end do
+!
+    do iw = 344, 346
+      do ix = 1, nx
+        irr(iw, ix) = irr(iw, ix) * 0.99
+      end do
+    end do
+
 
     wavelength(1:nw, 1:nx) = tmp_wavelengths(1:nw, 1:nx, 1)
     qaflags(1:nw, 1:nx) = tmp_qflags (1:nw, 1:nx, 1)
