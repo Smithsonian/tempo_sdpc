@@ -182,9 +182,13 @@ done
 case "$product_name" in
   O3PROF_L2 )
       l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
+      filter_tempo_o3p.py $l2_paths > $l3_target_dir/log_filter_o3p.txt 2>&1
+      sed -i_orig -e s,TEMPO_O3PROF_L2,filtered/TEMPO_O3PROF_L2,g $regrid_list
       ;;
   O3TOT_L2 )
       l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3t.cfg"
+      filter_tempo_o3tot.py $l2_paths > $l3_target_dir/log_filter_o3tot.txt 2>&1
+      sed -i_orig -e s,TEMPO_O3TOT_L2,filtered/TEMPO_O3TOT_L2,g $regrid_list
       ;;
   * )
       l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"

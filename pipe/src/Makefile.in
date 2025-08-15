@@ -31,6 +31,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                make_destripe.sh make_destripe.py destripe.py select_destripe.py \
                make_destripe_cldo4.sh tempo_destripe_regular.py \
                make_background.sh make_background.py background.py \
+               filter_tempo_o3p.py filter_tempo_o3tot.py \
                $(patsubst %.sh,../setup/%.sh, $(SETUP_SCRIPT_FILES))
 ETC_FILES = $(shell grep -v '\#' ../etc/etc_files.lis)
 SHARE_FILES = $(shell grep -v '\#' ../share/share_files.lis)
