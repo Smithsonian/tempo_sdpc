@@ -153,6 +153,12 @@ remove_redundant_files()
 }
 
 product_list="$(echo $product_list_arg | tr -s , ' ')"
+# If we have no radiance reference file,
+# then remove HCHO from the product list
+if ! test -f "$radref_file" ; then
+    product_list=$(echo $product_list | sed -e "s,HCHO,,")
+fi
+# If the product list is empty, we're done
 if test x"$product_list" = x ; then
    exit 0
 fi
