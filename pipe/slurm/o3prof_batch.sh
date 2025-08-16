@@ -88,6 +88,9 @@ cld_file=$CLD
 rad_basename=$(basename $rad_file .nc)
 irr_basename=$(basename $irr_file .nc)
 
+# We won't be using these files and we don't want litter:
+/bin/rm -f "${rad_basename}.solcal" "${rad_basename}.destripe"
+
 init_product_dir()
 {
    # Create target subdirectory, with hard links to (rad, irr, cld)

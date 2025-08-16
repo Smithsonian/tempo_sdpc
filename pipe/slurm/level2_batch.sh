@@ -196,8 +196,6 @@ done
 # wait for background jobs to exit
 wait
 
-if test -f $solcal_file_list ; then
-   /bin/rm -f $solcal_file_list
-fi
+/bin/rm -f "$solcal_file_list" "$destripe_file_list"
 
 level2_finish.sh $tar_file_notice $tar_unpack_dir/$tar_file_dir "$tar_unpack_dir" > /dev/null
