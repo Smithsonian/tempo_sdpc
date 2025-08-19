@@ -107,7 +107,7 @@ do_asdc_s3_upload()
 
 num=$($ASDC_TRACK_UPLOADS --num new)
 if test x"$num" = x0 ; then
-   echo "asdc_push_s3.sh: ASDC ingest status: new: $num"
+   #echo "asdc_push_s3.sh: ASDC ingest status: new: $num"
    exit 0
 fi
 

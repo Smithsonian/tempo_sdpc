@@ -138,7 +138,7 @@ fi
 try_download=$(($num_uploaded + $num_problem + $num_pdr))
 
 if test $try_download -eq 0; then
-   echo "asdc_pull_s3.sh: ASDC ingest status: uploaded:$num_uploaded  problem:$num_problem  pending PDRs:$num_pdr"
+   #echo "asdc_pull_s3.sh: ASDC ingest status: uploaded:$num_uploaded  problem:$num_problem  pending PDRs:$num_pdr"
    exit 0
 fi
 
