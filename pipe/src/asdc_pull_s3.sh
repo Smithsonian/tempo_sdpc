@@ -130,7 +130,11 @@ do_asdc_s3_download()
 # Attempt a download only when we're expecting something.
 num_uploaded=$($ASDC_TRACK_UPLOADS --num uploaded)
 num_problem=$($ASDC_TRACK_UPLOADS --num problem)
-num_pdr=$(asdc_files.py --dbfile $pdr_dbfile --num new)
+if test -f $pdr_dbfile ; then
+   num_pdr=$(asdc_files.py --dbfile $pdr_dbfile --num new)
+else
+   num_pdr=0
+fi
 try_download=$(($num_uploaded + $num_problem + $num_pdr))
 
 if test $try_download -eq 0; then
