@@ -868,6 +868,7 @@ $(ODIR)/m_read_l1_tio.o: $(SDIR)/m_read_l1_tio.f90 \
 	$(FC) -c $(FCFLAGS) $(IFLAGS) $(SDIR)/m_read_l1_tio.f90 -o $(ODIR)/m_read_l1_tio.o $(MODOUTFLG) $(ODIR)
 $(ODIR)/m_read_geo_tio.o: $(SDIR)/m_read_geo_tio.f90 \
   $(ODIR)/o3p_names_module.o \
+  $(ODIR)/OMSAO_parameters_module.o \
   $(ODIR)/OMSAO_pixelcorner_module.o \
   $(ODIR)/OMSAO_precision_module.o \
   $(ODIR)/OMSAO_tmpodata_module.o \

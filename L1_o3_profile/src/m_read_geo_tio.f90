@@ -76,6 +76,7 @@ CONTAINS
   SUBROUTINE read_geo_tio (l1swath, geo,ntimes, nxtrack, &
                            spix, lpix, sline, eline, errstat)
     USE OMSAO_precision_module
+    USE OMSAO_parameters_module, ONLY: r8_missval
     USE OMSAO_variables_module, ONLY: geo_group, nxbin, nybin, &
                                       l1file=>l1b_rad_filename
     use netcdf, only : nf90_noerr, nf90_inq_varid
@@ -139,7 +140,7 @@ CONTAINS
     ! read in geolocation data for the chosen subset of step positions
     call tiof_open (l1file, tio_l1obj, nf90_nowrite, errstat)
     call tiof_get1d_r8 (tio_l1obj, o3p_var_time, [sline1], [nline], &
-                        tio_time(sline1:eline1), errstat)
+                        tio_time(sline1:eline1), errstat, replace_fill=r8_missval)
     call tiof_get1d_i4 (tio_l1obj, tempo_dim_step, [sline1], [nline], &
                         step_idx(sline1:eline1), errstat)
     call tiof_push_group (tio_l1obj, l1swath, errstat)
