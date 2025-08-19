@@ -382,7 +382,7 @@ def apply_single_descor(l2fnm,descorfnm,missing=missval,maxscd=max_scd,
             # assign scddes to the one with smaller change
             for it in np.arange(nt):
                 thisscd = scd[it,ix]
-                if (~ma.is_masked(thisscd)):
+                if (not ma.is_masked(thisscd)):
                    change1 = np.abs(scddes1[it,ix]-thisscd)
                    change2 = np.abs(scddes2[it,ix]-thisscd)
                    if (method == 'divide'):
