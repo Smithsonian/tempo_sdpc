@@ -24,7 +24,7 @@ SCRIPT_FILES = cachemon.sl archive.sl move_file_stream.sl pull_raw.sl \
                copy_level1_frame.py global_attribute.py variable_exists.py radiance_telem_only.py \
                asdc_mkscript.sl asdc_files.py asdc_track_uploads.py asdc_push.sh asdc_pull.sh \
                convert_odlmet_to_cmrjson.py asdc_s3.py asdc_push_s3.sh asdc_pull_s3.sh \
-               expire_nrt_archive_excess_num_days.sh inr_qa_cron.sh inr_qa_check.sh inr_qa_setup.py \
+               expire_nrt.sh inr_qa_cron.sh inr_qa_check.sh inr_qa_setup.py \
                asdc_transfer.py asdc_exclude_filter.py update_trend_files.py tg_diag_filter.py \
                public_mirror.py update_public_mirror.sh inrmonitor.sh feed_image_data.py \
                make_radref.sh make_radref.py select_radref.py flush_radref_pending.sh \
