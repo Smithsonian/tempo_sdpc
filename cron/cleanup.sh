@@ -1,8 +1,18 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-
 PGMNAME="$(basename $0)"
+
+if test $# -ne 1 ; then
+   echo "Usage: $PGMNAME rootdir"
+   exit 0
+fi
+
+rootdir="$1"
+
+if ! test -d $rootdir ; then
+   echo "$PGMNAME: nonexistent directory: $rootdir"
+   exit 1
+fi
 
 replace_old_subdirs_with_tarfiles()
 {
@@ -23,9 +33,8 @@ replace_old_subdirs_with_tarfiles()
   done
 }
 
-_asdc_root="$SDPC_ANCILLARY_ROOT/var/asdc"
 _asdc_dirs="cmieast.sqlite cmiwest.sqlite geoscf.sqlite ims.sqlite"
 
 for d in $_asdc_dirs ; do
-   replace_old_subdirs_with_tarfiles "+2880" "$_asdc_root/$d"
+   replace_old_subdirs_with_tarfiles "+2880" "$rootdir/$d"
 done

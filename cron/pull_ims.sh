@@ -1,18 +1,16 @@
 #! /bin/bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-
 set -e
 set -u
 
-if test $# -ne 2 ; then
-    echo "Usage: $0 <source-url> <source-dir>"
+if test $# -ne 3 ; then
+    echo "Usage: $(basename $0) destdir <source-url> <source-dir>"
     exit 0
 fi
-source_url="$1"
-source_dir="$2"
+rootdir="$1"
+source_url="$2"
+source_dir="$3"
 
-rootdir="${SDPC_ANCILLARY_ROOT}/var/ims"
 subdir="$(date -u +%Y)"
 
 target_dir="$rootdir/$subdir"

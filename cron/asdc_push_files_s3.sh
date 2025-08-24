@@ -1,8 +1,5 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-: "${SDPC_ROOT:?SDPC_ROOT not set}"
-
 # Max number of files to upload in one batch.
 : "${SDPC_ASDC_LIMIT:=500}"
 
@@ -11,20 +8,19 @@ set -u
 
 tstamp_fmt="+%Y%m%d%H%M%SZ"
 
-if test $# -ne 2 ; then
-    echo "Usage: $0 Bucket:Bucket_Directory <dbfile-path>"
+if test $# -ne 3 ; then
+    echo "Usage: $(basename $0) rootdir Bucket:Bucket_Directory <dbfile-path>"
     exit 0
 fi
-s3_bucket=$1
-dbfile=$2
+rootdir=$1
+s3_bucket=$2
+dbfile=$3
 
 # If the database file doesn't exist, there's nothing to push
 if ! test -f $dbfile ; then
    echo "asdc_push_files_s3.sh: nonexistent database file: $dbfile"
    exit 0
 fi
-
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 PROGNAME="$(basename $0)"
 catch()
@@ -76,7 +72,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+dbfile_dir="$rootdir/${dbfile_name}"
 upload_dir_path="${dbfile_dir}/$(date -u +%Y/%j/push/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
 do_asdc_upload $upload_dir_path
 

@@ -1,21 +1,19 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-: "${SDPC_ROOT:?SDPC_ROOT not set}"
-
 set -e
 set -u
 
 tstamp_fmt="+%Y%m%d%H%M%SZ"
 
-if test $# -ne 3 ; then
-    echo "Usage: $0 USER@HOST:dirpath <dbfile-path> <pan-prefix>"
+if test $# -ne 4 ; then
+    echo "Usage: $(basename $0) rootdir USER@HOST:dirpath <dbfile-path> <pan-prefix>"
     exit 0
 fi
 
-user_at_host=$1
-dbfile=$2
-prefix=$3
+rootdir=$1
+user_at_host=$2
+dbfile=$3
+prefix=$4
 
 if ! test -f $dbfile ; then
    echo "File does not exist: $dbfile"
@@ -37,8 +35,6 @@ asdc_user=$(echo $user_at_host | cut -d@ -f1)
 asdc_host_dirpath=$(echo $user_at_host | cut -d@ -f2)
 asdc_host=$(echo $asdc_host_dirpath | cut -d: -f1)
 asdc_dirpath=$(echo $asdc_host_dirpath | cut -d: -f2)
-
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 # The -E option means "delete source file after successful transfer"
 emit_script()
@@ -95,7 +91,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+dbfile_dir="$rootdir/${dbfile_name}"
 download_dir_path="${dbfile_dir}/$(date -u +%Y/%j/pull/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
 do_asdc_download $download_dir_path
 

@@ -1,28 +1,24 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-: "${SDPC_ROOT:?SDPC_ROOT not set}"
-
 #set -e
 set -u
 
 tstamp_fmt="+%Y%m%d%H%M%SZ"
 
-if test $# -ne 3 ; then
-    echo "Usage: $0 Bucket:Bucket_Directory <dbfile-path> <pan-prefix>"
+if test $# -ne 4 ; then
+    echo "Usage: $(basename $0) rootdir Bucket:Bucket_Directory <dbfile-path> <pan-prefix>"
     exit 0
 fi
 
-s3_bucket=$1
-dbfile=$2
-prefix=$3
+rootdir=$1
+s3_bucket=$2
+dbfile=$3
+prefix=$4
 
 if ! test -f $dbfile ; then
    echo "asdc_pull_ack_s3.sh: nonexistent database file: $dbfile"
    exit 1
 fi
-
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 PROGNAME="$(basename $0)"
 catch()
@@ -85,7 +81,7 @@ if test $try_download -eq 0 ; then
    exit 0
 fi
 
-dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+dbfile_dir="$rootdir/${dbfile_name}"
 download_dir_path="${dbfile_dir}/$(date -u +%Y/%j/pull/${dbfile_name}_pan_%Y%jT%H%M%SZ)"
 do_asdc_download $download_dir_path
 

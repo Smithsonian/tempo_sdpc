@@ -1,8 +1,5 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-: "${SDPC_ROOT:?SDPC_ROOT not set}"
-
 # Max number of files to upload in one batch.
 : "${SDPC_ASDC_LIMIT:=500}"
 
@@ -11,12 +8,13 @@ set -u
 
 tstamp_fmt="+%Y%m%d%H%M%SZ"
 
-if test $# -ne 2 ; then
-    echo "Usage: $0 USER@HOST:dirpath <dbfile-path>"
+if test $# -ne 3 ; then
+    echo "Usage: $(basename $0) rootdir USER@HOST:dirpath <dbfile-path>"
     exit 0
 fi
-user_at_host=$1
-dbfile=$2
+rootdir=$1
+user_at_host=$2
+dbfile=$3
 
 # If the database file doesn't exist, there's nothing to push
 if ! test -f $dbfile ; then
@@ -33,8 +31,6 @@ if ! test -r $agent_env_file ; then
    exit 1
 fi
 . $agent_env_file
-
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:$PATH"
 
 do_asdc_upload()
 {
@@ -77,7 +73,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-dbfile_dir="${SDPC_ANCILLARY_ROOT}/var/asdc/${dbfile_name}"
+dbfile_dir="$rootdir/${dbfile_name}"
 upload_dir_path="${dbfile_dir}/$(date -u +%Y/%j/push/${dbfile_name}_pdr_%Y%jT%H%M%SZ)"
 do_asdc_upload $upload_dir_path
 

@@ -9,10 +9,7 @@ tstamp_fmt="+%Y%m%d%H%M%SZ"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
 : "${SDPC_LOCKDIR:?SDPC_LOCKDIR not set}"
 
-cmieast_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
-cmiwest_sqlite="$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
-geoscf_sqlite="$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
-ims_sqlite="$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
+export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
 
 sqlite_backup_dir="$SDPC_ANCILLARY_ROOT/var/backup"
 num_backups=9
@@ -32,12 +29,6 @@ fi
 
 cd $SDPC_ANCILLARY_ROOT
 
-if test -f "etc/crontab.conf" ; then
-   . etc/crontab.conf
-else
-   exit_status 1 "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
-fi
-
 if ! test -d $SDPC_LOCKDIR ; then
    mkdir -p $SDPC_LOCKDIR || exit_status 1 "*** Error: failed creating directory: $SDPC_LOCKDIR"
    chmod 700 $SDPC_LOCKDIR
@@ -50,6 +41,17 @@ fi
 if test -f "$aws_config_file" ; then
    export AWS_CONFIG_FILE="$aws_config_file"
 fi
+
+if test -f "etc/crontab.conf" ; then
+   . etc/crontab.conf
+else
+   exit_status 1 "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
+fi
+
+cmieast_sqlite="$rootdir_goes/cmieast.sqlite"
+cmiwest_sqlite="$rootdir_goes/cmiwest.sqlite"
+geoscf_sqlite="$rootdir_geoscf/geoscf.sqlite"
+ims_sqlite="$rootdir_ims/ims.sqlite"
 
 rotate_backups()
 {
@@ -95,8 +97,6 @@ explain_error_status()
   echo "$_msg"
 }
 
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
-
 tbeg=$(date +%s)
 
 _task=$1
@@ -104,32 +104,32 @@ _task=$1
 case $_task in
    IERS )
    test x"$state_iers" = xon || exit 0
-   pull_iers.sh $iers_source_url
+   pull_iers.sh $rootdir_iers $iers_source_url
    ;;
 
    IMS )
    test x"$state_ims" = xon || exit 0
-   pull_ims.sh $ims_url $ims_dir
+   pull_ims.sh $rootdir_ims $ims_url $ims_dir
    ;;
 
    GOES )
    test x"$state_goes" = xon || exit 0
-   flock -E 16 -n $lockfile_goes pull_goes.sh $pda_service_account
+   flock -E 16 -n $lockfile_goes pull_goes.sh $rootdir_goes $pda_service_account
    ;;
 
    GEOSCF )
    test x"$state_geoscf" = xon || exit 0
-   SDPC_GEOSCF_VERSION="$geoscf_version" flock -E 17 -n $lockfile_geoscf pull_geoscf.sh $geoscf_source_url
+   SDPC_GEOSCF_VERSION="$geoscf_version" flock -E 17 -n $lockfile_geoscf pull_geoscf.sh $rootdir_geoscf $geoscf_source_url
    ;;
 
    ASDC_GOES )
    test x"$state_asdc_goes" = xon || exit 0
    ( flock -E 18 -n 9
      if test "$?" -eq 0 ; then
-        $asdc_pull_method $asdc_dropbox $cmieast_sqlite CMIEAST
-        $asdc_pull_method $asdc_dropbox $cmiwest_sqlite CMIWEST
-        $asdc_push_method $asdc_dropbox $cmieast_sqlite
-        $asdc_push_method $asdc_dropbox $cmiwest_sqlite
+        $asdc_pull_method $rootdir_asdc $asdc_dropbox $cmieast_sqlite CMIEAST
+        $asdc_pull_method $rootdir_asdc $asdc_dropbox $cmiwest_sqlite CMIWEST
+        $asdc_push_method $rootdir_asdc $asdc_dropbox $cmieast_sqlite
+        $asdc_push_method $rootdir_asdc $asdc_dropbox $cmiwest_sqlite
      fi
    ) 9> $lockfile_goes
    ;;
@@ -138,21 +138,21 @@ case $_task in
    test x"$state_asdc_geoscf" = xon || exit 0
    ( flock -E 19 -n 9
      if test "$?" -eq 0 ; then
-        $asdc_pull_method $asdc_dropbox $geoscf_sqlite GEOSCF
-        $asdc_push_method $asdc_dropbox $geoscf_sqlite
+        $asdc_pull_method $rootdir_asdc $asdc_dropbox $geoscf_sqlite GEOSCF
+        $asdc_push_method $rootdir_asdc $asdc_dropbox $geoscf_sqlite
      fi
    ) 9> $lockfile_geoscf
    ;;
 
    ASDC_IMS )
    test x"$state_asdc_ims" = xon || exit 0
-   $asdc_pull_method $asdc_dropbox $ims_sqlite IMS
-   $asdc_push_method $asdc_dropbox $ims_sqlite
+   $asdc_pull_method $rootdir_asdc $asdc_dropbox $ims_sqlite IMS
+   $asdc_push_method $rootdir_asdc $asdc_dropbox $ims_sqlite
    ;;
 
    CLEANUP )
    test -f bin/cleanup.sh || exit 0
-   bin/cleanup.sh
+   bin/cleanup.sh $rootdir_asdc
    ;;
 
    BACKUP )

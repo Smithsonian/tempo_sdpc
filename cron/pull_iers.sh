@@ -1,17 +1,14 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-
 set -e
 set -u
 
-if test $# -ne 1 ; then
-    echo "Usage: $0 <source-url>"
+if test $# -ne 2 ; then
+    echo "Usage: $(basename $0) destdir <source-url>"
     exit 0
 fi
-source_url="$1"
-
-rootdir="${SDPC_ANCILLARY_ROOT}/var/iers"
+rootdir="$1"
+source_url="$2"
 
 target_dir="$rootdir/files"
 if ! test -d $target_dir ; then
@@ -28,6 +25,6 @@ lftp <<- EOF
 EOF
 
 if test x"$latest" != x ; then
-   $SDPC_ANCILLARY_ROOT/bin/register_iers.py --dbfile $rootdir/iers.sqlite --rename $latest
+   register_iers.py --dbfile $rootdir/iers.sqlite --rename $latest
 fi
 

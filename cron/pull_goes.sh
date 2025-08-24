@@ -1,17 +1,15 @@
 #! /usr/bin/env bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
-
 #set -e
 set -u
 
-if test $# -ne 1 ; then
-    echo "Usage: $0 USER@HOST"
+if test $# -ne 2 ; then
+    echo "Usage: $(basename $0) destdir USER@HOST"
     exit 0
 fi
-user_at_host=$1
 
-rootdir="${SDPC_ANCILLARY_ROOT}/var/goes"
+rootdir=$1
+user_at_host=$2
 
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.

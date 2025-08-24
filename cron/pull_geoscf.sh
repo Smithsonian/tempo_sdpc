@@ -1,18 +1,16 @@
 #! /bin/bash
 
-: "${SDPC_ANCILLARY_ROOT:?SDPC_ANCILLARY_ROOT not set}"
 : "${SDPC_GEOSCF_VERSION:=1}"
 
 set -e
 set -u
 
-if test $# -lt 1 ; then
-    echo "Usage: $0 <source-url>"
+if test $# -lt 2 ; then
+    echo "Usage: $(basename $0) destdir <source-url>"
     exit 0
 fi
-source_url="$1"
-
-rootdir="${SDPC_ANCILLARY_ROOT}/var/geoscf"
+rootdir="$1"
+source_url="$2"
 
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.
