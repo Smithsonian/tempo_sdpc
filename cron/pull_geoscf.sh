@@ -67,8 +67,8 @@ fetch_forecast_for_date()
 
     2)
       fcst_root="GEOS.cf.fcst.sat_inst_1hr_reg_L721x361_v72.${rpl_day}_09z+${fcst_day}"
-      fcst_regex="${fcst_root}_??00z.V01.nc4"
-      fcst_fmt="${fcst_root}_%sz.V01.nc4"
+      fcst_regex="${fcst_root}_??00z.R0.nc4"
+      fcst_fmt="${fcst_root}_%sz.R0.nc4"
       ;;
 
     *)
