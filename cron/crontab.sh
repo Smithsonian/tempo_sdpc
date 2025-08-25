@@ -119,7 +119,7 @@ case $_task in
 
    GEOSCF )
    test x"$state_geoscf" = xon || exit 0
-   SDPC_GEOSCF_VERSION="$geoscf_version" flock -E 17 -n $lockfile_geoscf pull_geoscf.sh $rootdir_geoscf $geoscf_source_url
+   flock -E 17 -n $lockfile_geoscf pull_geoscf.sh $rootdir_geoscf $geoscf_source_url $geoscf_version
    ;;
 
    ASDC_GOES )

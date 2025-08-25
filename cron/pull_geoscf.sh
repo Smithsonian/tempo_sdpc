@@ -1,16 +1,15 @@
 #! /bin/bash
 
-: "${SDPC_GEOSCF_VERSION:=1}"
-
 set -e
 set -u
 
-if test $# -lt 2 ; then
-    echo "Usage: $(basename $0) destdir <source-url>"
+if test $# -lt 3 ; then
+    echo "Usage: $(basename $0) destdir <source-url> geoscf_version"
     exit 0
 fi
 rootdir="$1"
 source_url="$2"
+geoscf_version="$3"
 
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.
@@ -20,15 +19,15 @@ if ! test -d $incoming_dir ; then
 fi
 export incoming_dir
 
-# Any command line args are passed to 'date'.
+# Any remaining command line args are passed to 'date'.
 # For example, to pull data for a particular date, do something like:
-#     pull_geoscf.sh <source-url> 2020-07-01
+#     pull_geoscf.sh <destdir> <source-url> <version> 2020-07-01
 today_args=""
 today_opt=""
 yesterday_opt="-d yesterday"
 tomorrow_opt="-d tomorrow"
-if test $# -gt 1; then
-   shift
+if test $# -gt 3; then
+   shift 3
    today_args="$@"
    today_opt="-d $@"
    yesterday_opt="-d ${today_args}-1day"
@@ -59,7 +58,7 @@ fetch_forecast_for_date()
 
   fcst_day="$(date -u $date_opt +%Y%m%d)"
 
-  case "$SDPC_GEOSCF_VERSION" in
+  case "$geoscf_version" in
     1)
       fcst_root="GEOS-CF.v01.fcst.sat_inst_1hr_r721x361_v72.${rpl_day}_12z+${fcst_day}"
       fcst_regex="${fcst_root}_??00z.nc4"
@@ -67,15 +66,13 @@ fetch_forecast_for_date()
       ;;
 
     2)
-      # Sample files provided for testing were initialized at 21z,
-      # but production files are expected to be initialized at 09z.
       fcst_root="GEOS.cf.fcst.sat_inst_1hr_reg_L721x361_v72.${rpl_day}_09z+${fcst_day}"
       fcst_regex="${fcst_root}_??00z.V01.nc4"
       fcst_fmt="${fcst_root}_%sz.V01.nc4"
       ;;
 
     *)
-      echo "*** Error: unsupported GEOS-CF version: $SDPC_GEOSCF_VERSION"
+      echo "*** Error: unsupported GEOS-CF version: $geoscf_version"
       return 1
   esac
 
