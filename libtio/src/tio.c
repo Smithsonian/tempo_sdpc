@@ -1845,18 +1845,34 @@ int TIO_def_var_fill (int grp, int varid, int no_fill, const void *fill_value)
 int TIO_inq_var_fill (int grp, int varid, int *no_fill, void *fill_value)
 {
    int status;
+   nc_type type;
+   size_t len;
 
-   /* Note: nc_inq_var_fill doesn't correctly return the fill value
-    *       in the file, but nc_get_att does.  Weird.
+   /* Strangely, nc_inq_var_fill doesn't return the fill value in the file,
+    * but nc_get_att does. Therefore, if the attribute exists, read it,
+    * otherwise rely on nc_inq_var_fill to return the default fill value.
     */
 
-   if ((NC_NOERR != (status = nc_inq_var_fill (grp, varid, no_fill, NULL)))
-       || (NC_NOERR != (status = nc_get_att (grp, varid, _FillValue, fill_value))))
+   if (NC_NOERR == (status = nc_inq_att (grp, varid, _FillValue, &type, &len)))
      {
-        Tell_verror (TELL_IO_READ_ERROR,
-                     "%s: getting fill value for varid=%d (%s)",
-                     __func__, varid, nc_strerror (status));
-        return -1;
+        if ((NC_NOERR != (status = nc_inq_var_fill (grp, varid, no_fill, NULL)))
+            || (NC_NOERR != (status = nc_get_att (grp, varid, _FillValue, fill_value))))
+          {
+             Tell_verror (TELL_IO_READ_ERROR,
+                          "%s: getting fill value for varid=%d (%s)",
+                          __func__, varid, nc_strerror (status));
+             return -1;
+          }
+     }
+   else
+     {
+        if (NC_NOERR != (status = nc_inq_var_fill (grp, varid, no_fill, fill_value)))
+          {
+             Tell_verror (TELL_IO_READ_ERROR,
+                          "%s: getting fill value for varid=%d (%s)",
+                          __func__, varid, nc_strerror (status));
+             return -1;
+          }
      }
 
    return 0;
@@ -2080,7 +2096,7 @@ CONVERT_TO(double,double)
 
 int TIO_get_fill_value (int grp, const char *name, int type, void *value)
 {
-   int varid, file_type, status, return_status = -1;
+   int varid, file_type, no_fill, status, return_status = -1;
    void *fill = NULL;
 
    if ((name == NULL) || (value == NULL))
@@ -2095,19 +2111,16 @@ int TIO_get_fill_value (int grp, const char *name, int type, void *value)
         return -1;
      }
 
-   /* Note: nc_inq_var_fill doesn't correctly return the fill value
-    *       in the file, but nc_get_att does.  Weird.
-    */
-
    if ((NC_NOERR != (status = nc_inq_varid (grp, name, &varid)))
-       || (NC_NOERR != (status = nc_inq_vartype (grp, varid, &file_type)))
-       || (NC_NOERR != (status = nc_get_att (grp, varid, _FillValue, fill)))
-      )
+       || (NC_NOERR != (status = nc_inq_vartype (grp, varid, &file_type))))
      {
-        Tell_verror (TELL_RUNTIME_ERROR, "%s: getting fill value for %s (%s)\n",
+        Tell_verror (TELL_RUNTIME_ERROR, "%s: getting info for variable %s (%s)\n",
                      __func__, name, nc_strerror(status));
         goto cleanup;
      }
+
+   if (0 != TIO_inq_var_fill (grp, varid, &no_fill, fill))
+     goto cleanup;
 
    switch (type)
      {
