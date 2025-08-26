@@ -1,7 +1,10 @@
 #! /bin/sh
 
-export SDPC_REFDATA_DIR=/tempo/nas0/sdpc_soft/refdata
-export SDPC_ANCILLARY_ROOT=/tempo/nas0/sdpc_archive/ancillary
+#ROOTDIR=/tempo/nas0
+ROOTDIR=/proj
+
+export SDPC_REFDATA_DIR=$ROOTDIR/sdpc_soft/refdata
+export SDPC_ANCILLARY_ROOT=$ROOTDIR/sdpc_archive/ancillary
 
 #export SDPC_GEOSCF_CONFIG="clim_config.ini"
 export SDPC_GEOSCF_CONFIG="clim_config_v2.ini"

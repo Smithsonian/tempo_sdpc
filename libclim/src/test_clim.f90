@@ -43,12 +43,12 @@ program test_clim
     year = 2022
     month = 1
     day   = 25
-  else if (.false.) then
-    ! geoscf-v2-forecast:
-    year = 2023
-    month = 8
-    day   = 30
   else if (.true.) then
+    ! geoscf-v2-forecast:
+    year = 2025
+    month = 8
+    day   = 26
+  else if (.false.) then
     ! geoscf-v2-analysis
     year = 2025
     month = 1
