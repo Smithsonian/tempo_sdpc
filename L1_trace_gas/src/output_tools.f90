@@ -985,6 +985,16 @@ contains
                               valid_range = [0.0_r8, 1200.0_r8], &
                               fillvalue = fill_float, &
                               attlist=att_coord)
+    call tiof_varlist_append (varlist_supp, errstat, &
+                              tg_var_pbl_height, &
+                              nf90_float, &
+                              dimids = dimids_xtrack_step,  &
+                              long_name = "Planetary boundary layer height", &
+                              units = "m", &
+                              valid_range = [0.0_r8, 10000.0_r8], &
+                              fillvalue = fill_float, &
+                              attlist=att_coord)
+
     IF (yn_stratrop) THEN
       call tiof_varlist_append (varlist_supp, errstat, &
                                 tg_var_tropopause_pressure, &
@@ -1665,6 +1675,10 @@ contains
     call tiof_attlist_append (attlist, errstat, "Eta_B", att_r4 = amf_corr % eta_b)
     call tiof_def_atts (obj, attlist, varid_surface_pressure, errstat)
     call tiof_attlist_free (attlist)
+
+    ! Save PBL height
+    call tiof_put2d_r4 (obj, tg_var_pbl_height, [0,0], [ntimes,nxtrack], &
+                        amf_corr % pbl_height (1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_stratrop) then
        call tiof_put2d_r4 (obj, tg_var_tropopause_pressure, [0,0], [ntimes,nxtrack], &

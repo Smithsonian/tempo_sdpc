@@ -156,7 +156,7 @@ CONTAINS
     REAL    (KIND=r8), DIMENSION (CmETA,1:nx,0:nt-1) :: profiles, scattw, scattw_clear, ptemperature
     REAL    (KIND=r8), DIMENSION (1:nx,0:nt-1,2) :: wgh_ozo_pro
     INTEGER (KIND=i4), DIMENSION (1:nx,0:nt-1,2) :: idx_ozo_pro
-    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure
+    REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1), target :: surface_pressure, tropopause_pressure, zpbl
     REAL    (KIND=r4), DIMENSION (1:nx,0:nt-1) :: phis, psurf, tsurf, wind_speed
 
     real    (kind=r4), dimension (:), allocatable, target :: eta_a, eta_b
@@ -183,6 +183,7 @@ CONTAINS
     phis         = r4_missval ! Not output
     psurf        = r4_missval ! Not output
     tsurf        = r4_missval ! Not output
+    zpbl         = r4_missval
     wind_speed   = r4_missval
     ptemperature = r8_missval
     scattw       = r8_missval
@@ -271,7 +272,7 @@ CONTAINS
        ! ------------------------------------------------
        call tell_log (1, 'amf_calculation: read gas profile')
        CALL get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
-            idx_ozo_pro, phis, psurf, tsurf, wind_speed, &
+            idx_ozo_pro, phis, psurf, tsurf, zpbl, wind_speed, &
             lat, lon, time, nt, nx, apriori_source, clim_source, errstat, amfdiag)
        if (errstat /= 0) then
           call tell_error (tell_io_read_error, 'reading gas profile', errstat)
@@ -409,6 +410,7 @@ CONTAINS
       amf_corr % tropopause_pressure => tropopause_pressure
       amf_corr % eta_a => eta_a
       amf_corr % eta_b => eta_b
+      amf_corr % pbl_height => zpbl
       yn_write_cloud_variables = .TRUE.
       call write_amf_correction (nx, nt, amf_corr, saocol, saodco, &
                                  yn_write_cloud_variables, crfrc, errstat)
@@ -923,7 +925,7 @@ CONTAINS
   end subroutine read_cloud_climatology
 
   subroutine get_atmos_model (cpt, pge_idx, profiles, wgh_ozo_pro, &
-                        idx_ozo_pro, phis, psurf, tsurf, &
+                        idx_ozo_pro, phis, psurf, tsurf, zpbl, &
                         wind_speed, lat, lon, time, nt, nx, &
                         apriori_source, clim_source, errstat, amfdiag)
     use clim_module
@@ -936,7 +938,7 @@ CONTAINS
     real (kind=r8), dimension(cmeta,1:nx,0:nt-1), intent (inout) :: profiles
     real (kind=r8), dimension(1:nx,0:nt-1, 2), intent (inout) :: wgh_ozo_pro
     integer (kind=i4), dimension(1:nx,0:nt-1, 2), intent (inout) :: idx_ozo_pro
-    real (kind=r4), dimension(1:nx,0:nt-1), intent (inout) :: wind_speed, phis, psurf, tsurf
+    real (kind=r4), dimension(1:nx,0:nt-1), intent (inout) :: wind_speed, phis, psurf, tsurf, zpbl
     real (kind=r4), dimension (1:nx,0:nt-1), intent (in) :: lat, lon
     real (kind=r8), dimension (0:nt-1), intent (in) :: time
     integer (kind=i4), intent (in) :: nt, nx
@@ -945,12 +947,12 @@ CONTAINS
     integer (kind=i2), dimension (1:nx,0:nt-1), intent (out) :: amfdiag
 
     type (clim_pres_bounds_type) :: bounds
-    type (clim_val_type) :: cvt, cvt_o3, cvt_u2m, cvt_v2m, cvt_phis, cvt_temp
+    type (clim_val_type) :: cvt, cvt_o3, cvt_u2m, cvt_v2m, cvt_phis, cvt_temp, cvt_zpbl
     integer :: year(2), month(2), day(2)
     integer :: nz, nlayers, itimes, ixtrack
     real (kind=r8) :: t_beg, t_end, hour, hour_beg, hour_end, tai93_offset
     real (kind=r4), dimension(:), allocatable :: pres, vmr, partial_column, temp
-    real (kind=r4) :: hour_f, lon_f, lat_f, o3_col, u2m(1), v2m(1), phi(1)
+    real (kind=r4) :: hour_f, lon_f, lat_f, o3_col, u2m(1), v2m(1), phi(1), pbl(1)
     character (len=6) :: clim_db_molecule_name
     real (kind=r4), dimension (1:nx,0:nt-1) :: fudge_lon, fudge_lat
     logical :: water_vapor, have_forecast
@@ -1051,6 +1053,13 @@ CONTAINS
        return
     end if
 
+    ! Get ZPBL (request from science team)
+    call clim_val_init (cvt_zpbl, cpt, 'ZPBL', errstat, single_layer=.true.)
+    if (errstat /= 0) then
+       call tell_error ( tell_io_read_error, "libclim_model: initializing ZPBL", errstat)
+       return
+    end if
+
     do itimes = 0, nt-1
       ! Work out hour of interest
       if (time(itimes) == r8_missval) cycle
@@ -1112,6 +1121,17 @@ CONTAINS
              call tell_set_error (0)
           end if
           tsurf(ixtrack, itimes) = temp(1)
+
+          ! Get surface planetary boundary layer height
+          call clim_val_interp (cvt_zpbl, cpt, hour_f, lon_f, lat_f, pbl, errstat)
+          if (errstat /= 0) then
+             call tell_error (tell_runtime_error, "libclim_model: calculating surface geopotential height", errstat)
+             pbl = 0.0
+             ! Clear the global errstat before proceeding, otherwise the code will exit with non-zero error status
+             errstat = 0
+             call tell_set_error (0)
+          end if
+          zpbl(ixtrack, itimes) = pbl(1)
 
           ! Get vmr profile
           call clim_val_interp (cvt, cpt, hour_f, lon_f, lat_f, vmr, errstat)
