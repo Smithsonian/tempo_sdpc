@@ -39,10 +39,15 @@ typedef struct
 
    int num_slope_aoi;
    int num_band;
-   int num_aoi_range;
+   int num_slope_term;
    float *slope_aoi;
    /* polynomial coefficients for interpolating the dependence on angle of incidence
     * (polar angle, theta) */
+
+   int do_spat_corr;
+   int num_spat;
+   float *spat_corr;
+   /* [dimensionless] BTDF spatial correction */
 
    int num_ns;
    float *slope_azi;
@@ -50,10 +55,6 @@ typedef struct
 
    float aoi_nom;
    /* [deg] nominal angle of incidence (polar angle, theta) */
-
-   int num_aoi;
-   float *daoi;
-   /* [deg] angle of incidence difference against nominal */
 
    float *btdfe_lut;
    /* [dimensionless] (num_waves,num_aov) Effective BTDF, averaged over pixel FOV */
@@ -517,14 +518,13 @@ static void btdf_free (BTDF_Type *btdf)
    FREE(btdf->aov);
    FREE(btdf->slope_aoi);
    FREE(btdf->slope_azi);
-   FREE(btdf->daoi);
    FREE(btdf->btdfe_lut);
    FREE(btdf->trend);
    FREE(btdf);
 }
 
-static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_aoi,
-                              size_t num_aoi_range, size_t num_band, size_t num_slope_aoi, size_t num_ns)
+static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_slope_term,
+                              size_t num_band, size_t num_slope_aoi, size_t num_ns, size_t num_spat)
 {
    BTDF_Type *btdf = NULL;
 
@@ -537,10 +537,10 @@ static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_aoi,
 
    if ((NULL == (btdf->waves = (float *)MALLOC (num_waves * sizeof(float))))
        || (NULL == (btdf->aov = (float *)MALLOC (num_aov * sizeof(float))))
-       || (NULL == (btdf->daoi = (float *)MALLOC (num_aoi * sizeof(float))))
-       || (NULL == (btdf->slope_aoi = (float *)MALLOC (num_slope_aoi * num_aoi_range * num_band * sizeof(float))))
-       || (NULL == (btdf->slope_azi = (float *)MALLOC (num_slope_aoi * num_aoi_range * num_ns * num_band * sizeof(float))))
-       || (NULL == (btdf->btdfe_lut = (float *)MALLOC (num_aov * num_waves * sizeof(float)))))
+       || (NULL == (btdf->slope_aoi = (float *)MALLOC (num_slope_aoi * num_slope_term * num_band * sizeof(float))))
+       || (NULL == (btdf->slope_azi = (float *)MALLOC (num_slope_aoi * num_slope_term * num_ns * num_band * sizeof(float))))
+       || (NULL == (btdf->btdfe_lut = (float *)MALLOC (num_aov * num_waves * sizeof(float))))
+       || (NULL == (btdf->spat_corr = (float *)MALLOC (num_spat * num_band * sizeof(float)))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
         btdf_free (btdf);
@@ -549,11 +549,11 @@ static BTDF_Type *btdf_alloc (size_t num_waves, size_t num_aov, size_t num_aoi,
 
    btdf->num_waves = num_waves;
    btdf->num_aov = num_aov;
-   btdf->num_aoi = num_aoi;
-   btdf->num_aoi_range = num_aoi_range;
+   btdf->num_slope_term = num_slope_term;
    btdf->num_band = num_band;
    btdf->num_slope_aoi = num_slope_aoi;
    btdf->num_ns = num_ns;
+   btdf->num_spat = num_spat;
 
    return btdf;
 }
@@ -628,30 +628,51 @@ close_and_return:
    return status;
 }
 
-static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file)
+static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *file, config_t *cfg)
 {
+   config_setting_t *s, *m;
    BTDF_Type *btdf = NULL;
    const char *slope_aoi_name, *slope_azi_name;
    const char *lut_name;
-   size_t num_waves, num_aov, num_aoi, num_aoi_range, num_band, num_slope_aoi, num_ns;
+   size_t num_waves, num_aov, num_slope_term, num_band, num_slope_aoi, num_ns, num_spat;
    int start[4], count[4];
    int ncid, dimid, status = -1;
+   int do_spat_corr;
+
+   tell_vlog (TELL_MSGTYPE_INFO, 1, "reading %s", file);
+
+   if (NULL == (s = config_lookup (cfg, "btdf")))
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: accessing group 'btdf' in param file: %s",
+                     __func__, config_error_file (cfg));
+        goto close_and_return;
+     }
+
+   if (NULL == (m = config_setting_get_member (s, "do_spat_corr")))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading config file",__func__);
+        goto close_and_return;
+     }
+
+   do_spat_corr = config_setting_get_bool (m);
 
    if (0 != TIO_open (file, NC_NOWRITE, &ncid))
      return NULL;
 
    if ((0 != TIO_inq_dim (ncid, "n_BTDF_w", &dimid, &num_waves))
        || (0 != TIO_inq_dim (ncid, "n_BTDF_aov", &dimid, &num_aov))
-       || (0 != TIO_inq_dim (ncid, "n_BTDF_aoi", &dimid, &num_aoi))
-       || (0 != TIO_inq_dim (ncid, "n_BTDF_aoi_range", &dimid, &num_aoi_range))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_term", &dimid, &num_slope_term))
        || (0 != TIO_inq_dim (ncid, "n_BTDF_band", &dimid, &num_band))
        || (0 != TIO_inq_dim (ncid, "n_BTDF_NS", &dimid, &num_ns))
-       || (0 != TIO_inq_dim (ncid, "n_BTDF_slope_aoi", &dimid, &num_slope_aoi)))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_slope_aoi", &dimid, &num_slope_aoi))
+       || (0 != TIO_inq_dim (ncid, "n_BTDF_spat", &dimid, &num_spat)))
      goto close_and_return;
 
-   if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_aoi, num_aoi_range, num_band, num_slope_aoi, num_ns)))
+   if (NULL == (btdf = btdf_alloc (num_waves, num_aov, num_slope_term, num_band, num_slope_aoi, num_ns, num_spat)))
      goto close_and_return;
 
+   btdf->do_spat_corr = do_spat_corr;
    btdf->is_reference_diffuser = is_reference_diffuser;
 
    if (is_reference_diffuser)
@@ -686,16 +707,10 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
      goto close_and_return;
 
    start[0] = 0;
-   count[0] = num_aoi;
-
-   if (0 != TIO_get_var_section (ncid, "BTDF_daoi", start, count, TIO_FLOAT, btdf->daoi))
-     goto close_and_return;
-
-   start[0] = 0;
    start[1] = 0;
    start[2] = 0;
    count[0] = num_band;
-   count[1] = num_aoi_range;
+   count[1] = num_slope_term;
    count[2] = num_slope_aoi;
 
    if (0 != TIO_get_var_section (ncid, slope_aoi_name, start, count, TIO_FLOAT, btdf->slope_aoi))
@@ -707,7 +722,7 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
    start[3] = 0;
    count[0] = num_band;
    count[1] = num_ns;
-   count[2] = num_aoi_range;
+   count[2] = num_slope_term;
    count[3] = num_slope_aoi;
 
    if (0 != TIO_get_var_section (ncid, slope_azi_name, start, count, TIO_FLOAT, btdf->slope_azi))
@@ -719,6 +734,14 @@ static BTDF_Type *read_btdf_parameters (int is_reference_diffuser, const char *f
    count[1] = num_aov;
 
    if (0 != TIO_get_var_section (ncid, lut_name, start, count, TIO_FLOAT, btdf->btdfe_lut))
+     goto close_and_return;
+
+   start[0] = 0;
+   start[1] = 0;
+   count[0] = num_band;
+   count[1] = num_spat;
+
+   if (0 != TIO_get_var_section (ncid, "BTDF_spat_corr", start, count, TIO_FLOAT, btdf->spat_corr))
      goto close_and_return;
 
    status = 0;
@@ -737,9 +760,9 @@ close_and_return:
    return btdf;
 }
 
-static int read_btdf (Calibration_Type *cal, const char *path, const char *trend_file)
+static int read_btdf (Calibration_Type *cal, config_t *cfg, const char *path, const char *trend_file)
 {
-   if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path)))
+   if ((NULL == (cal->diffuser_wrk = read_btdf_parameters (0, path, cfg)))
        || (0 != init_btdf_trend_correction (cal->diffuser_wrk, cal->num_xpos, cal->num_waves, trend_file)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading working BTDF parameters from %s",
@@ -747,7 +770,7 @@ static int read_btdf (Calibration_Type *cal, const char *path, const char *trend
         return -1;
      }
 
-   if ((NULL == (cal->diffuser_ref = read_btdf_parameters (1, path)))
+   if ((NULL == (cal->diffuser_ref = read_btdf_parameters (1, path, cfg)))
        || (0 != init_btdf_trend_correction (cal->diffuser_ref, cal->num_xpos, cal->num_waves, trend_file)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: reading reference BTDF parameters from %s",
@@ -833,6 +856,8 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              double sin_aoi = sin(solar_theta);
              double cos_aoi = cos(solar_theta);
              int iw, ia;
+             double scat_ang_diff, a_aoi, r_aoi, a_azi, r_azi;
+             int a_idx, r_idx;
 
              if (img_pixels[s] == IMAGE_PIXEL_FILL_VALUE)
                {
@@ -846,8 +871,8 @@ static int cal_apply_btdf (const Calibration_Type *cal,
 
              aov_s_rad = SLIT_AOV_STEP_RAD * (hs - s);
              wave_s = waves[s];
-             int band_idx = (wave_s < 515) ? 0 : 1;
-             /* 0: UV, 1: VIS */
+             int band_idx = (wave_s > 515) ? 0 : 1;
+             /* 0: VIS, 1: UV */
              int ns_idx = (s < 1024) ? 0 : 1;
              /* 0: North, 1: South */
 
@@ -863,46 +888,40 @@ static int cal_apply_btdf (const Calibration_Type *cal,
                                     * RADTODEG;
 
              /* angle of incidendence correction */
-             double scat_ang_diff = scat_ang_mea - scat_ang_aoi;
+             scat_ang_diff = scat_ang_mea - scat_ang_aoi;
 
-             int aoi_pos = 0;
-             for (int i = 0; i < bt->num_aoi - 1; i++)
+             a_idx = band_idx * (bt->num_slope_term * bt->num_slope_aoi);
+             r_idx = band_idx * (bt->num_slope_term * bt->num_slope_aoi) + bt->num_slope_aoi;
+
+             a_aoi = bt->slope_aoi[a_idx] + wave_s * bt->slope_aoi[a_idx+1];
+             r_aoi = bt->slope_aoi[r_idx] + wave_s * bt->slope_aoi[r_idx+1];
+
+             if (scat_ang_diff >= 0)
                {
-                  if ((fabs(scat_ang_diff) >= bt->daoi[i]) && (fabs(scat_ang_diff) < bt->daoi[i+1]))
-                    {
-                       aoi_pos = i+1;
-                       break;
-                    }
+                  aoi_correction = (-1.0) * a_aoi * pow(scat_ang_diff, r_aoi) / 100.0;
                }
-             if (fabs(scat_ang_diff) >= bt->daoi[bt->num_aoi - 1])
+             else
                {
-                  aoi_pos = bt->num_aoi;
+                  aoi_correction = a_aoi * pow(((-1.0) * scat_ang_diff), r_aoi) / 100.0;
                }
-
-             int index = band_idx * (bt->num_aoi_range * bt->num_slope_aoi) + aoi_pos * (bt->num_slope_aoi);
-
-             aoi_correction = ((bt->slope_aoi[index] + wave_s * bt->slope_aoi[index+1]) * scat_ang_diff / 100.0);
 
              /* azimuth angle correction */
              scat_ang_diff = scat_ang_aoi - scat_ang_nom;
 
-             int azi_pos = 0;
-             for (int i = 0; i < bt->num_aoi - 1; i++)
-               {
-                  if ((fabs(scat_ang_diff) >= bt->daoi[i]) && (fabs(scat_ang_diff) < bt->daoi[i+1]))
-                    {
-                       azi_pos = i+1;
-                       break;
-                    }
-               }
-             if (fabs(scat_ang_diff) >= bt->daoi[bt->num_aoi - 1])
-               {
-                  azi_pos = bt->num_aoi;
-               }
+             a_idx = band_idx * (bt->num_ns * bt->num_slope_term * bt->num_slope_aoi) + ns_idx * (bt->num_slope_term * bt->num_slope_aoi);
+             r_idx = band_idx * (bt->num_ns * bt->num_slope_term * bt->num_slope_aoi) + ns_idx * (bt->num_slope_term * bt->num_slope_aoi) + bt->num_slope_aoi;
 
-             index = band_idx * (bt->num_ns * bt->num_aoi_range * bt->num_slope_aoi) + ns_idx * (bt->num_aoi_range * bt->num_slope_aoi) + azi_pos * (bt->num_slope_aoi);
+             a_azi = bt->slope_azi[a_idx] + wave_s * bt->slope_azi[a_idx+1];
+             r_azi = bt->slope_azi[r_idx] + wave_s * bt->slope_azi[r_idx+1];
 
-             azi_correction = ((bt->slope_azi[index] + wave_s * bt->slope_azi[index+1]) * scat_ang_diff / 100.0);
+             if (scat_ang_diff >= 0)
+               {
+                  azi_correction = (-1.0) * a_azi * pow(scat_ang_diff, r_azi) / 100.0;
+               }
+             else
+               {
+                  azi_correction = a_azi * pow(((-1.0) * scat_ang_diff), r_azi) / 100.0;
+               }
 
              /* Bilinear interpolation of effective BTDF, with no extrapolation */
              double aov_s = aov_s_rad * RADTODEG;
@@ -948,6 +967,10 @@ static int cal_apply_btdf (const Calibration_Type *cal,
              fw1 = (wave_s   - bt->waves[iw]) / wave_step;
 
              btdfe_s = (fw0 * b0 + fw1 * b1) * cos_aoi * (1.0 + aoi_correction) * (1.0 + azi_correction);
+
+             /* spatial correction */
+             if ((bt->do_spat_corr) && (!is_reference_diffuser))
+               btdfe_s *= bt->spat_corr[band_idx * bt->num_spat + s];
 
              img_pixels[s] /= btdfe_s * bt_trend[s];
              if (img_diag)
@@ -1511,16 +1534,17 @@ static int interp_row (Hole_Info_Type *h, Image_Pixel_Type *pix, const Image_Pqf
    return status;
 }
 
-static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Image_Pqf_Bitmap_Type mask)
+static int model_row (int band, Image_Type *img, size_t s, size_t good_col, Image_Pqf_Bitmap_Type mask)
 {
    size_t np = img->num_rows;
    size_t ns = img->num_cols;
    int p;
+   char band_name[2][4] = {"VIS", "UV"};
    int pb = (band == 0) ? 0 : np/2;
    int pe = (band == 0) ? np/2 : np;
    double c0, c1, cov00, cov01, cov11, chisq;
 
-   int num_sig = (band == 0) ? 2: 4;
+   int num_sig = (band == 0) ? 2 : 4;
    int start[4], end[4];
    double mid[4];
 
@@ -1546,16 +1570,21 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
     {
       for (p = pb+start[i]; p < pb+end[i]; p++)
         {
-          Image_Pixel_Type good_pixel   = img->pixels[good_col + p * ns];
-          Image_Pixel_Type target_pixel = img->pixels[s + p * ns];
+          Image_Pqf_Bitmap_Type good_pqf = img->pixel_quality_flags[good_col + p * ns];
+          Image_Pqf_Bitmap_Type target_pqf = img->pixel_quality_flags[s + p * ns];
+          if (((good_pqf & mask) == 0) & ((target_pqf & mask) == 0))
+            {
+               Image_Pixel_Type good_pixel = img->pixels[good_col + p * ns];
+               Image_Pixel_Type target_pixel = img->pixels[s + p * ns];
 
-          good_sig  [i] = (good_pixel   < good_sig  [i]) ? good_pixel   : good_sig  [i];
-          target_sig[i] = (target_pixel < target_sig[i]) ? target_pixel : target_sig[i];
+               good_sig  [i] = (good_pixel   < good_sig  [i]) ? good_pixel   : good_sig  [i];
+               target_sig[i] = (target_pixel < target_sig[i]) ? target_pixel : target_sig[i];
+            }
         }
 
       if (good_sig[i] == 1e30)
         {
-           tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: good_sig[%d] was never updated, skipping band %d (0: VIS, 1: UV)", __func__, i, band);
+           tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: good_sig[%d] was never updated, skipping %s band", __func__, i, band_name[band]);
            return -1;
         }
       ratio_sig[i] = target_sig[i] / good_sig[i];
@@ -1577,15 +1606,26 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
    /* Apply the linear fit to the bad pixels in the target spectrum */
    for (p = pb; p < pe; p++)
      {
-        Image_Pixel_Type good_pixel   = img->pixels[good_col + p * ns];
+        Image_Pqf_Bitmap_Type good_pqf = img->pixel_quality_flags[good_col + p * ns];
         Image_Pixel_Type target_pixel = img->pixels[s + p * ns];
         Image_Pqf_Bitmap_Type target_pqf = img->pixel_quality_flags[s + p * ns];
 
-        if (target_pqf & mask)
+        if ((target_pqf & mask) != 0)
           {
-             target_pixel = (c0 + c1 * (double)(p - pb)) * good_pixel;
-             /* Update the pixel value */
-             img->pixels[s + p * ns] = target_pixel;
+             if ((good_pqf & mask) == 0)
+               {
+                  Image_Pixel_Type good_pixel = img->pixels[good_col + p * ns];
+
+                  target_pixel = (c0 + c1 * (double)(p - pb)) * good_pixel;
+                  /* Update the pixel value */
+                  img->pixels[s + p * ns] = target_pixel;
+                  /* Clear the pixel quality flag */
+                  img->pixel_quality_flags[s + p * ns] &= ~IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+               }
+             else
+               {
+                  tell_vlog(TELL_MSGTYPE_WARN, 0, "%s: the selected good column has bad pixel at row %d", __func__, p);
+               }
           }
      }
 
@@ -1595,7 +1635,7 @@ static int interp_col (int band, Image_Type *img, size_t s, size_t good_col, Ima
 static int reconstruct_image (Image_Type *img, int s_top, int s_bot)
 {
    Hole_Info_Type h = {0};
-   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA;
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA | IMAGE_PQF_SATURATED;
    size_t np = img->num_rows;
    size_t ns = img->num_cols;
    size_t s, p;
@@ -1654,19 +1694,31 @@ static int reconstruct_ratio (Image_Type *img, int s_top, int s_bot)
           {
             if (pqf[s] & mask)
               {
+                 /* Initialize PQF.
+                  * It will be cleared if the process is finished with no issues for each pixel.
+                  */
+                 pqf[s] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
+
                  if (p  < np/2) num_mask_vis[s]++;
                  if (p >= np/2) num_mask_uv [s]++;
+              }
+
+            if (pqf[s] & (IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_MISSING_DATA))
+              {
+                 img->pixels[s + p * ns] = 0.0;
               }
           }
       }
 
-   for (s = (ns-((size_t)s_bot+1)); s > ((size_t)s_top-1); s--)
+   char band_name[2][4] = {"VIS", "UV"};
+   for (int band = 0; band < 2; band++) /* band 0: VIS, band 1: UV */
      {
-        for (int band = 0; band < 2; band++) /* band 0: VIS, band 1: UV */
+        int no_good_col = 1;
+        for (s = (ns-((size_t)s_bot+1)); s > ((size_t)s_top-1); s--)
           {
              int *num_mask = (band == 0) ? num_mask_vis : num_mask_uv;
              int min_mask = (int)np;
-             int col_min_mask;
+             int col_min_mask = (int)ns/2;
 
              if (num_mask[s] > 0)
                {
@@ -1688,13 +1740,17 @@ static int reconstruct_ratio (Image_Type *img, int s_top, int s_bot)
                               }
                          }
                     }
-                  good_col = col_min_mask;
-                  tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: no good columns to use for column %zu (number of bad pixels: %d)", __func__, s, min_mask);
+                  good_col = (size_t)col_min_mask;
+                  if (no_good_col)
+                    {
+                       tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: no good columns to use in %s band", __func__, band_name[band]);
+                       no_good_col = 0;
+                    }
                   found:;
  
-                  if (0 != interp_col(band, img, s, good_col, mask))
+                  if (0 != model_row(band, img, s, good_col, mask))
                     {
-                       tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: unfilled image holes at column %zu", __func__, s);
+                       tell_vlog (TELL_MSGTYPE_WARN, 0, "%s: unfilled image holes at column %zu in %s band", __func__, s, band_name[band]);
                     }
                }
           }
@@ -2015,7 +2071,8 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    Image_Pixel_Type *pix;
    Image_Pixel_Type *pix_corr;
    Image_Pqf_Bitmap_Type *pqf;
-   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_MISSING_DATA | IMAGE_PQF_BAD_PIXEL;
+   Image_Pqf_Bitmap_Type *pqf0;
+   Image_Pqf_Bitmap_Type mask = IMAGE_PQF_MISSING_DATA | IMAGE_PQF_BAD_PIXEL | IMAGE_PQF_SATURATED;
    size_t num_rows = img->num_rows;
    size_t num_cols = img->num_cols;
    size_t i, num_pixels = num_rows * num_cols;
@@ -2136,6 +2193,7 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
    pqf = img->pixel_quality_flags;
    pix = img->pixels;
    pix_corr = corr->pixels;
+   pqf0 = img0->pixel_quality_flags;
    for (i = 0; i < num_pixels; i++)
      {
         if (0 == (pqf[i] & mask))
@@ -2145,6 +2203,10 @@ static int slcorr_using_psf (const Calibration_Type *cal, Image_Type *img)
                   pqf[i] |= IMAGE_PQF_STRAYLIGHT_CORR_ERROR;
                }
              pix[i] = pix_corr[i];
+          }
+        else
+          {
+             pqf[i] = pqf0[i];
           }
      }
 
@@ -2638,7 +2700,7 @@ Calibration_Type *sensorcal_init (config_t *cfg, TIO_Meta_Type *meta, const char
 
    if (enable_state_query_bool (ENABLE_BTDF) > 0)
      {
-        if (0 != read_btdf (cal, path, btdf_trend_file))
+        if (0 != read_btdf (cal, cfg, path, btdf_trend_file))
           goto free_and_return;
 
         if (enable_state_query_bool (ENABLE_DIFF_POLCORR) > 0)
