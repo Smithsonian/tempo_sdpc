@@ -577,9 +577,13 @@ contains
          !     btest(temp_radflags,6) .or. & !noise_underflow
               btest(temp_radflags,7) .or. & !dark_corr_error
               btest(temp_radflags,8) .or. & !offset_corr_error
-              btest(temp_radflags,9) .or. & !smear_corr_error
+              btest(temp_radflags,9)) then ! .or. & !smear_corr_error
          !     btest(temp_radflags,11) .or. &  !nonlinear_range
-              btest(temp_radflags,10)) then  !straylight_corr_error
+         ! per discussion with heesung 202508, turn straylight check off here for V4
+         ! previous straylight error is flagged when negative rad occurs under straylight correction
+         ! negative rad will be captured by processing error in bit 2 anyway, thus comment it out
+         ! to allow more flexibility for the bit to describe straylight problem
+         !     btest(temp_radflags,10)) then  !straylight_corr_error 
           temp_rad(iw)=negative999 
          else
           temp_rad(iw)=rad_Radiance(iw,ix,it)
