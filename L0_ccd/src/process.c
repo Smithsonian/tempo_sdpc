@@ -769,7 +769,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
    tell_vlog (TELL_MSGTYPE_INFO, 1, "Converting DN to e-/s:");
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", (ixr+1), num_exprecs);
 
         if (NULL == (xr = alloc_exprec_meta (tft)))
           goto return_status;
@@ -781,7 +781,7 @@ static int derive_current (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
         if (xr->exprec->num_coadds == TIO_FILL_UINT)
           {
-             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, ixr, num_exprecs);
+             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, (ixr+1), num_exprecs);
              free_exprec_meta (xr, gr);
              xr = NULL;
              continue;
@@ -1459,7 +1459,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
    for (ixr = 0; ixr < num_exprecs; ixr++)
      {
-        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", ixr, num_exprecs);
+        tell_vlog (TELL_MSGTYPE_INFO, 1, "exposure record %3d/%d", (ixr+1), num_exprecs);
 
         if (NULL == (xr = alloc_exprec_meta (tft)))
           goto return_status;
@@ -1471,7 +1471,7 @@ static int derive_photons (config_t *cfg, const Control_Type *ctrl, Process_Cont
 
         if (xr->exprec->num_coadds == TIO_FILL_UINT)
           {
-             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, ixr, num_exprecs);
+             tell_vwarn (0, "%s: exposure record %d/%d (missing data)", __func__, (ixr+1), num_exprecs);
              free_exprec_meta (xr, gr);
              xr = NULL;
              continue;
