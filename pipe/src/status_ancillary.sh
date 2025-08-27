@@ -104,7 +104,7 @@ main()
    asdc_status_table "$SDPC_ANCILLARY_ROOT/var/goes/cmieast.sqlite"
    asdc_status_table "$SDPC_ANCILLARY_ROOT/var/goes/cmiwest.sqlite"
    printf "\n======= GEOS Composition Forecasts:\n"
-   asdc_status_table "$SDPC_ANCILLARY_ROOT/var/geoscf/geoscf.sqlite"
+   asdc_status_table "$SDPC_ANCILLARY_ROOT/var/geoscf_v2/geoscf.sqlite"
    printf "\n======= IMS Snow & Ice Cover Maps:\n"
    asdc_status_table "$SDPC_ANCILLARY_ROOT/var/ims/ims.sqlite"
 }
