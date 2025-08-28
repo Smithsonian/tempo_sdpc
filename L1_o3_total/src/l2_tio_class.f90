@@ -244,7 +244,7 @@ contains
                               //' '//trim(o3t_var_longitude) &
                               //' '//trim(o3t_var_latitude))
     call tiof_attlist_append (att_aqflag, errstat, "flag_meanings", &
-                              att_text = "skipped standard adjusted_for_profile_shape based_on_C-pair(331_and_360 nm)")
+                              att_text = "skipped standard adjusted_for_profile_shape based_on_C-pair(331_and_360 nm) Snow/Ice")
     call tiof_attlist_append (att_aqflag, errstat, "flag_values", &
                               att_i4 = [0, 1, 2, 3, 10])
 
