@@ -92,6 +92,11 @@ CONTAINS
 
     if (errstat /= 0) return
 
+    ! legacy OMI initialization
+    radref_latrange(1) = -30.0
+    radref_latrange(2) = +30.0
+    write(*,*)'FIXME: omi_get_radiance_reference: using legacy OMI initializationfor radref_latrange(:) = [-30,30]'
+
     ! ------------------------------
     ! Initialize some some variables
     ! ------------------------------
