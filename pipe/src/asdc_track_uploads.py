@@ -16,7 +16,7 @@ DB_Path = None
 TraceSQL = False
 
 # Don't upload from table names that match any of these regular expressions
-Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]+", "^IRR[A-Za-z0-9]+"])
+Uploads_Excluded_Regex = "|".join (["L1a$", "^RADREF", "^DSTR[A-Za-z0-9]+", "^IRR[A-QS-Za-z0-9]+"])
 
 class Tokenizer:
     def __init__ (self):
