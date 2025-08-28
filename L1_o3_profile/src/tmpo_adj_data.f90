@@ -668,7 +668,7 @@ CONTAINS
     !REAL (KIND=dp), DIMENSION(maxwin) :: floor_noise =  &
     !     (/0.004, 0.002, 0.001, 0.001, 0.001/)
     REAL (KIND=dp), DIMENSION(nreg) :: reg_noise =  &
-         (/0.01, 0.002, 0.002, 0.001/) !20250417 Junsung
+         (/0.01, 0.0015, 0.0015, 0.001/) !20250417 Junsung
     REAL (KIND=dp), DIMENSION(0:nreg) :: reg_waves = &
          (/260.0, 300.0, 310.0, 380., 800./)
 
