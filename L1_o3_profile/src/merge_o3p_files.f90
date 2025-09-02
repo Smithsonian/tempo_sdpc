@@ -207,7 +207,7 @@ program merge_o3p_files
 
   ! determine min max indices of step & xtrack
   max_step=maxval(step)
-  min_step=minval(step)
+  min_step=minval(step, mask=(step>=0))
   max_xtrack=maxval(xtrack)
   min_xtrack=minval(xtrack)
   nstep_tot=max_step-min_step+1
@@ -225,6 +225,7 @@ program merge_o3p_files
   do n=1,ninput
     do i=1,nstep(n)
       do j=1,nxtrack(n)
+        if (step(i,n) < 0) cycle
         dup_check(step(i,n),xtrack(j,n))=1
       enddo
     enddo
@@ -255,7 +256,7 @@ program merge_o3p_files
 
   ! For each file, read in data to appropriate section of output arrays
   do n=1,ninput
-    min_sf = minval(step(1:nstep(n),n))
+    min_sf = minval(step(1:nstep(n),n), mask=(step(1:nstep(n),n)>=0))
     max_sf = maxval(step(1:nstep(n),n))
     min_xf = minval(xtrack(1:nxtrack(n),n))
     max_xf = maxval(xtrack(1:nxtrack(n),n))
