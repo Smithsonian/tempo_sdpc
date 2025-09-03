@@ -1,13 +1,19 @@
-TEMPO_SDPC_v4.7.0   2025 ???
+TEMPO_SDPC_v4.7.0   2025 Sep
 ===============================
-  * Archive INR *.Internal files with filenames unchanged
-  * Support using cached solar wavelength calibration in baseline processing
+  * Update destriping algorithms and logic for CLDO4, NO2
   * Update GLER refdata to land_v5, snow_v4
-  * Support apriori chemistry from GEOS-CF version 2 forecasts and analysis
-  * Update destriping algorithms
-  * Stop uploading RADREF, DSTRHCHO files to ASDC
-  * Rename service asdc_s3 to asdc_nrt
-  * Support uploading all TEMPO data and ancillary data to AWS S3 bucket
+  * libclim:
+    - Support GEOS-CF version 2 forecast and analysis products
+  * pipeline:
+    - Archive INR *.Internal files with filenames unchanged
+    - Support using cached solar wavelength calibration in baseline processing
+    - Add new 'daily' service to generate destriping correction files
+    - Support filtering O3PROF_L2 before generating O3PROF_L3
+  * ASDC interface:
+    - Rename service 'asdc_s3' to 'asdc_nrt'
+    - Modify service 'asdc' to upload to AWS S3 bucket
+    - Support uploading ancillary data to AWS S3 bucket
+    - Stop uploading RADREF, DSTRHCHO files to ASDC
 
 TEMPO_SDPC_v4.6.1   2025 Jun
 ===============================
