@@ -292,7 +292,7 @@ contains
                               shuffle = shuffle, &
                               chunksizes = chunksizes, &
                               attlist = att_coord)
-                        
+
     call tiof_varlist_append (varlist, errstat, &
                               var_amf, &
                               nf90_float, &
@@ -390,7 +390,7 @@ contains
                                  valid_min = 0.0_r8, &
                                  fillvalue = fill_float, &
                                  attlist = att_coord)
-        
+
        call tiof_varlist_append (varlist, errstat, &
                                  tg_var_amf_troposphere_clear_sky, &
                                  nf90_float, &
@@ -751,7 +751,7 @@ contains
     endif
 
     ! data field variables with optional attribute lists:
- 
+
     if (amf_wvl > 0.0) then
       call tiof_varlist_append (varlist_tmp, errstat, &
                                 var_vertical_column, &
@@ -987,12 +987,12 @@ contains
                               attlist=att_coord)
     call tiof_varlist_append (varlist_supp, errstat, &
                               tg_var_pbl_height, &
-                              nf90_float, &
+                              nf90_short, &
                               dimids = dimids_xtrack_step,  &
-                              long_name = "Planetary boundary layer height", &
+                              long_name = "planetary boundary layer height", &
                               units = "m", &
                               valid_range = [0.0_r8, 10000.0_r8], &
-                              fillvalue = fill_float, &
+                              fillvalue = fill_short, &
                               attlist=att_coord)
 
     IF (yn_stratrop) THEN
@@ -1617,6 +1617,7 @@ contains
                                    yn_write_cloud_variables, crfrc, errstat)
     use OMSAO_omidata_module, only : amf_correction_type
     use OMSAO_indices_module, only : pge_no2_idx
+    use OMSAO_precision_module, only : i2
     implicit none
 
     integer, intent(in) :: nxtrack, ntimes
@@ -1629,6 +1630,7 @@ contains
     type (tiof_file_type), pointer :: obj
     type (tiof_attlist_type) :: attlist
     integer :: status, varid_surface_pressure
+    integer (kind=i2), dimension(1:nxtrack,0:ntimes-1) :: pbl_height_i2
 
     if (errstat /= 0) return
 
@@ -1677,8 +1679,13 @@ contains
     call tiof_attlist_free (attlist)
 
     ! Save PBL height
-    call tiof_put2d_r4 (obj, tg_var_pbl_height, [0,0], [ntimes,nxtrack], &
-                        amf_corr % pbl_height (1:nxtrack, 0:ntimes-1), errstat)
+    where (amf_corr % pbl_height (1:nxtrack, 0:ntimes-1) /= fill_float)
+      pbl_height_i2 = nint (amf_corr % pbl_height, kind=i2)
+    elsewhere
+      pbl_height_i2 = fill_short
+    endwhere
+    call tiof_put2d_i2 (obj, tg_var_pbl_height, [0,0], [ntimes,nxtrack], &
+                        pbl_height_i2(1:nxtrack, 0:ntimes-1), errstat)
 
     if (yn_stratrop) then
        call tiof_put2d_r4 (obj, tg_var_tropopause_pressure, [0,0], [ntimes,nxtrack], &
@@ -2187,9 +2194,9 @@ contains
                        errstat)
       return
     endif
-    
+
     ! Clouds should be cropped in cloud code, but double check for safety.
-    where (cloud_fraction < 0.0_r8 .or. cloud_fraction > 1.0_r8)      
+    where (cloud_fraction < 0.0_r8 .or. cloud_fraction > 1.0_r8)
       cloud_fraction = r8_missval
     endwhere
     where (cloud_top_pressure > r8_missval .and. cloud_top_pressure < 0.0_r8)
