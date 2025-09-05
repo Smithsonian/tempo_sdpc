@@ -142,7 +142,14 @@ for fp in input_files:
             c = src['support_data']['amf_cloud_fraction'][:]
             sz = src['geolocation']['solar_zenith_angle'][:]
             vz = src['geolocation']['viewing_zenith_angle'][:]
-            s = src['support_data']['fitted_slant_column'][:]
+            # Check to see if fitted_slant_column_uncorrected exists (this
+            # means that the file has already been destriped). If so, use this
+            # for the SCD.
+            grp = src['support_data']
+            if 'fitted_slant_column_uncorrected' not in grp.variables:
+                s = src['support_data']['fitted_slant_column'][:]
+            else:
+                s = src['support_data']['fitted_slant_column_uncorrected'][:]
             p = src['support_data']['gas_profile'][:]
             sp = src['support_data']['surface_pressure'][:]
             if 'vertical_column_total' in grp_supp.variables:
@@ -229,13 +236,19 @@ if filter_vcd_trop_ap:
     vcdap_mask = (vcdtrp_ap > maxvcd_apriori)
 elif vcd_apriori_type == 'total':
     vcdap_mask = (vcdtot_ap > maxvcd_apriori)
+elif vcd_apriori_type == 'none':
+    vcdap_mask = False
 else:
+    print_message('Invalid vcd_apriori_type threshold type: do not filter.')
     vcdap_mask = False
 # Filter out pixels that have VCD outside defined range
 if vcd_obs_type == 'total':
     vcd_mask = (vcd > maxvcd_obs) | (vcd < minvcd_obs)
-else:
+elif vcd_obs_type == 'none':
     vcd_mask = False
+else:
+    print_message('Invalid option for vcd_obs_type outlier type: do not filter.')
+    vcdap_mask = False
 # Get main data quality flag mask
 use_idx = False
 for val in mqfval:
