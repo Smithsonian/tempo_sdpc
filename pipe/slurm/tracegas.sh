@@ -42,9 +42,11 @@ irr_basename=$(basename $irr_file .nc)
 case "$rad_basename" in
    *_NRT_* )
      processing_version="$SDPC_NRT_PROCESSING_VERSION"
+     is_baseline=0
      ;;
    * )
      processing_version="$SDPC_PROCESSING_VERSION"
+     is_baseline=1
      ;;
 esac
 
@@ -117,6 +119,7 @@ template_ctrl="${etc_dir}/trace_gas/control.${molecule}.in"
 control_file="control_${molecule}.txt"
 this_pcf_file="${pcf_file}_${molecule}"
 
+solcal_cache_enable=1
 radref_basename=""
 radref_dirname=""
 case "$molecule" in
@@ -124,6 +127,12 @@ case "$molecule" in
      if test -n "$radref_file" ; then
         radref_basename="$(basename $radref_file)"
         radref_dirname="$(dirname $radref_file)"
+     fi
+     # Disable usage of cached solar wavecal for baseline HCHO.
+     # Baseline HCHO applies solar wavecal to the radiance reference,
+     # so it's important to do solar wavecal for every scan.
+     if test $is_baseline -ne 0 ; then
+        solcal_cache_enable=0
      fi
     ;;
   *)
@@ -143,9 +152,9 @@ if ! test x"$USE_SYNTHETIC_MET_DATA" = x"OFF" ; then
       met_dir1=$(dirname $USE_SYNTHETIC_MET_DATA)
 fi
 
-# Use cached solar wavelength calibration when it's available
+# Use cached solar wavelength calibration when it's available and enabled.
 solcal_file_file="${rad_basename}.solcal"
-if test -s $solcal_file_file ; then
+if test \( -s $solcal_file_file -a $solcal_cache_enable -ne 0 \); then
    solcal_cache_mode="read"
    solcal_source="solar_irradiance"
    solcal_file_path="$(cat $solcal_file_file)"
