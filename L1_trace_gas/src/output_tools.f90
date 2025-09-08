@@ -367,9 +367,9 @@ contains
                               nf90_float, &
                               dimids = dimids_xtrack_step,  &
                               long_name = "wind speed", &
-                              comment = "2-meter wind speed derived calculating the Euclidian distance "// &
-                                        " of the Eastward and Nortward components", &
-                              units = "m s-1", &
+                              comment = "2-meter wind speed determined from "// &
+                                        "the Eastward and Northward components", &
+                              units = "m s^-1", &
                               valid_range = [0.0_r8, 150.0_r8], &
                               fillvalue = fill_float, &
                               attlist = att_coord)
