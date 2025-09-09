@@ -10,6 +10,12 @@ fi
 
 socarchive_dir=$(config_setting ioc.socarchive_dir)
 
+# Verify that $socarchive_dir is a directory with +rwx permissions:
+if ! test \( -d $socarchive_dir -a -x $socarchive_dir -a -r $socarchive_dir -a -w $socarchive_dir \) ; then
+   echo "iocpullraw: incorrect permissions: ioc.socarchive_dir = $socarchive_dir"
+   exit 1
+fi
+
 sdpc_dest_dir="$SDPC_ARCHIVE_DIR/raw"
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir

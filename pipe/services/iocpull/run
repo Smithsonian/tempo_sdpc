@@ -10,6 +10,12 @@ fi
 
 livestream_dir=$(config_setting ioc.livestream_dir)
 
+# Verify that $livestream_dir is a directory with +rwx permissions:
+if ! test \( -d $livestream_dir -a -x $livestream_dir -a -r $livestream_dir -a -w $livestream_dir \) ; then
+   echo "iocpull: incorrect permissions: ioc.livestream_dir = $livestream_dir"
+   exit 1
+fi
+
 sdpc_dest_dir="$SDPC_PIPE_DIR/stage/level0/spool"
 if ! test -d $sdpc_dest_dir ; then
   mkdir -p $sdpc_dest_dir
