@@ -60,7 +60,17 @@ inr_qa_setup.py --dbfile "$SDPC_ARCHIVE_DBFILE" --dir "$work_dir" $date_ymd || e
 unset DISPLAY
 
 # Generate diagnostic plots
-tempo_inr_quality.sh "$work_dir/config.txt" || error_exit "tempo_inr_quality.sh failed"
+
+log_path="$work_dir/output/inrqa.log"
+
+srun --job-name INRQA --output=$log_path \
+     --nodes=1 --ntasks=1 --cpus-per-task=32 --cpu-bind=none \
+     tempo_inr_quality.sh "$work_dir/config.txt"
+if test $? -ne 0 ; then
+   error_exit "tempo_inr_quality.sh failed"
+fi
+
+cat $log_path
 
 # Name the tar file using the satellite day number extracted from the first radiance file
 first_radiance_path=$(find $work_dir/radiances -mindepth 1 -maxdepth 1 -type l | sort | head -n 1)
