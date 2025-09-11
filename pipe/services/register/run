@@ -10,6 +10,7 @@ fi
 
 export SDPC_DESTRIPE_TG=$(config_setting level2.destripe_tg)
 export SDPC_BKGCORR_TG=$(config_setting level2.bkgcorr_tg)
+export SDPC_DEFER_ON_REGISTER=$(config_setting level2.defer_on_register)
 
 dbfile_level1="$(config_setting dbfile.level1)"
 if ! test -f "$dbfile_level1" ; then

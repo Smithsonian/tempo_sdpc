@@ -43,6 +43,7 @@ Alt_Rad_L1a_Dbfile_Path = None
 Rad_L1a_Dbfile_Path_for_NRT_files = None
 Destripe_Products = None
 Background_Correction_Products = None
+Defer_on_Register_Products = None
 
 Enable_Sqlite_Trace = False
 
@@ -603,6 +604,10 @@ def process_file (db_path, filename, nc):
     if product_name in Background_Correction_Products and ('background_correction' not in nc['support_data'].variables):
         initial_asdc_status (keys, Asdc_Status_Defer)
 
+    # Some products are always registered as deferred:
+    if product_name in Defer_on_Register_Products:
+        initial_asdc_status (keys, Asdc_Status_Defer)
+
     # Some products are never uploaded to ASDC
     if product_name in Asdc_Excluded_Products:
         initial_asdc_status (keys, Asdc_Status["excluded"])
@@ -897,6 +902,13 @@ def main():
         Destripe_Products = []
     else:
         Destripe_Products = Destripe_Products.split(',')
+
+    global Defer_on_Register_Products
+    Defer_on_Register_Products = os.getenv ("SDPC_DEFER_ON_REGISTER")
+    if Defer_on_Register_Products is None:
+        Defer_on_Register_Products = []
+    else:
+        Defer_on_Register_Products = Defer_on_Register_Products.split(',')
 
     global Background_Correction_Products
     Background_Correction_Products = os.getenv ("SDPC_BKGCORR_TG")
