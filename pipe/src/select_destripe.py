@@ -42,13 +42,13 @@ def find_most_recent_irradiance (c, istart):
 
 def select_suitable_destripe (c, molecule, window_days, istart, istart_solar):
     """
-    Suitable destriping file should come no later than the previous operational day.
-    Earliest possible start time on any given day is around 10:00:00Z, so the
-    destriping file start time should be earlier than that.
-    Given any timestamp, midnight UTC is: int(istart/86400)*86400, so 10Z is
-    10*3600 sec later.
+    A suitable destriping file should come no later than the previous operational day.
+    Therefore, the most recent destriping file must be timestamped earlier than
+    10:00Z (the earliest possible start time) on the current operational day.
     """
-    istart_max = int(istart/86400)*86400 + 10*3600
+    zone = -6                                   # s/c time zone
+    sat_day = int((istart + zone*3600)/86400)   # operational day number
+    istart_max = sat_day*86400 + 10*3600;
 
     """
     Look for a pre-computed destriping file generated since the most recent
