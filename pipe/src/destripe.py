@@ -76,7 +76,10 @@ def apply_destripe (corrfile, input_files):
                     amf = dst['support_data']['amf_total'][:]
                 elif 'amf' in grp_supp.variables:
                     amf = dst['support_data']['amf'][:]
-                scd = dst['support_data']['fitted_slant_column'][:]
+                if 'fitted_slant_column_uncorrected' not in grp_supp.variables:
+                    scd = dst['support_data']['fitted_slant_column'][:]
+                else:
+                    scd = dst['support_data']['fitted_slant_column_uncorrected'][:]
                 scd = destripe (dst, scd, stripe_val, corrfile)
                 # Save corrected SCDs and VCDs to L2 file
                 dst['support_data']['fitted_slant_column'][:] = scd

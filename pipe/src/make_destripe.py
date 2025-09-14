@@ -152,10 +152,10 @@ for fp in input_files:
                 s = src['support_data']['fitted_slant_column_uncorrected'][:]
             p = src['support_data']['gas_profile'][:]
             sp = src['support_data']['surface_pressure'][:]
-            if 'vertical_column_total' in grp_supp.variables:
-                vt = src['support_data']['vertical_column_total'][:]
-            elif 'vertical_column' in grp_prod.variables:
-                vt = src['product']['vertical_column'][:]
+            if 'amf_total' in grp_supp.variables:
+                vt = s / src['support_data']['amf_total'][:]
+            elif 'amf' in grp_supp.variables:
+                vt = s / src['support_data']['amf'][:]
             units = src['support_data']['fitted_slant_column'].units
             vtot = ma.sum(p,axis=2)  # vcd used here is a priori vcd
 

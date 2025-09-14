@@ -58,13 +58,22 @@ destripe_scan()
 {
    l2_paths="$1"
 
-   # If any file has been destriped previously, silently do nothing.
+   needs_destriping=0
    for p in $l2_paths ; do
        res="$(variable_exists.py --var /support_data/destriping_correction $p)"
-       if test x"$res" == x"yes" ; then
-          return
+       if test x"$res" != x"yes" ; then
+          needs_destriping=1
+          break
        fi
    done
+   # If every file has been destriped previously, silently do nothing.
+   if test $needs_destriping -eq 0 ; then
+      return
+   fi
+
+   # If any file needs destriping at this point, then we destripe all of them.
+   # We assume it's ok to perform destriping multiple times on the same file.
+   # The destriping code must support this!
 
    first_path=$(echo $l2_paths | cut -d' ' -f1)
    product_type="$(global_attribute.py --attr product_type $first_path)"
