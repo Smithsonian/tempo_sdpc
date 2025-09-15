@@ -1600,7 +1600,6 @@ CONTAINS
           call adjust_surface_pressure (terrain_height(ixtrack,itime), phis(ixtrack,itime), &
                                         psurf(ixtrack,itime), tsurf(ixtrack,itime), &
                                         local_srf, locerrstat)
-
           ! Make sure that clouds are above or at the surface
           if ( local_ctp > local_srf ) then
              amfdiag(ixtrack,itime) = ibset(amfdiag(ixtrack,itime),yn_adj_cld_pre)
@@ -1947,7 +1946,7 @@ CONTAINS
                 delta3=(Sca_2D_cloud(2,ilay-1)-Sca_2D_cloud(2,ilay)) / &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
                 Sca_1D_cloud(ilay) = &
-                     Sca_1D_cloud(ilay-1) - delta3*delta2/delta1 * &
+                     Sca_1D_cloud(ilay-1) - (delta3 + delta2 + delta1) / 3.0 * &
                      (LOG(lut_pre_lay(ilay-1)) - LOG(lut_pre_lay(ilay)))
                 cycle
              END IF
