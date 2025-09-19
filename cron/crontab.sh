@@ -38,14 +38,14 @@ if ! test -d $sqlite_backup_dir ; then
    mkdir -p $sqlite_backup_dir || exit_status 1 "*** Error: failed creating directory: $sqlite_backup_dir"
 fi
 
-if test -f "$aws_config_file" ; then
-   export AWS_CONFIG_FILE="$aws_config_file"
-fi
-
 if test -f "etc/crontab.conf" ; then
    . etc/crontab.conf
 else
    exit_status 1 "*** Error: cannot access config file: $SDPC_ANCILLARY_ROOT/etc/crontab.conf"
+fi
+
+if test -f "$aws_config_file" ; then
+   export AWS_CONFIG_FILE="$aws_config_file"
 fi
 
 cmieast_sqlite="$rootdir_goes/cmieast.sqlite"
