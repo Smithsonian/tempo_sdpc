@@ -68,24 +68,17 @@ class asdc_s3:
             return False
         return True
 
-    def list_objects (self):
-        try:
-            response = self.s3client.list_objects_v2 (Bucket = self.bucket, Prefix = self.destination_dir + '/')
-        except ClientError as e:
-            print (e)
-            return None
-        return response
-
     def list_files (self, pat):
-        object_list = self.list_objects ()
-        if object_list is None:
-            return None
         files = []
-        for obj in object_list["Contents"]:
-            p = obj['Key'].split('/')
-            if len(p[1]) > 0:
-                files.append(p[1])
-        if pat is not None:
+        paginator = self.s3client.get_paginator('list_objects_v2')
+        if paginator is None:
+            return files
+        for page in paginator.paginate (Bucket = self.bucket, Prefix = self.destination_dir + '/'):
+            for c in page["Contents"]:
+                p = c['Key'].split ('/')
+                if len(p[1]) > 0:
+                    files.append(p[1])
+        if len(files) > 0 and pat is not None:
             files = fnmatch.filter (files, pat)
         return files
 
