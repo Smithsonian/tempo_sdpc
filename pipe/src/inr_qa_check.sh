@@ -64,7 +64,7 @@ unset DISPLAY
 log_path="$work_dir/output/inrqa.log"
 
 srun --job-name INRQA --output=$log_path \
-     --nodes=1 --ntasks=1 --cpus-per-task=32 --cpu-bind=none \
+     --nodes=1 --ntasks=1 --cpus-per-task=8 --cpu-bind=cores \
      tempo_inr_quality.sh "$work_dir/config.txt"
 if test $? -ne 0 ; then
    error_exit "tempo_inr_quality.sh failed"
