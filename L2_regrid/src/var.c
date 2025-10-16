@@ -223,8 +223,8 @@ static int maybe_realloc_value_buf (const TIO_Var_Info_Type *vi,
         vb->num_values_per_pixel *= vi->dimlens[i];
      }
 
-   num_src_values = vb->num_src_pixels * vb->num_values_per_pixel;
-   num_dest_values = vb->num_dest_pixels * vb->num_values_per_pixel;
+   num_src_values = (size_t) vb->num_src_pixels * vb->num_values_per_pixel;
+   num_dest_values = (size_t) vb->num_dest_pixels * vb->num_values_per_pixel;
 
    if (-1 == (bytes_per_value = value_num_bytes (vb->value_type)))
      return -1;
@@ -490,7 +490,7 @@ static void copy_from_strided_##typestr (int num, int stride, \
      return; \
    for (k = 0; k < num; k++) \
      { \
-        packed_values[k] = strided_values[k*stride]; \
+        packed_values[k] = strided_values[(size_t) k*stride]; \
         src_mask[k] = (packed_values[k] == fill_value); \
      } \
 }
@@ -505,7 +505,7 @@ static void copy_to_strided_##typestr (int num, int stride, \
      return; \
    for (k = 0; k < num; k++) \
      { \
-        strided_values[k*stride] = packed_values[k]; \
+        strided_values[(size_t)k*stride] = packed_values[k]; \
      } \
 }
 
