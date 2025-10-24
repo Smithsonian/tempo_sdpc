@@ -65,9 +65,9 @@ def read_gpsr_ephem (path):
 
 def time_select_ephem (eph, start, end):
     if start is None:
-        start = -np.Inf
+        start = -np.inf
     if end is None:
-        end = np.Inf
+        end = np.inf
     t = eph["t"]
     k = np.nonzero (np.logical_and(start <= t, t <= end))[0]
     for key, value in eph.items():
@@ -171,7 +171,7 @@ def main():
         xax.set_ylabel ('X [km]')
         yax.set_ylabel ('Y [km]')
         zax.set_ylabel ('Z [km]')
-        dlt.set_ylabel ('$\Delta$ [km]')
+        dlt.set_ylabel (r'$\Delta$ [km]')
         dlt.set_xlabel ('UTC time')
 
         xax.legend(loc='best')
