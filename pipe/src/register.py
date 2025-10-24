@@ -390,6 +390,41 @@ def maybe_handle_scan_completion (conn_ro, product_name, scan_id, is_nrt):
     if num_products == num_radiance:
         handle_complete_scan (cur, product_name, scan_id)
 
+def handle_complete_radt_scan (cur, product_name, scan_id):
+    if not product_name == "RADT_L1":
+        return
+    paths = collect_granule_paths (cur, product_name, scan_id)
+    pathlist = """product_name={}
+l3_path=notused
+read -r -d '' l2_paths <<'EOF'
+{}
+EOF
+""".format (product_name, '\n'.join(paths))
+    target_dir = os.path.expandvars ("$SDPC_PIPE_DIR/stage/scans")
+    write_textfile (target_dir, os.path.basename(paths[0]), pathlist)
+
+def maybe_handle_radt_scan_completion (conn_ro, product_name, scan_id):
+    """
+    To see when all RADT products for a given scan are complete, we compare the number
+    of products with the number of archived RADT_L1a files for that scan.
+    """
+    if not product_name == "RADT_L1":
+        return
+    cur = conn_ro.cursor()
+    num_products = count_archived_granules (cur, product_name, scan_id)
+
+    have_radt_l1a_table = table_exists (conn_ro, 'RADT_L1a')
+    if have_radt_l1a_table:
+        num_radt = count_archived_granules (cur, "RADT_L1a", scan_id)
+    elif Alt_Rad_L1a_Dbfile_Path != None:
+        with connect_database (Alt_Rad_L1a_Dbfile_Path, "ro") as conn_sep:
+            num_radt = count_archived_granules (conn_sep.cursor(), "RADT_L1a", scan_id)
+    else:
+        return
+
+    if num_products == num_radt:
+        handle_complete_radt_scan (cur, product_name, scan_id)
+
 def sat_local_day_time_range (sat_day):
     """
     The solar boresight angle safety constraint limits radiance
@@ -480,10 +515,12 @@ def insert_product_entry (db_path, product_name, keys, is_nrt):
                     maybe_handle_scan_completion (conn_ro, product_name, keys["scan_id"], is_nrt)
                 elif "L3" in product_name and not is_nrt:
                     maybe_handle_L2_day_completion (conn_ro, product_name, keys["scan_id"])
-
     elif product_name in Radiance_Files:
         with connect_database (db_path, "rw") as conn:
             status = insert_radiance_entry (conn, product_name, keys)
+            if status == 0 and product_name == "RADT_L1":
+                with connect_database (db_path, "ro") as conn_ro:
+                    maybe_handle_radt_scan_completion (conn_ro, product_name, keys["scan_id"])
     elif product_name == "DRK_L1":
         with connect_database (db_path, "rw") as conn:
             status = insert_dark_product_entry (conn, product_name, keys)
@@ -773,12 +810,12 @@ class Signal_Catcher:
     self.exit.set()
     self.signum = signum
 
-def move_failing (fn):
+def move_failing (fn, faildir_name):
     arch_dir = os.getenv ("SDPC_ARCHIVE_DIR")
     if arch_dir == None:
         eprint ('*** Error: SDPC_ARCHIVE_DIR is not set')
         return
-    fail_dir = os.path.join (arch_dir, 'registry/failed')
+    fail_dir = os.path.join (arch_dir, 'registry/{}'.format(faildir_name))
     if not os.path.isdir (fail_dir):
         os.makedirs(fail_dir)
     new_path = os.path.join (fail_dir, os.path.basename(fn))
@@ -794,8 +831,9 @@ def collect_filenames (dir):
     return sorted(filenames, key=os.path.getmtime)
 
 class Registry:
-    def __init__ (self, incoming_dir, db_file_path, nrt_db_file_path):
+    def __init__ (self, incoming_dir, undefer_dir, db_file_path, nrt_db_file_path):
         self.incoming_dir = incoming_dir
+        self.undefer_dir = undefer_dir
         self.db_file_path = db_file_path
         self.nrt_db_file_path = nrt_db_file_path
 
@@ -827,7 +865,20 @@ class Registry:
             eprint('Error processing file: {}'.format(fn))
         return status
 
+    def undefer_one_file (self, fn):
+        basename = os.path.basename (fn)
+        fields = Basename_Parser.product_basename (basename)
+        if fields is None:
+            eprint ('ERROR: undefer not supported for filename: {}'.format(basename))
+            return -1
+        product_name = fields["product_name"]
+        asdc_status_new = Asdc_Status["new"]
+        with connect_database (self.db_file_path, "rw") as conn:
+            conn.execute ("update {} set asdc_status={}, asdc_status_met={} where asdc_status={} and filename='{}'".format(product_name, asdc_status_new, asdc_status_new, Asdc_Status_Defer, basename))
+        return 0
+
     def register_files (self, filenames):
+        faildir_name = 'failed'
         status_list = []
         for fn in filenames:
             # Operate only on symbolic links!
@@ -838,13 +889,34 @@ class Registry:
                     print('An exception occurred: {}'.format(e))
                     print(traceback.print_exc())
                     status_list.append(-1)
-                    move_failing(fn)
+                    move_failing(fn, faildir_name)
                 else:
                     status_list.append(status)
                     if status == 0:
                         os.remove(fn)
                     else:
-                        move_failing(fn)
+                        move_failing(fn, faildir_name)
+        return status_list
+
+    def undefer_files (self, filenames):
+        faildir_name = 'failed_undefer'
+        status_list = []
+        for fn in filenames:
+            # Operate only on symbolic links!
+            if os.path.islink(fn):
+                try:
+                    status = self.undefer_one_file (fn)
+                except BaseException as e:
+                    print('An exception occurred: {}'.format(e))
+                    print(traceback.print_exc())
+                    status_list.append(-1)
+                    move_failing(fn, faildir_name)
+                else:
+                    status_list.append(status)
+                    if status == 0:
+                        os.remove(fn)
+                    else:
+                        move_failing(fn, faildir_name)
         return status_list
 
     def run_as_service (self):
@@ -854,6 +926,9 @@ class Registry:
             filenames = collect_filenames (self.incoming_dir)
             if len(filenames) > 0:
                 status_list = self.register_files (filenames)
+            undefer_filenames = collect_filenames (self.undefer_dir)
+            if len(undefer_filenames) > 0:
+                status_list = self.undefer_files (undefer_filenames)
             sig.wait(10)
         logprint ("Exiting: caught signal = {}".format(sig.signum))
 
@@ -883,7 +958,11 @@ def init_registry ():
     if not os.path.isdir (incoming_dir):
         os.makedirs(incoming_dir)
 
-    return Registry (incoming_dir, db_file_path, nrt_db_file_path)
+    undefer_dir = os.path.join (arch_dir, 'registry/undefer')
+    if not os.path.isdir (undefer_dir):
+        os.makedirs(undefer_dir)
+
+    return Registry (incoming_dir, undefer_dir, db_file_path, nrt_db_file_path)
 
 def main():
     parser = argparse.ArgumentParser(description='register data products in a sqlite database')

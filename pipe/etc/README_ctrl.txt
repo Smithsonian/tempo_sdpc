@@ -24,3 +24,6 @@ FUNCTION: When $SDPC_PIPE_DIR/ctrl/disable-asdc-transfer exists,
           generating file manifests, but no data files are
           uploaded or downloaded.
 
+FILENAME: disable-radt-level3
+FUNCTION: When $SDPC_PIPE_DIR/ctrl/disable-radt-level3 exists,
+          post-processing of RADT_L1 granules is disabled.

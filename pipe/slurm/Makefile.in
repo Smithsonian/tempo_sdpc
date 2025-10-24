@@ -15,7 +15,7 @@ SCRIPT_FILES= level1a.sh level1a_batch.sh \
               level3.sh daily.sh \
               level1b_nrt1.sh level1b_nrt1_batch.sh \
               level1b_nrt2.sh level1b_nrt2_batch.sh \
-              level2_nrt.sh
+              level2_nrt.sh radt_batch.sh
 
 INSTALL = @INSTALL@
 MKINSDIR = ../../autoconf/mkinsdir.sh

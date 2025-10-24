@@ -120,6 +120,23 @@ change_asdc_status_defer_to_new()
 # l2_paths = space-delimited list of level 2 data product files
 . $pathlist_file
 
+if test x"$product_name" == x"RADT_L1" ; then
+   radt_label=$(basename $pathlist_file .nc |sed -e s/^.//)
+   if test -f "$SDPC_PIPE_DIR/ctrl/disable-radt-level3" ; then
+      echo "skipping $radt_label (\$SDPC_PIPE_DIR/ctrl/disable-radt-level3 exists)"
+      /bin/rm -f $pathlist_file
+   else
+      slurm_logdir="$SDPC_PIPE_DIR/log/level3/slurm"
+      jid=$(sbatch --job-name="$radt_label" --comment "$radt_label" \
+                --chdir "${SDPC_NODE_DIR}/L1" --parsable \
+                --nodes=1 --ntasks=1 --cpus-per-task=8 \
+                --output "$slurm_logdir/${radt_label}.radt_batch-%j.out" \
+                radt_batch.sh $pathlist_file)
+      log_message "submitted: radt_batch.sh $radt_label"
+   fi
+   exit 0
+fi
+
 l3_target_dir=$(dirname $l3_path)
 l3_basename=$(basename $l3_path)
 
