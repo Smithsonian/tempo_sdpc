@@ -107,6 +107,11 @@ case $_task in
    pull_iers.sh $rootdir_iers $iers_source_url
    ;;
 
+   DNB )
+   test x"$state_dnb" = xon || exit 0
+   pull_viirsdnb_tiles_and_mosaic.sh $rootdir_dnb $dnb_url $dnb_token_file
+   ;;
+
    IMS )
    test x"$state_ims" = xon || exit 0
    pull_ims.sh $rootdir_ims $ims_url $ims_dir

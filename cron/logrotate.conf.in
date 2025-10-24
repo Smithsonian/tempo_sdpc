@@ -18,6 +18,7 @@ compress
 @ANCILLARY_DATA_DIR@/var/log/goes.log
 @ANCILLARY_DATA_DIR@/var/log/iers.log
 @ANCILLARY_DATA_DIR@/var/log/ims.log
+@ANCILLARY_DATA_DIR@/var/log/dnb.log
 @ANCILLARY_DATA_DIR@/var/log/asdc_geoscf.log
 @ANCILLARY_DATA_DIR@/var/log/asdc_ims.log
 @ANCILLARY_DATA_DIR@/var/log/cleanup.log
