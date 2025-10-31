@@ -11,6 +11,16 @@ rootdir="$1"
 source_url="$2"
 geoscf_version="$3"
 
+# default to forecast download
+want_analysis=0
+case "$geoscf_version" in
+  *ana* )
+     want_analysis=1
+     ;;
+  *)
+     ;;
+esac
+
 # To simply tracking what we've downloaded,
 # we first download files to an 'incoming' directory.
 incoming_dir="$rootdir/incoming"
@@ -34,9 +44,15 @@ if test $# -gt 3; then
    tomorrow_opt="-d ${today_args}+1day"
 fi
 
-# Always get forecasts based on the previous day's replay:
-rpl_day="$(date -u $yesterday_opt +%Y%m%d)"
-source_url="$source_url/$(date -u $yesterday_opt +Y%Y/M%m/D%d)"
+if test $want_analysis -eq 0 ; then
+   # Always get forecasts based on the previous day's replay:
+   rpl_day="$(date -u $yesterday_opt +%Y%m%d)"
+   source_url="$source_url/$(date -u $yesterday_opt +Y%Y/M%m/D%d)"
+else
+   # For analysis, we download only today's:
+   rpl_day="$(date -u $today_opt +%Y%m%d)"
+   source_url="$source_url/$(date -u $today_opt +Y%Y/M%m/D%d)"
+fi
 export source_url
 
 # Re-order the file variable dimensions
@@ -47,7 +63,9 @@ reorder_dims()
    clean_basename="$(basename $path .nc4 | tr + _)"
    infile="$incoming_dir/${clean_basename}.nc4"
    outfile="$incoming_dir/${clean_basename}_reorder.nc4"
-   /bin/mv $path $infile
+   if test x"$path" != x"$infile" ; then
+      /bin/mv $path $infile
+   fi
    ncpdq -O -a "time,lon,lat,-lev" --no_tmp_fl "$infile" "$outfile" && /bin/rm -f "$infile"
 }
 export -f reorder_dims
@@ -69,6 +87,12 @@ fetch_forecast_for_date()
       fcst_root="GEOS.cf.fcst.sat_inst_1hr_reg_L721x361_v72.${rpl_day}_09z+${fcst_day}"
       fcst_regex="${fcst_root}_??00z.R0.nc4"
       fcst_fmt="${fcst_root}_%sz.R0.nc4"
+      ;;
+
+    2R1-ana)
+      fcst_root="GEOS.cf.ana.sat_inst_1hr_reg_L721x361_v72.${rpl_day}"
+      fcst_regex="${fcst_root}_??00z.R1.nc4"
+      fcst_fmt="${fcst_root}_%sz.R1.nc4"
       ;;
 
     *)
@@ -114,4 +138,6 @@ fetch_forecast_for_date()
 }
 
 fetch_forecast_for_date "$today_opt"
-fetch_forecast_for_date "$tomorrow_opt"
+if test $want_analysis -eq 0 ; then
+  fetch_forecast_for_date "$tomorrow_opt"
+fi

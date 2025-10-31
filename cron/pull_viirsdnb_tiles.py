@@ -28,7 +28,7 @@ def getcURL(url, headers=None, out=None):
     import subprocess
     try:
         print('trying cURL', file=sys.stderr)
-        args = ['curl', '--fail', '--retry 5', '--retry-connrefused', '-sS', '-L', '-b session', '--get', url]
+        args = ['curl', '--fail', '--retry', '5', '--retry-connrefused', '-sS', '-L', '-b session', '--get', url]
         for (k,v) in headers.items():
             args.extend(['-H', ': '.join([k, v])])
         if out is None:
