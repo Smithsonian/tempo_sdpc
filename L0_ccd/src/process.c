@@ -543,18 +543,15 @@ static int compute_current_and_trim (CCD_Type *ccd,
       /* LONG_INT */
         integration_period = exposure_time_per_frame - storage_read_time;
         coadd_period = frame_transfer_time + storage_read_time + integration_period;
-        exposure_time_offset = (exprec->exposure_type == EXPREC_TYPE_RAD_TWI) ? exprec->start_time : (exprec->start_time - redmine204_shift);
-        fpa_lag = (exprec->exposure_type == EXPREC_TYPE_RAD_TWI) ? -4.121 : 0.0;
+        exposure_time_offset = exprec->start_time;
+        fpa_lag = -4.121;
         n_sample = 30;
         break;
       default:
         tell_verror (TELL_RUNTIME_ERROR, "%s: invalid ccd_int_type=%d", __func__, exprec->ccd_int_type);
         return -1;
      }
-   if ((exprec->num_coadds == 1) && (exprec->exposure_type != EXPREC_TYPE_RAD_TWI))
-     {
-        exposure_time_offset -= exposure_time_per_frame;
-     }
+
    sampling_period = integration_period / (n_sample + 1);
 
    for (j = 0; j < exprec->num_coadds; j++)
