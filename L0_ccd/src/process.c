@@ -429,7 +429,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    Image_Type *aimg = NULL;
    float fpa_temp, fpe_temp, spec_temp, tele_temp, bench_temp, fpa_sum, fpe_sum, spec_sum, tele_sum, bench_sum;
    double smear_fraction, redmine204_shift;
-   double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period;
+   double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period, fpa_lag;
    int i, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
    unsigned int j;
 
@@ -528,6 +528,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
         integration_period = exposure_time_per_frame;
         coadd_period = full_flush_time + integration_period + frame_transfer_time + storage_read_time;
         exposure_time_offset = (exprec->start_time - redmine204_shift) - coadd_period;
+        fpa_lag = 0.0;
         n_sample = 1;
         break;
       case 0:
@@ -535,20 +536,22 @@ static int compute_current_and_trim (CCD_Type *ccd,
         integration_period = exposure_time_per_frame;
         coadd_period = integration_period + frame_transfer_time;
         exposure_time_offset = (exprec->start_time - redmine204_shift);
+        fpa_lag = 0.0;
         n_sample = 1;
         break;
       case 2:
       /* LONG_INT */
         integration_period = exposure_time_per_frame - storage_read_time;
         coadd_period = frame_transfer_time + storage_read_time + integration_period;
-        exposure_time_offset = (exprec->start_time - redmine204_shift);
+        exposure_time_offset = (exprec->exposure_type == EXPREC_TYPE_RAD_TWI) ? exprec->start_time : (exprec->start_time - redmine204_shift);
+        fpa_lag = (exprec->exposure_type == EXPREC_TYPE_RAD_TWI) ? -4.121 : 0.0;
         n_sample = 30;
         break;
       default:
         tell_verror (TELL_RUNTIME_ERROR, "%s: invalid ccd_int_type=%d", __func__, exprec->ccd_int_type);
         return -1;
      }
-   if (exprec->num_coadds == 1)
+   if ((exprec->num_coadds == 1) && (exprec->exposure_type != EXPREC_TYPE_RAD_TWI))
      {
         exposure_time_offset -= exposure_time_per_frame;
      }
@@ -557,7 +560,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    for (j = 0; j < exprec->num_coadds; j++)
      for (k = 1; k < (n_sample+1); k++)
        {
-         if (0 != instr->instr_fpa_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &fpa_temp))
+         if (0 != instr->instr_fpa_temp (instr, exposure_time_offset + fpa_lag + (coadd_period * j) + (sampling_period * k), &fpa_temp))
            {
                return -1;
            }
