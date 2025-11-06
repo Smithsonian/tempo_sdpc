@@ -543,8 +543,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
       /* LONG_INT */
         integration_period = exposure_time_per_frame - storage_read_time;
         coadd_period = frame_transfer_time + storage_read_time + integration_period;
-        exposure_time_offset = exprec->start_time;
-        fpa_lag = -4.121;
+        exposure_time_offset = (exposure_time_per_frame > 0.2) ? exprec->start_time : (exprec->start_time - redmine204_shift);
+        fpa_lag = (exposure_time_per_frame > 0.2) ? -4.121 : 0.0;
         n_sample = 30;
         break;
       default:
