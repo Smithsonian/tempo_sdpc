@@ -89,10 +89,10 @@ fetch_forecast_for_date()
       fcst_fmt="${fcst_root}_%sz.R0.nc4"
       ;;
 
-    2R1-ana)
+    2R0-ana)
       fcst_root="GEOS.cf.ana.sat_inst_1hr_reg_L721x361_v72.${rpl_day}"
-      fcst_regex="${fcst_root}_??00z.R1.nc4"
-      fcst_fmt="${fcst_root}_%sz.R1.nc4"
+      fcst_regex="${fcst_root}_??00z.R0.nc4"
+      fcst_fmt="${fcst_root}_%sz.R0.nc4"
       ;;
 
     *)
