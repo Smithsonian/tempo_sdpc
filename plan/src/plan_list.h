@@ -80,10 +80,10 @@ extern int plan_stats_set_scan_times (Plan_Stats_Type *stats, const Plan_List_Ty
 /** Write plan list parameters to an ASCII file.
  * @param[in]  fp     Initialized FILE pointer for the destination file
  * @param[in]  head  The head of a plan list.
- * @param[in]  stats  The head of a Plan_Stats_Type list (NULL is ok)
+ * @param[in]  max_calibrated_mirror_x   Max calibrated mirror X tilt angle
  * @return 0 on success, -1 on error.
 */
-extern int plan_list_write (FILE *fp, const Plan_List_Type *head);
+extern int plan_list_write (FILE *fp, const Plan_List_Type *head, double max_calibrated_mirror_x);
 
 extern int plan_stats_write (const Plan_Stats_Type *stats, double min_sun_angle, const char *filename);
 

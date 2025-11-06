@@ -115,9 +115,29 @@ static double mirror_tilt (double azimuth)
    return 0.5 * azimuth;
 }
 
+static int invalid_scan_range (double xstart, double xend, double max_calibrated_mirror_x)
+{
+   int invalid = 0;
+   if (fabs(xstart) > max_calibrated_mirror_x)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: scan start mirror angle is outside calibrated range: xstart=%f (max=%f)",
+                     __func__, xstart, max_calibrated_mirror_x);
+        invalid++;
+     }
+   if (fabs(xend) > max_calibrated_mirror_x)
+     {
+        tell_verror (TELL_INVALID_PARM_ERROR,
+                     "%s: scan end mirror angle is outside calibrated range: end=%f (max=%f)",
+                     __func__, xend, max_calibrated_mirror_x);
+        invalid++;
+     }
+   return invalid;
+}
+
 #define TIME_BUFSIZE 32
 
-int plan_list_write (FILE *fp, const Plan_List_Type *head)
+int plan_list_write (FILE *fp, const Plan_List_Type *head, double max_calibrated_mirror_x)
 {
    const Plan_List_Type *entry;
    const char header_comment[] =
@@ -144,7 +164,7 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
 
    for (entry = head; entry != NULL; entry = entry->next)
      {
-        double tstart_utc, tstart_tai, fsw_xstart;
+        double tstart_utc, tstart_tai, fsw_xstart, fsw_xend;
         char buf[TIME_BUFSIZE];
         /* int is_twilight = (entry->scan_type & TEMPO_SCAN_TYPE_NIGHTLIGHTS); */
         int new_day = (previous_entry_jd_utc_end < entry->tstart);
@@ -165,6 +185,9 @@ int plan_list_write (FILE *fp, const Plan_List_Type *head)
         /* The plan is generated using an azimuthal coordinate in the field of regard,
          * but for the IOC plan, we want to write out the mirror tilt angle */
         fsw_xstart = mirror_tilt (entry->xstart);
+        fsw_xend = mirror_tilt (entry->xend);
+        if (invalid_scan_range (fsw_xstart, fsw_xend, max_calibrated_mirror_x))
+          return -1;
 
         /* Restart scan numbering each day, (scan_num=0 is used as a fill value,
          * so we number scans from 1).

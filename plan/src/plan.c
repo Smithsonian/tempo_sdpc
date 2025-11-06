@@ -702,7 +702,7 @@ static int write_scan_plan (FILE *fp, const Ephem_Type *eph, const Solar_Geom_Ty
    (void) fprintf (fp, "# NOVAS ephemeris: %s\n", eph->ephem_path);
    (void) fprintf (fp, "#\n");
 
-   return plan_list_write (fp, plan_list);
+   return plan_list_write (fp, plan_list, SMA_MAX_CALIBRATED_MIRROR_X);
 }
 
 static int write_irradiance_plan (FILE *fp, Solar_Geom_Type *solar_geom,
