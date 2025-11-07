@@ -97,8 +97,10 @@ update_archive()
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    first_granule_dir=$(dirname $first_granule)
    /bin/mv $log_file $first_granule_dir
+   first_granule_name=$(basename $first_granule .nc)
    if test -d Output ; then
-      tar c --remove-files -f $first_granule_dir/figures.tar Output --transform='s,^Output,figures,'
+      xfrm=$(printf "s,^Output,%s," $first_granule_name)
+      tar c --remove-files -f $first_granule_dir/${first_granule_name}.tar Output --transform="$xfrm"
    fi
    # update archived granules
    scatter_from_dir "$staging_dir" "$l2_paths"
