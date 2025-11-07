@@ -14,8 +14,8 @@ Input files:
 mincfr: 0.0
 maxcfr: 1.0
 # Use only pixels within certain SZA and VZA limits
-maxsza: 85.0
-maxvza: 85.0
+maxsza: 80.0
+maxvza: 80.0
 # Use only unpolluted pixels with a priori VCD less than a threshold
 # vcd_apriori_type can be either 'none' (don't filter), 'troposphere' or 'total'
 vcd_apriori_type: 'total'
