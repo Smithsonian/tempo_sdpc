@@ -173,7 +173,7 @@ program OMCDO2N
   ! anything else will be understood as development mode
   ! trace gas has diagnostic/production, diagnostic works as development
   if (run_mode .ne. 'production') then
-      run_mode = 'developement'
+      run_mode = 'development'
   endif
   write(*,*)'run_mode=',trim(run_mode)
 

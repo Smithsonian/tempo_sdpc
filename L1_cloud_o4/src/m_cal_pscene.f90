@@ -255,10 +255,10 @@ subroutine cal_pscene
       if (name_option_SceneAlbedoAtTerrain .ne. 'both') then
         ! only one is calculated
         if (name_option_SceneAlbedoAtTerrain .eq. 'yes') then
-          ! set bit 11: Ascene at P is NOT calculated (or in error)
+          ! set bit 11: SceneAlbedoAtCloud is NOT calculated (or in error)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),11) 
         else !  'no'
-          ! set bit 10: Ascene at Pcld is NOT calculated (or in error)
+          ! set bit 10: AsceneAlbedoAtTerrian is NOT calculated (or in error)
           out_ProcessingQualityFlags(ix,it)=ibset(out_ProcessingQualityFlags(ix,it),10)
         endif
       endif
@@ -340,9 +340,9 @@ subroutine cal_pscene
         rad0=real(cal_ler_r466(LUT_ALBID_0p0),kind=4) !real(cal_ler_r466(1), kind=4)
         rad1=real(cal_ler_r466(LUT_ALBID_0p1),kind=4) !real(cal_ler_r466(7), kind=4)
         rad2=real(cal_ler_r466(LUT_ALBID_0p2),kind=4) !real(cal_ler_r466(12), kind=4)
-        rrr0=lut_alb(1)
-        rrr1=lut_alb(7)
-        rrr2=lut_alb(12)
+        rrr0=lut_alb(LUT_ALBID_0p0)
+        rrr1=lut_alb(LUT_ALBID_0p1)
+        rrr2=lut_alb(LUT_ALBID_0p2)
         tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
         sbar=1./rrr1-tran/(rad1-rad0)
         ! add logic
@@ -405,9 +405,9 @@ subroutine cal_pscene
         rad0=real(cal_ler_r440(LUT_ALBID_0p0),kind=4) !real(cal_ler_r440(1), kind=4)
         rad1=real(cal_ler_r440(LUT_ALBID_0p1),kind=4) !real(cal_ler_r440(7), kind=4)
         rad2=real(cal_ler_r440(LUT_ALBID_0p2),kind=4) !real(cal_ler_r440(12), kind=4)
-        rrr0=lut_alb(1)
-        rrr1=lut_alb(7)
-        rrr2=lut_alb(12)
+        rrr0=lut_alb(LUT_ALBID_0p0)
+        rrr1=lut_alb(LUT_ALBID_0p1)
+        rrr2=lut_alb(LUT_ALBID_0p2)
         tran=(1./rrr1-1./rrr2)/(1./(rad1-rad0)-1./(rad2-rad0))
         sbar=1./rrr1-tran/(rad1-rad0)
         ! added logic
@@ -762,10 +762,10 @@ subroutine cal_pscene
       out_SurfaceLER440(ix,it)=TerrainLER440
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !hqw seems cpp calculated above is not used to assign anything yet
+      ! seems cpp calculated above is not used to assign anything yet
       !within the 'no'//'both' option below, cpp will be re-calculated
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !hqw use out_TerrainPressure to hold cpp here
+      ! use out_TerrainPressure to hold cpp here
       out_TerrainPressure(ix,it) = cpp
       ! cpp is the TerrainPressure calculated using TerrainLER466
       ! it can be used as a diagnostics
@@ -1262,7 +1262,7 @@ subroutine cal_pscene
           yy=(xx-x1)*(xx-x2)/(x0-x1)/(x0-x2)*y0 &
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
-          ler466=yy
+          ler440=yy
        endif
 
       !+1+1+1+1+1+1+1+1
@@ -1294,10 +1294,13 @@ subroutine cal_pscene
       out_SceneLER440(ix,it)=SceneLER440
 
       ! ---------------------------------------------------------
-      ! 1. name_option_SnowIce = 'Pscene':
-      !       Use scene pressure for snow/ice fraction > min_snowice
+      ! 1. name_option_SnowIce = 'Pscene': 
+      !       Use scene pressure as cloud_pressure for snow/ice fraction > min_snowice
+      !       Set cloud_fraction = 0 when abs(psfc0-ScenePressure) < 100hPa
+      !       Set cloud_fraction = 1 when abs(psfc0-ScenePressure) > 100hPa 
       !    name_option_SnowIce = 'Pcloud' or anything else:
       !       cloud_fraction unchanged over snow/ice
+      !       cloud_pressure unchanged over snow/ice
       ! ---------------------------------------------------------
       if (name_option_SnowIce.eq.'Pscene') then
          if((rad_SnowIceFraction(ix,it) .gt. min_snowice).and. &
