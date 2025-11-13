@@ -1091,6 +1091,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    double *tmp_lon = NULL, *tmp_lat = NULL;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
    float *lon2d_bnds=NULL, *lat2d_bnds=NULL, *delta_lon=NULL;
+   float *lon_f=NULL, *lat_f=NULL;
    int *inrqf=NULL, *indices=NULL, *exclude_column=NULL;
    int *bx1=NULL, *bx2=NULL, *bs1=NULL, *bs2=NULL, *bdry=NULL, *side=NULL;
    int start[3], count[3];
@@ -1101,6 +1102,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    float fill_value = TIO_FILL_FLOAT;
    float band_km = Douglas_Peucker_Band_Width_Km;
    float vza_max_deg = Bounding_Polygon_Max_VZA_Deg;
+   float lon_i, lat_i;
    int dx=1, ds=1;           /* set >1 to reduce final polygon point density */
 
    *num = 0;
@@ -1330,7 +1332,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
              float lat_k = lat2d[k];
              float *lonbnds = lon2d_bnds + k*4;
              float *latbnds = lat2d_bnds + k*4;
-             float lon_i, lat_i;
              switch (side[i])
                {
                 case 0:
@@ -1362,6 +1363,41 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
           }
      }
 
+   /* Filter any fill values that made it this far */
+   if (NULL == (lon_f = (float *)TIO_MALLOC (2 * n * sizeof(float))))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+   lat_f = lon_f + n;
+   num_kept = 0;
+   for (i = 0; i < n; i++)
+     {
+        lon_i = lon[i];
+        lat_i = lat[i];
+        if (isfinite(lon_i) && isfinite(lat_i)
+            && (lon_i != fill_value) && (lat_i != fill_value))
+          {
+             lon_f[num_kept] = lon_i;
+             lat_f[num_kept] = lat_i;
+             num_kept++;
+          }
+     }
+   if (num_kept == 0)
+     {
+        TIO_FREE(lon_f);
+        tell_verror (TELL_RUNTIME_ERROR, "%s: no valid boundary points", __func__);
+        goto return_status;
+     }
+   for (i = 0; i < num_kept; i++)
+     {
+        lon[i] = lon_f[i];
+        lat[i] = lat_f[i];
+     }
+   n = num_kept;
+   TIO_FREE(lon_f);
+
+   /* simplify needs double arrays for temporary storage */
    if (NULL == (tmp_lon = (double *)TIO_MALLOC (2 * n * sizeof(double))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
