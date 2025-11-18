@@ -334,7 +334,7 @@ contains
   subroutine read_I0_irradiance (filename, errstat)
 
     use ctrlvars, only: yn_spectrum_norm
-    USE OMSAO_parameters_module, ONLY: downweight, normweight
+    USE OMSAO_parameters_module, ONLY: downweight
     USE OMSAO_omidata_module, ONLY: omi_irradiance_wght
     implicit none
 
@@ -387,8 +387,7 @@ contains
         weightsum = 1.0
         nwavel = Irr_Data%nwaves(i)
         where (Irr_Data%qflags(1:nwavel,i) == bad_pixel)
-          weightsum = 0.0
-          ! Irr_Data%spectrum(1:nwavel,i) = 0.0
+          weightsum(1:nwavel) = 0.0
         endwhere
         Irr_Data%spectrum(1:nwavel,i) = &
             Irr_Data%spectrum(1:Irr_Data%nwaves(i),i) / &

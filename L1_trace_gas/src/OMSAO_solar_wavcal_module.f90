@@ -366,7 +366,6 @@ CONTAINS
   SUBROUTINE xtrack_solar_calibration_loop (first_pix, last_pix, &
                                             save_wvl, save_spec, save_resid, errstat)
     USE OMSAO_precision_module
-    use ctrlvars, only : yn_diagnostic_run
     USE cache_module, ONLY: saved_shift, saved_squeeze
     USE OMSAO_omidata_module, ONLY: &
       omi_cross_track_skippix, omi_solcal_shift, &
@@ -374,9 +373,8 @@ CONTAINS
       omi_solcal_itnum, omi_irradiance_wght, omi_irradiance_ccdpix
     USE OMSAO_indices_module, ONLY: &
       max_calfit_idx, shi_idx, squ_idx, solcal_idx
-    USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN, &
-      nwavel_max, nxtrack_max
-    USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, & ! verb_thresh_lev,
+    USE OMSAO_parameters_module, ONLY: r8_missval, i2_missval, i4_missval, MAX_STR_LEN
+    USE OMSAO_variables_module,  ONLY: Slit_Half_Width_1e, &
       Slit_Asym_Factor, Slit_Shape_Factor, fitvar_cal, fitvar_cal_saved,  &
       fitvar_sol_init, ctrl_n_fitres_loop, ctrl_fitres_range, &
       curr_xtrack_pixnum
