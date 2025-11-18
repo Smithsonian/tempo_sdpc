@@ -71,7 +71,7 @@ do_asdc_s3_upload()
      asdc_exclude_filter.py --filter $exclude_list $file_list
      # If nothing remains, then clean up and return
      if ! test -s $file_list ; then
-        /bin/rm -f $file_list ${file_list}.orig
+        /bin/rm -f $file_list ${file_list}.orig ${file_list}.new
         cd $cwd
         rmdir $dir
         return
