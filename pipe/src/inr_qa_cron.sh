@@ -100,6 +100,10 @@ dest_dir="$SDPC_ARCHIVE_DIR/L1/RAD/D${sat_day}/inr/"
 if ! test -d $dest_dir ; then
    mkdir -p $dest_dir || exit 1
 fi
-# Assume it's ok to over-write any previous version
+# Assume it's ok to over-write any previous version.
 /bin/mv $log_path $dest_dir/${tar_prefix}${sat_day}.log
-/bin/mv $tar_path $dest_dir
+# Move tar file atomically to avoid a race condition
+# if/when another process tries to read it.
+tar_basename=$(basename "$tar_path")
+/bin/mv "$tar_path" "$dest_dir/${tar_basename}.in"
+/bin/mv "$dest_dir/${tar_basename}.in" "$dest_dir/${tar_basename}"
