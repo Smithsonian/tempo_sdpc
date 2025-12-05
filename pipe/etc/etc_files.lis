@@ -56,7 +56,6 @@ level3/simple.met.template
 l0_format.cfg
 l0_ccd.cfg
 l0_ccd_drk.cfg
-l0_ccd_long.cfg
 make_radref.yml.in
 select_destripe.yml
 select_radref.yml

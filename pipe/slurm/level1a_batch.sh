@@ -105,12 +105,7 @@ run_l0_ccd()
 
    case "${granule_basename}" in
       *DRK* | *RADT* )
-          exceeds_threshold=$(mean_exptime_exceeds_threshold.py $granule_basename)
-          if test $exceeds_threshold -ne 0 ; then
-             config_file="l0_ccd_long.cfg"
-          else
-             config_file="l0_ccd_drk.cfg"
-          fi
+          config_file="l0_ccd_drk.cfg"
           ;;
       * )
           config_file="l0_ccd.cfg"
