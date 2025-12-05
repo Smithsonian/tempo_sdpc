@@ -428,8 +428,8 @@ static int compute_current_and_trim (CCD_Type *ccd,
    Granule_Exprec_Type *exprec = xr->exprec;
    Image_Type *aimg = NULL;
    float fpa_temp, fpe_temp, spec_temp, tele_temp, bench_temp, fpa_sum, fpe_sum, spec_sum, tele_sum, bench_sum;
-   double smear_fraction, redmine204_shift;
-   double exposure_time_per_frame, exposure_time_offset, coadd_period, integration_period, sampling_period, fpa_lag;
+   double smear_fraction;
+   double exposure_time_per_frame, coadd_period, integration_period, sampling_period;
    int i, k, n_sample, n_fpa, n_fpe, n_spec, n_tele, n_bench;
    unsigned int j;
 
@@ -507,8 +507,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
     * It should be revisited once we gain a precise understanding of
     * how it works for different integration modes.
     *
-    * September 25, 2024: Code revised to un-tweak image time.
-    * This is a temporary solution. New dark correction will be implemented.
+    * December 5, 2025: A correction has been made for the phase lead in the FPA strap temperature.
     */
 
    double secs_per_clock      = 8.2987551867219914e-08;
@@ -516,8 +515,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    double full_flush_time     =  199104 * secs_per_clock;
    double storage_read_time   = 1204992 * secs_per_clock;
 
-   redmine204_shift = 0.0;
-   (void) iocsdpc_tweak_image_time_per_redmine_204 (exprec->ccd_int_type, exposure_time_per_frame, &redmine204_shift);
+   double fpa_lag = -4.121;
 
    switch (exprec->ccd_int_type)
      {
@@ -527,24 +525,18 @@ static int compute_current_and_trim (CCD_Type *ccd,
       /* SHORT_INT */
         integration_period = exposure_time_per_frame;
         coadd_period = full_flush_time + integration_period + frame_transfer_time + storage_read_time;
-        exposure_time_offset = (exprec->start_time - redmine204_shift) - coadd_period;
-        fpa_lag = 0.0;
         n_sample = 1;
         break;
       case 0:
       /* NOMINAL */
         integration_period = exposure_time_per_frame;
         coadd_period = integration_period + frame_transfer_time;
-        exposure_time_offset = (exprec->start_time - redmine204_shift);
-        fpa_lag = 0.0;
         n_sample = 1;
         break;
       case 2:
       /* LONG_INT */
         integration_period = exposure_time_per_frame - storage_read_time;
         coadd_period = frame_transfer_time + storage_read_time + integration_period;
-        exposure_time_offset = (exposure_time_per_frame > 0.2) ? exprec->start_time : (exprec->start_time - redmine204_shift);
-        fpa_lag = (exposure_time_per_frame > 0.2) ? -4.121 : 0.0;
         n_sample = 30;
         break;
       default:
@@ -557,7 +549,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
    for (j = 0; j < exprec->num_coadds; j++)
      for (k = 1; k < (n_sample+1); k++)
        {
-         if (0 != instr->instr_fpa_temp (instr, exposure_time_offset + fpa_lag + (coadd_period * j) + (sampling_period * k), &fpa_temp))
+         if (0 != instr->instr_fpa_temp (instr, exprec->start_time + fpa_lag + (coadd_period * j) + (sampling_period * k), &fpa_temp))
            {
                return -1;
            }
@@ -566,7 +558,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
                fpa_sum += fpa_temp;
                n_fpa += 1;
            }
-         if (0 != instr->instr_fpe_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &fpe_temp))
+         if (0 != instr->instr_fpe_temp (instr, exprec->start_time + (coadd_period * j) + (sampling_period * k), &fpe_temp))
            {
                return -1;
            }
@@ -575,7 +567,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
                fpe_sum += fpe_temp;
                n_fpe += 1;
            }
-         if (0 != instr->instr_spec_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &spec_temp))
+         if (0 != instr->instr_spec_temp (instr, exprec->start_time + (coadd_period * j) + (sampling_period * k), &spec_temp))
            {
                return -1;
            }
@@ -584,7 +576,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
                spec_sum += spec_temp;
                n_spec += 1;
            }
-         if (0 != instr->instr_tele_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &tele_temp))
+         if (0 != instr->instr_tele_temp (instr, exprec->start_time + (coadd_period * j) + (sampling_period * k), &tele_temp))
            {
                return -1;
            }
@@ -593,7 +585,7 @@ static int compute_current_and_trim (CCD_Type *ccd,
                tele_sum += tele_temp;
                n_tele += 1;
            }
-         if (0 != instr->instr_bench_temp (instr, exposure_time_offset + (coadd_period * j) + (sampling_period * k), &bench_temp))
+         if (0 != instr->instr_bench_temp (instr, exprec->start_time + (coadd_period * j) + (sampling_period * k), &bench_temp))
            {
                return -1;
            }
