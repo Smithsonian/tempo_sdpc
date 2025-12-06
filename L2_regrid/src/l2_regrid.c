@@ -772,7 +772,7 @@ static int write_area_weight_sums (int ncid, const char *lonlat_grp,
         {"long_name", "sum of area weights"},
         {"comment", "sum of Level 2 pixel overlap areas"},
         {"units", "km^2"},
-        {"coordinates", "time longitude latitude"},
+        {"coordinates", "time latitude longitude"},
         {NULL, NULL}
      };
    const char *varname = "weight";

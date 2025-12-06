@@ -1041,6 +1041,48 @@ static int write_src_value_stats (int ncid, int in_grp, int in_varid,
    return 0;
 }
 
+static int impose_coordinates_attr (int grp, int varid)
+{
+   char *text = NULL;
+   char *p = NULL;
+   const char *attname = "coordinates";
+   const char *wrong = "longitude latitude";
+   const char *right = "latitude longitude";
+   int status = -1;
+   size_t len;
+
+   /* ok if attribute is not present */
+   if (NC_NOERR != (status = nc_inq_att (grp, varid, attname, NULL, &len)))
+     return 0;
+   /* read attribute */
+   if (NULL == (text = (char *)MALLOC (len * sizeof(char))))
+     {
+        Tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
+        goto return_status;
+     }
+   if (NC_NOERR != (status = nc_get_att_text (grp, varid, attname, text)))
+     {
+        Tell_verror (TELL_IO_READ_ERROR, "%s: failed reading attribute: group=%d, varid=%d, attname=%s",
+                     __func__, grp, varid, attname);
+        goto return_status;
+     }
+   if (NULL != (p = strstr (text, wrong)))
+     {
+        /* update the text and write it out, excluding terminating null byte */
+        memcpy (p, right, strlen(right));
+        if (NC_NOERR != (status = nc_put_att_text (grp, varid, attname, len, text)))
+          {
+             Tell_verror (TELL_IO_WRITE_ERROR, "%s: failed writing attribute: group=%d, varid=%d, attname=%s text=%s",
+                          __func__, grp, varid, attname, text);
+             goto return_status;
+          }
+     }
+   status = 0;
+return_status:
+   FREE(text);
+   return status;
+}
+
 int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
                       const char *out_var_path, const char *var_qa_label,
                       int ncid_infile, const char *in_var_path)
@@ -1121,7 +1163,8 @@ int Var_write_values (int ncid, const Var_Value_Buffer_Type *vb,
        || (-1 == TIO_inq_var_fill (in_grp, in_varid, &in_no_fill, NULL))
        || (-1 == TIO_def_var_fill (out_grp, out_varid, in_no_fill, &vb->fill_value.d))
        || (-1 == TIO_def_var_deflate (out_grp, out_varid, shuffle, deflate, deflate_level))
-       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, out_grp, out_varid)))
+       || (-1 == TIO_copy_attrs (in_grp, in_varid, dontcopy_attr, out_grp, out_varid))
+       || (-1 == impose_coordinates_attr (out_grp, out_varid)))
      {
         tell_verror (TELL_RUNTIME_ERROR, "%s: defining output variable: %s", __func__, out_var_name);
         goto free_and_return;
