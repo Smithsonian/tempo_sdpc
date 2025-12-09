@@ -1201,7 +1201,7 @@ subroutine cal_pscene
                +(xx-x0)*(xx-x2)/(x1-x0)/(x1-x2)*y1 &
                +(xx-x0)*(xx-x1)/(x2-x0)/(x2-x1)*y2
           ler466=yy
-        else if (iflag .eq. 0) then !hqw add low pressure end
+        else if (iflag .eq. 0) then ! add low pressure end
           x0=lut_pcld(1)
           x1=lut_pcld(2)
           x2=lut_pcld(3)

@@ -1,7 +1,7 @@
 !*************
 module m_scd_adjust
 !*************
-!hqw addition for O4 scd temperature dependence correction
+! addition for O4 scd temperature dependence correction
 
 contains
 

@@ -67,7 +67,6 @@ contains
   bounds%lat_min = lat_min
   lat_max = maxval(rad_latitude, rad_latitude .lt. 90.0001)
   bounds%lat_max = lat_max
-  !hqw hour_start & hour_end = gmeta(hour+minute/60.+seconds/3600.)
   write(*,*)'   bounds year,month,day',year(1),month(1),day(1)
   write(*,*)'   bounds hour_beg,end = ',bounds%hour_beg, bounds%hour_end
   write(*,*)'   bounds lon:',bounds%lon_min,bounds%lon_max

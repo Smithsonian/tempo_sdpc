@@ -576,7 +576,6 @@ contains
   !> @param[in] dimlist     list of dimension parameters
   !> @param     errstat     error tracking code, non-zero indicates problem
   !
-  !> @author HWang   Sep 2024
   ! qa_statistics is inherited in production and written in development
   !-----------------------------------------------------------------------
   subroutine write_qa_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)
@@ -644,7 +643,7 @@ contains
 
   end subroutine write_qa_struct
 
-! HW write qa_statistics data 
+! write qa_statistics data 
   subroutine write_qa_data(tio_l2obj, nstep, nxtrack, errstat)
      use m_vars, only: fit_convergence_flag, nasa_scdrms
 
@@ -822,7 +821,7 @@ contains
   end subroutine copy_pixel_corners
 
 !-------------------------------
-! HW added product struct 
+! added product struct 
 !-------------------------------
 
    subroutine write_product_struct(tio_l2obj, dimid_xtrack, dimid_step, errstat)

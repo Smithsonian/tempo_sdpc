@@ -65,7 +65,7 @@ subroutine read_GEOS5_VCD(ptot,tt,qq,ppdry)
     tmp_vcd(ip+1)=sum_vcd
   end do
 
-! LUT is based on US-standard air which is dry
+! LUT is based on US-standard air dry
 ! pp is best provided as dry pressure instead of total pressure
 ! the following convert tmp_vcd on GEOS levels to geos_vcd on LUT levels
 ! geos_vcd is converted to SCD through LUT AMF in cal_ocp and cal_pscene

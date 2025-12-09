@@ -39,7 +39,7 @@ contains
 
   end subroutine open_tio
 
-  !> Get 1 global attribute hqw & gga
+  !> Get 1 global attribute 
   !-----------------------------------------------------------------------
   subroutine get_tio_global_attr(l1file, attrname, attrval, errstat)
 
@@ -60,7 +60,7 @@ contains
 
   end subroutine get_tio_global_attr
 
-  !> Get TEMPO L1 RAD attributes hqw&gga
+  !> Get TEMPO L1 RAD attributes 
   !----------------------------------------------------------------------
   !could use get_tio_global_attr, but this one aviods multiple open & close
 
@@ -422,7 +422,7 @@ contains
 
     use m_vars, only: negative999, dFillValue, fFillValue
 
-    !hqw added rad_440nm,rad_466nm, rad_477nm in m_vars
+    ! added rad_440nm,rad_466nm, rad_477nm in m_vars
     implicit none
 
     !input variables
@@ -579,7 +579,7 @@ contains
               btest(temp_radflags,8) .or. & !offset_corr_error
               btest(temp_radflags,9)) then ! .or. & !smear_corr_error
          !     btest(temp_radflags,11) .or. &  !nonlinear_range
-         ! per discussion with heesung 202508, turn straylight check off here for V4
+         ! 202508, turn straylight check off here for V4
          ! previous straylight error is flagged when negative rad occurs under straylight correction
          ! negative rad will be captured by processing error in bit 2 anyway, thus comment it out
          ! to allow more flexibility for the bit to describe straylight problem
@@ -825,7 +825,7 @@ contains
     else ! calculate RAA 
       write(*,*) '   calculate RAA from SAA & VAA'
       ! RAA = SAA - VAA + PI, why +PI?
-      ! xliu: this is related to the definition of SAA and VAA
+      ! this is related to the definition of SAA and VAA
       !       RAA of forward scattering=0, backward scattering=180
       do it = 1, ntimes
          do ix = 1, nxtrack
@@ -833,7 +833,7 @@ contains
                 (rad_SolarAzimuthAngle(ix,it) .ge. -360.) .and. &
                 (rad_SolarAzimuthAngle(ix,it) .le. 360.)) then
                temp_raa=rad_SolarAzimuthAngle(ix,it)+180.0-rad_ViewingAzimuthAngle(ix,it)
-               ! ensure tem_raa is within [0., 360) range
+               ! ensure within [0., 360) range
                do while (temp_raa .lt. 0.0) 
                   temp_raa = temp_raa + 360.
                enddo
@@ -1111,7 +1111,6 @@ contains
   !> @param[out] irr_out    irradiance at target wavelength
   !> @param      errstat    error handling integer, non-zero = problem
   !
-  !> @author E. O'Sullivan April 2021
   !-----------------------------------------------------------------------
   subroutine quick_irr_interpol (w_array, w_target, irr_array, irr_out, &
        q_array, badout, errstat)

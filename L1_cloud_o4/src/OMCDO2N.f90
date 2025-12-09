@@ -611,7 +611,7 @@ program OMCDO2N
   call write_debug_processing_flags
 
   if (run_mode .EQ. 'production') then
-    ! JCH: in this mode, we add variables to an existing output file
+    ! in this mode, we add variables to an existing output file
     write(*,*) 'update file with output: '//trim(name_out_ncdf)
     call update_output_file_tio (name_out_ncdf, &
                                  rad_NumTimes, rad_nXtrack, errstat)

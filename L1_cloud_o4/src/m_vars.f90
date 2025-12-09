@@ -9,21 +9,21 @@ module m_vars
 !
 ! REVISION HISTORY: 
 !
-!  04/23/15 Yang original fortran 90
+!  04/23/15 original fortran 90 from Goddard
 !
-!  2021 Wang/O'Sullivan adaption to TEMPO
+!  2021 adaption to TEMPO
 !       add TEMPO read & write
 !       remove OMI specifics
 !       add GEOS-CF
 !       add GLER
 !       switch to TEMPO LUTs
 ! 
-!  2023 Wang modification for TEMPO
+!  2023 modification for TEMPO
 !       add development/production mode
 !       add O2O2 temperature correction
 !       add ECFOCP iteration
 ! 
-!  2024 Wang modification for TEMPO
+!  2024 modification for TEMPO
 !       add TEMPO IRR & RAD wavelength shift
 !       add perturbation options
 !
@@ -84,9 +84,6 @@ module m_vars
   integer(kind=4)::rad_nWavel
   real(kind=4)::rad_EarthSunDist
 
-! read in and transfer to out_TerrainHeight
-! move rad_TerrainHeight to m_read_input_tio
-!  integer(kind=2),dimension(:,:),  pointer::rad_TerrainHeight
 !OMI uses GroundPixelQualityFlags to decide snow/ice
 !TEMPO uses L1 snow_ice_fraction instead
 !TEMPO uses GroundPixelQualityFlags for land/ocean in GLER
@@ -147,7 +144,7 @@ module m_vars
   integer, parameter:: LUT_ALBID_0p1 = 7
   integer, parameter:: LUT_ALBID_0p2 = 12
 
-  !OMI LUT dimension, changed for TEMPO
+  !OMI LUT dimension
   !integer,parameter::nalb=20, nsza=30, nvza=19, nraa=37
   !integer,parameter::npsfc=23, npcld=23, nrsfc=23
   !TEMPO LUT dimension
@@ -166,7 +163,6 @@ module m_vars
    real, parameter:: TrefO4 = 223. 
 ! coefs for sdpcv4.4 are derived using ops3_4p3_livetest 20240216 with
 !   O2O2_template_may2024.pcf & control.O2O2_may2024.in
-! IDL>derive_tempo_tpcorrect,dir1,dir2,coeffs
    real, parameter:: a263 = 1.049, b263 = 0.010
    real, parameter:: a293 = 1.103, b293 = 0.017 
 ! Sep 2024: test with sdpcv4.4 using 20240509 S007 gives similar coeffs 
@@ -175,8 +171,7 @@ module m_vars
 ! Sep 2024: test with sdpcv4.4 using 20231111 S007 gives similar coeffs
 !  real, parameter:: a263 = 1.05118, b263 = 0.000901
 !  real, parameter:: a293 = 1.10656, b263 = 0.001545
-! Tests above shows that the Tpcorrect coeffs are stable at 5% and 10%
-! could pursue time dependent correction using previous day coeffs if needed
+! Tests above shows that the Tpcorrect coeffs are stable 
 
    ! maximum number of iteration for SCD temperature adjustment
    integer, parameter :: max_scd_iter = 20 
@@ -197,12 +192,12 @@ module m_vars
 
  ! added the multiplicative conversion factor for calculating O4 VCD
  !    this removes hardcoded constant in many routines
- ! EY suggests change to 6.733e-4 to be more accurate
+ ! change to 6.733e-4 to be consistent with LUT calculation
   real,parameter::vcd_convfac = 6.733e-4 !previously 6.765e-4
 
  ! add the fraction used for cpp during scd temperature correction
   real,parameter:: frac4cpp = 0.707 !half mass !previously 0.7937 
- ! frac4cpp is tunable, does not necessarily reflect half mass
+ ! frac4cpp is tunable, does not have to be half mass, TBD
 
 !-----------
 ! input LUN
@@ -219,15 +214,14 @@ integer:: ilun_gmi_tmp = 4003
 ! option 1: SlantColumnDensity
 ! ----------------------------
 ! name_option_SlantColumnDensity:
-!hqw TEMPO always use NASA, thus changed to a parameter
+! TEMPO always use NASA, thus changed to a parameter
   character(len=255), parameter::name_option_SlantColumnDensity='NASA'
 
 ! -----------------------------
 ! option 2: TemperaturePressure
 ! -----------------------------
 ! name_option_TemperaturePressure:
-!   This option will change VCD and Psfc values, but will not affect AMFcalculated
-!    GMI: GMI monthly T/P/Psfc
+!  GMI: GMI monthly T/P/Psfc
 !  GEOS5: GEOS-5 T/P/Psfc
 
   character(len=255)::name_gmi_dir='./refdata/'
@@ -242,7 +236,7 @@ integer:: ilun_gmi_tmp = 4003
   integer :: nlayers
 
 ! debug
-  ! ixdebug & itdebug can be overwrite through control file
+  ! ixdebug & itdebug can be overwritten through control file
   integer :: ixdebug=-1800 !set to negative to prevent debug output
   integer :: itdebug=-60 !set to negative to prevent debug output
 
@@ -293,7 +287,6 @@ integer:: ilun_gmi_tmp = 4003
   integer,parameter::kleipool_nx=720,kleipool_ny=360
 
 ! changed these to pointer so that they won't allocate if not needed
-! seems that only 466 is actually used
 ! changed pointer to allocatable which can be tested with allocated function
   real,dimension(:),pointer :: kleipool_lon, kleipool_lat
   real(kind=4),dimension(:,:),allocatable :: kleipool_SurfaceReflectivity440
@@ -422,8 +415,8 @@ integer:: ilun_gmi_tmp = 4003
 !------------
 
 ! wavelength
-  real::w440=440.0 ! nm for cloud fraction calculation
-  real::w466=466.0 ! nm for cloud fraction calculation
+  real::w440=440.0 ! nm for cloud radiance fraction calculation
+  real::w466=466.0 ! nm for effective cloud fraction calculation
   real::w477=477.0 ! nm for cloud pressure calculation
 
 ! ecf clip threshold
@@ -549,7 +542,7 @@ integer:: ilun_gmi_tmp = 4003
   ! perturbation polynomial coeff for rad466/irr466 [0,1,2,3]order
   integer(kind=4) :: nord_RoI466pert = 3 ! 3rd order polynomial has 4 coeffs
   !real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.95,0.0,0.0/)
-  ! the following is from HCH test case: y = (1.-(-271.98*x+23.62)/100.)*x
+  ! the following is a test case: y = (1.-(-271.98*x+23.62)/100.)*x
   real,parameter,dimension(4) :: RoI466PertCoef = (/0.0,0.7638,2.7198,0.0/)
 
   logical :: PerturbO4SCD = .False.
@@ -587,7 +580,7 @@ type gmeta
   real(kind=4) :: geospatial_lon_max=180.
   real(kind=4) :: geospatial_lat_min=-90.
   real(kind=4) :: geospatial_lat_max=90.
-  character(len=13)::leadscientist='hwang'
+  character(len=13)::leadscientist='leadscientist'
   character(len=23)::Swathname = 'Cloud O4 Product'
   character(len=32) :: apriori_source = 'empty'
   integer :: granule_year=0, granule_month=0,granule_day=0
