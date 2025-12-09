@@ -343,13 +343,13 @@
 200100|SMF Verbosity Threshold|6
 200105|PGEVERSION|"3.0.0"
 200110|ProcessingCenter|"SDPC"
-200115|ProcessingHost|"Linux ompspeate3.gsfc.nasa.gov 2.6.9-55.0.2.ELsmp #1 SMP Tue Jun 26 14:30:58 EDT 2007 i686 i686 i386 GNU/Linux"
+200115|ProcessingHost|"Linux"
 200135|REPROCESSINGACTUAL|"processed 1 time"
 200170|ProcessLevel|"2"
 200175|InstrumentName|"TEMPO"
 200180|OPERATIONMODE|"Test"
 200185|AuthorAffiliation|"Smithsonian Astrophysical Observatory"
-200190|AuthorName|"Helen Wang / Gonzalo Gonzalez Abad / Caroline Nowlan / John Houck"
+200190|AuthorName|"TEMPO Science Team"
 200195|LOCALVERSIONID|"RFC1321 MD5 = not yet calculated"
 200200|OrbitNumber|08541
 200210|SwathName|"TEMPO Total Column Amount O2O2"
