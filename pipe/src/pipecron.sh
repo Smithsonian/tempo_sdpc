@@ -143,13 +143,16 @@ perform_inr_qa_check()
    /bin/mv $d_path $d_path_working
 
    date_string=$(basename $d_path)
-   inr_qa_cron.sh $date_string
+   _msg=$(inr_qa_cron.sh $date_string)
 
    if test $? -eq 0 ; then
       /bin/rm -f $d_path_working
    else
       /bin/mv $d_path_working ${d_path}.failed
    fi
+
+   _tstamp=$(date +%Y-%m-%dT%H:%M:%S-%Z)
+   echo "$_tstamp:$_msg" >> $SDPC_PIPE_DIR/inr/quality/inr_qa.log 2>&1
 }
 export -f perform_inr_qa_check
 
@@ -184,10 +187,7 @@ manage_inr_qa_checking()
      fi
   fi
 
-  if test $num_dates -gt 1 ; then
-      # Process any accumulated backlog without waiting
-      date_file_paths=$(echo $date_file_paths | tr ' ' '\n' | head --lines=-1)
-  elif test $timer_expired -eq 0 ; then
+  if test $num_dates -lt 2 -a $timer_expired -eq 0 ; then
       # Timer hasn't expired, and no backlog, so do nothing and return.
       return
   fi
@@ -195,9 +195,10 @@ manage_inr_qa_checking()
   # Update the timestamp file before processing
   date +%s > $tstamp_file
 
-  # When multiple dates need processing, limit the number of parallel instances
-  max_num_parallel=3
-  (echo $date_file_paths | xargs -n 1 -P $max_num_parallel /bin/bash -c 'perform_inr_qa_check "$@"' _) &
+  # Process dates serially
+  for d in $date_file_paths ; do
+      perform_inr_qa_check $d
+  done
 }
 
 do_hourly()
