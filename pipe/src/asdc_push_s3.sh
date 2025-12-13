@@ -111,7 +111,7 @@ if test x"$num" = x0 ; then
    exit 0
 fi
 
-uniqify="$(mktemp XXXX)"
+uniqify="$(openssl rand -hex 3)"
 upload_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/push/tempo_pdr_s3_%Y%jT%H%M%SZ_${uniqify})"
 
 do_asdc_s3_upload $upload_dir_path

@@ -142,7 +142,7 @@ if test $try_download -eq 0; then
    exit 0
 fi
 
-uniqify="$(mktemp XXXX)"
+uniqify="$(openssl rand -hex 3)"
 download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_s3_%Y%jT%H%M%SZ_${uniqify})"
 
 do_asdc_s3_download $download_dir_path
