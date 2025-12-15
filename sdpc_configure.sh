@@ -2,8 +2,8 @@
 
 compilers=gnu
 
-site=HEAD
-#site=ITS
+#site=HEAD
+site=ITS
 
 case "$site" in
   ITS )
