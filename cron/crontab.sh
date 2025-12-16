@@ -8,8 +8,9 @@ tstamp_fmt="+%Y%m%d%H%M%SZ"
 : "${SDPC_ROOT:?SDPC_ROOT not set}"
 : "${SDPC_OTS_ROOT:?SDPC_OTS_ROOT not set}"
 : "${SDPC_LOCKDIR:?SDPC_LOCKDIR not set}"
+: "${SDPC_PYTHON_BINDIR:?SDPC_PYTHON_BINDIR not set}"
 
-export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:$PATH"
+export PATH="${SDPC_ANCILLARY_ROOT}/bin:${SDPC_ROOT}/bin:${SDPC_OTS_ROOT}/bin:${SDPC_PYTHON_BINDIR}:$PATH"
 
 sqlite_backup_dir="$SDPC_ANCILLARY_ROOT/var/backup"
 num_backups=9
