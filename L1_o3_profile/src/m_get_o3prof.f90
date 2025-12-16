@@ -994,8 +994,9 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   !ENDIF
 
  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
+      tb(0) = tb0(0)   
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz ; stop 1
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz !; stop 1
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
