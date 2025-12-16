@@ -849,8 +849,10 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
                 do_clouds, cldsca(1:nz1), cldext(1:nz1), cldasy(1:nz1), &
                 cldmoms(0:nmom, 1:maxgksec, 1:nz1), cldmsk(1:nz1), absod(1:nfgas, 1:nz1), problems)
         IF (problems) THEN 
-             print * , 'problem in lidort prof prep'
-             STOP 1
+             !print * , 'problem in lidort prof prep'
+             !STOP 1
+             WRITE(*, *) ADJUSTL(TRIM(modulename))//': problem in lidort prof prep'
+             RETURN
         ENDIF
         deltau(ip+woff, 1:nz1) = deltau_vert_input(1:nz1)
         delsca(ip+woff, 1:nz1) = deltau_vert_input(1:nz1)*omega_total_input(1:nz1) 
