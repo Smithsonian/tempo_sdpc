@@ -80,6 +80,7 @@ SUBROUTINE spectra_reflectance (ns, nf, fitvar, do_shiwf, simrad, fitspec, errst
         fidx = 1
         DO i = 1, numwin
            lidx =  fidx + nradpix(i) + nextra - 1
+           if (lidx .gt. size(delref)) lidx = size(delref) !errstat = pge_errstat_error; RETURN !Junsung: 20251210 for address the error reported by John
            delref(fidx:lidx) = refwvl(fidx:lidx) - (refwvl(fidx)+refwvl(lidx))*0.5
            IF (shfind(i, 1) > 0) sunpos_ss(fidx:lidx) = sunpos_ss(fidx:lidx) + fitvar_rad(shind(i, 1)) 
   
