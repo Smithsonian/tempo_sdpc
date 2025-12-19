@@ -1,6 +1,6 @@
 #! /bin/sh
 
-VN_DEF=4.7.0
+VN_DEF=4.8.0
 
 if test -d .git ; then
    VN=$(git describe --tag  HEAD 2> /dev/null) || VN=$VN_DEF

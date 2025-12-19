@@ -1,3 +1,18 @@
+TEMPO_SDPC_v4.8.0   2025 Dec
+===============================
+  * L0_ccd: Refine dark current subtraction to account
+        for FPA strap temperature latency
+  * Add RADT_L1 post-processing with custom filtering,
+    background subtraction, and VIIRS-DNB geolocation
+  * L1_o3_profile: Improve error handling
+  * Support downloading VIIRS-DNB imagery
+  * Support downloading GEOS-CFv2 analysis files
+  * Update INR SW to r3.0.5
+  * Adjust NO2 destriping control parameters
+  * Adjust HCHO radiance reference control parameters
+  * Fix typos in metadata
+  * Add LICENSE.txt file for public release
+
 TEMPO_SDPC_v4.7.0   2025 Sep
 ===============================
   * Update destriping algorithms and logic for CLDO4, NO2
