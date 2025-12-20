@@ -607,6 +607,14 @@ static int meta_set_bounding_polygon (TIO_Meta_Type *meta, const Pixel_Regrid_Ty
    if (0 != Pixel_regrid_dest_boundary (r, dest, &indices, &num))
      return -1;
 
+   if (num < 3)
+     {
+        tell_vwarn (0, "invalid bounding polygon");
+        FREE(indices);
+        num = 0;
+        return 0;
+     }
+
    if (NULL == (lon = (float *)MALLOC (2 * num * sizeof(float))))
      {
         tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
