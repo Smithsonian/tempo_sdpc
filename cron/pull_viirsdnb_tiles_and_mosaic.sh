@@ -54,11 +54,17 @@ log_message()
 }
 
 # Download composite tiles to an 'incoming' directory:
-log_message "downloading VIIRS-DNB tiles: ${yyyy_doy}"
+log_message "checking for new VIIRS-DNB tiles: ${yyyy_doy}"
 pull_viirsdnb_tiles.py $DRYRUN -t "$token_file" -s "${source_url}/${yyyy_doy}" -d $incoming_dir
 if test "$?" -ne 0 ; then
-   echo "*** Error:  VIIRS-DNB tile download failed: $yyyy_doy"
+   #log_message "*** Error:  VIIRS-DNB tile download failed: $yyyy_doy"
    exit 1
+fi
+
+num_incoming=$(find $incoming_dir -mindepth 1 -maxdepth 1 -type f | wc -l)
+if test $num_incoming -eq 0 ; then
+   log_message "no files downloaded"
+   exit 0
 fi
 
 # Merge the tiles into a mosaic, storing the result in a separate directory:
@@ -66,7 +72,7 @@ log_message "generating VIIRS-DNB mosaic: ${yyyy_doy}"
 srun --job-name DNB --nodes=1 --ntasks=1 \
      make_viirsdnb_mosaic.sh $incoming_dir $mosaic_dir
 if test "$?" -ne 0 ; then
-   echo "*** Error:  VIIRS-DNB mosaic generation failed: $yyyy_doy"
+   log_message "*** Error:  VIIRS-DNB mosaic generation failed: $yyyy_doy"
    exit 1
 fi
 

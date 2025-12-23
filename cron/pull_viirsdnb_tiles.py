@@ -8,6 +8,9 @@
 
 #from __future__ import (division, print_function, absolute_import, unicode_literals)
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 import argparse
 import os
 import os.path
@@ -38,7 +41,14 @@ def getcURL(url, headers=None, out=None):
         else:
             subprocess.call(args, stdout=out)
     except subprocess.CalledProcessError as e:
-        print('curl GET error message: %' + (e.message if hasattr(e, 'message') else e.output), file=sys.stderr)
+        if hasattr (e, 'message'):
+            msg = e.message
+        else:
+            msg = e.output
+        msg = msg.decode("utf-8")
+        if len(msg) == 0:
+            msg = "<none>"
+        print('curl GET error message: {}'.format(msg), file=sys.stderr)
     return None
 
 # read the specified URL and output to a file
@@ -58,6 +68,8 @@ def geturl(url, token=None, out=None):
                 else:
                     shutil.copyfileobj(fh, out)
             except urllib2.HTTPError as e:
+                if e.code == 404:
+                    sys.exit (0)
                 print('TLSv1_2 sys 2 : HTTP GET error code: %d' % e.code, file=sys.stderr)
                 return getcURL(url, headers, out)
             except urllib2.URLError as e:
@@ -74,6 +86,8 @@ def geturl(url, token=None, out=None):
                 else:
                     shutil.copyfileobj(fh, out)
             except HTTPError as e:
+                if e.code == 404:
+                    sys.exit (0)
                 print('TLSv1_2 : HTTP GET error code: %d' % e.code, file=sys.stderr)
                 return getcURL(url, headers, out)
             except URLError as e:
