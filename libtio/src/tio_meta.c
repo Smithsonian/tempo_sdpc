@@ -1091,11 +1091,10 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    double *tmp_lon = NULL, *tmp_lat = NULL;
    float *vza2d=NULL, *lon2d=NULL, *lat2d=NULL, *lon=NULL, *lat=NULL;
    float *lon2d_bnds=NULL, *lat2d_bnds=NULL, *delta_lon=NULL;
-   float *lon_f=NULL, *lat_f=NULL;
    int *inrqf=NULL, *indices=NULL, *exclude_column=NULL;
    int *bx1=NULL, *bx2=NULL, *bs1=NULL, *bs2=NULL, *bdry=NULL, *side=NULL;
    int start[3], count[3];
-   int num_steps, num_xtrack, num_pixels, max_num_boundary;
+   int num_steps, num_xtrack, num_pixels, max_num_boundary, num_fixed;
    int s, x, i, n, x_first_ok, x_last_ok, s_first_ok, s_last_ok;
    int varid, no_fill, lon_bounds_status, num_kept, polygon_type;
    int status = -1, increasing_eastward=1;
@@ -1142,6 +1141,25 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
        || (0 != TIO_get_var_section (grp, TEMPO_VAR_INRQF, start, count, TIO_INT, inrqf)))
      {
         goto return_status;
+     }
+
+   /* Ensure that the INR QF is non-zero for all pixels that
+    * have a fill value for a pixel center coordinate.
+    */
+   num_fixed = 0;
+   for (i = 0; i < num_pixels; i++)
+     {
+        if (inrqf[i] != 0)
+          continue;
+        if ((lon2d[i] == fill_value) || (lat2d[i] == fill_value))
+          {
+             inrqf[i] = 1;
+             num_fixed++;
+          }
+     }
+   if (num_fixed > 0)
+     {
+        tell_vwarn (0, "boundary polygon construction found %d pixels with INR quality flag=0 (nominal), and a fill value in the geospatial coordinates", num_fixed);
      }
 
    /* If we have lon/lat bounds, we'll use them to define the polygon boundaries. */
@@ -1362,40 +1380,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
              lat[i] = lat_i;
           }
      }
-
-   /* Filter any fill values that made it this far */
-   if (NULL == (lon_f = (float *)TIO_MALLOC (2 * n * sizeof(float))))
-     {
-        tell_verror (TELL_MALLOC_ERROR, "%s: malloc failed", __func__);
-        goto return_status;
-     }
-   lat_f = lon_f + n;
-   num_kept = 0;
-   for (i = 0; i < n; i++)
-     {
-        lon_i = lon[i];
-        lat_i = lat[i];
-        if (isfinite(lon_i) && isfinite(lat_i)
-            && (lon_i != fill_value) && (lat_i != fill_value))
-          {
-             lon_f[num_kept] = lon_i;
-             lat_f[num_kept] = lat_i;
-             num_kept++;
-          }
-     }
-   if (num_kept == 0)
-     {
-        TIO_FREE(lon_f);
-        tell_verror (TELL_RUNTIME_ERROR, "%s: no valid boundary points", __func__);
-        goto return_status;
-     }
-   for (i = 0; i < num_kept; i++)
-     {
-        lon[i] = lon_f[i];
-        lat[i] = lat_f[i];
-     }
-   n = num_kept;
-   TIO_FREE(lon_f);
 
    /* simplify needs double arrays for temporary storage */
    if (NULL == (tmp_lon = (double *)TIO_MALLOC (2 * n * sizeof(double))))
