@@ -1078,10 +1078,17 @@ static float Douglas_Peucker_Band_Width_Km = DOUGLAS_PEUCKER_BAND_WIDTH_KM;
 #endif
 static float Bounding_Polygon_Max_VZA_Deg = BOUNDING_POLYGON_MAX_VZA_DEG;
 
-int __tio_set_bounding_polygon_controls (float band_km, float vza_max_deg)
+/* Ignore longitude/latitude bounds in the file */
+#ifndef IGNORE_LONLAT_BOUNDS
+# define IGNORE_LONLAT_BOUNDS 0
+#endif
+static int Ignore_LonLat_Bounds = IGNORE_LONLAT_BOUNDS;
+
+int __tio_set_bounding_polygon_controls (float band_km, float vza_max_deg, int ignore_lonlat_bounds)
 {
    Douglas_Peucker_Band_Width_Km = (band_km > 0.0) ? band_km : DOUGLAS_PEUCKER_BAND_WIDTH_KM;
    Bounding_Polygon_Max_VZA_Deg = (vza_max_deg > 0.0) ? vza_max_deg : BOUNDING_POLYGON_MAX_VZA_DEG;
+   Ignore_LonLat_Bounds = ignore_lonlat_bounds;
    return 0;
 }
 
@@ -1167,6 +1174,8 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    tell_push_queue ();
    lon_bounds_status = tio_inq_varid (grp, TEMPO_VAR_LONGITUDE_BOUNDS, &varid);
    tell_pop_queue (1);
+
+   if (Ignore_LonLat_Bounds) lon_bounds_status = 1;
 
    if (lon_bounds_status == 0)
      {

@@ -204,6 +204,7 @@ int main (int argc, char **argv)
      {
         {"help",    no_argument,       0, 'h'},
         {"replace", no_argument,       0, 'r'},
+        {"ignore",  no_argument,       0, 'i'},
         {"source",  required_argument, 0, 's'},
         {"band",    required_argument, 0, 'b'},
         {"limb",    required_argument, 0, 'l'},
@@ -212,13 +213,14 @@ int main (int argc, char **argv)
    int status, replace = 0;
    float band_km = -1.0;      /* band_km < 0 means use default */
    float vza_max_deg = -1.0;  /* vza_max_deg < 0 means use default */
+   int ignore_lonlat_bounds = 0;  /* non-zero means ignore longitude/latitude bounds in the file */
    char *path = NULL;
    char *srcpath = NULL;
 
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "hrs:b:l:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "hirs:b:l:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -228,6 +230,9 @@ int main (int argc, char **argv)
              break;
            case 'h':
              usage (pgm);
+             break;
+           case 'i':
+             ignore_lonlat_bounds++;
              break;
            case 'r':
              replace++;
@@ -261,7 +266,7 @@ int main (int argc, char **argv)
    path = argv[optind];
 
    tell_open (pgm, -1, 0);
-   (void) __tio_set_bounding_polygon_controls (band_km, vza_max_deg);
+   (void) __tio_set_bounding_polygon_controls (band_km, vza_max_deg, ignore_lonlat_bounds);
    status = process_file (path, replace, srcpath, band_km);
    tell_close();
 
