@@ -1,9 +1,11 @@
-TEMPO_SDPC_v4.8.0   2025 Dec
+TEMPO_SDPC_v4.8.0   2026 Jan
 ===============================
   * L0_ccd: Refine dark current subtraction to account
         for FPA strap temperature latency
   * Add RADT_L1 post-processing with custom filtering,
     background subtraction, and VIIRS-DNB geolocation
+  * L1_trace_gas: fix bug in assigment of weightsum when
+    using I0 irradiance
   * L1_o3_profile: Improve error handling
   * Support downloading VIIRS-DNB imagery
   * Support downloading GEOS-CFv2 analysis files
