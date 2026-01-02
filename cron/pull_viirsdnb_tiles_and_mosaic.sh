@@ -9,12 +9,13 @@ rootdir="$1"
 source_url="$2"
 token_file="$3"
 
-# Remaining args specify which month, otherwise use the current month:
+# Remaining args specify which month, otherwise use the previous month
+# (because the release is typically delayed by a few days/weeks):
 if test $# -gt 3 ; then
    shift 3
    yyyy_mm="$1"
 else
-   yyyy_mm="$(date --date today +%Y/%m)"
+   yyyy_mm=$(date --date "1 month ago" +%Y/%m)
 fi
 
 if ! test -d "$rootdir" ; then
