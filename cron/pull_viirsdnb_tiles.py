@@ -130,7 +130,7 @@ def sync(src, dest, dryrun, tok):
         total_download_size_MB += filesize / 1.e6
         num_download_files += 1
         if dryrun:
-            print ('%7d,%s' % (filesize, path))
+            #print ('%7d,%s' % (filesize, path))
             continue
         url = src + '/' + fname
         if filesize == 0:
@@ -149,7 +149,8 @@ def sync(src, dest, dryrun, tok):
                 sys.exit(-1)
 
     if dryrun:
-        print('Would download %d files, total size = %ld MB' % (num_download_files, total_download_size_MB))
+        #print('Would download %d files, total size = %ld MB' % (num_download_files, total_download_size_MB))
+        return num_download_files
     return 0
 
 def read_token (token_file):
@@ -181,6 +182,12 @@ def _main(argv):
     the_token = read_token (args.token)
     if the_token is None:
         return -1
+
+    num_files_expected = 60
+    num_files_available = sync(args.source, args.destination, True, the_token)
+    if num_files_available != num_files_expected:
+        print ("download cancelled: num_files_expected={}, num_files_available={}".format(num_files_expected, num_files_available))
+        return num_files_available
 
     return sync(args.source, args.destination, args.dryrun, the_token)
 

@@ -57,9 +57,14 @@ log_message()
 # Download composite tiles to an 'incoming' directory:
 log_message "checking for new VIIRS-DNB tiles: ${yyyy_doy}"
 pull_viirsdnb_tiles.py $DRYRUN -t "$token_file" -s "${source_url}/${yyyy_doy}" -d $incoming_dir
-if test "$?" -ne 0 ; then
-   #log_message "*** Error:  VIIRS-DNB tile download failed: $yyyy_doy"
+exit_status="$?"
+if test $exit_status -lt 0 ; then
+   log_message "*** Error:  VIIRS-DNB tile download failed: $yyyy_doy"
    exit 1
+elif test $exit_status -gt 0 ; then
+   # exit status >0 indicates download cancelled because expected
+   # number of tiles was not available
+   exit 0
 fi
 
 num_incoming=$(find $incoming_dir -mindepth 1 -maxdepth 1 -type f | wc -l)

@@ -9,6 +9,7 @@ SCRIPT_FILES = crontab.sh register_iers.py goes_archive.py \
                pull_ims.sh pull_goes.sh pull_geoscf.sh pull_iers.sh \
                asdc_push_files.sh asdc_pull_ack.sh \
                asdc_push_files_s3.sh asdc_pull_ack_s3.sh \
+               pull_viirsdnb_tiles.py pull_viirsdnb_tiles_and_mosaic.sh \
                cleanup.sh
 
 ETC_FILES = crontab crontab.conf logrotate.conf alert_message.tmpl
