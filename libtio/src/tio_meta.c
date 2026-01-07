@@ -29,9 +29,6 @@
 
 #define GEOSPATIAL_BOUNDS_CRS "EPSG:4326"
 
-#define USE_FAR_VERTEX 1
-/* #undef USE_FAR_VERTEX */
-
 struct TIO_Meta_Type
 {
    TIO_Meta_Type *next;
@@ -911,7 +908,6 @@ int tio_meta_write_ncattr (const TIO_Meta_Type *meta, int grp)
    return 0;
 }
 
-#ifndef USE_FAR_VERTEX
 static inline float merge_coordinates (float corner1, float corner2, float center, float fill_value)
 {
    if (corner1 == fill_value)
@@ -921,7 +917,6 @@ static inline float merge_coordinates (float corner1, float corner2, float cente
 
    return (corner2 == fill_value) ? corner1 : 0.5 * (corner1 + corner2);
 }
-#endif
 
 static int flag_nonmonotonic_columns (const float *lon2d, const int *inrqf, int num_steps, int num_xtrack, int x,
                                       int increasing_eastward, float *delta_lon, int *exclude_column)
@@ -1289,9 +1284,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
    /* The region boundary polygon we want is now this set of points
     * {bs2, bx2, bs1, bx1}, with some segments reversed to maintain
     * a consistent CCW ordering, and skipping -1 boundary indices.
-    *
-    * Difficulties arise when the northernmost boundary points fall
-    * near the limb of the Earth.
     */
 
    n = 0;
@@ -1306,7 +1298,7 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
      }
    for (s = num_steps-1; s >= 0; s -= ds)
      {
-        if ((bx2[s] >= 0) && ((bx1[s] % num_xtrack) == 0))
+        if (bx2[s] >= 0)
           {
              side[n] = 1;
              bdry[n] = bx2[s];
@@ -1322,15 +1314,24 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
              n++;
           }
      }
+   /* The northernmost boundary points are sometimes jagged and/or
+    * confusing to deal with.  The simplest solution is to just omit the
+    * the most troublesome of these points, letting any remaining boundary gap
+    * close with a single line segment connecting the northernmost endpoints
+    * of the eastern and western boundaries.
+    */
    for (s = 0; s < num_steps; s += ds)
      {
-        if ((bx1[s] >= 0) && ((bx1[s] % num_xtrack) == 0))
+        if ((bx1[s] % num_xtrack) == 0)
           {
              side[n] = 3;
              bdry[n] = bx1[s];
              n++;
           }
      }
+
+   /* If necessary, we will explicitly close the polygon by appending
+    * a copy of the first point */
 
    if ((NULL == (lon = (float *)TIO_MALLOC(n * sizeof(float))))
        ||(NULL == (lat = (float *)TIO_MALLOC(n * sizeof(float)))))
@@ -1351,18 +1352,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
      }
    else
      {
-#ifdef USE_FAR_VERTEX
-        double lon_mean=0.0, lat_mean=0.0;
-        for (i = 0; i < n; i++)
-          {
-             int k = bdry[i];
-             lon_mean += lon2d[k];
-             lat_mean += lat2d[k];
-          }
-        lon_mean /= n;
-        lat_mean /= n;
-#endif
-
         for (i = 0; i < n; i++)
           {
              int k = bdry[i];
@@ -1370,31 +1359,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
              float lat_k = lat2d[k];
              float *lonbnds = lon2d_bnds + k*4;
              float *latbnds = lat2d_bnds + k*4;
-#ifdef USE_FAR_VERTEX
-             double max_dist;
-             int j, jmax;
-             jmax = -1;
-             lon_i = lon_k;
-             lat_i = lat_k;
-             max_dist = 0.0;
-             for (j = 0; j < 4; j++)
-               {
-                  double dist;
-                  if ((lonbnds[j] == fill_value) || (latbnds[j] == fill_value))
-                    continue;
-                  dist = hypot (lonbnds[j]-lon_mean, latbnds[j] - lat_mean);
-                  if (dist > max_dist)
-                    {
-                       jmax = j;
-                       max_dist = dist;
-                    }
-               }
-             if (jmax >= 0)
-               {
-                  lon_i = lonbnds[jmax];
-                  lat_i = latbnds[jmax];
-               }
-#else
              switch (side[i])
                {
                 case 0:
@@ -1421,7 +1385,6 @@ int __tio_make_lev1_bounding_polygon (int grp, int *num, float **plon, float **p
                   tell_verror (TELL_RUNTIME_ERROR, "%s: this should never happen!!", __func__);
                   goto return_status;
                }
-#endif
              lon[i] = lon_i;
              lat[i] = lat_i;
           }
