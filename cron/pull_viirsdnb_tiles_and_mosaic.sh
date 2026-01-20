@@ -15,7 +15,7 @@ if test $# -gt 3 ; then
    shift 3
    yyyy_mm="$1"
 else
-   yyyy_mm=$(date --date "1 month ago" +%Y/%m)
+   yyyy_mm=$(date --date "1 month ago" +%Y-%m)
 fi
 
 if ! test -d "$rootdir" ; then
