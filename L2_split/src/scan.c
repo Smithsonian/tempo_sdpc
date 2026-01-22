@@ -357,9 +357,8 @@ static int find_tropopause (int pix, double ptrop, const Pressure_Param_Type *pt
           return n;
      }
 
-   tell_verror (TELL_RUNTIME_ERROR,
-                "%s: cannot find tropopause for pixel %d: P(trop) = %g",
-                __func__, pix, ptrop);
+   tell_vwarn (0, "%s: cannot find tropopause for pixel %d: P(trop) = %g",
+               __func__, pix, ptrop);
 
    return -1;
 }
@@ -437,7 +436,7 @@ static int compute_vstrat_from_file_data (Granule_Type *gr, int ncid,
         gr->slant_uncert[i] = slant_column_uncertainty[i];        
 
         if ((ktrop = find_tropopause (i, tropopause_pressure[i], pt)) < 0)
-          goto free_and_return;
+          continue;
 
         vtrop_apriori = 0.0;
         for (k = 0; k < ktrop; k++)
