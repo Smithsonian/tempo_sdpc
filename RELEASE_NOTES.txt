@@ -1,3 +1,14 @@
+TEMPO_SDPC_v4.8.2   2026 Jan
+===============================
+  * L2_split: tropopause pressure lookup failure now non-fatal
+  * Update configuration defaults
+
+TEMPO_SDPC_v4.8.1   2026 Jan
+===============================
+  * Revert change to algorithm used to derive bounding
+    polygon metadata
+  * Remove sensitive data from git history for public release
+
 TEMPO_SDPC_v4.8.0   2026 Jan
 ===============================
   * L0_ccd: Refine dark current subtraction to account
