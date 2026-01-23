@@ -56,7 +56,7 @@ have_data()
    sql_query="select count(*) from RAD_L1 where istart between $_tempo_t1 and $_tempo_t2"
    num_files=$(sqlite3 -readonly -cmd ".timeout 20000" $SDPC_ARCHIVE_DBFILE "$sql_query")
    if test $num_files -eq 0 ; then
-      echo "$PGMNAME: no RAD_L1 data in time range [$_tempo_t1, $_tempo_t2]"
+      #echo "$PGMNAME: no RAD_L1 data in time range [$_tempo_t1, $_tempo_t2]"
       exit 0
    fi
 }
