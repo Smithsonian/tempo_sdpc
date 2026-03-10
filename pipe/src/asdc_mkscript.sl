@@ -13,6 +13,8 @@ private variable GOES_Path_Regex = pcre_compile (GOES_Path_Pattern);
 private variable Node_Name_Entry;
 private variable Dest_Target_Dir;
 
+private variable Checksums_MD5 = Assoc_Type[];
+
 define make_file_entry (path, data_type, st, file_type)
 {
    variable s = struct
@@ -29,7 +31,7 @@ define make_file_entry (path, data_type, st, file_type)
    s.file_id = path_basename (path);
    s.file_size = st.st_size;
    s.file_chksum_type = "MD5";
-   s.file_chksum = md5sum_file (path);
+   s.file_chksum = Checksums_MD5[path];
 
    return s;
 }
@@ -205,7 +207,17 @@ define read_file_list (list_file)
    variable lst = fgetslines (fp);
    () = fclose (fp);
 
-   return array_map (String_Type, &strtrim, lst, "\n\t");
+   variable i, n = length(lst);
+   variable md5, path, files = String_Type[n];
+   _for i (0, n-1, 1)
+     {
+        if (2 != sscanf (lst[i], "%s %s", &md5, &path))
+          throw IOError, "reading ${list_file}"$;
+        files[i] = path;
+        Checksums_MD5[path] = md5;
+     }
+
+   return files;
 }
 
 define entry_string (entry)
