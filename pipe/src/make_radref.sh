@@ -116,7 +116,11 @@ make_radref()
        $SDPC_ROOT/etc/make_radref.yml.in > $config_file
 
    # Generate the radiance reference file
-   make_radref.py $config_file > $log_file 2>&1 || mr_error_exit "make_radref.py failed (see $log_file)" $LINENO
+   srun --quiet --job-name="radref" --output=$log_file \
+        make_radref.py $config_file
+   if test "$?" -ne 0 ; then
+      mr_error_exit "make_radref.py failed (see $log_file)" $LINENO
+   fi
 
    # Register the file in the sqlite database.
    ln -s $radref_path $SDPC_ARCHIVE_DIR/registry/incoming

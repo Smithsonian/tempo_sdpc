@@ -43,10 +43,6 @@ error_exit()
 pathlist_basename=$(basename $pathlist_file | sed -e s"/^[.]//")
 log_message "processing $pathlist_basename"
 
-# Import functions to generate destriping correction files
-. $SDPC_ROOT/bin/make_destripe.sh
-. $SDPC_ROOT/bin/make_destripe_cldo4.sh
-
 # Parse pathlist filename:
 pathlist_basename_sans_extname=$(basename $pathlist_file .lis)
 # product_type, e.g. NO2_L2
@@ -58,7 +54,8 @@ if test -n $SDPC_MAKE_DESTRIPE_TG ; then
    _destripe_products="$(echo $SDPC_MAKE_DESTRIPE_TG | tr , ' ')"
    for p in $_destripe_products ; do
        if test $p = $product_type_sans_level ; then
-          make_day_destripe_file $pathlist_file
+          srun --job-name="daily-destripe-$p" --quiet \
+               bash -c ". $SDPC_ROOT/bin/make_destripe.sh && make_day_destripe_file $pathlist_file"
           break
        fi
    done
@@ -66,7 +63,8 @@ fi
 
 case "$product_type" in
    CLDO4_L2 )
-   make_cldo4_destripe_file $pathlist_file
+   srun --job-name="daily-destripe-CLDO4" --quiet \
+        bash -c ". $SDPC_ROOT/bin/make_destripe_cldo4.sh && make_cldo4_destripe_file $pathlist_file"
    ;;
 
    * )

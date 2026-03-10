@@ -81,7 +81,11 @@ no2_l2_split()
    logdir=$(dirname $first_granule)
    first_granule_bn="$(basename $first_granule .nc)"
    log_message "strat/trop separation: $first_granule_bn scan"
-   L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1 || error_exit "L2_split failed"
+   srun --output=$logdir/log_split.txt --quiet \
+       L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths
+   if test "$?" -ne 0 ; then
+       error_exit "L2_split failed"
+   fi
    public_mirror_symlink "$l2_paths"
 }
 
@@ -104,15 +108,6 @@ change_asdc_status_defer_to_new()
    fi
    /bin/rm -f $tmpfile
 }
-
-# Import function to generate radiance reference file
-. $SDPC_ROOT/bin/make_radref.sh
-
-# Import function to generate destriping correction files
-. $SDPC_ROOT/bin/make_destripe.sh
-
-# Import function to generate background correction files
-. $SDPC_ROOT/bin/make_background.sh
 
 # loading $pathlist_file defines these variables:
 # product_name = e.g. HCHO_L2
@@ -154,7 +149,8 @@ _destripe_products=$(echo $SDPC_DESTRIPE_TG | tr , ' ')
 for p in $_destripe_products ; do
     if test $p = $product_name ; then
        # This is a no-op if destriping has already been done
-       destripe_scan "$l2_paths"
+       srun --job-name="destripe-$p" --quiet \
+            bash -c ". $SDPC_ROOT/bin/make_destripe.sh && destripe_scan \"$l2_paths\""
     fi
 done
 
@@ -163,13 +159,15 @@ _bkgcorr_products=$(echo $SDPC_BKGCORR_TG | tr , ' ')
 for p in $_bkgcorr_products ; do
     if test $p = $product_name ; then
        # This is a no-op if background correction has already been done
-       bkgcorr_scan "$l2_paths"
+       srun --job-name="bkgcorr-$p" --quiet \
+            bash -c ". $SDPC_ROOT/bin/make_background.sh && bkgcorr_scan \"$l2_paths\""
     fi
 done
 
 case "$product_name" in
   CLDO4_L2 )
      if test $SDPC_RADREF_ENABLE -ne 0 && test $is_nrt -eq 0 ; then
+        . $SDPC_ROOT/bin/make_radref.sh
         make_radref "$l2_paths"
      fi
      ;;
@@ -213,7 +211,12 @@ case "$product_name" in
 esac
 
 log_message "generating L3 product: $l3_basename"
-(cd $l3_target_dir && L2_regrid -v $l2_regrid_cfg > log_regrid_${product_name}.txt 2>&1 ) || error_exit "L2_regrid failed"
+srun --chdir $l3_target_dir --ntasks=1 --quiet \
+     --output=$l3_target_dir/log_regrid_${product_name}.txt \
+     L2_regrid -v $l2_regrid_cfg
+if test "$?" -ne 0 ; then
+   error_exit "L2_regrid failed"
+fi
 
 insert_fixed_metadata.py $l3_path
 fix_met_format.py ${l3_path}.met
