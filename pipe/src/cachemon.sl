@@ -18,6 +18,8 @@ if (Num_Cpus < 1)
    throw ApplicationError, "Invalid number of cpus: _SC_NPROCESSORS_ONLN = $Num_Cpus"$;
 }
 
+private variable Service_Name = NULL;
+
 private variable Monitor_State;
 private variable Sigterm_Received;
 private variable Verbose = 0;
@@ -26,6 +28,15 @@ private variable Host_Name = uname().nodename;
 private variable My_Pid = getpid();
 
 private variable Num_Running = 0;
+
+private variable LOG_INFO = "INFO";
+private variable LOG_ERR = "ERROR";
+
+private define write_log (severity, level, msg)
+{
+   if (Verbose >= level)
+     () = fprintf (stderr, "cachemon[%d] %s %s\n", My_Pid, severity, msg);
+}
 
 private define file_age (file)
 {
@@ -168,6 +179,202 @@ private define do_wait (obj)
    sleep_loop (obj.delay);
 }
 
+private variable Disable_File_Path = "$SDPC_PIPE_DIR/ctrl/disable"$;
+
+private define disable_read_config_tokens (disable_conf_file)
+{
+   variable lines = NULL;
+   variable fp = fopen (disable_conf_file, "r");
+   if (fp != NULL)
+     {
+        lines = fgetslines (fp ; trim=3);
+     }
+   if (lines == NULL || length(lines) == 0)
+     {
+        write_log (LOG_INFO, 1, sprintf ("invalid config file: %s", disable_conf_file));
+        return NULL;
+     }
+
+   lines = strtrim (lines, "\n");
+
+   % Parse the non-empty config file.
+   % Skip comment lines prefixed with '#'.
+   % Valid config lines look like:
+   %   <service-specifier>:<config-string>
+   %
+   % EXAMPLES:
+   % 1) disable.conf file to facilitate a quick SDPC shutdown:
+   %    #
+   %    # Disable the level1a service upon arrival of the next G01 radiance
+   %    # file, and disable all other cachemon services immediately:
+   %    #
+   %    default:disable
+   %    level1a:match:default
+   %
+   % 2) disable.conf a file to facilitate recovery from a quick shutdown:
+   %    #
+   %    # Allow all services to run normally, but disable the level1a
+   %    # service upon arrival of the next day's first radiance file.
+   %    #
+   %    default:continue
+   %    level1a:time:20260307T024500Z:default
+   %
+
+   variable config_tokens = Assoc_Type[];
+   variable s, tok;
+   foreach s (lines)
+       {
+          if (strlen(s) == 0 or s[0] == '#') continue;
+          tok = strtok (s, ":");
+          if (length(tok) < 2) continue;
+          config_tokens[tok[0]] = tok[[1:]];
+       }
+
+   % If no service-specific tokens are found, use the default:
+
+   % Service_Name == NULL should never happen
+   if (0 != assoc_key_exists (config_tokens, Service_Name))
+     {
+        tok = config_tokens[Service_Name];
+     }
+   else if (0 != assoc_key_exists (config_tokens, "default"))
+     {
+        tok = config_tokens["default"];
+     }
+   else
+     {
+        write_log (LOG_INFO, 1, sprintf ("invalid config file: %s", disable_conf_file));
+        return NULL;
+     }
+
+   return tok;
+}
+
+private define disable_ctrl_file_check (obj)
+{
+   if (obj.disable_ctrl_file_seen)
+     return 0;
+
+   variable disable_file_path = Disable_File_Path;
+   if (0 != access (disable_file_path, F_OK))
+     return 0;
+
+   % If the disable file exists, look in the same directory
+   % for a "disable.conf" file containing service-specific
+   % configuration parameters.
+   variable disable_conf_file = disable_file_path + ".conf";
+   variable st = stat_file (disable_conf_file);
+   if ((st == NULL) || (st.st_size == 0))
+     {
+        Monitor_State = 0;
+        write_log (LOG_INFO, 1, sprintf ("disable: file exists: %s (no config parameters)", disable_file_path));
+     }
+   else
+     {
+        variable tokens = disable_read_config_tokens (disable_conf_file);
+        % On read error, initialization fails
+        if (NULL == tokens)
+          return 0;
+        obj.disable_config_tokens = tokens;
+
+        % This cachemon instance might be disabled unconditionally:
+        if (tokens[0] == "disable")
+          {
+             Monitor_State = 0;
+             write_log (LOG_INFO, 1, sprintf ("disable on default config string"));
+          }
+     }
+
+   % initialization succeeded
+   obj.disable_ctrl_file_seen = 1;
+
+   return 1;
+}
+
+private define disable_by_filename_pattern (obj, basename)
+{
+   if (obj.disable_config_tokens == NULL)
+     return 0;
+
+   variable tok = obj.disable_config_tokens;
+   variable num_tokens = length(tok);
+   variable config_string = strjoin (tok, ":");
+
+   % Valid token strings are:
+   % match:<pattern>
+   % time:<when>:<pattern>
+   %
+   % where <pattern> = default | <regex>
+   %          <when> = time stamp string YYYYMMDDThhmmssZ
+
+   % config file string examples:
+   % match
+   % match:default
+   % match:TEMPO_RAD_L\d{1}_[^G]*G01
+   % match:TEMPO_RAD_L\d{1}_V\d{2}_\d{8}T\d{6}Z_S\d{3}G01
+   % time:20260215T150000Z
+   % time:20260215T150000Z:default
+   % time:20260215T150000Z:TEMPO_RAD_L1_V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{02}
+
+   variable m, regex, tstamp;
+   switch (tok[0])
+     {
+      case "continue":
+        % do nothing
+     }
+     {
+        % disable upon appearance of a matching filename
+        % (e.g. radiance scan granule number, either L0 or L1)
+      case "match":
+          regex = (num_tokens > 1) ? tok[1] : "default";
+          if (regex == "default")
+            {
+               regex = "TEMPO_RAD_L\d{1}_[^G]*G01"R;
+            }
+          m = pcre_matches (regex, basename);
+          if (m != NULL)
+             {
+                write_log (LOG_INFO, 1, sprintf ("disable on filename match: %s", basename));
+                return 1;
+             }
+     }
+     {
+        % disable upon filename timestamp comparison
+      case "time":
+          if (num_tokens < 2)
+            {
+               write_log (LOG_INFO, 1, sprintf ("invalid config string: %s", config_string));
+               return 0;
+            }
+          tstamp = tok[1];
+          m = pcre_matches ("\d{8}T\d{6}Z"R, tstamp);  % minimal validation
+          if (m == NULL)
+            {
+               write_log (LOG_INFO, 1, sprintf ("invalid config string: %s", config_string));
+               return 0;
+            }
+          regex = (num_tokens > 2) ? tok[2] : "default";
+          if (regex == "default")
+             {
+                regex = "TEMPO_RAD_L\d{1}_V\d{2}_(\d{8}T\d{6}Z)_S\d{3}G\d{2}"R;
+             }
+          m = pcre_matches (regex, basename);
+          if ((m == NULL) || (length(m) < 2))
+             return 0;
+          if (tstamp < m[1])
+             {
+               write_log (LOG_INFO, 1, sprintf ("disable on filename timestamp comparison: %s < %s", tstamp, m[1]));
+               return 1;
+             }
+     }
+     {
+        % default
+        write_log (LOG_INFO, 1, sprintf ("invalid config string: %s", config_string));
+     }
+
+   return 0;
+}
+
 private define new_dirmon (incoming_dir)
 {
    variable host_pid = sprintf ("%s_%d", Host_Name, getpid());
@@ -181,6 +388,10 @@ private define new_dirmon (incoming_dir)
         substr_match_dir = qualifier ("substr_match_dir", NULL),
         monitor = &dir_monitor,
         process = qualifier ("task", NULL),
+        disable_ctrl_file_seen = 0,
+        disable_config_tokens = NULL,
+        disable_ctrl_file_check = &disable_ctrl_file_check,
+        disable_by_filename_pattern = &disable_by_filename_pattern,
         wait = &do_wait,
         delay = 1.0,
         num_processed = 0,
@@ -214,15 +425,6 @@ private define exit_msg (w)
      return sprintf ("stopped by signal %d", w.stopped);
    else if (w.continued)
      return "continued";
-}
-
-private variable LOG_INFO = "INFO";
-private variable LOG_ERR = "ERROR";
-
-private define write_log (severity, level, msg)
-{
-   if (Verbose >= level)
-     () = fprintf (stderr, "cachemon[%d] %s %s\n", My_Pid, severity, msg);
 }
 
 private define sigchld_handler (sig);
@@ -289,7 +491,7 @@ private define monitoring_enabled ()
 {
    if (Monitor_State != Monitor_Last_State)
      {
-        variable msg = sprintf ("Caught signal: monitor state = %s", Monitor_State ? "ENABLE" : "DISABLE");
+        variable msg = sprintf ("New monitor state = %s", Monitor_State ? "ENABLE" : "DISABLE");
         write_log (LOG_INFO, 0, msg);
         Monitor_Last_State = Monitor_State;
      }
@@ -466,6 +668,12 @@ private define claim_with_rename (obj, path)
    variable claimed_bname = ".${bname}"$;
    variable claimed_path = path_concat (dname, claimed_bname);
 
+   if (0 != obj.disable_by_filename_pattern (bname))
+     {
+        Monitor_State = 0;
+        return 1;  % return non-zero to stop file processing
+     }
+
    if (cl.substr_match_dir != NULL)
      {
         % Run executable only when a file with a matching substring exists in substr_match_dir
@@ -545,6 +753,8 @@ define slsh_main()
         exit(1);
      }
 
+   Service_Name = path_basename_sans_extname (config_file);
+
    if (__argc > i+1 && __argv[i+1] == "--")
      {
         exec_args = __argv[[i+2:]];
@@ -573,6 +783,8 @@ define slsh_main()
 
    while (Sigterm_Received == 0)
      {
+        () = dir.disable_ctrl_file_check();
+
         if (monitoring_enabled())
           {
              if (-1 == dir.monitor (p.order))
