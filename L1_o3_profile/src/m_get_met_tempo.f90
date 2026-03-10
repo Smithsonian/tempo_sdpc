@@ -1,6 +1,6 @@
 MODULE  m_get_met_tempo
   USE OMSAO_precision_module, ONLY: i4,r4,sp, dp
-  USE OMSAO_parameters_module, ONLY: maxchlen, accgrav
+  USE OMSAO_parameters_module, ONLY: maxchlen, accgrav, r8_missval
   USE OMSAO_variables_module, ONLY: l2_met_filenames, the_lon, the_lat, the_time, the_surfalt, &
     lat_min, lat_max, lon_min, lon_max, time_min, time_max
   USE OMI_LUN_SET, ONLY:num_met_luns
@@ -53,7 +53,7 @@ MODULE  m_get_met_tempo
   TYPE (clim_pres_bounds_type), SAVE :: bounds
   TYPE (clim_val_type), SAVE :: cst, cst_phis!, cst_zpbl !-added cst_phis by junsung (JAN 2024)
   INTEGER, SAVE :: nl0
-  integer :: year, month, day, k, j
+  integer :: year(2), month(2), day(2), k, j
   real (kind=dp) :: hour
   real (kind=sp) :: hour_f
   logical, SAVE :: have_synthetic_met_data
@@ -78,9 +78,9 @@ MODULE  m_get_met_tempo
         return
       endif
 
-      call tio_f_taix_time_to_utc_caldate(time_min, year, month, day,hour)
+      call tio_f_taix_time_to_utc_caldate(time_min, year(1), month(1), day(1), hour)
       bounds % hour_beg = real (hour, kind=r4)
-      call tio_f_taix_time_to_utc_caldate(time_max, year, month, day,hour)
+      call tio_f_taix_time_to_utc_caldate(time_max, year(2), month(2), day(2), hour)
       bounds % hour_end = real (hour, kind=r4)
       bounds % lon_min = real(lon_min,kind=r4)
       bounds % lon_max = real(lon_max,kind=r4)
@@ -88,7 +88,7 @@ MODULE  m_get_met_tempo
       bounds % lat_max = real(lat_max,kind=r4)
 
       !@ set bounds
-      call clim_pres_init (cpt, year, month, day, bounds, errstat)
+      call clim_pres_init (cpt, year(1), month(1), day(1), bounds, errstat)
       call clim_query_nz (nl0, errstat)
       if (errstat /= 0) THEN
         call tell_error (tell_runtime_error, "get_met_tempo: errors in clim_pres_init", errstat)
@@ -128,7 +128,7 @@ MODULE  m_get_met_tempo
     first = .false.
    endif
 
-   call tio_f_taix_time_to_utc_caldate(the_time, year, month, day, hour)
+   call tio_f_taix_time_to_utc_caldate(the_time, year(1), month(1), day(1), hour)
    hour_f = real(hour, kind=r4)
 
    !xl, 1/2/2022 better to use the original pressure/T profiles,

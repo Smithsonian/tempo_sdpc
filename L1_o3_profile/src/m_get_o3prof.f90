@@ -993,10 +993,10 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   !  tb(0:nref) = refz(0:nref)-offset(0:nref) ^M
   !ENDIF
 
- IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
-      tb(0) = tb0(0)   
+  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
+      tb(0) = tb0(0)
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz !; stop 1
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz! ;stop 1
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
@@ -2088,7 +2088,7 @@ SUBROUTINE get_v8prof(toz, oz)
    TYPE (clim_val_type), SAVE :: cst
    INTEGER, SAVE  :: nl0
    INTEGER :: errstat, nl
-   INTEGER :: year, month, day
+   INTEGER :: year(2), month(2), day(2)
    REAL (KIND=r8) :: hour
    REAL (KIND=r4) :: hour_f, lon_f, lat_f
    REAL (kind=r4), dimension(:), allocatable, SAVE :: pres, vmr
@@ -2108,14 +2108,15 @@ SUBROUTINE get_v8prof(toz, oz)
    ! initialize climatology
    !-------------------------------------
    !@ set bounds
+
    if (time_max - time_min > 86400.0) then
       call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
       return
    endif
 
-   call tio_f_taix_time_to_utc_caldate(time_min, year, month, day,hour)
+   call tio_f_taix_time_to_utc_caldate(time_min, year(1), month(1), day(1), hour)
    bounds % hour_beg = real (hour, kind=r4)
-   call tio_f_taix_time_to_utc_caldate(time_max, year, month, day,hour)
+   call tio_f_taix_time_to_utc_caldate(time_max, year(2), month(2), day(2), hour)
    bounds % hour_end = real (hour, kind=r4)
    bounds % lon_min = real(lon_min,kind=r4)
    bounds % lon_max = real(lon_max,kind=r4)
@@ -2123,7 +2124,7 @@ SUBROUTINE get_v8prof(toz, oz)
    bounds % lat_max = real(lat_max,kind=r4)
 
    !@ set bounds
-   call clim_pres_init (cpt, year, month, day, bounds, errstat)
+   call clim_pres_init (cpt, year(1), month(1), day(1), bounds, errstat)
    call clim_query_nz (nl0, errstat)
    if (errstat /= 0) THEN 
       call tell_error (tell_runtime_error, TRIM(ADJUSTL(modulename))//": errors in clim_pres_init", errstat)
@@ -2142,7 +2143,7 @@ SUBROUTINE get_v8prof(toz, oz)
   !---------------------------------
   lon_f = real(the_lon, kind=r4)
   lat_f = real(the_lat, kind=r4)
-  call tio_f_taix_time_to_utc_caldate(the_time, year, month, day,hour)
+  call tio_f_taix_time_to_utc_caldate(the_time, year(1), month(1), day(1), hour)
   hour_f = real(hour, kind=r4)
 
   nl = nl0 ! number of level
