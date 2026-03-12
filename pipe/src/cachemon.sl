@@ -180,6 +180,7 @@ private define do_wait (obj)
 }
 
 private variable Disable_File_Path = "$SDPC_PIPE_DIR/ctrl/disable"$;
+private variable Disable_Config_File_Path = "$SDPC_PIPE_DIR/etc/disable.conf"$;
 
 private define disable_read_config_tokens (disable_conf_file)
 {
@@ -259,10 +260,10 @@ private define disable_ctrl_file_check (obj)
    if (0 != access (disable_file_path, F_OK))
      return 0;
 
-   % If the disable file exists, look in the same directory
-   % for a "disable.conf" file containing service-specific
+   % If the disable file exists, read the "disable.conf"
+   % config file which may contain service-specific
    % configuration parameters.
-   variable disable_conf_file = disable_file_path + ".conf";
+   variable disable_conf_file = Disable_Config_File_Path;
    variable st = stat_file (disable_conf_file);
    if ((st == NULL) || (st.st_size == 0))
      {

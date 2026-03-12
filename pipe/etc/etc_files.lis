@@ -13,6 +13,7 @@ cachemon/level3.cfg
 cachemon/level1b_nrt1.cfg
 cachemon/level1b_nrt2.cfg
 cachemon/daily.cfg
+disable.conf
 inr/TempoLogging.conf.in
 inr/TempoPipelineInterfaceSAO.conf.in
 inr/TempoMockLogging.conf.in
