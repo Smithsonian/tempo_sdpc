@@ -310,7 +310,7 @@ def process_longpan (cur, thefile, parse, pan_file, pdr_dbfile):
         pdr_file = os.path.basename(re.sub (".pan", ".PDR", pan_file, flags=re.IGNORECASE))
         mark_pdr_accepted (pdr_dbfile, pdr_file)
     else:
-        print ('{} has {} bad files'.format(pan_file, num_bad))
+        print ('{}: {} files failed ingest'.format(pan_file, num_bad))
 
     return
 

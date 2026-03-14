@@ -362,7 +362,7 @@ class Db_File_Type:
             try:
                 num_bad = process_longpan (self.db_path, self.table_name, longpan_file, self.status_dict)
                 if num_bad > 0:
-                    print ('{} has {} bad files'.format(longpan_file, num_bad))
+                    print ('{}: {} files failed ingest'.format(longpan_file, num_bad))
             except:
                 print ("Error processing file: {}".format(longpan_file))
 
