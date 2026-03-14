@@ -151,8 +151,10 @@ perform_inr_qa_check()
       /bin/mv $d_path_working ${d_path}.failed
    fi
 
-   _tstamp=$(date +%Y-%m-%dT%H:%M:%S-%Z)
-   echo "$_tstamp:$_msg" >> $SDPC_PIPE_DIR/inr/quality/inr_qa.log 2>&1
+   if test -n "$_msg" ; then
+      _tstamp=$(date +%Y-%m-%dT%H:%M:%S-%Z)
+      echo "$_tstamp:$_msg" >> $SDPC_PIPE_DIR/inr/quality/inr_qa.log 2>&1
+   fi
 }
 export -f perform_inr_qa_check
 
@@ -193,7 +195,11 @@ manage_inr_qa_checking()
   fi
 
   # Update the timestamp file before processing
-  date +%s > $tstamp_file
+  if test -n "$SDPC_INR_QA_TIME" ; then
+     date --date "$SDPC_INR_QA_TIME today" +%s > $tstamp_file
+  else
+     date +%s > $tstamp_file
+  fi
 
   # Process dates serially
   for d in $date_file_paths ; do
