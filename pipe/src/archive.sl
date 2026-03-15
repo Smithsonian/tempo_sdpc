@@ -313,15 +313,10 @@ define unpack_and_archive (tar_file, archive_level_dir)
         () = register_using_symlink (tar_file, archive_dest_subdir);
      }
 
-   % It's now safe to delete this copy
-   if (0 != remove (tar_file))
-     throw ApplicationError, "*** Error: removing $tar_file"$;
-
    return archive_dest_subdir;
 }
 
-define process_tar_file (tar_file, archive_incoming_dir,
-                         archive_level_dir)
+define process_tar_file (tar_file, archive_level_dir)
 {
    if (-1 == access (tar_file, F_OK | R_OK))
      {
@@ -329,18 +324,13 @@ define process_tar_file (tar_file, archive_incoming_dir,
         return -1;
      }
 
-   % This process is usually running on a compute node and the
-   % archive incoming directory is probably on a different host.
-   % Therefore, we copy the tar file to the remote archive incoming
-   % directory before unpacking it. Once unpacked, we delete the
-   % remote archive's copy of the tar file, and once all that has
-   % succeeded, we delete the local copy of the tar file.
+   % This process is usually running on a compute node
+   % and the archive on a different host.
 
-   variable e, tar_file_cpy;
+   variable e;
    try (e)
      {
-        tar_file_cpy = copy_file (tar_file, archive_incoming_dir);
-        () = unpack_and_archive (tar_file_cpy, archive_level_dir);
+        () = unpack_and_archive (tar_file, archive_level_dir);
      }
    catch AnyError:
      {
@@ -399,7 +389,6 @@ define slsh_main ()
    %      $granule_name/${Archive_Subdir_File}
 
    variable archive_level_dir = path_concat (archive_root_dir, archive_level);
-   variable archive_incoming_dir = path_concat (archive_level_dir, "incoming");
 
    if (NULL == stat_file (archive_level_dir))
      {
@@ -419,8 +408,7 @@ define slsh_main ()
    variable tar_file, status;
    foreach tar_file (tar_file_list)
      {
-        status = process_tar_file (tar_file, archive_incoming_dir,
-                                   archive_level_dir);
+        status = process_tar_file (tar_file, archive_level_dir);
         if (status != 0) exit(1);
      }
 

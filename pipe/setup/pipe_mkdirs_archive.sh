@@ -22,8 +22,8 @@ mkdirlist()
    done
 }
 
-ARCHIVE_DIRS="L0/incoming L1/incoming L2/incoming L3/incoming"
-ARCHIVE_DIRS_NRT="NRT/L1/incoming NRT/L2/incoming NRT/L3/incoming"
+ARCHIVE_DIRS="L0 L1 L2 L3"
+ARCHIVE_DIRS_NRT="NRT/L1 NRT/L2 NRT/L3"
 
 mkdirlist $SDPC_ARCHIVE_DIR "$ARCHIVE_DIRS $ARCHIVE_DIRS_NRT"
 
