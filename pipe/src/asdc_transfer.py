@@ -72,9 +72,17 @@ def main():
 
     logprint ("Started")
 
+    disable_asdc_file = os.path.expandvars ("$SDPC_PIPE_DIR/ctrl/disable-asdc")
+    disable_notify = True
+
     while not sig.caught():
-        obj = subprocess.run (pull_args)
-        obj = subprocess.run (push_args)
+        if not os.path.exists (disable_asdc_file):
+            disable_notify = True
+            obj = subprocess.run (pull_args)
+            obj = subprocess.run (push_args)
+        elif disable_notify:
+            logprint ("DISABLED: file exists: {}".format(disable_asdc_file))
+            disable_notify = False
         sig.wait(wait)
 
     logprint ("Exiting: caught signal = {}".format(sig.signum))
