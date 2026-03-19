@@ -852,6 +852,7 @@ SUBROUTINE LIDORT_PROF_ENV_PCA (do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
              !print * , 'problem in lidort prof prep'
              !STOP 1
              WRITE(*, *) ADJUSTL(TRIM(modulename))//': problem in lidort prof prep'
+             errstat = pge_errstat_error
              RETURN
         ENDIF
         deltau(ip+woff, 1:nz1) = deltau_vert_input(1:nz1)

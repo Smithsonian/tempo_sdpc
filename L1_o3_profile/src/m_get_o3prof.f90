@@ -18,9 +18,11 @@ MODULE m_get_o3prof
   !USE m_get_m2prof, ONLY:m2du, get_m2prof
   IMPLICIT NONE
   ! common variables used in this module
+
   INTEGER, PARAMETER :: which_m2 = 2, neof=72
   INTEGER, PRIVATE   :: nblat, nblon , nbmon
   INTEGER, DIMENSION(2), PRIVATE        :: latin, lonin, monin
+  INTEGER                               :: errstat
   REAL (KIND=dp), DIMENSION(2), PRIVATE :: latfrac, lonfrac, monfrac
   CHARACTER (LEN=130), PRIVATE          :: apfname
 
@@ -137,9 +139,12 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
     !CALL get_v8prof(toz, v8oz(1:nv8))
      PRINT * , 'not well implemented' ; stop 1
   ELSE IF (which_clima == 2) THEN
-     CALL GET_MCPROF (ozref(1:nmpref-1), 1) 
+     CALL GET_MCPROF(ozref(1:nmpref-1), 1) 
   ELSE IF (which_clima >= 8 .AND. which_clima <=9) THEN
-     CALL GET_TBPROF (ozref(1:nmpref-1), 1)
+     CALL GET_TBPROF(ozref(1:nmpref-1), 1, errstat)
+     IF (errstat < 0) THEN
+       WRITE(*, *) modulename, 'GET_TBPROF: BSPLINE error, errstat = ', errstat; RETURN
+     ENDIF
   ELSE IF (which_clima == 10) THEN
      CALL GET_MLprof(ozref(1:nmpref-1), 1) 
   ELSE IF (which_clima == 11) THEN
@@ -163,9 +168,11 @@ SUBROUTINE get_o3prof (numk, umkp, umkz, ntp, norm_o3p,toz, ozprof)
      IF (which_clima == 13) THEN  ! Use full GEOS-CF
         ozref(1:nref) = oztmp(1:nref)
      ELSE
-        CALL GET_TBPROF(ozref(1:nmpref-1), 1)
+        CALL GET_TBPROF(ozref(1:nmpref-1), 1, errstat)
+        IF (errstat < 0) THEN
+          WRITE(*, *) modulename, 'GET_TBPROF: BSPLINE error, errstat = ', errstat; RETURN
+        ENDIF
         !ozref0 = ozref
-
         IF (which_clima == 14) THEN ! Use GEOS-CF up to pbl (2 km above surface)
            tmp = thismet%ppbl2
         ELSE IF (which_clima == 15) THEN ! Use GEOS-CF up to mid free troposphere
@@ -377,14 +384,20 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ELSE IF (which_aperr == 2 ) THEN
      call get_mcprof(astd(1:nref), 2) 
   ELSE IF (which_aperr >= 8 .and. which_aperr <=9) THEN
-     call get_tbprof (astd(1:nref),2) 
+     call get_tbprof(astd(1:nref), 2, errstat)
+     IF (errstat < 0) THEN
+       WRITE(*, *) modulename, 'GET_TBPROF: BSPLINE error, errstat = ', errstat; RETURN
+     ENDIF
   ELSE IF (which_aperr == 10) THEN 
      call get_mlprof (astd(1:nref),2) 
   ELSE IF (which_aperr == 13) THEN
      allocate(oztmp(nref), ozavg(nref))
      tmp = exp((log(pst) + log(p0))*0.5)
      tmpntp = MAXVAL(MAXLOC(pres(0:nref), MASK=(pres(0:nref) <  tmp)))+1
-     CALL GET_TBPROF (astd(1:nref), 2)
+     CALL GET_TBPROF(astd(1:nref), 2, errstat)
+     IF (errstat < 0) THEN
+       WRITE(*, *) modulename, 'GET_TBPROF: BSPLINE error, errstat = ', errstat; RETURN
+     ENDIF
      !xl: The following is incorrect as we do not have GEOS-CF apiori error
      !CALL GET_tempoprof(nref-tmpntp+1,pres(tmpntp-1:nref),oztmp(tmpntp:nref),2)
      !astd(tmpntp) = astd(tmpntp)*0.5 + oztmp(tmpntp)*0.5
@@ -755,7 +768,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
 ! Obtain TB hybrid oz profiles
 ! 2011.6.15 Jbak
 ! ======================================================================
-  SUBROUTINE get_tbprof (ozref, out_prof)
+  SUBROUTINE get_tbprof (ozref, out_prof, errstat)
 
   IMPLICIT NONE
 
@@ -763,7 +776,8 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ! Input/Output variables
   ! ======================
   INTEGER, PARAMETER                             ::  nref = 60
-  INTEGER, INTENT(IN)                            ::  out_prof ! 1 = ozref 2 =std 
+  INTEGER, INTENT(IN)                            ::  out_prof ! 1 = ozref 2 =std
+  INTEGER, INTENT(INOUT)                         ::  errstat 
   REAL (KIND=dp), DIMENSION(nref), INTENT(OUT)   ::  ozref
 
   ! ======================
@@ -786,6 +800,8 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ! 100 % AB
   !------------------------------- at bottom
 
+  errstat = 0
+
   ! set up vertical smoothing parameters
   del1   = 1 ; del2   = 5
   meg1   = 1 ; meg2   = 1
@@ -800,12 +816,12 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ! load climatology
   IF (out_prof == 1 ) THEN  ! mean ozone profile : bottom-up
     CALL get_mlprof(llm, 1)
-    CALL get_tb (ozref, tmp,which_tb)
+    CALL get_tb (ozref, tmp,which_tb, errstat)
     CALL get_ab (AB, tmp)
     refz(1:nref) = (/(i*1.0+0.5, i = 0, nref-1 )/)
   ELSE IF (out_prof == 2) THEN  ! error profile : top-down
     CALL get_mlprof(llm,2)
-    CALL get_tb (tmp,ozref,which_tb)
+    CALL get_tb (tmp,ozref,which_tb, errstat)
     CALL get_ab (tmp, AB)
     refz(1:nref) = (/(i*1.0+0.5, i= nref-1, 0,-1 )/)
   ENDIF
@@ -826,7 +842,10 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
      ENDIF
   ENDDO
 
-  IF (any(ozref(:) < 0)) then ; print * , 'error at get_tbprof' ; stop 1 ; ENDIF
+  IF (any(ozref(:) < 0)) then! ; print * , 'error at get_tbprof' ; return; endif!stop 1 ; ENDIF
+    errstat = -1
+    print*, 'error at get_tbprof: ozref < 0, errstat = ', errstat; RETURN
+  ENDIF
   RETURN
 
   END SUBROUTINE get_tbprof
@@ -837,7 +856,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
 ! 2011.6.2 Jbak
 ! ===============================================================
 
-  SUBROUTINE get_tb(ozref,std, which_tb)
+  SUBROUTINE get_tb(ozref,std, which_tb, errstat)
 
   IMPLICIT NONE
 
@@ -856,8 +875,8 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   REAL (KIND=dp), DIMENSION(nlay)   :: ozref0,std0 ! orignal profile
   REAL (KIND=dp), DIMENSION(0:nlay) :: cum0,cums0, refz0, zstar, tb0
   REAL (KIND=dp), DIMENSION(0:nref) :: cum,cums,refz, tb
-
-  INTEGER                           :: i, j, k,fidx, lidx, errstat
+  INTEGER, INTENT(INOUT)            :: errstat
+  INTEGER                           :: i, j, k,fidx, lidx!, errstat
   REAL (KIND=dp)                    :: fdum
   REAL (KIND=dp)                    :: gravity_correct ! used for convertingunit
 
@@ -873,6 +892,7 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   ! ==============================
   CHARACTER (LEN=17), PARAMETER :: modulename = 'get_tb'
 
+  errstat = 0
 ! ** load oz profiles ** !
   IF (first) THEN
      allocate(ozrefs(nmon, nlat, nlay), &
@@ -993,20 +1013,21 @@ SUBROUTINE get_apriori_covar( nz, ps, zs, ozprof, toz, ntp,  sao3)
   !  tb(0:nref) = refz(0:nref)-offset(0:nref) ^M
   !ENDIF
 
-  IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
-      tb(0) = tb0(0)
+ IF (tb(0) < tb0(0) .or. tb(nref) > tb0(nlay) ) then
+      tb(0) = tb0(0)   
       print * , 'check boundary condition in TB clim'
-      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz! ;stop 1
+      print * , TB(0), tb0(0), tb(nref), tb0(nlay), trpz !; stop 1
   ENDIF
   CALL BSPLINE(tb0, cum0, nlay+1, tb, cum, nref+1, errstat)
   CALL BSPLINE(tb0, cums0, nlay+1, tb, cums, nref+1, errstat)
   IF (errstat < 0) THEN
-    WRITE(*, *) modulename, ': BSPLINE error, errstat = ', errstat ; stop 1
+    WRITE(*, *) modulename, 'GET_TBPROF: BSPLINE error, errstat = ', errstat ;RETURN !; stop 1
   ENDIF
 
   ozref(1:nref) = cum(1:nref)-cum(0:nref-1)
   std(1:nref)   = cums(1:nref)-cums(0:nref-1)
   IF (any(ozref(:) < 0)) then
+     errstat = -1
      ozref(:) = -999 ; std(:) = -999 ; print *, 'TB <0' ; return
   endif
   CALL REVERSE(STD(1:nref), nref)
@@ -2108,7 +2129,6 @@ SUBROUTINE get_v8prof(toz, oz)
    ! initialize climatology
    !-------------------------------------
    !@ set bounds
-
    if (time_max - time_min > 86400.0) then
       call tell_error (tell_runtime_error, "libclim_climatology: granule duration exceeds 24 hours", errstat)
       return

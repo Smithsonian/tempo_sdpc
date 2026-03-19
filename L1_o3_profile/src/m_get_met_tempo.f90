@@ -1,6 +1,6 @@
 MODULE  m_get_met_tempo
   USE OMSAO_precision_module, ONLY: i4,r4,sp, dp
-  USE OMSAO_parameters_module, ONLY: maxchlen, accgrav, r8_missval
+  USE OMSAO_parameters_module, ONLY: maxchlen, accgrav
   USE OMSAO_variables_module, ONLY: l2_met_filenames, the_lon, the_lat, the_time, the_surfalt, &
     lat_min, lat_max, lon_min, lon_max, time_min, time_max
   USE OMI_LUN_SET, ONLY:num_met_luns
