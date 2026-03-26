@@ -59,7 +59,8 @@ MODULE  m_get_met_tempo
   logical, SAVE :: have_synthetic_met_data
   logical, SAVE :: first = .true.
   logical :: have_forecast
-  
+  character (len=32) :: source
+
   ! Initialize dataset
   IF (first) THEN 
     !print * , l2_met_filenames(1)
@@ -94,12 +95,14 @@ MODULE  m_get_met_tempo
         call tell_error (tell_runtime_error, "get_met_tempo: errors in clim_pres_init", errstat)
         return
       endif
-      call clim_query_apriori_source (cpt, have_forecast, errstat)
-      if (have_forecast) then
-        apriori_source = 'GEOSCF:forecast'
-      else
-        apriori_source = 'GEOSCF:climatology'
-      endif
+      !call clim_query_apriori_source (cpt, have_forecast, errstat)
+      !if (have_forecast) then
+      !  apriori_source = 'GEOSCF:forecast'
+      !else
+      !  apriori_source = 'GEOSCF:climatology'
+      !endif
+      call clim_query_source (cpt, source, errstat)
+         apriori_source = source
       !print *, nl0
       !print *, apriori_source
 
@@ -220,6 +223,9 @@ MODULE  m_get_met_tempo
   enddo
 
   ! surface pressure
+  IF (the_surfalt .LT. 0) THEN
+     the_surfalt = 0.0
+  ENDIF
   local_srf = REAL(the_surfalt, kind=dp)
 
   thismet%z0 = the_surfalt
@@ -299,7 +305,7 @@ END SUBROUTINE get_met_tempo
    real (kind=dp), parameter :: R = 287.058  ! Gas constant for dry air (J kg^-1 K^-1)
   
    real (kind=dp) :: a, b
- 
+
    ! Hypsometric equation
    a = - (g / R / lr * 1000.0)
    b = lr * (model_height - tempo_height)

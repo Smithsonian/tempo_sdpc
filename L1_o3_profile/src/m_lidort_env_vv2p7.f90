@@ -899,7 +899,8 @@ SUBROUTINE LIDORT_PROF_ENV(do_ozwf, do_albwf, do_tmpwf, do_o3shi, &
 
         VLIDORT_LinOut%Prof%TS_profilewf(1:n_atmos_wfs, nz1+1:nz, 1, 1, 1:NSTOKES, 1) = 0.0
         IF ( VLIDORT_Out%Status%TS_STATUS_INPUTCHECK .eq. VLIDORT_SERIOUS ) THEN
-          WRITE(*,*)'VLIDORT input abort, PROFILEWF calculation', lamda, iw ; STOP 1
+          WRITE(*,*)'VLIDORT input abort, PROFILEWF calculation', lamda, iw
+          errstat = pge_errstat_error; RETURN!; ; STOP 1!Junsung
         ELSE IF ( VLIDORT_Out%Status%TS_STATUS_INPUTCHECK .ne. VLIDORT_SERIOUS .and. &
               VLIDORT_Out%Status%TS_STATUS_CALCULATION .eq. VLIDORT_SERIOUS ) then
               print * ,  VLIDORT_Out%Status%TS_STATUS_INPUTCHECK , &

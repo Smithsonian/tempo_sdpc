@@ -23,7 +23,7 @@ CONTAINS
          l2_hdf_flag, l1b_rad_filename,l2_cld_filename,l2_filename, &
          lcurve_unit, ozwrtint_unit,calunit, l1b_irrad_filename, &
          glb_fitvar, glb_initval, glb_exitval, &
-         mean_hw1e, mean_asym, mean_shape, instrument_sidx
+         mean_hw1e, mean_asym, mean_shape, instrument_sidx, apriori_source
     USE OMSAO_errstat_module
     USE ozprof_data_module, only: lcurve_write, ozwrtint,lcurve_fname, ozwrtint_fname,&
          ozabs_convl, so2crs_convl, o2crs_convl, o4crs_convl, h2ocrs_convl, do_polut_init
@@ -42,6 +42,7 @@ CONTAINS
     use m_write_odl_metadata
     use m_slitfunction_tempo
     use OMSAO_indices_module, only: instrument_idx, tempo_idx
+    use clim_module
 
     IMPLICIT NONE
 
@@ -69,6 +70,16 @@ CONTAINS
     ! Name of this module/subroutine
     ! ------------------------------
     CHARACTER (len=23), parameter :: modulename = 'tmpo_fitting_process'
+
+    ! ------------------------------
+    ! For a priori name
+    ! ------------------------------
+    CHARACTER (len=32) :: source
+    TYPE (clim_pres_type), SAVE :: cpt
+    TYPE (clim_pres_bounds_type), SAVE :: bounds
+    INTEGER :: year(2), month(2), day(2)
+    REAL (kind=dp) :: hour
+    INTEGER, SAVE :: nl0
 
     !----------------------------------------------------------------------------
     ! @ Initial Setup
@@ -252,12 +263,42 @@ CONTAINS
     time_min =  minval(tmpo_geo1%time, tmpo_geo1%time /= r8_missval)
     time_max =  maxval(tmpo_geo1%time, tmpo_geo1%time /= r8_missval)
     do_geoloc_init = .true. 
-   IF (pge_error_status /= pge_errstat_ok) THEN
+    IF (pge_error_status /= pge_errstat_ok) THEN
        message =": failed to read geo location"
        RETURN
     ENDIF
     IF (scnwrt) write(*, '(A)') '@ Finish reading geolocation data!!!'
-    
+
+    IF (time_max - time_min > 86400.0) THEN
+      call tell_error (tell_runtime_error, "get_met_tempo: granule duration exceeds 24 hours", errstat)
+      RETURN
+    ENDIF
+
+    call tio_f_taix_time_to_utc_caldate(time_min, year(1), month(1), day(1), hour)
+    bounds % hour_beg = real (hour, kind=r4)
+    call tio_f_taix_time_to_utc_caldate(time_max, year(2), month(2), day(2), hour)
+    bounds % hour_end = real (hour, kind=r4)
+    bounds % lon_min = real(lon_min,kind=r4)
+    bounds % lon_max = real(lon_max,kind=r4)
+    bounds % lat_min = real(lat_min,kind=r4)
+    bounds % lat_max = real(lat_max,kind=r4)
+
+    !@ set bounds
+    call clim_pres_init (cpt, year(1), month(1), day(1), bounds, errstat)
+    call clim_query_nz (nl0, errstat)
+    IF (errstat /= 0) THEN
+      call tell_error (tell_runtime_error, "get_met_tempo: errors in clim_pres_init", errstat)
+      RETURN
+    ENDIF
+    !call clim_query_apriori_source (cpt, have_forecast, errstat)
+    !if (have_forecast) then
+    !  apriori_source = 'GEOSCF:forecast'
+    !else
+    !  apriori_source = 'GEOSCF:climatology'
+    !endif
+    call clim_query_source (cpt, source, errstat)
+       apriori_source = source
+        
     !-----------------------------------------------------------------------
     ! reading cloud product
     !----------------------------------------------------------------------
