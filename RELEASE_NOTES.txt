@@ -1,3 +1,14 @@
+TEMPO_SDPC_v4.8.3   2026 Mar
+===============================
+  * L1_o3_profile:
+    - Fix bug in GEOS-CF lookup near 0h UTC
+    - Fix GEOS-CF metadata
+  * Restore O3TOT_L3 spatial resolution to 0.2 deg square pixels
+  * Modify asdc, level3, and daily services to shift processing
+    load from controller node to compute nodes.
+  * New cachemon feature to facilitate graceful shutdown of
+    active processing pipeline.
+
 TEMPO_SDPC_v4.8.2   2026 Jan
 ===============================
   * L2_split: tropopause pressure lookup failure now non-fatal
