@@ -81,15 +81,11 @@ do_asdc_s3_upload()
   # mark the new files as "pending"
   $ASDC_TRACK_UPLOADS --set pending $file_list
 
-  # Generate md5 checksums:
-  srun --job-name=asdc_push_md5 --quiet --output=${file_list}.md5 \
-       parallel --delay .2 --jobs 4 --keep-order --arg-file $file_list md5sum
-
   # generate manifest files and upload sequence
-  asdc_mkscript.sl --bucket $s3_bucket --pdr $pdr_list --output $upload_sequence ${file_list}.md5
+  asdc_mkscript.sl --bucket $s3_bucket --pdr $pdr_list --output $upload_sequence $file_list
 
   if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
-     echo "asdc_push_s3.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
+     echo "asdc_push.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
      return
   fi
 

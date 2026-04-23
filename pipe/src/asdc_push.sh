@@ -70,12 +70,8 @@ do_asdc_upload()
   # mark the new files as "pending"
   asdc_track_uploads.py --set pending $file_list
 
-  # Generate md5 checksums:
-  srun --job-name=asdc_push_md5 --quiet --output=${file_list}.md5 \
-       parallel --delay .2 --jobs 4 --keep-order --arg-file $file_list md5sum
-
   # generate manifest files and upload script
-  asdc_mkscript.sl --dest $user_at_host --pdr $pdr_list --output $script ${file_list}.md5
+  asdc_mkscript.sl --dest $user_at_host --pdr $pdr_list --output $script $file_list
 
   if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
      echo "asdc_push.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
