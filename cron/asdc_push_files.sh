@@ -50,7 +50,7 @@ do_asdc_upload()
   asdc_files.py --dbfile $dbfile --set pending $file_list
 
   # generate manifest files and upload script
-  asdc_mkscript.sl --dest $user_at_host --output $script $file_list
+  asdc_mkscript.sl --nowarn --dest $user_at_host --output $script $file_list
 
   # perform the upload
   error_flag=0
