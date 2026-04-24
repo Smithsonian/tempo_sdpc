@@ -85,7 +85,7 @@ do_asdc_s3_upload()
   asdc_mkscript.sl --bucket $s3_bucket --pdr $pdr_list --output $upload_sequence $file_list
 
   if test -f "$SDPC_ASDC_TRANSFER_DISABLE" ; then
-     echo "asdc_push.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
+     echo "asdc_push_s3.sh: transfer disabled ($SDPC_ASDC_TRANSFER_DISABLE exists)"
      return
   fi
 

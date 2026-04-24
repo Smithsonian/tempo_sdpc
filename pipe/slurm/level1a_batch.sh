@@ -185,10 +185,19 @@ cache_tracegas_solcal()
    wait
 }
 
+finalize_product()
+{
+  _p="$1"
+  insert_fixed_metadata.py $_p
+  fix_met_format.py ${_p}.met
+  md5sum $_p > ${_p}.md5
+}
+
 case "${granule_basename}" in
   *DRK* )
   output_file=$(mkgranule_name -L 1 -p DRK -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file ""
+  finalize_product $output_file
   ;;
 
   *IRR* )
@@ -197,6 +206,7 @@ case "${granule_basename}" in
   output_file=$(mkgranule_name -L 1 -p $irr_type -v $SDPC_PROCESSING_VERSION $granule_basename)
   run_l0_ccd $output_file "-d $dark_file_path"
   wavecal.sh $output_file 5
+  finalize_product $output_file
   if test $SDPC_SOLCAL_CACHE_ENABLE -ne 0 ; then
      cache_tracegas_solcal $output_file
   fi

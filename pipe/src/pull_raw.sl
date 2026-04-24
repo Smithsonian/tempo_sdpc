@@ -1,6 +1,7 @@
 #!/usr/bin/env slsh
 require ("cmdopt");
 require ("timestamp");
+require ("chksum");
 
 $1 = path_dirname (__FILE__);
 prepend_to_slang_load_path (path_concat ($1, "../share/slsh/local-packages"));
@@ -51,6 +52,27 @@ private define make_target_path (infile, outdir)
    variable target_dir = sprintf ("%s/%4d/%03d", outdir, 1900 + tm.tm_year, 1 + tm.tm_yday);
 
    return path_concat (target_dir, basename);
+}
+
+% Return -1 on error, 0 on success
+private define write_md5_chksum_file (path)
+{
+   variable path_md5 = strtrim(path) + ".md5";
+   variable fp = fopen (path_md5, "w");
+   if (fp == NULL)
+     return -1;
+
+   variable md5sum = md5sum_file (path);
+
+   if (fprintf (fp, "%s\n", md5sum) < 0)
+     {
+        () = fclose (fp);
+        return -1;
+     }
+   if (0 != fclose (fp))
+     return -1;
+
+   return 0;
 }
 
 % Return -1 on error, 0 on success, +1 when target file exists
@@ -115,6 +137,12 @@ private define pull_file (infile, outdir_root)
    if (-1 == rename (tmp, target_path))
      {
         () = fprintf (stderr, "Rename error: %S -> %S\n", tmp, target_path);
+        return -1;
+     }
+
+   if (0 != write_md5_chksum_file (target_path))
+     {
+        () = fprintf (stderr, "Error: writing md5sum file: %s.md5\n", target_path);
         return -1;
      }
 

@@ -219,17 +219,26 @@ fi
 # SDPTK MET routines litter the directory with temporary files
 find . -maxdepth 1 -name "MCFWrite.temp_*" -delete
 
-trap - EXIT
-tar_product_to_dest_dir "$l2_out_dir"
+# Finalize metadata
+insert_fixed_metadata.py $product_file
+fix_met_format.py ${product_file}.met
 
 case "$rad_basename" in
    *_NRT_* )
      arch_dest="NRT/L2"
+     fix_nrt_shortname.py $product_file
      ;;
    * )
      arch_dest="L2"
      ;;
 esac
+
+# Compute md5 checksum while product file is cached in RAM
+# even though it may get updated later.
+md5sum $product_file > ${product_file}.md5
+
+trap - EXIT
+tar_product_to_dest_dir "$l2_out_dir"
 
 tarfile_path="$l2_out_dir/${rad_basename}.${work_dir}.tar"
 archive.sl --delete -a $SDPC_ARCHIVE_DIR -l $arch_dest $tarfile_path

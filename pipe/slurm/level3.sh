@@ -34,12 +34,14 @@ log_message()
 {
    printf "${PROGNAME}: $1\n"
 }
+export -f log_message
 
 error_exit()
 {
    printf "*** Error: ${PROGNAME}: $1\n"
    exit 1
 }
+export -f error_exit
 
 public_mirror_symlink()
 {
@@ -70,24 +72,27 @@ public_mirror_symlink()
        ln -s $src $target_dir/$bn || error_exit "public_mirror_symlink failed: $bn"
    done
 }
+export -f public_mirror_symlink
 
 # Run L2_split on NO2_L2 data products
 no2_l2_split()
 {
-   l3_path="$1"
-   l2_paths="$2"
+   l2_paths="$1"
    # put log file in the the first granule directory
    first_granule=$(echo $l2_paths | cut -d' ' -f1)
    logdir=$(dirname $first_granule)
    first_granule_bn="$(basename $first_granule .nc)"
    log_message "strat/trop separation: $first_granule_bn scan"
-   srun --output=$logdir/log_split.txt --quiet \
-       L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths
+   L2_split -v -c $SDPC_PIPE_DIR/etc/l2_split.cfg $l2_paths > $logdir/log_split.txt 2>&1
    if test "$?" -ne 0 ; then
        error_exit "L2_split failed"
    fi
+   for p in $l2_paths ; do
+      md5sum $p > ${p}.md5
+   done
    public_mirror_symlink "$l2_paths"
 }
+export -f no2_l2_split
 
 change_asdc_status_defer_to_new()
 {
@@ -173,7 +178,8 @@ case "$product_name" in
      ;;
 
   NO2_L2 )
-     no2_l2_split "$l3_path" "$l2_paths"
+     srun --job-name="split-$product_name" --quiet \
+          bash -c "no2_l2_split \"$l2_paths\""
      ;;
 
   * )
@@ -188,43 +194,57 @@ change_asdc_status_defer_to_new "$is_nrt" "$l2_paths"
 
 mkdir -p $l3_target_dir || error_exit "mkdir -p $l3_target_dir failed"
 
-regrid_list="$l3_target_dir/TEMPO_${product_name}.lis"
-echo $l3_basename > $regrid_list
-for f in $l2_paths ; do
-   echo $f >> $regrid_list
-done
+export product_name
+export l3_path
+export l3_target_dir
+export l3_basename
 
-case "$product_name" in
-  O3PROF_L2 )
-      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
-      filter_tempo_o3p.py $l2_paths > $l3_target_dir/log_filter_o3p.txt 2>&1
-      sed -i_orig -e s,TEMPO_O3PROF_L2,filtered/TEMPO_O3PROF_L2,g $regrid_list
-      ;;
-  O3TOT_L2 )
-      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3t.cfg"
-      filter_tempo_o3tot.py $l2_paths > $l3_target_dir/log_filter_o3tot.txt 2>&1
-      sed -i_orig -e s,TEMPO_O3TOT_L2,filtered/TEMPO_O3TOT_L2,g $regrid_list
-      ;;
-  * )
-      l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"
-      ;;
-esac
+regrid_and_finalize_l3()
+{
+  l2_paths="$1"
+
+  regrid_list="$l3_target_dir/TEMPO_${product_name}.lis"
+  echo $l3_basename > $regrid_list
+  for f in $l2_paths ; do
+     echo $f >> $regrid_list
+  done
+
+  case "$product_name" in
+    O3PROF_L2 )
+        l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3p.cfg"
+        filter_tempo_o3p.py $l2_paths > $l3_target_dir/log_filter_o3p.txt 2>&1
+        sed -i_orig -e s,TEMPO_O3PROF_L2,filtered/TEMPO_O3PROF_L2,g $regrid_list
+        ;;
+    O3TOT_L2 )
+        l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3_o3t.cfg"
+        filter_tempo_o3tot.py $l2_paths > $l3_target_dir/log_filter_o3tot.txt 2>&1
+        sed -i_orig -e s,TEMPO_O3TOT_L2,filtered/TEMPO_O3TOT_L2,g $regrid_list
+        ;;
+    * )
+        l2_regrid_cfg="${SDPC_PIPE_DIR}/etc/l3.cfg"
+        ;;
+  esac
+
+   L2_regrid -v $l2_regrid_cfg > $l3_target_dir/log_regrid_${product_name}.txt 2>&1
+   if test "$?" -ne 0 ; then
+      error_exit "L2_regrid failed"
+   fi
+
+   insert_fixed_metadata.py $l3_path
+   fix_met_format.py ${l3_path}.met
+   fix_nrt_shortname.py $l3_path
+   md5sum $l3_path > ${l3_path}.md5
+
+   register_symlink="$SDPC_ARCHIVE_DIR/registry/incoming/$l3_basename"
+   ln -s $l3_path $register_symlink
+
+   public_mirror_symlink $l3_path
+}
+export -f regrid_and_finalize_l3
 
 log_message "generating L3 product: $l3_basename"
-srun --chdir $l3_target_dir --ntasks=1 --quiet \
-     --output=$l3_target_dir/log_regrid_${product_name}.txt \
-     L2_regrid -v $l2_regrid_cfg
-if test "$?" -ne 0 ; then
-   error_exit "L2_regrid failed"
-fi
-
-insert_fixed_metadata.py $l3_path
-fix_met_format.py ${l3_path}.met
-fix_nrt_shortname.py $l3_path
-
-register_symlink="$SDPC_ARCHIVE_DIR/registry/incoming/$l3_basename"
-ln -s $l3_path $register_symlink
-
-public_mirror_symlink $l3_path
+srun --job-name="regrid-$product_name" --quiet \
+     --chdir $l3_target_dir --ntasks=1 \
+     bash -c "regrid_and_finalize_l3 \"$l2_paths\""
 
 /bin/rm -f $pathlist_file

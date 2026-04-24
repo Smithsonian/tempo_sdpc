@@ -108,30 +108,6 @@ private define get_tarfile_archive_subdir (tar_file)
    return archive_subdir[0];
 }
 
-define insert_fixed_metadata (path)
-{
-   variable argv = ["insert_fixed_metadata.py", path];
-   variable s = new_process (argv; dup2=1).wait();
-   if (s.exit_status != 0)
-     throw ApplicationError, "*** Error: inserting fixed metadata: $path"$;
-}
-
-define fix_met_file_format (path)
-{
-   variable argv = ["fix_met_format.py", path];
-   variable s = new_process (argv; dup2=1).wait();
-   if (s.exit_status != 0)
-     throw ApplicationError, "*** Error: fixing met file format $path"$;
-}
-
-define fix_nrt_shortname (path)
-{
-   variable argv = ["fix_nrt_shortname.py", path];
-   variable s = new_process (argv; dup2=1).wait();
-   if (s.exit_status != 0)
-     throw ApplicationError, "*** Error: fixing NRT shortname in .met and .nc file for: $path"$;
-}
-
 define make_public_mirror_symlink (oldpath)
 {
    % If the mirror directory does not exist, do nothing.
@@ -245,18 +221,6 @@ define register_using_symlink (tar_file, archive_dest_subdir)
         oldpath = path_concat (archive_dest_subdir, pp);
 	if (NULL == stat_file (oldpath))
 	  continue;
-
-        % insert fixed metadata
-        insert_fixed_metadata (oldpath);
-
-        % fix formatting of .met file
-        variable metfile_path = oldpath + ".met";
-        if (NULL != stat_file (metfile_path))
-          fix_met_file_format (metfile_path);
-
-        % fix shortname attribute in NRT files
-        if (0 != is_substr (pp_basename, "_NRT_"))
-          fix_nrt_shortname (oldpath);
 
         % create symbolic link to trigger product registration
         newpath = path_concat (incoming_dir, pp_basename);

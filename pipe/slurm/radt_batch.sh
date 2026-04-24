@@ -105,10 +105,11 @@ update_archive()
    # update archived granules
    scatter_from_dir "$staging_dir" "$l2_paths"
    for p in $l2_paths ; do
-      # update bounding polygon metadata, etc.
+      # update bounding polygon metadata, MD5 checksum, etc.
       bounding_polygon --replace $p
       bounding_polygon_sync.py --src $p ${p}.met > /dev/null 2>&1
       insert_fixed_metadata.py $p
+      md5sum $p > ${p}.md5
       # registry service can now clear 'defer' status for this file
       ln -s $p $SDPC_ARCHIVE_DIR/registry/undefer
    done

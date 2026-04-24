@@ -104,6 +104,11 @@ destripe_scan()
    # Apply destriping correction
    apply_log="$destripe_dir/destripe_${product_type}.log"
    destripe.py --corrfile "$destripe_path" $l2_paths > $apply_log 2>&1 || md_error_exit "destripe.py failed (see $apply_log)" $LINENO
+
+   # Update md5 checksums
+   for p in $l2_paths ; do
+       md5sum $p > ${p}.md5
+   done
 }
 
 make_day_destripe_file()

@@ -87,6 +87,7 @@ EOF
   # gets added to the product registry, and the public mirror
   if test -f $product_file ; then
      insert_fixed_metadata.py $o3p_dir/$product_file
+     md5sum $o3p_dir/$product_file > $o3p_dir/${product_file}.md5
      ln -s $o3p_dir/$product_file $SDPC_ARCHIVE_DIR/registry/incoming
      public_mirror_symlink $o3p_dir/$product_file
   fi

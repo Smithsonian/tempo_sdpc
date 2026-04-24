@@ -13,6 +13,69 @@ private variable GOES_Path_Regex = pcre_compile (GOES_Path_Pattern);
 private variable Node_Name_Entry;
 private variable Dest_Target_Dir;
 
+private variable Disable_Missing_Checksum_File_Warning = 0;
+private variable Minimum_Filesize_For_Missing_Checksum_Warning = 1UL shl 24;
+% Don't warn about tiny files without a checksum file.
+
+define get_md5_chksum (st, path)
+{
+   variable md5sum = NULL;
+   % Try to read the MD5 checksum from a file. Large files should
+   % have a pre-computed checksum -- warn if that's missing.
+   % For small files, the computation is cheap so we compute it
+   % without complaint.
+   variable path_md5 = strtrim(path) + ".md5";
+
+   variable st_md5 = stat_file (path_md5);
+   if (NULL == st_md5)
+     {
+        if ((Disable_Missing_Checksum_File_Warning == 0)
+            && (st.st_size > Minimum_Filesize_For_Missing_Checksum_Warning))
+          {
+             () = fprintf (stderr, "*** WARNING: nonexistent md5 checksum file: %s (size = %ld)\n",
+                           path_md5, st.st_size);
+          }
+     }
+   else if (st_md5.st_mtime < st.st_mtime)
+     {
+        () = fprintf (stderr, "*** WARNING: ignoring old md5 checksum file: %s\n", path_md5);
+     }
+   else
+     {
+        variable fp = fopen (path_md5, "r");
+        if (fp == NULL)
+          {
+             () = fprintf (stderr, "*** WARNING: cannot read md5 checksum file: %s\n", path_md5);
+          }
+        else
+          {
+             variable lst = fgetslines (fp);
+             () = fclose (fp);
+
+             if (lst == NULL || length(lst) == 0)
+               {
+                  () = fprintf (stderr, "*** WARNING: empty md5 checksum file: %s\n", path_md5);
+               }
+             else
+               {
+                  variable value;
+                  if (1 != sscanf (lst[0], "%s", &value))
+                    {
+                       () = fprintf (stderr, "*** WARNING: failed reading md5 checksum file: %s\n", path_md5);
+                    }
+                  else md5sum = value;
+               }
+          }
+     }
+
+   if (md5sum == NULL)
+     {
+        md5sum = md5sum_file (path);
+     }
+
+   return md5sum;
+}
+
 define make_file_entry (path, data_type, st, file_type)
 {
    variable s = struct
@@ -29,7 +92,7 @@ define make_file_entry (path, data_type, st, file_type)
    s.file_id = path_basename (path);
    s.file_size = st.st_size;
    s.file_chksum_type = "MD5";
-   s.file_chksum = md5sum_file (path);
+   s.file_chksum = get_md5_chksum (st, path);
 
    return s;
 }
@@ -542,6 +605,7 @@ Options:
     -o|--output FILE                Write lftp script to FILE
     -b|--bucket Bucket:Bucket_dir   Generate output script for AWS S3 upload
     -p|--pdr FILE                   Write PDR filenames to FILE
+    -n|--nowarn                     Disable warnings about missing MD5 checksum files
     -h|--help                       Show usage message
 `;
    () = fprintf (stderr, msg);
@@ -592,6 +656,7 @@ define slsh_main ()
    opts.add ("d|dest", &user_at_host; type="string");
    opts.add ("o|output", &script_file; type="string");
    opts.add ("p|pdr", &pdr_file_list; type="string");
+   opts.add ("n|nowarn", &Disable_Missing_Checksum_File_Warning; inc);
    variable i = opts.process (__argv,1);
 
    if (__argc != i+1 || show_usage != 0)

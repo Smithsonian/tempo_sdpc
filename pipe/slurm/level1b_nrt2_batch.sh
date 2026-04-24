@@ -144,6 +144,15 @@ finish()
 }
 trap finish EXIT ERR
 
+finalize_product()
+{
+   _p="$1"
+   insert_fixed_metadata.py $_p
+   fix_met_format.py ${_p}.met
+   fix_nrt_shortname.py $_p
+   md5sum $_p > ${_p}.md5
+}
+
 tar_l1_radiance_to_dest()
 {
    dest_dir=$1
@@ -152,8 +161,12 @@ tar_l1_radiance_to_dest()
 
    tarfile_rad="${rad_basename}.rad.tar"
 
+   # Radiance product is finished at this point
+   finalize_product $granule_dir/${rad_basename}.nc
+
    tar cf $dest_dir/.${tarfile_rad} \
        $granule_dir/${rad_basename}.nc \
+       $granule_dir/${rad_basename}.nc.md5 \
        $granule_dir/archive_subdir \
        $granule_dir/log_inr_post.txt \
        $granule_dir/${rad_basename}.nc.met
@@ -163,6 +176,7 @@ tar_l1_radiance_to_dest()
    archive.sl --clobber --delete -a $SDPC_ARCHIVE_DIR -l NRT/L1 $dest_dir/${tarfile_rad}
 
    /bin/rm -f $granule_dir/log_inr_post.txt \
+              $granule_dir/${rad_basename}.nc.md5 \
               $granule_dir/${rad_basename}.nc.met
 }
 
@@ -277,6 +291,8 @@ run_cloud_o4()
 
   # From O2O2 slant column, derive cloud parameters
   derive_cloud_o4_params "${cld_o4_basename}.nc"
+
+  finalize_product "${cld_o4_basename}.nc"
 
   tar_l2_cloud_to_dest "$cld_o4_dir" "$l2_out_dir"
 

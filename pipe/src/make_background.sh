@@ -94,6 +94,11 @@ bkgcorr_scan()
    # Apply background correction
    apply_log="$bkgcorr_dir/bkgcorr.log"
    background.py --corrfile "$bkgcorr_path" $l2_paths > $apply_log 2>&1 || md_error_exit "background.py failed (see $apply_log)" $LINENO
+
+   # Update md5 checksums
+   for p in $l2_paths ; do
+       md5sum $p > ${p}.md5
+   done
 }
 
 make_day_bkgcorr_file() # currently unused
