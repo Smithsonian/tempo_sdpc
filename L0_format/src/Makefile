@@ -39,7 +39,7 @@ ELF_LINK_CMD = $(ELF_LINK)
 
 COMPILE_CMD = $(CC) $(CCFLAGS)
 
-OFILES   = l0_format.o tpsec.o exprec_cache_disk.o exprec_cache_mem.o \
+OFILES   = l0_format.o md5.o tpsec.o exprec_cache_disk.o exprec_cache_mem.o \
            exprec.o tpinfo.o smc.o iru.o enum.o maneuver.o ephemeris.o
 OBJS     = $(patsubst %.o,$(objdir)/%.o, $(OFILES))
 
@@ -92,6 +92,9 @@ $(objdir)/L0_format:	$(OBJS)
 $(objdir)/l0_format.o:	$(srcdir)/l0_format.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/l0_format.c
 
+$(objdir)/md5.o:	$(srcdir)/md5.c
+	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/md5.c
+	
 $(objdir)/tpsec.o:	$(srcdir)/tpsec.c
 	cd $(objdir) && $(ELF_COMPILE_CMD) $(INCS) $(srcdir)/tpsec.c
 

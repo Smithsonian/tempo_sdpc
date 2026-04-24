@@ -25,6 +25,7 @@
 #include <tio.h>
 #include <tio_template.h>
 
+#include "md5.h"
 #include "l0_format.h"
 
 #ifndef PROCESSED_FILE_LOG_BASENAME
@@ -42,8 +43,11 @@
 #define SDPC_FILETYPE_MANEUVER   (-100)
 #define SDPC_FILETYPE_EPHEMERIS  (-101)
 
+#define MD5_NUM_BYTES 16
+
 static int Have_Epoch;
 static int Perform_Archive_Registration;
+static int Disable_MD5_Checksum_Files;
 static const char *Archive_Root_Dir = NULL;
 
 static const char *Public_Mirror_Root_Dir = NULL;
@@ -114,6 +118,7 @@ static void usage (void)
    fprintf (stderr, "   -e | --empty             Exit when the input directory is empty\n");
    fprintf (stderr, "   -a | --archive DIR       Archive files in directory DIR\n");
    fprintf (stderr, "   -m | --mirror DIR        Public mirror files in directory DIR\n");
+   fprintf (stderr, "   -n | --nochecksum        Disable generation of product MD5 checksum files\n");
    fprintf (stderr, "   -L | --logdir DIR        Log processed files in directory DIR\n");
    fprintf (stderr, "   -r | --register          Perform database registration of archived files\n");
    fprintf (stderr, "   -c | --cache DIR         Process cached directories matching regex DIR\n");
@@ -1193,6 +1198,10 @@ static int process_cache_dirs (Process_Method_Table_Type *tbl,
              if (NULL != (newline = strchr (buf, '\n')))
                *newline = 0;
 
+             /* leading # is a comment character */
+             if (buf[0] == '#')
+               continue;
+
              if (0 != process_cache_dir_pattern (tbl, tpinfo, ctrl, buf))
                {
                   fclose (fp);
@@ -1551,6 +1560,77 @@ return_status:
    return status;
 }
 
+static int compute_file_md5sum (const char *path, char *md5sum, int md5sum_size)
+{
+   FILE *fp = NULL;
+   uint8_t result[MD5_NUM_BYTES];
+   int i;
+
+   if (md5sum_size < 2*MD5_NUM_BYTES+1)
+     return -1;
+
+   if (NULL == (fp = fopen (path, "r")))
+     {
+        tell_verror (TELL_IO_READ_ERROR, "%s: reading %s", __func__, path);
+        return -1;
+     }
+   md5File (fp, result);
+   (void) fclose (fp);
+
+   /* md5sum is the hexadecimal string representation of the MD5 checksum */
+   for (i = 0; i < MD5_NUM_BYTES; i++)
+     {
+        sprintf (&md5sum[2*i], "%02x", result[i]);
+     }
+   md5sum[2*MD5_NUM_BYTES] = 0;
+
+   return 0;
+}
+
+static int write_md5sum_file (const char *path)
+{
+   FILE *fp = NULL;
+   char *path_md5 = NULL;
+   char md5[2*MD5_NUM_BYTES+1];
+   int status = -1;
+
+   if (Disable_MD5_Checksum_Files)
+     return 0;
+
+   if (NULL == (path_md5 = ioclib_strcat (path, ".md5")))
+     {
+        tell_verror (TELL_MALLOC_ERROR, "%s: ioclib_strcat failed", __func__);
+        return status;
+     }
+
+   if (NULL == (fp = fopen (path_md5, "w")))
+     {
+        tell_verror (TELL_IO_OPEN_ERROR, "%s: cannot open %s", __func__, path_md5);
+        goto return_status;
+     }
+
+   if (0 != compute_file_md5sum (path, md5, sizeof(md5)))
+     goto return_status;
+
+   if (fprintf (fp, "%s\n", md5) < 0)
+     {
+        (void) fclose (fp);
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: writing %s", __func__, path_md5);
+        goto return_status;
+     }
+
+   if (0 != fclose (fp))
+     {
+        tell_verror (TELL_IO_WRITE_ERROR, "%s: closing %s", __func__, path_md5);
+        goto return_status;
+     }
+
+   status = 0;
+return_status:
+   ioclib_free (path_md5);
+   return status;
+}
+
 static int register_with_symlink (const char *dir, const char *basename)
 {
    char *archived_path = NULL;
@@ -1574,6 +1654,9 @@ static int register_with_symlink (const char *dir, const char *basename)
         tell_verror (TELL_APPLICATION_ERROR, "%s: ioclib_pathconcat failed", __func__);
         goto return_status;
      }
+
+   if (0 != write_md5sum_file (archived_path))
+     goto return_status;
 
    if (0 != ioclib_mkdir (registry_dir, 0))
      goto return_status;
@@ -1831,6 +1914,7 @@ int main (int argc, char **argv)
         {"tstart",   required_argument, 0, 't'},
         {"empty",    no_argument,       0, 'e'},
         {"register", no_argument,       0, 'r'},
+        {"nochecksum", no_argument,     0, 'n'},
         {"verbose",  no_argument,       0, 'v'},
         {"Version",  required_argument, 0, 'V'},
         {0,0,0,0}
@@ -1841,7 +1925,7 @@ int main (int argc, char **argv)
    for (;;)
      {
         int option_index = 0;
-        int c = getopt_long (argc, argv, "ha:m:c:eL:rvV:", long_options, &option_index);
+        int c = getopt_long (argc, argv, "ha:m:nc:eL:rvV:", long_options, &option_index);
         if (c == -1)
           break;
         switch (c)
@@ -1858,6 +1942,9 @@ int main (int argc, char **argv)
              break;
            case 'm':
              set_public_mirror_root_dir (optarg);
+             break;
+           case 'n':
+             Disable_MD5_Checksum_Files++;
              break;
            case 'L':
              incoming_log_info.logdir = optarg;
