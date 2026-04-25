@@ -165,6 +165,5 @@ download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_%Y%j
 do_asdc_download $download_dir_path
 
 num_uploaded=$(asdc_track_uploads.py --num uploaded)
-num_accepted=$(asdc_track_uploads.py --num accepted)
 num_problem=$(asdc_track_uploads.py --num problem)
-echo "asdc_pull.sh: ASDC ingest status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
+echo "asdc_pull.sh: ASDC ingest status: uploaded:$num_uploaded  problem:$num_problem"

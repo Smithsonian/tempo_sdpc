@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import argparse
 import fnmatch
 import threading
@@ -104,6 +105,8 @@ def main ():
                         help="S3 bucket specification")
     parser.add_argument('--list', action='store_true',
                         help="List files in S3 bucket directory")
+    parser.add_argument('--quiet', action='store_true',
+                        help="Minimize logging output")
     parser.add_argument('--pattern', default=None,
                         help="fnmatch pattern to filter output of --list option")
     parser.add_argument('--put', metavar='filelist', default=None,
@@ -135,9 +138,21 @@ def main ():
         sys.exit(0)
     elif args.put is not None:
         filelist = read_files (args.put)
+        num_files = 0
+        size_total = 0.0
+        size_weighted_rate_sum = 0.0
         for filename in filelist:
             if os.path.exists (filename):
+                size = os.path.getsize (filename)
+                t0 = time.time()
                 s3.upload_file (filename)
+                dt = time.time() - t0
+                num_files += 1
+                size_total += size
+                size_weighted_rate_sum += size * (size/dt)
+        if size_total > 0.0 and not args.quiet:
+            mean_rate = size_weighted_rate_sum / size_total
+            print("upload: %4ld files (%4.2f MB/s)" % (num_files, mean_rate/1.e6))
     elif args.get is not None:
         filelist = read_files (args.get)
         for filename in filelist:

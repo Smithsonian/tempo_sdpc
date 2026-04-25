@@ -148,6 +148,5 @@ download_dir_path="${SDPC_ARCHIVE_DIR}/asdc/$(date -u +%Y/%j/pull/tempo_pan_s3_%
 do_asdc_s3_download $download_dir_path
 
 num_uploaded=$($ASDC_TRACK_UPLOADS --num uploaded)
-num_accepted=$($ASDC_TRACK_UPLOADS --num accepted)
 num_problem=$($ASDC_TRACK_UPLOADS --num problem)
-echo "asdc_pull_s3.sh: ASDC ingest status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
+echo "asdc_pull_s3.sh: ASDC ingest status: uploaded:$num_uploaded  problem:$num_problem"
