@@ -1132,11 +1132,11 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
              if (0 != maybe_flush_exprec_cache (tpinfo, ctrl))
                goto return_status;
 
-             if ((ctrl->stop_time > 0) && (Last_Packet_Time > ctrl->stop_time))
+             if ((ctrl->stop_time > 0) && (First_Packet_Time > ctrl->stop_time))
                {
-                  tell_vinfo (0, "stopping:  last packet time=%f  exceeds specified stop_time=%f",
-                              Last_Packet_Time, ctrl->stop_time);
-                  goto last_packet_time_exceeds_stop_time;
+                  tell_vinfo (0, "stopping:  first packet time=%f  exceeds specified stop_time=%f",
+                              First_Packet_Time, ctrl->stop_time);
+                  goto first_packet_time_exceeds_stop_time;
                }
 
              ioclib_free (path);
@@ -1150,7 +1150,7 @@ static int process_cache_dir_pattern (Process_Method_Table_Type *tbl,
         num_files = 0;
      }
 
-last_packet_time_exceeds_stop_time:
+first_packet_time_exceeds_stop_time:
    status = 0;
 return_status:
    ioclib_glob_free (gt);
