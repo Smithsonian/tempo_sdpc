@@ -1759,7 +1759,6 @@ int copy_hidden (const char *dirname, const char *basename, const char *copydir)
 {
    char hidden_basename[MAX_BASENAME_SIZE];
    char *oldpath = NULL;
-   char *newpath = NULL;
    int status = -1;
 
    /* copydir == NULL means "don't copy" */
@@ -1769,8 +1768,7 @@ int copy_hidden (const char *dirname, const char *basename, const char *copydir)
    if (-1 == make_hidden_basename (basename, hidden_basename, MAX_BASENAME_SIZE))
      return -1;
 
-   if ((NULL == (oldpath = ioclib_pathconcat (dirname, hidden_basename)))
-       || (NULL == (newpath = ioclib_pathconcat (dirname, basename))))
+   if (NULL == (oldpath = ioclib_pathconcat (dirname, hidden_basename)))
      goto return_status;
 
    if (0 != copy_file_to_dir (oldpath, copydir, basename))
@@ -1786,7 +1784,6 @@ int copy_hidden (const char *dirname, const char *basename, const char *copydir)
 return_status:
 
    FREE(oldpath);
-   FREE(newpath);
    return status;
 }
 
