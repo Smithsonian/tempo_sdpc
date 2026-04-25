@@ -86,6 +86,5 @@ download_dir_path="${dbfile_dir}/$(date -u +%Y/%j/pull/${dbfile_name}_pan_%Y%jT%
 do_asdc_download $download_dir_path
 
 num_uploaded=$(asdc_files.py --dbfile $dbfile --num uploaded)
-num_accepted=$(asdc_files.py --dbfile $dbfile --num accepted)
 num_problem=$(asdc_files.py --dbfile $dbfile --num problem)
-echo "$(date -u $tstamp_fmt): $dbfile_name pull status: uploaded:$num_uploaded  accepted:$num_accepted  problem:$num_problem"
+echo "$(date -u $tstamp_fmt): $dbfile_name pull status: uploaded:$num_uploaded  problem:$num_problem"
