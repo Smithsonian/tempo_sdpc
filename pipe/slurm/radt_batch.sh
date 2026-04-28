@@ -125,7 +125,7 @@ tar_to_repro_dir()
    tar c --remove-files -f $SDPC_PIPE_DIR/L1/repro/${work_dir}.tar $work_dir
 }
 
-srun --output=$log_file \
+srun --output=$log_file --quiet \
      --nodes=1 --ntasks=1 --cpus-per-task=8 --cpu-bind=cores \
      process_radt_scan.sh $granule_list $viirsdnb_dir
 if test "$?" -eq 0 ; then

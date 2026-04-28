@@ -18,7 +18,7 @@ export PGS_PC_INFO_FILE="o3_profile.pcf"
 
 : "${SDPC_O3PROF_TIME_LIMIT:=240}"
 
-srun --ntasks=1 --exclusive \
+srun --ntasks=1 --exclusive --quiet \
      --time=$SDPC_O3PROF_TIME_LIMIT \
      --job-name=O3PROF \
      --output=log_o3_profile.txt \

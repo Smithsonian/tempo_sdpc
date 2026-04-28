@@ -185,7 +185,7 @@ run_inr_post()
    radiance_file=$1
 
    # INR post
-   srun --ntasks=1 --output=log_inr_post.txt \
+   srun --ntasks=1 --output=log_inr_post.txt --quiet \
     L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
@@ -203,7 +203,7 @@ run_inr_post()
    if test $num_dsets_gzipped -eq 0 ; then
       tmpfile="${radiance_file}.prezip"
       /bin/mv $radiance_file $tmpfile
-      srun --ntasks=1 nccopy -s -d 1 $tmpfile $radiance_file
+      srun --ntasks=1 --quiet nccopy -s -d 1 $tmpfile $radiance_file
       /bin/rm $tmpfile
    fi
 
@@ -262,7 +262,7 @@ derive_cloud_o4_params()
        -e "s,@apply_radshift@,0," \
        $template_ctrl > $ctrl_file
 
-   srun --ntasks=1 --output=log_cloud_o4.txt \
+   srun --ntasks=1 --output=log_cloud_o4.txt --quiet \
         L1_cloud_o4 $ctrl_file
 
    # remove variables:

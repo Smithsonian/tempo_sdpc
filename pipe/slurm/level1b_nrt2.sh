@@ -138,7 +138,7 @@ EOF
 # Use the second-pass radiance file to finish prep for L2 retrievals
 slurm_logdir="$SDPC_PIPE_DIR/log/level1b_nrt2/slurm"
 jid=$(sbatch --job-name="nL1b.2" --parsable --partition="$SDPC_NRT_PARTITION" \
-       --comment=$SDPC_GRANULE_LABEL \
+       --comment=$SDPC_GRANULE_LABEL --quiet \
        --chdir $l1_run_dir --ntasks=1 \
        --output "$slurm_logdir/${rad_basename}.level1b_nrt2_batch-%j.out" \
        level1b_nrt2_batch.sh "${rad_basename}.nc" "$file_list_file")

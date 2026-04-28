@@ -211,7 +211,7 @@ slurm_logdir="$SDPC_PIPE_DIR/log/level2/slurm"
 
 if test x"$product_list_sans_o3p" != x ; then
   num_products=$(echo "$product_list_sans_o3p" | wc -w)
-  jid=$(sbatch --job-name=L2 --parsable \
+  jid=$(sbatch --job-name=L2 --parsable --quiet \
          --comment=$SDPC_GRANULE_LABEL \
          --chdir $l2_run_dir \
          --nodes=1-1 --ntasks=$num_products --ntasks-per-core=1 \
@@ -240,7 +240,7 @@ if test x"$have_o3p" != x ; then
      host_spec="${k}-${o3p_num_hosts}"
      tar_file_notice_alias="${tar_file_notice}_${k}"
 
-     jid=$(sbatch --job-name="$job_o3p" --parsable \
+     jid=$(sbatch --job-name="$job_o3p" --parsable --quiet \
             --comment=$SDPC_GRANULE_LABEL \
             --partition="$o3p_partition" \
             --nodes=1-1 --ntasks=$o3p_ntasks_per_host --ntasks-per-core=1 \
@@ -254,7 +254,7 @@ if test x"$have_o3p" != x ; then
   # When all submitted o3p jobs finish, all the o3p blocks will be in the archive.
   # Any node can perform the merge using the previously constructed path,
   jid=$(sbatch --dependency=singleton --job-name="$job_o3p" --parsable \
-         --comment=$SDPC_GRANULE_LABEL \
+         --comment=$SDPC_GRANULE_LABEL --quiet \
          --partition="$o3p_partition" \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.o3prof_merge-%j.out" \
          o3prof_merge.sh $granule_arch_dir_path)

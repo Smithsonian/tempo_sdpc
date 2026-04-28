@@ -205,14 +205,14 @@ sed \
 
 export PGS_PC_INFO_FILE="$this_pcf_file"
 
-srun --ntasks=1 --exclusive --output=log_${molecule}.txt --job-name=${molecule} \
+srun --ntasks=1 --exclusive --quiet --output=log_${molecule}.txt --job-name=${molecule} \
  L1_trace_gas -tempo -wrt_odl
 
 # Apply destriping correction when possible
 destripe_file_file="${rad_basename}.destripe"
 if test -s $destripe_file_file ; then
    destripe_path=$(cat $destripe_file_file)
-   srun --ntasks=1 --output=log_destripe.txt --job-name=${molecule} \
+   srun --ntasks=1 --quiet --output=log_destripe.txt --job-name=${molecule} \
       destripe.py --corrfile "$destripe_path" $product_file
 fi
 

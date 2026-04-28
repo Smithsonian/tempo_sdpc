@@ -125,7 +125,7 @@ run_inr_post()
    radiance_file=$1
 
    # INR post
-   srun --ntasks=1 --output=log_inr_post.txt \
+   srun --ntasks=1 --output=log_inr_post.txt --quiet \
     L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
@@ -203,7 +203,7 @@ derive_o2o2_slant_column()
 
   export PGS_PC_INFO_FILE="$this_pcf_file"
 
-  srun --ntasks=1 --output=log_${molecule}.txt \
+  srun --ntasks=1 --output=log_${molecule}.txt --quiet \
      L1_trace_gas -tempo -wrt_odl
 
   diagnostic_file="${out_basename}_diag.nc"

@@ -128,7 +128,7 @@ if test x"$product_name" == x"RADT_L1" ; then
    else
       slurm_logdir="$SDPC_PIPE_DIR/log/level3/slurm"
       jid=$(sbatch --job-name="$radt_label" --comment "$radt_label" \
-                --chdir "${SDPC_NODE_DIR}/L1" --parsable \
+                --chdir "${SDPC_NODE_DIR}/L1" --parsable --quiet \
                 --nodes=1 --ntasks=1 --cpus-per-task=8 \
                 --output "$slurm_logdir/${radt_label}.radt_batch-%j.out" \
                 radt_batch.sh $pathlist_file)

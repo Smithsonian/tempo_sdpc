@@ -91,7 +91,7 @@ slurm_logdir="$SDPC_PIPE_DIR/log/level2_nrt/slurm"
 if test x"$product_list_sans_o3p" != x ; then
   num_products=$(echo "$product_list_sans_o3p" | wc -w)
   jid=$(sbatch --job-name=nL2 --parsable --partition="$SDPC_NRT_PARTITION" \
-         --comment=$SDPC_GRANULE_LABEL \
+         --comment=$SDPC_GRANULE_LABEL --quiet \
          --chdir $l2_run_dir \
          --nodes=1-1 --ntasks=$num_products --ntasks-per-core=1 \
          --output "$slurm_logdir/${SDPC_GRANULE_LABEL}.level2_batch-%j.out" \

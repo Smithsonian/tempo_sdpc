@@ -116,7 +116,7 @@ sed \
 export PGSMSG="${SDPC_ROOT}/msgs"
 export PGS_PC_INFO_FILE="$pcf_file"
 
-srun --ntasks=1 --exclusive --output=log_o3_total.txt --job-name=O3TOT \
+srun --ntasks=1 --exclusive --quiet --output=log_o3_total.txt --job-name=O3TOT \
   L1_o3_total tempo wrt_odl
 
 # SDPTK MET routines litter the directory with temporary files

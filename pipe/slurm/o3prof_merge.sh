@@ -66,7 +66,7 @@ input_files=$quoted_input_files
 outfile='$product_file'
 EOF
 
-  srun --ntasks=1 --output=merge.log merge_o3p_files
+  srun --ntasks=1 --output=merge.log --quiet merge_o3p_files
 
   # The .met files should be equivalent, so any one will do,
   # but the met file name _must_ match the product file name.

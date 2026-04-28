@@ -39,7 +39,7 @@ wrap_wavecal()
 
    args="$adjust $block_args -g $band_name -c $config"
 
-   srun --nodes 1 --ntasks 1 --exclusive \
+   srun --nodes 1 --ntasks 1 --exclusive --quiet \
         --job-name="wavecal" \
         --output=${result_file}.log \
          wavecal_driver $args $input_file $result_file
@@ -68,6 +68,6 @@ case "$bn" in
     ;;
 esac
 
-srun --nodes 1 --ntasks 1 --output=log_wavecal_merge.txt \
+srun --nodes 1 --ntasks 1 --quiet --output=log_wavecal_merge.txt \
      --job-name="wavecal_merge"  \
      wavecal_merge $args --delete -t $input_file $result_dir

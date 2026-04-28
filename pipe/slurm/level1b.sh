@@ -150,7 +150,7 @@ fi
 
 # Run the post-INR pipeline to prepare for L2 product generation:
 slurm_logdir="$SDPC_PIPE_DIR/log/level1b/slurm"
-jid=$(sbatch --job-name="L1b" --parsable \
+jid=$(sbatch --job-name="L1b" --parsable --quiet \
        --comment=$SDPC_GRANULE_LABEL \
        --chdir $l1_run_dir --ntasks=$max_num_tasks \
        --output "$slurm_logdir/${rad_basename}.level1b_batch-%j.out" \

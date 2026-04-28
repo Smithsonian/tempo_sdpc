@@ -127,7 +127,7 @@ run_l0_ccd()
       lookup_option="-i @hk.lis"
    fi
 
-   srun --ntasks=1 --output=log_l0_ccd.txt \
+   srun --ntasks=1 --output=log_l0_ccd.txt --quiet \
    L0_ccd -vv --Version $SDPC_PROCESSING_VERSION \
           --config $config_file $lookup_option $solar_option \
           --trend trend_params.nc $dark_option \
@@ -150,7 +150,7 @@ run_inr_prep()
       iers_opt=""
    fi
 
-   srun --ntasks=1 --output=log_inr_prep.txt \
+   srun --ntasks=1 --output=log_inr_prep.txt --quiet \
         L1_inr_prep -v 1 $iers_opt $target_file
 }
 

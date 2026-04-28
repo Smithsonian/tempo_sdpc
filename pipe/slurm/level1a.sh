@@ -240,7 +240,7 @@ log_message "submitting sbatch/wait level1a_batch.sh: $SDPC_GRANULE_LABEL"
 
 # Singleton dependency requires a job-name unique to this pipeline.
 slurm_logdir="$SDPC_PIPE_DIR/log/level1a/slurm"
-jid=$(sbatch --wait --dependency=singleton --parsable \
+jid=$(sbatch --wait --dependency=singleton --parsable --quiet \
        --ntasks=$ntasks \
        --job-name="L0:serial:${SDPC_PIPE_ID}" \
        --comment "$SDPC_GRANULE_LABEL" \

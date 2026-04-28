@@ -275,7 +275,7 @@ run_inr_post()
    radiance_file=$1
 
    # INR post
-   srun --ntasks=1 --output=log_inr_post.txt \
+   srun --ntasks=1 --output=log_inr_post.txt --quiet \
     L1_inr_post -vv -c ${etc_dir}/l1_inr_post.cfg \
                 -s $snow_file $radiance_file
 
@@ -305,7 +305,7 @@ run_inr_post()
       fi
 
       # perform polarization correction
-      srun --ntasks=1 --output=log_polcorr.txt \
+      srun --ntasks=1 --output=log_polcorr.txt --quiet \
        L1_polcorr -c ${etc_dir}/l1_polcorr.cfg $radiance_file
 
       if test x"$SDPC_DIAGNOSTIC_INDEX" != x"OFF" ; then
@@ -319,7 +319,7 @@ run_inr_post()
    if test $num_dsets_gzipped -eq 0 ; then
       tmpfile="${radiance_file}.prezip"
       /bin/mv $radiance_file $tmpfile
-      srun --ntasks=1 nccopy -s -d 1 $tmpfile $radiance_file
+      srun --ntasks=1 --quiet nccopy -s -d 1 $tmpfile $radiance_file
       /bin/rm $tmpfile
    fi
 
@@ -375,7 +375,7 @@ run_cloud_rr()
   export PGS_PC_INFO_FILE="$pcf_file"
   export PGSMSG="${SDPC_ROOT}/msgs"
 
-  srun --ntasks=1 --output=log_cloud.txt \
+  srun --ntasks=1 --output=log_cloud.txt --quiet \
     L1_cloud -tempo -wrt_odl
 
   # SDPTK MET routines litter the directory with temporary files
@@ -459,7 +459,7 @@ derive_o2o2_slant_column()
 
   export PGS_PC_INFO_FILE="$this_pcf_file"
 
-  srun --ntasks=1 --output=log_${molecule}.txt \
+  srun --ntasks=1 --output=log_${molecule}.txt --quiet \
      L1_trace_gas -tempo -wrt_odl
 
   diagnostic_file="${out_basename}_diag.nc"
@@ -508,7 +508,7 @@ derive_cloud_o4_params()
        -e "s,@apply_radshift@,1," \
        $template_ctrl > $ctrl_file
 
-   srun --ntasks=1 --output=log_cloud_o4.txt \
+   srun --ntasks=1 --output=log_cloud_o4.txt --quiet \
         L1_cloud_o4 $ctrl_file
 
    # remove variables:

@@ -105,7 +105,7 @@ EOF
 # Use the first-pass radiance file to complete the first step of CLDO4 retrieval
 slurm_logdir="$SDPC_PIPE_DIR/log/level1b_nrt1/slurm"
 jid=$(sbatch --job-name="nL1b.1" --parsable --partition="$SDPC_NRT_PARTITION" \
-       --comment=$SDPC_GRANULE_LABEL \
+       --comment=$SDPC_GRANULE_LABEL --quiet \
        --chdir $l1_run_dir --ntasks=1 \
        --output "$slurm_logdir/${rad_basename}.level1b_nrt1_batch-%j.out" \
        level1b_nrt1_batch.sh "${rad_basename}.nc" "$file_list_file")
