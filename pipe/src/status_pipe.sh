@@ -57,7 +57,7 @@ service_check()
   echo "Errors/warnings in service log files updated since $utc_beg:"
   logdirs=$(find $SDPC_PIPE_DIR/log -mindepth 1 -maxdepth 1 -type d)
   for d in $logdirs ; do
-      strings=$(filter_s6_log --beg $timet_beg --end $timet_end -i --regex "error|warn|exception|bad file" $d | s6-tai64nlocal)
+      strings=$(filter_s6_log --beg $timet_beg --end $timet_end -i --regex "error|warn|exception|fail" $d | s6-tai64nlocal)
       if test -n "$strings" ; then
          printf "*** CHECK THESE SERVICE LOG MESSAGES ***\n"
 	 printf "$d:\n$strings\n"
