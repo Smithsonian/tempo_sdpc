@@ -322,7 +322,23 @@ main()
 
    echo "$PGMNAME: started"
 
+   state=1
+
    while true ; do
+
+      if test -f $SDPC_PIPE_DIR/ctrl/disable ; then
+         if test $state -ne 0 ; then
+            echo DISABLE
+            state=0
+         fi
+         sleep_minutes 5
+         continue
+      fi
+
+      if test $state -eq 0 ; then
+         echo ENABLE
+         state=1
+      fi
 
       now=$(date +%s)
 
