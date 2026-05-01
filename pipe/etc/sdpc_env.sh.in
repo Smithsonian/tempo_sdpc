@@ -90,3 +90,10 @@ for x in $_sdpc_paths ; do
   esac
 done
 export PATH
+
+#------
+#  Etc:
+#------
+
+: "${SQUEUE_FORMAT:=%7i %7P %14N %.3C %2t %6r %.8M %16j %45k}"
+export SQUEUE_FORMAT
